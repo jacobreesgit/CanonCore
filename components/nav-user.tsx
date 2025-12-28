@@ -7,6 +7,7 @@ import {
   IconNotification,
   IconUserCircle,
 } from "@tabler/icons-react";
+import { useStackApp } from "@stackframe/stack";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -35,6 +36,11 @@ export function NavUser({
   };
 }) {
   const { isMobile } = useSidebar();
+  const app = useStackApp();
+
+  const handleSignOut = async () => {
+    await app.signOut();
+  };
 
   return (
     <SidebarMenu>
@@ -94,7 +100,7 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={handleSignOut}>
               <IconLogout />
               Log out
             </DropdownMenuItem>
