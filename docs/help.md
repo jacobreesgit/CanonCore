@@ -2,7 +2,7 @@
 
 - use the superpower skill to make a desgin document.
 
-- use git difference of current commmit to update claude.md and architecture.md got updated, update it with new changes since. only update claude.md but only with thats necccesary as claude.md is for claude code's own use for develpoment. im cutious of the 40k claude.md limit so don't overdo it. actually do it. look at all git history. take your time sequential thinking.
+- use /Users/jacobrees/canoncore-v2/skills/docs-write.md to summarise the branch before deployment
 
 Key Patterns:
 
