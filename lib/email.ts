@@ -1,7 +1,22 @@
+/**
+ * Email sending utilities using Resend.
+ * Handles transactional emails for authentication flows.
+ */
+
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+/**
+ * Sends a password reset email with a secure token link.
+ *
+ * @param email - Recipient email address
+ * @param token - Unique reset token (expires in 1 hour)
+ * @throws Error if email sending fails
+ *
+ * @example
+ * await sendPasswordResetEmail("user@example.com", "abc123token");
+ */
 export async function sendPasswordResetEmail(email: string, token: string) {
   const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/reset-password?token=${token}`;
 

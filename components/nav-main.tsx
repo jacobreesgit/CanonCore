@@ -1,3 +1,8 @@
+/**
+ * Main navigation section for the sidebar.
+ * Contains primary navigation items and quick actions.
+ */
+
 "use client";
 
 import { IconCirclePlusFilled, IconMail, type Icon } from "@tabler/icons-react";
@@ -11,6 +16,12 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
+/**
+ * Renders the main navigation section with quick actions.
+ * Includes a "Quick Create" button and primary navigation items.
+ *
+ * @param items - Array of navigation items with title, url, and optional icon
+ */
 export function NavMain({
   items,
 }: {

@@ -1,3 +1,8 @@
+/**
+ * Sign-up page for new user registration.
+ * Creates account and auto-signs in on success.
+ */
+
 "use client";
 
 import { useState } from "react";
@@ -10,6 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { signUp } from "@/lib/auth-actions";
 
+/**
+ * Renders sign-up form with email, password, and confirmation fields.
+ * Validates password requirements and handles registration errors.
+ */
 export default function SignUpPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

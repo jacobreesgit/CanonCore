@@ -1,9 +1,18 @@
+/**
+ * Dashboard layout with sidebar navigation.
+ * Protects all child routes with authentication check.
+ */
+
 import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { auth } from "@/lib/auth";
 
+/**
+ * Wraps dashboard pages with sidebar and header.
+ * Redirects unauthenticated users to sign-in.
+ */
 export default async function DashboardLayout({
   children,
 }: {

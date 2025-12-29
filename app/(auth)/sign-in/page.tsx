@@ -1,3 +1,8 @@
+/**
+ * Sign-in page for existing users.
+ * Handles email/password authentication with NextAuth credentials provider.
+ */
+
 "use client";
 
 import { useState } from "react";
@@ -9,6 +14,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 
+/**
+ * Renders sign-in form with email/password fields and error handling.
+ * Redirects to dashboard on successful authentication.
+ */
 export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

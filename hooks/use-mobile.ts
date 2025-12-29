@@ -1,7 +1,18 @@
+/**
+ * React hook for responsive mobile detection.
+ * Uses matchMedia API for efficient viewport monitoring.
+ */
+
 import * as React from "react";
 
 const MOBILE_BREAKPOINT = 768;
 
+/**
+ * Detects if the current viewport is mobile-sized.
+ * Updates reactively when window is resized across breakpoint.
+ *
+ * @returns true if viewport width is less than 768px
+ */
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(
     undefined
