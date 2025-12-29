@@ -22,6 +22,11 @@ export default defineConfig({
       dependencies: ["setup"],
     },
     {
+      name: "mobile-chrome",
+      use: { ...devices["iPhone 14"] },
+      dependencies: ["setup"],
+    },
+    {
       name: "teardown",
       testMatch: /global\.teardown\.ts/,
       use: { ...devices["Desktop Chrome"] },
