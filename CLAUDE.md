@@ -88,9 +88,18 @@ pnpm run test:e2e     # Run Playwright E2E tests
 - Tests in `e2e/journeys/` organized by feature
 - Page objects in `e2e/pages/` for reusable interactions
 - Fixtures in `e2e/fixtures/` for auth and database setup
-- Run: `pnpm run test:e2e`
-- Debug: `pnpm run test:e2e:debug`
-- UI mode: `pnpm run test:e2e:ui`
+- Runs on desktop Chrome and mobile Chrome (iPhone 14)
+- 34 total tests (17 desktop + 17 mobile)
+
+**Commands:**
+
+```bash
+pnpm run test:e2e                           # All (desktop + mobile)
+pnpm run test:e2e --project=chromium        # Desktop only
+pnpm run test:e2e --project=mobile-chrome   # Mobile only
+pnpm run test:e2e:debug                     # Debug mode
+pnpm run test:e2e:ui                        # UI mode
+```
 
 ### Styling
 
