@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, afterAll } from "vitest";
+import { afterAll, beforeAll } from "vitest";
 import dotenv from "dotenv";
 import path from "path";
 import type { PrismaClient } from "@prisma/client";
@@ -12,17 +12,15 @@ beforeAll(async () => {
   // Dynamic import after env vars are loaded
   const prismaModule = await import("@/lib/prisma");
   prisma = prismaModule.prisma;
-});
 
-// Clean up test data before each test
-// PasswordReset has onDelete: Cascade, so deleting users cleans up everything
-beforeEach(async () => {
+  // Clean up any leftover test data from previous runs
   await prisma.user.deleteMany({
     where: { email: { contains: "@test.example.com" } },
   });
 });
 
 afterAll(async () => {
+  // Clean up all test data after tests complete
   await prisma.user.deleteMany({
     where: { email: { contains: "@test.example.com" } },
   });

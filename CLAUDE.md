@@ -81,19 +81,22 @@ pnpm run test:e2e:ui                        # UI mode
 │   └── use-mobile.ts                 # Mobile breakpoint hook
 ├── lib/
 │   ├── auth.ts                       # NextAuth config with credentials provider
-│   ├── auth-actions.ts               # Server actions: signUp, forgotPassword, resetPassword
+│   ├── auth-actions.ts               # Server actions with validation, rate limiting
 │   ├── email.ts                      # Resend email helper
+│   ├── env.ts                        # Zod environment variable validation
 │   ├── prisma.ts                     # Prisma client singleton
-│   └── utils.ts                      # cn() helper
+│   ├── rate-limit.ts                 # Upstash Redis rate limiting
+│   ├── utils.ts                      # cn() helper
+│   └── validations.ts                # Zod schemas for auth inputs
 ├── prisma/
 │   ├── migrations/                   # Database migrations
-│   └── schema.prisma                 # User, Session, PasswordReset models
+│   └── schema.prisma                 # User, PasswordReset models
 ├── skills/                           # Claude Code skills
 │   ├── code-review-excellence/       # Code review best practices
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.6.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.7.0)
     └── plans/                        # Design documents
 ```
 
@@ -105,12 +108,16 @@ pnpm run test:e2e:ui                        # UI mode
 - Server actions: `signUp()`, `forgotPassword()`, `resetPassword()` in `lib/auth-actions.ts`
 - Protected routes use `await auth()` + redirect in server components
 - Password hashing with bcryptjs
-- Password reset emails via Resend
+- Password reset emails via Resend (30 min expiry)
+- **Rate limiting**: Upstash Redis (sign-in: 5/min, sign-up: 3/min, forgot: 2/min)
+- **Validation**: Zod schemas for email/password (8+ chars, uppercase, lowercase, number)
+- **Security logging**: All auth events logged with IP and timestamp
 
 ### Database
 
 - **Prisma 7** with PostgreSQL (Neon)
-- Schema: User, Session, PasswordReset models
+- Schema: User, PasswordReset models
+- PasswordReset has index on `expires` for query performance
 - Config in `prisma.config.ts` (loads DATABASE_URL from .env.local)
 - Run migrations: `npx prisma migrate dev`
 
@@ -120,7 +127,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 18 total tests (15 unit + 3 integration)
+- 39 total tests (31 unit + 8 integration)
 
 ### E2E Testing
 
@@ -155,6 +162,14 @@ Required in `.env.local` (development):
 - `DATABASE_URL` - Neon PostgreSQL connection string (development branch)
 - `AUTH_SECRET` - NextAuth secret (generate with: `openssl rand -base64 32`)
 - `RESEND_API_KEY` - Resend API key for password reset emails
+- `EMAIL_FROM` - Sender email address (default: `noreply@canoncore.com`)
+- `UPSTASH_REDIS_REST_URL` - Upstash Redis URL for rate limiting
+- `UPSTASH_REDIS_REST_TOKEN` - Upstash Redis token
+
+Optional:
+
+- `BYPASS_RATE_LIMIT` - Set to `"true"` to skip rate limiting (for E2E tests)
+- `NEXT_PUBLIC_APP_URL` - Base URL for email links (default: `http://localhost:3000`)
 
 ## Documentation Standards
 

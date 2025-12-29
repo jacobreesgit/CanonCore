@@ -38,12 +38,26 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
+/**
+ * User data for sidebar display.
+ */
+interface SidebarUser {
+  /** Display name for the user */
+  name: string;
+  /** User's email address */
+  email: string;
+  /** URL to user's avatar image */
+  avatar?: string;
+}
+
+/**
+ * Props for AppSidebar component.
+ */
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  user: SidebarUser;
+}
+
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   navMain: [
     {
       title: "Dashboard",
@@ -158,8 +172,10 @@ const data = {
 /**
  * Renders the collapsible sidebar with navigation and user controls.
  * Supports offcanvas mode for mobile viewports.
+ *
+ * @param user - Current user data for display in footer
  */
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ user, ...props }: AppSidebarProps) {
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -183,7 +199,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={user} />
       </SidebarFooter>
     </Sidebar>
   );

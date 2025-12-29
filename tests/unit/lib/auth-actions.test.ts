@@ -3,6 +3,30 @@ import { signUp, forgotPassword, resetPassword } from "@/lib/auth-actions";
 import { prisma } from "@/lib/prisma";
 import { sendPasswordResetEmail } from "@/lib/email";
 
+// Mock @/lib/env to avoid validation errors in unit tests
+vi.mock("@/lib/env", () => ({
+  env: {
+    DATABASE_URL: "postgresql://test:test@localhost:5432/test",
+    AUTH_SECRET: "test-auth-secret",
+    RESEND_API_KEY: "re_test_key",
+    EMAIL_FROM: "test@example.com",
+    NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+    UPSTASH_REDIS_REST_URL: "https://test.upstash.io",
+    UPSTASH_REDIS_REST_TOKEN: "test-token",
+    BYPASS_RATE_LIMIT: "true",
+  },
+}));
+
+// Mock next/headers
+vi.mock("next/headers", () => ({
+  headers: vi.fn().mockResolvedValue({
+    get: vi.fn().mockReturnValue("127.0.0.1"),
+  }),
+}));
+
+// Set BYPASS_RATE_LIMIT for tests (for rate-limit.ts which reads process.env directly)
+vi.stubEnv("BYPASS_RATE_LIMIT", "true");
+
 describe("signUp", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -66,11 +90,25 @@ describe("signUp", () => {
       updatedAt: new Date(),
     });
 
-    await signUp("test@example.com", "plainPassword");
+    await signUp("test@example.com", "Password1");
 
     const createCall = vi.mocked(prisma.user.create).mock.calls[0][0];
-    expect(createCall.data.passwordHash).not.toBe("plainPassword");
+    expect(createCall.data.passwordHash).not.toBe("Password1");
     expect(createCall.data.passwordHash.length).toBeGreaterThan(20);
+  });
+
+  it("returns validation error for weak password", async () => {
+    const result = await signUp("test@example.com", "weak");
+
+    expect(result.error).toBeDefined();
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("returns validation error for invalid email", async () => {
+    const result = await signUp("notanemail", "Password123!");
+
+    expect(result.error).toBeDefined();
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
   });
 });
 
@@ -121,6 +159,13 @@ describe("forgotPassword", () => {
       expect.any(String)
     );
   });
+
+  it("returns validation error for invalid email", async () => {
+    const result = await forgotPassword("notanemail");
+
+    expect(result.error).toBeDefined();
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+  });
 });
 
 describe("resetPassword", () => {
@@ -143,7 +188,17 @@ describe("resetPassword", () => {
       userId: "user-1",
       expires: new Date(Date.now() - 1000), // Expired
       createdAt: new Date(),
-    });
+      user: {
+        id: "user-1",
+        email: "test@example.com",
+        passwordHash: "hashed",
+        emailVerified: null,
+        name: null,
+        image: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    } as never);
     vi.mocked(prisma.passwordReset.delete).mockResolvedValue({
       id: "reset-1",
       token: "valid-token",
@@ -165,7 +220,17 @@ describe("resetPassword", () => {
       userId: "user-1",
       expires: new Date(Date.now() + 60000), // Valid for 1 minute
       createdAt: new Date(),
-    });
+      user: {
+        id: "user-1",
+        email: "test@example.com",
+        passwordHash: "hashed",
+        emailVerified: null,
+        name: null,
+        image: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    } as never);
     vi.mocked(prisma.user.update).mockResolvedValue({
       id: "user-1",
       email: "test@example.com",
@@ -194,5 +259,12 @@ describe("resetPassword", () => {
     expect(prisma.passwordReset.delete).toHaveBeenCalledWith({
       where: { id: "reset-1" },
     });
+  });
+
+  it("returns validation error for weak password", async () => {
+    const result = await resetPassword("valid-token", "weak");
+
+    expect(result.error).toBeDefined();
+    expect(prisma.passwordReset.findUnique).not.toHaveBeenCalled();
   });
 });

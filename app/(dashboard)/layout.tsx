@@ -20,9 +20,16 @@ export default async function DashboardLayout({
 }) {
   const session = await auth();
 
-  if (!session) {
+  if (!session?.user) {
     redirect("/sign-in");
   }
+
+  // Extract user data for sidebar display
+  const user = {
+    name: session.user.name ?? session.user.email?.split("@")[0] ?? "User",
+    email: session.user.email ?? "",
+    avatar: session.user.image ?? undefined,
+  };
 
   return (
     <SidebarProvider
@@ -33,7 +40,7 @@ export default async function DashboardLayout({
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" />
+      <AppSidebar variant="inset" user={user} />
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col">
