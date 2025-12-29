@@ -11,7 +11,10 @@ export default function LandingPage() {
         <div className="container">
           <div className="mx-auto flex max-w-5xl flex-col items-center">
             <div className="z-10 items-center text-center">
-              <h1 className="mb-8 text-4xl font-semibold text-pretty lg:text-7xl">
+              <h1
+                data-testid="landing-hero-title"
+                className="mb-8 text-4xl font-semibold text-pretty lg:text-7xl"
+              >
                 Welcome to CanonCore
               </h1>
               <p className="text-muted-foreground mx-auto max-w-3xl lg:text-xl">
@@ -19,13 +22,17 @@ export default function LandingPage() {
                 Get started today and unlock powerful insights.
               </p>
               <div className="mt-12 flex w-full flex-col justify-center gap-2 sm:flex-row">
-                <Button asChild>
+                <Button asChild data-testid="landing-get-started-button">
                   <Link href="/sign-up">
                     Get started now
                     <ChevronRight className="ml-2 h-4" />
                   </Link>
                 </Button>
-                <Button variant="ghost" asChild>
+                <Button
+                  variant="ghost"
+                  asChild
+                  data-testid="landing-sign-in-button"
+                >
                   <Link href="/sign-in">
                     Sign in
                     <ChevronRight className="ml-2 h-4" />

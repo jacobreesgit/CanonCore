@@ -3,10 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useStackApp } from "@stackframe/stack";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { signUp } from "@/lib/auth-actions";
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("");
@@ -14,7 +16,7 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const app = useStackApp();
+  const router = useRouter();
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,9 +35,26 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
-      const result = await app.signUpWithCredential({ email, password });
-      if (result.status === "error") {
-        setError(result.error.message);
+      const result = await signUp(email, password);
+
+      if (result.error) {
+        setError(result.error);
+      } else {
+        // Auto sign-in after successful registration
+        const signInResult = await signIn("credentials", {
+          email,
+          password,
+          redirect: false,
+        });
+
+        if (signInResult?.error) {
+          setError(
+            "Account created but sign-in failed. Please try signing in."
+          );
+        } else {
+          router.push("/dashboard");
+          router.refresh();
+        }
       }
     } catch {
       setError("An unexpected error occurred");
@@ -58,7 +77,10 @@ export default function SignUpPage() {
 
           <form onSubmit={onSubmit} className="w-full max-w-lg space-y-4">
             {error && (
-              <div className="bg-destructive/10 text-destructive rounded-full px-5 py-3 text-center text-sm">
+              <div
+                data-testid="sign-up-error-message"
+                className="bg-destructive/10 text-destructive rounded-full px-5 py-3 text-center text-sm"
+              >
                 {error}
               </div>
             )}
@@ -70,6 +92,7 @@ export default function SignUpPage() {
               onChange={(e) => setEmail(e.target.value)}
               className="bg-muted h-14 rounded-full border-none px-5 py-4 font-medium"
               required
+              data-testid="sign-up-email-input"
             />
 
             <Input
@@ -80,6 +103,7 @@ export default function SignUpPage() {
               className="bg-muted h-14 rounded-full border-none px-5 py-4 font-medium"
               required
               minLength={8}
+              data-testid="sign-up-password-input"
             />
 
             <Input
@@ -89,12 +113,14 @@ export default function SignUpPage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="bg-muted h-14 rounded-full border-none px-5 py-4 font-medium"
               required
+              data-testid="sign-up-confirm-password-input"
             />
 
             <Button
               type="submit"
               className="bg-foreground text-background hover:bg-foreground/90 h-14 w-full rounded-full"
               disabled={loading}
+              data-testid="sign-up-submit-button"
             >
               <span className="font-medium tracking-tight">
                 {loading ? "Creating account..." : "Create account"}
@@ -110,7 +136,11 @@ export default function SignUpPage() {
 
           <p className="mb-20 w-full text-center text-sm font-medium tracking-tight">
             Already have an account?{" "}
-            <Link href="/sign-in" className="cursor-pointer underline">
+            <Link
+              href="/sign-in"
+              className="cursor-pointer underline"
+              data-testid="sign-up-sign-in-link"
+            >
               Sign in
             </Link>
           </p>

@@ -2,14 +2,8 @@
 
 - use the superpower skill to make a desgin document.
 
-- use /Users/jacobrees/canoncore-v2/skills/docs-write.md to summarise the branch before deployment
+- (we've already wrote the doc but) implement the doc from
 
-Key Patterns:
+- use /Users/jacobrees/canoncore-v2/skills/docs-write.md to summarise the branch before deployment and update package.json number and use that for deployment file name
 
-- ensure correct client side vs server side stuff
-- NEVER use router.refresh() in client components - use explicit refetch
-- After Server Action mutations: call refetchItems() to update UI
-
-```
-
-```
+- use /Users/jacobrees/canoncore-v2/skills/docs-write.md to update claude.md, but be careful of the 40k word limit. use tree to get whole route structure and properly use git to compare ALL differences from last commit
