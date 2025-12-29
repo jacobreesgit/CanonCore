@@ -1,7 +1,22 @@
-import { describe, it, expect } from "vitest";
+/**
+ * Integration tests for sign-up flow.
+ * Tests user creation with real database.
+ */
+
+import { describe, it, expect, vi } from "vitest";
 import { signUp } from "@/lib/auth-actions";
 import { prisma } from "@/lib/prisma";
 import "../setup";
+
+// Mock next/headers for server action context
+vi.mock("next/headers", () => ({
+  headers: vi.fn().mockResolvedValue({
+    get: vi.fn().mockReturnValue("127.0.0.1"),
+  }),
+}));
+
+// Bypass rate limiting for integration tests
+vi.stubEnv("BYPASS_RATE_LIMIT", "true");
 
 describe("signUp integration", () => {
   const testEmail = () => `signup-${Date.now()}@test.example.com`;
@@ -37,7 +52,7 @@ describe("signUp integration", () => {
     expect(first.success).toBe(true);
 
     // Second sign up with same email should fail
-    const second = await signUp(email, "DifferentPassword!");
+    const second = await signUp(email, "DifferentPass1!");
     expect(second.error).toBe("An account with this email already exists");
 
     // Should still only be one user

@@ -1,17 +1,54 @@
 /**
  * Server actions for authentication flows.
  * Handles sign-up, password reset requests, and password updates.
+ * Includes rate limiting, validation, and security logging.
  */
 
 "use server";
 
 import { hash } from "bcryptjs";
 import { randomBytes } from "crypto";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { sendPasswordResetEmail } from "@/lib/email";
+import { checkRateLimit } from "@/lib/rate-limit";
+import {
+  signUpSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from "@/lib/validations";
+
+/**
+ * Result type for auth actions.
+ * Either success or error, never both.
+ */
+type AuthResult =
+  | { success: true; error?: never }
+  | { success?: never; error: string };
+
+/**
+ * Logs security-related events for monitoring.
+ *
+ * @param event - Type of security event
+ * @param details - Additional event details
+ */
+async function logSecurityEvent(
+  event: string,
+  details: Record<string, unknown>
+) {
+  const headersList = await headers();
+  const ip = headersList.get("x-forwarded-for") ?? "127.0.0.1";
+
+  console.warn(`[SECURITY] ${event}`, {
+    ip,
+    timestamp: new Date().toISOString(),
+    ...details,
+  });
+}
 
 /**
  * Creates a new user account with hashed password.
+ * Includes rate limiting and input validation.
  *
  * @param email - User's email address
  * @param password - Plain text password (will be hashed with bcrypt)
@@ -21,13 +58,30 @@ import { sendPasswordResetEmail } from "@/lib/email";
  * const result = await signUp("user@example.com", "Password123!");
  * if (result.error) console.error(result.error);
  */
-export async function signUp(email: string, password: string) {
+export async function signUp(
+  email: string,
+  password: string
+): Promise<AuthResult> {
+  // Rate limiting
+  const rateLimitResult = await checkRateLimit("signUp");
+  if (rateLimitResult) {
+    await logSecurityEvent("RATE_LIMIT_EXCEEDED", { action: "signUp", email });
+    return rateLimitResult;
+  }
+
+  // Validation
+  const validation = signUpSchema.safeParse({ email, password });
+  if (!validation.success) {
+    return { error: validation.error.issues[0].message };
+  }
+
   try {
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
 
     if (existingUser) {
+      await logSecurityEvent("SIGNUP_DUPLICATE_EMAIL", { email });
       return { error: "An account with this email already exists" };
     }
 
@@ -40,6 +94,7 @@ export async function signUp(email: string, password: string) {
       },
     });
 
+    await logSecurityEvent("SIGNUP_SUCCESS", { email });
     return { success: true };
   } catch (error) {
     console.error("Sign up error:", error);
@@ -50,6 +105,7 @@ export async function signUp(email: string, password: string) {
 /**
  * Initiates password reset flow by sending a reset email.
  * Always returns success to prevent email enumeration attacks.
+ * Token expires in 30 minutes.
  *
  * @param email - Email address to send reset link to
  * @returns Success object (always, for security)
@@ -58,13 +114,30 @@ export async function signUp(email: string, password: string) {
  * const result = await forgotPassword("user@example.com");
  * // Always shows success message to user
  */
-export async function forgotPassword(email: string) {
+export async function forgotPassword(email: string): Promise<AuthResult> {
+  // Rate limiting
+  const rateLimitResult = await checkRateLimit("forgotPassword");
+  if (rateLimitResult) {
+    await logSecurityEvent("RATE_LIMIT_EXCEEDED", {
+      action: "forgotPassword",
+      email,
+    });
+    return rateLimitResult;
+  }
+
+  // Validation
+  const validation = forgotPasswordSchema.safeParse({ email });
+  if (!validation.success) {
+    return { error: validation.error.issues[0].message };
+  }
+
   const user = await prisma.user.findUnique({
     where: { email },
   });
 
   // Always return success to prevent email enumeration
   if (!user) {
+    await logSecurityEvent("FORGOT_PASSWORD_UNKNOWN_EMAIL", { email });
     return { success: true };
   }
 
@@ -73,9 +146,9 @@ export async function forgotPassword(email: string) {
     where: { userId: user.id },
   });
 
-  // Create new reset token (expires in 1 hour)
+  // Create new reset token (expires in 30 minutes)
   const token = randomBytes(32).toString("hex");
-  const expires = new Date(Date.now() + 60 * 60 * 1000);
+  const expires = new Date(Date.now() + 30 * 60 * 1000);
 
   await prisma.passwordReset.create({
     data: {
@@ -85,7 +158,15 @@ export async function forgotPassword(email: string) {
     },
   });
 
-  await sendPasswordResetEmail(email, token);
+  try {
+    await sendPasswordResetEmail(email, token);
+  } catch (error) {
+    // Clean up orphaned token if email fails
+    await prisma.passwordReset.delete({ where: { token } });
+    throw error;
+  }
+
+  await logSecurityEvent("PASSWORD_RESET_REQUESTED", { email });
 
   return { success: true };
 }
@@ -102,13 +183,28 @@ export async function forgotPassword(email: string) {
  * const result = await resetPassword("abc123token", "NewPassword123!");
  * if (result.success) redirect("/sign-in");
  */
-export async function resetPassword(token: string, newPassword: string) {
+export async function resetPassword(
+  token: string,
+  newPassword: string
+): Promise<AuthResult> {
+  // Validation
+  const validation = resetPasswordSchema.safeParse({
+    token,
+    password: newPassword,
+  });
+  if (!validation.success) {
+    return { error: validation.error.issues[0].message };
+  }
+
   const passwordReset = await prisma.passwordReset.findUnique({
     where: { token },
     include: { user: true },
   });
 
   if (!passwordReset) {
+    await logSecurityEvent("RESET_PASSWORD_INVALID_TOKEN", {
+      tokenPrefix: token.substring(0, 8),
+    });
     return { error: "Invalid or expired reset link" };
   }
 
@@ -116,6 +212,9 @@ export async function resetPassword(token: string, newPassword: string) {
     // Clean up expired token
     await prisma.passwordReset.delete({
       where: { id: passwordReset.id },
+    });
+    await logSecurityEvent("RESET_PASSWORD_EXPIRED_TOKEN", {
+      email: passwordReset.user.email,
     });
     return { error: "Reset link has expired" };
   }
@@ -130,6 +229,10 @@ export async function resetPassword(token: string, newPassword: string) {
   // Delete the used token
   await prisma.passwordReset.delete({
     where: { id: passwordReset.id },
+  });
+
+  await logSecurityEvent("PASSWORD_RESET_SUCCESS", {
+    email: passwordReset.user.email,
   });
 
   return { success: true };
