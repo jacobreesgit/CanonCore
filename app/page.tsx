@@ -1,9 +1,17 @@
+/**
+ * Public landing page for unauthenticated visitors.
+ * Displays hero section with call-to-action to sign up or sign in.
+ */
+
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
 
+/**
+ * Renders the landing page with hero content and navigation buttons.
+ */
 export default function LandingPage() {
   return (
     <section className="py-32">

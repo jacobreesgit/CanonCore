@@ -1,3 +1,8 @@
+/**
+ * Reset password page for setting a new password.
+ * Validates token from email link and updates password.
+ */
+
 "use client";
 
 import { Suspense, useState } from "react";
@@ -8,6 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { resetPassword } from "@/lib/auth-actions";
 
+/**
+ * Form component for entering and confirming new password.
+ * Uses URL token parameter for validation.
+ */
 function ResetPasswordForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -166,6 +175,9 @@ function ResetPasswordForm() {
   );
 }
 
+/**
+ * Wraps reset password form with Suspense for client-side URL params.
+ */
 export default function ResetPasswordPage() {
   return (
     <Suspense

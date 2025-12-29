@@ -1,3 +1,8 @@
+/**
+ * Root layout for the entire application.
+ * Sets up fonts, session provider, and analytics tracking.
+ */
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
@@ -18,6 +23,9 @@ export const metadata: Metadata = {
   description: "CanonCore Dashboard",
 };
 
+/**
+ * Wraps all pages with HTML structure, fonts, and session context.
+ */
 export default function RootLayout({
   children,
 }: Readonly<{

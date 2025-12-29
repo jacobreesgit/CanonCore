@@ -1,3 +1,8 @@
+/**
+ * User navigation dropdown component for the sidebar.
+ * Displays user avatar, account options, and sign-out action.
+ */
+
 "use client";
 
 import {
@@ -26,6 +31,10 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
+/**
+ * Renders user menu in sidebar footer with dropdown for account actions.
+ * Handles sign-out and navigation to account settings.
+ */
 export function NavUser({
   user,
 }: {
