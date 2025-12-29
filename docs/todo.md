@@ -1,0 +1,2 @@
+- fumodocs
+- spotlight search

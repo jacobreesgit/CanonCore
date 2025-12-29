@@ -34,6 +34,8 @@ import {
 /**
  * Renders user menu in sidebar footer with dropdown for account actions.
  * Handles sign-out and navigation to account settings.
+ *
+ * @param user - User data including name, email, and optional avatar
  */
 export function NavUser({
   user,
@@ -41,7 +43,7 @@ export function NavUser({
   user: {
     name: string;
     email: string;
-    avatar: string;
+    avatar?: string;
   };
 }) {
   const { isMobile } = useSidebar();
