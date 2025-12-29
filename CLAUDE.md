@@ -5,14 +5,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
+# Development
 pnpm run dev          # Start development server
 pnpm run build        # Production build
 pnpm run check        # Run all checks (format, lint, type-check, knip, build)
+
+# Code quality
 pnpm run format       # Format code with Prettier
 pnpm run lint         # Run ESLint
 pnpm run type-check   # TypeScript type checking
 pnpm run knip         # Check for unused code/dependencies
-pnpm run test:e2e     # Run Playwright E2E tests
+
+# Unit & Integration tests (Vitest)
+pnpm run test              # Run unit tests
+pnpm run test:unit         # Run unit tests (explicit)
+pnpm run test:integration  # Run integration tests (real DB)
+pnpm run test:coverage     # Unit tests with coverage
+pnpm run test:watch        # Watch mode
+
+# E2E tests (Playwright)
+pnpm run test:e2e                           # All tests (desktop + mobile)
+pnpm run test:e2e --project=chromium        # Desktop only
+pnpm run test:e2e --project=mobile-chrome   # Mobile only
+pnpm run test:e2e:debug                     # Debug mode
+pnpm run test:e2e:ui                        # UI mode
 ```
 
 ## Architecture
@@ -37,7 +53,7 @@ pnpm run test:e2e     # Run Playwright E2E tests
 │   ├── layout.tsx                    # Root layout with SessionProvider
 │   └── page.tsx                      # Public landing page
 ├── components/
-│   ├── ui/                           # shadcn/ui components (avatar, button, card, etc.)
+│   ├── ui/                           # shadcn/ui components
 │   ├── app-sidebar.tsx               # Main navigation sidebar
 │   ├── nav-user.tsx                  # User dropdown with sign-out
 │   ├── section-cards.tsx             # Dashboard metric cards
@@ -48,6 +64,16 @@ pnpm run test:e2e     # Run Playwright E2E tests
 │   ├── journeys/auth/                # Auth E2E tests (sign-in, sign-up, etc.)
 │   ├── pages/                        # Page Object Models
 │   └── playwright.config.ts
+├── tests/
+│   ├── unit/
+│   │   ├── lib/                      # Unit tests for lib/ (auth-actions, utils)
+│   │   ├── setup.ts                  # Mocks for Prisma and email
+│   │   └── vitest.config.ts
+│   ├── integration/
+│   │   ├── auth/                     # Integration tests (real DB)
+│   │   ├── setup.ts                  # DB cleanup, env loading
+│   │   └── vitest.config.ts
+│   └── vitest.config.ts              # Base Vitest config
 ├── hooks/
 │   └── use-mobile.ts                 # Mobile breakpoint hook
 ├── lib/
@@ -59,9 +85,11 @@ pnpm run test:e2e     # Run Playwright E2E tests
 ├── prisma/
 │   ├── migrations/                   # Database migrations
 │   └── schema.prisma                 # User, Session, PasswordReset models
-├── prisma.config.ts                  # Prisma 7 config (loads .env.local)
+├── skills/                           # Claude Code skills
+│   ├── code-review-excellence/       # Code review best practices
+│   └── docs-write/                   # Documentation writing style
 └── docs/
-    ├── deployments/                  # Deployment summaries
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.5.0)
     └── plans/                        # Design documents
 ```
 
@@ -82,6 +110,14 @@ pnpm run test:e2e     # Run Playwright E2E tests
 - Config in `prisma.config.ts` (loads DATABASE_URL from .env.local)
 - Run migrations: `npx prisma migrate dev`
 
+### Unit & Integration Testing
+
+- **Vitest** for fast unit and integration tests
+- Unit tests in `tests/unit/` - mock Prisma and email
+- Integration tests in `tests/integration/` - real database
+- Coverage configured for `lib/**`
+- 18 total tests (15 unit + 3 integration)
+
 ### E2E Testing
 
 - **Playwright** with Page Object Model pattern
@@ -90,16 +126,6 @@ pnpm run test:e2e     # Run Playwright E2E tests
 - Fixtures in `e2e/fixtures/` for auth and database setup
 - Runs on desktop Chrome and mobile Chrome (iPhone 14)
 - 34 total tests (17 desktop + 17 mobile)
-
-**Commands:**
-
-```bash
-pnpm run test:e2e                           # All (desktop + mobile)
-pnpm run test:e2e --project=chromium        # Desktop only
-pnpm run test:e2e --project=mobile-chrome   # Mobile only
-pnpm run test:e2e:debug                     # Debug mode
-pnpm run test:e2e:ui                        # UI mode
-```
 
 ### Styling
 
