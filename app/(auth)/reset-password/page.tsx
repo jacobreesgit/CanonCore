@@ -4,9 +4,9 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
-import { useStackApp } from "@stackframe/stack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { resetPassword } from "@/lib/auth-actions";
 
 function ResetPasswordForm() {
   const [password, setPassword] = useState("");
@@ -15,8 +15,7 @@ function ResetPasswordForm() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
-  const code = searchParams.get("code") || "";
-  const app = useStackApp();
+  const token = searchParams.get("token") || "";
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,17 +31,17 @@ function ResetPasswordForm() {
       return;
     }
 
-    if (!code) {
-      setError("Invalid or missing reset code");
+    if (!token) {
+      setError("Invalid or missing reset token");
       return;
     }
 
     setLoading(true);
 
     try {
-      const result = await app.resetPassword({ password, code });
-      if (result.status === "error") {
-        setError("Failed to reset password. The link may have expired.");
+      const result = await resetPassword(token, password);
+      if (result.error) {
+        setError(result.error);
       } else {
         setSuccess(true);
       }
@@ -66,7 +65,10 @@ function ResetPasswordForm() {
               Password reset successful
             </h1>
 
-            <p className="text-muted-foreground text-center text-sm">
+            <p
+              data-testid="reset-password-success-message"
+              className="text-muted-foreground text-center text-sm"
+            >
               Your password has been reset. You can now sign in with your new
               password.
             </p>
@@ -74,6 +76,7 @@ function ResetPasswordForm() {
             <Button
               asChild
               className="bg-foreground text-background hover:bg-foreground/90 h-14 w-full max-w-lg rounded-full"
+              data-testid="reset-password-sign-in-link"
             >
               <Link href="/sign-in">
                 <span className="font-medium tracking-tight">Sign in</span>
@@ -108,7 +111,10 @@ function ResetPasswordForm() {
 
           <form onSubmit={onSubmit} className="w-full max-w-lg space-y-4">
             {error && (
-              <div className="bg-destructive/10 text-destructive rounded-full px-5 py-3 text-center text-sm">
+              <div
+                data-testid="reset-password-error-message"
+                className="bg-destructive/10 text-destructive rounded-full px-5 py-3 text-center text-sm"
+              >
                 {error}
               </div>
             )}
@@ -121,6 +127,7 @@ function ResetPasswordForm() {
               className="bg-muted h-14 rounded-full border-none px-5 py-4 font-medium"
               required
               minLength={8}
+              data-testid="reset-password-password-input"
             />
 
             <Input
@@ -130,12 +137,14 @@ function ResetPasswordForm() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="bg-muted h-14 rounded-full border-none px-5 py-4 font-medium"
               required
+              data-testid="reset-password-confirm-password-input"
             />
 
             <Button
               type="submit"
               className="bg-foreground text-background hover:bg-foreground/90 h-14 w-full rounded-full"
               disabled={loading}
+              data-testid="reset-password-submit-button"
             >
               <span className="font-medium tracking-tight">
                 {loading ? "Resetting..." : "Reset password"}

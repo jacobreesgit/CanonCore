@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useStackApp } from "@stackframe/stack";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -13,7 +14,7 @@ export default function SignInPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const app = useStackApp();
+  const router = useRouter();
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,9 +22,17 @@ export default function SignInPage() {
     setLoading(true);
 
     try {
-      const result = await app.signInWithCredential({ email, password });
-      if (result.status === "error") {
-        setError(result.error.message);
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setError("Invalid email or password");
+      } else {
+        router.push("/dashboard");
+        router.refresh();
       }
     } catch {
       setError("An unexpected error occurred");
@@ -46,7 +55,10 @@ export default function SignInPage() {
 
           <form onSubmit={onSubmit} className="w-full max-w-lg space-y-4">
             {error && (
-              <div className="bg-destructive/10 text-destructive rounded-full px-5 py-3 text-center text-sm">
+              <div
+                data-testid="sign-in-error-message"
+                className="bg-destructive/10 text-destructive rounded-full px-5 py-3 text-center text-sm"
+              >
                 {error}
               </div>
             )}
@@ -58,6 +70,7 @@ export default function SignInPage() {
               onChange={(e) => setEmail(e.target.value)}
               className="bg-muted h-14 rounded-full border-none px-5 py-4 font-medium"
               required
+              data-testid="sign-in-email-input"
             />
 
             <Input
@@ -67,12 +80,14 @@ export default function SignInPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="bg-muted h-14 rounded-full border-none px-5 py-4 font-medium"
               required
+              data-testid="sign-in-password-input"
             />
 
             <div className="text-right">
               <Link
                 href="/forgot-password"
                 className="text-muted-foreground text-sm hover:underline"
+                data-testid="sign-in-forgot-password-link"
               >
                 Forgot password?
               </Link>
@@ -82,6 +97,7 @@ export default function SignInPage() {
               type="submit"
               className="bg-foreground text-background hover:bg-foreground/90 h-14 w-full rounded-full"
               disabled={loading}
+              data-testid="sign-in-submit-button"
             >
               <span className="font-medium tracking-tight">
                 {loading ? "Signing in..." : "Sign in"}
@@ -97,7 +113,11 @@ export default function SignInPage() {
 
           <p className="mb-20 w-full text-center text-sm font-medium tracking-tight">
             Don&apos;t have an account?{" "}
-            <Link href="/sign-up" className="cursor-pointer underline">
+            <Link
+              href="/sign-up"
+              className="cursor-pointer underline"
+              data-testid="sign-in-sign-up-link"
+            >
               Sign up
             </Link>
           </p>

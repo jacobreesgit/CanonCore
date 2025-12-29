@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
-import { StackProvider, StackTheme } from "@stackframe/stack";
-import { stackServerApp } from "@/lib/stack";
+import { SessionProvider } from "next-auth/react";
 import "./globals.css";
 
 const geist = Geist({
@@ -27,9 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geist.variable} ${geistMono.variable} antialiased`}>
-        <StackProvider app={stackServerApp}>
-          <StackTheme>{children}</StackTheme>
-        </StackProvider>
+        <SessionProvider>{children}</SessionProvider>
         <Analytics />
       </body>
     </html>
