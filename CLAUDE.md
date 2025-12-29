@@ -55,6 +55,9 @@ pnpm run test:e2e:ui                        # UI mode
 ├── components/
 │   ├── ui/                           # shadcn/ui components
 │   ├── app-sidebar.tsx               # Main navigation sidebar
+│   ├── nav-documents.tsx             # Document navigation with actions
+│   ├── nav-main.tsx                  # Primary navigation items
+│   ├── nav-secondary.tsx             # Utility navigation links
 │   ├── nav-user.tsx                  # User dropdown with sign-out
 │   ├── section-cards.tsx             # Dashboard metric cards
 │   └── site-header.tsx               # Top header bar
@@ -87,9 +90,10 @@ pnpm run test:e2e:ui                        # UI mode
 │   └── schema.prisma                 # User, Session, PasswordReset models
 ├── skills/                           # Claude Code skills
 │   ├── code-review-excellence/       # Code review best practices
-│   └── docs-write/                   # Documentation writing style
+│   ├── docs-write/                   # Documentation writing style
+│   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.5.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.6.0)
     └── plans/                        # Design documents
 ```
 
@@ -151,3 +155,42 @@ Required in `.env.local` (development):
 - `DATABASE_URL` - Neon PostgreSQL connection string (development branch)
 - `AUTH_SECRET` - NextAuth secret (generate with: `openssl rand -base64 32`)
 - `RESEND_API_KEY` - Resend API key for password reset emails
+
+## Documentation Standards
+
+All custom code (excluding `components/ui/*` shadcn components) follows these JSDoc conventions:
+
+### File Headers
+
+Every file starts with a brief descriptive comment:
+
+```typescript
+/**
+ * Brief description of what this file does.
+ * Optional second line for additional context.
+ */
+```
+
+### Function Documentation
+
+Use standard JSDoc with `@param`, `@returns`, and `@example` (for complex functions):
+
+```typescript
+/**
+ * Brief description of what the function does.
+ *
+ * @param paramName - Description of parameter
+ * @returns Description of return value
+ *
+ * @example
+ * const result = myFunction("input");
+ */
+```
+
+### Guidelines
+
+- **File headers**: Required for all files (lib, hooks, components, app pages)
+- **Function JSDoc**: Required for exported functions and React components
+- **`@example`**: Include for complex utilities and server actions; skip for simple functions and React components
+- **React props**: Document inline with TypeScript types, not JSDoc
+- **Skip**: `components/ui/*` (shadcn generated code)

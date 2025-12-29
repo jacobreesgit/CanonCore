@@ -1,3 +1,8 @@
+/**
+ * Documents navigation section for the sidebar.
+ * Displays document links with action dropdowns.
+ */
+
 "use client";
 
 import {
@@ -25,6 +30,12 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
+/**
+ * Renders the documents navigation section with action dropdowns.
+ * Each item has open, share, and delete actions in a context menu.
+ *
+ * @param items - Array of document items with name, url, and icon
+ */
 export function NavDocuments({
   items,
 }: {

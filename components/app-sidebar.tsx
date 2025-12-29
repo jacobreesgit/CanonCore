@@ -1,3 +1,8 @@
+/**
+ * Main application sidebar component.
+ * Contains navigation, documents, and user menu sections.
+ */
+
 "use client";
 
 import * as React from "react";
@@ -150,6 +155,10 @@ const data = {
   ],
 };
 
+/**
+ * Renders the collapsible sidebar with navigation and user controls.
+ * Supports offcanvas mode for mobile viewports.
+ */
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="offcanvas" {...props}>
