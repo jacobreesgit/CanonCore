@@ -1,5 +1,5 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "ignore": ["components/ui/**"],
-  "ignoreDependencies": ["@prisma/client", "prisma"]
+  "ignore": ["components/ui/**", "e2e/**"],
+  "ignoreBinaries": ["pkill", "lsof"]
 }

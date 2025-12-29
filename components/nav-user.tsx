@@ -7,7 +7,7 @@ import {
   IconNotification,
   IconUserCircle,
 } from "@tabler/icons-react";
-import { useStackApp } from "@stackframe/stack";
+import { signOut } from "next-auth/react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -36,10 +36,9 @@ export function NavUser({
   };
 }) {
   const { isMobile } = useSidebar();
-  const app = useStackApp();
 
   const handleSignOut = async () => {
-    await app.signOut();
+    await signOut({ callbackUrl: "/" });
   };
 
   return (
@@ -50,6 +49,7 @@ export function NavUser({
             <SidebarMenuButton
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              data-testid="dashboard-user-menu"
             >
               <Avatar className="h-8 w-8 rounded-lg grayscale">
                 <AvatarImage src={user.avatar} alt={user.name} />
@@ -100,7 +100,10 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut}>
+            <DropdownMenuItem
+              onClick={handleSignOut}
+              data-testid="dashboard-sign-out-button"
+            >
               <IconLogout />
               Log out
             </DropdownMenuItem>

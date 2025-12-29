@@ -3,16 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useStackApp } from "@stackframe/stack";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { forgotPassword } from "@/lib/auth-actions";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const app = useStackApp();
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,12 +20,8 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const result = await app.sendForgotPasswordEmail(email);
-      if (result?.status === "error") {
-        setMessage(
-          "If an account exists with this email, a password reset link has been sent."
-        );
-      } else {
+      const result = await forgotPassword(email);
+      if (result.success) {
         setMessage(
           "If an account exists with this email, a password reset link has been sent."
         );
@@ -57,13 +52,17 @@ export default function ForgotPasswordPage() {
 
           {message ? (
             <div className="w-full max-w-lg space-y-4">
-              <div className="rounded-full bg-green-500/10 px-5 py-4 text-center text-sm text-green-600">
+              <div
+                data-testid="forgot-password-success-message"
+                className="rounded-full bg-green-500/10 px-5 py-4 text-center text-sm text-green-600"
+              >
                 {message}
               </div>
               <Button
                 asChild
                 variant="outline"
                 className="h-14 w-full rounded-full"
+                data-testid="forgot-password-back-to-sign-in-link"
               >
                 <Link href="/sign-in">Back to sign in</Link>
               </Button>
@@ -71,7 +70,10 @@ export default function ForgotPasswordPage() {
           ) : (
             <form onSubmit={onSubmit} className="w-full max-w-lg space-y-4">
               {error && (
-                <div className="bg-destructive/10 text-destructive rounded-full px-5 py-3 text-center text-sm">
+                <div
+                  data-testid="forgot-password-error-message"
+                  className="bg-destructive/10 text-destructive rounded-full px-5 py-3 text-center text-sm"
+                >
                   {error}
                 </div>
               )}
@@ -83,12 +85,14 @@ export default function ForgotPasswordPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="bg-muted h-14 rounded-full border-none px-5 py-4 font-medium"
                 required
+                data-testid="forgot-password-email-input"
               />
 
               <Button
                 type="submit"
                 className="bg-foreground text-background hover:bg-foreground/90 h-14 w-full rounded-full"
                 disabled={loading}
+                data-testid="forgot-password-submit-button"
               >
                 <span className="font-medium tracking-tight">
                   {loading ? "Sending..." : "Send reset link"}
@@ -99,6 +103,7 @@ export default function ForgotPasswordPage() {
                 asChild
                 variant="ghost"
                 className="h-14 w-full rounded-full"
+                data-testid="forgot-password-back-to-sign-in-link"
               >
                 <Link href="/sign-in">Back to sign in</Link>
               </Button>
