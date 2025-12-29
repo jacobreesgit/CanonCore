@@ -1,14 +1,19 @@
+import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { stackServerApp } from "@/lib/stack";
+import { auth } from "@/lib/auth";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  await stackServerApp.getUser({ or: "redirect" });
+  const session = await auth();
+
+  if (!session) {
+    redirect("/sign-in");
+  }
 
   return (
     <SidebarProvider
