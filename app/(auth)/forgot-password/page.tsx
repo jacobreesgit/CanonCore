@@ -1,3 +1,8 @@
+/**
+ * Forgot password page for initiating password reset.
+ * Sends reset email with secure token link.
+ */
+
 "use client";
 
 import { useState } from "react";
@@ -7,6 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { forgotPassword } from "@/lib/auth-actions";
 
+/**
+ * Renders forgot password form with email input.
+ * Shows success message after submission to prevent email enumeration.
+ */
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");

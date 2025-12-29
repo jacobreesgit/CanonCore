@@ -1,8 +1,18 @@
+/**
+ * NextAuth.js v5 configuration with credentials provider.
+ * Handles JWT-based session management and user authentication.
+ */
+
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * NextAuth handlers and auth function.
+ * - handlers: API route handlers for /api/auth/*
+ * - auth: Server-side session retrieval function
+ */
 export const { handlers, auth } = NextAuth({
   session: {
     strategy: "jwt",
