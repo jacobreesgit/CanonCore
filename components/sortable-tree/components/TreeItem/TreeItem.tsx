@@ -9,12 +9,12 @@ import React, { forwardRef, HTMLAttributes } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import {
-  IconGripVertical,
-  IconChevronRight,
-  IconTrash,
-  IconFolder,
-  IconFolderOpen,
-} from "@tabler/icons-react";
+  ChevronRight,
+  Folder,
+  FolderOpen,
+  GripVertical,
+  Trash2,
+} from "lucide-react";
 
 export interface TreeItemProps extends Omit<
   HTMLAttributes<HTMLLIElement>,
@@ -118,7 +118,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
               )}
               {...handleProps}
             >
-              <IconGripVertical className="size-3.5" strokeWidth={2.5} />
+              <GripVertical className="size-3.5" strokeWidth={2.5} />
             </button>
           )}
 
@@ -137,7 +137,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                 "focus-visible:ring-ring focus-visible:ring-1 focus-visible:outline-none"
               )}
             >
-              <IconChevronRight
+              <ChevronRight
                 className={cn(
                   "size-3.5 transition-transform duration-200 ease-out",
                   !collapsed && "rotate-90"
@@ -151,9 +151,9 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
           {!ghost && (
             <span className="text-muted-foreground/70 flex-shrink-0">
               {hasChildren && !collapsed ? (
-                <IconFolderOpen className="size-4" strokeWidth={1.75} />
+                <FolderOpen className="size-4" strokeWidth={1.75} />
               ) : (
-                <IconFolder className="size-4" strokeWidth={1.75} />
+                <Folder className="size-4" strokeWidth={1.75} />
               )}
             </span>
           )}
@@ -204,7 +204,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                 "opacity-0 group-hover:opacity-100"
               )}
             >
-              <IconTrash className="size-3.5" strokeWidth={2} />
+              <Trash2 className="size-3.5" strokeWidth={2} />
             </button>
           )}
         </div>

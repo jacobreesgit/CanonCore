@@ -6,12 +6,12 @@
 "use client";
 
 import {
-  IconDots,
-  IconFolder,
-  IconShare3,
-  IconTrash,
-  type Icon,
-} from "@tabler/icons-react";
+  Folder,
+  type LucideIcon,
+  MoreHorizontal,
+  Share2,
+  Trash2,
+} from "lucide-react";
 
 import {
   DropdownMenu,
@@ -42,7 +42,7 @@ export function NavDocuments({
   items: {
     name: string;
     url: string;
-    icon: Icon;
+    icon: LucideIcon;
   }[];
 }) {
   const { isMobile } = useSidebar();
@@ -65,7 +65,7 @@ export function NavDocuments({
                   showOnHover
                   className="data-[state=open]:bg-accent rounded-sm"
                 >
-                  <IconDots />
+                  <MoreHorizontal />
                   <span className="sr-only">More</span>
                 </SidebarMenuAction>
               </DropdownMenuTrigger>
@@ -75,16 +75,16 @@ export function NavDocuments({
                 align={isMobile ? "end" : "start"}
               >
                 <DropdownMenuItem>
-                  <IconFolder />
+                  <Folder />
                   <span>Open</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <IconShare3 />
+                  <Share2 />
                   <span>Share</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive">
-                  <IconTrash />
+                  <Trash2 />
                   <span>Delete</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -93,7 +93,7 @@ export function NavDocuments({
         ))}
         <SidebarMenuItem>
           <SidebarMenuButton className="text-sidebar-foreground/70">
-            <IconDots className="text-sidebar-foreground/70" />
+            <MoreHorizontal className="text-sidebar-foreground/70" />
             <span>More</span>
           </SidebarMenuButton>
         </SidebarMenuItem>

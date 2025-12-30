@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { IconEdit, IconTrash, IconFolderPlus } from "@tabler/icons-react";
+import { FolderPlus, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ItemContextMenuProps {
@@ -97,7 +97,7 @@ export function ItemContextMenu({
               }}
               className="gap-2"
             >
-              <IconEdit className="size-4" strokeWidth={2} />
+              <Pencil className="size-4" strokeWidth={2} />
               <span>Rename</span>
             </ContextMenuItem>
           )}
@@ -106,7 +106,7 @@ export function ItemContextMenu({
               onClick={() => setAddChildOpen(true)}
               className="gap-2"
             >
-              <IconFolderPlus className="size-4" strokeWidth={2} />
+              <FolderPlus className="size-4" strokeWidth={2} />
               <span>Add Subfolder</span>
             </ContextMenuItem>
           )}
@@ -120,7 +120,7 @@ export function ItemContextMenu({
                   "text-destructive focus:text-destructive focus:bg-destructive/10"
                 )}
               >
-                <IconTrash className="size-4" strokeWidth={2} />
+                <Trash2 className="size-4" strokeWidth={2} />
                 <span>Delete</span>
               </ContextMenuItem>
             </>

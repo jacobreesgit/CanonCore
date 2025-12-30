@@ -8,7 +8,7 @@
 import React, { forwardRef, HTMLAttributes } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
-import { IconFolder } from "@tabler/icons-react";
+import { Folder } from "lucide-react";
 
 export interface GridItemProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -72,7 +72,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
             "group-hover:shadow-sm"
           )}
         >
-          <IconFolder
+          <Folder
             className={cn(
               "size-8 transition-colors duration-200",
               "text-muted-foreground/70",

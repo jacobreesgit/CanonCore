@@ -7,7 +7,7 @@
 "use client";
 
 import { useSyncExternalStore, useCallback } from "react";
-import { IconList, IconLayoutGrid } from "@tabler/icons-react";
+import { LayoutGrid, List } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type ViewMode = "tree" | "grid";
@@ -93,7 +93,7 @@ export function ViewToggle({ value, onChange }: ViewToggleProps) {
             : "text-muted-foreground hover:text-foreground/80"
         )}
       >
-        <IconList className="size-4" strokeWidth={2} />
+        <List className="size-4" strokeWidth={2} />
         <span className="hidden sm:inline">Tree</span>
       </button>
 
@@ -110,7 +110,7 @@ export function ViewToggle({ value, onChange }: ViewToggleProps) {
             : "text-muted-foreground hover:text-foreground/80"
         )}
       >
-        <IconLayoutGrid className="size-4" strokeWidth={2} />
+        <LayoutGrid className="size-4" strokeWidth={2} />
         <span className="hidden sm:inline">Grid</span>
       </button>
     </div>

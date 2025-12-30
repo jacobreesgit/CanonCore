@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { IconFolder, IconHome } from "@tabler/icons-react";
+import { Folder, Home } from "lucide-react";
 import { UniqueIdentifier } from "@dnd-kit/core";
 import { toast } from "sonner";
 
@@ -197,7 +197,7 @@ export function ItemsView({
               breadcrumbs.length === 0 && "text-foreground font-medium"
             )}
           >
-            <IconHome className="size-4" strokeWidth={2} />
+            <Home className="size-4" strokeWidth={2} />
             <span>My Files</span>
           </button>
 
@@ -215,7 +215,7 @@ export function ItemsView({
                     "text-foreground font-medium"
                 )}
               >
-                <IconFolder className="size-4" strokeWidth={2} />
+                <Folder className="size-4" strokeWidth={2} />
                 <span className="max-w-32 truncate">{crumb.name}</span>
               </button>
             </div>
@@ -276,7 +276,7 @@ function EmptyState({
           "bg-muted/60 text-muted-foreground"
         )}
       >
-        <IconFolder className="size-8" strokeWidth={1.5} />
+        <Folder className="size-8" strokeWidth={1.5} />
       </div>
       <div className="text-center">
         <h3 className="text-foreground text-lg font-medium">No folders yet</h3>
