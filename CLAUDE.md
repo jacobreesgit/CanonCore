@@ -46,34 +46,49 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── sign-in/page.tsx          # Email/password sign in
 │   │   └── sign-up/page.tsx          # Account creation
 │   ├── (dashboard)/
-│   │   ├── dashboard/page.tsx        # Main dashboard view
+│   │   ├── dashboard/
+│   │   │   ├── [itemId]/page.tsx     # Folder detail with children
+│   │   │   └── page.tsx              # Root items view
 │   │   └── layout.tsx                # Protected layout with sidebar
 │   ├── api/auth/[...nextauth]/route.ts  # NextAuth API route
 │   ├── globals.css
-│   ├── layout.tsx                    # Root layout with SessionProvider
+│   ├── layout.tsx                    # Root layout with SessionProvider, Toaster
 │   └── page.tsx                      # Public landing page
 ├── components/
+│   ├── items/                        # Items feature components
+│   │   ├── add-item-button.tsx       # Inline expandable add input
+│   │   ├── item-context-menu.tsx     # Right-click actions menu
+│   │   ├── items-view.tsx            # Main view with tree/grid toggle
+│   │   └── view-toggle.tsx           # Tree/grid view switcher
+│   ├── sortable-grid/                # Grid view with drag-drop
+│   │   ├── GridItem.tsx              # Card display component
+│   │   ├── SortableGrid.tsx          # dnd-kit grid container
+│   │   └── SortableGridItem.tsx      # Draggable grid item wrapper
+│   ├── sortable-tree/                # Tree view with drag-drop
+│   │   ├── components/TreeItem/      # Tree node components
+│   │   ├── SortableTree.tsx          # dnd-kit tree container
+│   │   ├── keyboardCoordinates.ts    # Keyboard navigation
+│   │   └── utilities.ts              # Tree manipulation helpers
 │   ├── ui/                           # shadcn/ui components
 │   ├── app-sidebar.tsx               # Main navigation sidebar
-│   ├── nav-documents.tsx             # Document navigation with actions
-│   ├── nav-main.tsx                  # Primary navigation items
-│   ├── nav-secondary.tsx             # Utility navigation links
-│   ├── nav-user.tsx                  # User dropdown with sign-out
-│   ├── section-cards.tsx             # Dashboard metric cards
+│   ├── nav-*.tsx                     # Navigation components
 │   └── site-header.tsx               # Top header bar
 ├── e2e/
 │   ├── fixtures/                     # Playwright test fixtures (auth, db)
 │   ├── helpers/                      # Test utilities (test-user.ts)
-│   ├── journeys/auth/                # Auth E2E tests (sign-in, sign-up, etc.)
+│   ├── journeys/
+│   │   ├── auth/                     # Auth E2E tests
+│   │   └── items/                    # Items E2E tests (CRUD, drag, views)
 │   ├── pages/                        # Page Object Models
 │   └── playwright.config.ts
 ├── tests/
 │   ├── unit/
-│   │   ├── lib/                      # Unit tests for lib/ (auth-actions, utils)
+│   │   ├── lib/                      # Unit tests (auth-actions, item-actions, utils)
 │   │   ├── setup.ts                  # Mocks for Prisma and email
 │   │   └── vitest.config.ts
 │   ├── integration/
-│   │   ├── auth/                     # Integration tests (real DB)
+│   │   ├── auth/                     # Auth integration tests
+│   │   ├── items/                    # Items integration tests (CRUD, hierarchy)
 │   │   ├── setup.ts                  # DB cleanup, env loading
 │   │   └── vitest.config.ts
 │   └── vitest.config.ts              # Base Vitest config
@@ -81,22 +96,25 @@ pnpm run test:e2e:ui                        # UI mode
 │   └── use-mobile.ts                 # Mobile breakpoint hook
 ├── lib/
 │   ├── auth.ts                       # NextAuth config with credentials provider
-│   ├── auth-actions.ts               # Server actions with validation, rate limiting
+│   ├── auth-actions.ts               # Auth server actions
+│   ├── item-actions.ts               # Item CRUD server actions
+│   ├── item-utils.ts                 # Tree/flat conversion utilities
+│   ├── types.ts                      # Shared TypeScript types
 │   ├── email.ts                      # Resend email helper
 │   ├── env.ts                        # Zod environment variable validation
 │   ├── prisma.ts                     # Prisma client singleton
 │   ├── rate-limit.ts                 # Upstash Redis rate limiting
 │   ├── utils.ts                      # cn() helper
-│   └── validations.ts                # Zod schemas for auth inputs
+│   └── validations.ts                # Zod schemas for inputs
 ├── prisma/
 │   ├── migrations/                   # Database migrations
-│   └── schema.prisma                 # User, PasswordReset models
+│   └── schema.prisma                 # User, PasswordReset, Item models
 ├── skills/                           # Claude Code skills
 │   ├── code-review-excellence/       # Code review best practices
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.7.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.8.0)
     └── plans/                        # Design documents
 ```
 
@@ -116,10 +134,19 @@ pnpm run test:e2e:ui                        # UI mode
 ### Database
 
 - **Prisma 7** with PostgreSQL (Neon)
-- Schema: User, PasswordReset models
-- PasswordReset has index on `expires` for query performance
+- Schema: User, PasswordReset, Item models
+- Item has self-referential parent/child relationships for hierarchy
 - Config in `prisma.config.ts` (loads DATABASE_URL from .env.local)
 - Run migrations: `npx prisma migrate dev`
+
+### Items System
+
+- **Hierarchical folders** with drag-and-drop reordering via dnd-kit
+- **Dual view modes**: Tree (hierarchical) and Grid (flat cards)
+- **Server actions**: `createItem`, `updateItem`, `deleteItem`, `reorderItems` in `lib/item-actions.ts`
+- **Breadcrumb navigation** for folder drill-down
+- **Context menu**: Right-click for Rename, Delete, Add Subfolder
+- **Toast notifications**: Success/error feedback via Sonner
 
 ### Unit & Integration Testing
 
@@ -127,16 +154,16 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 39 total tests (31 unit + 8 integration)
+- 77 total tests (57 unit + 20 integration)
 
 ### E2E Testing
 
 - **Playwright** with Page Object Model pattern
-- Tests in `e2e/journeys/` organized by feature
+- Tests in `e2e/journeys/` organized by feature (auth, items)
 - Page objects in `e2e/pages/` for reusable interactions
 - Fixtures in `e2e/fixtures/` for auth and database setup
 - Runs on desktop Chrome and mobile Chrome (iPhone 14)
-- 34 total tests (17 desktop + 17 mobile)
+- 46 total tests (23 desktop + 23 mobile)
 
 ### Styling
 

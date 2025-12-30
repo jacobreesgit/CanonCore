@@ -31,6 +31,8 @@ export class SignUpPage {
     await this.passwordInput.fill(password);
     await this.confirmPasswordInput.fill(confirmPassword);
     await this.submitButton.click();
+    // Wait for form submission to complete
+    await this.page.waitForLoadState("networkidle");
   }
 
   async expectError(message: string) {
