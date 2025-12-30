@@ -16,6 +16,7 @@ model User {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   passwordResets PasswordReset[]
+  items          Item[]
 }
 
 model PasswordReset {
@@ -27,4 +28,28 @@ model PasswordReset {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([expires])
+}
+
+model Item {
+  id        String   @id @default(cuid())
+  name      String
+  order     Int      @default(0)
+  depth     Int      @default(0)
+
+  // Hierarchy (max 10 levels deep)
+  parentId  String?
+  parent    Item?    @relation("ItemChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Item[]   @relation("ItemChildren")
+
+  // Ownership
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+  @@index([userId])
+  @@index([userId, parentId, order])
 }

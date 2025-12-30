@@ -1,17 +1,22 @@
 /**
- * Main dashboard page displaying key metrics.
- * Protected route requiring authentication.
+ * Main dashboard page displaying sortable items (folders).
+ * Server component that fetches items and renders the ItemsView.
  */
 
-import { SectionCards } from "@/components/section-cards";
+import { ItemsView } from "@/components/items";
+import { getItems } from "@/lib/item-actions";
 
 /**
- * Renders the dashboard with metric cards section.
+ * Renders the dashboard with sortable items view.
+ * Items at root level (parentId = null) are displayed.
  */
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const result = await getItems(null);
+  const items = result.success ? (result.data ?? []) : [];
+
   return (
-    <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-      <SectionCards />
+    <div className="flex flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
+      <ItemsView items={items} parentId={null} breadcrumbs={[]} />
     </div>
   );
 }
