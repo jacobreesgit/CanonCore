@@ -34,3 +34,6 @@ next-env.d.ts
 playwright-report/
 test-results/
 e2e/.auth/
+
+# Temp reference files
+/temp/
