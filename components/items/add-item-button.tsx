@@ -6,7 +6,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { IconPlus, IconX } from "@tabler/icons-react";
+import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -124,7 +124,7 @@ export function AddItemButton({
               disabled={isLoading}
               className="text-muted-foreground hover:text-foreground size-9 shrink-0"
             >
-              <IconX className="size-4" strokeWidth={2} />
+              <X className="size-4" strokeWidth={2} />
             </Button>
           </div>
         ) : (
@@ -134,7 +134,7 @@ export function AddItemButton({
             onClick={() => setIsOpen(true)}
             className="gap-1.5"
           >
-            <IconPlus className="size-4" strokeWidth={2} />
+            <Plus className="size-4" strokeWidth={2} />
             <span>Add Folder</span>
           </Button>
         )}
