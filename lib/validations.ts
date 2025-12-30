@@ -46,3 +46,17 @@ export const resetPasswordSchema = z.object({
 export const forgotPasswordSchema = z.object({
   email: emailSchema,
 });
+
+/**
+ * Item name validation schema.
+ * Allows alphanumeric, spaces, hyphens, underscores.
+ * Compatible with filesystem naming.
+ */
+export const itemNameSchema = z
+  .string()
+  .min(1, "Name is required")
+  .max(255, "Name too long")
+  .regex(
+    /^[a-zA-Z0-9\s\-_]+$/,
+    "Name can only contain letters, numbers, spaces, hyphens, and underscores"
+  );
