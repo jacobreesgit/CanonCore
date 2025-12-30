@@ -114,7 +114,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.8.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.9.0)
     └── plans/                        # Design documents
 ```
 

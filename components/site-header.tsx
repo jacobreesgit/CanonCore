@@ -18,12 +18,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  IconChevronRight,
-  IconDotsVertical,
-  IconPencil,
-  IconTrash,
-} from "@tabler/icons-react";
+import { ChevronRight, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
@@ -109,7 +104,7 @@ export function SiteHeader({
 
             return (
               <div key={crumb.id} className="flex min-w-0 items-center gap-1">
-                <IconChevronRight
+                <ChevronRight
                   className="text-muted-foreground/40 size-3.5 shrink-0"
                   aria-hidden="true"
                 />
@@ -139,7 +134,7 @@ export function SiteHeader({
                 className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring ml-auto rounded-md p-1.5 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
                 aria-label="Item actions"
               >
-                <IconDotsVertical className="size-4" />
+                <MoreVertical className="size-4" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
@@ -148,7 +143,7 @@ export function SiteHeader({
                   onClick={onRename}
                   className="cursor-pointer gap-2"
                 >
-                  <IconPencil className="size-4" />
+                  <Pencil className="size-4" />
                   Rename
                 </DropdownMenuItem>
               )}
@@ -157,7 +152,7 @@ export function SiteHeader({
                   onClick={onDelete}
                   className="text-destructive focus:text-destructive cursor-pointer gap-2"
                 >
-                  <IconTrash className="size-4" />
+                  <Trash2 className="size-4" />
                   Delete
                 </DropdownMenuItem>
               )}
