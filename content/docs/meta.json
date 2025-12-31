@@ -1,0 +1,26 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "index",
+    "---Getting Started---",
+    "getting-started/create-account",
+    "getting-started/sign-in",
+    "getting-started/quick-tour",
+    "---Your Account---",
+    "account/password-reset",
+    "account/sign-out",
+    "account/security",
+    "---Files & Folders---",
+    "files-and-folders/create-folder",
+    "files-and-folders/rename-items",
+    "files-and-folders/delete-items",
+    "files-and-folders/organize",
+    "files-and-folders/navigation",
+    "---Views---",
+    "views/tree-view",
+    "views/grid-view",
+    "views/drag-and-drop",
+    "---Preferences---",
+    "preferences/dark-mode"
+  ]
+}

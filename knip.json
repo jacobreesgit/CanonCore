@@ -1,5 +1,5 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "ignore": ["components/ui/**", "e2e/**"],
+  "ignore": ["components/ui/**", "e2e/**", "source.config.ts", ".source/**"],
   "ignoreBinaries": ["pkill", "lsof"]
 }

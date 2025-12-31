@@ -29,6 +29,14 @@ export default tseslint.config(
     },
   },
   {
-    ignores: [".next/**", "node_modules/**", "e2e/**", "temp/**"],
+    ignores: [
+      ".next/**",
+      "node_modules/**",
+      "e2e/**",
+      "temp/**",
+      ".source/**",
+      "playwright-report/**",
+      "test-results/**",
+    ],
   }
 );
