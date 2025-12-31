@@ -6,8 +6,9 @@ export default mergeConfig(
   baseConfig,
   defineConfig({
     test: {
-      include: [path.resolve(__dirname, "./**/*.test.ts")],
+      include: [path.resolve(__dirname, "./**/*.test.{ts,tsx}")],
       setupFiles: [path.resolve(__dirname, "./setup.ts")],
+      environment: "jsdom",
     },
   })
 );

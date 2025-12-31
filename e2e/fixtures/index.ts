@@ -6,6 +6,7 @@ import { ForgotPasswordPage } from "../pages/forgot-password.page";
 import { ResetPasswordPage } from "../pages/reset-password.page";
 import { DashboardPage } from "../pages/dashboard.page";
 import { ItemsPage } from "../pages/items.page";
+import { DocsPage } from "../pages/docs.page";
 import { generateTestUser, type TestUser } from "./db.fixture";
 
 type TestFixtures = {
@@ -16,6 +17,7 @@ type TestFixtures = {
   resetPasswordPage: ResetPasswordPage;
   dashboardPage: DashboardPage;
   itemsPage: ItemsPage;
+  docsPage: DocsPage;
   testUser: TestUser;
 };
 
@@ -46,6 +48,10 @@ export const test = base.extend<TestFixtures>({
 
   itemsPage: async ({ page }, use) => {
     await use(new ItemsPage(page));
+  },
+
+  docsPage: async ({ page }, use) => {
+    await use(new DocsPage(page));
   },
 
   testUser: async ({}, use) => {
