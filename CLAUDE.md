@@ -50,9 +50,12 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   │   ├── [itemId]/page.tsx     # Folder detail with children
 │   │   │   └── page.tsx              # Root items view
 │   │   └── layout.tsx                # Protected layout with sidebar
+│   ├── docs/
+│   │   ├── [[...slug]]/page.tsx      # Dynamic documentation pages
+│   │   └── layout.tsx                # Docs layout with sidebar
 │   ├── api/auth/[...nextauth]/route.ts  # NextAuth API route
 │   ├── globals.css
-│   ├── layout.tsx                    # Root layout with SessionProvider, Toaster
+│   ├── layout.tsx                    # Root layout with providers
 │   └── page.tsx                      # Public landing page
 ├── components/
 │   ├── items/                        # Items feature components
@@ -69,16 +72,21 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── SortableTree.tsx          # dnd-kit tree container
 │   │   ├── keyboardCoordinates.ts    # Keyboard navigation
 │   │   └── utilities.ts              # Tree manipulation helpers
+│   ├── providers/
+│   │   └── theme-provider.tsx        # next-themes provider wrapper
 │   ├── ui/                           # shadcn/ui components
 │   ├── app-sidebar.tsx               # Main navigation sidebar
 │   ├── nav-*.tsx                     # Navigation components
-│   └── site-header.tsx               # Top header bar
+│   ├── site-header.tsx               # Top header bar
+│   └── theme-toggle.tsx              # Dark/light mode toggle
 ├── e2e/
 │   ├── fixtures/                     # Playwright test fixtures (auth, db)
 │   ├── helpers/                      # Test utilities (test-user.ts)
 │   ├── journeys/
 │   │   ├── auth/                     # Auth E2E tests
-│   │   └── items/                    # Items E2E tests (CRUD, drag, views)
+│   │   ├── docs/                     # Documentation E2E tests
+│   │   ├── items/                    # Items E2E tests (CRUD, drag, views)
+│   │   └── theme/                    # Dark mode E2E tests
 │   ├── pages/                        # Page Object Models
 │   └── playwright.config.ts
 ├── tests/
@@ -94,6 +102,8 @@ pnpm run test:e2e:ui                        # UI mode
 │   └── vitest.config.ts              # Base Vitest config
 ├── hooks/
 │   └── use-mobile.ts                 # Mobile breakpoint hook
+├── content/
+│   └── docs/                         # MDX documentation pages (16 files)
 ├── lib/
 │   ├── auth.ts                       # NextAuth config with credentials provider
 │   ├── auth-actions.ts               # Auth server actions
@@ -104,6 +114,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── env.ts                        # Zod environment variable validation
 │   ├── prisma.ts                     # Prisma client singleton
 │   ├── rate-limit.ts                 # Upstash Redis rate limiting
+│   ├── source.ts                     # Fumadocs source configuration
 │   ├── utils.ts                      # cn() helper
 │   └── validations.ts                # Zod schemas for inputs
 ├── prisma/
@@ -114,7 +125,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.9.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.10.0)
     └── plans/                        # Design documents
 ```
 
@@ -147,6 +158,22 @@ pnpm run test:e2e:ui                        # UI mode
 - **Breadcrumb navigation** for folder drill-down
 - **Context menu**: Right-click for Rename, Delete, Add Subfolder
 - **Toast notifications**: Success/error feedback via Sonner
+- **Max depth**: 10 levels of nesting
+
+### User Documentation
+
+- **Fumadocs** for MDX-based documentation at `/docs`
+- **16 pages** covering getting started, file management, views, account, and preferences
+- **Hierarchical navigation** with sidebar and breadcrumbs
+- Content in `content/docs/` with `meta.json` for structure
+- Source config in `source.config.ts` and `lib/source.ts`
+
+### Dark Mode
+
+- **next-themes** for theme management with system preference detection
+- **ThemeProvider** wraps app in `app/layout.tsx`
+- **ThemeToggle** button in header with sun/moon icons
+- Preference persists to localStorage
 
 ### Unit & Integration Testing
 
@@ -154,16 +181,16 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 77 total tests (57 unit + 20 integration)
+- 78 total tests (58 unit + 20 integration)
 
 ### E2E Testing
 
 - **Playwright** with Page Object Model pattern
-- Tests in `e2e/journeys/` organized by feature (auth, items)
+- Tests in `e2e/journeys/` organized by feature (auth, docs, items, theme)
 - Page objects in `e2e/pages/` for reusable interactions
 - Fixtures in `e2e/fixtures/` for auth and database setup
 - Runs on desktop Chrome and mobile Chrome (iPhone 14)
-- 46 total tests (23 desktop + 23 mobile)
+- 56 total tests (28 desktop + 28 mobile)
 
 ### Styling
 

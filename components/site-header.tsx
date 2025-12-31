@@ -21,6 +21,7 @@ import Link from "next/link";
 import { ChevronRight, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -125,6 +126,9 @@ export function SiteHeader({
             );
           })}
         </nav>
+
+        {/* Theme Toggle */}
+        <ThemeToggle />
 
         {/* Context Menu for current item actions */}
         {showContextMenu && (
