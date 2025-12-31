@@ -206,7 +206,7 @@ export function SortableTree({
       onDragCancel={handleDragCancel}
     >
       <SortableContext items={sortedIds} strategy={verticalListSortingStrategy}>
-        <ul className="space-y-0.5">
+        <ul data-testid="items-tree-view" className="space-y-0.5">
           {flattenedItems.map(({ id, name, children, collapsed, depth }) => (
             <SortableTreeItem
               key={id}

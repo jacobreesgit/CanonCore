@@ -123,6 +123,7 @@ export function AddItemButton({
               }}
               disabled={isLoading}
               className="text-muted-foreground hover:text-foreground size-9 shrink-0"
+              data-testid="add-item-cancel"
             >
               <X className="size-4" strokeWidth={2} />
             </Button>

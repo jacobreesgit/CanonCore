@@ -1,3 +1,8 @@
+/**
+ * Page object for sign-up page.
+ * Provides methods for account registration and form validation.
+ */
+
 import type { Locator, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 
