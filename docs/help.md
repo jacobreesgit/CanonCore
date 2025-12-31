@@ -8,8 +8,8 @@
 
 - use /Users/jacobrees/canoncore-v2/skills/docs-write/SKILL.md to update claude.md, but be careful of the 40k word limit. use tree to get whole route structure and properly use git to compare ALL differences from last commit.
 
-- use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md to ensure best practices on this current commit. really take your time and look at everything.
+- use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md to update end-user/user-facing documentation fumodocs for users. think about adding or changing an article. if you dont think any changes, thats fine
 
-- - use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md to update end-user/user-facing documentation fumodocs for users. think about adding or changing an article
+- use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md to ensure best practices on this current commit. really take your time and look at everything.
 
 - use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md to validate design document

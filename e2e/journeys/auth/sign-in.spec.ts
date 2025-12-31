@@ -46,8 +46,8 @@ test.describe("Sign In Journey", () => {
     // Sign out by navigating to sign-in (or use sign out button if implemented)
     await page.goto("/sign-in");
 
-    // Wait a moment for session to clear
-    await page.waitForTimeout(500);
+    // Wait for sign-in page to be ready
+    await expect(signInPage.emailInput).toBeVisible();
 
     // Now sign in with the same credentials
     await signInPage.signIn(email, password);

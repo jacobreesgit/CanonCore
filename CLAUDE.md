@@ -50,13 +50,16 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   │   ├── [itemId]/page.tsx     # Folder detail with children
 │   │   │   └── page.tsx              # Root items view
 │   │   └── layout.tsx                # Protected layout with sidebar
-│   ├── docs/
-│   │   ├── [[...slug]]/page.tsx      # Dynamic documentation pages
-│   │   └── layout.tsx                # Docs layout with sidebar
+│   ├── (docs)/
+│   │   ├── docs/
+│   │   │   └── [[...slug]]/page.tsx  # Dynamic documentation pages
+│   │   └── layout.tsx                # Docs layout with sidebar navigation
+│   ├── (public)/
+│   │   ├── layout.tsx                # Public layout with guest sidebar
+│   │   └── page.tsx                  # Public landing page
 │   ├── api/auth/[...nextauth]/route.ts  # NextAuth API route
 │   ├── globals.css
-│   ├── layout.tsx                    # Root layout with providers
-│   └── page.tsx                      # Public landing page
+│   └── layout.tsx                    # Root layout with providers
 ├── components/
 │   ├── items/                        # Items feature components
 │   │   ├── add-item-button.tsx       # Inline expandable add input
@@ -75,9 +78,13 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── providers/
 │   │   └── theme-provider.tsx        # next-themes provider wrapper
 │   ├── ui/                           # shadcn/ui components
-│   ├── app-sidebar.tsx               # Main navigation sidebar
-│   ├── nav-*.tsx                     # Navigation components
-│   ├── site-header.tsx               # Top header bar
+│   ├── app-sidebar.tsx               # Context-aware navigation sidebar
+│   ├── nav-docs.tsx                  # Docs tree navigation (Fumadocs)
+│   ├── nav-guest.tsx                 # Guest navigation with auth buttons
+│   ├── nav-main.tsx                  # Dashboard main nav items
+│   ├── nav-secondary.tsx             # Dashboard secondary nav items
+│   ├── nav-user.tsx                  # User dropdown menu
+│   ├── site-header.tsx               # Top header bar with breadcrumbs
 │   └── theme-toggle.tsx              # Dark/light mode toggle
 ├── e2e/
 │   ├── fixtures/                     # Playwright test fixtures (auth, db)
@@ -105,7 +112,7 @@ pnpm run test:e2e:ui                        # UI mode
 ├── content/
 │   └── docs/                         # MDX documentation pages (16 files)
 ├── lib/
-│   ├── auth.ts                       # NextAuth config with credentials provider
+│   ├── auth.ts                       # NextAuth config, extractSidebarUser helper
 │   ├── auth-actions.ts               # Auth server actions
 │   ├── item-actions.ts               # Item CRUD server actions
 │   ├── item-utils.ts                 # Tree/flat conversion utilities
@@ -125,7 +132,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.10.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.11.0)
     └── plans/                        # Design documents
 ```
 
@@ -164,7 +171,8 @@ pnpm run test:e2e:ui                        # UI mode
 
 - **Fumadocs** for MDX-based documentation at `/docs`
 - **16 pages** covering getting started, file management, views, account, and preferences
-- **Hierarchical navigation** with sidebar and breadcrumbs
+- **Unified layout** with context-aware sidebar navigation using app sidebar shell
+- **NavDocs component** renders Fumadocs page tree with collapsible folders
 - Content in `content/docs/` with `meta.json` for structure
 - Source config in `source.config.ts` and `lib/source.ts`
 

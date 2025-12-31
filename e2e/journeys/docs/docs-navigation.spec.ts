@@ -33,9 +33,9 @@ test.describe("Documentation Navigation", () => {
     await docsPage.goto();
     await docsPage.expectVisible();
 
-    // Check for Getting Started heading
+    // Check for Welcome heading
     await expect(
-      page.getByRole("heading", { name: "Getting Started" })
+      page.getByRole("heading", { name: "Welcome to CanonCore" })
     ).toBeVisible();
   });
 
@@ -45,18 +45,12 @@ test.describe("Documentation Navigation", () => {
   }) => {
     await docsPage.goto();
 
-    // Try to find the back link - it may be in sidebar (desktop) or we use content link (mobile)
-    const backLink = page.getByRole("link", { name: "Back to Dashboard" });
-    const isBackLinkVisible = await backLink.isVisible().catch(() => false);
+    // Open sidebar if collapsed (mobile) - Back to Dashboard is in our sidebar
+    await openSidebarIfClosed(page);
 
-    if (isBackLinkVisible) {
-      // Desktop: sidebar is visible, click the back link
-      await backLink.click();
-    } else {
-      // Mobile: use the Dashboard link from the page content
-      const dashboardLink = page.getByRole("link", { name: "Dashboard" });
-      await dashboardLink.click();
-    }
+    // Click the back link in sidebar
+    const backLink = page.getByRole("link", { name: "Back to Dashboard" });
+    await backLink.click();
 
     // Should be on dashboard
     await expect(page).toHaveURL("/dashboard");
@@ -84,7 +78,7 @@ test.describe("Documentation Navigation", () => {
     // Should be able to view docs without being redirected
     await expect(page).toHaveURL("/docs");
     await expect(
-      page.getByRole("heading", { name: "Getting Started" })
+      page.getByRole("heading", { name: "Welcome to CanonCore" })
     ).toBeVisible();
   });
 });

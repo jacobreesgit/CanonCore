@@ -1,4 +1,3 @@
-- playwright anti patterns, and check for NEVER use router.refresh() in client components - use explicit refetch. and After Server Action mutations: call refetchItems() to update UI
 - birectional sftp crud operations - file made
 - spotlight search
 - ai

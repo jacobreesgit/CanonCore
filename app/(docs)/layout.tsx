@@ -1,30 +1,27 @@
 /**
- * Dashboard layout with sidebar navigation.
- * Protects all child routes with authentication check.
+ * Documentation layout with docs-specific sidebar navigation.
+ * Uses the Fumadocs page tree for navigation.
  */
 
-import { redirect } from "next/navigation";
+import { source } from "@/lib/source";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { auth, extractSidebarUser } from "@/lib/auth";
+import type { ReactNode } from "react";
 
 /**
- * Wraps dashboard pages with sidebar and header.
- * Redirects unauthenticated users to sign-in.
+ * Wraps documentation pages with docs-specific sidebar navigation.
+ *
+ * @param children - Page content to render
  */
-export default async function DashboardLayout({
+export default async function DocsLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const session = await auth();
-
-  if (!session?.user) {
-    redirect("/sign-in");
-  }
-
-  const user = extractSidebarUser(session)!;
+  const user = extractSidebarUser(session);
 
   return (
     <SidebarProvider
@@ -35,9 +32,14 @@ export default async function DashboardLayout({
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" user={user} context="dashboard" />
+      <AppSidebar
+        variant="inset"
+        user={user}
+        context="docs"
+        docsTree={source.pageTree}
+      />
       <SidebarInset>
-        <SiteHeader />
+        <SiteHeader title="Documentation" titleHref="/docs" />
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
             {children}

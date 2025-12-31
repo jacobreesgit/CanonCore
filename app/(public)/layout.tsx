@@ -1,30 +1,24 @@
 /**
- * Dashboard layout with sidebar navigation.
- * Protects all child routes with authentication check.
+ * Public layout with sidebar for unauthenticated pages.
+ * Used by homepage and docs pages.
  */
 
-import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { auth, extractSidebarUser } from "@/lib/auth";
 
 /**
- * Wraps dashboard pages with sidebar and header.
- * Redirects unauthenticated users to sign-in.
+ * Wraps public pages with sidebar and header.
+ * Shows guest navigation for unauthenticated users.
  */
-export default async function DashboardLayout({
+export default async function PublicLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const session = await auth();
-
-  if (!session?.user) {
-    redirect("/sign-in");
-  }
-
-  const user = extractSidebarUser(session)!;
+  const user = extractSidebarUser(session);
 
   return (
     <SidebarProvider
@@ -35,9 +29,9 @@ export default async function DashboardLayout({
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" user={user} context="dashboard" />
+      <AppSidebar variant="inset" user={user} context="home" />
       <SidebarInset>
-        <SiteHeader />
+        <SiteHeader title="Home" titleHref="/" />
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
             {children}

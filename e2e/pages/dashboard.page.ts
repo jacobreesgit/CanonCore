@@ -1,3 +1,8 @@
+/**
+ * Page object for dashboard page.
+ * Provides methods for user menu interactions and sign-out.
+ */
+
 import type { Locator, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 
