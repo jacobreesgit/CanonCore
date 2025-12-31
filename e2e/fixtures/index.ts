@@ -1,3 +1,8 @@
+/**
+ * Playwright test fixtures for E2E tests.
+ * Provides page objects for all application pages.
+ */
+
 import { test as base } from "@playwright/test";
 import { LandingPage } from "../pages/landing.page";
 import { SignInPage } from "../pages/sign-in.page";
@@ -7,7 +12,6 @@ import { ResetPasswordPage } from "../pages/reset-password.page";
 import { DashboardPage } from "../pages/dashboard.page";
 import { ItemsPage } from "../pages/items.page";
 import { DocsPage } from "../pages/docs.page";
-import { generateTestUser, type TestUser } from "./db.fixture";
 
 type TestFixtures = {
   landingPage: LandingPage;
@@ -18,7 +22,6 @@ type TestFixtures = {
   dashboardPage: DashboardPage;
   itemsPage: ItemsPage;
   docsPage: DocsPage;
-  testUser: TestUser;
 };
 
 export const test = base.extend<TestFixtures>({
@@ -52,14 +55,6 @@ export const test = base.extend<TestFixtures>({
 
   docsPage: async ({ page }, use) => {
     await use(new DocsPage(page));
-  },
-
-  testUser: async ({}, use) => {
-    // Generate unique test user credentials for each test
-    const user = generateTestUser();
-    await use(user);
-    // Cleanup happens via Stack Auth dashboard or is not needed
-    // since we use unique emails per test
   },
 });
 

@@ -1,15 +1,9 @@
 /**
  * Dynamic documentation page using Fumadocs.
- * Renders MDX content with table of contents.
+ * Renders MDX content with proper styling.
  */
 
 import { source } from "@/lib/source";
-import {
-  DocsBody,
-  DocsDescription,
-  DocsPage,
-  DocsTitle,
-} from "fumadocs-ui/layouts/docs/page";
 import { notFound } from "next/navigation";
 import { getMDXComponents } from "@/mdx-components";
 import type { Metadata } from "next";
@@ -32,17 +26,21 @@ export default async function Page(props: PageProps) {
   const MDX = page.data.body;
 
   return (
-    <DocsPage toc={page.data.toc} full={page.data.full}>
-      <DocsTitle>{page.data.title}</DocsTitle>
-      <DocsDescription>{page.data.description}</DocsDescription>
-      <DocsBody>
+    <div className="container p-6">
+      <article className="prose dark:prose-invert max-w-none">
+        <h1>{page.data.title}</h1>
+        {page.data.description && (
+          <p className="text-muted-foreground text-xl">
+            {page.data.description}
+          </p>
+        )}
         <MDX
           components={getMDXComponents({
             a: createRelativeLink(source, page),
           })}
         />
-      </DocsBody>
-    </DocsPage>
+      </article>
+    </div>
   );
 }
 

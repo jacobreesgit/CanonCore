@@ -34,12 +34,10 @@ export class ItemsPage {
     this.addItemButton = page.getByRole("button", { name: /add folder/i });
     this.addItemInput = page.getByPlaceholder(/folder name/i);
     this.addItemSubmit = page.getByRole("button", { name: /^add$/i });
-    this.addItemCancel = page
-      .locator("button")
-      .filter({ has: page.locator("svg.tabler-icon-x") });
+    this.addItemCancel = page.getByTestId("add-item-cancel");
     this.emptyState = page.getByText(/no folders yet/i);
-    this.treeView = page.locator("ul.space-y-0\\.5");
-    this.gridView = page.locator(".grid.grid-cols-2");
+    this.treeView = page.getByTestId("items-tree-view");
+    this.gridView = page.getByTestId("items-grid-view");
     this.breadcrumbHome = page.getByRole("link", { name: /my files/i });
   }
 

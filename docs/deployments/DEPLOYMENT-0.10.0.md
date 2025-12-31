@@ -38,21 +38,21 @@ This release adds comprehensive user documentation powered by Fumadocs and intro
 
 ## New Files
 
-| File                                   | Purpose                                |
-| -------------------------------------- | -------------------------------------- |
-| `app/docs/layout.tsx`                  | Documentation layout with DocsLayout   |
-| `app/docs/[[...slug]]/page.tsx`        | Dynamic documentation page renderer    |
-| `components/providers/theme-provider.tsx` | next-themes provider wrapper        |
-| `components/theme-toggle.tsx`          | Theme toggle button component          |
-| `lib/source.ts`                        | Fumadocs source configuration          |
-| `source.config.ts`                     | Fumadocs content config                |
-| `mdx-components.tsx`                   | MDX component mappings                 |
-| `content/docs/**/*.mdx`                | 16 documentation pages                 |
-| `e2e/journeys/docs/docs-navigation.spec.ts` | Docs E2E tests                   |
-| `e2e/journeys/theme/dark-mode.spec.ts` | Theme E2E tests                        |
-| `e2e/pages/docs.page.ts`               | Docs page object model                 |
-| `e2e/helpers/sidebar-helpers.ts`       | Sidebar test utilities                 |
-| `e2e/helpers/theme-helpers.ts`         | Theme test utilities                   |
+| File                                        | Purpose                              |
+| ------------------------------------------- | ------------------------------------ |
+| `app/docs/layout.tsx`                       | Documentation layout with DocsLayout |
+| `app/docs/[[...slug]]/page.tsx`             | Dynamic documentation page renderer  |
+| `components/providers/theme-provider.tsx`   | next-themes provider wrapper         |
+| `components/theme-toggle.tsx`               | Theme toggle button component        |
+| `lib/source.ts`                             | Fumadocs source configuration        |
+| `source.config.ts`                          | Fumadocs content config              |
+| `mdx-components.tsx`                        | MDX component mappings               |
+| `content/docs/**/*.mdx`                     | 16 documentation pages               |
+| `e2e/journeys/docs/docs-navigation.spec.ts` | Docs E2E tests                       |
+| `e2e/journeys/theme/dark-mode.spec.ts`      | Theme E2E tests                      |
+| `e2e/pages/docs.page.ts`                    | Docs page object model               |
+| `e2e/helpers/sidebar-helpers.ts`            | Sidebar test utilities               |
+| `e2e/helpers/theme-helpers.ts`              | Theme test utilities                 |
 
 ## Documentation Structure
 
@@ -95,16 +95,16 @@ content/docs/
 
 ## Modified Files
 
-| File                          | Changes                                   |
-| ----------------------------- | ----------------------------------------- |
-| `app/layout.tsx`              | Added ThemeProvider wrapper               |
-| `app/globals.css`             | Added Fumadocs CSS imports                |
-| `components/app-sidebar.tsx`  | Simplified, added Get Help link           |
-| `components/site-header.tsx`  | Added ThemeToggle component               |
-| `next.config.mjs`             | Added createMDX wrapper                   |
-| `tsconfig.json`               | Added .source path alias                  |
-| `eslint.config.mjs`           | Ignored .source directory                 |
-| `knip.json`                   | Added MDX and source config entries       |
+| File                         | Changes                             |
+| ---------------------------- | ----------------------------------- |
+| `app/layout.tsx`             | Added ThemeProvider wrapper         |
+| `app/globals.css`            | Added Fumadocs CSS imports          |
+| `components/app-sidebar.tsx` | Simplified, added Get Help link     |
+| `components/site-header.tsx` | Added ThemeToggle component         |
+| `next.config.mjs`            | Added createMDX wrapper             |
+| `tsconfig.json`              | Added .source path alias            |
+| `eslint.config.mjs`          | Ignored .source directory           |
+| `knip.json`                  | Added MDX and source config entries |
 
 ## Test Coverage
 
