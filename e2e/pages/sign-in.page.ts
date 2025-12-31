@@ -1,3 +1,8 @@
+/**
+ * Page object for sign-in page.
+ * Provides methods for authentication and error handling.
+ */
+
 import type { Locator, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 

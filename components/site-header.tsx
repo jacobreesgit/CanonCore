@@ -43,6 +43,8 @@ interface BreadcrumbItem {
 interface SiteHeaderProps {
   /** Root title displayed at breadcrumb start */
   title?: string;
+  /** Root href for the title link */
+  titleHref?: string;
   /** Array of breadcrumb items for navigation hierarchy */
   breadcrumbs?: BreadcrumbItem[];
   /** Current item ID when viewing item detail (enables context menu) */
@@ -64,6 +66,7 @@ interface SiteHeaderProps {
  */
 export function SiteHeader({
   title = "My Files",
+  titleHref = "/dashboard",
   breadcrumbs = [],
   currentItemId,
   onRename,
@@ -87,7 +90,7 @@ export function SiteHeader({
         >
           {/* Root link */}
           <Link
-            href="/dashboard"
+            href={titleHref}
             className={cn(
               "shrink-0 transition-colors duration-150",
               "hover:text-foreground focus-visible:ring-ring rounded-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",

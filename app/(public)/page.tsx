@@ -1,5 +1,5 @@
 /**
- * Public landing page for unauthenticated visitors.
+ * Public landing page.
  * Displays hero section with call-to-action to sign up or sign in.
  */
 

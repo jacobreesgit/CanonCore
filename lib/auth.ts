@@ -3,10 +3,43 @@
  * Handles JWT-based session management and user authentication.
  */
 
-import NextAuth from "next-auth";
+import NextAuth, { type Session } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+
+/**
+ * User data for sidebar display.
+ */
+export interface SidebarUser {
+  /** Display name for the user */
+  name: string;
+  /** User's email address */
+  email: string;
+  /** URL to user's avatar image */
+  avatar?: string;
+}
+
+/**
+ * Extracts sidebar user data from a NextAuth session.
+ * Returns null if the session or user is not available.
+ *
+ * @param session - NextAuth session object
+ * @returns Sidebar user data or null for unauthenticated users
+ */
+export function extractSidebarUser(
+  session: Session | null
+): SidebarUser | null {
+  if (!session?.user) {
+    return null;
+  }
+
+  return {
+    name: session.user.name ?? session.user.email?.split("@")[0] ?? "User",
+    email: session.user.email ?? "",
+    avatar: session.user.image ?? undefined,
+  };
+}
 
 /**
  * NextAuth handlers and auth function.

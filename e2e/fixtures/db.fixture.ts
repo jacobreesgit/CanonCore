@@ -9,6 +9,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { hash } from "bcryptjs";
 import { config } from "dotenv";
+import { generateTestUserData, TEST_PASSWORD } from "../helpers/test-user";
 
 // Load environment variables from .env.local
 config({ path: ".env.local" });
@@ -26,15 +27,10 @@ export interface TestUser {
 
 /**
  * Generates unique test user credentials.
- * The timestamp ensures uniqueness across test runs.
+ * Delegates to shared helper for consistency.
  */
 export function generateTestUser(): TestUser {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 8);
-  return {
-    email: `test-${timestamp}-${random}@example.com`,
-    password: "TestPassword123!",
-  };
+  return generateTestUserData();
 }
 
 /**

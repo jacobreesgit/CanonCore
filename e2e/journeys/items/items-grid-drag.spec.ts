@@ -60,7 +60,8 @@ test.describe("Items Grid Drag Journey", () => {
     // Drag Grid Item 1 to Grid Item 3's position
     await itemsPage.dragItemTo("Grid Item 1", "Grid Item 3");
 
-    await page.waitForTimeout(500);
+    // Wait for reorder to persist via network
+    await page.waitForLoadState("networkidle");
 
     // All items should still be visible
     await itemsPage.expectItemVisible("Grid Item 1");
@@ -107,7 +108,8 @@ test.describe("Items Grid Drag Journey", () => {
       });
     }
 
-    await page.waitForTimeout(500);
+    // Wait for reorder to persist via network
+    await page.waitForLoadState("networkidle");
 
     // Verify items are still present after drag
     await itemsPage.expectItemVisible("Grid Item 1");
@@ -121,7 +123,7 @@ test.describe("Items Grid Drag Journey", () => {
 
     // Perform a drag
     await itemsPage.dragItemTo("Grid Item 2", "Grid Item 1");
-    await page.waitForTimeout(500);
+    await page.waitForLoadState("networkidle");
 
     // Switch to tree view
     await itemsPage.switchToTreeView();
