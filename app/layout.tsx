@@ -7,6 +7,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SessionProvider } from "next-auth/react";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -35,8 +36,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geist.variable} ${geistMono.variable} antialiased`}>
-        <SessionProvider>{children}</SessionProvider>
-        <Toaster />
+        <ThemeProvider>
+          <SessionProvider>{children}</SessionProvider>
+          <Toaster />
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>
