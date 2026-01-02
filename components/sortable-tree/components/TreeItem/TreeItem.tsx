@@ -1,6 +1,7 @@
 /**
  * Base tree item component with drag handle, collapse toggle, and actions.
  * Features refined micro-interactions and subtle visual feedback.
+ * Supports SFTP file display with sync status and download.
  */
 
 "use client";
@@ -10,11 +11,15 @@ import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import {
   ChevronRight,
+  File,
   Folder,
   FolderOpen,
   GripVertical,
   Trash2,
 } from "lucide-react";
+import type { ItemType, SyncStatus } from "@/lib/types";
+import { SyncStatusBadge } from "@/components/sftp/sync-status-badge";
+import { DownloadButton } from "@/components/sftp/download-button";
 
 export interface TreeItemProps extends Omit<
   HTMLAttributes<HTMLLIElement>,
@@ -36,6 +41,12 @@ export interface TreeItemProps extends Omit<
   onCollapse?(): void;
   onRemove?(): void;
   onClick?(): void;
+  /** SFTP item type (FILE or FOLDER). */
+  itemType?: ItemType;
+  /** SFTP path if linked to remote server. */
+  sftpPath?: string | null;
+  /** Current sync status for SFTP items. */
+  syncStatus?: SyncStatus;
 }
 
 export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
@@ -59,11 +70,16 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       onClick,
       style,
       className,
+      itemType,
+      sftpPath,
+      syncStatus,
       ...props
     },
     ref
   ) {
     const hasChildren = Boolean(onCollapse);
+    const isFile = itemType === "FILE";
+    const isSftpItem = Boolean(sftpPath);
 
     return (
       <li
@@ -147,10 +163,12 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
             </button>
           )}
 
-          {/* Folder Icon */}
+          {/* Item Icon - File or Folder */}
           {!ghost && (
             <span className="text-muted-foreground/70 flex-shrink-0">
-              {hasChildren && !collapsed ? (
+              {isFile ? (
+                <File className="size-4" strokeWidth={1.75} />
+              ) : hasChildren && !collapsed ? (
                 <FolderOpen className="size-4" strokeWidth={1.75} />
               ) : (
                 <Folder className="size-4" strokeWidth={1.75} />
@@ -186,6 +204,25 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
             >
               {childCount}
             </span>
+          )}
+
+          {/* SFTP Sync Status Badge - compact icon only */}
+          {!ghost && !clone && isSftpItem && syncStatus && (
+            <SyncStatusBadge
+              status={syncStatus}
+              showLabel={false}
+              className="px-1.5 py-0.5 opacity-0 transition-opacity group-hover:opacity-100"
+            />
+          )}
+
+          {/* SFTP Download Button - for files only */}
+          {!ghost && !clone && isFile && isSftpItem && (
+            <DownloadButton
+              itemId={String(id)}
+              fileName={value}
+              size="icon"
+              className="size-7 opacity-0 transition-opacity group-hover:opacity-100"
+            />
           )}
 
           {/* Remove Button */}

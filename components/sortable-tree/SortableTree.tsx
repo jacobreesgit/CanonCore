@@ -207,37 +207,51 @@ export function SortableTree({
     >
       <SortableContext items={sortedIds} strategy={verticalListSortingStrategy}>
         <ul data-testid="items-tree-view" className="space-y-0.5">
-          {flattenedItems.map(({ id, name, children, collapsed, depth }) => (
-            <SortableTreeItem
-              key={id}
-              id={id}
-              value={name}
-              depth={id === activeId && projected ? projected.depth : depth}
-              indentationWidth={indentationWidth}
-              indicator={indicator}
-              collapsed={Boolean(collapsed && children.length)}
-              onCollapse={
-                collapsible && children.length
-                  ? () => handleCollapse(id)
-                  : undefined
-              }
-              onRemove={removable ? () => handleRemove(id) : undefined}
-              onClick={() => onItemClick?.(id)}
-              onRename={
-                onRenameItem
-                  ? (newName) => onRenameItem(String(id), newName)
-                  : undefined
-              }
-              onDelete={
-                onDeleteItem ? () => onDeleteItem(String(id)) : undefined
-              }
-              onAddChild={
-                onAddChild
-                  ? (childName) => onAddChild(String(id), childName)
-                  : undefined
-              }
-            />
-          ))}
+          {flattenedItems.map(
+            ({
+              id,
+              name,
+              children,
+              collapsed,
+              depth,
+              type,
+              sftpPath,
+              syncStatus,
+            }) => (
+              <SortableTreeItem
+                key={id}
+                id={id}
+                value={name}
+                depth={id === activeId && projected ? projected.depth : depth}
+                indentationWidth={indentationWidth}
+                indicator={indicator}
+                collapsed={Boolean(collapsed && children.length)}
+                onCollapse={
+                  collapsible && children.length
+                    ? () => handleCollapse(id)
+                    : undefined
+                }
+                onRemove={removable ? () => handleRemove(id) : undefined}
+                onClick={() => onItemClick?.(id)}
+                onRename={
+                  onRenameItem
+                    ? (newName) => onRenameItem(String(id), newName)
+                    : undefined
+                }
+                onDelete={
+                  onDeleteItem ? () => onDeleteItem(String(id)) : undefined
+                }
+                onAddChild={
+                  onAddChild
+                    ? (childName) => onAddChild(String(id), childName)
+                    : undefined
+                }
+                itemType={type}
+                sftpPath={sftpPath}
+                syncStatus={syncStatus}
+              />
+            )
+          )}
         </ul>
         {typeof document !== "undefined" &&
           createPortal(

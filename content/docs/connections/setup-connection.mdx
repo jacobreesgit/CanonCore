@@ -1,0 +1,50 @@
+---
+title: Set Up an SFTP Connection
+description: Connect to your remote server to sync files
+---
+
+## What are connections?
+
+Connections let you link CanonCore to your SFTP servers. Once connected, you can browse, sync, and manage files on your remote server directly from the web interface.
+
+## Create a new connection
+
+1. Click **Settings** in the sidebar
+2. Click **Connections**
+3. Click **Add Connection**
+4. Fill in your server details:
+   - **Connection Name** - A friendly name like "My Server" or "Work Files"
+   - **Host** - Your server address (e.g., `sftp.example.com`)
+   - **Port** - Usually `22` (the default)
+   - **Username** - Your SFTP username
+   - **Authentication** - Choose password or SSH key
+   - **Base Path** - The folder to start from (e.g., `/uploads`)
+
+5. Click **Create Connection**
+
+## Test your connection
+
+Before syncing files, test that everything works:
+
+1. Find your connection in the list
+2. Click the **Test** button
+3. A green checkmark and latency time means you're connected
+
+If the test fails, double-check your hostname, username, and password.
+
+## Authentication options
+
+**Password** - Enter your SFTP password. CanonCore encrypts this before storing it.
+
+**SSH Private Key** - Paste your private key (the contents of your `id_rsa` or similar file). Keep your passphrase-protected keys elsewhere - CanonCore needs an unencrypted key.
+
+## Edit or delete a connection
+
+Click the three-dot menu on any connection card to:
+
+- **Edit** - Update server details or credentials
+- **Delete** - Remove the connection (this doesn't delete files on your server)
+
+## What's next?
+
+Now that you have a connection, [learn how to sync your files](/docs/connections/sync-files).

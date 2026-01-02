@@ -1,5 +1,5 @@
 /**
- * Zod validation schemas for authentication.
+ * Zod validation schemas for authentication and SFTP.
  * Shared between server actions for consistent validation.
  */
 
@@ -60,3 +60,29 @@ export const itemNameSchema = z
     /^[a-zA-Z0-9\s\-_]+$/,
     "Name can only contain letters, numbers, spaces, hyphens, and underscores"
   );
+
+/**
+ * Validates SFTP connection configuration.
+ */
+export const sftpConnectionSchema = z.object({
+  name: z.string().min(1, "Name is required").max(100, "Name too long"),
+  host: z.string().min(1, "Host is required").max(255, "Host too long"),
+  port: z.number().int().min(1).max(65535).default(22),
+  username: z
+    .string()
+    .min(1, "Username is required")
+    .max(100, "Username too long"),
+  authType: z.enum(["PASSWORD", "PRIVATE_KEY"]),
+  credential: z.string().min(1, "Credential is required"),
+  basePath: z.string().default("/"),
+});
+
+/**
+ * Validates SFTP file/folder names.
+ */
+export const sftpFileNameSchema = z
+  .string()
+  .min(1, "Name is required")
+  .max(255, "Name too long")
+  // eslint-disable-next-line no-control-regex
+  .regex(/^[^<>:"/\\|?*\x00-\x1f]+$/, "Name contains invalid characters");

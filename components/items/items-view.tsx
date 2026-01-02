@@ -1,13 +1,15 @@
 /**
  * Client-side items view with tree/grid toggle and drag-drop support.
  * Handles all item CRUD operations and reordering.
+ * Supports SFTP integration with sync and upload functionality.
  */
 
 "use client";
 
 import { useState, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Folder, Home } from "lucide-react";
+import Link from "next/link";
+import { Folder, Home, Server } from "lucide-react";
 import { UniqueIdentifier } from "@dnd-kit/core";
 import { toast } from "sonner";
 
@@ -15,6 +17,8 @@ import { SortableTree } from "@/components/sortable-tree";
 import { SortableGrid } from "@/components/sortable-grid";
 import { ViewToggle, useStoredViewMode } from "./view-toggle";
 import { AddItemButton } from "./add-item-button";
+import { SyncButton } from "@/components/sftp/sync-button";
+import { FileUploadDialog } from "@/components/sftp/file-upload-dialog";
 import type { Item, TreeItems } from "@/lib/types";
 import { itemsToTree, treeToItemUpdates } from "@/lib/item-utils";
 import {
@@ -22,19 +26,29 @@ import {
   updateItem,
   deleteItem,
   reorderItems,
+  getItems,
 } from "@/lib/item-actions";
+import {
+  createSftpFolder,
+  renameSftpItem,
+  deleteSftpItem,
+  getItemsByConnection,
+} from "@/lib/sftp-actions";
 import { cn } from "@/lib/utils";
 
 interface ItemsViewProps {
   items: Item[];
   parentId?: string | null;
   breadcrumbs?: Array<{ id: string; name: string }>;
+  /** SFTP connection ID if this view is for an SFTP-connected folder. */
+  connectionId?: string | null;
 }
 
 export function ItemsView({
   items: initialItems,
   parentId = null,
   breadcrumbs = [],
+  connectionId = null,
 }: ItemsViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -45,33 +59,85 @@ export function ItemsView({
   // Convert flat items to tree structure for SortableTree
   const treeItems = itemsToTree(items);
 
-  // Refetch items after mutations
-  const refetchItems = useCallback(() => {
-    router.refresh();
-  }, [router]);
+  /**
+   * Refetch items from server and update local state.
+   * Uses appropriate action based on whether viewing SFTP connection or regular items.
+   */
+  const refetchItems = useCallback(async () => {
+    const result = connectionId
+      ? await getItemsByConnection(connectionId, parentId)
+      : await getItems(parentId);
+
+    if (result.success && result.data) {
+      setItems(result.data);
+    }
+  }, [connectionId, parentId]);
 
   // Handle item click - navigate to item detail
   const handleItemClick = useCallback(
     (id: UniqueIdentifier) => {
-      router.push(`/dashboard/${id}`);
+      if (connectionId) {
+        router.push(`/dashboard/connections/${connectionId}/${id}`);
+      } else {
+        router.push(`/dashboard/${id}`);
+      }
     },
-    [router]
+    [router, connectionId]
+  );
+
+  /**
+   * Generates the href for a breadcrumb based on context.
+   *
+   * @param crumbId - The breadcrumb item ID
+   * @param index - Position in breadcrumb array (0 = first after home/connection)
+   * @returns The href for navigation
+   */
+  const getBreadcrumbHref = useCallback(
+    (crumbId: string, index: number): string => {
+      if (!connectionId) {
+        // Regular items - first crumb is a folder
+        return `/dashboard/${crumbId}`;
+      }
+      // Connection items: first crumb is connection root, rest are folders
+      if (index === 0) {
+        return `/dashboard/connections/${connectionId}`;
+      }
+      return `/dashboard/connections/${connectionId}/${crumbId}`;
+    },
+    [connectionId]
   );
 
   // Handle creating new item at root level
   const handleCreateItem = useCallback(
     async (name: string): Promise<string | undefined> => {
       try {
-        const result = await createItem(parentId, name);
-        if (result.success && result.data) {
-          const newItem = result.data;
-          setItems((prev) => [...prev, newItem]);
-          startTransition(() => refetchItems());
-          toast.success(`Created "${name}"`);
-          return undefined;
+        // Use SFTP action when in an SFTP-connected context
+        if (connectionId) {
+          const result = await createSftpFolder(connectionId, parentId, name);
+          if (result.success && result.data) {
+            // Update local state immediately with the returned item
+            setItems((prev) => [...prev, result.data as Item]);
+            startTransition(() => refetchItems());
+            toast.success(`Created "${name}"`);
+            return undefined;
+          }
+          const errorMsg = !result.success
+            ? result.error
+            : "Failed to create folder";
+          toast.error(errorMsg || "Failed to create folder");
+          return errorMsg;
+        } else {
+          const result = await createItem(parentId, name);
+          if (result.success && result.data) {
+            const newItem = result.data;
+            setItems((prev) => [...prev, newItem]);
+            startTransition(() => refetchItems());
+            toast.success(`Created "${name}"`);
+            return undefined;
+          }
+          toast.error(result.error || "Failed to create folder");
+          return result.error;
         }
-        toast.error(result.error || "Failed to create folder");
-        return result.error;
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Failed to create folder";
@@ -79,57 +145,83 @@ export function ItemsView({
         return message;
       }
     },
-    [parentId, refetchItems]
+    [parentId, connectionId, refetchItems]
   );
 
   // Handle renaming an item
   const handleRenameItem = useCallback(
     async (id: string, newName: string) => {
-      const result = await updateItem(id, { name: newName });
+      // Check if item has sftpPath to determine which action to use
+      const item = items.find((i) => i.id === id);
+      const result = item?.sftpPath
+        ? await renameSftpItem(id, newName)
+        : await updateItem(id, { name: newName });
       if (result.success) {
         setItems((prev) =>
-          prev.map((item) =>
-            item.id === id ? { ...item, name: newName } : item
-          )
+          prev.map((i) => (i.id === id ? { ...i, name: newName } : i))
         );
         startTransition(() => refetchItems());
         toast.success(`Renamed to "${newName}"`);
       } else {
-        toast.error(result.error || "Failed to rename folder");
+        toast.error(result.error || "Failed to rename");
       }
     },
-    [refetchItems]
+    [items, refetchItems]
   );
 
   // Handle deleting an item
   const handleDeleteItem = useCallback(
     async (id: string) => {
-      const result = await deleteItem(id);
+      // Check if item has sftpPath to determine which action to use
+      const item = items.find((i) => i.id === id);
+      const result = item?.sftpPath
+        ? await deleteSftpItem(id)
+        : await deleteItem(id);
       if (result.success) {
-        setItems((prev) => prev.filter((item) => item.id !== id));
+        setItems((prev) => prev.filter((i) => i.id !== id));
         startTransition(() => refetchItems());
-        toast.success("Folder deleted");
+        toast.success("Deleted successfully");
       } else {
-        toast.error(result.error || "Failed to delete folder");
+        toast.error(result.error || "Failed to delete");
       }
     },
-    [refetchItems]
+    [items, refetchItems]
   );
 
   // Handle adding child item
   const handleAddChild = useCallback(
     async (parentItemId: string, name: string): Promise<string | undefined> => {
       try {
-        const result = await createItem(parentItemId, name);
-        if (result.success && result.data) {
-          const newItem = result.data;
-          setItems((prev) => [...prev, newItem]);
-          startTransition(() => refetchItems());
-          toast.success(`Created "${name}"`);
-          return undefined;
+        // Check if parent has connectionId to determine which action to use
+        const parentItem = items.find((i) => i.id === parentItemId);
+        const connId = parentItem?.connectionId || connectionId;
+
+        if (connId) {
+          const result = await createSftpFolder(connId, parentItemId, name);
+          if (result.success && result.data) {
+            // Update local state immediately with the returned item
+            setItems((prev) => [...prev, result.data as Item]);
+            startTransition(() => refetchItems());
+            toast.success(`Created "${name}"`);
+            return undefined;
+          }
+          const errorMsg = !result.success
+            ? result.error
+            : "Failed to create folder";
+          toast.error(errorMsg || "Failed to create folder");
+          return errorMsg;
+        } else {
+          const result = await createItem(parentItemId, name);
+          if (result.success && result.data) {
+            const newItem = result.data;
+            setItems((prev) => [...prev, newItem]);
+            startTransition(() => refetchItems());
+            toast.success(`Created "${name}"`);
+            return undefined;
+          }
+          toast.error(result.error || "Failed to create folder");
+          return result.error;
         }
-        toast.error(result.error || "Failed to create folder");
-        return result.error;
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Failed to create folder";
@@ -137,7 +229,7 @@ export function ItemsView({
         return message;
       }
     },
-    [refetchItems]
+    [items, connectionId, refetchItems]
   );
 
   // Handle tree reordering
@@ -186,27 +278,44 @@ export function ItemsView({
       {/* Header with breadcrumbs and controls */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         {/* Breadcrumb navigation */}
-        <nav className="flex items-center gap-1.5 text-sm">
-          <button
-            type="button"
-            onClick={() => router.push("/dashboard")}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-md px-2 py-1",
-              "text-muted-foreground hover:text-foreground",
-              "transition-colors duration-150",
-              breadcrumbs.length === 0 && "text-foreground font-medium"
-            )}
-          >
-            <Home className="size-4" strokeWidth={2} />
-            <span>My Files</span>
-          </button>
+        <nav
+          aria-label="Items breadcrumb"
+          className="flex items-center gap-1.5 text-sm"
+        >
+          {connectionId ? (
+            // Connection context: show Connections link first
+            <Link
+              href="/dashboard/connections"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md px-2 py-1",
+                "text-muted-foreground hover:text-foreground",
+                "transition-colors duration-150"
+              )}
+            >
+              <Server className="size-4" strokeWidth={2} />
+              <span>Connections</span>
+            </Link>
+          ) : (
+            // Regular context: show My Files
+            <Link
+              href="/dashboard"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md px-2 py-1",
+                "text-muted-foreground hover:text-foreground",
+                "transition-colors duration-150",
+                breadcrumbs.length === 0 && "text-foreground font-medium"
+              )}
+            >
+              <Home className="size-4" strokeWidth={2} />
+              <span>My Files</span>
+            </Link>
+          )}
 
           {breadcrumbs.map((crumb, index) => (
             <div key={crumb.id} className="flex items-center gap-1.5">
               <span className="text-muted-foreground/50">/</span>
-              <button
-                type="button"
-                onClick={() => router.push(`/dashboard/${crumb.id}`)}
+              <Link
+                href={getBreadcrumbHref(crumb.id, index)}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-md px-2 py-1",
                   "text-muted-foreground hover:text-foreground",
@@ -215,15 +324,38 @@ export function ItemsView({
                     "text-foreground font-medium"
                 )}
               >
-                <Folder className="size-4" strokeWidth={2} />
+                {connectionId && index === 0 ? (
+                  <Server className="size-4" strokeWidth={2} />
+                ) : (
+                  <Folder className="size-4" strokeWidth={2} />
+                )}
                 <span className="max-w-32 truncate">{crumb.name}</span>
-              </button>
+              </Link>
             </div>
           ))}
         </nav>
 
         {/* Controls - hide add button when showing empty state */}
         <div className="flex items-center gap-3">
+          {/* SFTP Sync and Upload buttons - only show when connected */}
+          {connectionId && (
+            <>
+              <SyncButton
+                connectionId={connectionId}
+                size="sm"
+                onSyncComplete={async () => {
+                  await refetchItems();
+                }}
+              />
+              <FileUploadDialog
+                connectionId={connectionId}
+                parentItemId={parentId}
+                onUploadComplete={async () => {
+                  await refetchItems();
+                }}
+              />
+            </>
+          )}
           {items.length > 0 && <AddItemButton onAdd={handleCreateItem} />}
           <ViewToggle />
         </div>

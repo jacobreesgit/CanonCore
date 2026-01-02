@@ -23,6 +23,9 @@ const envSchema = z.object({
   UPSTASH_REDIS_REST_URL: z.string().url(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1),
 
+  // SFTP
+  ENCRYPTION_KEY: z.string().min(1, "ENCRYPTION_KEY is required"),
+
   // Testing (optional)
   BYPASS_RATE_LIMIT: z.string().optional(),
 });

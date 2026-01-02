@@ -273,7 +273,7 @@ export async function withTimeout<T>(
  */
 
 import Client from "ssh2-sftp-client";
-import { Readable } from "stream";
+import { PassThrough, Readable } from "stream";
 import { decryptCredential } from "@/lib/crypto";
 import { withTimeout } from "@/lib/sftp-utils";
 import type { SftpConnection } from "@prisma/client";
@@ -490,6 +490,7 @@ export async function downloadFileBuffer(
 
 /**
  * Downloads a file as a readable stream (for files > 10MB).
+ * Uses PassThrough to pipe SFTP data to a readable stream.
  *
  * @param connection - SFTP connection configuration
  * @param remotePath - Path on SFTP server
@@ -500,9 +501,14 @@ export async function downloadFileStream(
   remotePath: string
 ): Promise<Readable> {
   const client = await getConnection(connection);
-  return client.get(remotePath, undefined, {
-    readStreamOptions: { autoClose: true },
-  }) as unknown as Readable;
+  const passThrough = new PassThrough();
+
+  // Pipe SFTP data to PassThrough stream
+  client.get(remotePath, passThrough).catch((err: Error) => {
+    passThrough.destroy(err);
+  });
+
+  return passThrough;
 }
 
 /**
