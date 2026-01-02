@@ -6,8 +6,23 @@ import type { MutableRefObject } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 
 /**
+ * Item type enum matching Prisma schema.
+ */
+export type ItemType = "FOLDER" | "FILE";
+
+/**
+ * Sync status enum matching Prisma schema.
+ */
+export type SyncStatus =
+  | "SYNCED"
+  | "PENDING_UPLOAD"
+  | "PENDING_DOWNLOAD"
+  | "CONFLICT"
+  | "ERROR";
+
+/**
  * Database Item type (from Prisma).
- * Represents a folder in the filesystem hierarchy.
+ * Represents a folder or file in the filesystem hierarchy.
  */
 export interface Item {
   id: string;
@@ -18,6 +33,15 @@ export interface Item {
   userId: string;
   createdAt: Date;
   updatedAt: Date;
+  // SFTP-specific fields
+  type: ItemType;
+  sftpPath: string | null;
+  mimeType: string | null;
+  size: bigint | null;
+  syncStatus: SyncStatus;
+  lastSyncedAt: Date | null;
+  sftpModifiedAt: Date | null;
+  connectionId: string | null;
 }
 
 /**
@@ -32,6 +56,11 @@ export interface TreeItem {
   parentId: UniqueIdentifier | null;
   children: TreeItem[];
   collapsed?: boolean;
+  // SFTP-specific fields for display
+  type?: ItemType;
+  sftpPath?: string | null;
+  syncStatus?: SyncStatus;
+  connectionId?: string | null;
 }
 
 export type TreeItems = TreeItem[];

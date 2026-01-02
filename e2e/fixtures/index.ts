@@ -1,6 +1,6 @@
 /**
  * Playwright test fixtures for E2E tests.
- * Provides page objects for all application pages.
+ * Provides page objects and SFTP configuration for parallel test execution.
  */
 
 import { test as base } from "@playwright/test";
@@ -12,6 +12,8 @@ import { ResetPasswordPage } from "../pages/reset-password.page";
 import { DashboardPage } from "../pages/dashboard.page";
 import { ItemsPage } from "../pages/items.page";
 import { DocsPage } from "../pages/docs.page";
+import { ConnectionsPage } from "../pages/connections.page";
+import { getSftpConfigForWorker, SftpTestConfig } from "./sftp.fixture";
 
 type TestFixtures = {
   landingPage: LandingPage;
@@ -22,6 +24,8 @@ type TestFixtures = {
   dashboardPage: DashboardPage;
   itemsPage: ItemsPage;
   docsPage: DocsPage;
+  connectionsPage: ConnectionsPage;
+  sftpConfig: SftpTestConfig;
 };
 
 export const test = base.extend<TestFixtures>({
@@ -55,6 +59,15 @@ export const test = base.extend<TestFixtures>({
 
   docsPage: async ({ page }, use) => {
     await use(new DocsPage(page));
+  },
+
+  connectionsPage: async ({ page }, use) => {
+    await use(new ConnectionsPage(page));
+  },
+
+  sftpConfig: async ({}, use, testInfo) => {
+    const config = getSftpConfigForWorker(testInfo.parallelIndex);
+    await use(config);
   },
 });
 

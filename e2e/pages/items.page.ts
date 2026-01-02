@@ -38,7 +38,10 @@ export class ItemsPage {
     this.emptyState = page.getByText(/no folders yet/i);
     this.treeView = page.getByTestId("items-tree-view");
     this.gridView = page.getByTestId("items-grid-view");
-    this.breadcrumbHome = page.getByRole("link", { name: /my files/i });
+    // Target the ItemsView breadcrumb nav specifically (not sidebar or header)
+    this.breadcrumbHome = page
+      .getByLabel("Items breadcrumb")
+      .getByRole("link", { name: /my files/i });
   }
 
   async goto() {
@@ -131,8 +134,11 @@ export class ItemsPage {
     // Wait for navigation and page content to be ready
     await this.page.waitForLoadState("networkidle");
     await this.page.waitForLoadState("domcontentloaded");
-    // Wait for the clicked item to appear in breadcrumbs (confirms page loaded)
-    await expect(this.page.getByRole("button", { name })).toBeVisible({
+    // Wait for the clicked item to appear in ItemsView breadcrumbs (confirms page loaded)
+    // Breadcrumbs are Link elements (role="link") - scope to Items breadcrumb to avoid matching sidebar/header
+    await expect(
+      this.page.getByLabel("Items breadcrumb").getByRole("link", { name })
+    ).toBeVisible({
       timeout: 15000,
     });
     // Wait for the Add folder button to confirm ItemsView is rendered
@@ -181,11 +187,22 @@ export class ItemsPage {
   }
 
   async expectBreadcrumb(name: string) {
-    await expect(this.page.getByRole("button", { name })).toBeVisible();
+    // Scope to Items breadcrumb nav to avoid matching sidebar/header links
+    // Use exact matching to avoid partial matches (e.g., "Parent" matching "Grandparent")
+    await expect(
+      this.page
+        .getByLabel("Items breadcrumb")
+        .getByRole("link", { name, exact: true })
+    ).toBeVisible();
   }
 
   async clickBreadcrumb(name: string) {
-    await this.page.getByRole("button", { name }).click();
+    // Scope to Items breadcrumb nav to avoid matching sidebar/header links
+    // Use exact matching to avoid partial matches (e.g., "Parent" matching "Grandparent")
+    await this.page
+      .getByLabel("Items breadcrumb")
+      .getByRole("link", { name, exact: true })
+      .click();
   }
 
   /**
