@@ -43,6 +43,6 @@ test.describe("Items CRUD Journey", () => {
     await itemsPage.waitForToastToDisappear();
     await itemsPage.deleteItemViaContextMenu("To Delete");
     await itemsPage.expectItemNotVisible("To Delete");
-    await itemsPage.expectSuccessToast("Folder deleted");
+    await itemsPage.expectSuccessToast("Deleted successfully");
   });
 });

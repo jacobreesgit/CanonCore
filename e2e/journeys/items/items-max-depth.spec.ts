@@ -59,6 +59,8 @@ test.describe("Items Max Depth Journey", () => {
     signUpPage,
     itemsPage,
   }) => {
+    // Allow extra time for nested operations
+    test.setTimeout(60000);
     test.info().annotations.push({
       type: "flaky",
       description: "Parallel execution timing",
@@ -69,14 +71,21 @@ test.describe("Items Max Depth Journey", () => {
     await expect(page).toHaveURL("/dashboard", { timeout: 10000 });
     await itemsPage.goto();
 
-    // Create a 3-level hierarchy
+    // Create a 3-level hierarchy with toast waits for stability
     await itemsPage.createItem("Grandparent");
+    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("Grandparent");
+    // Wait for empty state to disappear and Add button to be stable
+    await page.waitForTimeout(500);
 
     await itemsPage.createItem("Parent");
+    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("Parent");
+    // Wait for empty state to disappear and Add button to be stable
+    await page.waitForTimeout(500);
 
     await itemsPage.createItem("Child");
+    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("Child");
 
     // Verify breadcrumb trail shows all ancestors

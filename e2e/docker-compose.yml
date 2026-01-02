@@ -1,0 +1,59 @@
+# Docker Compose for E2E SFTP testing
+# Uses atmoz/sftp for lightweight SFTP servers
+# 8 containers for parallel test execution (one per Playwright worker)
+
+# Shared SFTP configuration using YAML anchor
+x-sftp-common: &sftp-common
+  image: atmoz/sftp
+  # Format: user:password:uid:gid:directories
+  command: testuser:testpass:1001:1001:upload
+  # Use tmpfs for ephemeral test data with correct permissions
+  tmpfs:
+    - /home/testuser/upload:uid=1001,gid=1001
+  healthcheck:
+    test: ["CMD", "nc", "-z", "localhost", "22"]
+    interval: 1s
+    timeout: 3s
+    retries: 10
+    start_period: 5s
+
+services:
+  sftp-0:
+    <<: *sftp-common
+    container_name: e2e-sftp-0
+    ports: ["2222:22"]
+
+  sftp-1:
+    <<: *sftp-common
+    container_name: e2e-sftp-1
+    ports: ["2223:22"]
+
+  sftp-2:
+    <<: *sftp-common
+    container_name: e2e-sftp-2
+    ports: ["2224:22"]
+
+  sftp-3:
+    <<: *sftp-common
+    container_name: e2e-sftp-3
+    ports: ["2225:22"]
+
+  sftp-4:
+    <<: *sftp-common
+    container_name: e2e-sftp-4
+    ports: ["2226:22"]
+
+  sftp-5:
+    <<: *sftp-common
+    container_name: e2e-sftp-5
+    ports: ["2227:22"]
+
+  sftp-6:
+    <<: *sftp-common
+    container_name: e2e-sftp-6
+    ports: ["2228:22"]
+
+  sftp-7:
+    <<: *sftp-common
+    container_name: e2e-sftp-7
+    ports: ["2229:22"]

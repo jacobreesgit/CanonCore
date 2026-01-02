@@ -115,6 +115,9 @@ export function SortableGrid({
                   : undefined
               }
               onDelete={onDeleteItem ? () => onDeleteItem(item.id) : undefined}
+              itemType={item.type}
+              sftpPath={item.sftpPath}
+              syncStatus={item.syncStatus}
             />
           ))}
         </div>

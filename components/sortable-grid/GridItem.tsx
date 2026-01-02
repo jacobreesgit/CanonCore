@@ -1,6 +1,7 @@
 /**
  * Grid item card component for sortable grid view.
- * Displays folder with refined hover states and smooth transitions.
+ * Displays folder or file with refined hover states and smooth transitions.
+ * Supports SFTP file display with sync status and download.
  */
 
 "use client";
@@ -8,7 +9,10 @@
 import React, { forwardRef, HTMLAttributes } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
-import { Folder } from "lucide-react";
+import { File, Folder } from "lucide-react";
+import type { ItemType, SyncStatus } from "@/lib/types";
+import { SyncStatusBadge } from "@/components/sftp/sync-status-badge";
+import { DownloadButton } from "@/components/sftp/download-button";
 
 export interface GridItemProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -20,6 +24,12 @@ export interface GridItemProps extends Omit<
   isOverlay?: boolean;
   handleProps?: Record<string, unknown>;
   onClick?(): void;
+  /** SFTP item type (FILE or FOLDER). */
+  itemType?: ItemType;
+  /** SFTP path if linked to remote server. */
+  sftpPath?: string | null;
+  /** Current sync status for SFTP items. */
+  syncStatus?: SyncStatus;
 }
 
 export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
@@ -33,10 +43,16 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       onClick,
       className,
       style,
+      itemType,
+      sftpPath,
+      syncStatus,
       ...props
     },
     ref
   ) {
+    const isFile = itemType === "FILE";
+    const isSftpItem = Boolean(sftpPath);
+
     return (
       <div
         ref={ref}
@@ -61,7 +77,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
         {...handleProps}
         {...props}
       >
-        {/* Folder Icon with subtle gradient effect */}
+        {/* Item Icon with subtle gradient effect */}
         <div
           className={cn(
             "relative flex items-center justify-center",
@@ -72,17 +88,28 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
             "group-hover:shadow-sm"
           )}
         >
-          <Folder
-            className={cn(
-              "size-8 transition-colors duration-200",
-              "text-muted-foreground/70",
-              "group-hover:text-primary/80"
-            )}
-            strokeWidth={1.5}
-          />
+          {isFile ? (
+            <File
+              className={cn(
+                "size-8 transition-colors duration-200",
+                "text-muted-foreground/70",
+                "group-hover:text-primary/80"
+              )}
+              strokeWidth={1.5}
+            />
+          ) : (
+            <Folder
+              className={cn(
+                "size-8 transition-colors duration-200",
+                "text-muted-foreground/70",
+                "group-hover:text-primary/80"
+              )}
+              strokeWidth={1.5}
+            />
+          )}
         </div>
 
-        {/* Folder Name */}
+        {/* Item Name */}
         <span
           className={cn(
             "w-full truncate px-1 text-center text-sm font-medium",
@@ -92,6 +119,29 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
         >
           {name}
         </span>
+
+        {/* SFTP Sync Status Badge - positioned at top right */}
+        {isSftpItem && syncStatus && !isOverlay && (
+          <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
+            <SyncStatusBadge
+              status={syncStatus}
+              showLabel={false}
+              className="px-1.5 py-0.5"
+            />
+          </div>
+        )}
+
+        {/* SFTP Download Button - for files, positioned at bottom right */}
+        {isFile && isSftpItem && !isOverlay && (
+          <div className="absolute right-2 bottom-2 opacity-0 transition-opacity group-hover:opacity-100">
+            <DownloadButton
+              itemId={String(id)}
+              fileName={name}
+              size="icon"
+              className="size-7"
+            />
+          </div>
+        )}
 
         {/* Subtle drag indicator on hover */}
         <div

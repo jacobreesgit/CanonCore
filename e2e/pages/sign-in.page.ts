@@ -33,9 +33,13 @@ export class SignInPage {
     await this.emailInput.fill(email);
     await this.passwordInput.fill(password);
     await this.submitButton.click();
+    // Wait for form submission to complete (button disables during loading)
+    await this.page.waitForLoadState("networkidle");
   }
 
   async expectError(message: string) {
+    // Wait with longer timeout for async auth operations
+    await expect(this.errorMessage).toBeVisible({ timeout: 15000 });
     await expect(this.errorMessage).toContainText(message);
   }
 
