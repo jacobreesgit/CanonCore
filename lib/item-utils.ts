@@ -22,6 +22,11 @@ export function itemsToTree(items: Item[]): TreeItem[] {
       depth: item.depth,
       parentId: item.parentId,
       children: [],
+      // Include SFTP fields for display
+      type: item.type,
+      sftpPath: item.sftpPath,
+      syncStatus: item.syncStatus,
+      connectionId: item.connectionId,
     });
   }
 

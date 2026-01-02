@@ -45,6 +45,29 @@ const mockSession = (userId: string, email: string): Session => ({
   expires: new Date().toISOString(),
 });
 
+/** Helper to create a mock item with all required SFTP fields */
+const mockItem = (overrides: {
+  id: string;
+  name: string;
+  parentId: string | null;
+  order: number;
+  depth: number;
+  userId: string;
+}) => ({
+  ...overrides,
+  type: "FOLDER" as const,
+  sftpPath: null,
+  mimeType: null,
+  size: null,
+  checksum: null,
+  syncStatus: "SYNCED" as const,
+  lastSyncedAt: null,
+  sftpModifiedAt: null,
+  connectionId: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+});
+
 describe("getItems", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -61,26 +84,22 @@ describe("getItems", () => {
   it("returns root items when parentId is null", async () => {
     mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
     vi.mocked(prisma.item.findMany).mockResolvedValue([
-      {
+      mockItem({
         id: "item-1",
         name: "Folder 1",
         parentId: null,
         order: 0,
         depth: 0,
         userId: "user-1",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
+      }),
+      mockItem({
         id: "item-2",
         name: "Folder 2",
         parentId: null,
         order: 1,
         depth: 0,
         userId: "user-1",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
+      }),
     ]);
 
     const result = await getItems(null);
@@ -98,16 +117,14 @@ describe("getItems", () => {
   it("returns children when parentId is provided", async () => {
     mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
     vi.mocked(prisma.item.findMany).mockResolvedValue([
-      {
+      mockItem({
         id: "child-1",
         name: "Child",
         parentId: "parent-1",
         order: 0,
         depth: 1,
         userId: "user-1",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
+      }),
     ]);
 
     const result = await getItems("parent-1");
@@ -144,16 +161,16 @@ describe("getItem", () => {
 
   it("returns error when item belongs to another user", async () => {
     mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
-    vi.mocked(prisma.item.findUnique).mockResolvedValue({
-      id: "item-1",
-      name: "Folder",
-      parentId: null,
-      order: 0,
-      depth: 0,
-      userId: "other-user",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    vi.mocked(prisma.item.findUnique).mockResolvedValue(
+      mockItem({
+        id: "item-1",
+        name: "Folder",
+        parentId: null,
+        order: 0,
+        depth: 0,
+        userId: "other-user",
+      })
+    );
 
     const result = await getItem("item-1");
 
@@ -164,16 +181,16 @@ describe("getItem", () => {
     mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
 
     // Mock findUnique to return the item
-    vi.mocked(prisma.item.findUnique).mockResolvedValueOnce({
-      id: "child-1",
-      name: "Child",
-      parentId: "parent-1",
-      order: 0,
-      depth: 1,
-      userId: "user-1",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    vi.mocked(prisma.item.findUnique).mockResolvedValueOnce(
+      mockItem({
+        id: "child-1",
+        name: "Child",
+        parentId: "parent-1",
+        order: 0,
+        depth: 1,
+        userId: "user-1",
+      })
+    );
 
     // Mock $queryRaw to return ancestors from recursive CTE
     vi.mocked(prisma.$queryRaw).mockResolvedValueOnce([
@@ -224,16 +241,16 @@ describe("createItem", () => {
     vi.mocked(prisma.item.aggregate).mockResolvedValue({
       _max: { order: null },
     } as never);
-    vi.mocked(prisma.item.create).mockResolvedValue({
-      id: "new-item",
-      name: "New Folder",
-      parentId: null,
-      order: 0,
-      depth: 0,
-      userId: "user-1",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    vi.mocked(prisma.item.create).mockResolvedValue(
+      mockItem({
+        id: "new-item",
+        name: "New Folder",
+        parentId: null,
+        order: 0,
+        depth: 0,
+        userId: "user-1",
+      })
+    );
 
     const result = await createItem(null, "New Folder");
 

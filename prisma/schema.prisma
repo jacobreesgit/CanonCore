@@ -7,16 +7,17 @@ generator client {
 }
 
 model User {
-  id             String          @id @default(cuid())
-  email          String          @unique
-  emailVerified  DateTime?
-  passwordHash   String
-  name           String?
-  image          String?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  passwordResets PasswordReset[]
-  items          Item[]
+  id              String           @id @default(cuid())
+  email           String           @unique
+  emailVerified   DateTime?
+  passwordHash    String
+  name            String?
+  image           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  passwordResets  PasswordReset[]
+  items           Item[]
+  sftpConnections SftpConnection[]
 }
 
 model PasswordReset {
@@ -28,6 +29,57 @@ model PasswordReset {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([expires])
+}
+
+enum ItemType {
+  FOLDER
+  FILE
+}
+
+enum SyncStatus {
+  SYNCED
+  PENDING_UPLOAD
+  PENDING_DOWNLOAD
+  CONFLICT
+  ERROR
+}
+
+enum AuthType {
+  PASSWORD
+  PRIVATE_KEY
+}
+
+model SftpConnection {
+  id                  String    @id @default(cuid())
+
+  // Ownership
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Connection details
+  name                String
+  host                String
+  port                Int       @default(22)
+  username            String
+  authType            AuthType  @default(PASSWORD)
+  encryptedCredential String
+  basePath            String    @default("/")
+
+  // Status
+  isActive            Boolean   @default(true)
+  lastConnectedAt     DateTime?
+  lastSyncAt          DateTime?
+  lastError           String?
+
+  // Related items
+  items               Item[]
+
+  // Timestamps
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
 }
 
 model Item {
@@ -45,6 +97,20 @@ model Item {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // SFTP-specific fields
+  type           ItemType   @default(FOLDER)
+  sftpPath       String?
+  mimeType       String?
+  size           BigInt?
+  checksum       String?
+  syncStatus     SyncStatus @default(SYNCED)
+  lastSyncedAt   DateTime?
+  sftpModifiedAt DateTime?
+
+  // Connection reference
+  connectionId   String?
+  connection     SftpConnection? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -52,4 +118,6 @@ model Item {
   @@index([parentId])
   @@index([userId])
   @@index([userId, parentId, order])
+  @@index([connectionId, sftpPath])
+  @@index([syncStatus])
 }
