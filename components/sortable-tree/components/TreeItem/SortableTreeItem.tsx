@@ -1,7 +1,6 @@
 /**
  * Sortable wrapper for TreeItem with dnd-kit integration.
  * Includes context menu for rename, delete, and add child actions.
- * Passes SFTP props through to TreeItem for file/folder display.
  */
 
 "use client";
@@ -14,19 +13,16 @@ import type { AnimateLayoutChanges } from "@dnd-kit/sortable";
 
 import { TreeItem, TreeItemProps } from "./TreeItem";
 import { ItemContextMenu } from "@/components/items/item-context-menu";
-import type { ItemType, SyncStatus } from "@/lib/types";
 
 interface SortableTreeItemProps extends Omit<TreeItemProps, "handleProps"> {
   id: UniqueIdentifier;
   onRename?(newName: string): Promise<void>;
   onDelete?(): Promise<void>;
   onAddChild?(name: string): Promise<string | undefined>;
-  /** SFTP item type (FILE or FOLDER). */
-  itemType?: ItemType;
   /** SFTP path if linked to remote server. */
   sftpPath?: string | null;
-  /** Current sync status for SFTP items. */
-  syncStatus?: SyncStatus;
+  /** Artwork file ID for thumbnail display. */
+  artworkId?: string | null;
 }
 
 const animateLayoutChanges: AnimateLayoutChanges = ({
@@ -40,9 +36,8 @@ export function SortableTreeItem({
   onRename,
   onDelete,
   onAddChild,
-  itemType,
   sftpPath,
-  syncStatus,
+  artworkId,
   ...props
 }: SortableTreeItemProps) {
   const {
@@ -84,9 +79,8 @@ export function SortableTreeItem({
           ...attributes,
           ...listeners,
         }}
-        itemType={itemType}
         sftpPath={sftpPath}
-        syncStatus={syncStatus}
+        artworkId={artworkId}
         {...props}
       />
     </ItemContextMenu>

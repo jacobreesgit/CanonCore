@@ -28,8 +28,22 @@ import {
 } from "@/components/ui/card";
 import { createSftpConnection, updateSftpConnection } from "@/lib/sftp-actions";
 import { toast } from "sonner";
-import { Server, Key, Lock, FolderOpen, Loader2 } from "lucide-react";
+import {
+  Server,
+  Key,
+  Lock,
+  FolderOpen,
+  Loader2,
+  ChevronDown,
+  Play,
+  Globe,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface ConnectionFormProps {
   mode: "create" | "edit";
@@ -41,6 +55,8 @@ interface ConnectionFormProps {
     username: string;
     authType: "PASSWORD" | "PRIVATE_KEY";
     basePath: string;
+    webdavUrl?: string | null;
+    webdavUsername?: string | null;
   };
 }
 
@@ -62,9 +78,15 @@ export function ConnectionForm({ mode, initialData }: ConnectionFormProps) {
     authType: initialData?.authType ?? ("PASSWORD" as const),
     credential: "",
     basePath: initialData?.basePath ?? "/",
+    webdavUrl: initialData?.webdavUrl ?? "",
+    webdavUsername: initialData?.webdavUsername ?? "",
+    webdavPassword: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [streamingOpen, setStreamingOpen] = useState(
+    Boolean(initialData?.webdavUrl)
+  );
 
   const handleChange = (
     field: keyof typeof formData,
@@ -121,6 +143,9 @@ export function ConnectionForm({ mode, initialData }: ConnectionFormProps) {
             authType: formData.authType,
             credential: formData.credential,
             basePath: formData.basePath || "/",
+            webdavUrl: formData.webdavUrl || undefined,
+            webdavUsername: formData.webdavUsername || undefined,
+            webdavPassword: formData.webdavPassword || undefined,
           });
 
           if (result.success) {
@@ -137,11 +162,18 @@ export function ConnectionForm({ mode, initialData }: ConnectionFormProps) {
             username: formData.username,
             authType: formData.authType,
             basePath: formData.basePath || "/",
+            webdavUrl: formData.webdavUrl || null,
+            webdavUsername: formData.webdavUsername || null,
           };
 
           // Only include credential if changed
           if (formData.credential.trim()) {
             updateData.credential = formData.credential;
+          }
+
+          // Only include WebDAV password if changed
+          if (formData.webdavPassword.trim()) {
+            updateData.webdavPassword = formData.webdavPassword;
           }
 
           const result = await updateSftpConnection(initialData.id, updateData);
@@ -330,6 +362,104 @@ export function ConnectionForm({ mode, initialData }: ConnectionFormProps) {
               The root directory for file operations
             </p>
           </div>
+
+          {/* Streaming Configuration (WebDAV) */}
+          <Collapsible open={streamingOpen} onOpenChange={setStreamingOpen}>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  "flex w-full items-center justify-between rounded-lg border p-4",
+                  "bg-muted/30 hover:bg-muted/50 transition-colors",
+                  "group focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="bg-primary/10 text-primary flex size-8 items-center justify-center rounded-md">
+                    <Play className="size-4" />
+                  </div>
+                  <div className="text-left">
+                    <span className="text-sm font-medium">
+                      Streaming Configuration
+                    </span>
+                    <p className="text-muted-foreground text-xs">
+                      Optional WebDAV settings for media playback
+                    </p>
+                  </div>
+                </div>
+                <ChevronDown
+                  className={cn(
+                    "text-muted-foreground size-4 transition-transform duration-200",
+                    streamingOpen && "rotate-180"
+                  )}
+                />
+              </button>
+            </CollapsibleTrigger>
+
+            <CollapsibleContent className="pt-4">
+              <div className="bg-muted/20 space-y-4 rounded-lg border p-4">
+                {/* WebDAV URL */}
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="webdavUrl"
+                    className="flex items-center gap-2"
+                  >
+                    <Globe className="text-muted-foreground size-4" />
+                    WebDAV URL
+                  </Label>
+                  <Input
+                    id="webdavUrl"
+                    type="url"
+                    placeholder="https://webdav.example.com/"
+                    value={formData.webdavUrl}
+                    onChange={(e) => handleChange("webdavUrl", e.target.value)}
+                    className="font-mono"
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    HTTP endpoint for streaming media files
+                  </p>
+                </div>
+
+                {/* WebDAV Username */}
+                <div className="space-y-2">
+                  <Label htmlFor="webdavUsername">WebDAV Username</Label>
+                  <Input
+                    id="webdavUsername"
+                    placeholder="webdav-user"
+                    value={formData.webdavUsername}
+                    onChange={(e) =>
+                      handleChange("webdavUsername", e.target.value)
+                    }
+                    className="font-mono"
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    Often same as SFTP username, but can differ
+                  </p>
+                </div>
+
+                {/* WebDAV Password */}
+                <div className="space-y-2">
+                  <Label htmlFor="webdavPassword">
+                    WebDAV Password
+                    {mode === "edit" && (
+                      <span className="text-muted-foreground ml-2 text-xs">
+                        (leave empty to keep current)
+                      </span>
+                    )}
+                  </Label>
+                  <Input
+                    id="webdavPassword"
+                    type="password"
+                    placeholder="••••••••"
+                    value={formData.webdavPassword}
+                    onChange={(e) =>
+                      handleChange("webdavPassword", e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </CardContent>
 
         <CardFooter className="flex justify-between border-t pt-6">

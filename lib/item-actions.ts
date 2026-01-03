@@ -8,20 +8,26 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { itemNameSchema } from "@/lib/validations";
-import type { Item, ItemResult, BreadcrumbItem } from "@/lib/types";
+import type {
+  Item,
+  ItemResult,
+  BreadcrumbItem,
+  ItemWithArtwork,
+} from "@/lib/types";
 
 const MAX_DEPTH = 10;
 
 /**
- * Fetches items for a given parent.
+ * Fetches items for a given parent with artwork thumbnails.
  * Returns root items if parentId is null.
+ * Includes the first artwork file ID for each item for thumbnail display.
  *
  * @param parentId - Parent item ID or null for root
- * @returns Items array or error
+ * @returns Items array with artworkId or error
  */
 export async function getItems(
   parentId: string | null
-): Promise<ItemResult<Item[]>> {
+): Promise<ItemResult<ItemWithArtwork[]>> {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "Unauthorized" };
@@ -33,9 +39,33 @@ export async function getItems(
       parentId: parentId,
     },
     orderBy: { order: "asc" },
+    include: {
+      files: {
+        where: { fileType: "ARTWORK" },
+        take: 1,
+        orderBy: { filename: "asc" },
+        select: { id: true },
+      },
+    },
   });
 
-  return { success: true, data: items as Item[] };
+  // Transform to ItemWithArtwork
+  const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => ({
+    id: item.id,
+    name: item.name,
+    parentId: item.parentId,
+    order: item.order,
+    depth: item.depth,
+    userId: item.userId,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+    sftpPath: item.sftpPath,
+    sftpModifiedAt: item.sftpModifiedAt,
+    connectionId: item.connectionId,
+    artworkId: item.files[0]?.id ?? null,
+  }));
+
+  return { success: true, data: itemsWithArtwork };
 }
 
 /**

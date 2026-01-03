@@ -5,7 +5,7 @@ description: Connect to your remote server to sync files
 
 ## What are connections?
 
-Connections let you link CanonCore to your SFTP servers. Once connected, you can browse, sync, and manage files on your remote server directly from the web interface.
+Connections link CanonCore to your SFTP servers. Once connected, you can browse folders, sync media files, and stream content directly from your server.
 
 ## Create a new connection
 
@@ -13,12 +13,12 @@ Connections let you link CanonCore to your SFTP servers. Once connected, you can
 2. Click **Connections**
 3. Click **Add Connection**
 4. Fill in your server details:
-   - **Connection Name** - A friendly name like "My Server" or "Work Files"
+   - **Connection Name** - A friendly name like "My Server" or "Media Library"
    - **Host** - Your server address (e.g., `sftp.example.com`)
    - **Port** - Usually `22` (the default)
    - **Username** - Your SFTP username
    - **Authentication** - Choose password or SSH key
-   - **Base Path** - The folder to start from (e.g., `/uploads`)
+   - **Base Path** - The folder to start from (e.g., `/media`)
 
 5. Click **Create Connection**
 
@@ -36,7 +36,19 @@ If the test fails, double-check your hostname, username, and password.
 
 **Password** - Enter your SFTP password. CanonCore encrypts this before storing it.
 
-**SSH Private Key** - Paste your private key (the contents of your `id_rsa` or similar file). Keep your passphrase-protected keys elsewhere - CanonCore needs an unencrypted key.
+**SSH Private Key** - Paste your private key (the contents of your `id_rsa` or similar file). The key must be unencrypted - passphrase-protected keys aren't supported.
+
+## Streaming configuration (optional)
+
+For better media streaming performance, you can add WebDAV credentials. This lets CanonCore stream video directly instead of downloading first.
+
+1. Click **Streaming Configuration** to expand the section
+2. Enter your WebDAV details:
+   - **WebDAV URL** - The HTTP endpoint for your server (e.g., `https://webdav.example.com/`)
+   - **WebDAV Username** - Often the same as your SFTP username
+   - **WebDAV Password** - Your WebDAV password
+
+Not all servers support WebDAV. If yours doesn't, media still plays - it just downloads before playback.
 
 ## Edit or delete a connection
 

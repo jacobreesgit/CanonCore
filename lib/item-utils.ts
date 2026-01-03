@@ -3,13 +3,17 @@
  * Used for converting database items to tree structure and vice versa.
  */
 
-import type { Item, TreeItem } from "./types";
+import type { Item, ItemWithArtwork, TreeItem } from "./types";
+
+/** Input type for itemsToTree - supports both Item and ItemWithArtwork */
+type ItemInput = Item | ItemWithArtwork;
 
 /**
  * Converts a flat array of items from the database into a hierarchical tree structure.
  * Items are organized by their parentId relationships.
+ * Supports items with optional artwork thumbnails.
  */
-export function itemsToTree(items: Item[]): TreeItem[] {
+export function itemsToTree(items: ItemInput[]): TreeItem[] {
   const itemMap = new Map<string, TreeItem>();
   const roots: TreeItem[] = [];
 
@@ -23,10 +27,10 @@ export function itemsToTree(items: Item[]): TreeItem[] {
       parentId: item.parentId,
       children: [],
       // Include SFTP fields for display
-      type: item.type,
       sftpPath: item.sftpPath,
-      syncStatus: item.syncStatus,
       connectionId: item.connectionId,
+      // Include artwork if available
+      artworkId: "artworkId" in item ? item.artworkId : null,
     });
   }
 

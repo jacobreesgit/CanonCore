@@ -1,7 +1,6 @@
 /**
  * Sortable wrapper for GridItem with dnd-kit integration.
  * Includes context menu for rename and delete actions.
- * Passes SFTP props through to GridItem for file/folder display.
  */
 
 "use client";
@@ -13,18 +12,15 @@ import { CSS } from "@dnd-kit/utilities";
 
 import { GridItem, GridItemProps } from "./GridItem";
 import { ItemContextMenu } from "@/components/items/item-context-menu";
-import type { ItemType, SyncStatus } from "@/lib/types";
 
 interface SortableGridItemProps extends Omit<GridItemProps, "handleProps"> {
   id: UniqueIdentifier;
   onRename?(newName: string): Promise<void>;
   onDelete?(): Promise<void>;
-  /** SFTP item type (FILE or FOLDER). */
-  itemType?: ItemType;
   /** SFTP path if linked to remote server. */
   sftpPath?: string | null;
-  /** Current sync status for SFTP items. */
-  syncStatus?: SyncStatus;
+  /** Artwork file ID for thumbnail display. */
+  artworkId?: string | null;
 }
 
 export function SortableGridItem({
@@ -32,9 +28,8 @@ export function SortableGridItem({
   name,
   onRename,
   onDelete,
-  itemType,
   sftpPath,
-  syncStatus,
+  artworkId,
   ...props
 }: SortableGridItemProps) {
   const {
@@ -68,9 +63,8 @@ export function SortableGridItem({
           ...attributes,
           ...listeners,
         }}
-        itemType={itemType}
         sftpPath={sftpPath}
-        syncStatus={syncStatus}
+        artworkId={artworkId}
         {...props}
       />
     </ItemContextMenu>

@@ -1,11 +1,15 @@
 /**
  * Connection subfolder page displaying SFTP folder contents.
- * Shows children of the specified folder within a connection.
+ * Shows children of the specified folder within a connection,
+ * and any media files attached to this item.
  */
 
 import { notFound } from "next/navigation";
-import { ItemsView } from "@/components/items";
+import { ItemsView, ItemDetail } from "@/components/items";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Folder, Film } from "lucide-react";
 import { getItem } from "@/lib/item-actions";
+import { getItemFiles } from "@/lib/item-file-actions";
 import { getSftpConnection, getItemsByConnection } from "@/lib/sftp-actions";
 
 interface ConnectionItemPageProps {
@@ -14,7 +18,7 @@ interface ConnectionItemPageProps {
 
 /**
  * Renders a subfolder view within an SFTP connection.
- * Builds breadcrumb path from connection root to current folder.
+ * Shows tabs for navigating between children folders and media files.
  */
 export default async function ConnectionItemPage({
   params,
@@ -40,9 +44,23 @@ export default async function ConnectionItemPage({
     notFound();
   }
 
-  // Get children of current item
-  const childrenResult = await getItemsByConnection(connectionId, itemId);
+  // Get children and files of current item in parallel
+  const [childrenResult, filesResult] = await Promise.all([
+    getItemsByConnection(connectionId, itemId),
+    getItemFiles(itemId),
+  ]);
+
   const children = childrenResult.success ? (childrenResult.data ?? []) : [];
+  const files =
+    filesResult.success && filesResult.data
+      ? filesResult.data
+      : { media: [], artwork: [], subtitles: [] };
+
+  const hasChildren = children.length > 0;
+  const hasFiles =
+    files.media.length > 0 ||
+    files.artwork.length > 0 ||
+    files.subtitles.length > 0;
 
   // Build breadcrumbs: Connection > Ancestors > Current
   const breadcrumbs = [
@@ -51,14 +69,57 @@ export default async function ConnectionItemPage({
     { id: item.id, name: item.name },
   ];
 
+  // If no files, just show the items view
+  if (!hasFiles) {
+    return (
+      <div className="flex flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
+        <ItemsView
+          items={children}
+          parentId={itemId}
+          connectionId={connectionId}
+          breadcrumbs={breadcrumbs}
+        />
+      </div>
+    );
+  }
+
+  // If has files but no children, show file detail view
+  if (!hasChildren) {
+    return (
+      <div className="flex flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
+        <ItemDetail item={item} files={files} />
+      </div>
+    );
+  }
+
+  // If has both, show tabs
   return (
     <div className="flex flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
-      <ItemsView
-        items={children}
-        parentId={itemId}
-        connectionId={connectionId}
-        breadcrumbs={breadcrumbs}
-      />
+      <Tabs defaultValue="files" className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="files" className="gap-2">
+            <Film className="size-4" />
+            Media ({files.media.length})
+          </TabsTrigger>
+          <TabsTrigger value="folders" className="gap-2">
+            <Folder className="size-4" />
+            Subfolders ({children.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="files">
+          <ItemDetail item={item} files={files} />
+        </TabsContent>
+
+        <TabsContent value="folders">
+          <ItemsView
+            items={children}
+            parentId={itemId}
+            connectionId={connectionId}
+            breadcrumbs={breadcrumbs}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
