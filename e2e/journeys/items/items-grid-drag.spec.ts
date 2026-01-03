@@ -57,6 +57,9 @@ test.describe("Items Grid Drag Journey", () => {
     await itemsPage.goto();
     await itemsPage.switchToGridView();
 
+    // Enter edit mode to enable dragging
+    await itemsPage.enterEditMode();
+
     // Drag Grid Item 1 to Grid Item 3's position
     await itemsPage.dragItemTo("Grid Item 1", "Grid Item 3");
 
@@ -87,6 +90,9 @@ test.describe("Items Grid Drag Journey", () => {
   }) => {
     await itemsPage.goto();
     await itemsPage.switchToGridView();
+
+    // Enter edit mode to enable dragging
+    await itemsPage.enterEditMode();
 
     const item1 = itemsPage.getGridItemByName("Grid Item 1");
     const item3 = itemsPage.getGridItemByName("Grid Item 3");
@@ -120,6 +126,9 @@ test.describe("Items Grid Drag Journey", () => {
   test("order persists after switching views", async ({ page, itemsPage }) => {
     await itemsPage.goto();
     await itemsPage.switchToGridView();
+
+    // Enter edit mode to enable dragging
+    await itemsPage.enterEditMode();
 
     // Perform a drag
     await itemsPage.dragItemTo("Grid Item 2", "Grid Item 1");

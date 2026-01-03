@@ -6,15 +6,16 @@
 
 "use client";
 
-import { useState, useCallback, useTransition } from "react";
+import { useState, useCallback, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Folder, Home, Server } from "lucide-react";
 import { UniqueIdentifier } from "@dnd-kit/core";
 import { toast } from "sonner";
 
-import { SortableTree } from "@/components/sortable-tree";
-import { SortableGrid } from "@/components/sortable-grid";
+import { SortableTree, Tree } from "@/components/sortable-tree";
+import { SortableGrid, Grid } from "@/components/sortable-grid";
+import { EditModeToggle } from "./edit-mode-toggle";
 import { ViewToggle, useStoredViewMode } from "./view-toggle";
 import { AddItemButton } from "./add-item-button";
 import { ItemSettingsDialog } from "./item-settings-dialog";
@@ -70,9 +71,17 @@ export function ItemsView({
   const [items, setItems] = useState<ItemWithArtwork[]>(initialItems);
   // Single source of truth for view mode - hydration-safe via useSyncExternalStore
   const [viewMode] = useStoredViewMode();
+  // Edit mode state - when true, shows DnD-enabled components
+  const [isEditing, setIsEditing] = useState(false);
   // Settings dialog state
   const [settingsDialog, setSettingsDialog] =
     useState<SettingsDialogState | null>(null);
+
+  // Exit edit mode when view mode changes - intentional minimal cascade
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsEditing(false);
+  }, [viewMode]);
 
   // Convert flat items to tree structure for SortableTree
   const treeItems = itemsToTree(items);
@@ -407,6 +416,12 @@ export function ItemsView({
             />
           )}
           {items.length > 0 && <AddItemButton onAdd={handleCreateItem} />}
+          {items.length > 0 && (
+            <EditModeToggle
+              isEditing={isEditing}
+              onToggle={() => setIsEditing((prev) => !prev)}
+            />
+          )}
           <ViewToggle />
         </div>
       </div>
@@ -415,7 +430,24 @@ export function ItemsView({
       <div className="min-h-[200px]">
         {items.length === 0 ? (
           <EmptyState onAdd={handleCreateItem} />
-        ) : viewMode === "tree" ? (
+        ) : viewMode === "grid" ? (
+          isEditing ? (
+            <SortableGrid
+              items={currentLevelItems}
+              onItemsChange={handleGridItemsChange}
+              onItemClick={handleItemClick}
+              onOpenSettings={handleOpenSettings}
+              onDeleteItem={handleDeleteItem}
+            />
+          ) : (
+            <Grid
+              items={currentLevelItems}
+              onItemClick={handleItemClick}
+              onOpenSettings={handleOpenSettings}
+              onDeleteItem={handleDeleteItem}
+            />
+          )
+        ) : isEditing ? (
           <SortableTree
             items={treeItems}
             onItemsChange={handleTreeItemsChange}
@@ -425,12 +457,12 @@ export function ItemsView({
             onAddChild={handleAddChild}
           />
         ) : (
-          <SortableGrid
-            items={currentLevelItems}
-            onItemsChange={handleGridItemsChange}
+          <Tree
+            items={treeItems}
             onItemClick={handleItemClick}
             onOpenSettings={handleOpenSettings}
             onDeleteItem={handleDeleteItem}
+            onAddChild={handleAddChild}
           />
         )}
       </div>

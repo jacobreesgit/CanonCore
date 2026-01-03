@@ -38,6 +38,9 @@ test.describe("Items Tree Drag Journey", () => {
     await itemsPage.goto();
     await itemsPage.switchToTreeView();
 
+    // Enter edit mode to enable dragging
+    await itemsPage.enterEditMode();
+
     // Drag Folder A below Folder C
     await itemsPage.dragItemTo("Folder A", "Folder C");
 
@@ -51,9 +54,14 @@ test.describe("Items Tree Drag Journey", () => {
     await itemsPage.expectItemVisible("Folder C");
   });
 
-  test("drag handle is visible and interactive", async ({ itemsPage }) => {
+  test("drag handle is visible and interactive in edit mode", async ({
+    itemsPage,
+  }) => {
     await itemsPage.goto();
     await itemsPage.switchToTreeView();
+
+    // Enter edit mode to show drag handles
+    await itemsPage.enterEditMode();
 
     // Get the drag handle for Folder A
     const dragHandle = itemsPage.getTreeItemDragHandle("Folder A");
@@ -66,6 +74,9 @@ test.describe("Items Tree Drag Journey", () => {
   test("dragged item shows visual feedback", async ({ page, itemsPage }) => {
     await itemsPage.goto();
     await itemsPage.switchToTreeView();
+
+    // Enter edit mode to enable dragging
+    await itemsPage.enterEditMode();
 
     const folderA = itemsPage.getItemLocator("Folder A");
 
@@ -88,6 +99,9 @@ test.describe("Items Tree Drag Journey", () => {
     await itemsPage.goto();
     await itemsPage.switchToTreeView();
 
+    // Enter edit mode to enable dragging
+    await itemsPage.enterEditMode();
+
     // Use the specific drag handle method
     await itemsPage.dragTreeItemTo("Folder B", "Folder A");
 
@@ -102,6 +116,9 @@ test.describe("Items Tree Drag Journey", () => {
   test("order persists after page refresh", async ({ page, itemsPage }) => {
     await itemsPage.goto();
     await itemsPage.switchToTreeView();
+
+    // Enter edit mode to enable dragging
+    await itemsPage.enterEditMode();
 
     // Perform a drag operation
     await itemsPage.dragItemTo("Folder C", "Folder A");

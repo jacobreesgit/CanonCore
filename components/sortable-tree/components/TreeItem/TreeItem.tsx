@@ -40,6 +40,10 @@ export interface TreeItemProps extends Omit<
   sftpPath?: string | null;
   /** Artwork file ID for thumbnail display. */
   artworkId?: string | null;
+  /** Whether to show artwork thumbnail. Defaults to true. */
+  showArtwork?: boolean;
+  /** Whether to show the drag handle. Defaults to true. */
+  showDragHandle?: boolean;
 }
 
 export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
@@ -64,11 +68,15 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       style,
       className,
       artworkId,
+      showArtwork = true,
+      showDragHandle = true,
+      sftpPath: _sftpPath, // eslint-disable-line @typescript-eslint/no-unused-vars
       ...props
     },
     ref
   ) {
     const hasChildren = Boolean(onCollapse);
+    const shouldShowArtwork = showArtwork && artworkId;
 
     return (
       <li
@@ -111,9 +119,10 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
           )}
         >
           {/* Drag Handle */}
-          {!ghost && (
+          {!ghost && showDragHandle && (
             <button
               type="button"
+              aria-label="Drag handle"
               className={cn(
                 "flex-shrink-0 touch-none rounded p-0.5",
                 "text-muted-foreground/50 transition-colors duration-150",
@@ -131,6 +140,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
           {!ghost && onCollapse && (
             <button
               type="button"
+              aria-label={collapsed ? "Expand folder" : "Collapse folder"}
               onClick={(e) => {
                 e.stopPropagation();
                 onCollapse();
@@ -155,7 +165,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
           {/* Item Icon - Show artwork thumbnail or folder icon */}
           {!ghost && (
             <span className="flex-shrink-0">
-              {artworkId ? (
+              {shouldShowArtwork ? (
                 <div className="size-5 overflow-hidden rounded">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img

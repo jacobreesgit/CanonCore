@@ -1,6 +1,7 @@
 /**
  * Sortable wrapper for TreeItem with dnd-kit integration.
  * Includes context menu for settings, delete, and add child actions.
+ * Edit mode: simplified visuals (no artwork), drag handle always visible.
  */
 
 "use client";
@@ -82,6 +83,8 @@ export function SortableTreeItem({
         }}
         sftpPath={sftpPath}
         artworkId={artworkId}
+        showArtwork={false}
+        showDragHandle={true}
         {...props}
       />
     </ItemContextMenu>

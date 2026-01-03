@@ -1,6 +1,7 @@
 /**
  * Sortable wrapper for GridItem with dnd-kit integration.
  * Includes context menu for settings and delete actions.
+ * Edit mode: simplified visuals (no artwork).
  */
 
 "use client";
@@ -66,6 +67,7 @@ export function SortableGridItem({
         }}
         sftpPath={sftpPath}
         artworkId={artworkId}
+        showArtwork={false}
         {...props}
       />
     </ItemContextMenu>
