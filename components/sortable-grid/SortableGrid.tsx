@@ -27,11 +27,11 @@ import {
 
 import { SortableGridItem } from "./SortableGridItem";
 import { GridItem } from "./GridItem";
-import type { Item } from "@/lib/types";
+import type { ItemWithArtwork } from "@/lib/types";
 
 interface SortableGridProps {
-  items: Item[];
-  onItemsChange?(items: Item[]): void;
+  items: ItemWithArtwork[];
+  onItemsChange?(items: ItemWithArtwork[]): void;
   onItemClick?(id: UniqueIdentifier): void;
   onRenameItem?(id: string, newName: string): Promise<void>;
   onDeleteItem?(id: string): Promise<void>;
@@ -115,9 +115,8 @@ export function SortableGrid({
                   : undefined
               }
               onDelete={onDeleteItem ? () => onDeleteItem(item.id) : undefined}
-              itemType={item.type}
               sftpPath={item.sftpPath}
-              syncStatus={item.syncStatus}
+              artworkId={item.artworkId}
             />
           ))}
         </div>
@@ -126,7 +125,12 @@ export function SortableGrid({
         createPortal(
           <DragOverlay>
             {activeId && activeItem ? (
-              <GridItem id={activeId} name={activeItem.name} isOverlay />
+              <GridItem
+                id={activeId}
+                name={activeItem.name}
+                artworkId={activeItem.artworkId}
+                isOverlay
+              />
             ) : null}
           </DragOverlay>,
           document.body

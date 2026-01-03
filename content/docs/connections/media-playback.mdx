@@ -1,0 +1,67 @@
+---
+title: Play Media Files
+description: Stream and watch video files from your SFTP server
+---
+
+## Streaming media
+
+CanonCore lets you play video and audio files directly from your SFTP server. After syncing, media files are ready to stream without downloading first.
+
+## Supported formats
+
+**Video:** MP4, MKV, AVI, M4V, WebM, MOV
+
+**Audio:** MP3, M4A, FLAC, WAV, OGG
+
+**Subtitles:** SRT, VTT, SUB, ASS
+
+## Play a video
+
+1. Open your connection and navigate to a folder with media files
+2. Click on the folder to open its detail view
+3. Find the video in the **Media Files** section
+4. Click **Play** to open the full-screen player
+
+If you've watched part of the video before, you'll see **Resume** instead of Play.
+
+## Player controls
+
+The video player includes:
+
+- Play/pause
+- Volume adjustment
+- Progress bar for scrubbing
+- Full-screen toggle
+- Subtitle track selection
+
+Click outside the player or press Escape to close it.
+
+## Resume playback
+
+CanonCore remembers where you stopped watching. When you return to a video, it picks up from your last position.
+
+The detail view shows your progress - you'll see "45% watched" or similar next to each video.
+
+## Subtitles
+
+If your folder contains subtitle files, they appear automatically in the player. Click the subtitle icon in the player controls to choose a track.
+
+For automatic detection, keep subtitle files in the same folder as the video.
+
+## Watch progress
+
+The item detail view shows your progress on each file:
+
+- A progress bar behind the file name
+- Percentage watched label
+- Completed videos (100%) show in green
+
+This helps you track what you've seen across your media library.
+
+## Troubleshooting
+
+**Video won't play?** Some codecs inside container formats (like certain MKV files) may not work in all browsers. Try a different browser or re-encode the video.
+
+**Subtitles not showing?** Make sure the subtitle file has a supported extension (.srt, .vtt, .sub, .ass) and is in the same folder.
+
+**Playback buffering?** If you haven't configured WebDAV streaming, videos download before playing. Add WebDAV credentials in your connection settings for smoother streaming.

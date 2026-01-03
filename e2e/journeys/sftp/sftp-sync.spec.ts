@@ -51,18 +51,15 @@ describeOrSkip("SFTP Sync Operations", () => {
     connectionsPage,
     sftpConfig,
   }) => {
-    // Create some files on SFTP
+    // Create folders on SFTP (only folders appear in tree)
+    await createSftpTestDir(`${sftpConfig.basePath}/sync-folder-1`, sftpConfig);
+    await createSftpTestDir(`${sftpConfig.basePath}/sync-folder-2`, sftpConfig);
+    // Create file inside folder (to test ItemFiles)
     await createSftpTestFile(
-      `${sftpConfig.basePath}/sync-test-1.txt`,
-      "File 1",
+      `${sftpConfig.basePath}/sync-folder-1/test-file.mp4`,
+      "Content",
       sftpConfig
     );
-    await createSftpTestFile(
-      `${sftpConfig.basePath}/sync-test-2.txt`,
-      "File 2",
-      sftpConfig
-    );
-    await createSftpTestDir(`${sftpConfig.basePath}/sync-folder`, sftpConfig);
 
     // Navigate to connection
     const card = connectionsPage.getConnectionCard("Test SFTP Server");
@@ -78,17 +75,21 @@ describeOrSkip("SFTP Sync Operations", () => {
       timeout: 30000,
     });
 
-    // Wait for items to appear (scope to tree view to avoid matching toasts)
+    // Wait for folders to appear (scope to tree view to avoid matching toasts)
     const treeView = page.getByTestId("items-tree-view");
     await expect(
-      treeView.getByRole("listitem").filter({ hasText: "sync-test-1.txt" })
+      treeView.getByRole("listitem").filter({ hasText: "sync-folder-1" })
     ).toBeVisible({ timeout: 10000 });
     await expect(
-      treeView.getByRole("listitem").filter({ hasText: "sync-test-2.txt" })
+      treeView.getByRole("listitem").filter({ hasText: "sync-folder-2" })
     ).toBeVisible();
-    await expect(
-      treeView.getByRole("listitem").filter({ hasText: "sync-folder" })
-    ).toBeVisible();
+
+    // Click folder to verify file was synced
+    await treeView
+      .getByRole("listitem")
+      .filter({ hasText: "sync-folder-1" })
+      .click();
+    await expect(page.getByText("test-file.mp4")).toBeVisible();
   });
 
   test("sync shows loading state", async ({
@@ -96,13 +97,9 @@ describeOrSkip("SFTP Sync Operations", () => {
     connectionsPage,
     sftpConfig,
   }) => {
-    // Create files on SFTP
+    // Create folders on SFTP (only folders appear in tree)
     for (let i = 0; i < 5; i++) {
-      await createSftpTestFile(
-        `${sftpConfig.basePath}/file-${i}.txt`,
-        `Content ${i}`,
-        sftpConfig
-      );
+      await createSftpTestDir(`${sftpConfig.basePath}/folder-${i}`, sftpConfig);
     }
 
     // Navigate to connection
@@ -120,10 +117,10 @@ describeOrSkip("SFTP Sync Operations", () => {
       timeout: 30000,
     });
 
-    // Verify files were synced (scope to tree view)
+    // Verify folders were synced (scope to tree view)
     const treeView = page.getByTestId("items-tree-view");
     await expect(
-      treeView.getByRole("listitem").filter({ hasText: "file-0.txt" })
+      treeView.getByRole("listitem").filter({ hasText: "folder-0" })
     ).toBeVisible({ timeout: 10000 });
   });
 
@@ -147,10 +144,9 @@ describeOrSkip("SFTP Sync Operations", () => {
     connectionsPage,
     sftpConfig,
   }) => {
-    // Create file on SFTP
-    await createSftpTestFile(
-      `${sftpConfig.basePath}/status-test.txt`,
-      "Test content",
+    // Create folder on SFTP (only folders appear as Items in tree)
+    await createSftpTestDir(
+      `${sftpConfig.basePath}/status-test-folder`,
       sftpConfig
     );
 
@@ -168,16 +164,16 @@ describeOrSkip("SFTP Sync Operations", () => {
       timeout: 30000,
     });
 
-    // Wait for file to appear (scope to tree view to avoid matching toasts)
+    // Wait for folder to appear (scope to tree view to avoid matching toasts)
     const treeView = page.getByTestId("items-tree-view");
-    const fileItem = treeView
+    const folderItem = treeView
       .getByRole("listitem")
-      .filter({ hasText: "status-test.txt" });
-    await expect(fileItem).toBeVisible({ timeout: 10000 });
+      .filter({ hasText: "status-test-folder" });
+    await expect(folderItem).toBeVisible({ timeout: 10000 });
 
     // Check for sync status badge (should show synced status)
     // Note: Badge may be hidden by default, shown on hover
-    await fileItem.hover();
+    await folderItem.hover();
 
     // Look for any status indicator
     const statusBadge = page.locator("[data-sync-status]");

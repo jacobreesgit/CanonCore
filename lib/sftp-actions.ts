@@ -16,13 +16,14 @@ import {
   createDirectory,
   removeDirectory,
   rename as sftpRename,
-  deleteFile,
   getConnection,
-  uploadFile,
-  downloadFileBuffer,
 } from "@/lib/sftp-client";
+import {
+  getFileTypeByExtension,
+  getMimeTypeByExtension,
+} from "@/lib/file-type-utils";
 import type { SftpConnection } from "@prisma/client";
-import type { Item } from "@/lib/types";
+import type { Item, ItemWithArtwork } from "@/lib/types";
 import Client from "ssh2-sftp-client";
 
 /** Result type for server actions. */
@@ -87,16 +88,16 @@ export async function getSftpConnections(): Promise<
 }
 
 /**
- * Gets items for a specific connection, optionally filtered by parent.
+ * Gets items for a specific connection with artwork thumbnails.
  *
  * @param connectionId - SFTP connection ID
  * @param parentId - Parent item ID (null for root level)
- * @returns Items belonging to the connection
+ * @returns Items belonging to the connection with artworkId
  */
 export async function getItemsByConnection(
   connectionId: string,
   parentId: string | null
-): Promise<ActionResult<Item[]>> {
+): Promise<ActionResult<ItemWithArtwork[]>> {
   try {
     const userId = await requireAuth();
 
@@ -115,9 +116,33 @@ export async function getItemsByConnection(
         parentId,
       },
       orderBy: { order: "asc" },
+      include: {
+        files: {
+          where: { fileType: "ARTWORK" },
+          take: 1,
+          orderBy: { filename: "asc" },
+          select: { id: true },
+        },
+      },
     });
 
-    return { success: true, data: items as Item[] };
+    // Transform to ItemWithArtwork
+    const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      parentId: item.parentId,
+      order: item.order,
+      depth: item.depth,
+      userId: item.userId,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+      sftpPath: item.sftpPath,
+      sftpModifiedAt: item.sftpModifiedAt,
+      connectionId: item.connectionId,
+      artworkId: item.files[0]?.id ?? null,
+    }));
+
+    return { success: true, data: itemsWithArtwork };
   } catch (error) {
     console.error("[SFTP] Get items by connection error:", error);
     return { success: false, error: "Failed to load items" };
@@ -184,6 +209,9 @@ export async function createSftpConnection(data: {
   authType: "PASSWORD" | "PRIVATE_KEY";
   credential: string;
   basePath?: string;
+  webdavUrl?: string;
+  webdavUsername?: string;
+  webdavPassword?: string;
 }): Promise<ActionResult<{ id: string }>> {
   try {
     const userId = await requireAuth();
@@ -205,6 +233,11 @@ export async function createSftpConnection(data: {
     // Encrypt credential
     const encryptedCredential = encryptCredential(validated.credential);
 
+    // Encrypt WebDAV password if provided
+    const encryptedWebdavPassword = data.webdavPassword
+      ? encryptCredential(data.webdavPassword)
+      : null;
+
     // Create connection
     const connection = await prisma.sftpConnection.create({
       data: {
@@ -216,6 +249,9 @@ export async function createSftpConnection(data: {
         authType: validated.authType,
         encryptedCredential,
         basePath: validated.basePath,
+        webdavUrl: data.webdavUrl || null,
+        webdavUsername: data.webdavUsername || null,
+        encryptedWebdavPassword,
       },
     });
 
@@ -249,6 +285,9 @@ export async function updateSftpConnection(
     authType?: "PASSWORD" | "PRIVATE_KEY";
     credential?: string;
     basePath?: string;
+    webdavUrl?: string | null;
+    webdavUsername?: string | null;
+    webdavPassword?: string;
   }
 ): Promise<ActionResult> {
   try {
@@ -290,6 +329,15 @@ export async function updateSftpConnection(
     if (data.basePath !== undefined) updateData.basePath = data.basePath;
     if (data.credential) {
       updateData.encryptedCredential = encryptCredential(data.credential);
+    }
+    // WebDAV fields - allow null to clear
+    if (data.webdavUrl !== undefined) updateData.webdavUrl = data.webdavUrl;
+    if (data.webdavUsername !== undefined)
+      updateData.webdavUsername = data.webdavUsername;
+    if (data.webdavPassword) {
+      updateData.encryptedWebdavPassword = encryptCredential(
+        data.webdavPassword
+      );
     }
 
     await prisma.sftpConnection.update({
@@ -476,17 +524,13 @@ export async function createSftpFolder(
         userId,
         parentId: parentItemId,
         connectionId,
-        type: "FOLDER",
         sftpPath: fullPath,
-        syncStatus: "SYNCED",
-        lastSyncedAt: new Date(),
         order: (maxOrder._max.order ?? -1) + 1,
         depth,
       },
     });
 
     revalidatePath("/dashboard");
-    // Return full item data so UI can update local state immediately
     return {
       success: true,
       data: {
@@ -494,17 +538,12 @@ export async function createSftpFolder(
         name: item.name,
         parentId: item.parentId,
         connectionId: item.connectionId,
-        type: item.type,
         sftpPath: item.sftpPath,
-        syncStatus: item.syncStatus,
-        lastSyncedAt: item.lastSyncedAt,
         order: item.order,
         depth: item.depth,
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
         userId: item.userId,
-        mimeType: null,
-        size: null,
         sftpModifiedAt: null,
       },
     };
@@ -532,21 +571,17 @@ export async function deleteSftpItem(itemId: string): Promise<ActionResult> {
       return { success: false, error: "Item not found" };
     }
 
-    // Delete from SFTP if connected
+    // Delete folder from SFTP if connected
     if (item.connection && item.sftpPath) {
       try {
-        if (item.type === "FOLDER") {
-          await removeDirectory(item.connection, item.sftpPath);
-        } else {
-          await deleteFile(item.connection, item.sftpPath);
-        }
+        await removeDirectory(item.connection, item.sftpPath);
       } catch (sftpError) {
         console.error("[SFTP] Delete from server failed:", sftpError);
         // Continue to delete from DB even if SFTP delete fails
       }
     }
 
-    // Delete from database (children cascade deleted)
+    // Delete from database (children and files cascade deleted)
     await prisma.item.delete({
       where: { id: itemId },
     });
@@ -617,16 +652,15 @@ export interface SyncResult {
   created: number;
   updated: number;
   deleted: number;
-  conflicts: number;
 }
 
 /** Maximum sync limits for security */
 const SYNC_MAX_DEPTH = 10;
-const SYNC_MAX_FILES = 10000;
+const SYNC_MAX_ENTRIES = 10000;
 
 /**
  * Syncs files from SFTP server to database.
- * Compares remote files with database and creates/updates/deletes items.
+ * Creates Items for folders and ItemFiles for files.
  *
  * @param connectionId - Connection ID to sync
  * @returns Sync statistics
@@ -648,8 +682,8 @@ export async function syncFromSftp(
     // Get pooled SFTP connection
     const client = await getConnection(connection);
 
-    // Recursively list all files from SFTP
-    const remoteFiles: Array<{
+    // Recursively list all entries from SFTP
+    const remoteEntries: Array<{
       path: string;
       name: string;
       type: "d" | "-" | "l";
@@ -659,19 +693,30 @@ export async function syncFromSftp(
       parentPath: string;
     }> = [];
 
+    // Track directories that failed to list for logging
+    const failedDirs: string[] = [];
+
     async function listRecursive(dirPath: string, depth: number) {
-      if (depth > SYNC_MAX_DEPTH || remoteFiles.length >= SYNC_MAX_FILES) {
+      if (depth > SYNC_MAX_DEPTH || remoteEntries.length >= SYNC_MAX_ENTRIES) {
         return;
       }
 
-      const entries = await client.list(dirPath);
+      let entries;
+      try {
+        entries = await client.list(dirPath);
+      } catch (listError) {
+        // Log the error but continue with other directories
+        console.warn(`[SFTP] Failed to list directory: ${dirPath}`, listError);
+        failedDirs.push(dirPath);
+        return;
+      }
 
       for (const entry of entries) {
         if (entry.name === "." || entry.name === "..") continue;
 
         const entryPath = `${dirPath}/${entry.name}`.replace(/\/+/g, "/");
 
-        remoteFiles.push({
+        remoteEntries.push({
           path: entryPath,
           name: entry.name,
           type: entry.type,
@@ -688,7 +733,17 @@ export async function syncFromSftp(
     }
 
     await listRecursive(connection.basePath, 0);
-    // Note: Don't close pooled connection - it will be reused
+
+    // Log if any directories failed
+    if (failedDirs.length > 0) {
+      console.warn(
+        `[SFTP] Sync completed with ${failedDirs.length} inaccessible directories`
+      );
+    }
+
+    // Separate folders and files
+    const remoteFolders = remoteEntries.filter((e) => e.type === "d");
+    const remoteFiles = remoteEntries.filter((e) => e.type !== "d");
 
     // Get existing items for this connection
     const existingItems = await prisma.item.findMany({
@@ -697,44 +752,38 @@ export async function syncFromSftp(
         id: true,
         sftpPath: true,
         sftpModifiedAt: true,
-        lastSyncedAt: true,
-        syncStatus: true,
       },
     });
 
     const existingByPath = new Map(
       existingItems.filter((i) => i.sftpPath).map((i) => [i.sftpPath!, i])
     );
-    const remotePaths = new Set(remoteFiles.map((f) => f.path));
+    const remoteFolderPaths = new Set(remoteFolders.map((f) => f.path));
 
     let created = 0;
     let updated = 0;
     let deleted = 0;
-    let conflicts = 0;
 
-    // Process files in order (parents before children)
-    const sortedFiles = remoteFiles.sort((a, b) => a.depth - b.depth);
+    // Process folders in order (parents before children)
+    const sortedFolders = remoteFolders.sort((a, b) => a.depth - b.depth);
 
     // Map paths to created item IDs for parent lookups
     const pathToItemId = new Map<string, string>();
 
     // Load existing path->id mapping
-    const allItems = await prisma.item.findMany({
-      where: { userId, connectionId },
-      select: { id: true, sftpPath: true },
-    });
-    for (const item of allItems) {
+    for (const item of existingItems) {
       if (item.sftpPath) {
         pathToItemId.set(item.sftpPath, item.id);
       }
     }
 
-    for (const file of sortedFiles) {
-      const existing = existingByPath.get(file.path);
+    // Create/update folders as Items
+    for (const folder of sortedFolders) {
+      const existing = existingByPath.get(folder.path);
 
       if (!existing) {
-        // New file - create in database
-        const parentId = pathToItemId.get(file.parentPath) ?? null;
+        // New folder - create Item
+        const parentId = pathToItemId.get(folder.parentPath) ?? null;
 
         const maxOrder = await prisma.item.aggregate({
           where: { userId, parentId },
@@ -743,22 +792,87 @@ export async function syncFromSftp(
 
         const newItem = await prisma.item.create({
           data: {
-            name: file.name,
+            name: folder.name,
             userId,
             parentId,
             connectionId,
-            type: file.type === "d" ? "FOLDER" : "FILE",
-            sftpPath: file.path,
-            sftpModifiedAt: new Date(file.modifyTime),
-            size: BigInt(file.size),
-            syncStatus: "SYNCED",
-            lastSyncedAt: new Date(),
+            sftpPath: folder.path,
+            sftpModifiedAt: new Date(folder.modifyTime),
             order: (maxOrder._max.order ?? -1) + 1,
-            depth: file.depth,
+            depth: folder.depth,
           },
         });
 
-        pathToItemId.set(file.path, newItem.id);
+        pathToItemId.set(folder.path, newItem.id);
+        created++;
+      } else {
+        // Existing folder - check for updates
+        const remoteMtime = new Date(folder.modifyTime);
+        const localMtime = existing.sftpModifiedAt;
+
+        if (!localMtime || remoteMtime.getTime() !== localMtime.getTime()) {
+          await prisma.item.update({
+            where: { id: existing.id },
+            data: {
+              sftpModifiedAt: remoteMtime,
+            },
+          });
+          updated++;
+        }
+      }
+    }
+
+    // Get existing ItemFiles for this connection's items
+    const connectionItemIds = await prisma.item.findMany({
+      where: { connectionId },
+      select: { id: true },
+    });
+    const itemIdSet = new Set(connectionItemIds.map((i) => i.id));
+
+    const existingFiles = await prisma.itemFile.findMany({
+      where: { itemId: { in: Array.from(itemIdSet) } },
+      select: {
+        id: true,
+        itemId: true,
+        sftpPath: true,
+        sftpModifiedAt: true,
+      },
+    });
+
+    const existingFilesByPath = new Map(
+      existingFiles.map((f) => [f.sftpPath, f])
+    );
+    const remoteFilePaths = new Set(remoteFiles.map((f) => f.path));
+
+    // Create/update ItemFiles for remote files
+    for (const file of remoteFiles) {
+      const fileType = getFileTypeByExtension(file.name);
+
+      // Skip files with unknown types
+      if (!fileType) continue;
+
+      // Find parent item by path
+      const parentItemId = pathToItemId.get(file.parentPath);
+      if (!parentItemId) {
+        // Parent folder not synced yet, skip
+        continue;
+      }
+
+      const existing = existingFilesByPath.get(file.path);
+
+      if (!existing) {
+        // New file - create ItemFile
+        await prisma.itemFile.create({
+          data: {
+            itemId: parentItemId,
+            filename: file.name,
+            sftpPath: file.path,
+            fileType,
+            mimeType: getMimeTypeByExtension(file.name),
+            size: BigInt(file.size),
+            sftpModifiedAt: new Date(file.modifyTime),
+          },
+        });
         created++;
       } else {
         // Existing file - check for updates
@@ -766,38 +880,32 @@ export async function syncFromSftp(
         const localMtime = existing.sftpModifiedAt;
 
         if (!localMtime || remoteMtime.getTime() !== localMtime.getTime()) {
-          // Check for conflict (modified both sides)
-          if (
-            existing.lastSyncedAt &&
-            localMtime &&
-            localMtime > existing.lastSyncedAt
-          ) {
-            // Local was modified after last sync, remote also changed = conflict
-            await prisma.item.update({
-              where: { id: existing.id },
-              data: { syncStatus: "CONFLICT" },
-            });
-            conflicts++;
-          } else {
-            // Update from remote
-            await prisma.item.update({
-              where: { id: existing.id },
-              data: {
-                sftpModifiedAt: remoteMtime,
-                size: BigInt(file.size),
-                syncStatus: "SYNCED",
-                lastSyncedAt: new Date(),
-              },
-            });
-            updated++;
-          }
+          await prisma.itemFile.update({
+            where: { id: existing.id },
+            data: {
+              size: BigInt(file.size),
+              sftpModifiedAt: remoteMtime,
+              mimeType: getMimeTypeByExtension(file.name),
+            },
+          });
+          updated++;
         }
       }
     }
 
-    // Mark deleted items
+    // Delete ItemFiles that no longer exist on server
+    for (const file of existingFiles) {
+      if (!remoteFilePaths.has(file.sftpPath)) {
+        await prisma.itemFile.delete({
+          where: { id: file.id },
+        });
+        deleted++;
+      }
+    }
+
+    // Delete items that no longer exist on server
     for (const item of existingItems) {
-      if (item.sftpPath && !remotePaths.has(item.sftpPath)) {
+      if (item.sftpPath && !remoteFolderPaths.has(item.sftpPath)) {
         await prisma.item.delete({
           where: { id: item.id },
         });
@@ -816,7 +924,7 @@ export async function syncFromSftp(
 
     return {
       success: true,
-      data: { created, updated, deleted, conflicts },
+      data: { created, updated, deleted },
     };
   } catch (error) {
     console.error("[SFTP] Sync error:", error);
@@ -835,137 +943,5 @@ export async function syncFromSftp(
     }
 
     return { success: false, error: "Failed to sync from SFTP" };
-  }
-}
-
-/** Maximum file size for uploads (50MB) */
-const UPLOAD_MAX_SIZE = 50 * 1024 * 1024;
-
-/**
- * Uploads a file to SFTP server and creates database record.
- *
- * @param connectionId - Connection ID
- * @param parentItemId - Parent folder ID (null for root)
- * @param file - File data to upload
- * @returns Created item ID
- */
-export async function uploadToSftp(
-  connectionId: string,
-  parentItemId: string | null,
-  file: { name: string; buffer: Buffer; mimeType: string }
-): Promise<ActionResult<{ id: string }>> {
-  try {
-    const userId = await requireAuth();
-
-    // Validate file size
-    if (file.buffer.length > UPLOAD_MAX_SIZE) {
-      return { success: false, error: "File too large (max 50MB)" };
-    }
-
-    // Validate filename
-    validateFileName(file.name);
-
-    // Get connection
-    const connection = await prisma.sftpConnection.findFirst({
-      where: { id: connectionId, userId },
-    });
-    if (!connection) {
-      return { success: false, error: "Connection not found" };
-    }
-
-    // Get parent path
-    let parentPath = connection.basePath;
-    let depth = 0;
-    if (parentItemId) {
-      const parent = await prisma.item.findFirst({
-        where: { id: parentItemId, userId, connectionId },
-      });
-      if (!parent || !parent.sftpPath) {
-        return { success: false, error: "Parent folder not found" };
-      }
-      parentPath = parent.sftpPath;
-      depth = parent.depth + 1;
-    }
-
-    // Build full path
-    const fullPath = sanitizePath(parentPath, file.name);
-
-    // Upload to SFTP using pooled connection
-    await uploadFile(connection, file.buffer, fullPath);
-
-    // Get next order
-    const maxOrder = await prisma.item.aggregate({
-      where: { userId, parentId: parentItemId },
-      _max: { order: true },
-    });
-
-    // Create in database
-    const item = await prisma.item.create({
-      data: {
-        name: file.name,
-        userId,
-        parentId: parentItemId,
-        connectionId,
-        type: "FILE",
-        sftpPath: fullPath,
-        size: BigInt(file.buffer.length),
-        sftpModifiedAt: new Date(),
-        mimeType: file.mimeType,
-        syncStatus: "SYNCED",
-        lastSyncedAt: new Date(),
-        order: (maxOrder._max.order ?? -1) + 1,
-        depth,
-      },
-    });
-
-    revalidatePath("/dashboard");
-    return { success: true, data: { id: item.id } };
-  } catch (error) {
-    console.error("[SFTP] Upload error:", error);
-    return { success: false, error: "Failed to upload file" };
-  }
-}
-
-/**
- * Downloads a file from SFTP server.
- *
- * @param itemId - Item ID to download
- * @returns File buffer and metadata
- */
-export async function downloadFromSftp(
-  itemId: string
-): Promise<ActionResult<{ buffer: Buffer; name: string; mimeType: string }>> {
-  try {
-    const userId = await requireAuth();
-
-    // Get item with connection
-    const item = await prisma.item.findFirst({
-      where: { id: itemId, userId },
-      include: { connection: true },
-    });
-    if (!item) {
-      return { success: false, error: "Item not found" };
-    }
-    if (!item.connection || !item.sftpPath) {
-      return { success: false, error: "Item not connected to SFTP" };
-    }
-    if (item.type === "FOLDER") {
-      return { success: false, error: "Cannot download folders" };
-    }
-
-    // Download using pooled connection
-    const buffer = await downloadFileBuffer(item.connection, item.sftpPath);
-
-    return {
-      success: true,
-      data: {
-        buffer,
-        name: item.name,
-        mimeType: item.mimeType ?? "application/octet-stream",
-      },
-    };
-  } catch (error) {
-    console.error("[SFTP] Download error:", error);
-    return { success: false, error: "Failed to download file" };
   }
 }

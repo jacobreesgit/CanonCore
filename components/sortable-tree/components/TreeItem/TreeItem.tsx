@@ -1,7 +1,6 @@
 /**
  * Base tree item component with drag handle, collapse toggle, and actions.
  * Features refined micro-interactions and subtle visual feedback.
- * Supports SFTP file display with sync status and download.
  */
 
 "use client";
@@ -11,15 +10,11 @@ import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import {
   ChevronRight,
-  File,
   Folder,
   FolderOpen,
   GripVertical,
   Trash2,
 } from "lucide-react";
-import type { ItemType, SyncStatus } from "@/lib/types";
-import { SyncStatusBadge } from "@/components/sftp/sync-status-badge";
-import { DownloadButton } from "@/components/sftp/download-button";
 
 export interface TreeItemProps extends Omit<
   HTMLAttributes<HTMLLIElement>,
@@ -41,12 +36,10 @@ export interface TreeItemProps extends Omit<
   onCollapse?(): void;
   onRemove?(): void;
   onClick?(): void;
-  /** SFTP item type (FILE or FOLDER). */
-  itemType?: ItemType;
   /** SFTP path if linked to remote server. */
   sftpPath?: string | null;
-  /** Current sync status for SFTP items. */
-  syncStatus?: SyncStatus;
+  /** Artwork file ID for thumbnail display. */
+  artworkId?: string | null;
 }
 
 export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
@@ -70,16 +63,12 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       onClick,
       style,
       className,
-      itemType,
-      sftpPath,
-      syncStatus,
+      artworkId,
       ...props
     },
     ref
   ) {
     const hasChildren = Boolean(onCollapse);
-    const isFile = itemType === "FILE";
-    const isSftpItem = Boolean(sftpPath);
 
     return (
       <li
@@ -163,15 +152,28 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
             </button>
           )}
 
-          {/* Item Icon - File or Folder */}
+          {/* Item Icon - Show artwork thumbnail or folder icon */}
           {!ghost && (
-            <span className="text-muted-foreground/70 flex-shrink-0">
-              {isFile ? (
-                <File className="size-4" strokeWidth={1.75} />
+            <span className="flex-shrink-0">
+              {artworkId ? (
+                <div className="size-5 overflow-hidden rounded">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/api/stream/${artworkId}`}
+                    alt=""
+                    className="size-full object-cover"
+                  />
+                </div>
               ) : hasChildren && !collapsed ? (
-                <FolderOpen className="size-4" strokeWidth={1.75} />
+                <FolderOpen
+                  className="text-muted-foreground/70 size-4"
+                  strokeWidth={1.75}
+                />
               ) : (
-                <Folder className="size-4" strokeWidth={1.75} />
+                <Folder
+                  className="text-muted-foreground/70 size-4"
+                  strokeWidth={1.75}
+                />
               )}
             </span>
           )}
@@ -204,25 +206,6 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
             >
               {childCount}
             </span>
-          )}
-
-          {/* SFTP Sync Status Badge - compact icon only */}
-          {!ghost && !clone && isSftpItem && syncStatus && (
-            <SyncStatusBadge
-              status={syncStatus}
-              showLabel={false}
-              className="px-1.5 py-0.5 opacity-0 transition-opacity group-hover:opacity-100"
-            />
-          )}
-
-          {/* SFTP Download Button - for files only */}
-          {!ghost && !clone && isFile && isSftpItem && (
-            <DownloadButton
-              itemId={String(id)}
-              fileName={value}
-              size="icon"
-              className="size-7 opacity-0 transition-opacity group-hover:opacity-100"
-            />
           )}
 
           {/* Remove Button */}

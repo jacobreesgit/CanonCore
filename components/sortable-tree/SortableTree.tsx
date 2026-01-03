@@ -208,16 +208,7 @@ export function SortableTree({
       <SortableContext items={sortedIds} strategy={verticalListSortingStrategy}>
         <ul data-testid="items-tree-view" className="space-y-0.5">
           {flattenedItems.map(
-            ({
-              id,
-              name,
-              children,
-              collapsed,
-              depth,
-              type,
-              sftpPath,
-              syncStatus,
-            }) => (
+            ({ id, name, children, collapsed, depth, sftpPath, artworkId }) => (
               <SortableTreeItem
                 key={id}
                 id={id}
@@ -246,9 +237,8 @@ export function SortableTree({
                     ? (childName) => onAddChild(String(id), childName)
                     : undefined
                 }
-                itemType={type}
                 sftpPath={sftpPath}
-                syncStatus={syncStatus}
+                artworkId={artworkId}
               />
             )
           )}
