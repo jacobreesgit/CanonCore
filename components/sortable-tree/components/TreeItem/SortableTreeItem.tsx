@@ -1,6 +1,6 @@
 /**
  * Sortable wrapper for TreeItem with dnd-kit integration.
- * Includes context menu for rename, delete, and add child actions.
+ * Includes context menu for settings, delete, and add child actions.
  */
 
 "use client";
@@ -16,7 +16,8 @@ import { ItemContextMenu } from "@/components/items/item-context-menu";
 
 interface SortableTreeItemProps extends Omit<TreeItemProps, "handleProps"> {
   id: UniqueIdentifier;
-  onRename?(newName: string): Promise<void>;
+  /** Opens the item settings dialog */
+  onSettings?(): void;
   onDelete?(): Promise<void>;
   onAddChild?(name: string): Promise<string | undefined>;
   /** SFTP path if linked to remote server. */
@@ -33,7 +34,7 @@ const animateLayoutChanges: AnimateLayoutChanges = ({
 export function SortableTreeItem({
   id,
   value,
-  onRename,
+  onSettings,
   onDelete,
   onAddChild,
   sftpPath,
@@ -62,7 +63,7 @@ export function SortableTreeItem({
   return (
     <ItemContextMenu
       itemName={value}
-      onRename={onRename}
+      onSettings={onSettings}
       onDelete={onDelete}
       onAddChild={onAddChild}
     >

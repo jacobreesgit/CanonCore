@@ -9,6 +9,7 @@ import {
   updatePlaybackPosition,
   getItemFiles,
   getItemFile,
+  setPrimaryFile,
 } from "@/lib/item-file-actions";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
@@ -54,6 +55,7 @@ const mockItemFile = (
     mimeType: string | null;
     size: bigint | null;
     sftpModifiedAt: Date | null;
+    isPrimary: boolean;
     playbackPosition: number | null;
     playbackDuration: number | null;
     createdAt: Date;
@@ -69,6 +71,7 @@ const mockItemFile = (
   mimeType: "video/mp4",
   size: BigInt(1000000),
   sftpModifiedAt: new Date(),
+  isPrimary: false,
   playbackPosition: null,
   playbackDuration: null,
   createdAt: new Date(),
@@ -489,5 +492,95 @@ describe("getItemFile", () => {
     if (!result.success) {
       expect(result.error).toBe("Access denied");
     }
+  });
+});
+
+describe("setPrimaryFile", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns error when not authenticated", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const result = await setPrimaryFile("file-1");
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Unauthorized");
+    }
+  });
+
+  it("returns error when file not found", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.itemFile.findUnique).mockResolvedValue(null);
+
+    const result = await setPrimaryFile("nonexistent");
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("File not found");
+    }
+  });
+
+  it("returns error when user does not own the item", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.itemFile.findUnique).mockResolvedValue({
+      ...mockItemFile({ fileType: "ARTWORK" }),
+      item: { userId: "other-user" },
+    } as ReturnType<typeof prisma.itemFile.findUnique> extends Promise<infer T>
+      ? T
+      : never);
+
+    const result = await setPrimaryFile("file-1");
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Access denied");
+    }
+  });
+
+  it("sets isPrimary using transaction", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.itemFile.findUnique).mockResolvedValue({
+      ...mockItemFile({ id: "file-1", itemId: "item-1", fileType: "ARTWORK" }),
+      item: { userId: "user-1" },
+    } as ReturnType<typeof prisma.itemFile.findUnique> extends Promise<infer T>
+      ? T
+      : never);
+    // Mock updateMany and update to return proper PrismaPromise-like objects
+    vi.mocked(prisma.itemFile.updateMany).mockResolvedValue({ count: 1 });
+    vi.mocked(prisma.itemFile.update).mockResolvedValue({
+      ...mockItemFile({ isPrimary: true }),
+    });
+
+    const result = await setPrimaryFile("file-1");
+
+    expect(result.success).toBe(true);
+    expect(prisma.$transaction).toHaveBeenCalled();
+  });
+
+  it("succeeds when file is already primary (idempotent)", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.itemFile.findUnique).mockResolvedValue({
+      ...mockItemFile({
+        id: "file-1",
+        itemId: "item-1",
+        fileType: "ARTWORK",
+        isPrimary: true,
+      }),
+      item: { userId: "user-1" },
+    } as ReturnType<typeof prisma.itemFile.findUnique> extends Promise<infer T>
+      ? T
+      : never);
+    // Mock updateMany and update to return proper values
+    vi.mocked(prisma.itemFile.updateMany).mockResolvedValue({ count: 1 });
+    vi.mocked(prisma.itemFile.update).mockResolvedValue({
+      ...mockItemFile({ isPrimary: true }),
+    });
+
+    const result = await setPrimaryFile("file-1");
+
+    expect(result.success).toBe(true);
   });
 });

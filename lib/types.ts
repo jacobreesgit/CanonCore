@@ -94,6 +94,7 @@ export interface ItemFile {
   mimeType: string | null;
   size: bigint | null;
   sftpModifiedAt: Date | null;
+  isPrimary: boolean;
   playbackPosition: number | null;
   playbackDuration: number | null;
   createdAt: Date;

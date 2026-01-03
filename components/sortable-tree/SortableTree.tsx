@@ -78,7 +78,8 @@ interface SortableTreeProps {
   items: TreeItems;
   onItemsChange?(items: TreeItems): void;
   onItemClick?(id: UniqueIdentifier): void;
-  onRenameItem?(id: string, newName: string): Promise<void>;
+  /** Opens the settings dialog for an item */
+  onOpenSettings?(id: string): void;
   onDeleteItem?(id: string): Promise<void>;
   onAddChild?(parentId: string, name: string): Promise<string | undefined>;
   collapsible?: boolean;
@@ -92,7 +93,7 @@ export function SortableTree({
   items: defaultItems,
   onItemsChange,
   onItemClick,
-  onRenameItem,
+  onOpenSettings,
   onDeleteItem,
   onAddChild,
   collapsible = true,
@@ -224,10 +225,8 @@ export function SortableTree({
                 }
                 onRemove={removable ? () => handleRemove(id) : undefined}
                 onClick={() => onItemClick?.(id)}
-                onRename={
-                  onRenameItem
-                    ? (newName) => onRenameItem(String(id), newName)
-                    : undefined
+                onSettings={
+                  onOpenSettings ? () => onOpenSettings(String(id)) : undefined
                 }
                 onDelete={
                   onDeleteItem ? () => onDeleteItem(String(id)) : undefined

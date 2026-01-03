@@ -1,6 +1,6 @@
 /**
  * Sortable wrapper for GridItem with dnd-kit integration.
- * Includes context menu for rename and delete actions.
+ * Includes context menu for settings and delete actions.
  */
 
 "use client";
@@ -15,7 +15,8 @@ import { ItemContextMenu } from "@/components/items/item-context-menu";
 
 interface SortableGridItemProps extends Omit<GridItemProps, "handleProps"> {
   id: UniqueIdentifier;
-  onRename?(newName: string): Promise<void>;
+  /** Opens the item settings dialog */
+  onSettings?(): void;
   onDelete?(): Promise<void>;
   /** SFTP path if linked to remote server. */
   sftpPath?: string | null;
@@ -26,7 +27,7 @@ interface SortableGridItemProps extends Omit<GridItemProps, "handleProps"> {
 export function SortableGridItem({
   id,
   name,
-  onRename,
+  onSettings,
   onDelete,
   sftpPath,
   artworkId,
@@ -50,7 +51,7 @@ export function SortableGridItem({
     <ItemContextMenu
       itemName={name}
       showAddChild={false}
-      onRename={onRename}
+      onSettings={onSettings}
       onDelete={onDelete}
     >
       <GridItem
