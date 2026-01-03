@@ -64,6 +64,21 @@ export class ItemsPage {
     await this.viewToggleGrid.click();
   }
 
+  /** Click the Edit button to enter edit mode */
+  async enterEditMode() {
+    await this.page.getByRole("button", { name: "Edit items" }).click();
+  }
+
+  /** Click the Done button to exit edit mode */
+  async exitEditMode() {
+    await this.page.getByRole("button", { name: "Done editing" }).click();
+  }
+
+  /** Check if currently in edit mode */
+  async isInEditMode(): Promise<boolean> {
+    return this.page.getByRole("button", { name: "Done editing" }).isVisible();
+  }
+
   async createItem(name: string) {
     // Click add button and wait for input to appear
     await this.addItemButton.click();
