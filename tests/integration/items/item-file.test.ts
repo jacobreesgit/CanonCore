@@ -274,4 +274,202 @@ describe("ItemFile integration", () => {
     // Clean up
     await prisma.itemFile.delete({ where: { id: file.id } });
   });
+
+  describe("isPrimary functionality", () => {
+    it("creates file with isPrimary defaulting to false", async () => {
+      const file = await prisma.itemFile.create({
+        data: {
+          itemId: testItemId,
+          filename: "default-primary.mp4",
+          sftpPath: "/primary/default.mp4",
+          fileType: FileType.MEDIA,
+        },
+      });
+
+      expect(file.isPrimary).toBe(false);
+
+      // Clean up
+      await prisma.itemFile.delete({ where: { id: file.id } });
+    });
+
+    it("creates file with isPrimary set to true", async () => {
+      const file = await prisma.itemFile.create({
+        data: {
+          itemId: testItemId,
+          filename: "explicit-primary.mp4",
+          sftpPath: "/primary/explicit.mp4",
+          fileType: FileType.MEDIA,
+          isPrimary: true,
+        },
+      });
+
+      expect(file.isPrimary).toBe(true);
+
+      // Clean up
+      await prisma.itemFile.delete({ where: { id: file.id } });
+    });
+
+    it("sets primary file atomically using transaction", async () => {
+      // Create two files of the same type
+      const file1 = await prisma.itemFile.create({
+        data: {
+          itemId: testItemId,
+          filename: "primary-1.jpg",
+          sftpPath: "/primary/artwork1.jpg",
+          fileType: FileType.ARTWORK,
+          isPrimary: true,
+        },
+      });
+
+      const file2 = await prisma.itemFile.create({
+        data: {
+          itemId: testItemId,
+          filename: "primary-2.jpg",
+          sftpPath: "/primary/artwork2.jpg",
+          fileType: FileType.ARTWORK,
+          isPrimary: false,
+        },
+      });
+
+      // Use transaction to switch primary
+      await prisma.$transaction([
+        prisma.itemFile.updateMany({
+          where: {
+            itemId: testItemId,
+            fileType: FileType.ARTWORK,
+            isPrimary: true,
+          },
+          data: { isPrimary: false },
+        }),
+        prisma.itemFile.update({
+          where: { id: file2.id },
+          data: { isPrimary: true },
+        }),
+      ]);
+
+      // Verify only file2 is primary
+      const file1After = await prisma.itemFile.findUnique({
+        where: { id: file1.id },
+      });
+      const file2After = await prisma.itemFile.findUnique({
+        where: { id: file2.id },
+      });
+
+      expect(file1After?.isPrimary).toBe(false);
+      expect(file2After?.isPrimary).toBe(true);
+
+      // Clean up
+      await prisma.itemFile.deleteMany({
+        where: {
+          sftpPath: {
+            in: ["/primary/artwork1.jpg", "/primary/artwork2.jpg"],
+          },
+        },
+      });
+    });
+
+    it("maintains separate primary per file type", async () => {
+      // Create primary for MEDIA and ARTWORK types
+      const mediaFile = await prisma.itemFile.create({
+        data: {
+          itemId: testItemId,
+          filename: "primary-media.mp4",
+          sftpPath: "/primary/types-media.mp4",
+          fileType: FileType.MEDIA,
+          isPrimary: true,
+        },
+      });
+
+      const artworkFile = await prisma.itemFile.create({
+        data: {
+          itemId: testItemId,
+          filename: "primary-artwork.jpg",
+          sftpPath: "/primary/types-artwork.jpg",
+          fileType: FileType.ARTWORK,
+          isPrimary: true,
+        },
+      });
+
+      // Both should be primary (different types)
+      expect(mediaFile.isPrimary).toBe(true);
+      expect(artworkFile.isPrimary).toBe(true);
+
+      // Query using composite index
+      const primaryMedia = await prisma.itemFile.findFirst({
+        where: {
+          itemId: testItemId,
+          fileType: FileType.MEDIA,
+          isPrimary: true,
+        },
+      });
+
+      const primaryArtwork = await prisma.itemFile.findFirst({
+        where: {
+          itemId: testItemId,
+          fileType: FileType.ARTWORK,
+          isPrimary: true,
+        },
+      });
+
+      expect(primaryMedia?.id).toBe(mediaFile.id);
+      expect(primaryArtwork?.id).toBe(artworkFile.id);
+
+      // Clean up
+      await prisma.itemFile.deleteMany({
+        where: {
+          sftpPath: {
+            in: ["/primary/types-media.mp4", "/primary/types-artwork.jpg"],
+          },
+        },
+      });
+    });
+
+    it("orders files by isPrimary desc then filename asc", async () => {
+      // Create files in specific order
+      await prisma.itemFile.createMany({
+        data: [
+          {
+            itemId: testItemId,
+            filename: "z-file.mp4",
+            sftpPath: "/primary/order-z.mp4",
+            fileType: FileType.MEDIA,
+            isPrimary: false,
+          },
+          {
+            itemId: testItemId,
+            filename: "a-file.mp4",
+            sftpPath: "/primary/order-a.mp4",
+            fileType: FileType.MEDIA,
+            isPrimary: false,
+          },
+          {
+            itemId: testItemId,
+            filename: "m-primary.mp4",
+            sftpPath: "/primary/order-m.mp4",
+            fileType: FileType.MEDIA,
+            isPrimary: true,
+          },
+        ],
+      });
+
+      // Query with ordering
+      const files = await prisma.itemFile.findMany({
+        where: {
+          itemId: testItemId,
+          sftpPath: { startsWith: "/primary/order-" },
+        },
+        orderBy: [{ isPrimary: "desc" }, { filename: "asc" }],
+      });
+
+      expect(files).toHaveLength(3);
+      expect(files[0].filename).toBe("m-primary.mp4"); // Primary first
+      expect(files[1].filename).toBe("a-file.mp4"); // Then alpha order
+      expect(files[2].filename).toBe("z-file.mp4");
+
+      // Clean up
+      await prisma.itemFile.deleteMany({
+        where: { sftpPath: { startsWith: "/primary/order-" } },
+      });
+    });
+  });
 });

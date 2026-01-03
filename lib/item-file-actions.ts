@@ -1,10 +1,11 @@
 /**
  * Server actions for ItemFile operations.
- * Handles playback progress and file metadata updates.
+ * Handles playback progress, file metadata, and primary file selection.
  */
 
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { ItemFile } from "@/lib/types";
@@ -88,7 +89,7 @@ export async function getItemFiles(
         itemId,
         item: { userId: session.user.id },
       },
-      orderBy: { filename: "asc" },
+      orderBy: [{ isPrimary: "desc" }, { filename: "asc" }],
     });
 
     // Group by file type
@@ -137,5 +138,60 @@ export async function getItemFile(
     return { success: true, data: fileWithoutItem };
   } catch {
     return { success: false, error: "Failed to load file" };
+  }
+}
+
+/**
+ * Sets a file as primary for its type within an item.
+ * Unsets any other primary files of the same type.
+ * Uses a transaction to ensure atomicity.
+ *
+ * @param fileId - The ID of the file to set as primary
+ * @returns Success or error result
+ */
+export async function setPrimaryFile(fileId: string): Promise<ItemFileResult> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const file = await prisma.itemFile.findUnique({
+      where: { id: fileId },
+      include: { item: true },
+    });
+
+    if (!file) {
+      return { success: false, error: "File not found" };
+    }
+
+    if (file.item.userId !== session.user.id) {
+      return { success: false, error: "Access denied" };
+    }
+
+    // Use transaction to ensure atomicity (prevents race conditions)
+    await prisma.$transaction([
+      // Unset existing primary files of the same type
+      prisma.itemFile.updateMany({
+        where: {
+          itemId: file.itemId,
+          fileType: file.fileType,
+          isPrimary: true,
+        },
+        data: { isPrimary: false },
+      }),
+      // Set this file as primary
+      prisma.itemFile.update({
+        where: { id: fileId },
+        data: { isPrimary: true },
+      }),
+    ]);
+
+    // Revalidate the page to reflect changes
+    revalidatePath("/dashboard", "layout");
+
+    return { success: true };
+  } catch {
+    return { success: false, error: "Failed to set primary file" };
   }
 }

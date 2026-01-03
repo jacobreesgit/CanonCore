@@ -33,7 +33,8 @@ interface SortableGridProps {
   items: ItemWithArtwork[];
   onItemsChange?(items: ItemWithArtwork[]): void;
   onItemClick?(id: UniqueIdentifier): void;
-  onRenameItem?(id: string, newName: string): Promise<void>;
+  /** Opens the settings dialog for an item */
+  onOpenSettings?(id: string): void;
   onDeleteItem?(id: string): Promise<void>;
 }
 
@@ -41,7 +42,7 @@ export function SortableGrid({
   items: defaultItems,
   onItemsChange,
   onItemClick,
-  onRenameItem,
+  onOpenSettings,
   onDeleteItem,
 }: SortableGridProps) {
   const [items, setItems] = useState(defaultItems);
@@ -109,10 +110,8 @@ export function SortableGrid({
               id={item.id}
               name={item.name}
               onClick={() => onItemClick?.(item.id)}
-              onRename={
-                onRenameItem
-                  ? (newName) => onRenameItem(item.id, newName)
-                  : undefined
+              onSettings={
+                onOpenSettings ? () => onOpenSettings(item.id) : undefined
               }
               onDelete={onDeleteItem ? () => onDeleteItem(item.id) : undefined}
               sftpPath={item.sftpPath}

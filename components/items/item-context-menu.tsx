@@ -1,5 +1,5 @@
 /**
- * Context menu for item actions (rename, delete, add child).
+ * Context menu for item actions (settings, delete, add child).
  * Clean dialog interactions with refined styling.
  */
 
@@ -23,14 +23,15 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FolderPlus, Pencil, Trash2 } from "lucide-react";
+import { FolderPlus, Settings, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ItemContextMenuProps {
   children: ReactNode;
   itemName: string;
   showAddChild?: boolean;
-  onRename?(newName: string): Promise<void>;
+  /** Opens the unified settings dialog */
+  onSettings?(): void;
   onDelete?(): Promise<void>;
   onAddChild?(name: string): Promise<string | undefined>;
 }
@@ -39,27 +40,14 @@ export function ItemContextMenu({
   children,
   itemName,
   showAddChild = true,
-  onRename,
+  onSettings,
   onDelete,
   onAddChild,
 }: ItemContextMenuProps) {
-  const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [addChildOpen, setAddChildOpen] = useState(false);
-  const [newName, setNewName] = useState(itemName);
   const [childName, setChildName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
-  async function handleRename() {
-    if (!newName.trim() || !onRename) return;
-    setIsLoading(true);
-    try {
-      await onRename(newName.trim());
-      setRenameOpen(false);
-    } finally {
-      setIsLoading(false);
-    }
-  }
 
   async function handleDelete() {
     if (!onDelete) return;
@@ -89,18 +77,6 @@ export function ItemContextMenu({
       <ContextMenu>
         <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
         <ContextMenuContent className="w-52">
-          {onRename && (
-            <ContextMenuItem
-              onClick={() => {
-                setNewName(itemName);
-                setRenameOpen(true);
-              }}
-              className="gap-2"
-            >
-              <Pencil className="size-4" strokeWidth={2} />
-              <span>Rename</span>
-            </ContextMenuItem>
-          )}
           {showAddChild && onAddChild && (
             <ContextMenuItem
               onClick={() => setAddChildOpen(true)}
@@ -108,6 +84,12 @@ export function ItemContextMenu({
             >
               <FolderPlus className="size-4" strokeWidth={2} />
               <span>Add Subfolder</span>
+            </ContextMenuItem>
+          )}
+          {onSettings && (
+            <ContextMenuItem onClick={onSettings} className="gap-2">
+              <Settings className="size-4" strokeWidth={2} />
+              <span>Settings</span>
             </ContextMenuItem>
           )}
           {onDelete && (
@@ -127,40 +109,6 @@ export function ItemContextMenu({
           )}
         </ContextMenuContent>
       </ContextMenu>
-
-      {/* Rename Dialog */}
-      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Rename Folder</DialogTitle>
-            <DialogDescription>
-              Enter a new name for &ldquo;{itemName}&rdquo;.
-            </DialogDescription>
-          </DialogHeader>
-          <Input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="Folder name"
-            onKeyDown={(e) => e.key === "Enter" && handleRename()}
-            autoFocus
-          />
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => setRenameOpen(false)}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleRename}
-              disabled={!newName.trim() || isLoading}
-            >
-              {isLoading ? "Renaming..." : "Rename"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Dialog */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>

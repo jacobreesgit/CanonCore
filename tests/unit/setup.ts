@@ -38,6 +38,7 @@ vi.mock("@/lib/prisma", () => ({
       findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       delete: vi.fn(),
       deleteMany: vi.fn(),
     },
@@ -49,4 +50,10 @@ vi.mock("@/lib/prisma", () => ({
 // Mock Resend email
 vi.mock("@/lib/email", () => ({
   sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
+// Mock Next.js cache
+vi.mock("next/cache", () => ({
+  revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
 }));

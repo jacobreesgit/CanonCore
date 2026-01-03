@@ -106,17 +106,22 @@ describeOrSkip("Web to SFTP Operations", () => {
       .filter({ hasText: "folder-to-rename" });
     await expect(folderItem).toBeVisible({ timeout: 10000 });
 
-    // Right-click to open context menu
+    // Right-click to open context menu and select Settings
     await folderItem.click({ button: "right" });
-    await page.getByRole("menuitem", { name: /rename/i }).click();
+    await page.getByRole("menuitem", { name: /settings/i }).click();
 
-    // Rename the folder (following items page object pattern)
-    await page.getByRole("textbox").fill("renamed-folder");
-    await page.getByRole("button", { name: /^rename$/i }).click();
-    // Wait for rename dialog to close
-    await expect(page.getByRole("dialog", { name: /rename/i })).not.toBeVisible(
-      { timeout: 10000 }
-    );
+    // Rename via settings dialog (label is "Name", button is "Save")
+    await page.getByLabel(/^name$/i).fill("renamed-folder");
+    await page.getByRole("button", { name: /^save$/i }).click();
+    // Wait for success toast (shown by handleRenameItem in items-view)
+    await expect(
+      page.locator("[data-sonner-toast]").filter({ hasText: "Renamed to" })
+    ).toBeVisible({ timeout: 10000 });
+    // Close settings dialog
+    await page.getByRole("button", { name: /close/i }).click();
+    await expect(
+      page.getByRole("dialog", { name: /settings/i })
+    ).not.toBeVisible({ timeout: 5000 });
 
     // Wait for SFTP to confirm rename (old gone, new exists)
     await waitForSftpPathDeleted(

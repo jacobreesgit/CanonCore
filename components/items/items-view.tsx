@@ -17,8 +17,9 @@ import { SortableTree } from "@/components/sortable-tree";
 import { SortableGrid } from "@/components/sortable-grid";
 import { ViewToggle, useStoredViewMode } from "./view-toggle";
 import { AddItemButton } from "./add-item-button";
+import { ItemSettingsDialog } from "./item-settings-dialog";
 import { SyncButton } from "@/components/sftp/sync-button";
-import type { ItemWithArtwork, TreeItems } from "@/lib/types";
+import type { ItemWithArtwork, TreeItems, ItemFile } from "@/lib/types";
 import { itemsToTree, treeToItemUpdates } from "@/lib/item-utils";
 import {
   createItem,
@@ -27,6 +28,7 @@ import {
   reorderItems,
   getItems,
 } from "@/lib/item-actions";
+import { getItemFiles } from "@/lib/item-file-actions";
 import {
   createSftpFolder,
   renameSftpItem,
@@ -34,6 +36,12 @@ import {
   getItemsByConnection,
 } from "@/lib/sftp-actions";
 import { cn } from "@/lib/utils";
+
+/** State for the settings dialog */
+interface SettingsDialogState {
+  item: { id: string; name: string };
+  files: { media: ItemFile[]; artwork: ItemFile[]; subtitles: ItemFile[] };
+}
 
 interface ItemsViewProps {
   items: ItemWithArtwork[];
@@ -54,6 +62,9 @@ export function ItemsView({
   const [items, setItems] = useState<ItemWithArtwork[]>(initialItems);
   // Single source of truth for view mode - hydration-safe via useSyncExternalStore
   const [viewMode] = useStoredViewMode();
+  // Settings dialog state
+  const [settingsDialog, setSettingsDialog] =
+    useState<SettingsDialogState | null>(null);
 
   // Convert flat items to tree structure for SortableTree
   const treeItems = itemsToTree(items);
@@ -71,6 +82,30 @@ export function ItemsView({
       setItems(result.data);
     }
   }, [connectionId, parentId]);
+
+  /**
+   * Opens the settings dialog for an item.
+   * Fetches the item's files before opening.
+   */
+  const handleOpenSettings = useCallback(
+    async (id: string) => {
+      const item = items.find((i) => i.id === id);
+      if (!item) return;
+
+      // Fetch files for this item
+      const filesResult = await getItemFiles(id);
+      const files =
+        filesResult.success && filesResult.data
+          ? filesResult.data
+          : { media: [], artwork: [], subtitles: [] };
+
+      setSettingsDialog({
+        item: { id: item.id, name: item.name },
+        files,
+      });
+    },
+    [items]
+  );
 
   // Handle item click - navigate to item detail
   const handleItemClick = useCallback(
@@ -377,7 +412,7 @@ export function ItemsView({
             items={treeItems}
             onItemsChange={handleTreeItemsChange}
             onItemClick={handleItemClick}
-            onRenameItem={handleRenameItem}
+            onOpenSettings={handleOpenSettings}
             onDeleteItem={handleDeleteItem}
             onAddChild={handleAddChild}
           />
@@ -386,11 +421,29 @@ export function ItemsView({
             items={currentLevelItems}
             onItemsChange={handleGridItemsChange}
             onItemClick={handleItemClick}
-            onRenameItem={handleRenameItem}
+            onOpenSettings={handleOpenSettings}
             onDeleteItem={handleDeleteItem}
           />
         )}
       </div>
+
+      {/* Item Settings Dialog */}
+      {settingsDialog && (
+        <ItemSettingsDialog
+          open={!!settingsDialog}
+          onOpenChange={(open) => !open && setSettingsDialog(null)}
+          item={settingsDialog.item}
+          files={settingsDialog.files}
+          onRename={async (newName) => {
+            await handleRenameItem(settingsDialog.item.id, newName);
+            // Update dialog state with new name
+            setSettingsDialog((prev) =>
+              prev ? { ...prev, item: { ...prev.item, name: newName } } : null
+            );
+          }}
+          onSettingsChange={refetchItems}
+        />
+      )}
     </div>
   );
 }
