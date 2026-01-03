@@ -73,10 +73,11 @@ pnpm run test:e2e:ui                        # UI mode
 ├── components/
 │   ├── items/                        # Items feature components
 │   │   ├── add-item-button.tsx       # Inline expandable add input
+│   │   ├── edit-mode-toggle.tsx      # Edit/Done button for reordering mode
 │   │   ├── item-context-menu.tsx     # Right-click actions menu
 │   │   ├── item-detail.tsx           # Item detail with files display
 │   │   ├── item-settings-dialog.tsx  # Settings dialog with primary file selection
-│   │   ├── items-view.tsx            # Main view with tree/grid toggle
+│   │   ├── items-view.tsx            # Main view with tree/grid/edit toggle
 │   │   └── view-toggle.tsx           # Tree/grid view switcher
 │   ├── media/                        # Media playback components
 │   │   ├── media-overlay.tsx         # Full-screen media viewer
@@ -87,12 +88,14 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── connection-test-button.tsx  # Test with latency display
 │   │   └── sync-button.tsx           # Trigger sync with progress
 │   ├── sortable-grid/                # Grid view with drag-drop
+│   │   ├── Grid.tsx                  # View-only grid (no dnd-kit)
 │   │   ├── GridItem.tsx              # Card display component
-│   │   ├── SortableGrid.tsx          # dnd-kit grid container
+│   │   ├── SortableGrid.tsx          # dnd-kit grid container (edit mode)
 │   │   └── SortableGridItem.tsx      # Draggable grid item wrapper
 │   ├── sortable-tree/                # Tree view with drag-drop
 │   │   ├── components/TreeItem/      # Tree node components
-│   │   ├── SortableTree.tsx          # dnd-kit tree container
+│   │   ├── Tree.tsx                  # View-only tree (no dnd-kit)
+│   │   ├── SortableTree.tsx          # dnd-kit tree container (edit mode)
 │   │   ├── keyboardCoordinates.ts    # Keyboard navigation
 │   │   └── utilities.ts              # Tree manipulation helpers
 │   ├── providers/
@@ -136,7 +139,8 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   └── vitest.config.ts
 │   └── vitest.config.ts              # Base Vitest config
 ├── hooks/
-│   └── use-mobile.ts                 # Mobile breakpoint hook
+│   ├── use-mobile.ts                 # Mobile breakpoint hook
+│   └── use-tree-collapse.ts          # Shared tree collapse/expand state
 ├── content/
 │   └── docs/                         # MDX documentation pages (23 files)
 ├── lib/
@@ -167,7 +171,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.15.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.16.0)
     └── plans/                        # Design documents
 ```
 
@@ -200,6 +204,9 @@ pnpm run test:e2e:ui                        # UI mode
 
 - **Hierarchical folders** with drag-and-drop reordering via dnd-kit
 - **Dual view modes**: Tree (hierarchical) and Grid (flat cards)
+- **Edit mode toggle**: Click "Edit" to enable drag-and-drop, "Done" to return to view mode
+- **View mode**: Full visual richness with artwork thumbnails (no dnd-kit overhead)
+- **Edit mode**: Simplified folder icons with drag handles for reordering
 - **Server actions**: `createItem`, `updateItem`, `deleteItem`, `reorderItems` in `lib/item-actions.ts`
 - **Breadcrumb navigation** for folder drill-down
 - **Context menu**: Right-click for Settings, Delete, Add Subfolder
@@ -250,7 +257,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 235 total tests (192 unit + 43 integration)
+- 261 total tests (218 unit + 43 integration)
 
 ### E2E Testing
 

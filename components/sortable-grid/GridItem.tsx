@@ -24,6 +24,8 @@ export interface GridItemProps extends Omit<
   sftpPath?: string | null;
   /** Artwork file ID for thumbnail display. */
   artworkId?: string | null;
+  /** Whether to show artwork thumbnail. Defaults to true. */
+  showArtwork?: boolean;
 }
 
 export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
@@ -38,10 +40,13 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       className,
       style,
       artworkId,
+      showArtwork = true,
+      sftpPath: _sftpPath, // eslint-disable-line @typescript-eslint/no-unused-vars
       ...props
     },
     ref
   ) {
+    const shouldShowArtwork = showArtwork && artworkId;
     return (
       <div
         ref={ref}
@@ -67,7 +72,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
         {...props}
       >
         {/* Artwork Thumbnail */}
-        {artworkId ? (
+        {shouldShowArtwork ? (
           <div className="relative h-24 w-full overflow-hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
