@@ -8,7 +8,8 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import type { ItemFile } from "@/lib/types";
+import { serializeItemFile } from "@/lib/types";
+import type { SerializedItemFile } from "@/lib/types";
 
 /** Result type for item file actions */
 type ItemFileResult<T = void> =
@@ -62,11 +63,11 @@ export async function updatePlaybackPosition(
   }
 }
 
-/** ItemFiles grouped by type */
+/** ItemFiles grouped by type (serialized for client) */
 interface GroupedItemFiles {
-  media: ItemFile[];
-  artwork: ItemFile[];
-  subtitles: ItemFile[];
+  media: SerializedItemFile[];
+  artwork: SerializedItemFile[];
+  subtitles: SerializedItemFile[];
 }
 
 /**
@@ -92,11 +93,15 @@ export async function getItemFiles(
       orderBy: [{ isPrimary: "desc" }, { filename: "asc" }],
     });
 
-    // Group by file type
+    // Group by file type and serialize for client
     const grouped: GroupedItemFiles = {
-      media: files.filter((f) => f.fileType === "MEDIA"),
-      artwork: files.filter((f) => f.fileType === "ARTWORK"),
-      subtitles: files.filter((f) => f.fileType === "SUBTITLE"),
+      media: files.filter((f) => f.fileType === "MEDIA").map(serializeItemFile),
+      artwork: files
+        .filter((f) => f.fileType === "ARTWORK")
+        .map(serializeItemFile),
+      subtitles: files
+        .filter((f) => f.fileType === "SUBTITLE")
+        .map(serializeItemFile),
     };
 
     return { success: true, data: grouped };
@@ -109,11 +114,11 @@ export async function getItemFiles(
  * Gets a single ItemFile by ID.
  *
  * @param fileId - ItemFile ID
- * @returns The ItemFile if found and owned by user
+ * @returns The ItemFile if found and owned by user (serialized for client)
  */
 export async function getItemFile(
   fileId: string
-): Promise<ItemFileResult<ItemFile>> {
+): Promise<ItemFileResult<SerializedItemFile>> {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -135,7 +140,7 @@ export async function getItemFile(
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { item, ...fileWithoutItem } = file;
-    return { success: true, data: fileWithoutItem };
+    return { success: true, data: serializeItemFile(fileWithoutItem) };
   } catch {
     return { success: false, error: "Failed to load file" };
   }

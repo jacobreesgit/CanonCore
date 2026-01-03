@@ -126,13 +126,13 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── unit/
 │   │   ├── lib/                      # Unit tests (auth, items, sftp, crypto)
 │   │   ├── e2e/                      # E2E fixture unit tests
-│   │   ├── setup.ts                  # Mocks for Prisma and email
+│   │   ├── setup.ts                  # Mocks for Prisma, email, rate-limit
 │   │   └── vitest.config.ts
 │   ├── integration/
 │   │   ├── auth/                     # Auth integration tests
 │   │   ├── items/                    # Items integration tests (CRUD, hierarchy)
 │   │   ├── sftp/                     # SFTP connection integration tests
-│   │   ├── setup.ts                  # DB cleanup, env loading
+│   │   ├── setup.ts                  # DB cleanup, env loading, rate-limit bypass
 │   │   └── vitest.config.ts
 │   └── vitest.config.ts              # Base Vitest config
 ├── hooks/
@@ -155,7 +155,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── sftp-client.ts                # SFTP client wrapper with pooling
 │   ├── sftp-utils.ts                 # Path sanitization, timeout helpers
 │   ├── source.ts                     # Fumadocs source configuration
-│   ├── types.ts                      # Shared TypeScript types (Item, SFTP, ItemFile)
+│   ├── types.ts                      # Shared TypeScript types (Item, ItemFile, SerializedItemFile)
 │   ├── utils.ts                      # cn() helper
 │   ├── validations.ts                # Zod schemas (auth, items, SFTP)
 │   └── webdav-utils.ts               # WebDAV URL construction for streaming
@@ -167,7 +167,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.14.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.15.0)
     └── plans/                        # Design documents
 ```
 
@@ -180,7 +180,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Protected routes use `await auth()` + redirect in server components
 - Password hashing with bcryptjs
 - Password reset emails via Resend (30 min expiry)
-- **Rate limiting**: Upstash Redis (sign-in: 5/min, sign-up: 3/min, forgot: 2/min)
+- **Rate limiting**: Upstash Redis for auth (sign-in: 5/min, sign-up: 3/min, forgot: 2/min), SFTP (sync: 10/min, test: 20/min, create: 10/min), and items (create: 30/min, update: 60/min)
 - **Validation**: Zod schemas for email/password (8+ chars, uppercase, lowercase, number)
 - **Security logging**: All auth events logged with IP and timestamp
 
@@ -261,6 +261,16 @@ pnpm run test:e2e:ui                        # UI mode
 - **Docker SFTP containers**: Parallel containers (up to 8 workers) via `e2e/docker-compose.yml`
 - Global setup/teardown for Docker container lifecycle
 - Runs on desktop Chrome and mobile Chrome (iPhone 14)
+
+### Security
+
+- **OWASP security headers** configured in `next.config.mjs`
+- **Content Security Policy (CSP)**: Restricts resource loading to trusted sources
+- **X-Frame-Options**: DENY prevents clickjacking via iframe embedding
+- **X-Content-Type-Options**: nosniff prevents MIME-type sniffing
+- **X-XSS-Protection**: Enables browser XSS filtering
+- **Referrer-Policy**: strict-origin-when-cross-origin controls referrer leakage
+- **Permissions-Policy**: Disables camera, microphone, and geolocation
 
 ### Styling
 
