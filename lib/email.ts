@@ -18,7 +18,10 @@ const resend = new Resend(env.RESEND_API_KEY);
  * @example
  * await sendPasswordResetEmail("user@example.com", "abc123token");
  */
-export async function sendPasswordResetEmail(email: string, token: string) {
+export async function sendPasswordResetEmail(
+  email: string,
+  token: string
+): Promise<void> {
   const resetUrl = `${env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/reset-password?token=${token}`;
 
   const { error } = await resend.emails.send({

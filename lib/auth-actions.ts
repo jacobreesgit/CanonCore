@@ -35,7 +35,7 @@ type AuthResult =
 async function logSecurityEvent(
   event: string,
   details: Record<string, unknown>
-) {
+): Promise<void> {
   const headersList = await headers();
   const ip = headersList.get("x-forwarded-for") ?? "127.0.0.1";
 

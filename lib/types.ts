@@ -82,8 +82,9 @@ export interface BreadcrumbItem {
 }
 
 /**
- * ItemFile as returned from the database.
+ * ItemFile as returned from the database (Prisma).
  * Represents a file (media, artwork, subtitle) attached to an Item.
+ * Note: size is bigint from Prisma, use serializeItemFile before sending to client.
  */
 export interface ItemFile {
   id: string;
@@ -99,6 +100,40 @@ export interface ItemFile {
   playbackDuration: number | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/**
+ * ItemFile safe for JSON serialization (client components).
+ * BigInt size is converted to number (safe up to ~9 petabytes).
+ */
+export interface SerializedItemFile {
+  id: string;
+  itemId: string;
+  filename: string;
+  sftpPath: string;
+  fileType: FileType;
+  mimeType: string | null;
+  size: number | null;
+  sftpModifiedAt: Date | null;
+  isPrimary: boolean;
+  playbackPosition: number | null;
+  playbackDuration: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Converts an ItemFile to a serializable format for client components.
+ * Converts BigInt size to number.
+ *
+ * @param file - ItemFile from Prisma
+ * @returns SerializedItemFile safe for JSON
+ */
+export function serializeItemFile(file: ItemFile): SerializedItemFile {
+  return {
+    ...file,
+    size: file.size !== null ? Number(file.size) : null,
+  };
 }
 
 /**

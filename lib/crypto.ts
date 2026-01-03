@@ -9,7 +9,12 @@ const ALGORITHM = "aes-256-gcm" as const;
 const IV_LENGTH = 16;
 const AUTH_TAG_LENGTH = 16;
 
-/** Convert Buffer to Uint8Array for Node.js 22 crypto compatibility. */
+/**
+ * Converts Buffer to Uint8Array for Node.js 22 crypto compatibility.
+ *
+ * @param buffer - Buffer to convert
+ * @returns Uint8Array view of the buffer
+ */
 function toUint8Array(buffer: Buffer): Uint8Array {
   return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
 }

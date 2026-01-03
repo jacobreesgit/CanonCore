@@ -19,7 +19,11 @@ import { ViewToggle, useStoredViewMode } from "./view-toggle";
 import { AddItemButton } from "./add-item-button";
 import { ItemSettingsDialog } from "./item-settings-dialog";
 import { SyncButton } from "@/components/sftp/sync-button";
-import type { ItemWithArtwork, TreeItems, ItemFile } from "@/lib/types";
+import type {
+  ItemWithArtwork,
+  TreeItems,
+  SerializedItemFile,
+} from "@/lib/types";
 import { itemsToTree, treeToItemUpdates } from "@/lib/item-utils";
 import {
   createItem,
@@ -40,7 +44,11 @@ import { cn } from "@/lib/utils";
 /** State for the settings dialog */
 interface SettingsDialogState {
   item: { id: string; name: string };
-  files: { media: ItemFile[]; artwork: ItemFile[]; subtitles: ItemFile[] };
+  files: {
+    media: SerializedItemFile[];
+    artwork: SerializedItemFile[];
+    subtitles: SerializedItemFile[];
+  };
 }
 
 interface ItemsViewProps {
