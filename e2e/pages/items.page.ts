@@ -165,15 +165,99 @@ export class ItemsPage {
     await item.click({ button: "right" });
   }
 
-  async renameItemViaContextMenu(oldName: string, newName: string) {
-    await this.openContextMenu(oldName);
-    await this.page.getByRole("menuitem", { name: /rename/i }).click();
-    await this.page.getByRole("textbox").fill(newName);
-    await this.page.getByRole("button", { name: /^rename$/i }).click();
-    // Wait for rename dialog to close
+  /**
+   * Opens the settings dialog for an item via context menu.
+   *
+   * @param name - Name of the item to open settings for
+   */
+  async openSettingsViaContextMenu(name: string) {
+    await this.openContextMenu(name);
+    await this.page.getByRole("menuitem", { name: /settings/i }).click();
+    // Wait for settings dialog to appear
     await expect(
-      this.page.getByRole("dialog", { name: /rename/i })
-    ).not.toBeVisible({ timeout: 10000 });
+      this.page.getByRole("dialog", { name: /settings/i })
+    ).toBeVisible({ timeout: 5000 });
+  }
+
+  /**
+   * Renames an item through the settings dialog.
+   *
+   * @param oldName - Current name of the item
+   * @param newName - New name for the item
+   */
+  async renameItemViaContextMenu(oldName: string, newName: string) {
+    await this.openSettingsViaContextMenu(oldName);
+    // Find the name input in the settings dialog (label is "Name")
+    await this.page.getByLabel(/^name$/i).fill(newName);
+    await this.page.getByRole("button", { name: /^save$/i }).click();
+    // Wait for success toast (shown by handleRenameItem in items-view)
+    await this.expectSuccessToast("Renamed to");
+    // Wait for input to reflect new value
+    await expect(this.page.getByLabel(/^name$/i)).toHaveValue(newName, {
+      timeout: 5000,
+    });
+    // Close the dialog
+    await this.closeSettingsDialog();
+  }
+
+  /**
+   * Closes the settings dialog.
+   */
+  async closeSettingsDialog() {
+    // Click the close button (X icon in the top right)
+    await this.page.getByRole("button", { name: /close/i }).click();
+    await expect(
+      this.page.getByRole("dialog", { name: /settings/i })
+    ).not.toBeVisible({ timeout: 5000 });
+  }
+
+  /**
+   * Gets the settings dialog locator.
+   */
+  getSettingsDialog() {
+    return this.page.getByRole("dialog", { name: /settings/i });
+  }
+
+  /**
+   * Expects the settings dialog to show a section for file type selection.
+   *
+   * @param fileType - The file type section to check for (media, artwork, subtitles)
+   */
+  async expectFileTypeSectionVisible(
+    fileType: "media" | "artwork" | "subtitles"
+  ) {
+    const sectionLabel =
+      fileType === "media"
+        ? /primary media/i
+        : fileType === "artwork"
+          ? /primary artwork/i
+          : /primary subtitle/i;
+    await expect(
+      this.getSettingsDialog().getByText(sectionLabel)
+    ).toBeVisible();
+  }
+
+  /**
+   * Expects a file option to be visible in the settings dialog.
+   *
+   * @param filename - The filename to look for
+   */
+  async expectFileOptionVisible(filename: string) {
+    await expect(
+      this.getSettingsDialog().getByText(filename, { exact: true })
+    ).toBeVisible();
+  }
+
+  /**
+   * Selects a file as primary in the settings dialog.
+   *
+   * @param filename - The filename to select as primary
+   */
+  async selectPrimaryFile(filename: string) {
+    // Click on the file option to select it
+    await this.getSettingsDialog().getByText(filename, { exact: true }).click();
+    // Wait for network to settle (optimistic update + server call)
+    await this.page.waitForLoadState("networkidle");
   }
 
   async deleteItemViaContextMenu(name: string) {
