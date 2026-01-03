@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/card";
 import { MediaOverlay } from "@/components/media/media-overlay";
 import { updatePlaybackPosition } from "@/lib/item-file-actions";
-import type { ItemFile } from "@/lib/types";
+import type { SerializedItemFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface ItemDetailProps {
@@ -34,24 +34,24 @@ interface ItemDetailProps {
     id: string;
     name: string;
   };
-  /** Files attached to this item, grouped by type */
+  /** Files attached to this item, grouped by type (serialized for client) */
   files: {
-    media: ItemFile[];
-    artwork: ItemFile[];
-    subtitles: ItemFile[];
+    media: SerializedItemFile[];
+    artwork: SerializedItemFile[];
+    subtitles: SerializedItemFile[];
   };
 }
 
 /**
  * Formats bytes to human-readable file size.
  */
-function formatFileSize(bytes: bigint | null): string {
+function formatFileSize(bytes: number | null): string {
   if (!bytes) return "Unknown size";
-  const num = Number(bytes);
-  if (num < 1024) return `${num} B`;
-  if (num < 1024 * 1024) return `${(num / 1024).toFixed(1)} KB`;
-  if (num < 1024 * 1024 * 1024) return `${(num / 1024 / 1024).toFixed(1)} MB`;
-  return `${(num / 1024 / 1024 / 1024).toFixed(2)} GB`;
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024)
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
 }
 
 /**
@@ -70,7 +70,7 @@ function formatDuration(seconds: number | null): string {
 /**
  * Calculates watch progress percentage.
  */
-function getWatchProgress(file: ItemFile): number | null {
+function getWatchProgress(file: SerializedItemFile): number | null {
   if (!file.playbackPosition || !file.playbackDuration) return null;
   return Math.round((file.playbackPosition / file.playbackDuration) * 100);
 }
@@ -83,7 +83,9 @@ function getWatchProgress(file: ItemFile): number | null {
  * @param files - Files grouped by type
  */
 export function ItemDetail({ item, files }: ItemDetailProps) {
-  const [playingFile, setPlayingFile] = useState<ItemFile | null>(null);
+  const [playingFile, setPlayingFile] = useState<SerializedItemFile | null>(
+    null
+  );
 
   const primaryArtwork = files.artwork[0];
   const hasContent =

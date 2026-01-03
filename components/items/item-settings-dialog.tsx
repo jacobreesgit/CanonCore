@@ -30,7 +30,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { setPrimaryFile } from "@/lib/item-file-actions";
 import { toast } from "sonner";
-import type { ItemFile } from "@/lib/types";
+import type { SerializedItemFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface ItemSettingsDialogProps {
@@ -40,8 +40,12 @@ interface ItemSettingsDialogProps {
   onOpenChange: (open: boolean) => void;
   /** The item being configured */
   item: { id: string; name: string };
-  /** Files attached to this item, grouped by type */
-  files: { media: ItemFile[]; artwork: ItemFile[]; subtitles: ItemFile[] };
+  /** Files attached to this item, grouped by type (serialized for client) */
+  files: {
+    media: SerializedItemFile[];
+    artwork: SerializedItemFile[];
+    subtitles: SerializedItemFile[];
+  };
   /** Callback to rename the item */
   onRename: (newName: string) => Promise<void>;
   /** Optional callback when settings change (for refreshing data) */
@@ -51,12 +55,12 @@ interface ItemSettingsDialogProps {
 /**
  * Formats bytes to human-readable file size.
  */
-function formatSize(bytes: bigint | null): string {
+function formatSize(bytes: number | null): string {
   if (!bytes) return "";
-  const num = Number(bytes);
-  if (num < 1024 * 1024) return `${(num / 1024).toFixed(0)} KB`;
-  if (num < 1024 * 1024 * 1024) return `${(num / 1024 / 1024).toFixed(1)} MB`;
-  return `${(num / 1024 / 1024 / 1024).toFixed(1)} GB`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  if (bytes < 1024 * 1024 * 1024)
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
 }
 
 /**
