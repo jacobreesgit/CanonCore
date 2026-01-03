@@ -1,21 +1,21 @@
 # Docker Compose for E2E SFTP testing
-# Uses atmoz/sftp for lightweight SFTP servers
+# Uses odidev/sftp for multi-arch support (ARM64 + AMD64)
 # 8 containers for parallel test execution (one per Playwright worker)
 
 # Shared SFTP configuration using YAML anchor
 x-sftp-common: &sftp-common
-  image: atmoz/sftp
+  image: odidev/sftp
   # Format: user:password:uid:gid:directories
   command: testuser:testpass:1001:1001:upload
   # Use tmpfs for ephemeral test data with correct permissions
   tmpfs:
     - /home/testuser/upload:uid=1001,gid=1001
   healthcheck:
-    test: ["CMD", "nc", "-z", "localhost", "22"]
-    interval: 1s
-    timeout: 3s
-    retries: 10
-    start_period: 5s
+    test: ["CMD-SHELL", "ss -tlnp | grep -q :22"]
+    interval: 2s
+    timeout: 5s
+    retries: 15
+    start_period: 10s
 
 services:
   sftp-0:

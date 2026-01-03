@@ -198,13 +198,86 @@ export async function removeDirectory(
   );
 }
 
-// Cleanup stale connections periodically
-setInterval(() => {
+/**
+ * Cleans up stale connections from the pool.
+ * Called periodically and can be invoked manually.
+ *
+ * @returns Number of connections cleaned up
+ */
+export function cleanupStaleConnections(): number {
   const now = Date.now();
+  let cleaned = 0;
+
   for (const [id, pooled] of connectionPool.entries()) {
     if (now - pooled.lastUsed > POOL_TIMEOUT_MS) {
       pooled.client.end().catch(() => {});
       connectionPool.delete(id);
+      cleaned++;
     }
   }
-}, 60000);
+
+  return cleaned;
+}
+
+/**
+ * Closes all connections in the pool.
+ * Useful for graceful shutdown or testing.
+ *
+ * @returns Number of connections closed
+ */
+export async function closeAllConnections(): Promise<number> {
+  const count = connectionPool.size;
+
+  for (const [id, pooled] of connectionPool.entries()) {
+    try {
+      await pooled.client.end();
+    } catch {
+      // Ignore close errors
+    }
+    connectionPool.delete(id);
+  }
+
+  return count;
+}
+
+/**
+ * Gets the current number of pooled connections.
+ * Useful for monitoring and debugging.
+ *
+ * @returns Number of active connections in the pool
+ */
+export function getPoolSize(): number {
+  return connectionPool.size;
+}
+
+// Cleanup stale connections periodically (only in long-running processes)
+// Check less frequently to reduce overhead
+const CLEANUP_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
+let cleanupInterval: NodeJS.Timeout | null = null;
+
+/**
+ * Starts the periodic cleanup interval.
+ * Safe to call multiple times - will not create duplicate intervals.
+ */
+export function startCleanupInterval(): void {
+  if (cleanupInterval) return;
+  cleanupInterval = setInterval(cleanupStaleConnections, CLEANUP_INTERVAL_MS);
+  // Allow the process to exit even if the interval is running
+  cleanupInterval.unref?.();
+}
+
+/**
+ * Stops the periodic cleanup interval.
+ * Useful for testing or graceful shutdown.
+ */
+export function stopCleanupInterval(): void {
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval);
+    cleanupInterval = null;
+  }
+}
+
+// Auto-start cleanup in non-test environments
+if (typeof process !== "undefined" && process.env.NODE_ENV !== "test") {
+  startCleanupInterval();
+}

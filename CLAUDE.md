@@ -66,23 +66,25 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   └── page.tsx                  # Public landing page
 │   ├── api/
 │   │   ├── auth/[...nextauth]/route.ts  # NextAuth API route
-│   │   └── sftp/download/[itemId]/route.ts  # SFTP file download stream
+│   │   ├── sftp/download/file/[fileId]/route.ts  # Download file by ID
+│   │   └── stream/[fileId]/route.ts     # Stream media via WebDAV
 │   ├── globals.css
 │   └── layout.tsx                    # Root layout with providers
 ├── components/
 │   ├── items/                        # Items feature components
 │   │   ├── add-item-button.tsx       # Inline expandable add input
 │   │   ├── item-context-menu.tsx     # Right-click actions menu
-│   │   ├── items-view.tsx            # Main view with tree/grid toggle (SFTP-aware)
+│   │   ├── item-detail.tsx           # Item detail with files display
+│   │   ├── items-view.tsx            # Main view with tree/grid toggle
 │   │   └── view-toggle.tsx           # Tree/grid view switcher
+│   ├── media/                        # Media playback components
+│   │   ├── media-overlay.tsx         # Full-screen media viewer
+│   │   └── media-player.tsx          # Vidstack video player wrapper
 │   ├── sftp/                         # SFTP connection components
 │   │   ├── connection-card.tsx       # Connection card with actions
 │   │   ├── connection-form.tsx       # Create/edit connection form
 │   │   ├── connection-test-button.tsx  # Test with latency display
-│   │   ├── download-button.tsx       # File download with progress
-│   │   ├── file-upload-dialog.tsx    # Upload files to SFTP
-│   │   ├── sync-button.tsx           # Trigger sync with progress
-│   │   └── sync-status-badge.tsx     # Visual sync status indicator
+│   │   └── sync-button.tsx           # Trigger sync with progress
 │   ├── sortable-grid/                # Grid view with drag-drop
 │   │   ├── GridItem.tsx              # Card display component
 │   │   ├── SortableGrid.tsx          # dnd-kit grid container
@@ -112,6 +114,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── connections/              # SFTP connection CRUD tests
 │   │   ├── docs/                     # Documentation E2E tests
 │   │   ├── items/                    # Items E2E tests (CRUD, drag, views)
+│   │   ├── media/                    # Media playback tests
 │   │   ├── sftp/                     # SFTP sync and file operation tests
 │   │   ├── theme/                    # Dark mode E2E tests
 │   │   ├── global.setup.ts           # Docker container startup
@@ -134,33 +137,36 @@ pnpm run test:e2e:ui                        # UI mode
 ├── hooks/
 │   └── use-mobile.ts                 # Mobile breakpoint hook
 ├── content/
-│   └── docs/                         # MDX documentation pages (19 files)
+│   └── docs/                         # MDX documentation pages (23 files)
 ├── lib/
 │   ├── auth.ts                       # NextAuth config, extractSidebarUser helper
 │   ├── auth-actions.ts               # Auth server actions
 │   ├── crypto.ts                     # AES-256-GCM credential encryption
-│   ├── item-actions.ts               # Item CRUD server actions
-│   ├── item-utils.ts                 # Tree/flat conversion utilities
-│   ├── types.ts                      # Shared TypeScript types (Item, SFTP types)
 │   ├── email.ts                      # Resend email helper
 │   ├── env.ts                        # Zod environment variable validation
+│   ├── file-type-utils.ts            # Media/artwork/subtitle categorization
+│   ├── item-actions.ts               # Item CRUD server actions
+│   ├── item-file-actions.ts          # ItemFile operations, playback progress
+│   ├── item-utils.ts                 # Tree/flat conversion utilities
 │   ├── prisma.ts                     # Prisma client singleton
 │   ├── rate-limit.ts                 # Upstash Redis rate limiting
 │   ├── sftp-actions.ts               # SFTP connection and sync server actions
 │   ├── sftp-client.ts                # SFTP client wrapper with pooling
 │   ├── sftp-utils.ts                 # Path sanitization, timeout helpers
 │   ├── source.ts                     # Fumadocs source configuration
+│   ├── types.ts                      # Shared TypeScript types (Item, SFTP, ItemFile)
 │   ├── utils.ts                      # cn() helper
-│   └── validations.ts                # Zod schemas (auth, items, SFTP)
+│   ├── validations.ts                # Zod schemas (auth, items, SFTP)
+│   └── webdav-utils.ts               # WebDAV URL construction for streaming
 ├── prisma/
 │   ├── migrations/                   # Database migrations
-│   └── schema.prisma                 # User, PasswordReset, Item, SftpConnection
+│   └── schema.prisma                 # User, PasswordReset, Item, ItemFile, SftpConnection
 ├── skills/                           # Claude Code skills
 │   ├── code-review-excellence/       # Code review best practices
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.12.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.13.0)
     └── plans/                        # Design documents
 ```
 
@@ -180,11 +186,12 @@ pnpm run test:e2e:ui                        # UI mode
 ### Database
 
 - **Prisma 7** with PostgreSQL (Neon)
-- Schema: User, PasswordReset, Item, SftpConnection models
+- Schema: User, PasswordReset, Item, ItemFile, SftpConnection models
 - Item has self-referential parent/child relationships for hierarchy
-- Item extended with SFTP fields: `type`, `sftpPath`, `mimeType`, `size`, `syncStatus`, `connectionId`
-- SftpConnection stores encrypted credentials with AES-256-GCM
-- Enums: `ItemType` (FOLDER, FILE), `SyncStatus`, `AuthType` (PASSWORD, PRIVATE_KEY)
+- Item has SFTP fields: `sftpPath`, `sftpModifiedAt`, `connectionId`
+- ItemFile stores files per item: `filename`, `sftpPath`, `fileType`, `mimeType`, `playbackPosition`
+- SftpConnection stores encrypted credentials with AES-256-GCM (plus optional WebDAV credentials)
+- Enums: `FileType` (MEDIA, ARTWORK, SUBTITLE), `AuthType` (PASSWORD, PRIVATE_KEY)
 - Config in `prisma.config.ts` (loads DATABASE_URL from .env.local)
 - Run migrations: `npx prisma migrate dev`
 
@@ -205,15 +212,23 @@ pnpm run test:e2e:ui                        # UI mode
 - **Encrypted credentials**: AES-256-GCM encryption with `ENCRYPTION_KEY` env var
 - **Connection testing**: Test button with latency display
 - **Bidirectional sync**: Sync files between SFTP server and web interface
-- **Sync status**: Visual badges showing SYNCED, PENDING_UPLOAD, PENDING_DOWNLOAD, CONFLICT, ERROR
-- **File operations**: Download, upload, create folders, rename, delete on SFTP server
+- **WebDAV streaming**: Optional WebDAV endpoint for direct media streaming
 - **Server actions**: `lib/sftp-actions.ts` for all SFTP operations
 - **Path security**: Directory traversal prevention via `lib/sftp-utils.ts`
+
+### Media Playback
+
+- **Video player**: Vidstack-based player with default controls
+- **Subtitle support**: SRT, VTT, SUB, ASS subtitle tracks
+- **Playback tracking**: Auto-save and resume playback position
+- **File types**: MEDIA (video/audio), ARTWORK (images), SUBTITLE
+- **Media overlay**: Full-screen viewer with tabbed file navigation
+- **WebDAV streaming**: Stream media directly without downloading
 
 ### User Documentation
 
 - **Fumadocs** for MDX-based documentation at `/docs`
-- **19 pages** covering getting started, account, files/folders, connections, views, and preferences
+- **23 pages** covering getting started, account, files/folders, connections, views, and preferences
 - **Unified layout** with context-aware sidebar navigation using app sidebar shell
 - **NavDocs component** renders Fumadocs page tree with collapsible folders
 - Content in `content/docs/` with `meta.json` for structure
@@ -237,7 +252,7 @@ pnpm run test:e2e:ui                        # UI mode
 ### E2E Testing
 
 - **Playwright** with Page Object Model pattern
-- Tests in `e2e/journeys/` organized by feature (auth, connections, docs, items, sftp, theme)
+- Tests in `e2e/journeys/` organized by feature (auth, connections, docs, items, media, sftp, theme)
 - Page objects in `e2e/pages/` for reusable interactions
 - Fixtures in `e2e/fixtures/` for auth, database, and SFTP setup
 - **Docker SFTP containers**: Parallel containers (up to 8 workers) via `e2e/docker-compose.yml`

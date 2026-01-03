@@ -1,5 +1,19 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "ignore": ["components/ui/**", "e2e/**", "source.config.ts", ".source/**"],
-  "ignoreBinaries": ["pkill", "lsof"]
+  "ignore": [
+    "components/ui/**",
+    "e2e/**",
+    "source.config.ts",
+    ".source/**",
+    "scripts/**"
+  ],
+  "ignoreBinaries": ["pkill", "lsof"],
+  "ignoreExportsUsedInFile": {
+    "interface": true,
+    "type": true
+  },
+  "rules": {
+    "exports": "off",
+    "types": "off"
+  }
 }

@@ -52,9 +52,11 @@ describeOrSkip("SFTP to Web Operations", () => {
     connectionsPage,
     sftpConfig,
   }) => {
-    // Create file directly on SFTP server
+    // Create folder with file on SFTP server (files are ItemFiles attached to folders)
+    const folderPath = `${sftpConfig.basePath}/RemoteFolder`;
+    await createSftpTestDir(folderPath, sftpConfig);
     await createSftpTestFile(
-      `${sftpConfig.basePath}/remote-file.txt`,
+      `${folderPath}/remote-file.mp4`,
       "Hello from SFTP",
       sftpConfig
     );
@@ -73,11 +75,23 @@ describeOrSkip("SFTP to Web Operations", () => {
       timeout: 30000,
     });
 
-    // Now check for file (scope to tree view to avoid matching toasts)
+    // Folder appears in tree
     const treeView = page.getByTestId("items-tree-view");
     await expect(
-      treeView.getByRole("listitem").filter({ hasText: "remote-file.txt" })
+      treeView.getByRole("listitem").filter({ hasText: "RemoteFolder" })
     ).toBeVisible({ timeout: 10000 });
+
+    // Click folder to see attached files
+    await treeView
+      .getByRole("listitem")
+      .filter({ hasText: "RemoteFolder" })
+      .click();
+
+    // File appears in item detail as media file
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "RemoteFolder"
+    );
+    await expect(page.getByText("remote-file.mp4")).toBeVisible();
   });
 
   test("folder created on SFTP appears in web after sync", async ({
@@ -114,9 +128,11 @@ describeOrSkip("SFTP to Web Operations", () => {
     connectionsPage,
     sftpConfig,
   }) => {
-    // Create file on SFTP
+    // Create folder with file on SFTP (files are ItemFiles attached to folders)
+    const folderPath = `${sftpConfig.basePath}/DeleteFolder`;
+    await createSftpTestDir(folderPath, sftpConfig);
     await createSftpTestFile(
-      `${sftpConfig.basePath}/file-to-delete.txt`,
+      `${folderPath}/file-to-delete.mp4`,
       "This will be deleted",
       sftpConfig
     );
@@ -138,19 +154,21 @@ describeOrSkip("SFTP to Web Operations", () => {
       timeout: 30000,
     });
 
-    // Now check for file
-    const fileItem = treeView
+    // Folder appears in tree
+    const folderItem = treeView
       .getByRole("listitem")
-      .filter({ hasText: "file-to-delete.txt" });
-    await expect(fileItem).toBeVisible({ timeout: 10000 });
+      .filter({ hasText: "DeleteFolder" });
+    await expect(folderItem).toBeVisible({ timeout: 10000 });
+
+    // Click folder to see attached file
+    await folderItem.click();
+    await expect(page.getByText("file-to-delete.mp4")).toBeVisible();
 
     // Delete file directly on SFTP
-    await deleteSftpTestPath(
-      `${sftpConfig.basePath}/file-to-delete.txt`,
-      sftpConfig
-    );
+    await deleteSftpTestPath(`${folderPath}/file-to-delete.mp4`, sftpConfig);
 
-    // Click sync button again (wait for it to reset to "Sync" state first)
+    // Go back to connection and sync again
+    await page.goBack();
     syncButton = page.getByRole("button", { name: /^sync$/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
@@ -160,8 +178,11 @@ describeOrSkip("SFTP to Web Operations", () => {
       timeout: 30000,
     });
 
-    // Verify file is removed from web UI
-    await expect(fileItem).not.toBeVisible({ timeout: 10000 });
+    // Click folder again - file should be gone
+    await folderItem.click();
+    await expect(page.getByText("file-to-delete.mp4")).not.toBeVisible({
+      timeout: 5000,
+    });
   });
 
   test("nested structure synced correctly", async ({
@@ -169,14 +190,14 @@ describeOrSkip("SFTP to Web Operations", () => {
     connectionsPage,
     sftpConfig,
   }) => {
-    // Create nested structure on SFTP
+    // Create nested structure on SFTP (files are ItemFiles in folders)
     await createSftpTestDir(`${sftpConfig.basePath}/parent-folder`, sftpConfig);
     await createSftpTestDir(
       `${sftpConfig.basePath}/parent-folder/child-folder`,
       sftpConfig
     );
     await createSftpTestFile(
-      `${sftpConfig.basePath}/parent-folder/child-folder/nested-file.txt`,
+      `${sftpConfig.basePath}/parent-folder/child-folder/nested-file.mp4`,
       "Nested content",
       sftpConfig
     );
@@ -217,16 +238,14 @@ describeOrSkip("SFTP to Web Operations", () => {
       .filter({ hasText: "child-folder" });
     await expect(childFolder).toBeVisible({ timeout: 10000 });
 
-    // Navigate to child folder
+    // Navigate to child folder - should show item detail with file
     await childFolder.click();
     await page.waitForLoadState("networkidle");
 
-    // Re-select tree view after navigation
-    treeView = page.getByTestId("items-tree-view");
-
-    // Verify nested file appears
-    await expect(
-      treeView.getByRole("listitem").filter({ hasText: "nested-file.txt" })
-    ).toBeVisible({ timeout: 10000 });
+    // Verify nested file appears in item detail (as ItemFile)
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "child-folder"
+    );
+    await expect(page.getByText("nested-file.mp4")).toBeVisible();
   });
 });
