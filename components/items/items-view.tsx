@@ -18,8 +18,7 @@ import { SortableGrid } from "@/components/sortable-grid";
 import { ViewToggle, useStoredViewMode } from "./view-toggle";
 import { AddItemButton } from "./add-item-button";
 import { SyncButton } from "@/components/sftp/sync-button";
-import { FileUploadDialog } from "@/components/sftp/file-upload-dialog";
-import type { Item, TreeItems } from "@/lib/types";
+import type { ItemWithArtwork, TreeItems } from "@/lib/types";
 import { itemsToTree, treeToItemUpdates } from "@/lib/item-utils";
 import {
   createItem,
@@ -37,7 +36,7 @@ import {
 import { cn } from "@/lib/utils";
 
 interface ItemsViewProps {
-  items: Item[];
+  items: ItemWithArtwork[];
   parentId?: string | null;
   breadcrumbs?: Array<{ id: string; name: string }>;
   /** SFTP connection ID if this view is for an SFTP-connected folder. */
@@ -52,7 +51,7 @@ export function ItemsView({
 }: ItemsViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [items, setItems] = useState<Item[]>(initialItems);
+  const [items, setItems] = useState<ItemWithArtwork[]>(initialItems);
   // Single source of truth for view mode - hydration-safe via useSyncExternalStore
   const [viewMode] = useStoredViewMode();
 
@@ -116,7 +115,11 @@ export function ItemsView({
           const result = await createSftpFolder(connectionId, parentId, name);
           if (result.success && result.data) {
             // Update local state immediately with the returned item
-            setItems((prev) => [...prev, result.data as Item]);
+            const newItem: ItemWithArtwork = {
+              ...result.data,
+              artworkId: null,
+            };
+            setItems((prev) => [...prev, newItem]);
             startTransition(() => refetchItems());
             toast.success(`Created "${name}"`);
             return undefined;
@@ -129,7 +132,10 @@ export function ItemsView({
         } else {
           const result = await createItem(parentId, name);
           if (result.success && result.data) {
-            const newItem = result.data;
+            const newItem: ItemWithArtwork = {
+              ...result.data,
+              artworkId: null,
+            };
             setItems((prev) => [...prev, newItem]);
             startTransition(() => refetchItems());
             toast.success(`Created "${name}"`);
@@ -200,7 +206,11 @@ export function ItemsView({
           const result = await createSftpFolder(connId, parentItemId, name);
           if (result.success && result.data) {
             // Update local state immediately with the returned item
-            setItems((prev) => [...prev, result.data as Item]);
+            const newItem: ItemWithArtwork = {
+              ...result.data,
+              artworkId: null,
+            };
+            setItems((prev) => [...prev, newItem]);
             startTransition(() => refetchItems());
             toast.success(`Created "${name}"`);
             return undefined;
@@ -213,7 +223,10 @@ export function ItemsView({
         } else {
           const result = await createItem(parentItemId, name);
           if (result.success && result.data) {
-            const newItem = result.data;
+            const newItem: ItemWithArtwork = {
+              ...result.data,
+              artworkId: null,
+            };
             setItems((prev) => [...prev, newItem]);
             startTransition(() => refetchItems());
             toast.success(`Created "${name}"`);
@@ -256,19 +269,22 @@ export function ItemsView({
   }, []);
 
   // Handle grid reordering (same level only)
-  const handleGridItemsChange = useCallback(async (newItems: Item[]) => {
-    const updates = newItems.map((item, index) => ({
-      id: item.id,
-      parentId: item.parentId,
-      depth: item.depth,
-      order: index,
-    }));
+  const handleGridItemsChange = useCallback(
+    async (newItems: ItemWithArtwork[]) => {
+      const updates = newItems.map((item, index) => ({
+        id: item.id,
+        parentId: item.parentId,
+        depth: item.depth,
+        order: index,
+      }));
 
-    const result = await reorderItems(updates);
-    if (result.success) {
-      setItems(newItems);
-    }
-  }, []);
+      const result = await reorderItems(updates);
+      if (result.success) {
+        setItems(newItems);
+      }
+    },
+    []
+  );
 
   // Filter items for current level (grid view shows only current level)
   const currentLevelItems = items.filter((item) => item.parentId === parentId);
@@ -337,24 +353,15 @@ export function ItemsView({
 
         {/* Controls - hide add button when showing empty state */}
         <div className="flex items-center gap-3">
-          {/* SFTP Sync and Upload buttons - only show when connected */}
+          {/* SFTP Sync button - only show when connected */}
           {connectionId && (
-            <>
-              <SyncButton
-                connectionId={connectionId}
-                size="sm"
-                onSyncComplete={async () => {
-                  await refetchItems();
-                }}
-              />
-              <FileUploadDialog
-                connectionId={connectionId}
-                parentItemId={parentId}
-                onUploadComplete={async () => {
-                  await refetchItems();
-                }}
-              />
-            </>
+            <SyncButton
+              connectionId={connectionId}
+              size="sm"
+              onSyncComplete={async () => {
+                await refetchItems();
+              }}
+            />
           )}
           {items.length > 0 && <AddItemButton onAdd={handleCreateItem} />}
           <ViewToggle />

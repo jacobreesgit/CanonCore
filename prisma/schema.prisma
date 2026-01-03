@@ -31,22 +31,15 @@ model PasswordReset {
   @@index([expires])
 }
 
-enum ItemType {
-  FOLDER
-  FILE
-}
-
-enum SyncStatus {
-  SYNCED
-  PENDING_UPLOAD
-  PENDING_DOWNLOAD
-  CONFLICT
-  ERROR
-}
-
 enum AuthType {
   PASSWORD
   PRIVATE_KEY
+}
+
+enum FileType {
+  MEDIA
+  ARTWORK
+  SUBTITLE
 }
 
 model SftpConnection {
@@ -64,6 +57,11 @@ model SftpConnection {
   authType            AuthType  @default(PASSWORD)
   encryptedCredential String
   basePath            String    @default("/")
+
+  // WebDAV endpoint (streaming) - separate credentials
+  webdavUrl               String?   // e.g., https://webdav.server.com/
+  webdavUsername          String?   // Often same as SFTP, but can differ
+  encryptedWebdavPassword String?   // Encrypted with same AES-256-GCM
 
   // Status
   isActive            Boolean   @default(true)
@@ -92,19 +90,14 @@ model Item {
   parentId  String?
   parent    Item?    @relation("ItemChildren", fields: [parentId], references: [id], onDelete: Cascade)
   children  Item[]   @relation("ItemChildren")
+  files     ItemFile[]
 
   // Ownership
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // SFTP-specific fields
-  type           ItemType   @default(FOLDER)
   sftpPath       String?
-  mimeType       String?
-  size           BigInt?
-  checksum       String?
-  syncStatus     SyncStatus @default(SYNCED)
-  lastSyncedAt   DateTime?
   sftpModifiedAt DateTime?
 
   // Connection reference
@@ -119,5 +112,32 @@ model Item {
   @@index([userId])
   @@index([userId, parentId, order])
   @@index([connectionId, sftpPath])
-  @@index([syncStatus])
+}
+
+model ItemFile {
+  id        String   @id @default(cuid())
+
+  // Belongs to item
+  itemId    String
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  // File info
+  filename  String
+  sftpPath  String   // Full path on server
+  fileType  FileType
+  mimeType  String?
+  size      BigInt?
+  sftpModifiedAt DateTime?
+
+  // Playback (for MEDIA files)
+  playbackPosition Float?    // Seconds
+  playbackDuration Float?    // Seconds
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([itemId, sftpPath])
+  @@index([itemId])
+  @@index([fileType])
 }

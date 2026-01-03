@@ -49,24 +49,17 @@ export function SyncButton({
 
       if (result.success && result.data) {
         setStatus("success");
-        const { created, updated, deleted, conflicts } = result.data;
+        const { created, updated, deleted } = result.data;
 
         // Build descriptive message
         const parts: string[] = [];
         if (created > 0) parts.push(`${created} added`);
         if (updated > 0) parts.push(`${updated} updated`);
         if (deleted > 0) parts.push(`${deleted} removed`);
-        if (conflicts > 0) parts.push(`${conflicts} conflicts`);
 
         const message = parts.length > 0 ? parts.join(", ") : "Already in sync";
 
-        if (conflicts > 0) {
-          toast.warning(`Sync complete: ${message}`, {
-            description: "Review conflicts in your files",
-          });
-        } else {
-          toast.success(`Sync complete: ${message}`);
-        }
+        toast.success(`Sync complete: ${message}`);
 
         await onSyncComplete?.(result.data);
 

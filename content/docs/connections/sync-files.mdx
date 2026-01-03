@@ -5,44 +5,44 @@ description: Keep your local and remote files in sync
 
 ## How syncing works
 
-When you sync, CanonCore compares files between your server and the web interface. New files appear, deleted files disappear, and everything stays up to date.
+When you sync, CanonCore scans your SFTP server and imports the folder structure and file metadata. New folders appear, and media files are catalogued for playback.
 
 ## Start a sync
 
-1. Click on your connection to open it
+1. Open your connection
 2. Click the **Sync** button in the toolbar
 3. Wait for the sync to complete
 
-The button changes from "Sync" to "Syncing..." to "Synced" as it progresses.
+The button shows your progress: **Sync** → **Syncing...** → **Synced**
+
+After syncing, you'll see a summary like "3 added, 1 updated" showing what changed.
 
 ## What gets synced
 
-- **New folders and files** on your server appear in the web interface
-- **Deleted items** on your server are removed from the web view
-- **Renamed items** update to match the server
+- **Folders** on your server appear as navigable items
+- **Media files** (video, audio) are catalogued for streaming
+- **Artwork** (images) are detected as thumbnails
+- **Subtitles** (SRT, VTT) are linked to their media files
 
-## Sync status badges
+## Synced content stats
 
-Look for colored badges on your files:
+After syncing, your connection page shows a stats panel with counts for:
 
-| Badge                | Meaning                      |
-| -------------------- | ---------------------------- |
-| Green "Synced"       | File matches the server      |
-| Blue "Uploading"     | File is being sent to server |
-| Purple "Downloading" | File is coming from server   |
-| Yellow "Conflict"    | Different versions exist     |
-| Red "Error"          | Something went wrong         |
+- Folders
+- Media files
+- Artwork
+- Subtitles
 
-Hover over any item to see its sync status.
+This gives you a quick overview of your library size.
 
-## Automatic vs manual sync
+## Re-syncing
 
-Currently, syncing is manual - you click the button when you want to update. This gives you control over when transfers happen, especially useful on slower connections.
+Click **Sync** again anytime to check for changes on your server. CanonCore compares timestamps and updates only what's changed.
 
 ## Troubleshooting
 
-**Sync seems stuck?** Check your internet connection and try again. Large folders take longer.
+**Sync seems stuck?** Large folders with many files take longer. Check your internet connection and try again.
 
-**Files missing?** Make sure you're looking in the right folder. Use the breadcrumb navigation to go up levels.
+**Files missing after sync?** Make sure the files are in a supported format. CanonCore recognizes common video (MP4, MKV), audio (MP3, FLAC), and image (JPG, PNG) formats.
 
-**Error badges appearing?** Click the sync button again. Temporary network issues usually resolve on retry.
+**Changes not showing?** Navigate back to your connection root and sync again. Some nested changes may need a fresh sync.

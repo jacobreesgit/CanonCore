@@ -102,6 +102,9 @@ const mockConnection = (
     authType: "PASSWORD" | "PRIVATE_KEY";
     encryptedCredential: string;
     basePath: string;
+    webdavUrl: string | null;
+    webdavUsername: string | null;
+    encryptedWebdavPassword: string | null;
     isActive: boolean;
     lastConnectedAt: Date | null;
     lastSyncAt: Date | null;
@@ -119,6 +122,9 @@ const mockConnection = (
   authType: "PASSWORD" as const,
   encryptedCredential: "encrypted-credential",
   basePath: "/uploads",
+  webdavUrl: null,
+  webdavUsername: null,
+  encryptedWebdavPassword: null,
   isActive: true,
   lastConnectedAt: null,
   lastSyncAt: null,

@@ -4,25 +4,12 @@
 
 import type { MutableRefObject } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
-
-/**
- * Item type enum matching Prisma schema.
- */
-export type ItemType = "FOLDER" | "FILE";
-
-/**
- * Sync status enum matching Prisma schema.
- */
-export type SyncStatus =
-  | "SYNCED"
-  | "PENDING_UPLOAD"
-  | "PENDING_DOWNLOAD"
-  | "CONFLICT"
-  | "ERROR";
+import type { FileType } from "@prisma/client";
 
 /**
  * Database Item type (from Prisma).
- * Represents a folder or file in the filesystem hierarchy.
+ * Represents a container in the item hierarchy.
+ * Items can have children (sub-items) and attached files (ItemFile).
  */
 export interface Item {
   id: string;
@@ -34,12 +21,7 @@ export interface Item {
   createdAt: Date;
   updatedAt: Date;
   // SFTP-specific fields
-  type: ItemType;
   sftpPath: string | null;
-  mimeType: string | null;
-  size: bigint | null;
-  syncStatus: SyncStatus;
-  lastSyncedAt: Date | null;
   sftpModifiedAt: Date | null;
   connectionId: string | null;
 }
@@ -57,10 +39,10 @@ export interface TreeItem {
   children: TreeItem[];
   collapsed?: boolean;
   // SFTP-specific fields for display
-  type?: ItemType;
   sftpPath?: string | null;
-  syncStatus?: SyncStatus;
   connectionId?: string | null;
+  // Artwork thumbnail
+  artworkId?: string | null;
 }
 
 export type TreeItems = TreeItem[];
@@ -97,4 +79,39 @@ export type ItemResult<T = void> =
 export interface BreadcrumbItem {
   id: string;
   name: string;
+}
+
+/**
+ * ItemFile as returned from the database.
+ * Represents a file (media, artwork, subtitle) attached to an Item.
+ */
+export interface ItemFile {
+  id: string;
+  itemId: string;
+  filename: string;
+  sftpPath: string;
+  fileType: FileType;
+  mimeType: string | null;
+  size: bigint | null;
+  sftpModifiedAt: Date | null;
+  playbackPosition: number | null;
+  playbackDuration: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Item with attached files for detail view.
+ */
+export interface ItemWithFiles extends Item {
+  files: ItemFile[];
+}
+
+/**
+ * Item with optional artwork thumbnail for list views.
+ * Used by grid and tree views to display item thumbnails.
+ */
+export interface ItemWithArtwork extends Item {
+  /** First artwork file ID for thumbnail display */
+  artworkId: string | null;
 }

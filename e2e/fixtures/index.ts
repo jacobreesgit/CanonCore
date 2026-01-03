@@ -13,6 +13,7 @@ import { DashboardPage } from "../pages/dashboard.page";
 import { ItemsPage } from "../pages/items.page";
 import { DocsPage } from "../pages/docs.page";
 import { ConnectionsPage } from "../pages/connections.page";
+import { MediaPage } from "../pages/media.page";
 import { getSftpConfigForWorker, SftpTestConfig } from "./sftp.fixture";
 
 type TestFixtures = {
@@ -25,6 +26,7 @@ type TestFixtures = {
   itemsPage: ItemsPage;
   docsPage: DocsPage;
   connectionsPage: ConnectionsPage;
+  mediaPage: MediaPage;
   sftpConfig: SftpTestConfig;
 };
 
@@ -63,6 +65,10 @@ export const test = base.extend<TestFixtures>({
 
   connectionsPage: async ({ page }, use) => {
     await use(new ConnectionsPage(page));
+  },
+
+  mediaPage: async ({ page }, use) => {
+    await use(new MediaPage(page));
   },
 
   sftpConfig: async ({}, use, testInfo) => {

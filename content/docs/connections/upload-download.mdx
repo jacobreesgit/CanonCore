@@ -1,59 +1,57 @@
 ---
-title: Upload and Download Files
-description: Transfer files to and from your SFTP server
+title: Download and Manage Files
+description: Download files and organize your remote folders
 ---
 
 ## Download files
 
 To download a file from your SFTP server:
 
-1. Open your connection
-2. Navigate to the file you want
-3. Hover over the file to reveal the download button
-4. Click the download icon
+1. Open your connection and navigate to a folder
+2. Click on the folder to open its detail view
+3. Find the file you want in the Media, Artwork, or Subtitles section
+4. Click the download icon next to the file
 
 The file downloads to your browser's default download location.
-
-## Upload files
-
-To upload files to your SFTP server:
-
-1. Open your connection
-2. Navigate to where you want the file
-3. Click the **Upload** button in the toolbar
-4. Select one or more files from your computer
-5. Click **Upload**
-
-Uploaded files appear after the transfer completes. For large files, you'll see a progress indicator.
 
 ## Create folders on the server
 
 You can create new folders directly on your SFTP server:
 
-1. Click the **Add** button
-2. Enter a folder name
-3. Press Enter or click Create
+1. Navigate to where you want the folder
+2. Click the **Add** button
+3. Enter a folder name
+4. Press Enter or click away to confirm
 
 The folder appears both in CanonCore and on your server.
 
-## Rename and delete on the server
+## Rename items
 
-Changes you make in CanonCore sync back to your server:
+To rename a folder:
 
-- **Rename** - Right-click an item, choose Rename, enter the new name
-- **Delete** - Right-click an item, choose Delete, confirm
+1. Right-click the folder to open the context menu
+2. Select **Rename**
+3. Enter the new name
+4. Press Enter to confirm
 
-These changes happen on your actual SFTP server, so be careful with delete operations.
+The rename happens on your SFTP server, so the change persists.
 
-## File size limits
+## Delete items
 
-Most SFTP servers handle files of any size, but very large files (over 1GB) may take a while to transfer. The upload progress indicator shows how far along you are.
+To delete a folder:
 
-## Supported file types
+1. Right-click the folder
+2. Select **Delete**
+3. Confirm the deletion
 
-CanonCore works with any file type your SFTP server accepts. Common uses include:
+Deleting removes the item from both CanonCore and your SFTP server. Be careful - this can't be undone.
 
-- Documents and PDFs
-- Images and media files
-- Configuration files
-- Backups and archives
+## Organizing with drag and drop
+
+You can reorganize folders by dragging them:
+
+1. Click and hold a folder
+2. Drag it to a new position
+3. Drop to reorder
+
+This changes the display order in CanonCore. The actual folder structure on your server stays the same.

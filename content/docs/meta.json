@@ -20,6 +20,7 @@
     "connections/setup-connection",
     "connections/sync-files",
     "connections/upload-download",
+    "connections/media-playback",
     "---Views---",
     "views/tree-view",
     "views/grid-view",

@@ -53,6 +53,7 @@ const mockItem = (overrides: {
   order: number;
   depth: number;
   userId: string;
+  artworkId?: string | null;
 }) => ({
   ...overrides,
   type: "FOLDER" as const,
@@ -66,6 +67,8 @@ const mockItem = (overrides: {
   connectionId: null,
   createdAt: new Date(),
   updatedAt: new Date(),
+  // Include files array for artwork thumbnail support
+  files: overrides.artworkId ? [{ id: overrides.artworkId }] : [],
 });
 
 describe("getItems", () => {
@@ -111,6 +114,14 @@ describe("getItems", () => {
     expect(prisma.item.findMany).toHaveBeenCalledWith({
       where: { userId: "user-1", parentId: null },
       orderBy: { order: "asc" },
+      include: {
+        files: {
+          where: { fileType: "ARTWORK" },
+          take: 1,
+          orderBy: { filename: "asc" },
+          select: { id: true },
+        },
+      },
     });
   });
 
@@ -133,6 +144,14 @@ describe("getItems", () => {
     expect(prisma.item.findMany).toHaveBeenCalledWith({
       where: { userId: "user-1", parentId: "parent-1" },
       orderBy: { order: "asc" },
+      include: {
+        files: {
+          where: { fileType: "ARTWORK" },
+          take: 1,
+          orderBy: { filename: "asc" },
+          select: { id: true },
+        },
+      },
     });
   });
 });
