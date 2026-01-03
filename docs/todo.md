@@ -1,6 +1,5 @@
-- look at entire codebase
-
-- im worried that with the stuff on the dnd things, i.e. grid item and tree item, it'll cause bad pefroance. could we rthin about a non dnd version of the grid & tree with the artwork and other stuff on, then an "edit" mode then does not have it . ore maybe we should just do virtusliasarion? what do you think
+- design doc 1 - seed
+- design doc 2 - performance 'edit mode'
 
 - spotlight search
 

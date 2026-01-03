@@ -8,6 +8,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { itemNameSchema } from "@/lib/validations";
+import { checkRateLimit } from "@/lib/rate-limit";
 import type {
   Item,
   ItemResult,
@@ -130,6 +131,12 @@ export async function createItem(
   parentId: string | null,
   name: string
 ): Promise<ItemResult<Item>> {
+  // Rate limit check
+  const rateLimitResult = await checkRateLimit("itemCreate");
+  if (rateLimitResult) {
+    return { error: rateLimitResult.error };
+  }
+
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "Unauthorized" };
@@ -197,6 +204,12 @@ export async function updateItem(
   id: string,
   data: { name?: string }
 ): Promise<ItemResult> {
+  // Rate limit check
+  const rateLimitResult = await checkRateLimit("itemUpdate");
+  if (rateLimitResult) {
+    return { error: rateLimitResult.error };
+  }
+
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "Unauthorized" };

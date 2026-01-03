@@ -1,6 +1,6 @@
 /**
  * Rate limiting utilities using Upstash Redis.
- * Protects auth endpoints from brute force attacks.
+ * Protects auth endpoints from brute force attacks and prevents API abuse.
  */
 
 import { Ratelimit } from "@upstash/ratelimit";
@@ -14,10 +14,11 @@ const redis = new Redis({
 });
 
 /**
- * Rate limiters for different auth actions.
- * Conservative limits to protect against brute force.
+ * Rate limiters for different actions.
+ * Auth actions have conservative limits, authenticated operations are more generous.
  */
 export const rateLimiters = {
+  // Auth rate limiters (strict - prevent brute force)
   signIn: new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(5, "1 m"),
@@ -32,6 +33,35 @@ export const rateLimiters = {
     redis,
     limiter: Ratelimit.slidingWindow(2, "1 m"),
     prefix: "ratelimit:forgot",
+  }),
+
+  // SFTP rate limiters (moderate - prevent abuse of expensive operations)
+  sftpSync: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(10, "1 m"),
+    prefix: "ratelimit:sftp:sync",
+  }),
+  sftpTest: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(20, "1 m"),
+    prefix: "ratelimit:sftp:test",
+  }),
+  sftpCreate: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(10, "1 m"),
+    prefix: "ratelimit:sftp:create",
+  }),
+
+  // Item rate limiters (generous - normal user operations)
+  itemCreate: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(30, "1 m"),
+    prefix: "ratelimit:item:create",
+  }),
+  itemUpdate: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(60, "1 m"),
+    prefix: "ratelimit:item:update",
   }),
 };
 

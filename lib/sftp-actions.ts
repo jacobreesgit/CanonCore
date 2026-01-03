@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { encryptCredential, decryptCredential } from "@/lib/crypto";
 import { sftpConnectionSchema } from "@/lib/validations";
 import { sanitizePath, validateFileName, withTimeout } from "@/lib/sftp-utils";
+import { checkRateLimit } from "@/lib/rate-limit";
 import {
   closeConnection,
   createDirectory,
@@ -214,6 +215,12 @@ export async function createSftpConnection(data: {
   webdavPassword?: string;
 }): Promise<ActionResult<{ id: string }>> {
   try {
+    // Rate limit check
+    const rateLimitResult = await checkRateLimit("sftpCreate");
+    if (rateLimitResult) {
+      return { success: false, error: rateLimitResult.error };
+    }
+
     const userId = await requireAuth();
 
     // Validate input
@@ -398,6 +405,12 @@ export async function testSftpConnection(
   connectionId: string
 ): Promise<ActionResult<{ latencyMs: number }>> {
   try {
+    // Rate limit check
+    const rateLimitResult = await checkRateLimit("sftpTest");
+    if (rateLimitResult) {
+      return { success: false, error: rateLimitResult.error };
+    }
+
     const userId = await requireAuth();
 
     // Get connection with credentials
@@ -669,6 +682,12 @@ export async function syncFromSftp(
   connectionId: string
 ): Promise<ActionResult<SyncResult>> {
   try {
+    // Rate limit check
+    const rateLimitResult = await checkRateLimit("sftpSync");
+    if (rateLimitResult) {
+      return { success: false, error: rateLimitResult.error };
+    }
+
     const userId = await requireAuth();
 
     // Get connection with credentials

@@ -19,14 +19,14 @@ import {
 } from "@vidstack/react/player/layouts/default";
 import "@vidstack/react/player/styles/default/theme.css";
 import "@vidstack/react/player/styles/default/layouts/video.css";
-import type { ItemFile } from "@/lib/types";
+import type { SerializedItemFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface VideoPlayerProps {
   /** The media file to play */
-  file: ItemFile;
+  file: SerializedItemFile;
   /** Optional subtitle files to load */
-  subtitles?: ItemFile[];
+  subtitles?: SerializedItemFile[];
   /** Callback fired when time updates (throttled) */
   onTimeUpdate?: (currentTime: number, duration: number) => void;
   /** Callback fired when video ends */

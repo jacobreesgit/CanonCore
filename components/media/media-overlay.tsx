@@ -10,14 +10,14 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VideoPlayer } from "./media-player";
-import type { ItemFile } from "@/lib/types";
+import type { SerializedItemFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface MediaOverlayProps {
   /** The media file to play */
-  file: ItemFile;
+  file: SerializedItemFile;
   /** Optional subtitle files */
-  subtitles?: ItemFile[];
+  subtitles?: SerializedItemFile[];
   /** Callback to close the overlay */
   onClose: () => void;
   /** Callback to update playback position */

@@ -57,3 +57,9 @@ vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
   revalidateTag: vi.fn(),
 }));
+
+// Mock rate limiting (returns null = allowed)
+vi.mock("@/lib/rate-limit", () => ({
+  checkRateLimit: vi.fn().mockResolvedValue(null),
+  rateLimiters: {},
+}));
