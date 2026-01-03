@@ -75,6 +75,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── add-item-button.tsx       # Inline expandable add input
 │   │   ├── item-context-menu.tsx     # Right-click actions menu
 │   │   ├── item-detail.tsx           # Item detail with files display
+│   │   ├── item-settings-dialog.tsx  # Settings dialog with primary file selection
 │   │   ├── items-view.tsx            # Main view with tree/grid toggle
 │   │   └── view-toggle.tsx           # Tree/grid view switcher
 │   ├── media/                        # Media playback components
@@ -166,7 +167,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.13.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.14.0)
     └── plans/                        # Design documents
 ```
 
@@ -201,7 +202,9 @@ pnpm run test:e2e:ui                        # UI mode
 - **Dual view modes**: Tree (hierarchical) and Grid (flat cards)
 - **Server actions**: `createItem`, `updateItem`, `deleteItem`, `reorderItems` in `lib/item-actions.ts`
 - **Breadcrumb navigation** for folder drill-down
-- **Context menu**: Right-click for Rename, Delete, Add Subfolder
+- **Context menu**: Right-click for Settings, Delete, Add Subfolder
+- **Settings dialog**: Rename items and select primary files (media, artwork, subtitles)
+- **Primary file selection**: Choose which file plays/displays when multiple files attached
 - **Toast notifications**: Success/error feedback via Sonner
 - **Max depth**: 10 levels of nesting
 
@@ -247,7 +250,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 78 total tests (58 unit + 20 integration)
+- 235 total tests (192 unit + 43 integration)
 
 ### E2E Testing
 

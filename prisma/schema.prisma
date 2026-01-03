@@ -129,6 +129,9 @@ model ItemFile {
   size      BigInt?
   sftpModifiedAt DateTime?
 
+  // User overrides
+  isPrimary Boolean  @default(false)
+
   // Playback (for MEDIA files)
   playbackPosition Float?    // Seconds
   playbackDuration Float?    // Seconds
@@ -140,4 +143,5 @@ model ItemFile {
   @@unique([itemId, sftpPath])
   @@index([itemId])
   @@index([fileType])
+  @@index([itemId, fileType, isPrimary])
 }
