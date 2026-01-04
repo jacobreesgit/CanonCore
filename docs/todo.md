@@ -1,8 +1,3 @@
-- design doc 1 - seed
-- TEST EVERYTHING MYSELF - ASK FOR A CLAUDE PLAN based on all deployment plans
-- design focus, look at all my photos. tweet folder saved. 'refined cinematic aesthetic'?
-- design, conslidate design
-
 - creating item --> artwork, description, etc?
 
 - artwork for 'my items' dashboard? - look at seed script
@@ -26,3 +21,6 @@
 
 - ai making items
 - content pages, using that shadcn block
+
+- design focus, look at all my photos. tweet folder saved. 'refined cinematic aesthetic'?
+- design, conslidate design

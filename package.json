@@ -1,6 +1,6 @@
 {
   "name": "canoncore",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "private": true,
   "scripts": {
     "build": "next build",
@@ -21,7 +21,13 @@
     "test:watch": "vitest --config tests/unit/vitest.config.ts",
     "test:coverage": "vitest run --coverage --config tests/unit/vitest.config.ts",
     "test:unit": "vitest run --config tests/unit/vitest.config.ts",
-    "test:integration": "vitest run --config tests/integration/vitest.config.ts"
+    "test:integration": "vitest run --config tests/integration/vitest.config.ts",
+    "db:seed": "npx prisma db seed",
+    "db:clear-seed": "npx tsx prisma/clear-seed.ts",
+    "db:reset": "npx prisma migrate reset"
+  },
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -89,6 +95,7 @@
     "prettier-plugin-tailwindcss": "^0.7.2",
     "prisma": "^7.2.0",
     "tailwindcss": "^4.1.9",
+    "tsx": "^4.21.0",
     "tw-animate-css": "1.3.3",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.50.1",
