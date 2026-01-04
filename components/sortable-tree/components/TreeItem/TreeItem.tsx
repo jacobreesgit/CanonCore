@@ -22,6 +22,8 @@ export interface TreeItemProps extends Omit<
 > {
   id: UniqueIdentifier;
   value: string;
+  /** Optional short description (max 200 chars). */
+  description?: string | null;
   depth: number;
   indentationWidth: number;
   collapsed?: boolean;
@@ -44,6 +46,8 @@ export interface TreeItemProps extends Omit<
   showArtwork?: boolean;
   /** Whether to show the drag handle. Defaults to true. */
   showDragHandle?: boolean;
+  /** Whether to show description. Defaults to true. Hidden in edit mode. */
+  showDescription?: boolean;
 }
 
 export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
@@ -70,6 +74,8 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       artworkId,
       showArtwork = true,
       showDragHandle = true,
+      description,
+      showDescription = true,
       sftpPath: _sftpPath, // eslint-disable-line @typescript-eslint/no-unused-vars
       ...props
     },
@@ -77,6 +83,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
   ) {
     const hasChildren = Boolean(onCollapse);
     const shouldShowArtwork = showArtwork && artworkId;
+    const shouldShowDescription = showDescription && description;
 
     return (
       <li
@@ -188,17 +195,29 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
             </span>
           )}
 
-          {/* Item Name */}
+          {/* Item Name and Description */}
           {!ghost && (
-            <span
-              className={cn(
-                "flex-1 truncate text-sm font-medium",
-                "text-foreground/90 group-hover:text-foreground",
-                "transition-colors duration-150"
+            <div className="min-w-0 flex-1">
+              <span
+                className={cn(
+                  "block truncate text-sm font-medium",
+                  "text-foreground/90 group-hover:text-foreground",
+                  "transition-colors duration-150"
+                )}
+              >
+                {value}
+              </span>
+              {shouldShowDescription && (
+                <span
+                  className={cn(
+                    "text-muted-foreground block truncate text-xs",
+                    "transition-colors duration-150"
+                  )}
+                >
+                  {description}
+                </span>
               )}
-            >
-              {value}
-            </span>
+            </div>
           )}
 
           {/* Child Count Badge (for clone/drag overlay) */}

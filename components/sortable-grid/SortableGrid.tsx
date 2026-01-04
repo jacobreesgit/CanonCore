@@ -109,6 +109,7 @@ export function SortableGrid({
               key={item.id}
               id={item.id}
               name={item.name}
+              description={item.description}
               onClick={() => onItemClick?.(item.id)}
               onSettings={
                 onOpenSettings ? () => onOpenSettings(item.id) : undefined
@@ -116,6 +117,7 @@ export function SortableGrid({
               onDelete={onDeleteItem ? () => onDeleteItem(item.id) : undefined}
               sftpPath={item.sftpPath}
               artworkId={item.artworkId}
+              showDescription={false}
             />
           ))}
         </div>

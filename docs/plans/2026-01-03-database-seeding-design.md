@@ -48,7 +48,7 @@ All users share the same password from `SEED_PASSWORD` env var.
 Alex Demo (seed@canoncore.com):
 ├── Movies/
 │   ├── The Shawshank Redemption (1994)/     [2 media, 3 artwork, 3 subs] STRESS TEST
-│   ├── Inception (2010)/                     [2 media, 2 artwork, 2 subs]
+│   ├── Inception (2010)/                     [1 media, 2 artwork, 2 subs]
 │   ├── Interstellar (2014)/                  [1 media, 4 artwork, 1 sub] MULTIPLE ARTWORK
 │   ├── The Dark Knight (2008)/               [2 media, 2 artwork, 1 sub]
 │   ├── Pulp Fiction (1994)/                  [1 media only] MINIMAL
@@ -70,7 +70,7 @@ Alex Demo (seed@canoncore.com):
 │   │       ├── S01E01/                      [2 media, 2 artwork, 3 subs] STRESS TEST
 │   │       ├── S01E02/                      [1 media, 1 sub]
 │   │       └── S01E03/                      [1 media, 1 sub]
-│   ├── The Office/
+│   ├── The Office (UK)/
 │   │   └── Season 1/                        [1 artwork on folder]
 │   │       ├── S01E01/                      [1 media, 1 sub]
 │   │       ├── S01E02/                      [1 media only] MINIMAL
@@ -96,271 +96,467 @@ Sam Empty (seed3@canoncore.com):
 
 ---
 
-## Complete File List
+## Improvements
 
-### Movies (10 items, 52 files)
+### Use path.join() for Path Construction
 
-#### 1. The Shawshank Redemption (1994) — STRESS TEST
+Instead of string concatenation for sftpPath, use Node.js `path.join()` for safer, cross-platform path handling:
 
-| Type     | Filename                                         | Size   | Primary |
-| -------- | ------------------------------------------------ | ------ | ------- |
-| MEDIA    | `The.Shawshank.Redemption.1994.1080p.BluRay.mkv` | 4.5 GB | ✓       |
-| MEDIA    | `The.Shawshank.Redemption.1994.2160p.4K.mkv`     | 15 GB  |         |
-| ARTWORK  | `poster.jpg`                                     | 250 KB | ✓       |
-| ARTWORK  | `fanart.jpg`                                     | 450 KB |         |
-| ARTWORK  | `banner.jpg`                                     | 120 KB |         |
-| SUBTITLE | `english.srt`                                    | 45 KB  | ✓       |
-| SUBTITLE | `spanish.srt`                                    | 48 KB  |         |
-| SUBTITLE | `french.srt`                                     | 47 KB  |         |
+```typescript
+import path from "path";
 
-#### 2. Inception (2010) — Multiple media
+// ❌ Before: String concatenation
+sftpPath: `${basePath}/${filename}`,
 
-| Type     | Filename                          | Size    | Primary |
-| -------- | --------------------------------- | ------- | ------- |
-| MEDIA    | `Inception.2010.1080p.BluRay.mkv` | 3.2 GB  | ✓       |
-| MEDIA    | `Inception.2010.2160p.4K.mkv`     | 12.8 GB |         |
-| ARTWORK  | `poster.jpg`                      | 180 KB  | ✓       |
-| ARTWORK  | `fanart.jpg`                      | 320 KB  |         |
-| SUBTITLE | `english.srt`                     | 42 KB   | ✓       |
-| SUBTITLE | `spanish.srt`                     | 44 KB   |         |
+// ✅ After: path.join() for safety
+sftpPath: path.join(basePath, filename),
+```
 
-#### 3. Interstellar (2014) — Multiple artwork (4)
+### Use prisma.$transaction() for Atomic Operations
 
-| Type     | Filename                             | Size   | Primary |
-| -------- | ------------------------------------ | ------ | ------- |
-| MEDIA    | `Interstellar.2014.1080p.BluRay.mkv` | 5.1 GB | ✓       |
-| ARTWORK  | `poster.jpg`                         | 280 KB | ✓       |
-| ARTWORK  | `fanart.jpg`                         | 520 KB |         |
-| ARTWORK  | `banner.jpg`                         | 150 KB |         |
-| ARTWORK  | `logo.png`                           | 45 KB  |         |
-| SUBTITLE | `english.srt`                        | 38 KB  | ✓       |
+Wrap related database operations in a transaction to ensure atomicity. If any operation fails, all changes are rolled back:
 
-#### 4. The Dark Knight (2008) — Multiple media (theatrical vs IMAX)
+```typescript
+// ❌ Before: Individual operations (partial failure leaves inconsistent state)
+await seedMovies(userId);
+await seedTVShows(userId);
+await seedMusic(userId);
 
-| Type     | Filename                                | Size   | Primary |
-| -------- | --------------------------------------- | ------ | ------- |
-| MEDIA    | `The.Dark.Knight.2008.1080p.BluRay.mkv` | 4.2 GB | ✓       |
-| MEDIA    | `The.Dark.Knight.2008.IMAX.1080p.mkv`   | 4.8 GB |         |
-| ARTWORK  | `poster.jpg`                            | 220 KB | ✓       |
-| ARTWORK  | `fanart.jpg`                            | 380 KB |         |
-| SUBTITLE | `english.srt`                           | 41 KB  | ✓       |
+// ✅ After: Transaction wrapper for atomic seeding
+await prisma.$transaction(async (tx) => {
+  await seedMovies(tx, userId);
+  await seedTVShows(tx, userId);
+  await seedMusic(tx, userId);
+});
+```
 
-#### 5. Pulp Fiction (1994) — MINIMAL (media only)
+Update helper functions to accept transaction client:
 
-| Type  | Filename                             | Size   | Primary |
-| ----- | ------------------------------------ | ------ | ------- |
-| MEDIA | `Pulp.Fiction.1994.1080p.BluRay.mkv` | 3.8 GB | ✓       |
+```typescript
+async function createItem(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  name: string,
+  parentId: string | null,
+  order: number,
+  depth: number
+): Promise<string> {
+  const item = await tx.item.create({
+    data: { userId, name, parentId, order, depth },
+  });
+  return item.id;
+}
+```
 
-#### 6. Parasite (2019) — Multiple subtitles (4 languages)
+### Partial Seeding Flags
 
-| Type     | Filename                         | Size   | Primary |
-| -------- | -------------------------------- | ------ | ------- |
-| MEDIA    | `Parasite.2019.1080p.BluRay.mkv` | 3.5 GB | ✓       |
-| ARTWORK  | `poster.jpg`                     | 195 KB | ✓       |
-| ARTWORK  | `fanart.jpg`                     | 340 KB |         |
-| SUBTITLE | `english.srt`                    | 52 KB  | ✓       |
-| SUBTITLE | `korean.srt`                     | 48 KB  |         |
-| SUBTITLE | `spanish.srt`                    | 54 KB  |         |
-| SUBTITLE | `french.srt`                     | 53 KB  |         |
+Add CLI flags to seed only specific categories for faster iteration during development:
 
-#### 7. Spider-Man No Way Home (2021) — Single files only
+```typescript
+// Parse CLI arguments
+const args = process.argv.slice(2);
+const seedMovies = args.includes("--movies") || args.length === 0;
+const seedTV = args.includes("--tv") || args.length === 0;
+const seedMusic = args.includes("--music") || args.length === 0;
+const seedAll = args.includes("--all") || args.length === 0;
 
-| Type     | Filename                                       | Size   | Primary |
-| -------- | ---------------------------------------------- | ------ | ------- |
-| MEDIA    | `Spider-Man.No.Way.Home.2021.1080p.BluRay.mkv` | 4.1 GB | ✓       |
-| ARTWORK  | `poster.jpg`                                   | 210 KB | ✓       |
-| SUBTITLE | `english.srt`                                  | 39 KB  | ✓       |
+// Usage:
+// npx prisma db seed               # Seed all
+// npx prisma db seed -- --movies   # Movies only
+// npx prisma db seed -- --tv       # TV Shows only
+// npx prisma db seed -- --music    # Music only
+```
 
-#### 8. Dune (2021) — Multiple media (3 versions)
+Update main() to respect flags:
 
-| Type     | Filename                     | Size   | Primary |
-| -------- | ---------------------------- | ------ | ------- |
-| MEDIA    | `Dune.2021.1080p.BluRay.mkv` | 4.5 GB | ✓       |
-| MEDIA    | `Dune.2021.2160p.4K.mkv`     | 18 GB  |         |
-| MEDIA    | `Dune.2021.2160p.HDR.mkv`    | 22 GB  |         |
-| ARTWORK  | `poster.jpg`                 | 240 KB | ✓       |
-| ARTWORK  | `fanart.jpg`                 | 410 KB |         |
-| SUBTITLE | `english.srt`                | 36 KB  | ✓       |
-| SUBTITLE | `spanish.srt`                | 38 KB  |         |
+```typescript
+async function main(): Promise<void> {
+  // ... validation ...
 
-#### 9. Oppenheimer (2023) — Multiple subtitles (inc. SDH)
+  if (seedAll || seedMovies) await seedMovies(userId);
+  if (seedAll || seedTV) await seedTVShows(userId);
+  if (seedAll || seedMusic) await seedMusic(userId);
+}
+```
 
-| Type     | Filename                            | Size   | Primary |
-| -------- | ----------------------------------- | ------ | ------- |
-| MEDIA    | `Oppenheimer.2023.1080p.BluRay.mkv` | 5.8 GB | ✓       |
-| ARTWORK  | `poster.jpg`                        | 260 KB | ✓       |
-| ARTWORK  | `fanart.jpg`                        | 480 KB |         |
-| SUBTITLE | `english.srt`                       | 58 KB  | ✓       |
-| SUBTITLE | `english-sdh.srt`                   | 72 KB  |         |
-| SUBTITLE | `spanish.srt`                       | 60 KB  |         |
+### SFTP Connection Seeding
 
-#### 10. Barbie (2023) — Single files only
+Seed an SFTP connection using existing credentials from `.env.local` for testing sync functionality:
 
-| Type     | Filename                       | Size   | Primary |
-| -------- | ------------------------------ | ------ | ------- |
-| MEDIA    | `Barbie.2023.1080p.BluRay.mkv` | 3.2 GB | ✓       |
-| ARTWORK  | `poster.jpg`                   | 185 KB | ✓       |
-| SUBTITLE | `english.srt`                  | 32 KB  | ✓       |
+**Required .env.local variables (configure with your SFTP server):**
+
+```bash
+# SFTP Server (Real server for development/testing)
+SFTP_SEED_HOST="your-sftp-server.example.com"
+SFTP_SEED_PORT="22"
+SFTP_SEED_USERNAME="your-username"
+SFTP_SEED_PASSWORD="your-password"
+SFTP_SEED_BASE_PATH="/"
+SFTP_SEED_HTTPS_URL="https://your-webdav-server.example.com"
+```
+
+**Add to lib/env.ts:**
+
+```typescript
+// Seeding - SFTP connection (optional)
+SFTP_SEED_HOST: z.string().optional(),
+SFTP_SEED_PORT: z.coerce.number().optional(),
+SFTP_SEED_USERNAME: z.string().optional(),
+SFTP_SEED_PASSWORD: z.string().optional(),
+SFTP_SEED_BASE_PATH: z.string().optional(),
+SFTP_SEED_HTTPS_URL: z.string().url().optional(),
+```
+
+**Add seedSftpConnection() function:**
+
+```typescript
+import { encrypt } from "@/lib/crypto";
+
+async function seedSftpConnection(userId: string): Promise<void> {
+  const host = process.env.SFTP_SEED_HOST;
+  const port = parseInt(process.env.SFTP_SEED_PORT || "22", 10);
+  const username = process.env.SFTP_SEED_USERNAME;
+  const password = process.env.SFTP_SEED_PASSWORD;
+  const basePath = process.env.SFTP_SEED_BASE_PATH || "/";
+  const webdavUrl = process.env.SFTP_SEED_HTTPS_URL;
+
+  if (!host || !username || !password) {
+    console.log("    ⏭️  Skipping SFTP connection (env vars not set)");
+    return;
+  }
+
+  console.log("    🔗 Seeding SFTP connection...");
+
+  // Encrypt credentials
+  const encryptedPassword = encrypt(password);
+  const encryptedWebdavPassword = webdavUrl ? encrypt(password) : null;
+
+  await prisma.sftpConnection.upsert({
+    where: {
+      userId_name: {
+        userId,
+        name: "Seed Media Server",
+      },
+    },
+    update: {
+      host,
+      port,
+      username,
+      encryptedPassword,
+      authType: "PASSWORD",
+      basePath,
+      webdavUrl,
+      webdavUsername: webdavUrl ? username : null,
+      encryptedWebdavPassword,
+    },
+    create: {
+      userId,
+      name: "Seed Media Server",
+      host,
+      port,
+      username,
+      encryptedPassword,
+      authType: "PASSWORD",
+      basePath,
+      webdavUrl,
+      webdavUsername: webdavUrl ? username : null,
+      encryptedWebdavPassword,
+    },
+  });
+}
+```
+
+**Call from seedAlexDemo():**
+
+```typescript
+async function seedAlexDemo(userId: string): Promise<void> {
+  console.log("  Seeding Alex Demo data...");
+
+  await seedMovies(userId);
+  await seedTVShows(userId);
+  await seedMusic(userId);
+
+  // Documentaries folder (empty)
+  await createItem(
+    userId,
+    "Documentaries",
+    null,
+    3,
+    0,
+    "Collection of documentary films and series."
+  );
+
+  // Optional SFTP connection
+  await seedSftpConnection(userId);
+}
+```
 
 ---
 
-### TV Shows (4 shows, 11 episodes, 46 files)
+## Complete File List
 
-#### Breaking Bad
+### Movies (10 items, 51 files)
+
+#### 1. The Shawshank Redemption (1994) — STRESS TEST ✅
+
+| Type     | Filename                                                                           | Size   | Primary |
+| -------- | ---------------------------------------------------------------------------------- | ------ | ------- |
+| MEDIA    | `The.Shawshank.Redemption.1994.1080p.x264.YIFY.mp4`                                | 1.6 GB | ✓       |
+| MEDIA    | `The.Shawshank.Redemption.1994.2160p.4K.BluRay.x265.10bit.HDR.AAC5.1-[YTS.MX].mkv` | 6.9 GB |         |
+| ARTWORK  | `poster.jpg`                                                                       | 272 KB | ✓       |
+| ARTWORK  | `fanart.jpg`                                                                       | 177 KB |         |
+| ARTWORK  | `banner.jpeg`                                                                      | 949 KB |         |
+| SUBTITLE | `The.Shawshank.Redemption.1994.en.srt`                                             | 136 KB | ✓       |
+| SUBTITLE | `The.Shawshank.Redemption.1994.es.srt`                                             | 122 KB |         |
+| SUBTITLE | `The.Shawshank.Redemption.1994.fr.srt`                                             | 112 KB |         |
+
+#### 2. Inception (2010) — Single media ✅
+
+| Type     | Filename                                   | Size   | Primary |
+| -------- | ------------------------------------------ | ------ | ------- |
+| MEDIA    | `Inception.2010.1080p.BrRip.x264.YIFY.mp4` | 1.9 GB | ✓       |
+| ARTWORK  | `poster.jpg`                               | 305 KB | ✓       |
+| ARTWORK  | `fanart.jpg`                               | 1.4 MB |         |
+| SUBTITLE | `Inception.2010.en.srt`                    | 133 KB | ✓       |
+| SUBTITLE | `Inception.2010.es.srt`                    | 75 KB  |         |
+
+#### 3. Interstellar (2014) — Multiple artwork (4) ✅
+
+| Type     | Filename                                            | Size   | Primary |
+| -------- | --------------------------------------------------- | ------ | ------- |
+| MEDIA    | `Interstellar.2014.2014.1080p.BluRay.x264.YIFY.mp4` | 2.3 GB | ✓       |
+| ARTWORK  | `poster.jpg`                                        | 816 KB | ✓       |
+| ARTWORK  | `fanart.jpg`                                        | 291 KB |         |
+| ARTWORK  | `banner.jpeg`                                       | 7.1 KB |         |
+| ARTWORK  | `logo.jpg`                                          | 35 KB  |         |
+| SUBTITLE | `Interstellar.2014.en.srt`                          | 150 KB | ✓       |
+
+#### 4. The Dark Knight (2008) — Multiple media (theatrical vs IMAX) ✅
+
+| Type     | Filename                                                             | Size   | Primary |
+| -------- | -------------------------------------------------------------------- | ------ | ------- |
+| MEDIA    | `Batman.The.Dark.Knight.2008.1080p.BluRay.x264.YIFY.mp4`             | 1.7 GB | ✓       |
+| MEDIA    | `The.Dark.Knight.2008.IMAX.1080p.10bit.BluRay.6CH.x265.HEVC-PSA.mkv` | 3.5 GB |         |
+| ARTWORK  | `poster.jpg`                                                         | 376 KB | ✓       |
+| ARTWORK  | `fanart.webp`                                                        | 263 KB |         |
+| SUBTITLE | `The.Dark.Knight.2008.en.srt`                                        | 139 KB | ✓       |
+
+#### 5. Pulp Fiction (1994) — MINIMAL (media only) ✅
+
+| Type  | Filename                                      | Size   | Primary |
+| ----- | --------------------------------------------- | ------ | ------- |
+| MEDIA | `Pulp.Fiction.1994.1080p.BrRip.x264.YIFY.mp4` | 1.4 GB | ✓       |
+
+#### 6. Parasite (2019) — Multiple subtitles (4 languages) ✅
+
+| Type     | Filename                                       | Size   | Primary |
+| -------- | ---------------------------------------------- | ------ | ------- |
+| MEDIA    | `Parasite.2019.1080p.BluRay.x264-[YTS.LT].mp4` | 2.1 GB | ✓       |
+| ARTWORK  | `poster.jpeg`                                  | 10 KB  | ✓       |
+| ARTWORK  | `fanart.jpg`                                   | 381 KB |         |
+| SUBTITLE | `Gisaengchung.2019.en.srt`                     | 114 KB | ✓       |
+| SUBTITLE | `Gisaengchung.2019.es.srt`                     | 119 KB |         |
+| SUBTITLE | `Gisaengchung.2019.fr.srt`                     | 121 KB |         |
+| SUBTITLE | `Gisaengchung.albanian.sq.srt`                 | 115 KB |         |
+
+#### 7. Spider-Man No Way Home (2021) — Single files only ✅
+
+| Type     | Filename                                                            | Size   | Primary |
+| -------- | ------------------------------------------------------------------- | ------ | ------- |
+| MEDIA    | `Spider-Man.No.Way.Home.2021.1080p.WEBRip.x264.AAC5.1-[YTS.MX].mp4` | 2.7 GB | ✓       |
+| ARTWORK  | `poster.jpeg`                                                       | 14 KB  | ✓       |
+| SUBTITLE | `Spider-Man.No.Way.Home.2021.1080p.WEBRip.x264.AAC5.1-[YTS.MX].srt` | 131 KB | ✓       |
+
+#### 8. Dune (2021) — Multiple media (3 versions) ✅
+
+| Type     | Filename                                                    | Size   | Primary |
+| -------- | ----------------------------------------------------------- | ------ | ------- |
+| MEDIA    | `Dune.2021.1080p.BluRay.x264.AAC5.1-[YTS.MX].mp4`           | 2.9 GB | ✓       |
+| MEDIA    | `Dune.2021.2160p.4K.WEB.x265.10bit.HDR.AAC5.1-[YTS.MX].mkv` | 6.9 GB |         |
+| MEDIA    | `Dune.2021.720p.BluRay.x264.AAC-[YTS.MX].mp4`               | 1.4 GB |         |
+| ARTWORK  | `poster.jpg`                                                | 126 KB | ✓       |
+| ARTWORK  | `fanart.jpg`                                                | 1.3 MB |         |
+| SUBTITLE | `Dune.2021.en.srt`                                          | 83 KB  | ✓       |
+| SUBTITLE | `Dune.2021.es.srt`                                          | 80 KB  |         |
+
+#### 9. Oppenheimer (2023) — Multiple subtitles (inc. SDH) ✅
+
+| Type     | Filename                                                 | Size   | Primary |
+| -------- | -------------------------------------------------------- | ------ | ------- |
+| MEDIA    | `Oppenheimer.2023.1080p.BluRay.x264.AAC5.1-[YTS.MX].mp4` | 3.3 GB | ✓       |
+| ARTWORK  | `poster.jpg`                                             | 265 KB | ✓       |
+| ARTWORK  | `fanart.jpeg`                                            | 16 KB  |         |
+| SUBTITLE | `Oppenheimer.English.en.srt`                             | 194 KB | ✓       |
+| SUBTITLE | `Oppenheimer.English.sdh..en.srt`                        | 265 KB |         |
+| SUBTITLE | `Oppenheimer.2023.es.srt`                                | 216 KB |         |
+
+#### 10. Barbie (2023) — Single files only ✅
+
+| Type     | Filename                                            | Size   | Primary |
+| -------- | --------------------------------------------------- | ------ | ------- |
+| MEDIA    | `Barbie.2023.1080p.BluRay.x264.AAC5.1-[YTS.MX].mp4` | 2.1 GB | ✓       |
+| ARTWORK  | `poster.jpg.webp`                                   | 216 KB | ✓       |
+| SUBTITLE | `Barbie.English.en.srt`                             | 153 KB | ✓       |
+
+---
+
+### TV Shows (4 shows, 11 episodes, 47 files)
+
+#### Breaking Bad ✅
 
 **Season 1 folder** — artwork on folder level
 | Type | Filename | Size | Primary |
 |------|----------|------|---------|
-| ARTWORK | `poster.jpg` | 180 KB | ✓ |
-| ARTWORK | `fanart.jpg` | 350 KB | |
-| ARTWORK | `banner.jpg` | 95 KB | |
+| ARTWORK | `poster.jpg` | 177 KB | ✓ |
+| ARTWORK | `fanart.jpg` | 72 KB | |
+| ARTWORK | `banner.jpg` | 56 KB | |
 
 **S01E01 - Pilot** — Multiple media + subs
 | Type | Filename | Size | Primary |
 |------|----------|------|---------|
-| MEDIA | `Breaking.Bad.S01E01.Pilot.1080p.mkv` | 850 MB | ✓ |
-| MEDIA | `Breaking.Bad.S01E01.Pilot.2160p.mkv` | 3.2 GB | |
-| SUBTITLE | `english.srt` | 28 KB | ✓ |
-| SUBTITLE | `spanish.srt` | 30 KB | |
+| MEDIA | `Breaking.Bad.S01E01.1080p.BluRay.x265-RARBG.mp4` | 927 MB | ✓ |
+| MEDIA | `Breaking.Bad.S01E01.2160p.NF.WEB-DL.DTS-HD.MA.5.1.HEVC-CRFW.mkv` | 5.8 GB | |
+| SUBTITLE | `Breaking.Bad.s01e01.en.srt` | 48 KB | ✓ |
+| SUBTITLE | `Breaking.Bad.S01E01.es.srt` | 44 KB | |
 
 **S01E02 - Cat's in the Bag** — Single files
 | Type | Filename | Size | Primary |
 |------|----------|------|---------|
-| MEDIA | `Breaking.Bad.S01E02.1080p.mkv` | 820 MB | ✓ |
-| SUBTITLE | `english.srt` | 26 KB | ✓ |
+| MEDIA | `Breaking.Bad.S01E02.1080p.BluRay.x265-RARBG.mp4` | 770 MB | ✓ |
+| SUBTITLE | `Breaking.Bad.s01e02.en.srt` | 48 KB | ✓ |
 
 **S01E03 - And the Bag's in the River** — Single files
 | Type | Filename | Size | Primary |
 |------|----------|------|---------|
-| MEDIA | `Breaking.Bad.S01E03.1080p.mkv` | 810 MB | ✓ |
-| SUBTITLE | `english.srt` | 27 KB | ✓ |
+| MEDIA | `Breaking.Bad.S01E03.1080p.BluRay.x265-RARBG.mp4` | 769 MB | ✓ |
+| SUBTITLE | `Breaking.Bad.s01e03.en.srt` | 48 KB | ✓ |
 
 **Season 2 folder** — minimal artwork
 | Type | Filename | Size | Primary |
 |------|----------|------|---------|
-| ARTWORK | `poster.jpg` | 175 KB | ✓ |
+| ARTWORK | `poster.jpg` | 449 KB | ✓ |
 
 **S02E01 - Seven Thirty-Seven** — Single files
 | Type | Filename | Size | Primary |
 |------|----------|------|---------|
-| MEDIA | `Breaking.Bad.S02E01.1080p.mkv` | 900 MB | ✓ |
-| SUBTITLE | `english.srt` | 29 KB | ✓ |
+| MEDIA | `Breaking.Bad.S02E01.1080p.BluRay.x265-RARBG.mp4` | 754 MB | ✓ |
+| SUBTITLE | `Breaking.Bad.S02E01.en.srt` | 33 KB | ✓ |
 
 ---
 
-#### Stranger Things
+#### Stranger Things ✅
 
 **Season 1 folder** — artwork on folder level
 | Type | Filename | Size | Primary |
 |------|----------|------|---------|
-| ARTWORK | `poster.jpg` | 195 KB | ✓ |
-| ARTWORK | `fanart.jpg` | 380 KB | |
+| ARTWORK | `poster.jpg` | 714 KB | ✓ |
+| ARTWORK | `fanart.jpg` | 227 KB | |
 
 **S01E01 - The Vanishing of Will Byers** — STRESS TEST
 | Type | Filename | Size | Primary |
 |------|----------|------|---------|
-| MEDIA | `Stranger.Things.S01E01.1080p.mkv` | 1.1 GB | ✓ |
-| MEDIA | `Stranger.Things.S01E01.2160p.mkv` | 4.2 GB | |
-| ARTWORK | `thumb.jpg` | 65 KB | ✓ |
-| ARTWORK | `title.jpg` | 48 KB | |
-| SUBTITLE | `english.srt` | 31 KB | ✓ |
-| SUBTITLE | `spanish.srt` | 33 KB | |
-| SUBTITLE | `french.srt` | 32 KB | |
+| MEDIA | `Stranger.Things.S01E01.1080p.BluRay.x264-SHORTBREHD.mkv` | 3.3 GB | ✓ |
+| MEDIA | `Stranger.Things.S01E01.2160p.UHD.BluRay.x265-DEPTH.mkv` | 9.0 GB | |
+| ARTWORK | `thumb.jpg` | 8.0 MB | ✓ |
+| ARTWORK | `title.webp` | 1.7 KB | |
+| SUBTITLE | `Stranger.Things.S01E01.1080p.BluRay.x264-SHORTBREHD.sub` | 4.7 MB | ✓ |
+| SUBTITLE | `Stranger.Things.S01E01.es.srt` | 43 KB | |
+| SUBTITLE | `Stranger.Things.S01E01.fr.srt` | 31 KB | |
 
 **S01E02 - The Weirdo on Maple Street** — Single files
 | Type | Filename | Size | Primary |
 |------|----------|------|---------|
-| MEDIA | `Stranger.Things.S01E02.1080p.mkv` | 980 MB | ✓ |
-| SUBTITLE | `english.srt` | 29 KB | ✓ |
+| MEDIA | `Stranger.Things.S01E02.1080p.BluRay.x264-SHORTBREHD.mkv` | 4.4 GB | ✓ |
+| SUBTITLE | `Stranger.Things.S01E02.1080p.BluRay.x264-SHORTBREHD.sub` | 4.7 MB | ✓ |
 
 **S01E03 - Holly, Jolly** — Single files
 | Type | Filename | Size | Primary |
 |------|----------|------|---------|
-| MEDIA | `Stranger.Things.S01E03.1080p.mkv` | 1.0 GB | ✓ |
-| SUBTITLE | `english.srt` | 30 KB | ✓ |
+| MEDIA | `Stranger.Things.S01E03.1080p.BluRay.x264-SHORTBREHD.mkv` | 3.3 GB | ✓ |
+| SUBTITLE | `Stranger.Things.S01E03.1080p.BluRay.x264-SHORTBREHD.sub` | 3.6 MB | ✓ |
 
 ---
 
-#### The Office (US)
+#### The Office (UK) ✅
 
 **Season 1 folder** — minimal artwork
 | Type | Filename | Size | Primary |
 |------|----------|------|---------|
-| ARTWORK | `poster.jpg` | 145 KB | ✓ |
+| ARTWORK | `poster.jpg` | 49 KB | ✓ |
 
 **S01E01 - Pilot** — Single files
 | Type | Filename | Size | Primary |
 |------|----------|------|---------|
-| MEDIA | `The.Office.S01E01.Pilot.1080p.mkv` | 420 MB | ✓ |
-| SUBTITLE | `english.srt` | 18 KB | ✓ |
+| MEDIA | `The.Office.UK.S01E01.1080p.WEBRip.x265-RARBG.mp4` | 474 MB | ✓ |
+| SUBTITLE | `2_English.srt` | 43 KB | ✓ |
 
 **S01E02 - Diversity Day** — MINIMAL (media only)
 | Type | Filename | Size | Primary |
 |------|----------|------|---------|
-| MEDIA | `The.Office.S01E02.1080p.mkv` | 410 MB | ✓ |
+| MEDIA | `The.Office.UK.S01E02.1080p.WEBRip.x265-RARBG.mp4` | 470 MB | ✓ |
 
 **S01E03 - Health Care** — Single files
 | Type | Filename | Size | Primary |
 |------|----------|------|---------|
-| MEDIA | `The.Office.S01E03.1080p.mkv` | 415 MB | ✓ |
-| SUBTITLE | `english.srt` | 19 KB | ✓ |
+| MEDIA | `The.Office.UK.S01E03.1080p.WEBRip.x265-RARBG.mp4` | 474 MB | ✓ |
+| SUBTITLE | `2_English.srt` | 41 KB | ✓ |
 
 ---
 
-#### Game of Thrones
+#### Game of Thrones ✅
 
 **Season 1 folder** — multiple artwork
 | Type | Filename | Size | Primary |
 |------|----------|------|---------|
-| ARTWORK | `poster.jpg` | 220 KB | ✓ |
-| ARTWORK | `fanart.jpg` | 480 KB | |
-| ARTWORK | `banner.jpg` | 110 KB | |
+| ARTWORK | `poster.jpeg` | 8 KB | ✓ |
+| ARTWORK | `fanart.jpg` | 143 KB | |
+| ARTWORK | `banner.jpg` | 53 KB | |
 
 **S01E01 - Winter Is Coming** — STRESS TEST
 | Type | Filename | Size | Primary |
 |------|----------|------|---------|
-| MEDIA | `Game.of.Thrones.S01E01.1080p.mkv` | 1.8 GB | ✓ |
-| MEDIA | `Game.of.Thrones.S01E01.2160p.mkv` | 6.5 GB | |
-| ARTWORK | `thumb.jpg` | 72 KB | ✓ |
+| MEDIA | `Game of Thrones S01E01 1080p BluRay DTS x264-LiNG.mkv` | 8.4 GB | ✓ |
+| MEDIA | `Game of Thrones S01E01 Winter Is Coming REPACK 2160p MAX WEB-DL TrueHD 7 1 Atmos DV HDR H 265-Kitsune.mkv` | 11.3 GB | |
+| ARTWORK | `thumb.jpg` | 1.3 MB | ✓ |
 | ARTWORK | `title.jpg` | 55 KB | |
-| SUBTITLE | `english.srt` | 35 KB | ✓ |
-| SUBTITLE | `spanish.srt` | 37 KB | |
-| SUBTITLE | `french.srt` | 36 KB | |
-| SUBTITLE | `german.srt` | 38 KB | |
+| SUBTITLE | `Game.of.Thrones.S01E01.en.srt` | 44 KB | ✓ |
+| SUBTITLE | `Game.of.Thrones.S01E01.es.srt` | 37 KB | |
+| SUBTITLE | `Game.of.Thrones.S01E01.fr.srt` | 41 KB | |
+| SUBTITLE | `Game.of.Thrones.S01E01.de.srt` | 42 KB | |
 
 **S01E02 - The Kingsroad** — Multiple subtitles
 | Type | Filename | Size | Primary |
 |------|----------|------|---------|
-| MEDIA | `Game.of.Thrones.S01E02.1080p.mkv` | 1.7 GB | ✓ |
-| SUBTITLE | `english.srt` | 33 KB | ✓ |
-| SUBTITLE | `spanish.srt` | 35 KB | |
+| MEDIA | `Game of Thrones S01E02 1080p BluRay DTS x264-LiNG.mkv` | 5.6 GB | ✓ |
+| SUBTITLE | `Game.of.Thrones.S01E02.en.srt` | 44 KB | ✓ |
+| SUBTITLE | `Game.of.Thrones.S01E02.es.srt` | 80 KB | |
 
 ---
 
-### Music (2 albums, 16 files)
+### Music (2 albums, 13 files)
 
-#### Pink Floyd - The Dark Side of the Moon — Multiple audio + artwork
+#### Pink Floyd - The Dark Side of the Moon — Multiple audio + artwork ✅
 
-| Type    | Filename                 | Size   | Primary |
-| ------- | ------------------------ | ------ | ------- |
-| MEDIA   | `01 - Speak to Me.flac`  | 12 MB  | ✓       |
-| MEDIA   | `02 - Breathe.flac`      | 35 MB  |         |
-| MEDIA   | `03 - Time.flac`         | 85 MB  |         |
-| MEDIA   | `04 - Money.flac`        | 78 MB  |         |
-| MEDIA   | `05 - Brain Damage.flac` | 48 MB  |         |
-| ARTWORK | `cover.jpg`              | 850 KB | ✓       |
-| ARTWORK | `back.jpg`               | 720 KB |         |
-| ARTWORK | `cd.png`                 | 380 KB |         |
+| Type    | Filename                                                                      | Size   | Primary |
+| ------- | ----------------------------------------------------------------------------- | ------ | ------- |
+| MEDIA   | `Pink Floyd - The Dark Side of the Moon - 01 - Speak to Me.flac`              | 41 MB  | ✓       |
+| MEDIA   | `Pink Floyd - The Dark Side of the Moon - 02 - Breathe (in the Air).flac`     | 104 MB |         |
+| MEDIA   | `Pink Floyd - The Dark Side of the Moon - 03 - On the Run.flac`               | 131 MB |         |
+| MEDIA   | `Pink Floyd - The Dark Side of the Moon - 04 - Time.flac`                     | 266 MB |         |
+| MEDIA   | `Pink Floyd - The Dark Side of the Moon - 05 - The Great Gig in the Sky.flac` | 171 MB |         |
+| ARTWORK | `cover.jpg`                                                                   | 23 KB  | ✓       |
+| ARTWORK | `back.jpg`                                                                    | 67 KB  |         |
+| ARTWORK | `cd.webp`                                                                     | 220 KB |         |
 
-#### Daft Punk - Random Access Memories — Standard album
+#### Daft Punk - Random Access Memories — Standard album ✅
 
-| Type    | Filename                            | Size   | Primary |
-| ------- | ----------------------------------- | ------ | ------- |
-| MEDIA   | `01 - Give Life Back to Music.flac` | 58 MB  | ✓       |
-| MEDIA   | `02 - The Game of Love.flac`        | 62 MB  |         |
-| MEDIA   | `03 - Get Lucky.flac`               | 72 MB  |         |
-| ARTWORK | `cover.jpg`                         | 920 KB | ✓       |
-| ARTWORK | `fanart.jpg`                        | 1.2 MB |         |
+| Type    | Filename                                                              | Size   | Primary |
+| ------- | --------------------------------------------------------------------- | ------ | ------- |
+| MEDIA   | `Daft Punk_Random Access Memories_01-01_Give Life Back to Music.flac` | 30 MB  | ✓       |
+| MEDIA   | `Daft Punk_Random Access Memories_01-02_The Game of Love.flac`        | 31 MB  |         |
+| MEDIA   | `Daft Punk_Random Access Memories_01-03_Giorgio by Moroder.flac`      | 56 MB  |         |
+| ARTWORK | `cover.jpg`                                                           | 35 KB  | ✓       |
+| ARTWORK | `fanart.jpg`                                                          | 121 KB |         |
 
 ---
 
@@ -503,17 +699,25 @@ async function createUser(
 }
 
 /**
- * Creates an item with optional parent.
+ * Creates an item with optional parent and description.
  */
 async function createItem(
   userId: string,
   name: string,
   parentId: string | null,
   order: number,
-  depth: number
+  depth: number,
+  description?: string
 ): Promise<string> {
   const item = await prisma.item.create({
-    data: { userId, name, parentId, order, depth },
+    data: {
+      userId,
+      name,
+      description: description ?? null,
+      parentId,
+      order,
+      depth,
+    },
   });
   return item.id;
 }
@@ -548,7 +752,14 @@ async function createFile(
  */
 async function seedMovies(userId: string): Promise<void> {
   console.log("    📽️  Seeding Movies...");
-  const moviesId = await createItem(userId, "Movies", null, 0, 0);
+  const moviesId = await createItem(
+    userId,
+    "Movies",
+    null,
+    0,
+    0,
+    "Feature films and cinema collection."
+  );
 
   // 1. The Shawshank Redemption (1994) - STRESS TEST: 2 media, 3 artwork, 3 subs
   const shawshankId = await createItem(
@@ -556,25 +767,26 @@ async function seedMovies(userId: string): Promise<void> {
     "The Shawshank Redemption (1994)",
     moviesId,
     0,
-    1
+    1,
+    "Two imprisoned men bond over years, finding solace and redemption."
   );
   const shawshankPath = "/Movies/The Shawshank Redemption (1994)";
   await createFile(
     shawshankId,
-    "The.Shawshank.Redemption.1994.1080p.BluRay.mkv",
+    "The.Shawshank.Redemption.1994.1080p.x264.YIFY.mp4",
     shawshankPath,
     FileType.MEDIA,
-    "video/x-matroska",
-    BigInt(Math.floor(4.5 * GB)),
+    "video/mp4",
+    BigInt(Math.floor(1.6 * GB)),
     true
   );
   await createFile(
     shawshankId,
-    "The.Shawshank.Redemption.1994.2160p.4K.mkv",
+    "The.Shawshank.Redemption.1994.2160p.4K.BluRay.x265.10bit.HDR.AAC5.1-[YTS.MX].mkv",
     shawshankPath,
     FileType.MEDIA,
     "video/x-matroska",
-    BigInt(15 * GB),
+    BigInt(Math.floor(6.9 * GB)),
     false
   );
   await createFile(
@@ -583,7 +795,7 @@ async function seedMovies(userId: string): Promise<void> {
     shawshankPath,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(250 * KB),
+    BigInt(272 * KB),
     true
   );
   await createFile(
@@ -592,72 +804,64 @@ async function seedMovies(userId: string): Promise<void> {
     shawshankPath,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(450 * KB),
+    BigInt(177 * KB),
     false
   );
   await createFile(
     shawshankId,
-    "banner.jpg",
+    "banner.jpeg",
     shawshankPath,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(120 * KB),
+    BigInt(949 * KB),
     false
   );
   await createFile(
     shawshankId,
-    "english.srt",
+    "The.Shawshank.Redemption.1994.en.srt",
     shawshankPath,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(45 * KB),
+    BigInt(136 * KB),
     true
   );
   await createFile(
     shawshankId,
-    "spanish.srt",
+    "The.Shawshank.Redemption.1994.es.srt",
     shawshankPath,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(48 * KB),
+    BigInt(122 * KB),
     false
   );
   await createFile(
     shawshankId,
-    "french.srt",
+    "The.Shawshank.Redemption.1994.fr.srt",
     shawshankPath,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(47 * KB),
+    BigInt(112 * KB),
     false
   );
 
-  // 2. Inception (2010) - Multiple media
+  // 2. Inception (2010) - Single media
   const inceptionId = await createItem(
     userId,
     "Inception (2010)",
     moviesId,
     1,
-    1
+    1,
+    "A thief who steals secrets through dream invasion is offered redemption."
   );
   const inceptionPath = "/Movies/Inception (2010)";
   await createFile(
     inceptionId,
-    "Inception.2010.1080p.BluRay.mkv",
+    "Inception.2010.1080p.BrRip.x264.YIFY.mp4",
     inceptionPath,
     FileType.MEDIA,
-    "video/x-matroska",
-    BigInt(Math.floor(3.2 * GB)),
+    "video/mp4",
+    BigInt(Math.floor(1.9 * GB)),
     true
-  );
-  await createFile(
-    inceptionId,
-    "Inception.2010.2160p.4K.mkv",
-    inceptionPath,
-    FileType.MEDIA,
-    "video/x-matroska",
-    BigInt(Math.floor(12.8 * GB)),
-    false
   );
   await createFile(
     inceptionId,
@@ -665,7 +869,7 @@ async function seedMovies(userId: string): Promise<void> {
     inceptionPath,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(180 * KB),
+    BigInt(305 * KB),
     true
   );
   await createFile(
@@ -674,25 +878,25 @@ async function seedMovies(userId: string): Promise<void> {
     inceptionPath,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(320 * KB),
+    BigInt(Math.floor(1.4 * MB)),
     false
   );
   await createFile(
     inceptionId,
-    "english.srt",
+    "Inception.2010.en.srt",
     inceptionPath,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(42 * KB),
+    BigInt(133 * KB),
     true
   );
   await createFile(
     inceptionId,
-    "spanish.srt",
+    "Inception.2010.es.srt",
     inceptionPath,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(44 * KB),
+    BigInt(75 * KB),
     false
   );
 
@@ -702,16 +906,17 @@ async function seedMovies(userId: string): Promise<void> {
     "Interstellar (2014)",
     moviesId,
     2,
-    1
+    1,
+    "Explorers travel through a wormhole in space to ensure humanity's survival."
   );
   const interstellarPath = "/Movies/Interstellar (2014)";
   await createFile(
     interstellarId,
-    "Interstellar.2014.1080p.BluRay.mkv",
+    "Interstellar.2014.2014.1080p.BluRay.x264.YIFY.mp4",
     interstellarPath,
     FileType.MEDIA,
-    "video/x-matroska",
-    BigInt(Math.floor(5.1 * GB)),
+    "video/mp4",
+    BigInt(Math.floor(2.3 * GB)),
     true
   );
   await createFile(
@@ -720,7 +925,7 @@ async function seedMovies(userId: string): Promise<void> {
     interstellarPath,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(280 * KB),
+    BigInt(816 * KB),
     true
   );
   await createFile(
@@ -729,34 +934,34 @@ async function seedMovies(userId: string): Promise<void> {
     interstellarPath,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(520 * KB),
+    BigInt(291 * KB),
     false
   );
   await createFile(
     interstellarId,
-    "banner.jpg",
+    "banner.jpeg",
     interstellarPath,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(150 * KB),
+    BigInt(Math.floor(7.1 * KB)),
     false
   );
   await createFile(
     interstellarId,
-    "logo.png",
+    "logo.jpg",
     interstellarPath,
     FileType.ARTWORK,
-    "image/png",
-    BigInt(45 * KB),
+    "image/jpeg",
+    BigInt(35 * KB),
     false
   );
   await createFile(
     interstellarId,
-    "english.srt",
+    "Interstellar.2014.en.srt",
     interstellarPath,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(38 * KB),
+    BigInt(150 * KB),
     true
   );
 
@@ -766,25 +971,26 @@ async function seedMovies(userId: string): Promise<void> {
     "The Dark Knight (2008)",
     moviesId,
     3,
-    1
+    1,
+    "Batman faces the Joker in one of the greatest tests of his abilities."
   );
   const darkKnightPath = "/Movies/The Dark Knight (2008)";
   await createFile(
     darkKnightId,
-    "The.Dark.Knight.2008.1080p.BluRay.mkv",
+    "Batman.The.Dark.Knight.2008.1080p.BluRay.x264.YIFY.mp4",
     darkKnightPath,
     FileType.MEDIA,
-    "video/x-matroska",
-    BigInt(Math.floor(4.2 * GB)),
+    "video/mp4",
+    BigInt(Math.floor(1.7 * GB)),
     true
   );
   await createFile(
     darkKnightId,
-    "The.Dark.Knight.2008.IMAX.1080p.mkv",
+    "The.Dark.Knight.2008.IMAX.1080p.10bit.BluRay.6CH.x265.HEVC-PSA.mkv",
     darkKnightPath,
     FileType.MEDIA,
     "video/x-matroska",
-    BigInt(Math.floor(4.8 * GB)),
+    BigInt(Math.floor(3.5 * GB)),
     false
   );
   await createFile(
@@ -793,25 +999,25 @@ async function seedMovies(userId: string): Promise<void> {
     darkKnightPath,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(220 * KB),
+    BigInt(376 * KB),
     true
   );
   await createFile(
     darkKnightId,
-    "fanart.jpg",
+    "fanart.webp",
     darkKnightPath,
     FileType.ARTWORK,
-    "image/jpeg",
-    BigInt(380 * KB),
+    "image/webp",
+    BigInt(263 * KB),
     false
   );
   await createFile(
     darkKnightId,
-    "english.srt",
+    "The.Dark.Knight.2008.en.srt",
     darkKnightPath,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(41 * KB),
+    BigInt(139 * KB),
     true
   );
 
@@ -821,16 +1027,17 @@ async function seedMovies(userId: string): Promise<void> {
     "Pulp Fiction (1994)",
     moviesId,
     4,
-    1
+    1,
+    "The lives of two mob hitmen, a boxer, and others intertwine."
   );
   const pulpFictionPath = "/Movies/Pulp Fiction (1994)";
   await createFile(
     pulpFictionId,
-    "Pulp.Fiction.1994.1080p.BluRay.mkv",
+    "Pulp.Fiction.1994.1080p.BrRip.x264.YIFY.mp4",
     pulpFictionPath,
     FileType.MEDIA,
-    "video/x-matroska",
-    BigInt(Math.floor(3.8 * GB)),
+    "video/mp4",
+    BigInt(Math.floor(1.4 * GB)),
     true
   );
 
@@ -840,25 +1047,26 @@ async function seedMovies(userId: string): Promise<void> {
     "Parasite (2019)",
     moviesId,
     5,
-    1
+    1,
+    "A poor family schemes to infiltrate a wealthy household."
   );
   const parasitePath = "/Movies/Parasite (2019)";
   await createFile(
     parasiteId,
-    "Parasite.2019.1080p.BluRay.mkv",
+    "Parasite.2019.1080p.BluRay.x264-[YTS.LT].mp4",
     parasitePath,
     FileType.MEDIA,
-    "video/x-matroska",
-    BigInt(Math.floor(3.5 * GB)),
+    "video/mp4",
+    BigInt(Math.floor(2.1 * GB)),
     true
   );
   await createFile(
     parasiteId,
-    "poster.jpg",
+    "poster.jpeg",
     parasitePath,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(195 * KB),
+    BigInt(10 * KB),
     true
   );
   await createFile(
@@ -867,43 +1075,43 @@ async function seedMovies(userId: string): Promise<void> {
     parasitePath,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(340 * KB),
+    BigInt(381 * KB),
     false
   );
   await createFile(
     parasiteId,
-    "english.srt",
+    "Gisaengchung.2019.en.srt",
     parasitePath,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(52 * KB),
+    BigInt(114 * KB),
     true
   );
   await createFile(
     parasiteId,
-    "korean.srt",
+    "Gisaengchung.2019.es.srt",
     parasitePath,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(48 * KB),
+    BigInt(119 * KB),
     false
   );
   await createFile(
     parasiteId,
-    "spanish.srt",
+    "Gisaengchung.2019.fr.srt",
     parasitePath,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(54 * KB),
+    BigInt(121 * KB),
     false
   );
   await createFile(
     parasiteId,
-    "french.srt",
+    "Gisaengchung.albanian.sq.srt",
     parasitePath,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(53 * KB),
+    BigInt(115 * KB),
     false
   );
 
@@ -913,65 +1121,73 @@ async function seedMovies(userId: string): Promise<void> {
     "Spider-Man No Way Home (2021)",
     moviesId,
     6,
-    1
+    1,
+    "Peter Parker seeks help from Doctor Strange when his identity is revealed."
   );
   const spidermanPath = "/Movies/Spider-Man No Way Home (2021)";
   await createFile(
     spidermanId,
-    "Spider-Man.No.Way.Home.2021.1080p.BluRay.mkv",
+    "Spider-Man.No.Way.Home.2021.1080p.WEBRip.x264.AAC5.1-[YTS.MX].mp4",
     spidermanPath,
     FileType.MEDIA,
-    "video/x-matroska",
-    BigInt(Math.floor(4.1 * GB)),
+    "video/mp4",
+    BigInt(Math.floor(2.7 * GB)),
     true
   );
   await createFile(
     spidermanId,
-    "poster.jpg",
+    "poster.jpeg",
     spidermanPath,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(210 * KB),
+    BigInt(14 * KB),
     true
   );
   await createFile(
     spidermanId,
-    "english.srt",
+    "Spider-Man.No.Way.Home.2021.1080p.WEBRip.x264.AAC5.1-[YTS.MX].srt",
     spidermanPath,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(39 * KB),
+    BigInt(131 * KB),
     true
   );
 
   // 8. Dune (2021) - Multiple media (3 versions)
-  const duneId = await createItem(userId, "Dune (2021)", moviesId, 7, 1);
+  const duneId = await createItem(
+    userId,
+    "Dune (2021)",
+    moviesId,
+    7,
+    1,
+    "Paul Atreides must travel to the most dangerous planet in the universe."
+  );
   const dunePath = "/Movies/Dune (2021)";
   await createFile(
     duneId,
-    "Dune.2021.1080p.BluRay.mkv",
+    "Dune.2021.1080p.BluRay.x264.AAC5.1-[YTS.MX].mp4",
     dunePath,
     FileType.MEDIA,
-    "video/x-matroska",
-    BigInt(Math.floor(4.5 * GB)),
+    "video/mp4",
+    BigInt(Math.floor(2.9 * GB)),
     true
   );
   await createFile(
     duneId,
-    "Dune.2021.2160p.4K.mkv",
+    "Dune.2021.2160p.4K.WEB.x265.10bit.HDR.AAC5.1-[YTS.MX].mkv",
     dunePath,
     FileType.MEDIA,
     "video/x-matroska",
-    BigInt(18 * GB),
+    BigInt(Math.floor(6.9 * GB)),
     false
   );
   await createFile(
     duneId,
-    "Dune.2021.2160p.HDR.mkv",
+    "Dune.2021.720p.BluRay.x264.AAC-[YTS.MX].mp4",
     dunePath,
     FileType.MEDIA,
-    "video/x-matroska",
-    BigInt(22 * GB),
+    "video/mp4",
+    BigInt(Math.floor(1.4 * GB)),
     false
   );
   await createFile(
@@ -980,7 +1196,7 @@ async function seedMovies(userId: string): Promise<void> {
     dunePath,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(240 * KB),
+    BigInt(126 * KB),
     true
   );
   await createFile(
@@ -989,25 +1205,25 @@ async function seedMovies(userId: string): Promise<void> {
     dunePath,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(410 * KB),
+    BigInt(Math.floor(1.3 * MB)),
     false
   );
   await createFile(
     duneId,
-    "english.srt",
+    "Dune.2021.en.srt",
     dunePath,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(36 * KB),
+    BigInt(83 * KB),
     true
   );
   await createFile(
     duneId,
-    "spanish.srt",
+    "Dune.2021.es.srt",
     dunePath,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(38 * KB),
+    BigInt(80 * KB),
     false
   );
 
@@ -1017,16 +1233,17 @@ async function seedMovies(userId: string): Promise<void> {
     "Oppenheimer (2023)",
     moviesId,
     8,
-    1
+    1,
+    "The story of J. Robert Oppenheimer and the creation of the atomic bomb."
   );
   const oppenheimerPath = "/Movies/Oppenheimer (2023)";
   await createFile(
     oppenheimerId,
-    "Oppenheimer.2023.1080p.BluRay.mkv",
+    "Oppenheimer.2023.1080p.BluRay.x264.AAC5.1-[YTS.MX].mp4",
     oppenheimerPath,
     FileType.MEDIA,
-    "video/x-matroska",
-    BigInt(Math.floor(5.8 * GB)),
+    "video/mp4",
+    BigInt(Math.floor(3.3 * GB)),
     true
   );
   await createFile(
@@ -1035,74 +1252,81 @@ async function seedMovies(userId: string): Promise<void> {
     oppenheimerPath,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(260 * KB),
+    BigInt(265 * KB),
     true
   );
   await createFile(
     oppenheimerId,
-    "fanart.jpg",
+    "fanart.jpeg",
     oppenheimerPath,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(480 * KB),
+    BigInt(16 * KB),
     false
   );
   await createFile(
     oppenheimerId,
-    "english.srt",
+    "Oppenheimer.English.en.srt",
     oppenheimerPath,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(58 * KB),
+    BigInt(194 * KB),
     true
   );
   await createFile(
     oppenheimerId,
-    "english-sdh.srt",
+    "Oppenheimer.English.sdh..en.srt",
     oppenheimerPath,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(72 * KB),
+    BigInt(265 * KB),
     false
   );
   await createFile(
     oppenheimerId,
-    "spanish.srt",
+    "Oppenheimer.2023.es.srt",
     oppenheimerPath,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(60 * KB),
+    BigInt(216 * KB),
     false
   );
 
   // 10. Barbie (2023) - Single files only
-  const barbieId = await createItem(userId, "Barbie (2023)", moviesId, 9, 1);
+  const barbieId = await createItem(
+    userId,
+    "Barbie (2023)",
+    moviesId,
+    9,
+    1,
+    "Barbie suffers a crisis that leads her to question her world and existence."
+  );
   const barbiePath = "/Movies/Barbie (2023)";
   await createFile(
     barbieId,
-    "Barbie.2023.1080p.BluRay.mkv",
+    "Barbie.2023.1080p.BluRay.x264.AAC5.1-[YTS.MX].mp4",
     barbiePath,
     FileType.MEDIA,
-    "video/x-matroska",
-    BigInt(Math.floor(3.2 * GB)),
+    "video/mp4",
+    BigInt(Math.floor(2.1 * GB)),
     true
   );
   await createFile(
     barbieId,
-    "poster.jpg",
+    "poster.jpg.webp",
     barbiePath,
     FileType.ARTWORK,
-    "image/jpeg",
-    BigInt(185 * KB),
+    "image/webp",
+    BigInt(216 * KB),
     true
   );
   await createFile(
     barbieId,
-    "english.srt",
+    "Barbie.English.en.srt",
     barbiePath,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(32 * KB),
+    BigInt(153 * KB),
     true
   );
 }
@@ -1112,13 +1336,34 @@ async function seedMovies(userId: string): Promise<void> {
  */
 async function seedTVShows(userId: string): Promise<void> {
   console.log("    📺 Seeding TV Shows...");
-  const tvId = await createItem(userId, "TV Shows", null, 1, 0);
+  const tvId = await createItem(
+    userId,
+    "TV Shows",
+    null,
+    1,
+    0,
+    "Television series and episodic content."
+  );
 
   // Breaking Bad
-  const bbId = await createItem(userId, "Breaking Bad", tvId, 0, 1);
+  const bbId = await createItem(
+    userId,
+    "Breaking Bad",
+    tvId,
+    0,
+    1,
+    "A chemistry teacher turns to manufacturing meth after his cancer diagnosis."
+  );
 
   // Season 1 with artwork
-  const bbS1Id = await createItem(userId, "Season 1", bbId, 0, 2);
+  const bbS1Id = await createItem(
+    userId,
+    "Season 1",
+    bbId,
+    0,
+    2,
+    "Walter White begins his transformation from teacher to drug manufacturer."
+  );
   const bbS1Path = "/TV Shows/Breaking Bad/Season 1";
   await createFile(
     bbS1Id,
@@ -1126,7 +1371,7 @@ async function seedTVShows(userId: string): Promise<void> {
     bbS1Path,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(180 * KB),
+    BigInt(177 * KB),
     true
   );
   await createFile(
@@ -1135,7 +1380,7 @@ async function seedTVShows(userId: string): Promise<void> {
     bbS1Path,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(350 * KB),
+    BigInt(72 * KB),
     false
   );
   await createFile(
@@ -1144,47 +1389,54 @@ async function seedTVShows(userId: string): Promise<void> {
     bbS1Path,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(95 * KB),
+    BigInt(56 * KB),
     false
   );
 
   // S01E01 - Multiple media + subs
-  const bbS1E1Id = await createItem(userId, "S01E01 - Pilot", bbS1Id, 0, 3);
+  const bbS1E1Id = await createItem(
+    userId,
+    "S01E01 - Pilot",
+    bbS1Id,
+    0,
+    3,
+    "Diagnosed with cancer, Walter partners with Jesse to cook meth."
+  );
   const bbS1E1Path = "/TV Shows/Breaking Bad/Season 1/S01E01 - Pilot";
   await createFile(
     bbS1E1Id,
-    "Breaking.Bad.S01E01.Pilot.1080p.mkv",
+    "Breaking.Bad.S01E01.1080p.BluRay.x265-RARBG.mp4",
     bbS1E1Path,
     FileType.MEDIA,
-    "video/x-matroska",
-    BigInt(850 * MB),
+    "video/mp4",
+    BigInt(927 * MB),
     true
   );
   await createFile(
     bbS1E1Id,
-    "Breaking.Bad.S01E01.Pilot.2160p.mkv",
+    "Breaking.Bad.S01E01.2160p.NF.WEB-DL.DTS-HD.MA.5.1.HEVC-CRFW.mkv",
     bbS1E1Path,
     FileType.MEDIA,
     "video/x-matroska",
-    BigInt(Math.floor(3.2 * GB)),
+    BigInt(Math.floor(5.8 * GB)),
     false
   );
   await createFile(
     bbS1E1Id,
-    "english.srt",
+    "Breaking.Bad.s01e01.en.srt",
     bbS1E1Path,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(28 * KB),
+    BigInt(48 * KB),
     true
   );
   await createFile(
     bbS1E1Id,
-    "spanish.srt",
+    "Breaking.Bad.S01E01.es.srt",
     bbS1E1Path,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(30 * KB),
+    BigInt(44 * KB),
     false
   );
 
@@ -1194,25 +1446,27 @@ async function seedTVShows(userId: string): Promise<void> {
     "S01E02 - Cat's in the Bag",
     bbS1Id,
     1,
-    3
+    3,
+    "Walt and Jesse must deal with the aftermath of their first cook."
   );
-  const bbS1E2Path = "/TV Shows/Breaking Bad/Season 1/S01E02";
+  const bbS1E2Path =
+    "/TV Shows/Breaking Bad/Season 1/S01E02 - Cat's in the Bag";
   await createFile(
     bbS1E2Id,
-    "Breaking.Bad.S01E02.1080p.mkv",
+    "Breaking.Bad.S01E02.1080p.BluRay.x265-RARBG.mp4",
     bbS1E2Path,
     FileType.MEDIA,
-    "video/x-matroska",
-    BigInt(820 * MB),
+    "video/mp4",
+    BigInt(770 * MB),
     true
   );
   await createFile(
     bbS1E2Id,
-    "english.srt",
+    "Breaking.Bad.s01e02.en.srt",
     bbS1E2Path,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(26 * KB),
+    BigInt(48 * KB),
     true
   );
 
@@ -1222,30 +1476,39 @@ async function seedTVShows(userId: string): Promise<void> {
     "S01E03 - And the Bag's in the River",
     bbS1Id,
     2,
-    3
+    3,
+    "Walter faces a difficult decision about Krazy-8."
   );
-  const bbS1E3Path = "/TV Shows/Breaking Bad/Season 1/S01E03";
+  const bbS1E3Path =
+    "/TV Shows/Breaking Bad/Season 1/S01E03 - And the Bag's in the River";
   await createFile(
     bbS1E3Id,
-    "Breaking.Bad.S01E03.1080p.mkv",
+    "Breaking.Bad.S01E03.1080p.BluRay.x265-RARBG.mp4",
     bbS1E3Path,
     FileType.MEDIA,
-    "video/x-matroska",
-    BigInt(810 * MB),
+    "video/mp4",
+    BigInt(769 * MB),
     true
   );
   await createFile(
     bbS1E3Id,
-    "english.srt",
+    "Breaking.Bad.s01e03.en.srt",
     bbS1E3Path,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(27 * KB),
+    BigInt(48 * KB),
     true
   );
 
   // Season 2 minimal
-  const bbS2Id = await createItem(userId, "Season 2", bbId, 1, 2);
+  const bbS2Id = await createItem(
+    userId,
+    "Season 2",
+    bbId,
+    1,
+    2,
+    "The consequences of Walt's choices begin to unfold."
+  );
   const bbS2Path = "/TV Shows/Breaking Bad/Season 2";
   await createFile(
     bbS2Id,
@@ -1253,7 +1516,7 @@ async function seedTVShows(userId: string): Promise<void> {
     bbS2Path,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(175 * KB),
+    BigInt(449 * KB),
     true
   );
 
@@ -1262,31 +1525,47 @@ async function seedTVShows(userId: string): Promise<void> {
     "S02E01 - Seven Thirty-Seven",
     bbS2Id,
     0,
-    3
+    3,
+    "Walt and Jesse face the aftermath of Tuco's death."
   );
-  const bbS2E1Path = "/TV Shows/Breaking Bad/Season 2/S02E01";
+  const bbS2E1Path =
+    "/TV Shows/Breaking Bad/Season 2/S02E01 - Seven Thirty-Seven";
   await createFile(
     bbS2E1Id,
-    "Breaking.Bad.S02E01.1080p.mkv",
+    "Breaking.Bad.S02E01.1080p.BluRay.x265-RARBG.mp4",
     bbS2E1Path,
     FileType.MEDIA,
-    "video/x-matroska",
-    BigInt(900 * MB),
+    "video/mp4",
+    BigInt(754 * MB),
     true
   );
   await createFile(
     bbS2E1Id,
-    "english.srt",
+    "Breaking.Bad.S02E01.en.srt",
     bbS2E1Path,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(29 * KB),
+    BigInt(33 * KB),
     true
   );
 
   // Stranger Things
-  const stId = await createItem(userId, "Stranger Things", tvId, 1, 1);
-  const stS1Id = await createItem(userId, "Season 1", stId, 0, 2);
+  const stId = await createItem(
+    userId,
+    "Stranger Things",
+    tvId,
+    1,
+    1,
+    "A group of kids encounter supernatural forces in their small town."
+  );
+  const stS1Id = await createItem(
+    userId,
+    "Season 1",
+    stId,
+    0,
+    2,
+    "The disappearance of Will Byers exposes a dark secret in Hawkins."
+  );
   const stS1Path = "/TV Shows/Stranger Things/Season 1";
   await createFile(
     stS1Id,
@@ -1294,7 +1573,7 @@ async function seedTVShows(userId: string): Promise<void> {
     stS1Path,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(195 * KB),
+    BigInt(714 * KB),
     true
   );
   await createFile(
@@ -1303,7 +1582,7 @@ async function seedTVShows(userId: string): Promise<void> {
     stS1Path,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(380 * KB),
+    BigInt(227 * KB),
     false
   );
 
@@ -1313,25 +1592,27 @@ async function seedTVShows(userId: string): Promise<void> {
     "S01E01 - The Vanishing of Will Byers",
     stS1Id,
     0,
-    3
+    3,
+    "Will Byers mysteriously disappears, and his friends begin to search."
   );
-  const stS1E1Path = "/TV Shows/Stranger Things/Season 1/S01E01";
+  const stS1E1Path =
+    "/TV Shows/Stranger Things/Season 1/S01E01 - The Vanishing of Will Byers";
   await createFile(
     stS1E1Id,
-    "Stranger.Things.S01E01.1080p.mkv",
+    "Stranger.Things.S01E01.1080p.BluRay.x264-SHORTBREHD.mkv",
     stS1E1Path,
     FileType.MEDIA,
     "video/x-matroska",
-    BigInt(Math.floor(1.1 * GB)),
+    BigInt(Math.floor(3.3 * GB)),
     true
   );
   await createFile(
     stS1E1Id,
-    "Stranger.Things.S01E01.2160p.mkv",
+    "Stranger.Things.S01E01.2160p.UHD.BluRay.x265-DEPTH.mkv",
     stS1E1Path,
     FileType.MEDIA,
     "video/x-matroska",
-    BigInt(Math.floor(4.2 * GB)),
+    BigInt(Math.floor(9.0 * GB)),
     false
   );
   await createFile(
@@ -1340,43 +1621,43 @@ async function seedTVShows(userId: string): Promise<void> {
     stS1E1Path,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(65 * KB),
+    BigInt(Math.floor(8.0 * MB)),
     true
   );
   await createFile(
     stS1E1Id,
-    "title.jpg",
+    "title.webp",
     stS1E1Path,
     FileType.ARTWORK,
-    "image/jpeg",
-    BigInt(48 * KB),
+    "image/webp",
+    BigInt(Math.floor(1.7 * KB)),
     false
   );
   await createFile(
     stS1E1Id,
-    "english.srt",
+    "Stranger.Things.S01E01.1080p.BluRay.x264-SHORTBREHD.sub",
+    stS1E1Path,
+    FileType.SUBTITLE,
+    "application/x-subrip",
+    BigInt(Math.floor(4.7 * MB)),
+    true
+  );
+  await createFile(
+    stS1E1Id,
+    "Stranger.Things.S01E01.es.srt",
+    stS1E1Path,
+    FileType.SUBTITLE,
+    "application/x-subrip",
+    BigInt(43 * KB),
+    false
+  );
+  await createFile(
+    stS1E1Id,
+    "Stranger.Things.S01E01.fr.srt",
     stS1E1Path,
     FileType.SUBTITLE,
     "application/x-subrip",
     BigInt(31 * KB),
-    true
-  );
-  await createFile(
-    stS1E1Id,
-    "spanish.srt",
-    stS1E1Path,
-    FileType.SUBTITLE,
-    "application/x-subrip",
-    BigInt(33 * KB),
-    false
-  );
-  await createFile(
-    stS1E1Id,
-    "french.srt",
-    stS1E1Path,
-    FileType.SUBTITLE,
-    "application/x-subrip",
-    BigInt(32 * KB),
     false
   );
 
@@ -1386,24 +1667,25 @@ async function seedTVShows(userId: string): Promise<void> {
     "S01E02 - The Weirdo on Maple Street",
     stS1Id,
     1,
-    3
+    3,
+    "The boys discover a strange girl in the woods with unusual abilities."
   );
   await createFile(
     stS1E2Id,
-    "Stranger.Things.S01E02.1080p.mkv",
-    "/TV Shows/Stranger Things/Season 1/S01E02",
+    "Stranger.Things.S01E02.1080p.BluRay.x264-SHORTBREHD.mkv",
+    "/TV Shows/Stranger Things/Season 1/S01E02 - The Weirdo on Maple Street",
     FileType.MEDIA,
     "video/x-matroska",
-    BigInt(980 * MB),
+    BigInt(Math.floor(4.4 * GB)),
     true
   );
   await createFile(
     stS1E2Id,
-    "english.srt",
-    "/TV Shows/Stranger Things/Season 1/S01E02",
+    "Stranger.Things.S01E02.1080p.BluRay.x264-SHORTBREHD.sub",
+    "/TV Shows/Stranger Things/Season 1/S01E02 - The Weirdo on Maple Street",
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(29 * KB),
+    BigInt(Math.floor(4.7 * MB)),
     true
   );
 
@@ -1412,37 +1694,52 @@ async function seedTVShows(userId: string): Promise<void> {
     "S01E03 - Holly, Jolly",
     stS1Id,
     2,
-    3
+    3,
+    "Joyce communicates with Will through Christmas lights."
   );
   await createFile(
     stS1E3Id,
-    "Stranger.Things.S01E03.1080p.mkv",
-    "/TV Shows/Stranger Things/Season 1/S01E03",
+    "Stranger.Things.S01E03.1080p.BluRay.x264-SHORTBREHD.mkv",
+    "/TV Shows/Stranger Things/Season 1/S01E03 - Holly, Jolly",
     FileType.MEDIA,
     "video/x-matroska",
-    BigInt(1 * GB),
+    BigInt(Math.floor(3.3 * GB)),
     true
   );
   await createFile(
     stS1E3Id,
-    "english.srt",
-    "/TV Shows/Stranger Things/Season 1/S01E03",
+    "Stranger.Things.S01E03.1080p.BluRay.x264-SHORTBREHD.sub",
+    "/TV Shows/Stranger Things/Season 1/S01E03 - Holly, Jolly",
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(30 * KB),
+    BigInt(Math.floor(3.6 * MB)),
     true
   );
 
-  // The Office
-  const officeId = await createItem(userId, "The Office", tvId, 2, 1);
-  const officeS1Id = await createItem(userId, "Season 1", officeId, 0, 2);
+  // The Office (UK)
+  const officeId = await createItem(
+    userId,
+    "The Office (UK)",
+    tvId,
+    2,
+    1,
+    "The daily lives of office employees at Wernham Hogg paper company."
+  );
+  const officeS1Id = await createItem(
+    userId,
+    "Season 1",
+    officeId,
+    0,
+    2,
+    "David Brent manages his staff with delusions of being a brilliant boss."
+  );
   await createFile(
     officeS1Id,
     "poster.jpg",
-    "/TV Shows/The Office/Season 1",
+    "/TV Shows/The Office (UK)/Season 1",
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(145 * KB),
+    BigInt(49 * KB),
     true
   );
 
@@ -1451,24 +1748,25 @@ async function seedTVShows(userId: string): Promise<void> {
     "S01E01 - Pilot",
     officeS1Id,
     0,
-    3
+    3,
+    "Documentary crew begins filming at Wernham Hogg."
   );
   await createFile(
     officeS1E1Id,
-    "The.Office.S01E01.Pilot.1080p.mkv",
-    "/TV Shows/The Office/Season 1/S01E01",
+    "The.Office.UK.S01E01.1080p.WEBRip.x265-RARBG.mp4",
+    "/TV Shows/The Office (UK)/Season 1/S01E01 - Pilot",
     FileType.MEDIA,
-    "video/x-matroska",
-    BigInt(420 * MB),
+    "video/mp4",
+    BigInt(474 * MB),
     true
   );
   await createFile(
     officeS1E1Id,
-    "english.srt",
-    "/TV Shows/The Office/Season 1/S01E01",
+    "2_English.srt",
+    "/TV Shows/The Office (UK)/Season 1/S01E01 - Pilot",
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(18 * KB),
+    BigInt(43 * KB),
     true
   );
 
@@ -1478,15 +1776,16 @@ async function seedTVShows(userId: string): Promise<void> {
     "S01E02 - Diversity Day",
     officeS1Id,
     1,
-    3
+    3,
+    "David runs a diversity seminar after a corporate memo."
   );
   await createFile(
     officeS1E2Id,
-    "The.Office.S01E02.1080p.mkv",
-    "/TV Shows/The Office/Season 1/S01E02",
+    "The.Office.UK.S01E02.1080p.WEBRip.x265-RARBG.mp4",
+    "/TV Shows/The Office (UK)/Season 1/S01E02 - Diversity Day",
     FileType.MEDIA,
-    "video/x-matroska",
-    BigInt(410 * MB),
+    "video/mp4",
+    BigInt(470 * MB),
     true
   );
 
@@ -1495,38 +1794,53 @@ async function seedTVShows(userId: string): Promise<void> {
     "S01E03 - Health Care",
     officeS1Id,
     2,
-    3
+    3,
+    "David tasks Gareth with choosing a health care plan for the office."
   );
   await createFile(
     officeS1E3Id,
-    "The.Office.S01E03.1080p.mkv",
-    "/TV Shows/The Office/Season 1/S01E03",
+    "The.Office.UK.S01E03.1080p.WEBRip.x265-RARBG.mp4",
+    "/TV Shows/The Office (UK)/Season 1/S01E03 - Health Care",
     FileType.MEDIA,
-    "video/x-matroska",
-    BigInt(415 * MB),
+    "video/mp4",
+    BigInt(474 * MB),
     true
   );
   await createFile(
     officeS1E3Id,
-    "english.srt",
-    "/TV Shows/The Office/Season 1/S01E03",
+    "2_English.srt",
+    "/TV Shows/The Office (UK)/Season 1/S01E03 - Health Care",
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(19 * KB),
+    BigInt(41 * KB),
     true
   );
 
   // Game of Thrones
-  const gotId = await createItem(userId, "Game of Thrones", tvId, 3, 1);
-  const gotS1Id = await createItem(userId, "Season 1", gotId, 0, 2);
+  const gotId = await createItem(
+    userId,
+    "Game of Thrones",
+    tvId,
+    3,
+    1,
+    "Noble families vie for control of the Iron Throne of Westeros."
+  );
+  const gotS1Id = await createItem(
+    userId,
+    "Season 1",
+    gotId,
+    0,
+    2,
+    "Eddard Stark is appointed Hand of the King and uncovers dark secrets."
+  );
   const gotS1Path = "/TV Shows/Game of Thrones/Season 1";
   await createFile(
     gotS1Id,
-    "poster.jpg",
+    "poster.jpeg",
     gotS1Path,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(220 * KB),
+    BigInt(8 * KB),
     true
   );
   await createFile(
@@ -1535,7 +1849,7 @@ async function seedTVShows(userId: string): Promise<void> {
     gotS1Path,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(480 * KB),
+    BigInt(143 * KB),
     false
   );
   await createFile(
@@ -1544,7 +1858,7 @@ async function seedTVShows(userId: string): Promise<void> {
     gotS1Path,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(110 * KB),
+    BigInt(53 * KB),
     false
   );
 
@@ -1554,25 +1868,27 @@ async function seedTVShows(userId: string): Promise<void> {
     "S01E01 - Winter Is Coming",
     gotS1Id,
     0,
-    3
+    3,
+    "King Robert arrives at Winterfell to ask Ned to be his Hand."
   );
-  const gotS1E1Path = "/TV Shows/Game of Thrones/Season 1/S01E01";
+  const gotS1E1Path =
+    "/TV Shows/Game of Thrones/Season 1/S01E01 - Winter Is Coming";
   await createFile(
     gotS1E1Id,
-    "Game.of.Thrones.S01E01.1080p.mkv",
+    "Game of Thrones S01E01 1080p BluRay DTS x264-LiNG.mkv",
     gotS1E1Path,
     FileType.MEDIA,
     "video/x-matroska",
-    BigInt(Math.floor(1.8 * GB)),
+    BigInt(Math.floor(8.4 * GB)),
     true
   );
   await createFile(
     gotS1E1Id,
-    "Game.of.Thrones.S01E01.2160p.mkv",
+    "Game of Thrones S01E01 Winter Is Coming REPACK 2160p MAX WEB-DL TrueHD 7 1 Atmos DV HDR H 265-Kitsune.mkv",
     gotS1E1Path,
     FileType.MEDIA,
     "video/x-matroska",
-    BigInt(Math.floor(6.5 * GB)),
+    BigInt(Math.floor(11.3 * GB)),
     false
   );
   await createFile(
@@ -1581,7 +1897,7 @@ async function seedTVShows(userId: string): Promise<void> {
     gotS1E1Path,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(72 * KB),
+    BigInt(Math.floor(1.3 * MB)),
     true
   );
   await createFile(
@@ -1595,16 +1911,16 @@ async function seedTVShows(userId: string): Promise<void> {
   );
   await createFile(
     gotS1E1Id,
-    "english.srt",
+    "Game.of.Thrones.S01E01.en.srt",
     gotS1E1Path,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(35 * KB),
+    BigInt(44 * KB),
     true
   );
   await createFile(
     gotS1E1Id,
-    "spanish.srt",
+    "Game.of.Thrones.S01E01.es.srt",
     gotS1E1Path,
     FileType.SUBTITLE,
     "application/x-subrip",
@@ -1613,20 +1929,20 @@ async function seedTVShows(userId: string): Promise<void> {
   );
   await createFile(
     gotS1E1Id,
-    "french.srt",
+    "Game.of.Thrones.S01E01.fr.srt",
     gotS1E1Path,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(36 * KB),
+    BigInt(41 * KB),
     false
   );
   await createFile(
     gotS1E1Id,
-    "german.srt",
+    "Game.of.Thrones.S01E01.de.srt",
     gotS1E1Path,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(38 * KB),
+    BigInt(42 * KB),
     false
   );
 
@@ -1636,39 +1952,48 @@ async function seedTVShows(userId: string): Promise<void> {
     "S01E02 - The Kingsroad",
     gotS1Id,
     1,
-    3
+    3,
+    "Ned and his daughters travel to King's Landing with the royal family."
   );
-  const gotS1E2Path = "/TV Shows/Game of Thrones/Season 1/S01E02";
+  const gotS1E2Path =
+    "/TV Shows/Game of Thrones/Season 1/S01E02 - The Kingsroad";
   await createFile(
     gotS1E2Id,
-    "Game.of.Thrones.S01E02.1080p.mkv",
+    "Game of Thrones S01E02 1080p BluRay DTS x264-LiNG.mkv",
     gotS1E2Path,
     FileType.MEDIA,
     "video/x-matroska",
-    BigInt(Math.floor(1.7 * GB)),
+    BigInt(Math.floor(5.6 * GB)),
     true
   );
   await createFile(
     gotS1E2Id,
-    "english.srt",
+    "Game.of.Thrones.S01E02.en.srt",
     gotS1E2Path,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(33 * KB),
+    BigInt(44 * KB),
     true
   );
   await createFile(
     gotS1E2Id,
-    "spanish.srt",
+    "Game.of.Thrones.S01E02.es.srt",
     gotS1E2Path,
     FileType.SUBTITLE,
     "application/x-subrip",
-    BigInt(35 * KB),
+    BigInt(80 * KB),
     false
   );
 
   // The Mandalorian - EMPTY (no seasons)
-  await createItem(userId, "The Mandalorian", tvId, 4, 1);
+  await createItem(
+    userId,
+    "The Mandalorian",
+    tvId,
+    4,
+    1,
+    "A lone bounty hunter makes his way through the outer reaches of the galaxy."
+  );
 }
 
 /**
@@ -1676,7 +2001,14 @@ async function seedTVShows(userId: string): Promise<void> {
  */
 async function seedMusic(userId: string): Promise<void> {
   console.log("    🎵 Seeding Music...");
-  const musicId = await createItem(userId, "Music", null, 2, 0);
+  const musicId = await createItem(
+    userId,
+    "Music",
+    null,
+    2,
+    0,
+    "Audio albums and music collection."
+  );
 
   // Pink Floyd - The Dark Side of the Moon
   const pinkFloydId = await createItem(
@@ -1684,52 +2016,53 @@ async function seedMusic(userId: string): Promise<void> {
     "Pink Floyd - The Dark Side of the Moon",
     musicId,
     0,
-    1
+    1,
+    "1973 progressive rock masterpiece exploring themes of time and mortality."
   );
   const pinkFloydPath = "/Music/Pink Floyd - The Dark Side of the Moon";
   await createFile(
     pinkFloydId,
-    "01 - Speak to Me.flac",
+    "Pink Floyd - The Dark Side of the Moon - 01 - Speak to Me.flac",
     pinkFloydPath,
     FileType.MEDIA,
     "audio/flac",
-    BigInt(12 * MB),
+    BigInt(41 * MB),
     true
   );
   await createFile(
     pinkFloydId,
-    "02 - Breathe.flac",
+    "Pink Floyd - The Dark Side of the Moon - 02 - Breathe (in the Air).flac",
     pinkFloydPath,
     FileType.MEDIA,
     "audio/flac",
-    BigInt(35 * MB),
+    BigInt(104 * MB),
     false
   );
   await createFile(
     pinkFloydId,
-    "03 - Time.flac",
+    "Pink Floyd - The Dark Side of the Moon - 03 - On the Run.flac",
     pinkFloydPath,
     FileType.MEDIA,
     "audio/flac",
-    BigInt(85 * MB),
+    BigInt(131 * MB),
     false
   );
   await createFile(
     pinkFloydId,
-    "04 - Money.flac",
+    "Pink Floyd - The Dark Side of the Moon - 04 - Time.flac",
     pinkFloydPath,
     FileType.MEDIA,
     "audio/flac",
-    BigInt(78 * MB),
+    BigInt(266 * MB),
     false
   );
   await createFile(
     pinkFloydId,
-    "05 - Brain Damage.flac",
+    "Pink Floyd - The Dark Side of the Moon - 05 - The Great Gig in the Sky.flac",
     pinkFloydPath,
     FileType.MEDIA,
     "audio/flac",
-    BigInt(48 * MB),
+    BigInt(171 * MB),
     false
   );
   await createFile(
@@ -1738,7 +2071,7 @@ async function seedMusic(userId: string): Promise<void> {
     pinkFloydPath,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(850 * KB),
+    BigInt(23 * KB),
     true
   );
   await createFile(
@@ -1747,16 +2080,16 @@ async function seedMusic(userId: string): Promise<void> {
     pinkFloydPath,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(720 * KB),
+    BigInt(67 * KB),
     false
   );
   await createFile(
     pinkFloydId,
-    "cd.png",
+    "cd.webp",
     pinkFloydPath,
     FileType.ARTWORK,
-    "image/png",
-    BigInt(380 * KB),
+    "image/webp",
+    BigInt(220 * KB),
     false
   );
 
@@ -1766,34 +2099,35 @@ async function seedMusic(userId: string): Promise<void> {
     "Daft Punk - Random Access Memories",
     musicId,
     1,
-    1
+    1,
+    "2013 Grammy-winning album blending disco and electronic music."
   );
   const daftPunkPath = "/Music/Daft Punk - Random Access Memories";
   await createFile(
     daftPunkId,
-    "01 - Give Life Back to Music.flac",
+    "Daft Punk_Random Access Memories_01-01_Give Life Back to Music.flac",
     daftPunkPath,
     FileType.MEDIA,
     "audio/flac",
-    BigInt(58 * MB),
+    BigInt(30 * MB),
     true
   );
   await createFile(
     daftPunkId,
-    "02 - The Game of Love.flac",
+    "Daft Punk_Random Access Memories_01-02_The Game of Love.flac",
     daftPunkPath,
     FileType.MEDIA,
     "audio/flac",
-    BigInt(62 * MB),
+    BigInt(31 * MB),
     false
   );
   await createFile(
     daftPunkId,
-    "03 - Get Lucky.flac",
+    "Daft Punk_Random Access Memories_01-03_Giorgio by Moroder.flac",
     daftPunkPath,
     FileType.MEDIA,
     "audio/flac",
-    BigInt(72 * MB),
+    BigInt(56 * MB),
     false
   );
   await createFile(
@@ -1802,7 +2136,7 @@ async function seedMusic(userId: string): Promise<void> {
     daftPunkPath,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(920 * KB),
+    BigInt(35 * KB),
     true
   );
   await createFile(
@@ -1811,12 +2145,19 @@ async function seedMusic(userId: string): Promise<void> {
     daftPunkPath,
     FileType.ARTWORK,
     "image/jpeg",
-    BigInt(Math.floor(1.2 * MB)),
+    BigInt(121 * KB),
     false
   );
 
   // Favorites - EMPTY
-  await createItem(userId, "Favorites", musicId, 2, 1);
+  await createItem(
+    userId,
+    "Favorites",
+    musicId,
+    2,
+    1,
+    "Your hand-picked favorite tracks."
+  );
 }
 
 /**
@@ -1830,7 +2171,14 @@ async function seedAlexDemo(userId: string): Promise<void> {
   await seedMusic(userId);
 
   // Documentaries folder (empty)
-  await createItem(userId, "Documentaries", null, 3, 0);
+  await createItem(
+    userId,
+    "Documentaries",
+    null,
+    3,
+    0,
+    "Collection of documentary films and series."
+  );
 }
 
 /**
@@ -1839,8 +2187,22 @@ async function seedAlexDemo(userId: string): Promise<void> {
 async function seedJordanTest(userId: string): Promise<void> {
   console.log("  Seeding Jordan Test data...");
 
-  await createItem(userId, "My Files", null, 0, 0);
-  await createItem(userId, "Projects", null, 1, 0);
+  await createItem(
+    userId,
+    "My Files",
+    null,
+    0,
+    0,
+    "Personal files and documents."
+  );
+  await createItem(
+    userId,
+    "Projects",
+    null,
+    1,
+    0,
+    "Work-in-progress projects."
+  );
 }
 
 /**
@@ -1897,11 +2259,11 @@ async function main(): Promise<void> {
 
   console.log("\n✨ Seed completed successfully!");
   console.log("\n📊 Summary:");
-  console.log("  - 10 Movies (52 files)");
-  console.log("  - 4 TV Shows, 11 episodes (46 files)");
-  console.log("  - 2 Albums (16 files)");
+  console.log("  - 10 Movies (51 files)");
+  console.log("  - 4 TV Shows, 11 episodes (47 files)");
+  console.log("  - 2 Albums (13 files)");
   console.log("  - 3 Empty folders");
-  console.log("  - Total: ~114 files");
+  console.log("  - Total: ~111 files");
   console.log("\n🔐 Login credentials:");
   console.log("  Email: seed@canoncore.com (full data)");
   console.log("  Email: seed2@canoncore.com (minimal data)");
@@ -2459,11 +2821,11 @@ git commit -m "test: add seed integration tests"
 
 | Category  | Items           | Files    | Test Scenarios                     |
 | --------- | --------------- | -------- | ---------------------------------- |
-| Movies    | 10              | 52       | Multiple media, artwork, subtitles |
-| TV Shows  | 4 shows, 11 eps | 46       | Deep hierarchy, season artwork     |
-| Music     | 2 albums        | 16       | Audio files, album art             |
+| Movies    | 10              | 51       | Multiple media, artwork, subtitles |
+| TV Shows  | 4 shows, 11 eps | 47       | Deep hierarchy, season artwork     |
+| Music     | 2 albums        | 13       | Audio files, album art             |
 | Empty     | 3 folders       | 0        | Empty state UI                     |
-| **Total** | **~30**         | **~114** | All scenarios covered              |
+| **Total** | **~30**         | **~111** | All scenarios covered              |
 
 ### Seed Users
 

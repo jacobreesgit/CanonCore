@@ -14,6 +14,7 @@ import type { FileType } from "@prisma/client";
 export interface Item {
   id: string;
   name: string;
+  description: string | null;
   parentId: string | null;
   order: number;
   depth: number;
@@ -33,6 +34,7 @@ export interface Item {
 export interface TreeItem {
   id: UniqueIdentifier;
   name: string;
+  description?: string | null;
   order: number;
   depth: number;
   parentId: UniqueIdentifier | null;

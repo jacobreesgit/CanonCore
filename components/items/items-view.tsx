@@ -44,7 +44,7 @@ import { cn } from "@/lib/utils";
 
 /** State for the settings dialog */
 interface SettingsDialogState {
-  item: { id: string; name: string };
+  item: { id: string; name: string; description: string | null };
   files: {
     media: SerializedItemFile[];
     artwork: SerializedItemFile[];
@@ -117,7 +117,7 @@ export function ItemsView({
           : { media: [], artwork: [], subtitles: [] };
 
       setSettingsDialog({
-        item: { id: item.id, name: item.name },
+        item: { id: item.id, name: item.name, description: item.description },
         files,
       });
     },
@@ -225,6 +225,25 @@ export function ItemsView({
       }
     },
     [items, refetchItems]
+  );
+
+  // Handle updating item description
+  const handleUpdateDescription = useCallback(
+    async (id: string, description: string) => {
+      const result = await updateItem(id, { description });
+      if (result.success) {
+        setItems((prev) =>
+          prev.map((i) =>
+            i.id === id ? { ...i, description: description || null } : i
+          )
+        );
+        startTransition(() => refetchItems());
+        toast.success("Description updated");
+      } else {
+        toast.error(result.error || "Failed to update description");
+      }
+    },
+    [refetchItems]
   );
 
   // Handle deleting an item
@@ -479,6 +498,21 @@ export function ItemsView({
             // Update dialog state with new name
             setSettingsDialog((prev) =>
               prev ? { ...prev, item: { ...prev.item, name: newName } } : null
+            );
+          }}
+          onDescriptionChange={async (description) => {
+            await handleUpdateDescription(settingsDialog.item.id, description);
+            // Update dialog state with new description
+            setSettingsDialog((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    item: {
+                      ...prev.item,
+                      description: description || null,
+                    },
+                  }
+                : null
             );
           }}
           onSettingsChange={refetchItems}

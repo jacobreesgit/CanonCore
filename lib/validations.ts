@@ -62,6 +62,17 @@ export const itemNameSchema = z
   );
 
 /**
+ * Item description validation schema.
+ * Optional field, max 200 characters.
+ * Trims whitespace before validation to prevent edge cases.
+ * Allows any printable characters for flexibility.
+ */
+export const itemDescriptionSchema = z
+  .string()
+  .transform((val) => val.trim())
+  .pipe(z.string().max(200, "Description must be 200 characters or less"));
+
+/**
  * Validates SFTP connection configuration.
  */
 export const sftpConnectionSchema = z.object({
