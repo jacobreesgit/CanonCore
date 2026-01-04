@@ -29,6 +29,11 @@ pnpm run test:e2e --project=chromium        # Desktop only
 pnpm run test:e2e --project=mobile-chrome   # Mobile only
 pnpm run test:e2e:debug                     # Debug mode
 pnpm run test:e2e:ui                        # UI mode
+
+# Database seeding (development only)
+pnpm run db:seed          # Seed database with sample data
+pnpm run db:clear-seed    # Remove seed data only
+pnpm run db:reset         # Reset database and re-seed
 ```
 
 ## Architecture
@@ -165,13 +170,15 @@ pnpm run test:e2e:ui                        # UI mode
 │   └── webdav-utils.ts               # WebDAV URL construction for streaming
 ├── prisma/
 │   ├── migrations/                   # Database migrations
-│   └── schema.prisma                 # User, PasswordReset, Item, ItemFile, SftpConnection
+│   ├── schema.prisma                 # User, PasswordReset, Item, ItemFile, SftpConnection
+│   ├── seed.ts                       # Database seeding script (dev only)
+│   └── clear-seed.ts                 # Clear seed data script
 ├── skills/                           # Claude Code skills
 │   ├── code-review-excellence/       # Code review best practices
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.17.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.18.0)
     └── plans/                        # Design documents
 ```
 
@@ -200,6 +207,19 @@ pnpm run test:e2e:ui                        # UI mode
 - Enums: `FileType` (MEDIA, ARTWORK, SUBTITLE), `AuthType` (PASSWORD, PRIVATE_KEY)
 - Config in `prisma.config.ts` (loads DATABASE_URL from .env.local)
 - Run migrations: `npx prisma migrate dev`
+- **Database seeding**: `prisma/seed.ts` creates sample data for dev/QA testing
+
+### Database Seeding
+
+For development and QA, seed the database with sample data:
+
+| Email | Password | Purpose |
+|-------|----------|---------|
+| seed@canoncore.com | (SEED_PASSWORD) | Full demo account |
+| seed2@canoncore.com | (same) | Minimal data |
+| seed3@canoncore.com | (same) | Empty account |
+
+Seed data includes 10 movies, 4 TV shows (11 episodes), 2 albums, ~111 files total. Run `pnpm run db:seed` after setting `ALLOW_SEEDING=true` and `SEED_PASSWORD` in `.env.local`.
 
 ### Items System
 
@@ -259,7 +279,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 280 total tests (232 unit + 48 integration)
+- 293 total tests (240 unit + 53 integration)
 
 ### E2E Testing
 
@@ -314,6 +334,8 @@ Optional:
 
 - `BYPASS_RATE_LIMIT` - Set to `"true"` to skip rate limiting (for E2E tests)
 - `NEXT_PUBLIC_APP_URL` - Base URL for email links (default: `http://localhost:3000`)
+- `SEED_PASSWORD` - Shared password for seed users (required for seeding)
+- `ALLOW_SEEDING` - Set to `"true"` to enable database seeding
 
 ## Documentation Standards
 
