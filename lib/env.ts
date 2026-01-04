@@ -28,6 +28,10 @@ const envSchema = z.object({
 
   // Testing (optional)
   BYPASS_RATE_LIMIT: z.string().optional(),
+
+  // Seeding (optional - only needed for seed script)
+  SEED_PASSWORD: z.string().optional(),
+  ALLOW_SEEDING: z.string().optional(),
 });
 
 /**
