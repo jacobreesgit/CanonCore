@@ -54,10 +54,12 @@ export function Grid({
           <GridItem
             id={item.id}
             name={item.name}
+            description={item.description}
             onClick={() => onItemClick?.(item.id)}
             sftpPath={item.sftpPath}
             artworkId={item.artworkId}
             showArtwork={true}
+            showDescription={true}
           />
         </ItemContextMenu>
       ))}

@@ -150,4 +150,57 @@ describe("item CRUD integration", () => {
     const level10 = await createItem(level9.data!.id, "Level 10");
     expect(level10.error).toBe("Maximum nesting depth reached");
   });
+
+  it("creates item with description", async () => {
+    const createResult = await createItem(
+      null,
+      "Described Folder",
+      "This is a test description"
+    );
+    expect(createResult.success).toBe(true);
+    if (!createResult.success) throw new Error("Failed to create item");
+    expect(createResult.data?.name).toBe("Described Folder");
+    expect(createResult.data?.description).toBe("This is a test description");
+  });
+
+  it("creates item without description", async () => {
+    const createResult = await createItem(null, "No Description Folder");
+    expect(createResult.success).toBe(true);
+    if (!createResult.success) throw new Error("Failed to create item");
+    expect(createResult.data?.description).toBeNull();
+  });
+
+  it("updates item description", async () => {
+    const createResult = await createItem(null, "Update Desc Test");
+    if (!createResult.success) throw new Error("Failed to create item");
+    const itemId = createResult.data!.id;
+
+    await updateItem(itemId, { description: "Updated description" });
+
+    const getResult = await getItem(itemId);
+    if (!getResult.success) throw new Error("Failed to get item");
+    expect(getResult.data?.item.description).toBe("Updated description");
+  });
+
+  it("clears item description with empty string", async () => {
+    const createResult = await createItem(
+      null,
+      "Clear Desc Test",
+      "Initial description"
+    );
+    if (!createResult.success) throw new Error("Failed to create item");
+    const itemId = createResult.data!.id;
+
+    await updateItem(itemId, { description: "" });
+
+    const getResult = await getItem(itemId);
+    if (!getResult.success) throw new Error("Failed to get item");
+    expect(getResult.data?.item.description).toBeNull();
+  });
+
+  it("rejects description over 200 characters", async () => {
+    const longDescription = "a".repeat(201);
+    const result = await createItem(null, "Long Desc Test", longDescription);
+    expect(result.error).toContain("200");
+  });
 });

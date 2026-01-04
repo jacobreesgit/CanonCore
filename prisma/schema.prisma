@@ -81,9 +81,10 @@ model SftpConnection {
 }
 
 model Item {
-  id        String   @id @default(cuid())
-  name      String
-  order     Int      @default(0)
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.VarChar(200)
+  order       Int      @default(0)
   depth     Int      @default(0)
 
   // Hierarchy (max 10 levels deep)

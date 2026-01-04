@@ -22,6 +22,7 @@ export function itemsToTree(items: ItemInput[]): TreeItem[] {
     itemMap.set(item.id, {
       id: item.id,
       name: item.name,
+      description: item.description,
       order: item.order,
       depth: item.depth,
       parentId: item.parentId,

@@ -131,6 +131,7 @@ export async function getItemsByConnection(
     const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => ({
       id: item.id,
       name: item.name,
+      description: item.description,
       parentId: item.parentId,
       order: item.order,
       depth: item.depth,
@@ -549,6 +550,7 @@ export async function createSftpFolder(
       data: {
         id: item.id,
         name: item.name,
+        description: item.description,
         parentId: item.parentId,
         connectionId: item.connectionId,
         sftpPath: item.sftpPath,
