@@ -16,6 +16,8 @@ export interface GridItemProps extends Omit<
 > {
   id: UniqueIdentifier;
   name: string;
+  /** Optional short description (max 200 chars). */
+  description?: string | null;
   isDragging?: boolean;
   isOverlay?: boolean;
   handleProps?: Record<string, unknown>;
@@ -26,6 +28,8 @@ export interface GridItemProps extends Omit<
   artworkId?: string | null;
   /** Whether to show artwork thumbnail. Defaults to true. */
   showArtwork?: boolean;
+  /** Whether to show description. Defaults to true. Hidden in edit mode. */
+  showDescription?: boolean;
 }
 
 export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
@@ -33,6 +37,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
     {
       id,
       name,
+      description,
       isDragging,
       isOverlay,
       handleProps,
@@ -41,12 +46,14 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       style,
       artworkId,
       showArtwork = true,
+      showDescription = true,
       sftpPath: _sftpPath, // eslint-disable-line @typescript-eslint/no-unused-vars
       ...props
     },
     ref
   ) {
     const shouldShowArtwork = showArtwork && artworkId;
+    const shouldShowDescription = showDescription && description;
     return (
       <div
         ref={ref}
@@ -109,25 +116,37 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
           </div>
         )}
 
-        {/* Item Name */}
-        <div className="flex items-center gap-2 p-3">
-          <Folder
-            className={cn(
-              "size-4 shrink-0 transition-colors duration-200",
-              "text-muted-foreground/70",
-              "group-hover:text-primary/80"
-            )}
-            strokeWidth={1.75}
-          />
-          <span
-            className={cn(
-              "truncate text-sm font-medium",
-              "text-foreground/85 transition-colors duration-150",
-              "group-hover:text-foreground"
-            )}
-          >
-            {name}
-          </span>
+        {/* Item Name and Description */}
+        <div className="flex flex-col gap-0.5 p-3">
+          <div className="flex items-center gap-2">
+            <Folder
+              className={cn(
+                "size-4 shrink-0 transition-colors duration-200",
+                "text-muted-foreground/70",
+                "group-hover:text-primary/80"
+              )}
+              strokeWidth={1.75}
+            />
+            <span
+              className={cn(
+                "truncate text-sm font-medium",
+                "text-foreground/85 transition-colors duration-150",
+                "group-hover:text-foreground"
+              )}
+            >
+              {name}
+            </span>
+          </div>
+          {shouldShowDescription && (
+            <p
+              className={cn(
+                "text-muted-foreground truncate pl-6 text-xs",
+                "transition-colors duration-150"
+              )}
+            >
+              {description}
+            </p>
+          )}
         </div>
 
         {/* Subtle drag indicator on hover */}

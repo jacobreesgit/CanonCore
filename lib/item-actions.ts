@@ -7,7 +7,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { itemNameSchema } from "@/lib/validations";
+import { itemNameSchema, itemDescriptionSchema } from "@/lib/validations";
 import { checkRateLimit } from "@/lib/rate-limit";
 import type {
   Item,
@@ -54,6 +54,7 @@ export async function getItems(
   const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => ({
     id: item.id,
     name: item.name,
+    description: item.description,
     parentId: item.parentId,
     order: item.order,
     depth: item.depth,
@@ -125,11 +126,13 @@ export async function getItem(
  *
  * @param parentId - Parent item ID or null for root
  * @param name - Item name
+ * @param description - Optional short description (max 200 chars)
  * @returns Created item or error
  */
 export async function createItem(
   parentId: string | null,
-  name: string
+  name: string,
+  description?: string
 ): Promise<ItemResult<Item>> {
   // Rate limit check
   const rateLimitResult = await checkRateLimit("itemCreate");
@@ -143,9 +146,19 @@ export async function createItem(
   }
 
   // Validate name
-  const validation = itemNameSchema.safeParse(name);
-  if (!validation.success) {
-    return { error: validation.error.issues[0].message };
+  const nameValidation = itemNameSchema.safeParse(name);
+  if (!nameValidation.success) {
+    return { error: nameValidation.error.issues[0].message };
+  }
+
+  // Validate description if provided
+  let validatedDescription: string | null = null;
+  if (description !== undefined && description !== "") {
+    const descValidation = itemDescriptionSchema.safeParse(description);
+    if (!descValidation.success) {
+      return { error: descValidation.error.issues[0].message };
+    }
+    validatedDescription = descValidation.data || null;
   }
 
   let depth = 0;
@@ -181,7 +194,8 @@ export async function createItem(
 
   const item = await prisma.item.create({
     data: {
-      name: validation.data,
+      name: nameValidation.data,
+      description: validatedDescription,
       parentId,
       order,
       depth,
@@ -197,12 +211,12 @@ export async function createItem(
  * Verifies ownership before update.
  *
  * @param id - Item ID
- * @param data - Partial item data to update
+ * @param data - Partial item data to update (name and/or description)
  * @returns Success or error
  */
 export async function updateItem(
   id: string,
-  data: { name?: string }
+  data: { name?: string; description?: string }
 ): Promise<ItemResult> {
   // Rate limit check
   const rateLimitResult = await checkRateLimit("itemUpdate");
@@ -228,14 +242,30 @@ export async function updateItem(
     return { error: "Unauthorized" };
   }
 
+  // Build update data
+  const updateData: { name?: string; description?: string | null } = {};
+
   // Validate name if provided
-  const updateData: { name?: string } = {};
   if (data.name !== undefined) {
     const validation = itemNameSchema.safeParse(data.name);
     if (!validation.success) {
       return { error: validation.error.issues[0].message };
     }
     updateData.name = validation.data;
+  }
+
+  // Validate description if provided
+  if (data.description !== undefined) {
+    if (data.description === "") {
+      // Empty string clears the description
+      updateData.description = null;
+    } else {
+      const validation = itemDescriptionSchema.safeParse(data.description);
+      if (!validation.success) {
+        return { error: validation.error.issues[0].message };
+      }
+      updateData.description = validation.data || null;
+    }
   }
 
   await prisma.item.update({

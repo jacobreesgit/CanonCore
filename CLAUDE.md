@@ -171,7 +171,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.16.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.17.0)
     └── plans/                        # Design documents
 ```
 
@@ -193,6 +193,7 @@ pnpm run test:e2e:ui                        # UI mode
 - **Prisma 7** with PostgreSQL (Neon)
 - Schema: User, PasswordReset, Item, ItemFile, SftpConnection models
 - Item has self-referential parent/child relationships for hierarchy
+- Item has optional `description` field (max 200 chars) for short notes
 - Item has SFTP fields: `sftpPath`, `sftpModifiedAt`, `connectionId`
 - ItemFile stores files per item: `filename`, `sftpPath`, `fileType`, `mimeType`, `playbackPosition`
 - SftpConnection stores encrypted credentials with AES-256-GCM (plus optional WebDAV credentials)
@@ -210,7 +211,8 @@ pnpm run test:e2e:ui                        # UI mode
 - **Server actions**: `createItem`, `updateItem`, `deleteItem`, `reorderItems` in `lib/item-actions.ts`
 - **Breadcrumb navigation** for folder drill-down
 - **Context menu**: Right-click for Settings, Delete, Add Subfolder
-- **Settings dialog**: Rename items and select primary files (media, artwork, subtitles)
+- **Settings dialog**: Rename items, add descriptions, and select primary files
+- **Item descriptions**: Optional 200-character notes, displayed in view mode
 - **Primary file selection**: Choose which file plays/displays when multiple files attached
 - **Toast notifications**: Success/error feedback via Sonner
 - **Max depth**: 10 levels of nesting
@@ -257,7 +259,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 261 total tests (218 unit + 43 integration)
+- 280 total tests (232 unit + 48 integration)
 
 ### E2E Testing
 

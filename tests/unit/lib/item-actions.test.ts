@@ -45,10 +45,11 @@ const mockSession = (userId: string, email: string): Session => ({
   expires: new Date().toISOString(),
 });
 
-/** Helper to create a mock item with all required SFTP fields */
+/** Helper to create a mock item with all required fields */
 const mockItem = (overrides: {
   id: string;
   name: string;
+  description?: string | null;
   parentId: string | null;
   order: number;
   depth: number;
@@ -56,6 +57,7 @@ const mockItem = (overrides: {
   artworkId?: string | null;
 }) => ({
   ...overrides,
+  description: overrides.description ?? null,
   type: "FOLDER" as const,
   sftpPath: null,
   mimeType: null,
@@ -277,6 +279,7 @@ describe("createItem", () => {
     expect(prisma.item.create).toHaveBeenCalledWith({
       data: {
         name: "New Folder",
+        description: null,
         parentId: null,
         order: 0,
         depth: 0,
@@ -305,6 +308,77 @@ describe("createItem", () => {
     const result = await createItem("deep-parent", "Child");
 
     expect(result.error).toBe("Maximum nesting depth reached");
+  });
+
+  it("creates item with description", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.aggregate).mockResolvedValue({
+      _max: { order: null },
+    } as never);
+    vi.mocked(prisma.item.create).mockResolvedValue(
+      mockItem({
+        id: "new-item",
+        name: "Folder",
+        description: "A test folder",
+        parentId: null,
+        order: 0,
+        depth: 0,
+        userId: "user-1",
+      })
+    );
+
+    const result = await createItem(null, "Folder", "A test folder");
+
+    expect(result.success).toBe(true);
+    expect(prisma.item.create).toHaveBeenCalledWith({
+      data: {
+        name: "Folder",
+        description: "A test folder",
+        parentId: null,
+        order: 0,
+        depth: 0,
+        userId: "user-1",
+      },
+    });
+  });
+
+  it("creates item without description when not provided", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.aggregate).mockResolvedValue({
+      _max: { order: null },
+    } as never);
+    vi.mocked(prisma.item.create).mockResolvedValue(
+      mockItem({
+        id: "new-item",
+        name: "Folder",
+        parentId: null,
+        order: 0,
+        depth: 0,
+        userId: "user-1",
+      })
+    );
+
+    const result = await createItem(null, "Folder");
+
+    expect(result.success).toBe(true);
+    expect(prisma.item.create).toHaveBeenCalledWith({
+      data: {
+        name: "Folder",
+        description: null,
+        parentId: null,
+        order: 0,
+        depth: 0,
+        userId: "user-1",
+      },
+    });
+  });
+
+  it("returns validation error for description over 200 chars", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+
+    const result = await createItem(null, "Folder", "a".repeat(201));
+
+    expect(result.error).toContain("200");
   });
 });
 
@@ -354,6 +428,59 @@ describe("updateItem", () => {
     expect(prisma.item.update).toHaveBeenCalledWith({
       where: { id: "item-1" },
       data: { name: "New Name" },
+    });
+  });
+
+  it("updates item description", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      userId: "user-1",
+    } as never);
+    vi.mocked(prisma.item.update).mockResolvedValue({} as never);
+
+    const result = await updateItem("item-1", {
+      description: "New description",
+    });
+
+    expect(result.success).toBe(true);
+    expect(prisma.item.update).toHaveBeenCalledWith({
+      where: { id: "item-1" },
+      data: { description: "New description" },
+    });
+  });
+
+  it("clears description when set to empty string", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      userId: "user-1",
+    } as never);
+    vi.mocked(prisma.item.update).mockResolvedValue({} as never);
+
+    const result = await updateItem("item-1", { description: "" });
+
+    expect(result.success).toBe(true);
+    expect(prisma.item.update).toHaveBeenCalledWith({
+      where: { id: "item-1" },
+      data: { description: null },
+    });
+  });
+
+  it("updates both name and description", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      userId: "user-1",
+    } as never);
+    vi.mocked(prisma.item.update).mockResolvedValue({} as never);
+
+    const result = await updateItem("item-1", {
+      name: "New Name",
+      description: "New description",
+    });
+
+    expect(result.success).toBe(true);
+    expect(prisma.item.update).toHaveBeenCalledWith({
+      where: { id: "item-1" },
+      data: { name: "New Name", description: "New description" },
     });
   });
 });

@@ -11,6 +11,7 @@ const mockItems: ItemWithArtwork[] = [
   {
     id: "1",
     name: "Item 1",
+    description: null,
     parentId: null,
     order: 0,
     depth: 0,
@@ -25,6 +26,7 @@ const mockItems: ItemWithArtwork[] = [
   {
     id: "2",
     name: "Item 2",
+    description: "A test description",
     parentId: null,
     order: 1,
     depth: 0,

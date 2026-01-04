@@ -39,7 +39,7 @@ interface ItemSettingsDialogProps {
   /** Callback when dialog open state changes */
   onOpenChange: (open: boolean) => void;
   /** The item being configured */
-  item: { id: string; name: string };
+  item: { id: string; name: string; description: string | null };
   /** Files attached to this item, grouped by type (serialized for client) */
   files: {
     media: SerializedItemFile[];
@@ -48,6 +48,8 @@ interface ItemSettingsDialogProps {
   };
   /** Callback to rename the item */
   onRename: (newName: string) => Promise<void>;
+  /** Callback to update the description */
+  onDescriptionChange: (description: string) => Promise<void>;
   /** Optional callback when settings change (for refreshing data) */
   onSettingsChange?: () => void;
 }
@@ -90,16 +92,20 @@ export function ItemSettingsDialog({
   item,
   files,
   onRename,
+  onDescriptionChange,
   onSettingsChange,
 }: ItemSettingsDialogProps) {
   const [name, setName] = useState(item.name);
+  const [description, setDescription] = useState(item.description ?? "");
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingDescription, setIsSavingDescription] = useState(false);
   const [loadingFileId, setLoadingFileId] = useState<string | null>(null);
 
-  // Sync name state when item prop changes (prevents stale state on dialog reopen)
+  // Sync state when item prop changes (prevents stale state on dialog reopen)
   useEffect(() => {
     setName(item.name);
-  }, [item.name]);
+    setDescription(item.description ?? "");
+  }, [item.name, item.description]);
 
   const hasMultipleMedia = files.media.length > 1;
   const hasMultipleArtwork = files.artwork.length > 1;
@@ -119,6 +125,18 @@ export function ItemSettingsDialog({
       setIsSaving(false);
     }
   }, [name, item.name, onRename]);
+
+  const handleSaveDescription = useCallback(async () => {
+    if (description === (item.description ?? "")) return;
+    setIsSavingDescription(true);
+    try {
+      await onDescriptionChange(description);
+    } catch {
+      toast.error("Failed to update description");
+    } finally {
+      setIsSavingDescription(false);
+    }
+  }, [description, item.description, onDescriptionChange]);
 
   const handleSetPrimary = useCallback(
     async (fileId: string, label: string) => {
@@ -187,6 +205,42 @@ export function ItemSettingsDialog({
                 )}
               </Button>
             </div>
+          </div>
+
+          {/* Description Section */}
+          <div className="space-y-3">
+            <Label htmlFor="item-description" className="text-sm font-medium">
+              Description
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                id="item-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSaveDescription()}
+                placeholder="Short description (optional)"
+                maxLength={200}
+                className="h-10"
+              />
+              <Button
+                onClick={handleSaveDescription}
+                disabled={
+                  description === (item.description ?? "") ||
+                  isSavingDescription
+                }
+                size="default"
+                className="shrink-0 px-4"
+              >
+                {isSavingDescription ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  "Save"
+                )}
+              </Button>
+            </div>
+            <p className="text-muted-foreground text-xs">
+              {description.length}/200 characters
+            </p>
           </div>
 
           {/* File Summary */}

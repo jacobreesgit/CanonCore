@@ -61,7 +61,7 @@ export function Tree({
   return (
     <ul data-testid="items-tree-view" className="space-y-0.5">
       {flattenedItems.map(
-        ({ id, name, children, depth, sftpPath, artworkId }) => (
+        ({ id, name, description, children, depth, sftpPath, artworkId }) => (
           <ItemContextMenu
             key={id}
             itemName={name}
@@ -78,6 +78,7 @@ export function Tree({
             <TreeItem
               id={id}
               value={name}
+              description={description}
               depth={depth}
               indentationWidth={indentationWidth}
               collapsed={isCollapsed(id)}
@@ -89,6 +90,7 @@ export function Tree({
               artworkId={artworkId}
               showArtwork={true}
               showDragHandle={false}
+              showDescription={true}
             />
           </ItemContextMenu>
         )

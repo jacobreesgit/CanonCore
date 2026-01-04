@@ -17,3 +17,5 @@
 - use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md, context7 and sequential thinking to validate the document
 
 - for each of the new fumodocs, for each line tripple check its claim via code. tripple check. and also do last commits ones.
+
+- for tasks that require front-end design skill, update those todo items
