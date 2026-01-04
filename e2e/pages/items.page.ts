@@ -204,7 +204,11 @@ export class ItemsPage {
     await this.openSettingsViaContextMenu(oldName);
     // Find the name input in the settings dialog (label is "Name")
     await this.page.getByLabel(/^name$/i).fill(newName);
-    await this.page.getByRole("button", { name: /^save$/i }).click();
+    // Click first save button (for name section)
+    await this.page
+      .getByRole("button", { name: /^save$/i })
+      .first()
+      .click();
     // Wait for success toast (shown by handleRenameItem in items-view)
     await this.expectSuccessToast("Renamed to");
     // Wait for input to reflect new value
@@ -224,6 +228,44 @@ export class ItemsPage {
     await expect(
       this.page.getByRole("dialog", { name: /settings/i })
     ).not.toBeVisible({ timeout: 5000 });
+  }
+
+  /**
+   * Updates an item's description through the settings dialog.
+   *
+   * @param itemName - Name of the item to update
+   * @param description - New description text
+   */
+  async updateDescriptionViaContextMenu(
+    itemName: string,
+    description: string
+  ): Promise<void> {
+    await this.openSettingsViaContextMenu(itemName);
+    await this.page.getByLabel(/^description$/i).fill(description);
+    // Find the save button in the description section (second save button)
+    await this.page
+      .getByRole("button", { name: /^save$/i })
+      .nth(1)
+      .click();
+    // Wait for network to settle
+    await this.page.waitForLoadState("networkidle");
+    await this.closeSettingsDialog();
+  }
+
+  /**
+   * Gets the description input value from the settings dialog.
+   */
+  async getDescriptionFromSettingsDialog(): Promise<string> {
+    return this.page.getByLabel(/^description$/i).inputValue();
+  }
+
+  /**
+   * Expects description text to be visible in the view.
+   *
+   * @param description - Description text to look for
+   */
+  async expectDescriptionVisible(description: string): Promise<void> {
+    await expect(this.page.getByText(description)).toBeVisible();
   }
 
   /**
