@@ -1,0 +1,99 @@
+/**
+ * E2E tests for sidebar navigation active state styling.
+ * Verifies nav items are visually highlighted when their page is active.
+ */
+
+import { test, expect } from "../../fixtures";
+import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
+
+test.describe("Navigation Active State", () => {
+  test.describe("authenticated user", () => {
+    test.beforeEach(async ({ page, signUpPage }) => {
+      const email = generateUniqueEmail("nav-active");
+      await signUpPage.goto();
+      await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
+      await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+    });
+
+    test("My Items nav is active on /my-items", async ({ page }) => {
+      // Find the My Items nav button in sidebar
+      const myItemsNav = page.locator('[data-slot="sidebar-menu-button"]', {
+        hasText: "My Items",
+      });
+
+      await expect(myItemsNav).toHaveAttribute("data-active", "true");
+    });
+
+    test("My Items nav is active on nested folder", async ({
+      page,
+      itemsPage,
+    }) => {
+      await itemsPage.createItem("Test Folder");
+      await itemsPage.clickItem("Test Folder");
+
+      // Should still show My Items as active
+      const myItemsNav = page.locator('[data-slot="sidebar-menu-button"]', {
+        hasText: "My Items",
+      });
+      await expect(myItemsNav).toHaveAttribute("data-active", "true");
+    });
+
+    test("Connections nav is active on /my-items/connections", async ({
+      page,
+    }) => {
+      await page.goto("/my-items/connections");
+
+      const connectionsNav = page.locator('[data-slot="sidebar-menu-button"]', {
+        hasText: "Connections",
+      });
+      await expect(connectionsNav).toHaveAttribute("data-active", "true");
+    });
+
+    test("Get Help nav is active on /docs", async ({ page }) => {
+      await page.goto("/docs");
+
+      const getHelpNav = page.locator('[data-slot="sidebar-menu-button"]', {
+        hasText: "Get Help",
+      });
+      await expect(getHelpNav).toHaveAttribute("data-active", "true");
+    });
+
+    test("Get Help nav is active on nested docs page", async ({ page }) => {
+      await page.goto("/docs/getting-started");
+
+      const getHelpNav = page.locator('[data-slot="sidebar-menu-button"]', {
+        hasText: "Get Help",
+      });
+      await expect(getHelpNav).toHaveAttribute("data-active", "true");
+    });
+  });
+
+  test.describe("guest user", () => {
+    test("Get Help nav is active on /docs", async ({ page }) => {
+      await page.goto("/docs");
+
+      const getHelpNav = page.locator('[data-slot="sidebar-menu-button"]', {
+        hasText: "Get Help",
+      });
+      await expect(getHelpNav).toHaveAttribute("data-active", "true");
+    });
+
+    test("Get Started nav is active on /sign-in", async ({ page }) => {
+      await page.goto("/sign-in");
+
+      const getStartedNav = page.locator('[data-slot="sidebar-menu-button"]', {
+        hasText: "Get Started",
+      });
+      await expect(getStartedNav).toHaveAttribute("data-active", "true");
+    });
+
+    test("Get Started nav is inactive on home page", async ({ page }) => {
+      await page.goto("/");
+
+      const getStartedNav = page.locator('[data-slot="sidebar-menu-button"]', {
+        hasText: "Get Started",
+      });
+      await expect(getStartedNav).toHaveAttribute("data-active", "false");
+    });
+  });
+});
