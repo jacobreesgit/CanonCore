@@ -7,9 +7,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -74,21 +74,31 @@ export default function SignUpPage() {
 
   return (
     <section className="bg-background">
-      <div className="container flex min-h-screen flex-col items-center justify-between gap-20 py-16 lg:flex-row lg:px-0 lg:py-0">
-        <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-6">
-          <div className="bg-primary text-primary-foreground flex h-14 w-14 items-center justify-center rounded-full text-2xl font-bold">
-            C
+      <div className="flex min-h-screen flex-col items-center justify-between gap-20 py-16 lg:flex-row lg:py-0">
+        <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-8">
+          <div className="flex flex-col items-center gap-2">
+            <Image
+              src="/logo.png"
+              alt="Canoncore"
+              width={80}
+              height={80}
+              priority
+            />
+            <div className="space-y-2 text-center">
+              <h1 className="text-foreground text-3xl font-medium tracking-tighter md:text-4xl">
+                Create your free account
+              </h1>
+              <p className="text-muted-foreground text-sm">
+                Build your own universe of content
+              </p>
+            </div>
           </div>
-
-          <h1 className="text-foreground mb-8 w-full text-center text-3xl font-medium tracking-tighter md:text-4xl">
-            Create your free account
-          </h1>
 
           <form onSubmit={onSubmit} className="w-full max-w-lg space-y-4">
             {error && (
               <div
                 data-testid="sign-up-error-message"
-                className="bg-destructive/10 text-destructive rounded-full px-5 py-3 text-center text-sm"
+                className="bg-destructive/10 text-destructive rounded-md px-4 py-3 text-center text-sm"
               >
                 {error}
               </div>
@@ -99,7 +109,6 @@ export default function SignUpPage() {
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="bg-muted h-14 rounded-full border-none px-5 py-4 font-medium"
               required
               data-testid="sign-up-email-input"
             />
@@ -109,7 +118,6 @@ export default function SignUpPage() {
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="bg-muted h-14 rounded-full border-none px-5 py-4 font-medium"
               required
               minLength={8}
               data-testid="sign-up-password-input"
@@ -120,20 +128,17 @@ export default function SignUpPage() {
               placeholder="Confirm password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="bg-muted h-14 rounded-full border-none px-5 py-4 font-medium"
               required
               data-testid="sign-up-confirm-password-input"
             />
 
             <Button
               type="submit"
-              className="bg-foreground text-background hover:bg-foreground/90 h-14 w-full rounded-full"
+              className="w-full"
               disabled={loading}
               data-testid="sign-up-submit-button"
             >
-              <span className="font-medium tracking-tight">
-                {loading ? "Creating account..." : "Create account"}
-              </span>
+              {loading ? "Creating account..." : "Create account"}
             </Button>
           </form>
 
@@ -154,14 +159,16 @@ export default function SignUpPage() {
             </Link>
           </p>
         </div>
-        <div className="bg-muted hidden h-screen w-full lg:block">
-          <Image
-            src="https://deifkwefumgah.cloudfront.net/shadcnblocks/block/placeholder-dark-7-tall.svg"
-            width={800}
-            height={1200}
+        <div className="bg-muted relative hidden h-screen w-[40%] overflow-hidden lg:block">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
             className="size-full object-cover"
-            alt=""
+            src="/auth-bg.mp4"
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20" />
         </div>
       </div>
     </section>

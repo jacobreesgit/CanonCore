@@ -19,7 +19,7 @@ describe("GridItem", () => {
 
     const img = container.querySelector("img");
     expect(img).toBeInTheDocument();
-    expect(img).toHaveAttribute("src", "/api/stream/artwork-123");
+    expect(img).toHaveAttribute("src", "/api/artwork/artwork-123");
   });
 
   it("should render folder icon when showArtwork is false even with artworkId", () => {

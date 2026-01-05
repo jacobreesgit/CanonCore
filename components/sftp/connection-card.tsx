@@ -99,73 +99,62 @@ export function ConnectionCard({ connection, onDelete }: ConnectionCardProps) {
           connection.lastError && "border-destructive/30"
         )}
       >
-        {/* Status indicator line */}
-        <div
-          className={cn(
-            "absolute inset-x-0 top-0 h-0.5 transition-colors",
-            connection.lastError
-              ? "bg-destructive"
-              : connection.isActive
-                ? "bg-emerald-500"
-                : "bg-muted"
-          )}
-        />
-
         <CardHeader className="pb-3">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-3">
-              <div
-                className={cn(
-                  "flex size-10 items-center justify-center rounded-lg transition-colors",
-                  connection.lastError
-                    ? "bg-destructive/10 text-destructive"
-                    : "bg-primary/10 text-primary"
-                )}
-              >
-                <Server className="size-5" />
-              </div>
-              <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-3">
+            <div
+              className={cn(
+                "flex size-10 items-center justify-center rounded-lg transition-colors",
+                connection.lastError
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-primary/10 text-primary"
+              )}
+            >
+              <Server className="size-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
                 <CardTitle className="truncate text-base">
                   {connection.name}
                 </CardTitle>
-                <CardDescription className="flex items-center gap-1.5 font-mono text-xs">
-                  <span className="truncate">
-                    {connection.host}:{connection.port}
-                  </span>
-                </CardDescription>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8"
+                      onClick={(e) => e.preventDefault()}
+                    >
+                      <MoreVertical className="size-4" />
+                      <span className="sr-only">Connection actions</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href={`/dashboard/connections/${connection.id}/edit`}
+                      >
+                        <Pencil className="mr-2 size-4" />
+                        Edit
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                    >
+                      <Trash2 className="mr-2 size-4" />
+                      {isDeleting ? "Deleting..." : "Delete"}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
+              <CardDescription className="flex items-center gap-1.5 font-mono text-xs">
+                <span className="truncate">
+                  {connection.host}:{connection.port}
+                </span>
+              </CardDescription>
             </div>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-8 opacity-0 transition-opacity group-hover:opacity-100"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  <MoreVertical className="size-4" />
-                  <span className="sr-only">Connection actions</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <Link href={`/dashboard/connections/${connection.id}/edit`}>
-                    <Pencil className="mr-2 size-4" />
-                    Edit
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                >
-                  <Trash2 className="mr-2 size-4" />
-                  {isDeleting ? "Deleting..." : "Delete"}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         </CardHeader>
 

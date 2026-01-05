@@ -27,7 +27,7 @@ export class ConnectionsPage {
     this.page = page;
     this.heading = page.getByRole("heading", { name: "SFTP Connections" });
     this.addConnectionButton = page.getByRole("link", {
-      name: /add connection/i,
+      name: /add.*connection/i,
     });
     this.emptyState = page.getByText("No connections yet");
     this.connectionCards = page.locator('[data-slot="card"]');

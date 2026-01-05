@@ -1,4 +1,4 @@
-export { AddItemButton } from "./add-item-button";
+export { AddFolderDialog } from "./add-folder-dialog";
 export { EditModeToggle } from "./edit-mode-toggle";
 export { ItemContextMenu } from "./item-context-menu";
 export { ItemDetail } from "./item-detail";

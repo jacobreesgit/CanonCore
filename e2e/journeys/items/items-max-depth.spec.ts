@@ -48,9 +48,9 @@ test.describe("Items Max Depth Journey", () => {
     // Should see error toast about max depth
     await itemsPage.expectErrorToast("Maximum nesting depth reached");
 
-    // "Too Deep" should NOT be created (input still open after error)
-    // Close the input and verify item doesn't exist
-    await itemsPage.addItemCancel.click();
+    // "Too Deep" should NOT be created (dialog still open after error)
+    // Close the dialog and verify item doesn't exist
+    await itemsPage.addFolderCancel.click();
     await itemsPage.expectItemNotVisible("Too Deep");
   });
 

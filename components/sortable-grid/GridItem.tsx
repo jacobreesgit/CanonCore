@@ -5,7 +5,7 @@
 
 "use client";
 
-import React, { forwardRef, HTMLAttributes } from "react";
+import React, { forwardRef, HTMLAttributes, useState } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { Folder } from "lucide-react";
@@ -52,7 +52,8 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
     },
     ref
   ) {
-    const shouldShowArtwork = showArtwork && artworkId;
+    const [imageError, setImageError] = useState(false);
+    const shouldShowArtwork = showArtwork && artworkId && !imageError;
     const shouldShowDescription = showDescription && description;
     return (
       <div
@@ -83,13 +84,14 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
           <div className="relative h-24 w-full overflow-hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={`/api/stream/${artworkId}`}
+              src={`/api/artwork/${artworkId}`}
               alt=""
               className={cn(
                 "h-full w-full object-cover",
                 "transition-transform duration-300",
                 "group-hover:scale-105"
               )}
+              onError={() => setImageError(true)}
             />
             <div
               className={cn(
@@ -148,16 +150,6 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
             </p>
           )}
         </div>
-
-        {/* Subtle drag indicator on hover */}
-        <div
-          className={cn(
-            "absolute inset-x-0 top-0 h-1 rounded-t-xl",
-            "via-primary/0 bg-gradient-to-r from-transparent to-transparent",
-            "transition-all duration-200",
-            "group-hover:via-primary/30"
-          )}
-        />
       </div>
     );
   }

@@ -112,7 +112,10 @@ describeOrSkip("Web to SFTP Operations", () => {
 
     // Rename via settings dialog (label is "Name", first Save button)
     await page.getByLabel(/^name$/i).fill("renamed-folder");
-    await page.getByRole("button", { name: /^save$/i }).first().click();
+    await page
+      .getByRole("button", { name: /^save$/i })
+      .first()
+      .click();
     // Wait for success toast (shown by handleRenameItem in items-view)
     await expect(
       page.locator("[data-sonner-toast]").filter({ hasText: "Renamed to" })

@@ -61,7 +61,7 @@ describe("Grid", () => {
 
     const images = container.querySelectorAll("img");
     expect(images.length).toBeGreaterThanOrEqual(1);
-    expect(images[0]).toHaveAttribute("src", "/api/stream/artwork-1");
+    expect(images[0]).toHaveAttribute("src", "/api/artwork/artwork-1");
   });
 
   it("should render empty grid when no items provided", () => {

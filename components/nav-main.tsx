@@ -1,14 +1,13 @@
 /**
  * Main navigation section for the sidebar.
- * Contains primary navigation items and quick actions.
+ * Contains primary navigation items and quick create action.
  */
 
 "use client";
 
 import Link from "next/link";
-import { CirclePlus, type LucideIcon, Mail } from "lucide-react";
+import { CirclePlus, type LucideIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -16,10 +15,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useQuickCreateOptional } from "@/contexts/add-folder-context";
 
 /**
- * Renders the main navigation section with quick actions.
- * Includes a "Quick Create" button and primary navigation items.
+ * Renders the main navigation section with quick create action.
  *
  * @param items - Array of navigation items with title, url, and optional icon
  */
@@ -32,26 +31,21 @@ export function NavMain({
     icon?: LucideIcon;
   }[];
 }) {
+  const quickCreate = useQuickCreateOptional();
+
   return (
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
         <SidebarMenu>
-          <SidebarMenuItem className="flex items-center gap-2">
+          <SidebarMenuItem>
             <SidebarMenuButton
               tooltip="Quick Create"
+              onClick={() => quickCreate?.openDialog()}
               className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
             >
-              <CirclePlus fill="currentColor" />
+              <CirclePlus />
               <span>Quick Create</span>
             </SidebarMenuButton>
-            <Button
-              size="icon"
-              className="size-8 group-data-[collapsible=icon]:opacity-0"
-              variant="outline"
-            >
-              <Mail />
-              <span className="sr-only">Inbox</span>
-            </Button>
           </SidebarMenuItem>
         </SidebarMenu>
         <SidebarMenu>
