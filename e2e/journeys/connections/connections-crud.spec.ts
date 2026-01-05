@@ -11,7 +11,7 @@ test.describe("Connections List", () => {
     const email = generateUniqueEmail("conn-list");
     await signUpPage.goto();
     await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/dashboard", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
   });
 
   test("shows empty state when no connections exist", async ({
@@ -28,7 +28,7 @@ test.describe("Connections List", () => {
   }) => {
     await connectionsPage.goto();
     await connectionsPage.clickAddConnection();
-    await expect(page).toHaveURL("/dashboard/connections/new");
+    await expect(page).toHaveURL("/my-items/connections/new");
   });
 });
 
@@ -37,7 +37,7 @@ test.describe("Connection CRUD", () => {
     const email = generateUniqueEmail("conn-crud");
     await signUpPage.goto();
     await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/dashboard", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
   });
 
   test("creates connection and shows in list", async ({
@@ -61,7 +61,7 @@ test.describe("Connection CRUD", () => {
     await connectionsPage.submitForm();
 
     // Should redirect to connections list
-    await expect(page).toHaveURL("/dashboard/connections", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items/connections", { timeout: 10000 });
 
     // Should show success toast
     await connectionsPage.expectToast(/created|success/i);
@@ -86,7 +86,7 @@ test.describe("Connection CRUD", () => {
       credential: "pass1",
     });
     await connectionsPage.submitForm();
-    await expect(page).toHaveURL("/dashboard/connections", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items/connections", { timeout: 10000 });
 
     // Now edit it
     await connectionsPage.editConnection("Server To Edit");
@@ -100,7 +100,7 @@ test.describe("Connection CRUD", () => {
     await connectionsPage.submitForm();
 
     // Should redirect back to list
-    await expect(page).toHaveURL("/dashboard/connections", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items/connections", { timeout: 10000 });
 
     // Should show success toast
     await connectionsPage.expectToast(/updated|saved|success/i);
@@ -127,7 +127,7 @@ test.describe("Connection CRUD", () => {
       credential: "pass",
     });
     await connectionsPage.submitForm();
-    await expect(page).toHaveURL("/dashboard/connections", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items/connections", { timeout: 10000 });
 
     // Verify it exists
     await expect(
@@ -156,7 +156,7 @@ test.describe("Connection CRUD", () => {
       credential: "pass1",
     });
     await connectionsPage.submitForm();
-    await expect(page).toHaveURL("/dashboard/connections", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items/connections", { timeout: 10000 });
 
     // Try to create second with same name
     await connectionsPage.gotoNew();
@@ -178,7 +178,7 @@ test.describe("Connection Form Defaults", () => {
     const email = generateUniqueEmail("conn-defaults");
     await signUpPage.goto();
     await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/dashboard", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
   });
 
   test("defaults port to 22", async ({ connectionsPage }) => {
@@ -223,7 +223,7 @@ test.describe("Connection Form Defaults", () => {
   test("cancel returns to list", async ({ page, connectionsPage }) => {
     await connectionsPage.gotoNew();
     await connectionsPage.cancelForm();
-    await expect(page).toHaveURL("/dashboard/connections");
+    await expect(page).toHaveURL("/my-items/connections");
   });
 });
 
@@ -232,11 +232,11 @@ test.describe("Sidebar Navigation", () => {
     const email = generateUniqueEmail("conn-sidebar");
     await signUpPage.goto();
     await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/dashboard", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
   });
 
   test("has connections link in sidebar footer", async ({ page }) => {
-    await page.goto("/dashboard");
+    await page.goto("/my-items");
 
     // On mobile, need to open sidebar first
     const sidebar = page.locator('[data-sidebar="sidebar"]');
@@ -252,6 +252,6 @@ test.describe("Sidebar Navigation", () => {
     await expect(connectionsLink).toBeVisible();
 
     await connectionsLink.click();
-    await expect(page).toHaveURL("/dashboard/connections");
+    await expect(page).toHaveURL("/my-items/connections");
   });
 });

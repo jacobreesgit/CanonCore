@@ -48,7 +48,7 @@ export class MediaPage {
    * @param itemId - The item ID to view
    */
   async gotoItem(itemId: string): Promise<void> {
-    await this.page.goto(`/dashboard/${itemId}`);
+    await this.page.goto(`/my-items/${itemId}`);
   }
 
   /**
@@ -61,7 +61,7 @@ export class MediaPage {
     connectionId: string,
     itemId: string
   ): Promise<void> {
-    await this.page.goto(`/dashboard/connections/${connectionId}/${itemId}`);
+    await this.page.goto(`/my-items/connections/${connectionId}/${itemId}`);
   }
 
   /**

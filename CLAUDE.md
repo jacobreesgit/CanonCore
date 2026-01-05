@@ -50,8 +50,8 @@ pnpm run db:reset         # Reset database and re-seed
 │   │   ├── reset-password/page.tsx   # Set new password from email link
 │   │   ├── sign-in/page.tsx          # Email/password sign in
 │   │   └── sign-up/page.tsx          # Account creation
-│   ├── (dashboard)/
-│   │   ├── dashboard/
+│   ├── (my-items)/
+│   │   ├── my-items/
 │   │   │   ├── connections/
 │   │   │   │   ├── [id]/
 │   │   │   │   │   ├── [itemId]/page.tsx  # SFTP folder detail
@@ -108,10 +108,10 @@ pnpm run db:reset         # Reset database and re-seed
 │   │   └── theme-provider.tsx        # next-themes provider wrapper
 │   ├── ui/                           # shadcn/ui components
 │   ├── app-sidebar.tsx               # Context-aware navigation sidebar
-│   ├── dashboard-providers.tsx       # Client-side providers for dashboard
+│   ├── my-items-providers.tsx        # Client-side providers for protected routes
 │   ├── nav-docs.tsx                  # Docs tree navigation (Fumadocs)
 │   ├── nav-guest.tsx                 # Guest navigation with auth buttons
-│   ├── nav-main.tsx                  # Dashboard main nav items
+│   ├── nav-main.tsx                  # Main navigation items
 │   ├── nav-user.tsx                  # User dropdown menu
 │   ├── site-header.tsx               # Top header bar with breadcrumbs
 │   └── theme-toggle.tsx              # Dark/light mode toggle
@@ -183,7 +183,7 @@ pnpm run db:reset         # Reset database and re-seed
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.19.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.20.0)
     └── plans/                        # Design documents
 ```
 
@@ -235,7 +235,7 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 - **Edit mode toggle**: Click "Edit" to enable drag-and-drop, "Done" to return to view mode
 - **View mode**: Full visual richness with artwork thumbnails (no dnd-kit overhead)
 - **Edit mode**: Simplified folder icons with drag handles for reordering
-- **Quick Create**: Sidebar button creates folders at dashboard root from anywhere
+- **Quick Create**: Sidebar button creates folders at root level from anywhere
 - **Add Folder dialog**: Modal dialog with name and optional description fields
 - **Server actions**: `createItem`, `updateItem`, `deleteItem`, `reorderItems` in `lib/item-actions.ts`
 - **Breadcrumb navigation** for folder drill-down
@@ -248,7 +248,7 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 
 ### SFTP Connections
 
-- **Connection management**: Create, edit, delete SFTP server connections at `/dashboard/connections`
+- **Connection management**: Create, edit, delete SFTP server connections at `/my-items/connections`
 - **Auth methods**: Password or SSH private key authentication
 - **Encrypted credentials**: AES-256-GCM encryption with `ENCRYPTION_KEY` env var
 - **Connection testing**: Test button with latency display
@@ -289,7 +289,7 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 341 total tests (288 unit + 53 integration)
+- 342 total tests (289 unit + 53 integration)
 
 ### E2E Testing
 

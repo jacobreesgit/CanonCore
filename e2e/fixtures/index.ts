@@ -9,7 +9,7 @@ import { SignInPage } from "../pages/sign-in.page";
 import { SignUpPage } from "../pages/sign-up.page";
 import { ForgotPasswordPage } from "../pages/forgot-password.page";
 import { ResetPasswordPage } from "../pages/reset-password.page";
-import { DashboardPage } from "../pages/dashboard.page";
+import { MyItemsPage } from "../pages/my-items.page";
 import { ItemsPage } from "../pages/items.page";
 import { DocsPage } from "../pages/docs.page";
 import { ConnectionsPage } from "../pages/connections.page";
@@ -22,7 +22,7 @@ type TestFixtures = {
   signUpPage: SignUpPage;
   forgotPasswordPage: ForgotPasswordPage;
   resetPasswordPage: ResetPasswordPage;
-  dashboardPage: DashboardPage;
+  myItemsPage: MyItemsPage;
   itemsPage: ItemsPage;
   docsPage: DocsPage;
   connectionsPage: ConnectionsPage;
@@ -51,8 +51,8 @@ export const test = base.extend<TestFixtures>({
     await use(new ResetPasswordPage(page));
   },
 
-  dashboardPage: async ({ page }, use) => {
-    await use(new DashboardPage(page));
+  myItemsPage: async ({ page }, use) => {
+    await use(new MyItemsPage(page));
   },
 
   itemsPage: async ({ page }, use) => {

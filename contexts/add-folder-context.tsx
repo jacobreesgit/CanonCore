@@ -1,6 +1,7 @@
 /**
  * Context for the global Quick Create dialog.
  * Manages dialog state for sidebar Quick Create button.
+ * Uses subscription pattern to notify consumers when items are created.
  */
 
 "use client";
@@ -10,9 +11,9 @@ import {
   useContext,
   useState,
   useCallback,
+  useRef,
   ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
 import { createItem } from "@/lib/item-actions";
 import { toast } from "sonner";
 
@@ -24,20 +25,30 @@ interface QuickCreateContextValue {
     name: string,
     description?: string
   ) => Promise<string | undefined>;
+  /** Subscribe to item creation events. Returns unsubscribe function. */
+  subscribeToCreation: (callback: () => void) => () => void;
 }
 
 const QuickCreateContext = createContext<QuickCreateContextValue | null>(null);
 
 /**
  * Provider for Quick Create dialog state.
- * Handles folder creation at dashboard root level.
+ * Handles folder creation at root level.
+ * Notifies subscribers after successful creation for explicit refetch.
  */
 export function QuickCreateProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
-  const router = useRouter();
+  const creationListeners = useRef<Set<() => void>>(new Set());
 
   const openDialog = useCallback(() => setIsOpen(true), []);
   const closeDialog = useCallback(() => setIsOpen(false), []);
+
+  const subscribeToCreation = useCallback((callback: () => void) => {
+    creationListeners.current.add(callback);
+    return () => {
+      creationListeners.current.delete(callback);
+    };
+  }, []);
 
   const handleCreate = useCallback(
     async (name: string, description?: string): Promise<string | undefined> => {
@@ -45,7 +56,8 @@ export function QuickCreateProvider({ children }: { children: ReactNode }) {
         const result = await createItem(null, name, description);
         if (result.success && result.data) {
           toast.success(`Created "${name}"`);
-          router.refresh();
+          // Notify all subscribers to refetch their data
+          creationListeners.current.forEach((callback) => callback());
           return undefined;
         }
         toast.error(result.error || "Failed to create folder");
@@ -57,12 +69,18 @@ export function QuickCreateProvider({ children }: { children: ReactNode }) {
         return message;
       }
     },
-    [router]
+    []
   );
 
   return (
     <QuickCreateContext.Provider
-      value={{ isOpen, openDialog, closeDialog, handleCreate }}
+      value={{
+        isOpen,
+        openDialog,
+        closeDialog,
+        handleCreate,
+        subscribeToCreation,
+      }}
     >
       {children}
     </QuickCreateContext.Provider>
@@ -83,7 +101,7 @@ export function useQuickCreate() {
 
 /**
  * Optional hook that returns null if outside provider.
- * Use when component may render outside dashboard context.
+ * Use when component may render outside protected routes.
  */
 export function useQuickCreateOptional() {
   return useContext(QuickCreateContext);
