@@ -77,7 +77,10 @@ export function SiteHeader({
   return (
     <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
-        <SidebarTrigger className="-ml-1" data-testid="sidebar-trigger" />
+        <SidebarTrigger
+          className="-ml-1 cursor-pointer"
+          data-testid="sidebar-trigger"
+        />
         <Separator
           orientation="vertical"
           className="mx-2 data-[orientation=vertical]:h-4"
@@ -91,6 +94,7 @@ export function SiteHeader({
           {/* Root link */}
           <Link
             href={titleHref}
+            data-testid="site-header-breadcrumb-root"
             className={cn(
               "shrink-0 transition-colors duration-150",
               "hover:text-foreground focus-visible:ring-ring rounded-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
@@ -114,12 +118,13 @@ export function SiteHeader({
                 />
                 <Link
                   href={crumb.href}
+                  data-testid="site-header-breadcrumb-item"
                   className={cn(
                     "truncate transition-colors duration-150",
                     "hover:text-foreground focus-visible:ring-ring rounded-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
                     isLast
-                      ? "text-foreground max-w-48 font-medium"
-                      : "text-muted-foreground max-w-32"
+                      ? "text-foreground font-medium"
+                      : "text-muted-foreground"
                   )}
                   aria-current={isLast ? "page" : undefined}
                 >

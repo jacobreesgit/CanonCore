@@ -14,8 +14,10 @@ test.describe("Sign Up Journey", () => {
     await landingPage.goto();
     await landingPage.expectVisible();
 
-    // Click get started
+    // Click get started (goes to sign-in, then navigate to sign-up)
     await landingPage.clickGetStarted();
+    await expect(page).toHaveURL("/sign-in");
+    await page.getByTestId("sign-in-sign-up-link").click();
     await expect(page).toHaveURL("/sign-up");
 
     // Fill sign up form

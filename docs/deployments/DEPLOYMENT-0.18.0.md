@@ -35,11 +35,11 @@ The seed script refuses to run unless:
 
 ### NPM Scripts
 
-| Script | Description |
-|--------|-------------|
-| `pnpm run db:seed` | Seed database with sample data |
-| `pnpm run db:clear-seed` | Remove seed data only |
-| `pnpm run db:reset` | Reset database and re-seed |
+| Script                   | Description                    |
+| ------------------------ | ------------------------------ |
+| `pnpm run db:seed`       | Seed database with sample data |
+| `pnpm run db:clear-seed` | Remove seed data only          |
+| `pnpm run db:reset`      | Reset database and re-seed     |
 
 ### Configuration
 

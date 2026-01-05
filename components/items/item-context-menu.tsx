@@ -22,7 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { AddFolderDialog } from "./add-folder-dialog";
 import { FolderPlus, Settings, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +33,7 @@ interface ItemContextMenuProps {
   /** Opens the unified settings dialog */
   onSettings?(): void;
   onDelete?(): Promise<void>;
-  onAddChild?(name: string): Promise<string | undefined>;
+  onAddChild?(name: string, description?: string): Promise<string | undefined>;
 }
 
 export function ItemContextMenu({
@@ -46,7 +46,6 @@ export function ItemContextMenu({
 }: ItemContextMenuProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [addChildOpen, setAddChildOpen] = useState(false);
-  const [childName, setChildName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleDelete() {
@@ -55,18 +54,6 @@ export function ItemContextMenu({
     try {
       await onDelete();
       setDeleteOpen(false);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function handleAddChild() {
-    if (!childName.trim() || !onAddChild) return;
-    setIsLoading(true);
-    try {
-      await onAddChild(childName.trim());
-      setAddChildOpen(false);
-      setChildName("");
     } finally {
       setIsLoading(false);
     }
@@ -139,39 +126,16 @@ export function ItemContextMenu({
         </DialogContent>
       </Dialog>
 
-      {/* Add Child Dialog */}
-      <Dialog open={addChildOpen} onOpenChange={setAddChildOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add Subfolder</DialogTitle>
-            <DialogDescription>
-              Create a new folder inside &ldquo;{itemName}&rdquo;.
-            </DialogDescription>
-          </DialogHeader>
-          <Input
-            value={childName}
-            onChange={(e) => setChildName(e.target.value)}
-            placeholder="Folder name"
-            onKeyDown={(e) => e.key === "Enter" && handleAddChild()}
-            autoFocus
-          />
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => setAddChildOpen(false)}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAddChild}
-              disabled={!childName.trim() || isLoading}
-            >
-              {isLoading ? "Creating..." : "Create"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Add Subfolder Dialog */}
+      <AddFolderDialog
+        open={addChildOpen}
+        onOpenChange={setAddChildOpen}
+        onAdd={async (name, description) => {
+          if (!onAddChild) return "No handler";
+          return onAddChild(name, description);
+        }}
+        parentName={itemName}
+      />
     </>
   );
 }

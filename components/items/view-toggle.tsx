@@ -65,7 +65,7 @@ export function ViewToggle({ value, onChange }: ViewToggleProps) {
   return (
     <div
       className={cn(
-        "relative inline-flex rounded-lg p-1",
+        "relative inline-flex h-8 items-center rounded-md p-0.5",
         "bg-muted/60 border-border/50 border",
         "shadow-sm"
       )}
@@ -73,10 +73,10 @@ export function ViewToggle({ value, onChange }: ViewToggleProps) {
       {/* Sliding background indicator */}
       <div
         className={cn(
-          "absolute inset-y-1 w-[calc(50%-2px)] rounded-md",
+          "absolute top-0.5 bottom-0.5 w-[calc(50%-1px)] rounded-sm",
           "bg-background border-border/40 border shadow-sm",
           "transition-transform duration-200 ease-out",
-          view === "grid" && "translate-x-[calc(100%+2px)]"
+          view === "grid" && "translate-x-[calc(100%+1px)]"
         )}
       />
 
@@ -86,7 +86,7 @@ export function ViewToggle({ value, onChange }: ViewToggleProps) {
         aria-pressed={view === "tree"}
         onClick={() => handleChange("tree")}
         className={cn(
-          "relative z-10 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5",
+          "relative z-10 inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-sm px-3",
           "text-sm font-medium transition-colors duration-150",
           view === "tree"
             ? "text-foreground"
@@ -103,7 +103,7 @@ export function ViewToggle({ value, onChange }: ViewToggleProps) {
         aria-pressed={view === "grid"}
         onClick={() => handleChange("grid")}
         className={cn(
-          "relative z-10 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5",
+          "relative z-10 inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-sm px-3",
           "text-sm font-medium transition-colors duration-150",
           view === "grid"
             ? "text-foreground"

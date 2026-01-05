@@ -44,33 +44,39 @@ export default function ForgotPasswordPage() {
 
   return (
     <section className="bg-background">
-      <div className="container flex min-h-screen flex-col items-center justify-between gap-20 py-16 lg:flex-row lg:px-0 lg:py-0">
-        <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-6">
-          <div className="bg-primary text-primary-foreground flex h-14 w-14 items-center justify-center rounded-full text-2xl font-bold">
-            C
+      <div className="flex min-h-screen flex-col items-center justify-between gap-20 py-16 lg:flex-row lg:py-0">
+        <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-8">
+          <div className="flex flex-col items-center gap-2">
+            <Image
+              src="/logo.png"
+              alt="Canoncore"
+              width={80}
+              height={80}
+              priority
+            />
+            <div className="space-y-2 text-center">
+              <h1 className="text-foreground text-3xl font-medium tracking-tighter md:text-4xl">
+                Reset your password
+              </h1>
+              <p className="text-muted-foreground text-sm">
+                Enter your email address and we&apos;ll send you a link to reset
+                your password.
+              </p>
+            </div>
           </div>
-
-          <h1 className="text-foreground mb-4 w-full text-center text-3xl font-medium tracking-tighter md:text-4xl">
-            Reset your password
-          </h1>
-
-          <p className="text-muted-foreground mb-4 text-center text-sm">
-            Enter your email address and we&apos;ll send you a link to reset
-            your password.
-          </p>
 
           {message ? (
             <div className="w-full max-w-lg space-y-4">
               <div
                 data-testid="forgot-password-success-message"
-                className="rounded-full bg-green-500/10 px-5 py-4 text-center text-sm text-green-600"
+                className="rounded-md bg-green-500/10 px-4 py-3 text-center text-sm text-green-600"
               >
                 {message}
               </div>
               <Button
                 asChild
                 variant="outline"
-                className="h-14 w-full rounded-full"
+                className="w-full"
                 data-testid="forgot-password-back-to-sign-in-link"
               >
                 <Link href="/sign-in">Back to sign in</Link>
@@ -81,7 +87,7 @@ export default function ForgotPasswordPage() {
               {error && (
                 <div
                   data-testid="forgot-password-error-message"
-                  className="bg-destructive/10 text-destructive rounded-full px-5 py-3 text-center text-sm"
+                  className="bg-destructive/10 text-destructive rounded-md px-4 py-3 text-center text-sm"
                 >
                   {error}
                 </div>
@@ -92,26 +98,23 @@ export default function ForgotPasswordPage() {
                 placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="bg-muted h-14 rounded-full border-none px-5 py-4 font-medium"
                 required
                 data-testid="forgot-password-email-input"
               />
 
               <Button
                 type="submit"
-                className="bg-foreground text-background hover:bg-foreground/90 h-14 w-full rounded-full"
+                className="w-full"
                 disabled={loading}
                 data-testid="forgot-password-submit-button"
               >
-                <span className="font-medium tracking-tight">
-                  {loading ? "Sending..." : "Send reset link"}
-                </span>
+                {loading ? "Sending..." : "Send reset link"}
               </Button>
 
               <Button
                 asChild
                 variant="ghost"
-                className="h-14 w-full rounded-full"
+                className="w-full"
                 data-testid="forgot-password-back-to-sign-in-link"
               >
                 <Link href="/sign-in">Back to sign in</Link>
@@ -119,14 +122,16 @@ export default function ForgotPasswordPage() {
             </form>
           )}
         </div>
-        <div className="bg-muted hidden h-screen w-full lg:block">
-          <Image
-            src="https://deifkwefumgah.cloudfront.net/shadcnblocks/block/placeholder-dark-7-tall.svg"
-            width={800}
-            height={1200}
+        <div className="bg-muted relative hidden h-screen w-[40%] overflow-hidden lg:block">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
             className="size-full object-cover"
-            alt=""
+            src="/auth-bg.mp4"
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20" />
         </div>
       </div>
     </section>

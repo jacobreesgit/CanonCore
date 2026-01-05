@@ -42,6 +42,21 @@ export function sanitizePath(basePath: string, userPath: string): string {
 }
 
 /**
+ * Validates that a path is safe (no traversal attacks).
+ *
+ * @param path - The path to validate
+ * @returns True if path is safe, false if it contains traversal patterns
+ */
+export function isValidPath(path: string): boolean {
+  if (!path) return false;
+  // Check for path traversal patterns
+  if (path.includes("..")) return false;
+  // Check for null bytes
+  if (path.includes("\0")) return false;
+  return true;
+}
+
+/**
  * Validates a filename against safe characters.
  *
  * @param name - Filename to validate

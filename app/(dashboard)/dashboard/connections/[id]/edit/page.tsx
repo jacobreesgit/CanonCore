@@ -28,7 +28,7 @@ export default async function EditConnectionPage({
   }
 
   return (
-    <div className="container mx-auto max-w-2xl p-6">
+    <div className="container mx-auto p-6">
       <ConnectionForm
         mode="edit"
         initialData={{

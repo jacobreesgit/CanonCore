@@ -6,6 +6,7 @@
 import { notFound } from "next/navigation";
 import { Folder, Film, ImageIcon, FileText, Server } from "lucide-react";
 import { ItemsView } from "@/components/items";
+import { SiteHeader } from "@/components/site-header";
 import { getSftpConnection, getItemsByConnection } from "@/lib/sftp-actions";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
@@ -113,103 +114,98 @@ export default async function ConnectionDetailPage({
     fileStats.find((s) => s.fileType === "SUBTITLE")?._count ?? 0;
   const totalFiles = mediaCount + artworkCount + subtitleCount;
 
-  // Breadcrumbs: just the connection name at root level
-  const breadcrumbs = [{ id, name: connection.name }];
-
   const hasContent = folderCount > 0 || totalFiles > 0;
 
   return (
-    <div className="flex flex-col gap-6 px-4 py-6 md:px-6 lg:px-8">
-      {/* Synced Content Stats Card - Only show if there's synced content */}
-      {hasContent && (
-        <div
-          className={cn(
-            "relative overflow-hidden rounded-xl",
-            // Dark cinematic background
-            "bg-gradient-to-br from-zinc-900/80 via-zinc-900/60 to-zinc-900/80",
-            // Subtle border
-            "ring-1 ring-white/5"
-          )}
-        >
-          {/* Film grain texture overlay */}
+    <>
+      <SiteHeader title="Connections" titleHref="/dashboard/connections" />
+      <div className="flex flex-col gap-6 px-4 py-6 md:px-6 lg:px-8">
+        {/* Synced Content Stats Card - Only show if there's synced content */}
+        {hasContent && (
           <div
-            className="pointer-events-none absolute inset-0 opacity-[0.015] mix-blend-overlay"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-            }}
-          />
+            className={cn(
+              "relative overflow-hidden rounded-xl",
+              // Dark cinematic background
+              "bg-gradient-to-br from-zinc-900/80 via-zinc-900/60 to-zinc-900/80",
+              // Subtle border
+              "ring-1 ring-white/5"
+            )}
+          >
+            {/* Film grain texture overlay */}
+            <div
+              className="pointer-events-none absolute inset-0 opacity-[0.015] mix-blend-overlay"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+              }}
+            />
 
-          {/* Ambient gradient accents */}
-          <div
-            className="pointer-events-none absolute inset-0 opacity-30"
-            style={{
-              background: `
+            {/* Ambient gradient accents */}
+            <div
+              className="pointer-events-none absolute inset-0 opacity-30"
+              style={{
+                background: `
                 radial-gradient(ellipse at 0% 0%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
                 radial-gradient(ellipse at 100% 100%, rgba(139, 92, 246, 0.06) 0%, transparent 50%)
               `,
-            }}
-          />
+              }}
+            />
 
-          {/* Header */}
-          <div className="relative border-b border-white/5 px-6 py-4">
-            <div className="flex items-center gap-3">
-              <div
-                className={cn(
-                  "flex size-8 items-center justify-center rounded-lg",
-                  "from-primary/20 to-primary/5 bg-gradient-to-br",
-                  "ring-primary/20 ring-1"
-                )}
-              >
-                <Server className="text-primary size-4" />
-              </div>
-              <div>
-                <h2 className="text-foreground/90 text-sm font-medium">
-                  Synced Content
-                </h2>
-                <p className="text-muted-foreground/60 text-xs">
-                  {connection.name}
-                </p>
+            {/* Header */}
+            <div className="relative border-b border-white/5 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className={cn(
+                    "flex size-8 items-center justify-center rounded-lg",
+                    "from-primary/20 to-primary/5 bg-gradient-to-br",
+                    "ring-primary/20 ring-1"
+                  )}
+                >
+                  <Server className="text-primary size-4" />
+                </div>
+                <div>
+                  <h2 className="text-foreground/90 text-sm font-medium">
+                    Synced Content
+                  </h2>
+                  <p className="text-muted-foreground/60 text-xs">
+                    {connection.name}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Stats Grid */}
-          <div className="relative grid grid-cols-2 divide-x divide-white/5 sm:grid-cols-4">
-            <StatItem
-              value={folderCount}
-              label="Folders"
-              icon={<Folder className="size-5 text-amber-400/80" />}
-              accentColor="bg-amber-500"
-            />
-            <StatItem
-              value={mediaCount}
-              label="Media"
-              icon={<Film className="size-5 text-blue-400/80" />}
-              accentColor="bg-blue-500"
-            />
-            <StatItem
-              value={artworkCount}
-              label="Artwork"
-              icon={<ImageIcon className="size-5 text-emerald-400/80" />}
-              accentColor="bg-emerald-500"
-            />
-            <StatItem
-              value={subtitleCount}
-              label="Subtitles"
-              icon={<FileText className="size-5 text-violet-400/80" />}
-              accentColor="bg-violet-500"
-            />
+            {/* Stats Grid */}
+            <div className="relative grid grid-cols-2 divide-x divide-white/5 sm:grid-cols-4">
+              <StatItem
+                value={folderCount}
+                label="Folders"
+                icon={<Folder className="size-5 text-amber-400/80" />}
+                accentColor="bg-amber-500"
+              />
+              <StatItem
+                value={mediaCount}
+                label="Media"
+                icon={<Film className="size-5 text-blue-400/80" />}
+                accentColor="bg-blue-500"
+              />
+              <StatItem
+                value={artworkCount}
+                label="Artwork"
+                icon={<ImageIcon className="size-5 text-emerald-400/80" />}
+                accentColor="bg-emerald-500"
+              />
+              <StatItem
+                value={subtitleCount}
+                label="Subtitles"
+                icon={<FileText className="size-5 text-violet-400/80" />}
+                accentColor="bg-violet-500"
+              />
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Items View */}
-      <ItemsView
-        items={items}
-        parentId={null}
-        connectionId={id}
-        breadcrumbs={breadcrumbs}
-      />
-    </div>
+        {/* Items View */}
+        <ItemsView items={items} parentId={null} connectionId={id} />
+      </div>
+    </>
   );
 }
