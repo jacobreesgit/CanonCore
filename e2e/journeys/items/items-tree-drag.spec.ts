@@ -14,7 +14,7 @@ test.describe("Items Tree Drag Journey", () => {
     const email = generateUniqueEmail("items-tree-drag");
     await signUpPage.goto();
     await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/dashboard", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
 
     // Create test items in order A, B, C
     await itemsPage.createItem("Folder A");

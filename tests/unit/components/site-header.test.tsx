@@ -9,7 +9,7 @@ import { SiteHeader } from "@/components/site-header";
 
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/dashboard",
+  usePathname: () => "/my-items",
 }));
 
 // Mock UI components that require context
@@ -27,22 +27,22 @@ describe("SiteHeader", () => {
 
     const link = screen.getByTestId("site-header-breadcrumb-root");
     expect(link).toBeDefined();
-    expect(link.textContent).toBe("My Files");
-    expect(link.getAttribute("href")).toBe("/dashboard");
+    expect(link.textContent).toBe("My Items");
+    expect(link.getAttribute("href")).toBe("/my-items");
   });
 
   it("renders custom title and href", () => {
     render(
-      <SiteHeader title="Connections" titleHref="/dashboard/connections" />
+      <SiteHeader title="Connections" titleHref="/my-items/connections" />
     );
 
     const link = screen.getByTestId("site-header-breadcrumb-root");
     expect(link.textContent).toBe("Connections");
-    expect(link.getAttribute("href")).toBe("/dashboard/connections");
+    expect(link.getAttribute("href")).toBe("/my-items/connections");
   });
 
   it("renders title only when no breadcrumbs provided", () => {
-    render(<SiteHeader title="My Files" />);
+    render(<SiteHeader title="My Items" />);
 
     const root = screen.getByTestId("site-header-breadcrumb-root");
     expect(root).toBeDefined();
@@ -57,26 +57,26 @@ describe("SiteHeader", () => {
 
   it("renders breadcrumb items when provided", () => {
     const breadcrumbs = [
-      { id: "1", name: "Movies", href: "/dashboard/1" },
-      { id: "2", name: "Action", href: "/dashboard/2" },
+      { id: "1", name: "Movies", href: "/my-items/1" },
+      { id: "2", name: "Action", href: "/my-items/2" },
     ];
 
-    render(<SiteHeader title="My Files" breadcrumbs={breadcrumbs} />);
+    render(<SiteHeader title="My Items" breadcrumbs={breadcrumbs} />);
 
     const items = screen.getAllByTestId("site-header-breadcrumb-item");
     expect(items.length).toBe(2);
 
     expect(items[0].textContent).toBe("Movies");
-    expect(items[0].getAttribute("href")).toBe("/dashboard/1");
+    expect(items[0].getAttribute("href")).toBe("/my-items/1");
 
     expect(items[1].textContent).toBe("Action");
-    expect(items[1].getAttribute("href")).toBe("/dashboard/2");
+    expect(items[1].getAttribute("href")).toBe("/my-items/2");
   });
 
   it("applies muted styling to root when breadcrumbs exist", () => {
-    const breadcrumbs = [{ id: "1", name: "Movies", href: "/dashboard/1" }];
+    const breadcrumbs = [{ id: "1", name: "Movies", href: "/my-items/1" }];
 
-    render(<SiteHeader title="My Files" breadcrumbs={breadcrumbs} />);
+    render(<SiteHeader title="My Items" breadcrumbs={breadcrumbs} />);
 
     const root = screen.getByTestId("site-header-breadcrumb-root");
     // Root should have muted styling when not the current page
@@ -85,11 +85,11 @@ describe("SiteHeader", () => {
 
   it("applies current page styling to last breadcrumb", () => {
     const breadcrumbs = [
-      { id: "1", name: "Movies", href: "/dashboard/1" },
-      { id: "2", name: "Action", href: "/dashboard/2" },
+      { id: "1", name: "Movies", href: "/my-items/1" },
+      { id: "2", name: "Action", href: "/my-items/2" },
     ];
 
-    render(<SiteHeader title="My Files" breadcrumbs={breadcrumbs} />);
+    render(<SiteHeader title="My Items" breadcrumbs={breadcrumbs} />);
 
     const items = screen.getAllByTestId("site-header-breadcrumb-item");
     const lastItem = items[items.length - 1];
@@ -108,11 +108,11 @@ describe("SiteHeader", () => {
 
   it("renders chevron separators between breadcrumb items", () => {
     const breadcrumbs = [
-      { id: "1", name: "Movies", href: "/dashboard/1" },
-      { id: "2", name: "Action", href: "/dashboard/2" },
+      { id: "1", name: "Movies", href: "/my-items/1" },
+      { id: "2", name: "Action", href: "/my-items/2" },
     ];
 
-    render(<SiteHeader title="My Files" breadcrumbs={breadcrumbs} />);
+    render(<SiteHeader title="My Items" breadcrumbs={breadcrumbs} />);
 
     // ChevronRight icons should be present (one per breadcrumb item)
     const nav = screen.getByRole("navigation", { name: "Breadcrumb" });

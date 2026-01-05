@@ -14,8 +14,8 @@ export async function createTestUserViaUI(page: Page): Promise<TestUser> {
   await signUpPage.goto();
   await signUpPage.signUp(testUser.email, testUser.password, testUser.password);
 
-  // Wait for redirect to dashboard
-  await page.waitForURL("/dashboard", { timeout: 10000 });
+  // Wait for redirect to my-items
+  await page.waitForURL("/my-items", { timeout: 10000 });
 
   return testUser;
 }
@@ -32,8 +32,8 @@ export async function signInTestUser(
   await signInPage.goto();
   await signInPage.signIn(testUser.email, testUser.password);
 
-  // Wait for redirect to dashboard
-  await page.waitForURL("/dashboard", { timeout: 10000 });
+  // Wait for redirect to my-items
+  await page.waitForURL("/my-items", { timeout: 10000 });
 }
 
 /**
@@ -41,8 +41,8 @@ export async function signInTestUser(
  */
 export async function signOutUser(page: Page): Promise<void> {
   // Click user menu and sign out
-  await page.getByTestId("dashboard-user-menu").click();
-  await page.getByTestId("dashboard-sign-out-button").click();
+  await page.getByTestId("my-items-user-menu").click();
+  await page.getByTestId("my-items-sign-out-button").click();
 
   // Wait for redirect to sign-in page
   await page.waitForURL("/sign-in", { timeout: 10000 });

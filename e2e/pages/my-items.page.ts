@@ -1,12 +1,12 @@
 /**
- * Page object for dashboard page.
+ * Page object for my-items page.
  * Provides methods for user menu interactions and sign-out.
  */
 
 import type { Locator, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 
-export class DashboardPage {
+export class MyItemsPage {
   readonly page: Page;
   readonly welcomeMessage: Locator;
   readonly userMenu: Locator;
@@ -15,14 +15,14 @@ export class DashboardPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.welcomeMessage = page.getByTestId("dashboard-welcome-message");
-    this.userMenu = page.getByTestId("dashboard-user-menu");
-    this.signOutButton = page.getByTestId("dashboard-sign-out-button");
+    this.welcomeMessage = page.getByTestId("my-items-welcome-message");
+    this.userMenu = page.getByTestId("my-items-user-menu");
+    this.signOutButton = page.getByTestId("my-items-sign-out-button");
     this.sidebarTrigger = page.getByTestId("sidebar-trigger");
   }
 
   async goto() {
-    await this.page.goto("/dashboard");
+    await this.page.goto("/my-items");
   }
 
   async openUserMenu() {
@@ -43,6 +43,6 @@ export class DashboardPage {
   }
 
   async expectVisible() {
-    await expect(this.page).toHaveURL("/dashboard");
+    await expect(this.page).toHaveURL("/my-items");
   }
 }

@@ -53,7 +53,7 @@ export function NavUser({
             <SidebarMenuButton
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-              data-testid="dashboard-user-menu"
+              data-testid="my-items-user-menu"
             >
               <Avatar className="h-8 w-8 rounded-full grayscale">
                 <AvatarImage src={user.avatar} alt={user.name} />
@@ -95,7 +95,7 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={handleSignOut}
-              data-testid="dashboard-sign-out-button"
+              data-testid="my-items-sign-out-button"
             >
               <LogOut />
               Log out

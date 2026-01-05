@@ -193,7 +193,7 @@ export async function setPrimaryFile(fileId: string): Promise<ItemFileResult> {
     ]);
 
     // Revalidate the page to reflect changes
-    revalidatePath("/dashboard", "layout");
+    revalidatePath("/my-items", "layout");
 
     return { success: true };
   } catch {

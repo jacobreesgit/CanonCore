@@ -12,7 +12,7 @@ test.describe("Item Settings Dialog", () => {
     const email = generateUniqueEmail("items-settings");
     await signUpPage.goto();
     await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/dashboard", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
   });
 
   test("opens settings dialog via context menu", async ({ itemsPage }) => {

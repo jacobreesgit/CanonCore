@@ -263,7 +263,7 @@ export async function createSftpConnection(data: {
       },
     });
 
-    revalidatePath("/dashboard/connections");
+    revalidatePath("/my-items/connections");
     return { success: true, data: { id: connection.id } };
   } catch (error) {
     console.error("[SFTP] Create connection error:", error);
@@ -353,7 +353,7 @@ export async function updateSftpConnection(
       data: updateData,
     });
 
-    revalidatePath("/dashboard/connections");
+    revalidatePath("/my-items/connections");
     return { success: true };
   } catch (error) {
     console.error("[SFTP] Update connection error:", error);
@@ -388,7 +388,7 @@ export async function deleteSftpConnection(
       where: { id: connectionId },
     });
 
-    revalidatePath("/dashboard/connections");
+    revalidatePath("/my-items/connections");
     return { success: true };
   } catch (error) {
     console.error("[SFTP] Delete connection error:", error);
@@ -453,7 +453,7 @@ export async function testSftpConnection(
       data: { lastConnectedAt: new Date(), lastError: null },
     });
 
-    revalidatePath("/dashboard/connections");
+    revalidatePath("/my-items/connections");
     return { success: true, data: { latencyMs } };
   } catch (error) {
     console.error("[SFTP] Test connection error:", error);
@@ -467,7 +467,7 @@ export async function testSftpConnection(
             error instanceof Error ? error.message : "Connection failed",
         },
       });
-      revalidatePath("/dashboard/connections");
+      revalidatePath("/my-items/connections");
     } catch {
       // Ignore update error
     }
@@ -544,7 +544,7 @@ export async function createSftpFolder(
       },
     });
 
-    revalidatePath("/dashboard");
+    revalidatePath("/my-items");
     return {
       success: true,
       data: {
@@ -601,7 +601,7 @@ export async function deleteSftpItem(itemId: string): Promise<ActionResult> {
       where: { id: itemId },
     });
 
-    revalidatePath("/dashboard");
+    revalidatePath("/my-items");
     return { success: true };
   } catch (error) {
     console.error("[SFTP] Delete item error:", error);
@@ -654,7 +654,7 @@ export async function renameSftpItem(
       });
     }
 
-    revalidatePath("/dashboard");
+    revalidatePath("/my-items");
     return { success: true };
   } catch (error) {
     console.error("[SFTP] Rename item error:", error);
@@ -940,8 +940,8 @@ export async function syncFromSftp(
       data: { lastSyncAt: new Date(), lastError: null },
     });
 
-    revalidatePath("/dashboard");
-    revalidatePath("/dashboard/connections");
+    revalidatePath("/my-items");
+    revalidatePath("/my-items/connections");
 
     return {
       success: true,
@@ -958,7 +958,7 @@ export async function syncFromSftp(
           lastError: error instanceof Error ? error.message : "Sync failed",
         },
       });
-      revalidatePath("/dashboard/connections");
+      revalidatePath("/my-items/connections");
     } catch {
       // Ignore update error
     }

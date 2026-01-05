@@ -11,7 +11,7 @@ test.describe("Items Navigation Journey", () => {
     const email = generateUniqueEmail("items-nav");
     await signUpPage.goto();
     await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/dashboard", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
   });
 
   test("can navigate into a folder by clicking", async ({
@@ -23,7 +23,7 @@ test.describe("Items Navigation Journey", () => {
     await itemsPage.clickItem("Parent Folder");
 
     // Should navigate to item detail page
-    await expect(page).toHaveURL(/\/dashboard\/[a-z0-9]+/i);
+    await expect(page).toHaveURL(/\/my-items\/[a-z0-9]+/i);
     // Breadcrumb should show the folder name
     await itemsPage.expectBreadcrumb("Parent Folder");
   });
@@ -35,7 +35,7 @@ test.describe("Items Navigation Journey", () => {
 
     // Navigate back via home breadcrumb
     await itemsPage.breadcrumbHome.click();
-    await expect(page).toHaveURL("/dashboard");
+    await expect(page).toHaveURL("/my-items");
     await itemsPage.expectItemVisible("Parent Folder");
   });
 

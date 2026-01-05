@@ -61,7 +61,7 @@ export default function SignUpPage() {
             "Account created but sign-in failed. Please try signing in."
           );
         } else {
-          router.push("/dashboard");
+          router.push("/my-items");
           router.refresh();
         }
       }

@@ -14,7 +14,7 @@ test.describe("Items Grid Drag Journey", () => {
     const email = generateUniqueEmail("items-grid-drag");
     await signUpPage.goto();
     await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/dashboard", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
 
     // Create test items
     await itemsPage.createItem("Grid Item 1");

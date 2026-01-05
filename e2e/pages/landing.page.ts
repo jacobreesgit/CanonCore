@@ -22,7 +22,7 @@ export class LandingPage {
     await this.page.goto("/");
   }
 
-  /** Click the CTA button (Get Started for guests, Go to Dashboard for authenticated). */
+  /** Click the CTA button (Get Started for guests, Go to My Items for authenticated). */
   async clickGetStarted() {
     await this.ctaButton.click();
   }

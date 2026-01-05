@@ -1,6 +1,6 @@
 /**
  * Main application sidebar component.
- * Adapts navigation content based on context (dashboard, docs, or home).
+ * Adapts navigation content based on context (my-items, docs, or home).
  */
 
 "use client";
@@ -28,7 +28,7 @@ import {
 /**
  * Sidebar context determines which navigation items to display.
  */
-type SidebarContext = "dashboard" | "docs" | "home";
+type SidebarContext = "my-items" | "docs" | "home";
 
 /**
  * Props for AppSidebar component.
@@ -42,11 +42,11 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   docsTree?: PageTreeRoot;
 }
 
-/** Main navigation items for the dashboard. */
-const dashboardNavMain = [
+/** Main navigation items for authenticated users. */
+const myItemsNavMain = [
   {
-    title: "My Files",
-    url: "/dashboard",
+    title: "My Items",
+    url: "/my-items",
     icon: Folder,
   },
 ];
@@ -65,8 +65,8 @@ export function AppSidebar({
   docsTree,
   ...props
 }: AppSidebarProps) {
-  // Logo links to dashboard if authenticated, home if guest
-  const logoHref = user ? "/dashboard" : "/";
+  // Logo links to my-items if authenticated, home if guest
+  const logoHref = user ? "/my-items" : "/";
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -86,9 +86,9 @@ export function AppSidebar({
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Show dashboard nav for dashboard context, or for authenticated users on home */}
-        {(context === "dashboard" || (context === "home" && user)) && (
-          <NavMain items={dashboardNavMain} />
+        {/* Show my-items nav for my-items context, or for authenticated users on home */}
+        {(context === "my-items" || (context === "home" && user)) && (
+          <NavMain items={myItemsNavMain} />
         )}
 
         {context === "docs" && docsTree && (
@@ -97,12 +97,12 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter>
-        {/* Show footer nav for dashboard context, or for authenticated users on home */}
-        {(context === "dashboard" || (context === "home" && user)) && (
+        {/* Show footer nav for my-items context, or for authenticated users on home */}
+        {(context === "my-items" || (context === "home" && user)) && (
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip="Connections">
-                <Link href="/dashboard/connections">
+                <Link href="/my-items/connections">
                   <Cable />
                   <span>Connections</span>
                 </Link>

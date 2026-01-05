@@ -1,19 +1,19 @@
 /**
- * Dashboard layout with sidebar navigation.
+ * Protected layout with sidebar navigation for authenticated users.
  * Protects all child routes with authentication check.
  */
 
 import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
-import { DashboardProviders } from "@/components/dashboard-providers";
+import { MyItemsProviders } from "@/components/my-items-providers";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { auth, extractSidebarUser } from "@/lib/auth";
 
 /**
- * Wraps dashboard pages with sidebar and header.
+ * Wraps protected pages with sidebar and header.
  * Redirects unauthenticated users to sign-in.
  */
-export default async function DashboardLayout({
+export default async function MyItemsLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -27,7 +27,7 @@ export default async function DashboardLayout({
   const user = extractSidebarUser(session)!;
 
   return (
-    <DashboardProviders>
+    <MyItemsProviders>
       <SidebarProvider
         style={
           {
@@ -36,7 +36,7 @@ export default async function DashboardLayout({
           } as React.CSSProperties
         }
       >
-        <AppSidebar variant="inset" user={user} context="dashboard" />
+        <AppSidebar variant="inset" user={user} context="my-items" />
         <SidebarInset>
           <div className="flex flex-1 flex-col">
             <div className="@container/main flex flex-1 flex-col gap-2">
@@ -45,6 +45,6 @@ export default async function DashboardLayout({
           </div>
         </SidebarInset>
       </SidebarProvider>
-    </DashboardProviders>
+    </MyItemsProviders>
   );
 }

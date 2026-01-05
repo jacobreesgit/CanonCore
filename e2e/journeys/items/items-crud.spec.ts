@@ -12,7 +12,7 @@ test.describe("Items CRUD Journey", () => {
     const email = generateUniqueEmail("items-crud");
     await signUpPage.goto();
     await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/dashboard", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
   });
 
   test("shows empty state when no items exist", async ({ itemsPage }) => {

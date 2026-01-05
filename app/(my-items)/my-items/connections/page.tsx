@@ -23,7 +23,7 @@ export default async function ConnectionsPage() {
 
   return (
     <>
-      <SiteHeader title="Connections" titleHref="/dashboard/connections" />
+      <SiteHeader title="Connections" titleHref="/my-items/connections" />
       <div className="container mx-auto space-y-8 p-6">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -37,7 +37,7 @@ export default async function ConnectionsPage() {
           </div>
           {connections.length > 0 && (
             <Button asChild>
-              <Link href="/dashboard/connections/new">
+              <Link href="/my-items/connections/new">
                 <Plus className="mr-2 size-4" />
                 Add Connection
               </Link>
@@ -68,7 +68,7 @@ export default async function ConnectionsPage() {
               Add your first SFTP connection to start syncing files
             </p>
             <Button asChild className="mt-6">
-              <Link href="/dashboard/connections/new">
+              <Link href="/my-items/connections/new">
                 <Server className="mr-2 size-4" />
                 Add Your First Connection
               </Link>

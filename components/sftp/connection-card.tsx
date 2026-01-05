@@ -89,7 +89,7 @@ export function ConnectionCard({ connection, onDelete }: ConnectionCardProps) {
 
   return (
     <Link
-      href={`/dashboard/connections/${connection.id}`}
+      href={`/my-items/connections/${connection.id}`}
       className="focus-visible:ring-ring block rounded-xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
     >
       <Card
@@ -131,7 +131,7 @@ export function ConnectionCard({ connection, onDelete }: ConnectionCardProps) {
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem asChild>
                       <Link
-                        href={`/dashboard/connections/${connection.id}/edit`}
+                        href={`/my-items/connections/${connection.id}/edit`}
                       >
                         <Pencil className="mr-2 size-4" />
                         Edit

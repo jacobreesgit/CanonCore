@@ -30,7 +30,7 @@ describeOrSkip("SFTP Sync Operations", () => {
     const userEmail = generateUniqueEmail("sftp-ops");
     await signUpPage.goto();
     await signUpPage.signUp(userEmail, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/dashboard", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
 
     // Create SFTP connection using worker-specific config
     await connectionsPage.gotoNew();
@@ -43,7 +43,7 @@ describeOrSkip("SFTP Sync Operations", () => {
       basePath: sftpConfig.basePath,
     });
     await connectionsPage.submitForm();
-    await expect(page).toHaveURL("/dashboard/connections", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items/connections", { timeout: 10000 });
   });
 
   test("sync button triggers full sync", async ({

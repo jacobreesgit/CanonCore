@@ -14,6 +14,9 @@
 import type { Locator, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 
+/** Timeout for waiting for toast notifications to dismiss (matches Sonner default) */
+const TOAST_DISMISS_TIMEOUT = 5000;
+
 export class ItemsPage {
   readonly page: Page;
   readonly viewToggleTree: Locator;
@@ -45,19 +48,19 @@ export class ItemsPage {
     // Target the SiteHeader breadcrumb nav
     this.breadcrumbHome = page
       .getByLabel("Breadcrumb")
-      .getByRole("link", { name: /my files/i });
+      .getByRole("link", { name: /my items/i });
   }
 
   async goto() {
-    await this.page.goto("/dashboard");
+    await this.page.goto("/my-items");
   }
 
   async gotoItem(itemId: string) {
-    await this.page.goto(`/dashboard/${itemId}`);
+    await this.page.goto(`/my-items/${itemId}`);
   }
 
   async expectVisible() {
-    await expect(this.page).toHaveURL(/\/dashboard/);
+    await expect(this.page).toHaveURL(/\/my-items/);
   }
 
   async switchToTreeView() {
@@ -254,8 +257,15 @@ export class ItemsPage {
       .getByRole("button", { name: /^save$/i })
       .nth(1)
       .click();
-    // Wait for network to settle
+    // Wait for toast confirmation that save completed
+    await this.page
+      .getByText("Description updated")
+      .waitFor({ state: "visible" });
     await this.page.waitForLoadState("networkidle");
+    // Wait for toast to disappear to ensure React state has settled
+    await this.page
+      .getByText("Description updated")
+      .waitFor({ state: "hidden", timeout: TOAST_DISMISS_TIMEOUT });
     await this.closeSettingsDialog();
   }
 
