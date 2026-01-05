@@ -561,7 +561,7 @@ async function seedJordanTest(userId: string): Promise<void> {
 
   await createItem(
     userId,
-    "My Files",
+    "My Items",
     null,
     0,
     0,

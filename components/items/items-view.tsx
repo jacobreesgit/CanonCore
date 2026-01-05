@@ -6,9 +6,10 @@
 
 "use client";
 
-import { useState, useCallback, useTransition, useEffect } from "react";
+import { useState, useCallback, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Folder, Plus } from "lucide-react";
+import { useQuickCreateOptional } from "@/contexts/add-folder-context";
 import { UniqueIdentifier } from "@dnd-kit/core";
 import { toast } from "sonner";
 
@@ -66,7 +67,28 @@ export function ItemsView({
 }: ItemsViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [items, setItems] = useState<ItemWithArtwork[]>(initialItems);
+  const [items, setItemsState] = useState<ItemWithArtwork[]>(initialItems);
+  // Ref to always access latest items (avoids stale closure in callbacks)
+  const itemsRef = useRef(items);
+
+  /**
+   * Wrapper around setItems that also updates the ref synchronously.
+   * This ensures handleOpenSettings always sees the latest items.
+   */
+  const setItems = useCallback(
+    (
+      update:
+        | ItemWithArtwork[]
+        | ((prev: ItemWithArtwork[]) => ItemWithArtwork[])
+    ) => {
+      setItemsState((prev) => {
+        const next = typeof update === "function" ? update(prev) : update;
+        itemsRef.current = next;
+        return next;
+      });
+    },
+    []
+  );
   // Single source of truth for view mode - hydration-safe via useSyncExternalStore
   const [viewMode] = useStoredViewMode();
   // Edit mode state - when true, shows DnD-enabled components
@@ -79,13 +101,14 @@ export function ItemsView({
 
   // Exit edit mode when view mode changes - intentional minimal cascade
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsEditing(false);
   }, [viewMode]);
 
-  // Sync local state when props change (e.g., after router.refresh() from Quick Create)
+  // Sync local state when props change
   useEffect(() => {
     setItems(initialItems);
-  }, [initialItems]);
+  }, [initialItems, setItems]);
 
   // Convert flat items to tree structure for SortableTree
   const treeItems = itemsToTree(items);
@@ -102,39 +125,47 @@ export function ItemsView({
     if (result.success && result.data) {
       setItems(result.data);
     }
-  }, [connectionId, parentId]);
+  }, [connectionId, parentId, setItems]);
+
+  // Subscribe to Quick Create events for explicit refetch (only at root level)
+  const quickCreate = useQuickCreateOptional();
+  useEffect(() => {
+    if (!quickCreate || parentId) return; // Only subscribe at root level
+    return quickCreate.subscribeToCreation(() => {
+      startTransition(() => refetchItems());
+    });
+  }, [quickCreate, parentId, refetchItems]);
 
   /**
    * Opens the settings dialog for an item.
+   * Uses itemsRef to always get latest items (avoids stale closure).
    * Fetches the item's files before opening.
    */
-  const handleOpenSettings = useCallback(
-    async (id: string) => {
-      const item = items.find((i) => i.id === id);
-      if (!item) return;
+  const handleOpenSettings = useCallback(async (id: string) => {
+    // Use ref to avoid stale closure when items update right before reopening
+    const item = itemsRef.current.find((i) => i.id === id);
+    if (!item) return;
 
-      // Fetch files for this item
-      const filesResult = await getItemFiles(id);
-      const files =
-        filesResult.success && filesResult.data
-          ? filesResult.data
-          : { media: [], artwork: [], subtitles: [] };
+    // Fetch files for this item
+    const filesResult = await getItemFiles(id);
+    const files =
+      filesResult.success && filesResult.data
+        ? filesResult.data
+        : { media: [], artwork: [], subtitles: [] };
 
-      setSettingsDialog({
-        item: { id: item.id, name: item.name, description: item.description },
-        files,
-      });
-    },
-    [items]
-  );
+    setSettingsDialog({
+      item: { id: item.id, name: item.name, description: item.description },
+      files,
+    });
+  }, []);
 
   // Handle item click - navigate to item detail
   const handleItemClick = useCallback(
     (id: UniqueIdentifier) => {
       if (connectionId) {
-        router.push(`/dashboard/connections/${connectionId}/${id}`);
+        router.push(`/my-items/connections/${connectionId}/${id}`);
       } else {
-        router.push(`/dashboard/${id}`);
+        router.push(`/my-items/${id}`);
       }
     },
     [router, connectionId]
@@ -185,7 +216,7 @@ export function ItemsView({
         return message;
       }
     },
-    [parentId, connectionId, refetchItems]
+    [parentId, connectionId, refetchItems, setItems]
   );
 
   // Handle renaming an item
@@ -206,7 +237,7 @@ export function ItemsView({
         toast.error(result.error || "Failed to rename");
       }
     },
-    [items, refetchItems]
+    [items, refetchItems, setItems]
   );
 
   // Handle updating item description
@@ -225,7 +256,7 @@ export function ItemsView({
         toast.error(result.error || "Failed to update description");
       }
     },
-    [refetchItems]
+    [refetchItems, setItems]
   );
 
   // Handle deleting an item
@@ -244,7 +275,7 @@ export function ItemsView({
         toast.error(result.error || "Failed to delete");
       }
     },
-    [items, refetchItems]
+    [items, refetchItems, setItems]
   );
 
   // Handle adding child item
@@ -299,31 +330,34 @@ export function ItemsView({
         return message;
       }
     },
-    [items, connectionId, refetchItems]
+    [items, connectionId, refetchItems, setItems]
   );
 
   // Handle tree reordering
-  const handleTreeItemsChange = useCallback(async (newTreeItems: TreeItems) => {
-    const updates = treeToItemUpdates(newTreeItems);
-    const result = await reorderItems(updates);
-    if (result.success) {
-      // Update local state with new positions
-      setItems((prev) =>
-        prev.map((item) => {
-          const update = updates.find((u) => u.id === item.id);
-          if (update) {
-            return {
-              ...item,
-              parentId: update.parentId,
-              depth: update.depth,
-              order: update.order,
-            };
-          }
-          return item;
-        })
-      );
-    }
-  }, []);
+  const handleTreeItemsChange = useCallback(
+    async (newTreeItems: TreeItems) => {
+      const updates = treeToItemUpdates(newTreeItems);
+      const result = await reorderItems(updates);
+      if (result.success) {
+        // Update local state with new positions
+        setItems((prev) =>
+          prev.map((item) => {
+            const update = updates.find((u) => u.id === item.id);
+            if (update) {
+              return {
+                ...item,
+                parentId: update.parentId,
+                depth: update.depth,
+                order: update.order,
+              };
+            }
+            return item;
+          })
+        );
+      }
+    },
+    [setItems]
+  );
 
   // Handle grid reordering (same level only)
   const handleGridItemsChange = useCallback(
@@ -340,7 +374,7 @@ export function ItemsView({
         setItems(newItems);
       }
     },
-    []
+    [setItems]
   );
 
   // Filter items for current level (grid view shows only current level)

@@ -11,7 +11,7 @@ test.describe("Edit Mode", () => {
     const email = generateUniqueEmail("edit-mode");
     await signUpPage.goto();
     await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/dashboard", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
 
     await itemsPage.goto();
     await itemsPage.createItem("Test Folder 1");

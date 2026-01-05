@@ -1,12 +1,12 @@
 /**
- * Top header bar component for the dashboard layout.
+ * Top header bar component for the protected layout.
  * Contains sidebar toggle, breadcrumb navigation, and context menu.
  *
  * @example
  * ```tsx
  * <SiteHeader
  *   breadcrumbs={[
- *     { id: "1", name: "Projects", href: "/dashboard/1" },
+ *     { id: "1", name: "Projects", href: "/my-items/1" },
  *   ]}
  *   currentItemId="1"
  *   onRename={() => openRenameDialog()}
@@ -65,8 +65,8 @@ interface SiteHeaderProps {
  * - Subtle context menu with destructive delete styling
  */
 export function SiteHeader({
-  title = "My Files",
-  titleHref = "/dashboard",
+  title = "My Items",
+  titleHref = "/my-items",
   breadcrumbs = [],
   currentItemId,
   onRename,

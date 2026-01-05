@@ -11,7 +11,7 @@ test.describe("Items View Toggle Journey", () => {
     const email = generateUniqueEmail("items-view");
     await signUpPage.goto();
     await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/dashboard", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
 
     // Create some test items
     await itemsPage.createItem("Folder A");
@@ -48,7 +48,7 @@ test.describe("Items View Toggle Journey", () => {
     await expect(itemsPage.gridView).toBeVisible();
 
     // Navigate away and back (wait for full page load)
-    await page.goto("/dashboard");
+    await page.goto("/my-items");
     await page.waitForLoadState("networkidle");
     await expect(itemsPage.gridView).toBeVisible();
   });

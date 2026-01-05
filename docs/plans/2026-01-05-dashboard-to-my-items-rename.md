@@ -13,6 +13,7 @@
 ## Scope
 
 ### In Scope (User-Facing Text)
+
 - Navigation labels: "Back to Dashboard" → "Back to My Items"
 - Navigation labels: "My Files" → "My Items"
 - CTA buttons: "Go to Dashboard" → "Go to My Items"
@@ -26,6 +27,7 @@
 - Seed data labels
 
 ### Out of Scope (Internal/Technical)
+
 - URL routes (`/dashboard/*`) - breaking change, keep as-is
 - Test IDs (`dashboard-user-menu`) - internal, keep as-is
 - File names (`dashboard.page.ts`) - internal, keep as-is
@@ -36,6 +38,7 @@
 ## Task 1: Update Nav Docs Component
 
 **Files:**
+
 - Modify: `components/nav-docs.tsx:56`
 - Test: `tests/unit/components/nav-docs.test.tsx` (if exists)
 
@@ -71,16 +74,21 @@ git commit -m "feat: rename 'Back to Dashboard' to 'Back to My Items'"
 ## Task 2: Update Landing Page CTA
 
 **Files:**
+
 - Modify: `app/(public)/page.tsx:45,53`
 
 **Step 1: Update CTA button text (line 53)**
 
 ```typescript
 // Before
-{isAuthenticated ? "Go to Dashboard" : "Get Started"}
+{
+  isAuthenticated ? "Go to Dashboard" : "Get Started";
+}
 
 // After
-{isAuthenticated ? "Go to My Items" : "Get Started"}
+{
+  isAuthenticated ? "Go to My Items" : "Get Started";
+}
 ```
 
 **Step 2: Update landing page description (line 45)**
@@ -113,6 +121,7 @@ git commit -m "feat: update landing page to use 'My Items' instead of 'Dashboard
 ## Task 3: Update Root Layout Metadata
 
 **Files:**
+
 - Modify: `app/layout.tsx:25`
 
 **Step 1: Update metadata description**
@@ -151,6 +160,7 @@ git commit -m "feat: update metadata description"
 ## Task 4: Update Documentation Content
 
 **Files:**
+
 - Modify: `content/docs/getting-started/quick-tour.mdx`
 - Modify: `content/docs/getting-started/create-account.mdx`
 - Modify: `content/docs/getting-started/sign-in.mdx`
@@ -159,9 +169,11 @@ git commit -m "feat: update metadata description"
 
 ```mdx
 // Before
+
 ## The Dashboard
 
 // After
+
 ## My Items
 ```
 
@@ -215,6 +227,7 @@ git commit -m "docs: update documentation to use 'My Items' terminology"
 ## Task 5: Update E2E Test - Docs Page Object
 
 **Files:**
+
 - Modify: `e2e/pages/docs.page.ts:17-18,38,40-41`
 
 **Step 1: Update locator and method names**
@@ -257,6 +270,7 @@ git commit -m "test(e2e): update docs page object for 'My Items' rename"
 ## Task 6: Update E2E Test - Docs Navigation Spec
 
 **Files:**
+
 - Modify: `e2e/journeys/docs/docs-navigation.spec.ts:42,48,52,55-56,60`
 
 **Step 1: Update test name and locator (lines 42-60)**
@@ -299,6 +313,7 @@ git commit -m "test(e2e): update docs navigation test for 'My Items' rename"
 ## Task 7: Update Landing Page E2E Page Object
 
 **Files:**
+
 - Modify: `e2e/pages/landing.page.ts:25`
 
 **Step 1: Update JSDoc comment**
@@ -351,6 +366,7 @@ Expected: All checks PASS
 ## Task 9: Update Site Header Default Title
 
 **Files:**
+
 - Modify: `components/site-header.tsx:68`
 
 **Step 1: Update default prop value**
@@ -383,6 +399,7 @@ git commit -m "feat: rename 'My Files' to 'My Items' in site header default"
 ## Task 10: Update App Sidebar Nav Item
 
 **Files:**
+
 - Modify: `components/app-sidebar.tsx:48`
 
 **Step 1: Update nav item title**
@@ -415,6 +432,7 @@ git commit -m "feat: rename 'My Files' to 'My Items' in sidebar"
 ## Task 11: Update Dashboard Pages
 
 **Files:**
+
 - Modify: `app/(dashboard)/dashboard/page.tsx:20`
 - Modify: `app/(dashboard)/dashboard/[itemId]/page.tsx:67,83,98`
 
@@ -434,10 +452,10 @@ Replace all three occurrences:
 
 ```typescript
 // Before
-title="My Files"
+title = "My Files";
 
 // After
-title="My Items"
+title = "My Items";
 ```
 
 **Step 3: Run type check**
@@ -460,6 +478,7 @@ git commit -m "feat: rename 'My Files' to 'My Items' in dashboard pages"
 ## Task 12: Update Site Header Unit Tests
 
 **Files:**
+
 - Modify: `tests/unit/components/site-header.test.tsx:30,45,64,79,92,115`
 
 **Step 1: Update test assertions and props**
@@ -494,6 +513,7 @@ git commit -m "test: update site header tests for 'My Items' rename"
 ## Task 13: Update Navigation Documentation
 
 **Files:**
+
 - Modify: `content/docs/files-and-folders/navigation.mdx:13,17,31,52`
 - Modify: `content/docs/getting-started/quick-tour.mdx:16`
 
@@ -506,9 +526,11 @@ Replace all "My Files" with "My Items":
 My Items > Work > Projects > Project A
 
 // Line 17
+
 - Click **My Items** to return to the top level
 
 // Line 31
+
 - Click **My Items** in the sidebar
 
 // Line 52
@@ -519,9 +541,11 @@ Click **My Items** in the sidebar to always get back to your starting point.
 
 ```mdx
 // Before
+
 - **My Files** - Takes you back to your main folder list
 
 // After
+
 - **My Items** - Takes you back to your main folder list
 ```
 
@@ -545,6 +569,7 @@ git commit -m "docs: rename 'My Files' to 'My Items' in documentation"
 ## Task 14: Update Seed Data
 
 **Files:**
+
 - Modify: `prisma/seed.ts:564`
 
 **Step 1: Update seed data label**
@@ -614,29 +639,29 @@ Expected: No matches (except historical docs)
 
 ### "Dashboard" → "My Items" Changes
 
-| File | Change |
-|------|--------|
-| `components/nav-docs.tsx` | "Back to Dashboard" → "Back to My Items" |
-| `app/(public)/page.tsx` | "Go to Dashboard" → "Go to My Items", "dashboard" → "platform" |
-| `app/layout.tsx` | Description: "CanonCore Dashboard" → "CanonCore - Media Library Manager" |
-| `content/docs/.../quick-tour.mdx` | Heading "## The Dashboard" → "## My Items", body text update |
-| `content/docs/.../create-account.mdx` | "dashboard" → "My Items" |
-| `content/docs/.../sign-in.mdx` | "dashboard" → "library" |
-| `e2e/pages/docs.page.ts` | Locator and method rename (`backToMyItems`) |
-| `e2e/pages/landing.page.ts` | JSDoc update |
-| `e2e/journeys/docs/docs-navigation.spec.ts` | Test name and locator updates |
+| File                                        | Change                                                                   |
+| ------------------------------------------- | ------------------------------------------------------------------------ |
+| `components/nav-docs.tsx`                   | "Back to Dashboard" → "Back to My Items"                                 |
+| `app/(public)/page.tsx`                     | "Go to Dashboard" → "Go to My Items", "dashboard" → "platform"           |
+| `app/layout.tsx`                            | Description: "CanonCore Dashboard" → "CanonCore - Media Library Manager" |
+| `content/docs/.../quick-tour.mdx`           | Heading "## The Dashboard" → "## My Items", body text update             |
+| `content/docs/.../create-account.mdx`       | "dashboard" → "My Items"                                                 |
+| `content/docs/.../sign-in.mdx`              | "dashboard" → "library"                                                  |
+| `e2e/pages/docs.page.ts`                    | Locator and method rename (`backToMyItems`)                              |
+| `e2e/pages/landing.page.ts`                 | JSDoc update                                                             |
+| `e2e/journeys/docs/docs-navigation.spec.ts` | Test name and locator updates                                            |
 
 ### "My Files" → "My Items" Changes
 
-| File | Change |
-|------|--------|
-| `components/site-header.tsx` | Default title prop: "My Files" → "My Items" |
-| `components/app-sidebar.tsx` | Nav item title: "My Files" → "My Items" |
-| `app/(dashboard)/dashboard/page.tsx` | SiteHeader title |
-| `app/(dashboard)/dashboard/[itemId]/page.tsx` | SiteHeader title (3 occurrences) |
-| `tests/unit/components/site-header.test.tsx` | Test assertions and props (6 occurrences) |
-| `content/docs/.../navigation.mdx` | All "My Files" references (4 occurrences) |
-| `content/docs/.../quick-tour.mdx` | Sidebar item description |
-| `prisma/seed.ts` | Seed data label |
+| File                                          | Change                                      |
+| --------------------------------------------- | ------------------------------------------- |
+| `components/site-header.tsx`                  | Default title prop: "My Files" → "My Items" |
+| `components/app-sidebar.tsx`                  | Nav item title: "My Files" → "My Items"     |
+| `app/(dashboard)/dashboard/page.tsx`          | SiteHeader title                            |
+| `app/(dashboard)/dashboard/[itemId]/page.tsx` | SiteHeader title (3 occurrences)            |
+| `tests/unit/components/site-header.test.tsx`  | Test assertions and props (6 occurrences)   |
+| `content/docs/.../navigation.mdx`             | All "My Files" references (4 occurrences)   |
+| `content/docs/.../quick-tour.mdx`             | Sidebar item description                    |
+| `prisma/seed.ts`                              | Seed data label                             |
 
 **Total: 17 files, ~35 line changes**

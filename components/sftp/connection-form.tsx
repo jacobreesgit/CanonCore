@@ -150,7 +150,7 @@ export function ConnectionForm({ mode, initialData }: ConnectionFormProps) {
 
           if (result.success) {
             toast.success("Connection created");
-            router.push("/dashboard/connections");
+            router.push("/my-items/connections");
           } else {
             toast.error(result.error);
           }
@@ -180,7 +180,7 @@ export function ConnectionForm({ mode, initialData }: ConnectionFormProps) {
 
           if (result.success) {
             toast.success("Connection updated");
-            router.push("/dashboard/connections");
+            router.push("/my-items/connections");
           } else {
             toast.error(result.error);
           }
@@ -466,7 +466,7 @@ export function ConnectionForm({ mode, initialData }: ConnectionFormProps) {
           <Button
             type="button"
             variant="ghost"
-            onClick={() => router.push("/dashboard/connections")}
+            onClick={() => router.push("/my-items/connections")}
             disabled={isPending}
           >
             Cancel

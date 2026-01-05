@@ -2,7 +2,7 @@ import { test, expect } from "../../fixtures";
 import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
 test.describe("Sign Up Journey", () => {
-  test("new user can create account and reach dashboard", async ({
+  test("new user can create account and reach my-items", async ({
     page,
     landingPage,
     signUpPage,
@@ -28,8 +28,8 @@ test.describe("Sign Up Journey", () => {
       timeout: 15000,
     });
 
-    // Should be on dashboard
-    await expect(page).toHaveURL("/dashboard");
+    // Should be on my-items
+    await expect(page).toHaveURL("/my-items");
   });
 
   test("shows error for mismatched passwords", async ({ signUpPage }) => {

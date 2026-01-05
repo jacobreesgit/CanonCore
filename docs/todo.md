@@ -1,10 +1,8 @@
-- active sidebar
+- other sync thing
+- wheres resync button
+- artwork for 'my items' dashboard? - look at seed script
 
 - look at entire codebase after current commit
-
-- wheres resync button
-
-- artwork for 'my items' dashboard? - look at seed script
 
 - spotlight search
 

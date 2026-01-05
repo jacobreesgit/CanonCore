@@ -14,7 +14,7 @@ test.describe("Documentation Navigation", () => {
     const email = generateUniqueEmail("docs");
     await signUpPage.goto();
     await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/dashboard", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
   });
 
   test("can navigate to docs via Get Help link", async ({ page }) => {
@@ -39,25 +39,25 @@ test.describe("Documentation Navigation", () => {
     ).toBeVisible();
   });
 
-  test("can navigate back to dashboard from docs", async ({
+  test("can navigate back to my items from docs", async ({
     page,
     docsPage,
   }) => {
     await docsPage.goto();
 
-    // Open sidebar if collapsed (mobile) - Back to Dashboard is in our sidebar
+    // Open sidebar if collapsed (mobile) - Back to My Items is in our sidebar
     await openSidebarIfClosed(page);
 
     // Click the back link in sidebar
-    const backLink = page.getByRole("link", { name: "Back to Dashboard" });
+    const backLink = page.getByRole("link", { name: "Back to My Items" });
     await backLink.click();
 
-    // Should be on dashboard
-    await expect(page).toHaveURL("/dashboard");
+    // Should be on my items page
+    await expect(page).toHaveURL("/my-items");
   });
 
   test("docs respects dark mode setting", async ({ page, docsPage }) => {
-    // Set dark mode in dashboard
+    // Set dark mode in my items
     await toggleTheme(page);
     await expectDarkMode(page);
 

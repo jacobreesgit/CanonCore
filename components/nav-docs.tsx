@@ -46,14 +46,14 @@ interface NavDocsProps {
 
 /**
  * Renders the documentation navigation tree in the sidebar.
- * Includes a back link (to Dashboard for authenticated users, Home for guests).
+ * Includes a back link (to My Items for authenticated users, Home for guests).
  *
  * @param tree - Fumadocs page tree structure
  * @param isAuthenticated - Whether user is logged in
  */
 export function NavDocs({ tree, isAuthenticated }: NavDocsProps) {
-  const backHref = isAuthenticated ? "/dashboard" : "/";
-  const backLabel = isAuthenticated ? "Back to Dashboard" : "Back to Home";
+  const backHref = isAuthenticated ? "/my-items" : "/";
+  const backLabel = isAuthenticated ? "Back to My Items" : "Back to Home";
 
   return (
     <>

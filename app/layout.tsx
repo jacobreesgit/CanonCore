@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "CanonCore",
-  description: "CanonCore Dashboard",
+  description: "CanonCore - Media Library Manager",
 };
 
 /**

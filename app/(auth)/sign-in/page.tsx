@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator";
 
 /**
  * Renders sign-in form with email/password fields and error handling.
- * Redirects to dashboard on successful authentication.
+ * Redirects to My Items on successful authentication.
  */
 export default function SignInPage() {
   const [email, setEmail] = useState("");
@@ -40,7 +40,7 @@ export default function SignInPage() {
       if (result?.error) {
         setError("Invalid email or password");
       } else {
-        router.push("/dashboard");
+        router.push("/my-items");
         router.refresh();
       }
     } catch {
