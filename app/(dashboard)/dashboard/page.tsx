@@ -5,6 +5,7 @@
 
 import { ItemsView } from "@/components/items";
 import { getItems } from "@/lib/item-actions";
+import { SiteHeader } from "@/components/site-header";
 
 /**
  * Renders the dashboard with sortable items view.
@@ -15,8 +16,11 @@ export default async function DashboardPage() {
   const items = result.success ? (result.data ?? []) : [];
 
   return (
-    <div className="flex flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
-      <ItemsView items={items} parentId={null} breadcrumbs={[]} />
-    </div>
+    <>
+      <SiteHeader title="My Files" titleHref="/dashboard" />
+      <div className="flex flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
+        <ItemsView items={items} parentId={null} />
+      </div>
+    </>
   );
 }

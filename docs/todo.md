@@ -1,4 +1,8 @@
-- creating item --> artwork, description, etc?
+- active sidebar
+
+- look at entire codebase after current commit
+
+- wheres resync button
 
 - artwork for 'my items' dashboard? - look at seed script
 
@@ -7,8 +11,6 @@
 - sorting for 'my items' dashboard, not for individual item pages
 
 - look at entire codebase
-
-- branding, google nano banana? the purple thing from photos
 
 - imdb/other
 
@@ -23,4 +25,4 @@
 - content pages, using that shadcn block
 
 - design focus, look at all my photos. tweet folder saved. 'refined cinematic aesthetic'?
-- design, conslidate design
+- more alien thing

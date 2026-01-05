@@ -89,18 +89,20 @@ export async function closeConnection(connectionId: string): Promise<void> {
  * @param connection - SFTP connection configuration
  * @param source - Local file path or Buffer
  * @param remotePath - Destination path on SFTP server
+ * @param timeoutMs - Optional timeout in ms (default: 30s, pass 0 for no timeout)
  */
 export async function uploadFile(
   connection: SftpConnection,
   source: string | Buffer,
-  remotePath: string
+  remotePath: string,
+  timeoutMs: number = OPERATION_TIMEOUT_MS
 ): Promise<void> {
   const client = await getConnection(connection);
-  await withTimeout(
-    client.put(source, remotePath),
-    OPERATION_TIMEOUT_MS,
-    "upload file"
-  );
+  if (timeoutMs === 0) {
+    await client.put(source, remotePath);
+  } else {
+    await withTimeout(client.put(source, remotePath), timeoutMs, "upload file");
+  }
 }
 
 /**
@@ -158,6 +160,27 @@ export async function rename(
     OPERATION_TIMEOUT_MS,
     "rename"
   );
+}
+
+/**
+ * Checks if a file or directory exists on the remote server.
+ * Uses the native exists() method from ssh2-sftp-client.
+ *
+ * @param connection - SFTP connection configuration
+ * @param remotePath - Path to check on SFTP server
+ * @returns True if file/directory exists, false otherwise
+ */
+export async function checkFileExists(
+  connection: SftpConnection,
+  remotePath: string
+): Promise<boolean> {
+  const client = await getConnection(connection);
+  const result = await withTimeout(
+    client.exists(remotePath),
+    OPERATION_TIMEOUT_MS,
+    "check file exists"
+  );
+  return result !== false; // exists() returns 'd', '-', 'l' or false
 }
 
 /**

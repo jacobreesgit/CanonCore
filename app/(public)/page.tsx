@@ -1,61 +1,60 @@
 /**
  * Public landing page.
- * Displays hero section with call-to-action to sign up or sign in.
+ * Displays hero section with background pattern and call-to-action.
  */
 
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
-import Image from "next/image";
+import { ArrowRight } from "lucide-react";
 
+import { auth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 
 /**
  * Renders the landing page with hero content and navigation buttons.
+ * Shows different CTAs based on authentication state.
  */
-export default function LandingPage() {
+export default async function LandingPage() {
+  const session = await auth();
+  const isAuthenticated = !!session?.user;
+
   return (
-    <section className="py-32">
-      <div className="border-muted overflow-hidden border-b">
+    <section className="relative flex h-full w-full items-center justify-center overflow-hidden">
+      {/* Background Pattern */}
+      <div
+        className="absolute inset-0 z-0"
+        style={{
+          backgroundImage: `
+            radial-gradient(circle 600px at 0% 200px, oklch(from var(--primary) calc(l * 0.7) calc(c * 0.6) h / 0.15), transparent),
+            radial-gradient(circle 600px at 100% 200px, oklch(from var(--primary) calc(l * 0.75) calc(c * 0.65) h / 0.12), transparent)
+          `,
+        }}
+      />
+
+      {/* Content */}
+      <div className="relative z-10">
         <div className="container">
-          <div className="mx-auto flex max-w-5xl flex-col items-center">
-            <div className="z-10 items-center text-center">
+          <div className="mx-auto flex max-w-5xl flex-col items-center gap-6 text-center">
+            <div className="max-w-3xl">
               <h1
                 data-testid="landing-hero-title"
-                className="mb-8 text-4xl font-semibold text-pretty lg:text-7xl"
+                className="text-foreground mb-6 text-4xl font-medium tracking-tight text-pretty md:text-5xl lg:text-6xl"
               >
                 Welcome to CanonCore
               </h1>
-              <p className="text-muted-foreground mx-auto max-w-3xl lg:text-xl">
-                Your all-in-one dashboard for managing and analyzing your data.
-                Get started today and unlock powerful insights.
+              <p className="text-muted-foreground mx-auto max-w-2xl font-light tracking-tighter text-pretty md:text-lg lg:text-xl">
+                Your all-in-one dashboard for managing and streaming your media
+                library. Organize movies, TV shows, and music with powerful
+                folder hierarchies and SFTP sync.
               </p>
-              <div className="mt-12 flex w-full flex-col justify-center gap-2 sm:flex-row">
-                <Button asChild data-testid="landing-get-started-button">
-                  <Link href="/sign-up">
-                    Get started now
-                    <ChevronRight className="ml-2 h-4" />
-                  </Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  asChild
-                  data-testid="landing-sign-in-button"
-                >
-                  <Link href="/sign-in">
-                    Sign in
-                    <ChevronRight className="ml-2 h-4" />
-                  </Link>
-                </Button>
-              </div>
             </div>
+
+            <Button asChild data-testid="landing-cta-button">
+              <Link href={isAuthenticated ? "/dashboard" : "/sign-in"}>
+                {isAuthenticated ? "Go to Dashboard" : "Get Started"}
+                <ArrowRight className="ml-2 h-4" />
+              </Link>
+            </Button>
           </div>
-          <Image
-            src="https://deifkwefumgah.cloudfront.net/shadcnblocks/block/placeholder-1.svg"
-            alt="Dashboard preview"
-            width={1200}
-            height={700}
-            className="mx-auto mt-24 max-h-[700px] w-full max-w-7xl rounded-t-lg object-cover shadow-lg"
-          />
         </div>
       </div>
     </section>

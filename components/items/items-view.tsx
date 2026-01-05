@@ -8,8 +8,7 @@
 
 import { useState, useCallback, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Folder, Home, Server } from "lucide-react";
+import { Folder, Plus } from "lucide-react";
 import { UniqueIdentifier } from "@dnd-kit/core";
 import { toast } from "sonner";
 
@@ -17,8 +16,9 @@ import { SortableTree, Tree } from "@/components/sortable-tree";
 import { SortableGrid, Grid } from "@/components/sortable-grid";
 import { EditModeToggle } from "./edit-mode-toggle";
 import { ViewToggle, useStoredViewMode } from "./view-toggle";
-import { AddItemButton } from "./add-item-button";
+import { AddFolderDialog } from "./add-folder-dialog";
 import { ItemSettingsDialog } from "./item-settings-dialog";
+import { Button } from "@/components/ui/button";
 import { SyncButton } from "@/components/sftp/sync-button";
 import type {
   ItemWithArtwork,
@@ -55,7 +55,6 @@ interface SettingsDialogState {
 interface ItemsViewProps {
   items: ItemWithArtwork[];
   parentId?: string | null;
-  breadcrumbs?: Array<{ id: string; name: string }>;
   /** SFTP connection ID if this view is for an SFTP-connected folder. */
   connectionId?: string | null;
 }
@@ -63,7 +62,6 @@ interface ItemsViewProps {
 export function ItemsView({
   items: initialItems,
   parentId = null,
-  breadcrumbs = [],
   connectionId = null,
 }: ItemsViewProps) {
   const router = useRouter();
@@ -76,12 +74,18 @@ export function ItemsView({
   // Settings dialog state
   const [settingsDialog, setSettingsDialog] =
     useState<SettingsDialogState | null>(null);
+  // Add folder dialog state
+  const [addFolderOpen, setAddFolderOpen] = useState(false);
 
   // Exit edit mode when view mode changes - intentional minimal cascade
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsEditing(false);
   }, [viewMode]);
+
+  // Sync local state when props change (e.g., after router.refresh() from Quick Create)
+  useEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
 
   // Convert flat items to tree structure for SortableTree
   const treeItems = itemsToTree(items);
@@ -136,31 +140,9 @@ export function ItemsView({
     [router, connectionId]
   );
 
-  /**
-   * Generates the href for a breadcrumb based on context.
-   *
-   * @param crumbId - The breadcrumb item ID
-   * @param index - Position in breadcrumb array (0 = first after home/connection)
-   * @returns The href for navigation
-   */
-  const getBreadcrumbHref = useCallback(
-    (crumbId: string, index: number): string => {
-      if (!connectionId) {
-        // Regular items - first crumb is a folder
-        return `/dashboard/${crumbId}`;
-      }
-      // Connection items: first crumb is connection root, rest are folders
-      if (index === 0) {
-        return `/dashboard/connections/${connectionId}`;
-      }
-      return `/dashboard/connections/${connectionId}/${crumbId}`;
-    },
-    [connectionId]
-  );
-
   // Handle creating new item at root level
   const handleCreateItem = useCallback(
-    async (name: string): Promise<string | undefined> => {
+    async (name: string, description?: string): Promise<string | undefined> => {
       try {
         // Use SFTP action when in an SFTP-connected context
         if (connectionId) {
@@ -182,7 +164,7 @@ export function ItemsView({
           toast.error(errorMsg || "Failed to create folder");
           return errorMsg;
         } else {
-          const result = await createItem(parentId, name);
+          const result = await createItem(parentId, name, description);
           if (result.success && result.data) {
             const newItem: ItemWithArtwork = {
               ...result.data,
@@ -267,7 +249,11 @@ export function ItemsView({
 
   // Handle adding child item
   const handleAddChild = useCallback(
-    async (parentItemId: string, name: string): Promise<string | undefined> => {
+    async (
+      parentItemId: string,
+      name: string,
+      description?: string
+    ): Promise<string | undefined> => {
       try {
         // Check if parent has connectionId to determine which action to use
         const parentItem = items.find((i) => i.id === parentItemId);
@@ -292,7 +278,7 @@ export function ItemsView({
           toast.error(errorMsg || "Failed to create folder");
           return errorMsg;
         } else {
-          const result = await createItem(parentItemId, name);
+          const result = await createItem(parentItemId, name, description);
           if (result.success && result.data) {
             const newItem: ItemWithArtwork = {
               ...result.data,
@@ -362,93 +348,44 @@ export function ItemsView({
 
   return (
     <div className={cn("flex flex-col gap-6", isPending && "opacity-70")}>
-      {/* Header with breadcrumbs and controls */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        {/* Breadcrumb navigation */}
-        <nav
-          aria-label="Items breadcrumb"
-          className="flex items-center gap-1.5 text-sm"
-        >
-          {connectionId ? (
-            // Connection context: show Connections link first
-            <Link
-              href="/dashboard/connections"
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-md px-2 py-1",
-                "text-muted-foreground hover:text-foreground",
-                "transition-colors duration-150"
-              )}
-            >
-              <Server className="size-4" strokeWidth={2} />
-              <span>Connections</span>
-            </Link>
-          ) : (
-            // Regular context: show My Files
-            <Link
-              href="/dashboard"
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-md px-2 py-1",
-                "text-muted-foreground hover:text-foreground",
-                "transition-colors duration-150",
-                breadcrumbs.length === 0 && "text-foreground font-medium"
-              )}
-            >
-              <Home className="size-4" strokeWidth={2} />
-              <span>My Files</span>
-            </Link>
-          )}
-
-          {breadcrumbs.map((crumb, index) => (
-            <div key={crumb.id} className="flex items-center gap-1.5">
-              <span className="text-muted-foreground/50">/</span>
-              <Link
-                href={getBreadcrumbHref(crumb.id, index)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-md px-2 py-1",
-                  "text-muted-foreground hover:text-foreground",
-                  "transition-colors duration-150",
-                  index === breadcrumbs.length - 1 &&
-                    "text-foreground font-medium"
-                )}
-              >
-                {connectionId && index === 0 ? (
-                  <Server className="size-4" strokeWidth={2} />
-                ) : (
-                  <Folder className="size-4" strokeWidth={2} />
-                )}
-                <span className="max-w-32 truncate">{crumb.name}</span>
-              </Link>
-            </div>
-          ))}
-        </nav>
-
-        {/* Controls - hide add button when showing empty state */}
-        <div className="flex items-center gap-3">
-          {/* SFTP Sync button - only show when connected */}
-          {connectionId && (
-            <SyncButton
-              connectionId={connectionId}
-              size="sm"
-              onSyncComplete={async () => {
-                await refetchItems();
-              }}
-            />
-          )}
-          {items.length > 0 && <AddItemButton onAdd={handleCreateItem} />}
-          {items.length > 0 && (
+      {/* Controls */}
+      <div className="flex items-center justify-end gap-3">
+        {/* SFTP Sync button - only show when connected */}
+        {connectionId && (
+          <SyncButton
+            connectionId={connectionId}
+            size="sm"
+            onSyncComplete={async () => {
+              await refetchItems();
+            }}
+          />
+        )}
+        {items.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAddFolderOpen(true)}
+            className="gap-1.5"
+          >
+            <Plus className="size-4" strokeWidth={2} />
+            <span>Add Folder</span>
+          </Button>
+        )}
+        {items.length > 0 && (
+          <>
             <EditModeToggle
               isEditing={isEditing}
               onToggle={() => setIsEditing((prev) => !prev)}
             />
-          )}
-          <ViewToggle />
-        </div>
+            <ViewToggle />
+          </>
+        )}
       </div>
 
       {/* Items display */}
       <div className="min-h-[200px]">
         {items.length === 0 ? (
-          <EmptyState onAdd={handleCreateItem} />
+          <EmptyState onOpenAddFolder={() => setAddFolderOpen(true)} />
         ) : viewMode === "grid" ? (
           isEditing ? (
             <SortableGrid
@@ -518,16 +455,19 @@ export function ItemsView({
           onSettingsChange={refetchItems}
         />
       )}
+
+      {/* Add Folder Dialog */}
+      <AddFolderDialog
+        open={addFolderOpen}
+        onOpenChange={setAddFolderOpen}
+        onAdd={handleCreateItem}
+      />
     </div>
   );
 }
 
-// Empty state component
-function EmptyState({
-  onAdd,
-}: {
-  onAdd: (name: string) => Promise<string | undefined>;
-}) {
+/** Empty state with call-to-action for folder creation. */
+function EmptyState({ onOpenAddFolder }: { onOpenAddFolder: () => void }) {
   return (
     <div
       className={cn(
@@ -550,7 +490,15 @@ function EmptyState({
           Create your first folder to get started
         </p>
       </div>
-      <AddItemButton onAdd={onAdd} />
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onOpenAddFolder}
+        className="gap-1.5"
+      >
+        <Plus className="size-4" strokeWidth={2} />
+        <span>Add Folder</span>
+      </Button>
     </div>
   );
 }
