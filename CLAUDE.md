@@ -70,6 +70,7 @@ pnpm run db:reset         # Reset database and re-seed
 │   │   ├── layout.tsx                # Public layout with guest sidebar
 │   │   └── page.tsx                  # Public landing page
 │   ├── api/
+│   │   ├── artwork/[fileId]/route.ts    # SFTP artwork download for thumbnails
 │   │   ├── auth/[...nextauth]/route.ts  # NextAuth API route
 │   │   ├── sftp/download/file/[fileId]/route.ts  # Download file by ID
 │   │   └── stream/[fileId]/route.ts     # Stream media via WebDAV
@@ -77,7 +78,7 @@ pnpm run db:reset         # Reset database and re-seed
 │   └── layout.tsx                    # Root layout with providers
 ├── components/
 │   ├── items/                        # Items feature components
-│   │   ├── add-item-button.tsx       # Inline expandable add input
+│   │   ├── add-folder-dialog.tsx     # Modal dialog for folder creation
 │   │   ├── edit-mode-toggle.tsx      # Edit/Done button for reordering mode
 │   │   ├── item-context-menu.tsx     # Right-click actions menu
 │   │   ├── item-detail.tsx           # Item detail with files display
@@ -107,10 +108,10 @@ pnpm run db:reset         # Reset database and re-seed
 │   │   └── theme-provider.tsx        # next-themes provider wrapper
 │   ├── ui/                           # shadcn/ui components
 │   ├── app-sidebar.tsx               # Context-aware navigation sidebar
+│   ├── dashboard-providers.tsx       # Client-side providers for dashboard
 │   ├── nav-docs.tsx                  # Docs tree navigation (Fumadocs)
 │   ├── nav-guest.tsx                 # Guest navigation with auth buttons
 │   ├── nav-main.tsx                  # Dashboard main nav items
-│   ├── nav-secondary.tsx             # Dashboard secondary nav items
 │   ├── nav-user.tsx                  # User dropdown menu
 │   ├── site-header.tsx               # Top header bar with breadcrumbs
 │   └── theme-toggle.tsx              # Dark/light mode toggle
@@ -143,6 +144,8 @@ pnpm run db:reset         # Reset database and re-seed
 │   │   ├── setup.ts                  # DB cleanup, env loading, rate-limit bypass
 │   │   └── vitest.config.ts
 │   └── vitest.config.ts              # Base Vitest config
+├── contexts/
+│   └── add-folder-context.tsx        # Quick Create global state
 ├── hooks/
 │   ├── use-mobile.ts                 # Mobile breakpoint hook
 │   └── use-tree-collapse.ts          # Shared tree collapse/expand state
@@ -172,13 +175,15 @@ pnpm run db:reset         # Reset database and re-seed
 │   ├── migrations/                   # Database migrations
 │   ├── schema.prisma                 # User, PasswordReset, Item, ItemFile, SftpConnection
 │   ├── seed.ts                       # Database seeding script (dev only)
+│   ├── seed-data.ts                  # Declarative seed data definitions
+│   ├── seed-utils.ts                 # File discovery and path mapping
 │   └── clear-seed.ts                 # Clear seed data script
 ├── skills/                           # Claude Code skills
 │   ├── code-review-excellence/       # Code review best practices
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.18.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.19.0)
     └── plans/                        # Design documents
 ```
 
@@ -213,13 +218,15 @@ pnpm run db:reset         # Reset database and re-seed
 
 For development and QA, seed the database with sample data:
 
-| Email | Password | Purpose |
-|-------|----------|---------|
-| seed@canoncore.com | (SEED_PASSWORD) | Full demo account |
-| seed2@canoncore.com | (same) | Minimal data |
-| seed3@canoncore.com | (same) | Empty account |
+| Email               | Password        | Purpose           |
+| ------------------- | --------------- | ----------------- |
+| seed@canoncore.com  | (SEED_PASSWORD) | Full demo account |
+| seed2@canoncore.com | (same)          | Minimal data      |
+| seed3@canoncore.com | (same)          | Empty account     |
 
 Seed data includes 10 movies, 4 TV shows (11 episodes), 2 albums, ~111 files total. Run `pnpm run db:seed` after setting `ALLOW_SEEDING=true` and `SEED_PASSWORD` in `.env.local`.
+
+CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<text>`, `--no-upload`, `--upload-only`, `--help`.
 
 ### Items System
 
@@ -228,6 +235,8 @@ Seed data includes 10 movies, 4 TV shows (11 episodes), 2 albums, ~111 files tot
 - **Edit mode toggle**: Click "Edit" to enable drag-and-drop, "Done" to return to view mode
 - **View mode**: Full visual richness with artwork thumbnails (no dnd-kit overhead)
 - **Edit mode**: Simplified folder icons with drag handles for reordering
+- **Quick Create**: Sidebar button creates folders at dashboard root from anywhere
+- **Add Folder dialog**: Modal dialog with name and optional description fields
 - **Server actions**: `createItem`, `updateItem`, `deleteItem`, `reorderItems` in `lib/item-actions.ts`
 - **Breadcrumb navigation** for folder drill-down
 - **Context menu**: Right-click for Settings, Delete, Add Subfolder
@@ -244,6 +253,7 @@ Seed data includes 10 movies, 4 TV shows (11 episodes), 2 albums, ~111 files tot
 - **Encrypted credentials**: AES-256-GCM encryption with `ENCRYPTION_KEY` env var
 - **Connection testing**: Test button with latency display
 - **Bidirectional sync**: Sync files between SFTP server and web interface
+- **Artwork API**: `/api/artwork/[fileId]` downloads artwork via SFTP for thumbnails
 - **WebDAV streaming**: Optional WebDAV endpoint for direct media streaming
 - **Server actions**: `lib/sftp-actions.ts` for all SFTP operations
 - **Path security**: Directory traversal prevention via `lib/sftp-utils.ts`
@@ -279,7 +289,7 @@ Seed data includes 10 movies, 4 TV shows (11 episodes), 2 albums, ~111 files tot
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 293 total tests (240 unit + 53 integration)
+- 341 total tests (288 unit + 53 integration)
 
 ### E2E Testing
 

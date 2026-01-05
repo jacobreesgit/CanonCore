@@ -5,7 +5,7 @@
 
 "use client";
 
-import React, { forwardRef, HTMLAttributes } from "react";
+import React, { forwardRef, HTMLAttributes, useState } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import {
@@ -81,8 +81,9 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
     },
     ref
   ) {
+    const [imageError, setImageError] = useState(false);
     const hasChildren = Boolean(onCollapse);
-    const shouldShowArtwork = showArtwork && artworkId;
+    const shouldShowArtwork = showArtwork && artworkId && !imageError;
     const shouldShowDescription = showDescription && description;
 
     return (
@@ -176,9 +177,10 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                 <div className="size-5 overflow-hidden rounded">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={`/api/stream/${artworkId}`}
+                    src={`/api/artwork/${artworkId}`}
                     alt=""
                     className="size-full object-cover"
+                    onError={() => setImageError(true)}
                   />
                 </div>
               ) : hasChildren && !collapsed ? (

@@ -4,17 +4,17 @@
 
 - (we've already wrote the doc but) implement the doc from
 
-- use /Users/jacobrees/canoncore-v2/skills/docs-write/SKILL.mdto summarise the branch before deployment and update package.json number and use that for deployment file name
+- use /Users/jacobrees/canoncore-v2/skills/docs-write/SKILL.md to summarise the branch before deployment and update package.json number and use that for deployment file name. use sequential thinking and take your time.
 
-- use /Users/jacobrees/canoncore-v2/skills/docs-write/SKILL.md to update claude.md, but be careful of the 40k word limit. use tree to get whole route structure and properly use git to compare ALL differences from last commit.
+- use /Users/jacobrees/canoncore-v2/skills/docs-write/SKILL.md to update claude.md, but be careful of the 40k word limit. use tree to get whole route structure and properly use git to compare ALL differences from last commit. use sequential thinking and take your time.
 
-- use /Users/jacobrees/canoncore-v2/skills/docs-write/SKILL.md to update end-user/user-facing documentation fumodocs for users. think about adding or changing an article. if you dont think any changes, thats fine.
+- use /Users/jacobrees/canoncore-v2/skills/docs-write/SKILL.md to update end-user/user-facing documentation fumodocs for users. think about adding or changing an article. if you dont think any changes, thats fine. use sequential thinking and take your time.
 
 - use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md, context7 and sequential thinking to ensure best practices on this current commit. really take your time and look at everything.
 
 - use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md, context7 and sequential thinking to ensure best practices on this entire project. really take your time and look at every single file.
 
-- use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md, context7 and sequential thinking to validate the document
+- use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md, context7 and sequential thinking to validate the document.
 
 - for each of the new fumodocs, for each line tripple check its claim via code. tripple check. and also do last commits ones.
 

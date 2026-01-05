@@ -40,25 +40,31 @@ import {
 interface NavDocsProps {
   /** Fumadocs page tree from source.pageTree */
   tree: PageTreeRoot;
+  /** Whether user is authenticated (determines back link destination) */
+  isAuthenticated?: boolean;
 }
 
 /**
  * Renders the documentation navigation tree in the sidebar.
- * Includes a "Back to Dashboard" link and the full docs tree.
+ * Includes a back link (to Dashboard for authenticated users, Home for guests).
  *
  * @param tree - Fumadocs page tree structure
+ * @param isAuthenticated - Whether user is logged in
  */
-export function NavDocs({ tree }: NavDocsProps) {
+export function NavDocs({ tree, isAuthenticated }: NavDocsProps) {
+  const backHref = isAuthenticated ? "/dashboard" : "/";
+  const backLabel = isAuthenticated ? "Back to Dashboard" : "Back to Home";
+
   return (
     <>
-      {/* Back to Dashboard link */}
+      {/* Back link */}
       <SidebarGroup>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <Link href="/dashboard">
+              <Link href={backHref}>
                 <ArrowLeft className="size-4" />
-                <span>Back to Dashboard</span>
+                <span>{backLabel}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

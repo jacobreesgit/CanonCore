@@ -235,7 +235,7 @@ test.describe("Sidebar Navigation", () => {
     await expect(page).toHaveURL("/dashboard", { timeout: 10000 });
   });
 
-  test("has connections link in sidebar under settings", async ({ page }) => {
+  test("has connections link in sidebar footer", async ({ page }) => {
     await page.goto("/dashboard");
 
     // On mobile, need to open sidebar first
@@ -247,12 +247,7 @@ test.describe("Sidebar Navigation", () => {
       await expect(sidebar).toBeVisible();
     }
 
-    // Settings collapsible is open by default, so Connections should be visible
-    // First verify Settings section exists
-    const settingsButton = page.getByRole("button", { name: "Settings" });
-    await expect(settingsButton).toBeVisible();
-
-    // Connections link should already be visible since Settings is open by default
+    // Connections link should be visible in sidebar footer
     const connectionsLink = page.getByRole("link", { name: "Connections" });
     await expect(connectionsLink).toBeVisible();
 

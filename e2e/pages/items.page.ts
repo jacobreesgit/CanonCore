@@ -18,10 +18,12 @@ export class ItemsPage {
   readonly page: Page;
   readonly viewToggleTree: Locator;
   readonly viewToggleGrid: Locator;
-  readonly addItemButton: Locator;
-  readonly addItemInput: Locator;
-  readonly addItemSubmit: Locator;
-  readonly addItemCancel: Locator;
+  readonly addFolderButton: Locator;
+  readonly addFolderDialog: Locator;
+  readonly addFolderInput: Locator;
+  readonly addFolderDescription: Locator;
+  readonly addFolderSubmit: Locator;
+  readonly addFolderCancel: Locator;
   readonly emptyState: Locator;
   readonly treeView: Locator;
   readonly gridView: Locator;
@@ -31,16 +33,18 @@ export class ItemsPage {
     this.page = page;
     this.viewToggleTree = page.getByRole("button", { name: /tree view/i });
     this.viewToggleGrid = page.getByRole("button", { name: /grid view/i });
-    this.addItemButton = page.getByRole("button", { name: /add folder/i });
-    this.addItemInput = page.getByPlaceholder(/folder name/i);
-    this.addItemSubmit = page.getByRole("button", { name: /^add$/i });
-    this.addItemCancel = page.getByTestId("add-item-cancel");
+    this.addFolderButton = page.getByRole("button", { name: /add folder/i });
+    this.addFolderDialog = page.getByRole("dialog", { name: /create folder/i });
+    this.addFolderInput = page.getByLabel(/folder name/i);
+    this.addFolderDescription = page.getByLabel(/description/i);
+    this.addFolderSubmit = page.getByRole("button", { name: /^create$/i });
+    this.addFolderCancel = page.getByRole("button", { name: /cancel/i });
     this.emptyState = page.getByText(/no folders yet/i);
     this.treeView = page.getByTestId("items-tree-view");
     this.gridView = page.getByTestId("items-grid-view");
-    // Target the ItemsView breadcrumb nav specifically (not sidebar or header)
+    // Target the SiteHeader breadcrumb nav
     this.breadcrumbHome = page
-      .getByLabel("Items breadcrumb")
+      .getByLabel("Breadcrumb")
       .getByRole("link", { name: /my files/i });
   }
 
@@ -79,37 +83,40 @@ export class ItemsPage {
     return this.page.getByRole("button", { name: "Done editing" }).isVisible();
   }
 
-  async createItem(name: string) {
-    // Click add button and wait for input to appear
-    await this.addItemButton.click();
-    await expect(this.addItemInput).toBeVisible({ timeout: 5000 });
+  async createItem(name: string, description?: string) {
+    // Click add button and wait for dialog to appear
+    await this.addFolderButton.click();
+    await expect(this.addFolderDialog).toBeVisible({ timeout: 5000 });
 
-    // Fill and submit
-    await this.addItemInput.fill(name);
-    await expect(this.addItemSubmit).toBeEnabled({ timeout: 2000 });
-    await this.addItemSubmit.click();
+    // Fill name and optional description
+    await this.addFolderInput.fill(name);
+    if (description) {
+      await this.addFolderDescription.fill(description);
+    }
+    await expect(this.addFolderSubmit).toBeEnabled({ timeout: 2000 });
+    await this.addFolderSubmit.click();
 
-    // Wait for input to close (longer timeout for mobile)
-    await expect(this.addItemInput).not.toBeVisible({ timeout: 15000 });
+    // Wait for dialog to close (longer timeout for mobile)
+    await expect(this.addFolderDialog).not.toBeVisible({ timeout: 15000 });
     // Wait for React state update to complete
     await this.page.waitForLoadState("networkidle");
     await this.expectItemVisible(name);
   }
 
   /**
-   * Creates an item and expects success. Use createItemExpectError for error cases.
+   * Creates an item and expects an error. Dialog stays open on error.
    */
   async createItemExpectError(name: string): Promise<void> {
-    // Click add button and wait for input to appear
-    await this.addItemButton.click();
-    await expect(this.addItemInput).toBeVisible({ timeout: 5000 });
+    // Click add button and wait for dialog to appear
+    await this.addFolderButton.click();
+    await expect(this.addFolderDialog).toBeVisible({ timeout: 5000 });
 
     // Fill and submit
-    await this.addItemInput.fill(name);
-    await expect(this.addItemSubmit).toBeEnabled({ timeout: 2000 });
-    await this.addItemSubmit.click();
+    await this.addFolderInput.fill(name);
+    await expect(this.addFolderSubmit).toBeEnabled({ timeout: 2000 });
+    await this.addFolderSubmit.click();
 
-    // Input stays open when there's an error - don't wait for it to close
+    // Dialog stays open when there's an error - don't wait for it to close
   }
 
   async expectItemVisible(name: string) {
@@ -149,15 +156,15 @@ export class ItemsPage {
     // Wait for navigation and page content to be ready
     await this.page.waitForLoadState("networkidle");
     await this.page.waitForLoadState("domcontentloaded");
-    // Wait for the clicked item to appear in ItemsView breadcrumbs (confirms page loaded)
-    // Breadcrumbs are Link elements (role="link") - scope to Items breadcrumb to avoid matching sidebar/header
+    // Wait for the clicked item to appear in SiteHeader breadcrumbs (confirms page loaded)
+    // Breadcrumbs are Link elements (role="link")
     await expect(
-      this.page.getByLabel("Items breadcrumb").getByRole("link", { name })
+      this.page.getByLabel("Breadcrumb").getByRole("link", { name })
     ).toBeVisible({
       timeout: 15000,
     });
     // Wait for the Add folder button to confirm ItemsView is rendered
-    await expect(this.addItemButton).toBeVisible({ timeout: 10000 });
+    await expect(this.addFolderButton).toBeVisible({ timeout: 10000 });
   }
 
   async expectEmptyState() {
@@ -328,20 +335,20 @@ export class ItemsPage {
   }
 
   async expectBreadcrumb(name: string) {
-    // Scope to Items breadcrumb nav to avoid matching sidebar/header links
+    // Scope to SiteHeader breadcrumb nav
     // Use exact matching to avoid partial matches (e.g., "Parent" matching "Grandparent")
     await expect(
       this.page
-        .getByLabel("Items breadcrumb")
+        .getByLabel("Breadcrumb")
         .getByRole("link", { name, exact: true })
     ).toBeVisible();
   }
 
   async clickBreadcrumb(name: string) {
-    // Scope to Items breadcrumb nav to avoid matching sidebar/header links
+    // Scope to SiteHeader breadcrumb nav
     // Use exact matching to avoid partial matches (e.g., "Parent" matching "Grandparent")
     await this.page
-      .getByLabel("Items breadcrumb")
+      .getByLabel("Breadcrumb")
       .getByRole("link", { name, exact: true })
       .click();
   }
