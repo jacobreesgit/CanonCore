@@ -42,15 +42,15 @@ export default async function LandingPage() {
                 Welcome to CanonCore
               </h1>
               <p className="text-muted-foreground mx-auto max-w-2xl font-light tracking-tighter text-pretty md:text-lg lg:text-xl">
-                Your all-in-one dashboard for managing and streaming your media
+                Your all-in-one platform for managing and streaming your media
                 library. Organize movies, TV shows, and music with powerful
                 folder hierarchies and SFTP sync.
               </p>
             </div>
 
             <Button asChild data-testid="landing-cta-button">
-              <Link href={isAuthenticated ? "/dashboard" : "/sign-in"}>
-                {isAuthenticated ? "Go to Dashboard" : "Get Started"}
+              <Link href={isAuthenticated ? "/my-items" : "/sign-in"}>
+                {isAuthenticated ? "Go to My Items" : "Get Started"}
                 <ArrowRight className="ml-2 h-4" />
               </Link>
             </Button>

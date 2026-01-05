@@ -50,8 +50,8 @@ interface ItemSettingsDialogProps {
   onRename: (newName: string) => Promise<void>;
   /** Callback to update the description */
   onDescriptionChange: (description: string) => Promise<void>;
-  /** Optional callback when settings change (for refreshing data) */
-  onSettingsChange?: () => void;
+  /** Optional callback when settings change (for refreshing data). Awaited to ensure sync. */
+  onSettingsChange?: () => Promise<void>;
 }
 
 /**
@@ -131,12 +131,14 @@ export function ItemSettingsDialog({
     setIsSavingDescription(true);
     try {
       await onDescriptionChange(description);
+      // Refetch is best-effort - save already succeeded, so don't show error if refetch fails
+      await onSettingsChange?.().catch(() => {});
     } catch {
       toast.error("Failed to update description");
     } finally {
       setIsSavingDescription(false);
     }
-  }, [description, item.description, onDescriptionChange]);
+  }, [description, item.description, onDescriptionChange, onSettingsChange]);
 
   const handleSetPrimary = useCallback(
     async (fileId: string, label: string) => {
@@ -145,7 +147,8 @@ export function ItemSettingsDialog({
         const result = await setPrimaryFile(fileId);
         if (result.success) {
           toast.success(`Primary ${label} updated`);
-          onSettingsChange?.();
+          // Refetch is best-effort - save already succeeded
+          await onSettingsChange?.().catch(() => {});
         } else {
           toast.error(result.error || "Failed to update");
         }

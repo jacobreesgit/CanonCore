@@ -29,11 +29,11 @@ test.describe("Sign In Journey", () => {
     await expect(page).toHaveURL("/forgot-password");
   });
 
-  test("existing user can sign in and reach dashboard", async ({
+  test("existing user can sign in and reach my-items", async ({
     page,
     signUpPage,
     signInPage,
-    dashboardPage,
+    myItemsPage,
   }) => {
     // First create an account
     const email = generateUniqueEmail("signin");
@@ -41,7 +41,7 @@ test.describe("Sign In Journey", () => {
 
     await signUpPage.goto();
     await signUpPage.signUp(email, password, password);
-    await expect(page).toHaveURL("/dashboard", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
 
     // Sign out by navigating to sign-in (or use sign out button if implemented)
     await page.goto("/sign-in");
@@ -52,8 +52,8 @@ test.describe("Sign In Journey", () => {
     // Now sign in with the same credentials
     await signInPage.signIn(email, password);
 
-    // Should be on dashboard
-    await dashboardPage.expectVisible();
+    // Should be on my-items
+    await myItemsPage.expectVisible();
   });
 
   test("shows error with empty email", async ({ signInPage }) => {

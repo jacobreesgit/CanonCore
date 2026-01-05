@@ -17,7 +17,7 @@ test.describe("Dark Mode Theme Toggle", () => {
     const email = generateUniqueEmail("theme");
     await signUpPage.goto();
     await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/dashboard", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
   });
 
   test("theme toggle button is visible in sidebar", async ({ page }) => {

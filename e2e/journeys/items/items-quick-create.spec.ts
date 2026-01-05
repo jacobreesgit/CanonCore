@@ -10,7 +10,7 @@ test.describe("Quick Create Journey", () => {
     const email = generateUniqueEmail("quick-create");
     await signUpPage.goto();
     await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/dashboard", { timeout: 10000 });
+    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
   });
 
   test("Quick Create button opens add folder dialog", async ({ page }) => {

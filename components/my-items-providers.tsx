@@ -1,5 +1,5 @@
 /**
- * Client-side providers for the dashboard.
+ * Client-side providers for the protected routes.
  * Wraps children with context providers and global dialogs.
  */
 
@@ -14,7 +14,7 @@ import { AddFolderDialog } from "@/components/items/add-folder-dialog";
 
 /**
  * Global Add Folder dialog for Quick Create.
- * Opens via sidebar button, creates folders at dashboard root.
+ * Opens via sidebar button, creates folders at root level.
  */
 function GlobalAddFolderDialog() {
   const { isOpen, closeDialog, handleCreate } = useQuickCreate();
@@ -29,10 +29,10 @@ function GlobalAddFolderDialog() {
 }
 
 /**
- * Dashboard providers wrapper.
+ * Protected routes providers wrapper.
  * Provides Quick Create context and renders global dialog.
  */
-export function DashboardProviders({ children }: { children: ReactNode }) {
+export function MyItemsProviders({ children }: { children: ReactNode }) {
   return (
     <QuickCreateProvider>
       {children}

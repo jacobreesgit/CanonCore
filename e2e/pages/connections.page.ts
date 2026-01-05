@@ -48,17 +48,17 @@ export class ConnectionsPage {
 
   /** Navigate to connections list page. */
   async goto() {
-    await this.page.goto("/dashboard/connections");
+    await this.page.goto("/my-items/connections");
   }
 
   /** Navigate to new connection page. */
   async gotoNew() {
-    await this.page.goto("/dashboard/connections/new");
+    await this.page.goto("/my-items/connections/new");
   }
 
   /** Navigate to edit connection page. */
   async gotoEdit(connectionId: string) {
-    await this.page.goto(`/dashboard/connections/${connectionId}/edit`);
+    await this.page.goto(`/my-items/connections/${connectionId}/edit`);
   }
 
   /** Verify the list page is loaded. */
