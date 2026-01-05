@@ -125,6 +125,7 @@ pnpm run db:reset         # Reset database and re-seed
 │   │   ├── docs/                     # Documentation E2E tests
 │   │   ├── items/                    # Items E2E tests (CRUD, drag, views)
 │   │   ├── media/                    # Media playback tests
+│   │   ├── navigation/               # Sidebar navigation active state tests
 │   │   ├── sftp/                     # SFTP sync and file operation tests
 │   │   ├── theme/                    # Dark mode E2E tests
 │   │   ├── global.setup.ts           # Docker container startup
@@ -183,7 +184,7 @@ pnpm run db:reset         # Reset database and re-seed
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.20.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.21.0)
     └── plans/                        # Design documents
 ```
 
@@ -289,7 +290,7 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 342 total tests (289 unit + 53 integration)
+- 360 total tests (307 unit + 53 integration)
 
 ### E2E Testing
 

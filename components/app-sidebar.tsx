@@ -7,6 +7,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Cable, Folder, HelpCircle } from "lucide-react";
 import type { Root as PageTreeRoot } from "fumadocs-core/page-tree";
 import type { SidebarUser } from "@/lib/auth";
@@ -65,8 +66,17 @@ export function AppSidebar({
   docsTree,
   ...props
 }: AppSidebarProps) {
+  const pathname = usePathname();
+
   // Logo links to my-items if authenticated, home if guest
   const logoHref = user ? "/my-items" : "/";
+
+  // Active state for footer nav items
+  // Pattern: exact match OR prefix with trailing slash (prevents false positives)
+  const isConnectionsActive =
+    pathname === "/my-items/connections" ||
+    pathname.startsWith("/my-items/connections/");
+  const isDocsActive = pathname === "/docs" || pathname.startsWith("/docs/");
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -101,7 +111,11 @@ export function AppSidebar({
         {(context === "my-items" || (context === "home" && user)) && (
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Connections">
+              <SidebarMenuButton
+                asChild
+                tooltip="Connections"
+                isActive={isConnectionsActive}
+              >
                 <Link href="/my-items/connections">
                   <Cable />
                   <span>Connections</span>
@@ -109,7 +123,11 @@ export function AppSidebar({
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Get Help">
+              <SidebarMenuButton
+                asChild
+                tooltip="Get Help"
+                isActive={isDocsActive}
+              >
                 <Link href="/docs">
                   <HelpCircle />
                   <span>Get Help</span>
