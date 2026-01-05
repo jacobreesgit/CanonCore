@@ -6,6 +6,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { CirclePlus, type LucideIcon } from "lucide-react";
 
 import {
@@ -31,6 +32,7 @@ export function NavMain({
     icon?: LucideIcon;
   }[];
 }) {
+  const pathname = usePathname();
   const quickCreate = useQuickCreateOptional();
 
   return (
@@ -41,7 +43,7 @@ export function NavMain({
             <SidebarMenuButton
               tooltip="Quick Create"
               onClick={() => quickCreate?.openDialog()}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
+              className="min-w-8 cursor-pointer bg-gradient-to-r from-teal-400 to-emerald-400 text-white transition-all duration-200 ease-out hover:from-teal-500 hover:to-emerald-500 hover:text-white"
             >
               <CirclePlus />
               <span>Quick Create</span>
@@ -49,16 +51,26 @@ export function NavMain({
           </SidebarMenuItem>
         </SidebarMenu>
         <SidebarMenu>
-          {items.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton tooltip={item.title} asChild>
-                <Link href={item.url}>
-                  {item.icon && <item.icon />}
-                  <span>{item.title}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+          {items.map((item) => {
+            // Active when on exact path OR any nested child path
+            // Trailing slash prevents false positives (e.g., /my-items-other won't match /my-items/)
+            const isActive =
+              pathname === item.url || pathname.startsWith(`${item.url}/`);
+            return (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton
+                  tooltip={item.title}
+                  asChild
+                  isActive={isActive}
+                >
+                  <Link href={item.url}>
+                    {item.icon && <item.icon />}
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
