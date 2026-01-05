@@ -1,6 +1,4 @@
-- other sync thing
-- wheres resync button
-- artwork for 'my items' dashboard? - look at seed script
+- elipsis button for item pages
 
 - look at entire codebase after current commit
 
@@ -22,5 +20,5 @@
 - ai making items
 - content pages, using that shadcn block
 
-- design focus, look at all my photos. tweet folder saved. 'refined cinematic aesthetic'?
+- design focus, look at all my photos. tweet folder saved. 'refined cinematic aesthetic'? attenas for logo and favicon
 - more alien thing
