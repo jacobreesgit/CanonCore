@@ -145,7 +145,8 @@ export function ItemsView({
       ? connections[0].id
       : (selectedConnectionId ?? null);
   const isFilteredToConnection = effectiveSelectedConnection !== null;
-  const showConnectionBadge = !isFilteredToConnection;
+  // Hide badges when filtered to connection OR when viewing item detail (currentConnection set)
+  const showConnectionBadge = !isFilteredToConnection && !currentConnection;
 
   /**
    * Refetch items from server and update local state.
