@@ -1,25 +1,48 @@
 /**
- * My Items page displaying sortable items (folders).
- * Server component that fetches items and renders the ItemsView.
+ * My Items page displaying sortable items.
+ * Server component that fetches items and renders the FilteredItemsView.
  */
 
-import { ItemsView } from "@/components/items";
+import { FilteredItemsView } from "@/components/items";
 import { getItems } from "@/lib/item-actions";
+import { getSftpConnections, getItemsByConnection } from "@/lib/sftp-actions";
 import { SiteHeader } from "@/components/site-header";
 
+interface MyItemsPageProps {
+  searchParams: Promise<{ connection?: string }>;
+}
+
 /**
- * Renders the My Items page with sortable items view.
- * Items at root level (parentId = null) are displayed.
+ * Renders the My Items page with filterable items view.
+ * Supports filtering by SFTP connection via URL query param.
+ *
+ * @param searchParams - URL search parameters (connection filter)
  */
-export default async function MyItemsPage() {
-  const result = await getItems(null);
-  const items = result.success ? (result.data ?? []) : [];
+export default async function MyItemsPage({ searchParams }: MyItemsPageProps) {
+  const { connection: connectionId } = await searchParams;
+
+  // Fetch items based on filter (server-side)
+  const itemsResult = connectionId
+    ? await getItemsByConnection(connectionId, null)
+    : await getItems(null);
+
+  const items = itemsResult.success ? (itemsResult.data ?? []) : [];
+
+  // Fetch connections for filter dropdown
+  const connectionsResult = await getSftpConnections();
+  const connections = connectionsResult.success
+    ? (connectionsResult.data ?? []).map((c) => ({ id: c.id, name: c.name }))
+    : [];
 
   return (
     <>
       <SiteHeader title="My Items" titleHref="/my-items" />
       <div className="flex flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
-        <ItemsView items={items} parentId={null} />
+        <FilteredItemsView
+          initialItems={items}
+          connections={connections}
+          initialConnectionId={connectionId ?? null}
+        />
       </div>
     </>
   );

@@ -33,7 +33,7 @@ const QuickCreateContext = createContext<QuickCreateContextValue | null>(null);
 
 /**
  * Provider for Quick Create dialog state.
- * Handles folder creation at root level.
+ * Handles item creation at root level.
  * Notifies subscribers after successful creation for explicit refetch.
  */
 export function QuickCreateProvider({ children }: { children: ReactNode }) {
@@ -60,11 +60,11 @@ export function QuickCreateProvider({ children }: { children: ReactNode }) {
           creationListeners.current.forEach((callback) => callback());
           return undefined;
         }
-        toast.error(result.error || "Failed to create folder");
+        toast.error(result.error || "Failed to create item");
         return result.error;
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : "Failed to create folder";
+          error instanceof Error ? error.message : "Failed to create item";
         toast.error(message);
         return message;
       }

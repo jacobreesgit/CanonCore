@@ -1,17 +1,17 @@
 /**
- * Unit tests for AddFolderDialog component.
+ * Unit tests for AddItemDialog component.
  * Tests dialog rendering, form validation, and submission behavior.
  */
 
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
-import { AddFolderDialog } from "@/components/items/add-folder-dialog";
+import { AddItemDialog } from "@/components/items/add-item-dialog";
 
-describe("AddFolderDialog", () => {
+describe("AddItemDialog", () => {
   it("renders dialog when open", () => {
     render(
-      <AddFolderDialog
+      <AddItemDialog
         open={true}
         onOpenChange={() => {}}
         onAdd={async () => undefined}
@@ -19,12 +19,12 @@ describe("AddFolderDialog", () => {
     );
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("Create Folder")).toBeInTheDocument();
+    expect(screen.getByText("Create Item")).toBeInTheDocument();
   });
 
   it("does not render when closed", () => {
     render(
-      <AddFolderDialog
+      <AddItemDialog
         open={false}
         onOpenChange={() => {}}
         onAdd={async () => undefined}
@@ -36,14 +36,14 @@ describe("AddFolderDialog", () => {
 
   it("focuses input on open", async () => {
     render(
-      <AddFolderDialog
+      <AddItemDialog
         open={true}
         onOpenChange={() => {}}
         onAdd={async () => undefined}
       />
     );
 
-    const input = screen.getByPlaceholderText(/folder name/i);
+    const input = screen.getByPlaceholderText(/item name/i);
     await waitFor(() => {
       expect(input).toHaveFocus();
     });
@@ -51,7 +51,7 @@ describe("AddFolderDialog", () => {
 
   it("disables create button when input is empty", () => {
     render(
-      <AddFolderDialog
+      <AddItemDialog
         open={true}
         onOpenChange={() => {}}
         onAdd={async () => undefined}
@@ -62,22 +62,17 @@ describe("AddFolderDialog", () => {
     expect(button).toBeDisabled();
   });
 
-  it("calls onAdd with trimmed folder name on submit", async () => {
+  it("calls onAdd with trimmed item name on submit", async () => {
     const user = userEvent.setup();
     const onAdd = vi.fn().mockResolvedValue(undefined);
 
-    render(
-      <AddFolderDialog open={true} onOpenChange={() => {}} onAdd={onAdd} />
-    );
+    render(<AddItemDialog open={true} onOpenChange={() => {}} onAdd={onAdd} />);
 
-    await user.type(
-      screen.getByPlaceholderText(/folder name/i),
-      "  New Folder  "
-    );
+    await user.type(screen.getByPlaceholderText(/item name/i), "  New Item  ");
     await user.click(screen.getByRole("button", { name: /^create$/i }));
 
     await waitFor(() => {
-      expect(onAdd).toHaveBeenCalledWith("New Folder", undefined);
+      expect(onAdd).toHaveBeenCalledWith("New Item", undefined);
     });
   });
 
@@ -87,10 +82,10 @@ describe("AddFolderDialog", () => {
     const onOpenChange = vi.fn();
 
     render(
-      <AddFolderDialog open={true} onOpenChange={onOpenChange} onAdd={onAdd} />
+      <AddItemDialog open={true} onOpenChange={onOpenChange} onAdd={onAdd} />
     );
 
-    await user.type(screen.getByPlaceholderText(/folder name/i), "New Folder");
+    await user.type(screen.getByPlaceholderText(/item name/i), "New Item");
     await user.click(screen.getByRole("button", { name: /^create$/i }));
 
     await waitFor(() => {
@@ -104,10 +99,10 @@ describe("AddFolderDialog", () => {
     const onOpenChange = vi.fn();
 
     render(
-      <AddFolderDialog open={true} onOpenChange={onOpenChange} onAdd={onAdd} />
+      <AddItemDialog open={true} onOpenChange={onOpenChange} onAdd={onAdd} />
     );
 
-    await user.type(screen.getByPlaceholderText(/folder name/i), "New Folder");
+    await user.type(screen.getByPlaceholderText(/item name/i), "New Item");
     await user.click(screen.getByRole("button", { name: /^create$/i }));
 
     await waitFor(() => {
@@ -120,23 +115,21 @@ describe("AddFolderDialog", () => {
     const user = userEvent.setup();
     const onAdd = vi.fn().mockResolvedValue(undefined);
 
-    render(
-      <AddFolderDialog open={true} onOpenChange={() => {}} onAdd={onAdd} />
-    );
+    render(<AddItemDialog open={true} onOpenChange={() => {}} onAdd={onAdd} />);
 
     await user.type(
-      screen.getByPlaceholderText(/folder name/i),
-      "New Folder{enter}"
+      screen.getByPlaceholderText(/item name/i),
+      "New Item{enter}"
     );
 
     await waitFor(() => {
-      expect(onAdd).toHaveBeenCalledWith("New Folder", undefined);
+      expect(onAdd).toHaveBeenCalledWith("New Item", undefined);
     });
   });
 
   it("clears input when dialog reopens", async () => {
     const { rerender } = render(
-      <AddFolderDialog
+      <AddItemDialog
         open={false}
         onOpenChange={() => {}}
         onAdd={async () => undefined}
@@ -144,14 +137,14 @@ describe("AddFolderDialog", () => {
     );
 
     rerender(
-      <AddFolderDialog
+      <AddItemDialog
         open={true}
         onOpenChange={() => {}}
         onAdd={async () => undefined}
       />
     );
 
-    expect(screen.getByPlaceholderText(/folder name/i)).toHaveValue("");
+    expect(screen.getByPlaceholderText(/item name/i)).toHaveValue("");
   });
 
   it("shows loading state during submission", async () => {
@@ -164,11 +157,9 @@ describe("AddFolderDialog", () => {
         })
     );
 
-    render(
-      <AddFolderDialog open={true} onOpenChange={() => {}} onAdd={onAdd} />
-    );
+    render(<AddItemDialog open={true} onOpenChange={() => {}} onAdd={onAdd} />);
 
-    await user.type(screen.getByPlaceholderText(/folder name/i), "New Folder");
+    await user.type(screen.getByPlaceholderText(/item name/i), "New Item");
     await user.click(screen.getByRole("button", { name: /^create$/i }));
 
     expect(screen.getByRole("button", { name: /creating/i })).toBeDisabled();
@@ -184,7 +175,7 @@ describe("AddFolderDialog", () => {
     const onOpenChange = vi.fn();
 
     render(
-      <AddFolderDialog
+      <AddItemDialog
         open={true}
         onOpenChange={onOpenChange}
         onAdd={async () => undefined}
@@ -200,21 +191,21 @@ describe("AddFolderDialog", () => {
     const user = userEvent.setup();
 
     render(
-      <AddFolderDialog
+      <AddItemDialog
         open={true}
         onOpenChange={() => {}}
         onAdd={async () => undefined}
       />
     );
 
-    await user.type(screen.getByPlaceholderText(/folder name/i), "   ");
+    await user.type(screen.getByPlaceholderText(/item name/i), "   ");
 
     expect(screen.getByRole("button", { name: /^create$/i })).toBeDisabled();
   });
 
-  it("shows parent folder context in description", () => {
+  it("shows parent item context in description", () => {
     render(
-      <AddFolderDialog
+      <AddItemDialog
         open={true}
         onOpenChange={() => {}}
         onAdd={async () => undefined}
@@ -223,13 +214,13 @@ describe("AddFolderDialog", () => {
     );
 
     expect(
-      screen.getByText(/create a new folder inside "Movies"/i)
+      screen.getByText(/create a new item inside "Movies"/i)
     ).toBeInTheDocument();
   });
 
   it("renders description field", () => {
     render(
-      <AddFolderDialog
+      <AddItemDialog
         open={true}
         onOpenChange={() => {}}
         onAdd={async () => undefined}
@@ -244,19 +235,17 @@ describe("AddFolderDialog", () => {
     const user = userEvent.setup();
     const onAdd = vi.fn().mockResolvedValue(undefined);
 
-    render(
-      <AddFolderDialog open={true} onOpenChange={() => {}} onAdd={onAdd} />
-    );
+    render(<AddItemDialog open={true} onOpenChange={() => {}} onAdd={onAdd} />);
 
-    await user.type(screen.getByPlaceholderText(/folder name/i), "New Folder");
+    await user.type(screen.getByPlaceholderText(/item name/i), "New Item");
     await user.type(
       screen.getByPlaceholderText(/add a short description/i),
-      "My folder description"
+      "My item description"
     );
     await user.click(screen.getByRole("button", { name: /^create$/i }));
 
     await waitFor(() => {
-      expect(onAdd).toHaveBeenCalledWith("New Folder", "My folder description");
+      expect(onAdd).toHaveBeenCalledWith("New Item", "My item description");
     });
   });
 
@@ -264,11 +253,9 @@ describe("AddFolderDialog", () => {
     const user = userEvent.setup();
     const onAdd = vi.fn().mockResolvedValue(undefined);
 
-    render(
-      <AddFolderDialog open={true} onOpenChange={() => {}} onAdd={onAdd} />
-    );
+    render(<AddItemDialog open={true} onOpenChange={() => {}} onAdd={onAdd} />);
 
-    await user.type(screen.getByPlaceholderText(/folder name/i), "New Folder");
+    await user.type(screen.getByPlaceholderText(/item name/i), "New Item");
     await user.type(
       screen.getByPlaceholderText(/add a short description/i),
       "  Trimmed description  "
@@ -276,7 +263,7 @@ describe("AddFolderDialog", () => {
     await user.click(screen.getByRole("button", { name: /^create$/i }));
 
     await waitFor(() => {
-      expect(onAdd).toHaveBeenCalledWith("New Folder", "Trimmed description");
+      expect(onAdd).toHaveBeenCalledWith("New Item", "Trimmed description");
     });
   });
 
@@ -284,7 +271,7 @@ describe("AddFolderDialog", () => {
     const user = userEvent.setup();
 
     render(
-      <AddFolderDialog
+      <AddItemDialog
         open={true}
         onOpenChange={() => {}}
         onAdd={async () => undefined}

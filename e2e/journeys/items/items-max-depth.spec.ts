@@ -2,7 +2,7 @@
  * E2E tests for maximum nesting depth enforcement.
  * Verifies the 10-level depth limit is enforced in the UI.
  *
- * The application limits folder nesting to 10 levels (depth 0-9)
+ * The application limits item nesting to 10 levels (depth 0-9)
  * to prevent excessively deep hierarchies.
  */
 
@@ -10,7 +10,7 @@ import { test, expect } from "../../fixtures";
 import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
 test.describe("Items Max Depth Journey", () => {
-  test("cannot create folder beyond max depth via UI", async ({
+  test("cannot create item beyond max depth via UI", async ({
     page,
     signUpPage,
     itemsPage,
@@ -25,7 +25,7 @@ test.describe("Items Max Depth Journey", () => {
     await itemsPage.goto();
 
     // Create 9 levels of nesting (depth 0-8)
-    // Each iteration creates a folder and navigates into it
+    // Each iteration creates an item and navigates into it
     // Use unique names to avoid selector confusion
     for (let i = 1; i <= 9; i++) {
       await itemsPage.createItem(`Folder-${i}`);
@@ -126,7 +126,7 @@ test.describe("Items Max Depth Journey", () => {
     await itemsPage.expectItemVisible("Level B");
   });
 
-  test("deeply nested folder shows correct depth in ancestors", async ({
+  test("deeply nested item shows correct depth in ancestors", async ({
     page,
     signUpPage,
     itemsPage,

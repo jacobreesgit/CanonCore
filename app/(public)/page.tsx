@@ -43,8 +43,8 @@ export default async function LandingPage() {
               </h1>
               <p className="text-muted-foreground mx-auto max-w-2xl font-light tracking-tighter text-pretty md:text-lg lg:text-xl">
                 Your all-in-one platform for managing and streaming your media
-                library. Organize movies, TV shows, and music with powerful
-                folder hierarchies and SFTP sync.
+                library. Organize movies, TV shows, and music with powerful item
+                hierarchies and SFTP sync.
               </p>
             </div>
 

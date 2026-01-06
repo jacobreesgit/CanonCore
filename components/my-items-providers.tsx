@@ -9,18 +9,18 @@ import { ReactNode } from "react";
 import {
   QuickCreateProvider,
   useQuickCreate,
-} from "@/contexts/add-folder-context";
-import { AddFolderDialog } from "@/components/items/add-folder-dialog";
+} from "@/contexts/add-item-context";
+import { AddItemDialog } from "@/components/items/add-item-dialog";
 
 /**
- * Global Add Folder dialog for Quick Create.
- * Opens via sidebar button, creates folders at root level.
+ * Global Add Item dialog for Quick Create.
+ * Opens via sidebar button, creates items at root level.
  */
-function GlobalAddFolderDialog() {
+function GlobalAddItemDialog() {
   const { isOpen, closeDialog, handleCreate } = useQuickCreate();
 
   return (
-    <AddFolderDialog
+    <AddItemDialog
       open={isOpen}
       onOpenChange={(open) => !open && closeDialog()}
       onAdd={handleCreate}
@@ -36,7 +36,7 @@ export function MyItemsProviders({ children }: { children: ReactNode }) {
   return (
     <QuickCreateProvider>
       {children}
-      <GlobalAddFolderDialog />
+      <GlobalAddItemDialog />
     </QuickCreateProvider>
   );
 }

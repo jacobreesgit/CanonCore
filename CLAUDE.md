@@ -54,12 +54,10 @@ pnpm run db:reset         # Reset database and re-seed
 │   │   ├── my-items/
 │   │   │   ├── connections/
 │   │   │   │   ├── [id]/
-│   │   │   │   │   ├── [itemId]/page.tsx  # SFTP folder detail
-│   │   │   │   │   ├── edit/page.tsx      # Edit connection form
-│   │   │   │   │   └── page.tsx           # Connection file browser
+│   │   │   │   │   └── edit/page.tsx      # Edit connection form
 │   │   │   │   ├── new/page.tsx           # New connection form
-│   │   │   │   └── page.tsx               # Connections list
-│   │   │   ├── [itemId]/page.tsx     # Folder detail with children
+│   │   │   │   └── page.tsx               # Connections list with sync actions
+│   │   │   ├── [itemId]/page.tsx     # Item detail with children
 │   │   │   └── page.tsx              # Root items view
 │   │   └── layout.tsx                # Protected layout with sidebar
 │   ├── (docs)/
@@ -78,8 +76,10 @@ pnpm run db:reset         # Reset database and re-seed
 │   └── layout.tsx                    # Root layout with providers
 ├── components/
 │   ├── items/                        # Items feature components
-│   │   ├── add-folder-dialog.tsx     # Modal dialog for folder creation
+│   │   ├── add-item-dialog.tsx       # Modal dialog for item creation
+│   │   ├── connection-filter.tsx     # Dropdown to filter items by connection
 │   │   ├── edit-mode-toggle.tsx      # Edit/Done button for reordering mode
+│   │   ├── filtered-items-view.tsx   # Display items from selected connection
 │   │   ├── item-context-menu.tsx     # Right-click actions menu
 │   │   ├── item-detail.tsx           # Item detail with files display
 │   │   ├── item-settings-dialog.tsx  # Settings dialog with primary file selection
@@ -92,6 +92,8 @@ pnpm run db:reset         # Reset database and re-seed
 │   │   ├── connection-card.tsx       # Connection card with actions
 │   │   ├── connection-form.tsx       # Create/edit connection form
 │   │   ├── connection-test-button.tsx  # Test with latency display
+│   │   ├── item-sync-button.tsx      # Sync individual item with connection
+│   │   ├── sync-all-button.tsx       # Batch sync all connections
 │   │   └── sync-button.tsx           # Trigger sync with progress
 │   ├── sortable-grid/                # Grid view with drag-drop
 │   │   ├── Grid.tsx                  # View-only grid (no dnd-kit)
@@ -146,12 +148,12 @@ pnpm run db:reset         # Reset database and re-seed
 │   │   └── vitest.config.ts
 │   └── vitest.config.ts              # Base Vitest config
 ├── contexts/
-│   └── add-folder-context.tsx        # Quick Create global state
+│   └── add-item-context.tsx          # Quick Create global state
 ├── hooks/
 │   ├── use-mobile.ts                 # Mobile breakpoint hook
 │   └── use-tree-collapse.ts          # Shared tree collapse/expand state
 ├── content/
-│   └── docs/                         # MDX documentation pages (23 files)
+│   └── docs/                         # MDX documentation pages (21 files)
 ├── lib/
 │   ├── auth.ts                       # NextAuth config, extractSidebarUser helper
 │   ├── auth-actions.ts               # Auth server actions
@@ -184,7 +186,7 @@ pnpm run db:reset         # Reset database and re-seed
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.21.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.22.0)
     └── plans/                        # Design documents
 ```
 
@@ -231,19 +233,20 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 
 ### Items System
 
-- **Hierarchical folders** with drag-and-drop reordering via dnd-kit
-- **Dual view modes**: Tree (hierarchical) and Grid (flat cards)
+- **Hierarchical items** with drag-and-drop reordering via dnd-kit
+- **Dual view modes**: Tree (hierarchical) and Grid (movie poster cards)
 - **Edit mode toggle**: Click "Edit" to enable drag-and-drop, "Done" to return to view mode
-- **View mode**: Full visual richness with artwork thumbnails (no dnd-kit overhead)
-- **Edit mode**: Simplified folder icons with drag handles for reordering
-- **Quick Create**: Sidebar button creates folders at root level from anywhere
-- **Add Folder dialog**: Modal dialog with name and optional description fields
+- **View mode**: Full background artwork with dark overlay (Feature222 aesthetic)
+- **Edit mode**: Simplified icons with drag handles for reordering
+- **Quick Create**: Sidebar button creates items at root level from anywhere
+- **Add Item dialog**: Modal dialog with name and optional description fields
 - **Server actions**: `createItem`, `updateItem`, `deleteItem`, `reorderItems` in `lib/item-actions.ts`
-- **Breadcrumb navigation** for folder drill-down
-- **Context menu**: Right-click for Settings, Delete, Add Subfolder
+- **Breadcrumb navigation** for item drill-down
+- **Context menu**: Right-click for Settings, Delete, Add Child Item
 - **Settings dialog**: Rename items, add descriptions, and select primary files
 - **Item descriptions**: Optional 200-character notes, displayed in view mode
 - **Primary file selection**: Choose which file plays/displays when multiple files attached
+- **Connection filtering**: Browse items filtered by SFTP connection source
 - **Toast notifications**: Success/error feedback via Sonner
 - **Max depth**: 10 levels of nesting
 
@@ -254,6 +257,8 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 - **Encrypted credentials**: AES-256-GCM encryption with `ENCRYPTION_KEY` env var
 - **Connection testing**: Test button with latency display
 - **Bidirectional sync**: Sync files between SFTP server and web interface
+- **Sync All**: Batch sync all connections with aggregated progress
+- **Item sync**: Individual item sync with its associated connection
 - **Artwork API**: `/api/artwork/[fileId]` downloads artwork via SFTP for thumbnails
 - **WebDAV streaming**: Optional WebDAV endpoint for direct media streaming
 - **Server actions**: `lib/sftp-actions.ts` for all SFTP operations
@@ -290,7 +295,7 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 360 total tests (307 unit + 53 integration)
+- 415 total tests (362 unit + 53 integration)
 
 ### E2E Testing
 

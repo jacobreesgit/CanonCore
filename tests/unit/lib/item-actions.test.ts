@@ -69,8 +69,11 @@ const mockItem = (overrides: {
   connectionId: null,
   createdAt: new Date(),
   updatedAt: new Date(),
-  // Include files array for artwork thumbnail support
-  files: overrides.artworkId ? [{ id: overrides.artworkId }] : [],
+  // Include files array with fileType and isPrimary for fileCounts support
+  files: overrides.artworkId
+    ? [{ id: overrides.artworkId, fileType: "ARTWORK", isPrimary: true }]
+    : [],
+  connection: null,
 });
 
 describe("getItems", () => {
@@ -113,15 +116,16 @@ describe("getItems", () => {
     if (result.success) {
       expect(result.data).toHaveLength(2);
     }
+    // Verify the main items query (second findMany call)
     expect(prisma.item.findMany).toHaveBeenCalledWith({
       where: { userId: "user-1", parentId: null },
       orderBy: { order: "asc" },
       include: {
         files: {
-          where: { fileType: "ARTWORK" },
-          take: 1,
-          orderBy: { filename: "asc" },
-          select: { id: true },
+          select: { id: true, fileType: true, isPrimary: true },
+        },
+        connection: {
+          select: { name: true },
         },
       },
     });
@@ -143,15 +147,16 @@ describe("getItems", () => {
     const result = await getItems("parent-1");
 
     expect(result.success).toBe(true);
+    // Verify the main items query (second findMany call)
     expect(prisma.item.findMany).toHaveBeenCalledWith({
       where: { userId: "user-1", parentId: "parent-1" },
       orderBy: { order: "asc" },
       include: {
         files: {
-          where: { fileType: "ARTWORK" },
-          take: 1,
-          orderBy: { filename: "asc" },
-          select: { id: true },
+          select: { id: true, fileType: true, isPrimary: true },
+        },
+        connection: {
+          select: { name: true },
         },
       },
     });

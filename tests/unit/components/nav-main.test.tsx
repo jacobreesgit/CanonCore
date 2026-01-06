@@ -62,8 +62,8 @@ vi.mock("@/components/ui/sidebar", () => ({
   ),
 }));
 
-// Mock add-folder-context
-vi.mock("@/contexts/add-folder-context", () => ({
+// Mock add-item-context
+vi.mock("@/contexts/add-item-context", () => ({
   useQuickCreateOptional: () => null,
 }));
 
