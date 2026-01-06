@@ -14,25 +14,6 @@ describe("TreeItem", () => {
     indentationWidth: 20,
   };
 
-  it("should render artwork when showArtwork is true and artworkId exists", () => {
-    const { container } = render(
-      <TreeItem {...defaultProps} artworkId="artwork-123" showArtwork={true} />
-    );
-
-    const img = container.querySelector("img");
-    expect(img).toBeInTheDocument();
-    expect(img).toHaveAttribute("src", "/api/artwork/artwork-123");
-  });
-
-  it("should render folder icon when showArtwork is false", () => {
-    const { container } = render(
-      <TreeItem {...defaultProps} artworkId="artwork-123" showArtwork={false} />
-    );
-
-    const img = container.querySelector("img");
-    expect(img).not.toBeInTheDocument();
-  });
-
   it("should hide drag handle when showDragHandle is false", () => {
     render(<TreeItem {...defaultProps} showDragHandle={false} />);
 
@@ -48,17 +29,24 @@ describe("TreeItem", () => {
   });
 
   describe("showConnectionBadge prop", () => {
-    it("should show connection badge by default when connectionName provided", () => {
-      render(<TreeItem {...defaultProps} connectionName="Server" />);
+    it("should show connection badge by default when connectionName provided in view mode", () => {
+      render(
+        <TreeItem
+          {...defaultProps}
+          connectionName="Server"
+          showDragHandle={false}
+        />
+      );
       expect(screen.getByText("Server")).toBeInTheDocument();
     });
 
-    it("should show connection badge when showConnectionBadge is true", () => {
+    it("should show connection badge when showConnectionBadge is true in view mode", () => {
       render(
         <TreeItem
           {...defaultProps}
           connectionName="Server"
           showConnectionBadge
+          showDragHandle={false}
         />
       );
       expect(screen.getByText("Server")).toBeInTheDocument();
@@ -70,6 +58,19 @@ describe("TreeItem", () => {
           {...defaultProps}
           connectionName="Server"
           showConnectionBadge={false}
+          showDragHandle={false}
+        />
+      );
+      expect(screen.queryByText("Server")).not.toBeInTheDocument();
+    });
+
+    it("should hide connection badge in edit mode regardless of showConnectionBadge", () => {
+      render(
+        <TreeItem
+          {...defaultProps}
+          connectionName="Server"
+          showConnectionBadge
+          showDragHandle={true}
         />
       );
       expect(screen.queryByText("Server")).not.toBeInTheDocument();

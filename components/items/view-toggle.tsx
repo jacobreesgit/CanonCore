@@ -73,10 +73,10 @@ export function ViewToggle({ value, onChange }: ViewToggleProps) {
       {/* Sliding background indicator */}
       <div
         className={cn(
-          "absolute top-0.5 bottom-0.5 w-[calc(50%-1px)] rounded-sm",
+          "absolute inset-0.5 w-[calc(50%-2px)] rounded-sm",
           "bg-background border-border/40 border shadow-sm",
           "transition-transform duration-200 ease-out",
-          view === "grid" && "translate-x-[calc(100%+1px)]"
+          view === "grid" && "translate-x-full"
         )}
       />
 

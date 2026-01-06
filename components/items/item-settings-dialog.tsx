@@ -7,16 +7,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import {
-  Check,
-  Loader2,
-  ImageIcon,
-  FileText,
-  Film,
-  HardDrive,
-  Clock,
-  Settings2,
-} from "lucide-react";
+import { Loader2, ImageIcon, FileText, Film, Settings2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -24,14 +15,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { setPrimaryFile } from "@/lib/item-file-actions";
 import { toast } from "sonner";
 import type { SerializedItemFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ItemStats } from "@/components/items/item-stats";
 
 interface ItemSettingsDialogProps {
   /** Whether the dialog is open */
@@ -46,6 +46,8 @@ interface ItemSettingsDialogProps {
     artwork: SerializedItemFile[];
     subtitles: SerializedItemFile[];
   };
+  /** Number of child items for stats display */
+  childCount?: number;
   /** Callback to rename the item */
   onRename: (newName: string) => Promise<void>;
   /** Callback to update the description */
@@ -76,6 +78,15 @@ function formatDuration(seconds: number | null): string {
 }
 
 /**
+ * Finds the primary file in an array, or returns the first file.
+ */
+function findPrimaryFile(
+  files: SerializedItemFile[]
+): SerializedItemFile | undefined {
+  return files.find((f) => f.isPrimary) ?? files[0];
+}
+
+/**
  * Item settings dialog with progressive disclosure.
  * Only shows file selection sections when there are 2+ files of a type.
  *
@@ -91,6 +102,7 @@ export function ItemSettingsDialog({
   onOpenChange,
   item,
   files,
+  childCount,
   onRename,
   onDescriptionChange,
   onSettingsChange,
@@ -107,11 +119,13 @@ export function ItemSettingsDialog({
     setDescription(item.description ?? "");
   }, [item.name, item.description]);
 
+  const hasMedia = files.media.length > 0;
+  const hasArtwork = files.artwork.length > 0;
+  const hasSubtitles = files.subtitles.length > 0;
   const hasMultipleMedia = files.media.length > 1;
   const hasMultipleArtwork = files.artwork.length > 1;
   const hasMultipleSubtitles = files.subtitles.length > 1;
-  const hasMediaSettings =
-    hasMultipleMedia || hasMultipleArtwork || hasMultipleSubtitles;
+  const hasMediaSettings = hasMedia || hasArtwork || hasSubtitles;
 
   const handleSaveName = useCallback(async () => {
     if (!name.trim() || name === item.name) return;
@@ -215,24 +229,25 @@ export function ItemSettingsDialog({
             <Label htmlFor="item-description" className="text-sm font-medium">
               Description
             </Label>
-            <div className="flex gap-2">
-              <Input
-                id="item-description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSaveDescription()}
-                placeholder="Short description (optional)"
-                maxLength={200}
-                className="h-10"
-              />
+            <Textarea
+              id="item-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Short description (optional)"
+              maxLength={200}
+              className="min-h-[80px] resize-none"
+            />
+            <div className="flex items-center justify-between">
+              <p className="text-muted-foreground text-xs tabular-nums">
+                {description.length}/200 characters
+              </p>
               <Button
                 onClick={handleSaveDescription}
                 disabled={
                   description === (item.description ?? "") ||
                   isSavingDescription
                 }
-                size="default"
-                className="shrink-0 px-4"
+                size="sm"
               >
                 {isSavingDescription ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -241,30 +256,19 @@ export function ItemSettingsDialog({
                 )}
               </Button>
             </div>
-            <p className="text-muted-foreground text-xs">
-              {description.length}/200 characters
-            </p>
           </div>
 
           {/* File Summary */}
-          <div
-            className={cn(
-              "flex items-center gap-4 rounded-lg px-4 py-3",
-              "bg-muted/50 text-muted-foreground text-sm"
-            )}
-          >
-            <span className="flex items-center gap-1.5">
-              <Film className="size-4" />
-              {files.media.length}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <ImageIcon className="size-4" />
-              {files.artwork.length}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <FileText className="size-4" />
-              {files.subtitles.length}
-            </span>
+          <div className={cn("rounded-lg px-4 py-3", "bg-muted/50")}>
+            <ItemStats
+              childCount={childCount}
+              fileCounts={{
+                media: files.media.length,
+                artwork: files.artwork.length,
+                subtitles: files.subtitles.length,
+              }}
+              variant="muted"
+            />
           </div>
 
           {/* Media Settings (conditional) */}
@@ -273,7 +277,7 @@ export function ItemSettingsDialog({
               <Separator />
 
               {/* Primary Media */}
-              {hasMultipleMedia && (
+              {hasMedia && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <div
@@ -284,140 +288,141 @@ export function ItemSettingsDialog({
                     >
                       <Film className="text-primary size-3.5" />
                     </div>
-                    <span className="text-sm font-medium">Primary Media</span>
+                    <Label
+                      htmlFor="primary-media"
+                      className="text-sm font-medium"
+                    >
+                      Primary Media
+                    </Label>
                   </div>
                   <p className="text-muted-foreground text-xs">
-                    Select which file plays when clicking on this item.
+                    {hasMultipleMedia
+                      ? "Select which file plays when clicking on this item."
+                      : "The file that plays when clicking on this item."}
                   </p>
-                  <div
-                    className="space-y-1.5"
-                    data-testid="primary-media"
-                    role="radiogroup"
-                    aria-label="Select primary media"
+                  <Select
+                    value={findPrimaryFile(files.media)?.id}
+                    onValueChange={(id) => handleSetPrimary(id, "media")}
+                    disabled={!hasMultipleMedia || !!loadingFileId}
                   >
-                    {files.media.map((file) => (
-                      <button
-                        key={file.id}
-                        onClick={() => handleSetPrimary(file.id, "media")}
-                        disabled={loadingFileId === file.id}
-                        role="radio"
-                        aria-checked={file.isPrimary}
-                        aria-label={`Select ${file.filename} as primary media`}
-                        className={cn(
-                          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5",
-                          "text-left text-sm transition-all",
-                          file.isPrimary
-                            ? "bg-primary/10 ring-primary/30 ring-1"
-                            : "bg-muted/30 hover:bg-muted/60"
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "flex size-5 shrink-0 items-center justify-center rounded-full",
-                            file.isPrimary
-                              ? "bg-primary text-primary-foreground"
-                              : "ring-border ring-1"
-                          )}
-                        >
-                          {loadingFileId === file.id ? (
-                            <Loader2 className="size-3 animate-spin" />
-                          ) : file.isPrimary ? (
-                            <Check className="size-3" />
-                          ) : null}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <span className="block truncate font-medium">
-                            {file.filename}
-                          </span>
-                          <span className="text-muted-foreground flex items-center gap-3 text-xs">
-                            {file.size && (
-                              <span className="flex items-center gap-1">
-                                <HardDrive className="size-3" />
-                                {formatSize(file.size)}
-                              </span>
-                            )}
-                            {file.playbackDuration && (
-                              <span className="flex items-center gap-1">
-                                <Clock className="size-3" />
-                                {formatDuration(file.playbackDuration)}
+                    <SelectTrigger id="primary-media" className="w-full">
+                      {loadingFileId &&
+                      files.media.some((f) => f.id === loadingFileId) ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <SelectValue placeholder="Select media file" />
+                      )}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {files.media.map((file) => (
+                        <SelectItem key={file.id} value={file.id}>
+                          <span className="flex items-center gap-2">
+                            <span className="truncate">{file.filename}</span>
+                            {(file.size || file.playbackDuration) && (
+                              <span className="text-muted-foreground text-xs">
+                                (
+                                {[
+                                  formatSize(file.size),
+                                  formatDuration(file.playbackDuration),
+                                ]
+                                  .filter(Boolean)
+                                  .join(", ")}
+                                )
                               </span>
                             )}
                           </span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 
               {/* Primary Artwork */}
-              {hasMultipleArtwork && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={cn(
-                        "flex size-7 items-center justify-center rounded-lg",
-                        "bg-primary/10"
-                      )}
-                    >
-                      <ImageIcon className="text-primary size-3.5" />
-                    </div>
-                    <span className="text-sm font-medium">Primary Artwork</span>
-                  </div>
-                  <p className="text-muted-foreground text-xs">
-                    Select which image to use as the thumbnail.
-                  </p>
-                  <div
-                    className="grid grid-cols-4 gap-2"
-                    role="radiogroup"
-                    aria-label="Select primary artwork"
-                  >
-                    {files.artwork.map((file) => (
-                      <button
-                        key={file.id}
-                        onClick={() => handleSetPrimary(file.id, "artwork")}
-                        disabled={loadingFileId === file.id}
-                        role="radio"
-                        aria-checked={file.isPrimary}
-                        aria-label={`Select ${file.filename} as primary artwork`}
-                        className={cn(
-                          "relative aspect-square overflow-hidden rounded-lg",
-                          "ring-2 transition-all",
-                          file.isPrimary
-                            ? "ring-primary shadow-lg"
-                            : "ring-border/50 hover:ring-primary/50"
-                        )}
+              {hasArtwork &&
+                (() => {
+                  const primaryArtwork = findPrimaryFile(files.artwork);
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={cn(
+                            "flex size-7 items-center justify-center rounded-lg",
+                            "bg-primary/10"
+                          )}
+                        >
+                          <ImageIcon className="text-primary size-3.5" />
+                        </div>
+                        <Label
+                          htmlFor="primary-artwork"
+                          className="text-sm font-medium"
+                        >
+                          Primary Artwork
+                        </Label>
+                      </div>
+                      <p className="text-muted-foreground text-xs">
+                        {hasMultipleArtwork
+                          ? "Select which image to use as the thumbnail."
+                          : "The image used as the thumbnail."}
+                      </p>
+                      <Select
+                        value={primaryArtwork?.id}
+                        onValueChange={(id) => handleSetPrimary(id, "artwork")}
+                        disabled={!hasMultipleArtwork || !!loadingFileId}
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={`/api/stream/${file.id}`}
-                          alt={file.filename}
-                          className="h-full w-full object-cover"
-                        />
-                        {file.isPrimary && (
-                          <div
-                            className={cn(
-                              "absolute top-1 right-1 rounded-full p-1",
-                              "bg-primary text-primary-foreground shadow-md"
-                            )}
-                          >
-                            <Check className="size-2.5" />
-                          </div>
-                        )}
-                        {loadingFileId === file.id && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                            <Loader2 className="size-5 animate-spin text-white" />
-                          </div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+                        <SelectTrigger id="primary-artwork" className="w-full">
+                          {loadingFileId &&
+                          files.artwork.some((f) => f.id === loadingFileId) ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <SelectValue placeholder="Select artwork">
+                              {primaryArtwork && (
+                                <span className="flex items-center gap-2">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={`/api/artwork/${primaryArtwork.id}`}
+                                    alt=""
+                                    className="size-5 rounded object-cover"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = "none";
+                                    }}
+                                  />
+                                  <span className="truncate">
+                                    {primaryArtwork.filename}
+                                  </span>
+                                </span>
+                              )}
+                            </SelectValue>
+                          )}
+                        </SelectTrigger>
+                        <SelectContent>
+                          {files.artwork.map((file) => (
+                            <SelectItem key={file.id} value={file.id}>
+                              <span className="flex items-center gap-2">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={`/api/artwork/${file.id}`}
+                                  alt=""
+                                  className="size-6 rounded object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                />
+                                <span className="truncate">
+                                  {file.filename}
+                                </span>
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                })()}
 
               {/* Default Subtitle */}
-              {hasMultipleSubtitles && (
-                <div className="space-y-3" data-testid="default-subtitle">
+              {hasSubtitles && (
+                <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <div
                       className={cn(
@@ -427,54 +432,39 @@ export function ItemSettingsDialog({
                     >
                       <FileText className="text-primary size-3.5" />
                     </div>
-                    <span className="text-sm font-medium">
+                    <Label
+                      htmlFor="default-subtitle"
+                      className="text-sm font-medium"
+                    >
                       Default Subtitle
-                    </span>
+                    </Label>
                   </div>
                   <p className="text-muted-foreground text-xs">
-                    Select which subtitle track loads by default.
+                    {hasMultipleSubtitles
+                      ? "Select which subtitle track loads by default."
+                      : "The subtitle track that loads by default."}
                   </p>
-                  <div
-                    className="space-y-1.5"
-                    role="radiogroup"
-                    aria-label="Select default subtitle"
+                  <Select
+                    value={findPrimaryFile(files.subtitles)?.id}
+                    onValueChange={(id) => handleSetPrimary(id, "subtitle")}
+                    disabled={!hasMultipleSubtitles || !!loadingFileId}
                   >
-                    {files.subtitles.map((file) => (
-                      <button
-                        key={file.id}
-                        onClick={() => handleSetPrimary(file.id, "subtitle")}
-                        disabled={loadingFileId === file.id}
-                        role="radio"
-                        aria-checked={file.isPrimary}
-                        aria-label={`Select ${file.filename} as default subtitle`}
-                        className={cn(
-                          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5",
-                          "text-left text-sm transition-all",
-                          file.isPrimary
-                            ? "bg-primary/10 ring-primary/30 ring-1"
-                            : "bg-muted/30 hover:bg-muted/60"
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "flex size-5 shrink-0 items-center justify-center rounded-full",
-                            file.isPrimary
-                              ? "bg-primary text-primary-foreground"
-                              : "ring-border ring-1"
-                          )}
-                        >
-                          {loadingFileId === file.id ? (
-                            <Loader2 className="size-3 animate-spin" />
-                          ) : file.isPrimary ? (
-                            <Check className="size-3" />
-                          ) : null}
-                        </div>
-                        <span className="truncate font-medium">
+                    <SelectTrigger id="default-subtitle" className="w-full">
+                      {loadingFileId &&
+                      files.subtitles.some((f) => f.id === loadingFileId) ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <SelectValue placeholder="Select subtitle" />
+                      )}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {files.subtitles.map((file) => (
+                        <SelectItem key={file.id} value={file.id}>
                           {file.filename}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
             </>

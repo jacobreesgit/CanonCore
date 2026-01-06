@@ -21,10 +21,6 @@ interface SortableTreeItemProps extends Omit<TreeItemProps, "handleProps"> {
   onSettings?(): void;
   onDelete?(): Promise<void>;
   onAddChild?(name: string): Promise<string | undefined>;
-  /** SFTP path if linked to remote server. */
-  sftpPath?: string | null;
-  /** Artwork file ID for thumbnail display. */
-  artworkId?: string | null;
 }
 
 const animateLayoutChanges: AnimateLayoutChanges = ({
@@ -38,8 +34,6 @@ export function SortableTreeItem({
   onSettings,
   onDelete,
   onAddChild,
-  sftpPath,
-  artworkId,
   ...props
 }: SortableTreeItemProps) {
   const {
@@ -81,9 +75,6 @@ export function SortableTreeItem({
           ...attributes,
           ...listeners,
         }}
-        sftpPath={sftpPath}
-        artworkId={artworkId}
-        showArtwork={false}
         showDragHandle={true}
         {...props}
       />
