@@ -55,6 +55,9 @@ export interface TreeItem {
   connectionName?: string | null;
   // Artwork thumbnail
   artworkId?: string | null;
+  // File and child counts for stats display
+  fileCounts?: FileCounts;
+  childCount?: number;
 }
 
 export type TreeItems = TreeItem[];

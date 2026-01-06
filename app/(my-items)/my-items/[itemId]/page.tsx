@@ -5,13 +5,10 @@
  */
 
 import { notFound } from "next/navigation";
-import { ItemsView, ItemDetail } from "@/components/items";
+import { ItemDetail, ItemDetailClient, ItemsToolbar } from "@/components/items";
 import { SiteHeader } from "@/components/site-header";
-import { ItemSyncButton } from "@/components/sftp";
 import { getItem, getItems } from "@/lib/item-actions";
 import { getItemFiles } from "@/lib/item-file-actions";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Folder, Film } from "lucide-react";
 
 interface ItemDetailPageProps {
   params: Promise<{ itemId: string }>;
@@ -63,7 +60,7 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
   // Check if item is connected to SFTP
   const isSftpConnected = Boolean(item.connectionId && item.sftpPath);
 
-  // If no files, just show the items view
+  // If no files, just show the items view with unified toolbar
   if (!hasFiles) {
     return (
       <>
@@ -73,22 +70,23 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
           breadcrumbs={breadcrumbs}
         />
         <div className="flex flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
-          <ItemsView
-            items={childItems}
-            parentId={itemId}
-            currentConnection={item.connection}
-            itemSyncProps={
-              isSftpConnected
-                ? { itemId: item.id, itemName: item.name }
-                : undefined
-            }
+          <ItemDetailClient
+            item={{
+              id: item.id,
+              name: item.name,
+              description: item.description,
+              connectionId: item.connectionId,
+              sftpPath: item.sftpPath,
+            }}
+            childItems={childItems}
+            connection={item.connection}
           />
         </div>
       </>
     );
   }
 
-  // If has files but no children, show file detail view
+  // If has files but no children, show file detail view with toolbar
   if (!hasChildren) {
     return (
       <>
@@ -98,18 +96,23 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
           breadcrumbs={breadcrumbs}
         />
         <div className="flex flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
-          {isSftpConnected && (
-            <div className="flex justify-end">
-              <ItemSyncButton itemId={item.id} itemName={item.name} size="sm" />
-            </div>
-          )}
+          <ItemsToolbar
+            hasItems={false}
+            item={{
+              id: item.id,
+              name: item.name,
+              description: item.description,
+            }}
+            childCount={0}
+            isSftpConnected={isSftpConnected}
+          />
           <ItemDetail item={item} files={files} />
         </div>
       </>
     );
   }
 
-  // If has both, show tabs
+  // If has both, show tabbed view with unified toolbar
   return (
     <>
       <SiteHeader
@@ -118,35 +121,18 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
         breadcrumbs={breadcrumbs}
       />
       <div className="flex flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
-        <Tabs defaultValue="files" className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="files" className="gap-2">
-              <Film className="size-4" />
-              Media ({files.media.length})
-            </TabsTrigger>
-            <TabsTrigger value="folders" className="gap-2">
-              <Folder className="size-4" />
-              Subfolders ({childItems.length})
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="files">
-            <ItemDetail item={item} files={files} />
-          </TabsContent>
-
-          <TabsContent value="folders">
-            <ItemsView
-              items={childItems}
-              parentId={itemId}
-              currentConnection={item.connection}
-              itemSyncProps={
-                isSftpConnected
-                  ? { itemId: item.id, itemName: item.name }
-                  : undefined
-              }
-            />
-          </TabsContent>
-        </Tabs>
+        <ItemDetailClient
+          item={{
+            id: item.id,
+            name: item.name,
+            description: item.description,
+            connectionId: item.connectionId,
+            sftpPath: item.sftpPath,
+          }}
+          childItems={childItems}
+          connection={item.connection}
+          files={files}
+        />
       </div>
     </>
   );

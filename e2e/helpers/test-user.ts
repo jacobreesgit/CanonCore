@@ -7,6 +7,13 @@ export const WEAK_PASSWORD = "weak";
 export const INVALID_EMAIL = "not-an-email";
 
 /**
+ * Seed user credentials for tests that need pre-populated data.
+ * Requires SEED_PASSWORD env var and database to be seeded.
+ */
+export const SEED_USER_EMAIL = "seed@canoncore.com";
+export const SEED_PASSWORD = process.env.SEED_PASSWORD || "";
+
+/**
  * Generates a unique email for testing.
  */
 export function generateUniqueEmail(prefix = "test"): string {

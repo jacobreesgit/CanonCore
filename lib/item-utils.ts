@@ -33,6 +33,9 @@ export function itemsToTree(items: ItemInput[]): TreeItem[] {
       connectionName: "connectionName" in item ? item.connectionName : null,
       // Include artwork if available
       artworkId: "artworkId" in item ? item.artworkId : null,
+      // Include file and child counts for stats display
+      fileCounts: "fileCounts" in item ? item.fileCounts : undefined,
+      childCount: "childCount" in item ? item.childCount : undefined,
     });
   }
 

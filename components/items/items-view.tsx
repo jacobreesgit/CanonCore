@@ -6,10 +6,11 @@
 
 "use client";
 
-import { useState, useCallback, useTransition, useEffect, useRef } from "react";
+import { useState, useTransition, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Folder, Plus, Loader2 } from "lucide-react";
 import { useQuickCreateOptional } from "@/contexts/add-item-context";
+import { useControllableState } from "@/hooks/use-controllable-state";
 import { UniqueIdentifier } from "@dnd-kit/core";
 import { toast } from "sonner";
 
@@ -52,6 +53,7 @@ interface SettingsDialogState {
     artwork: SerializedItemFile[];
     subtitles: SerializedItemFile[];
   };
+  childCount: number;
 }
 
 interface ItemsViewProps {
@@ -76,6 +78,16 @@ interface ItemsViewProps {
   };
   /** Current connection to display in disabled filter (for item detail pages). */
   currentConnection?: { id: string; name: string } | null;
+  /** Hide the internal toolbar (when using external ItemsToolbar). */
+  hideToolbar?: boolean;
+  /** External edit mode control - when provided, overrides internal state. */
+  isEditing?: boolean;
+  /** Callback when edit mode changes (for external control). */
+  onEditingChange?: (editing: boolean) => void;
+  /** External add item dialog control - when provided, overrides internal state. */
+  addItemOpen?: boolean;
+  /** Callback when add item dialog state changes (for external control). */
+  onAddItemOpenChange?: (open: boolean) => void;
 }
 
 export function ItemsView({
@@ -89,6 +101,11 @@ export function ItemsView({
   onSyncComplete,
   itemSyncProps,
   currentConnection,
+  hideToolbar = false,
+  isEditing: externalIsEditing,
+  onEditingChange,
+  addItemOpen: externalAddItemOpen,
+  onAddItemOpenChange,
 }: ItemsViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -116,19 +133,26 @@ export function ItemsView({
   );
   // Single source of truth for view mode - hydration-safe via useSyncExternalStore
   const [viewMode] = useStoredViewMode();
-  // Edit mode state - when true, shows DnD-enabled components
-  const [isEditing, setIsEditing] = useState(false);
+  // Edit mode state - supports external control or internal state via useControllableState
+  const [isEditing, setIsEditing] = useControllableState({
+    value: externalIsEditing,
+    defaultValue: false,
+    onChange: onEditingChange,
+  });
   // Settings dialog state
   const [settingsDialog, setSettingsDialog] =
     useState<SettingsDialogState | null>(null);
-  // Add item dialog state
-  const [addItemOpen, setAddItemOpen] = useState(false);
+  // Add item dialog state - supports external control or internal state via useControllableState
+  const [addItemOpen, setAddItemOpen] = useControllableState({
+    value: externalAddItemOpen,
+    defaultValue: false,
+    onChange: onAddItemOpenChange,
+  });
 
   // Exit edit mode when view mode changes - intentional minimal cascade
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsEditing(false);
-  }, [viewMode]);
+  }, [viewMode, setIsEditing]);
 
   // Sync local state when props change
   useEffect(() => {
@@ -191,6 +215,7 @@ export function ItemsView({
     setSettingsDialog({
       item: { id: item.id, name: item.name, description: item.description },
       files,
+      childCount: item.childCount,
     });
   }, []);
 
@@ -421,49 +446,36 @@ export function ItemsView({
 
   return (
     <div className={cn("flex flex-col gap-6", isPending && "opacity-70")}>
-      {/* Controls */}
-      <div className="flex items-center justify-between gap-3">
-        {/* Left side: Connection filter + Sync buttons */}
-        <div className="flex items-center gap-3">
-          {/* Connection filter - show when connections exist with handler, OR when currentConnection provided (disabled) */}
-          {connections.length > 0 && onConnectionChange && (
-            <>
+      {/* Controls - hidden when using external ItemsToolbar */}
+      {!hideToolbar && (
+        <div className="flex items-center justify-between gap-3">
+          {/* Left side: Connection filter + Sync buttons */}
+          <div className="flex items-center gap-3">
+            {/* Connection filter - show when connections exist with handler, OR when currentConnection provided (disabled) */}
+            {connections.length > 0 && onConnectionChange && (
+              <>
+                <ConnectionFilter
+                  connections={connections}
+                  selectedConnectionId={selectedConnectionId ?? null}
+                  onConnectionChange={onConnectionChange}
+                />
+                {isFilterPending && (
+                  <Loader2 className="text-muted-foreground size-4 animate-spin" />
+                )}
+              </>
+            )}
+            {/* Disabled connection filter for item detail pages */}
+            {currentConnection && !onConnectionChange && (
               <ConnectionFilter
-                connections={connections}
-                selectedConnectionId={selectedConnectionId ?? null}
-                onConnectionChange={onConnectionChange}
+                connections={[currentConnection]}
+                selectedConnectionId={currentConnection.id}
+                disabled
               />
-              {isFilterPending && (
-                <Loader2 className="text-muted-foreground size-4 animate-spin" />
-              )}
-            </>
-          )}
-          {/* Disabled connection filter for item detail pages */}
-          {currentConnection && !onConnectionChange && (
-            <ConnectionFilter
-              connections={[currentConnection]}
-              selectedConnectionId={currentConnection.id}
-              disabled
-            />
-          )}
-          {/* Sync All button - show when viewing All Items */}
-          {connections.length > 0 && !isFilteredToConnection && (
-            <SyncAllButton
-              connectionCount={connections.length}
-              size="sm"
-              onSyncComplete={async () => {
-                await refetchItems();
-                onSyncComplete?.();
-              }}
-            />
-          )}
-          {/* Sync Connection button - show when filtered to individual connection */}
-          {connections.length > 0 &&
-            isFilteredToConnection &&
-            effectiveSelectedConnection && (
-              <SyncButton
-                connectionId={effectiveSelectedConnection}
-                label="Sync Connection"
+            )}
+            {/* Sync All button - show when viewing All Items */}
+            {connections.length > 0 && !isFilteredToConnection && (
+              <SyncAllButton
+                connectionCount={connections.length}
                 size="sm"
                 onSyncComplete={async () => {
                   await refetchItems();
@@ -471,43 +483,58 @@ export function ItemsView({
                 }}
               />
             )}
-          {/* Individual item sync button - for item detail pages */}
-          {itemSyncProps && (
-            <ItemSyncButton
-              itemId={itemSyncProps.itemId}
-              itemName={itemSyncProps.itemName}
-              size="sm"
-              onSyncComplete={async () => {
-                await refetchItems();
-              }}
-            />
-          )}
-        </div>
-
-        {/* Right side: Add Item + Edit + View toggle */}
-        <div className="flex items-center gap-3">
-          {items.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAddItemOpen(true)}
-              className="gap-1.5"
-            >
-              <Plus className="size-4" strokeWidth={2} />
-              <span>Add Item</span>
-            </Button>
-          )}
-          {items.length > 0 && (
-            <>
-              <EditModeToggle
-                isEditing={isEditing}
-                onToggle={() => setIsEditing((prev) => !prev)}
+            {/* Sync Connection button - show when filtered to individual connection */}
+            {connections.length > 0 &&
+              isFilteredToConnection &&
+              effectiveSelectedConnection && (
+                <SyncButton
+                  connectionId={effectiveSelectedConnection}
+                  label="Sync Connection"
+                  size="sm"
+                  onSyncComplete={async () => {
+                    await refetchItems();
+                    onSyncComplete?.();
+                  }}
+                />
+              )}
+            {/* Individual item sync button - for item detail pages */}
+            {itemSyncProps && (
+              <ItemSyncButton
+                itemId={itemSyncProps.itemId}
+                itemName={itemSyncProps.itemName}
+                size="sm"
+                onSyncComplete={async () => {
+                  await refetchItems();
+                }}
               />
-              <ViewToggle />
-            </>
-          )}
+            )}
+          </div>
+
+          {/* Right side: Add Item + Edit + View toggle */}
+          <div className="flex items-center gap-3">
+            {items.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAddItemOpen(true)}
+                className="gap-1.5"
+              >
+                <Plus className="size-4" strokeWidth={2} />
+                <span>Add Item</span>
+              </Button>
+            )}
+            {items.length > 0 && (
+              <>
+                <EditModeToggle
+                  isEditing={isEditing}
+                  onToggle={() => setIsEditing((prev) => !prev)}
+                />
+                <ViewToggle />
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Items display */}
       <div className="min-h-[200px]">
@@ -559,6 +586,7 @@ export function ItemsView({
           onOpenChange={(open) => !open && setSettingsDialog(null)}
           item={settingsDialog.item}
           files={settingsDialog.files}
+          childCount={settingsDialog.childCount}
           onRename={async (newName) => {
             await handleRenameItem(settingsDialog.item.id, newName);
             // Update dialog state with new name

@@ -43,7 +43,7 @@ export function NavMain({
             <SidebarMenuButton
               tooltip="Quick Create"
               onClick={() => quickCreate?.openDialog()}
-              className="min-w-8 cursor-pointer bg-gradient-to-r from-teal-400 to-emerald-400 text-white transition-all duration-200 ease-out hover:from-teal-500 hover:to-emerald-500 hover:text-white"
+              className="min-w-8 cursor-pointer bg-gradient-to-r from-teal-400 to-emerald-400 text-white transition-all duration-200 ease-out hover:from-teal-500 hover:to-emerald-500 hover:text-white dark:from-teal-600 dark:to-emerald-600 dark:hover:from-teal-500 dark:hover:to-emerald-500"
             >
               <CirclePlus />
               <span>Quick Create</span>

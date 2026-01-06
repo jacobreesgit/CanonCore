@@ -5,17 +5,11 @@
 
 "use client";
 
-import React, { forwardRef, HTMLAttributes, useState } from "react";
+import React, { forwardRef, HTMLAttributes } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
-import {
-  ChevronRight,
-  Folder,
-  FolderOpen,
-  GripVertical,
-  Server,
-  Trash2,
-} from "lucide-react";
+import { ChevronRight, GripVertical, Leaf, Server, Trash2 } from "lucide-react";
+import { ItemStats, type FileCounts } from "@/components/items/item-stats";
 
 export interface TreeItemProps extends Omit<
   HTMLAttributes<HTMLLIElement>,
@@ -41,10 +35,6 @@ export interface TreeItemProps extends Omit<
   onClick?(): void;
   /** SFTP path if linked to remote server. */
   sftpPath?: string | null;
-  /** Artwork file ID for thumbnail display. */
-  artworkId?: string | null;
-  /** Whether to show artwork thumbnail. Defaults to true. */
-  showArtwork?: boolean;
   /** Whether to show the drag handle. Defaults to true. */
   showDragHandle?: boolean;
   /** Whether to show description. Defaults to true. Hidden in edit mode. */
@@ -53,6 +43,10 @@ export interface TreeItemProps extends Omit<
   connectionName?: string | null;
   /** Whether to show connection badge. Defaults to true. */
   showConnectionBadge?: boolean;
+  /** File counts by type for display. */
+  fileCounts?: FileCounts;
+  /** Whether to show stats (children + files). Defaults to true. Hidden in edit mode. */
+  showStats?: boolean;
 }
 
 export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
@@ -76,22 +70,20 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       onClick,
       style,
       className,
-      artworkId,
-      showArtwork = true,
       showDragHandle = true,
       description,
       showDescription = true,
       connectionName,
       showConnectionBadge = true,
+      fileCounts,
+      showStats = true,
       sftpPath: _sftpPath, // eslint-disable-line @typescript-eslint/no-unused-vars
       ...props
     },
     ref
   ) {
-    const [imageError, setImageError] = useState(false);
-    const hasChildren = Boolean(onCollapse);
-    const shouldShowArtwork = showArtwork && artworkId && !imageError;
     const shouldShowDescription = showDescription && description;
+    const shouldShowStats = showStats && !showDragHandle;
 
     return (
       <li
@@ -178,71 +170,72 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
             </button>
           )}
 
-          {/* Item Icon - Show artwork thumbnail or folder icon (only in view mode) */}
-          {!ghost && showArtwork && (
-            <span className="flex-shrink-0">
-              {shouldShowArtwork ? (
-                <div className="size-5 overflow-hidden rounded">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`/api/artwork/${artworkId}`}
-                    alt=""
-                    className="size-full object-cover"
-                    onError={() => setImageError(true)}
-                  />
-                </div>
-              ) : hasChildren && !collapsed ? (
-                <FolderOpen
-                  className="text-muted-foreground/70 size-4"
-                  strokeWidth={1.75}
-                />
-              ) : (
-                <Folder
-                  className="text-muted-foreground/70 size-4"
-                  strokeWidth={1.75}
-                />
-              )}
+          {/* Item Icon - only in view mode */}
+          {!ghost && !showDragHandle && (
+            <span className="flex size-5 flex-shrink-0 items-center justify-center">
+              <Leaf
+                className="text-muted-foreground/70 size-4"
+                strokeWidth={1.75}
+              />
             </span>
           )}
 
           {/* Item Name and Description */}
           {!ghost && (
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span
-                  className={cn(
-                    "truncate text-sm font-medium",
-                    "text-foreground/90 group-hover:text-foreground",
-                    "transition-colors duration-150"
-                  )}
-                >
-                  {value}
-                </span>
-                {connectionName && showConnectionBadge && (
-                  <span
-                    className={cn(
-                      "inline-flex flex-shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5",
-                      "bg-primary/10 text-primary text-[10px] font-medium"
-                    )}
-                  >
-                    <Server className="size-2.5" />
-                    {connectionName}
-                  </span>
-                )}
-              </div>
-              {/* Description line - always reserve space to prevent layout shift */}
               <span
                 className={cn(
-                  "block min-h-4 truncate text-xs",
-                  "transition-colors duration-150",
-                  shouldShowDescription ? "text-muted-foreground" : "invisible"
+                  "block truncate text-sm font-medium",
+                  "text-foreground/90 group-hover:text-foreground",
+                  "transition-colors duration-150"
                 )}
-                aria-hidden={!shouldShowDescription}
               >
-                {description || "\u00A0"}
+                {value}
               </span>
+              {/* Description and stats - only in view mode */}
+              {!showDragHandle && (
+                <>
+                  <span
+                    className={cn(
+                      "block min-h-4 truncate text-xs",
+                      "transition-colors duration-150",
+                      shouldShowDescription
+                        ? "text-muted-foreground"
+                        : "invisible"
+                    )}
+                    aria-hidden={!shouldShowDescription}
+                  >
+                    {description || "\u00A0"}
+                  </span>
+                  {shouldShowStats && (
+                    <ItemStats
+                      childCount={childCount}
+                      fileCounts={fileCounts}
+                      variant="muted"
+                      format="text"
+                      className="mt-0.5 text-xs"
+                    />
+                  )}
+                </>
+              )}
             </div>
           )}
+
+          {/* Connection badge - only in view mode */}
+          {!ghost &&
+            !showDragHandle &&
+            connectionName &&
+            showConnectionBadge && (
+              <span
+                className={cn(
+                  "inline-flex flex-shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5",
+                  "bg-primary/10 text-primary text-[10px] font-medium"
+                )}
+              >
+                <Server className="size-2.5" />
+                {connectionName}
+              </span>
+            )}
 
           {/* Child Count Badge (for clone/drag overlay) */}
           {clone && childCount && childCount > 1 && (

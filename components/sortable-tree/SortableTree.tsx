@@ -220,7 +220,6 @@ export function SortableTree({
               collapsed,
               depth,
               sftpPath,
-              artworkId,
             }) => (
               <SortableTreeItem
                 key={id}
@@ -250,7 +249,6 @@ export function SortableTree({
                     : undefined
                 }
                 sftpPath={sftpPath}
-                artworkId={artworkId}
                 showDescription={false}
               />
             )
