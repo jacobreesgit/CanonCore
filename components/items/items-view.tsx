@@ -21,6 +21,7 @@ import { EditModeToggle } from "./edit-mode-toggle";
 import { ViewToggle, useStoredViewMode } from "./view-toggle";
 import { AddItemDialog } from "./add-item-dialog";
 import { ItemSettingsDialog } from "./item-settings-dialog";
+import { ItemHero } from "./item-hero";
 import { Button } from "@/components/ui/button";
 import { SyncButton, SyncAllButton, ItemSyncButton } from "@/components/sftp";
 import type {
@@ -88,6 +89,10 @@ interface ItemsViewProps {
   addItemOpen?: boolean;
   /** Callback when add item dialog state changes (for external control). */
   onAddItemOpenChange?: (open: boolean) => void;
+  /** Hero title (displays ItemHero after toolbar when provided). */
+  heroTitle?: string;
+  /** Item count for hero stats display. */
+  heroItemCount?: number;
 }
 
 export function ItemsView({
@@ -106,6 +111,8 @@ export function ItemsView({
   onEditingChange,
   addItemOpen: externalAddItemOpen,
   onAddItemOpenChange,
+  heroTitle,
+  heroItemCount,
 }: ItemsViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -534,6 +541,11 @@ export function ItemsView({
             )}
           </div>
         </div>
+      )}
+
+      {/* Hero section - shown when heroTitle provided */}
+      {heroTitle && (
+        <ItemHero name={heroTitle} childCount={heroItemCount ?? items.length} />
       )}
 
       {/* Items display */}
