@@ -20,14 +20,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ConnectionTestButton } from "./connection-test-button";
 import {
   Server,
   MoreVertical,
-  Pencil,
   Trash2,
   FolderOpen,
   Key,
@@ -89,7 +87,7 @@ export function ConnectionCard({ connection, onDelete }: ConnectionCardProps) {
 
   return (
     <Link
-      href={`/my-items/connections/${connection.id}`}
+      href={`/my-items/connections/${connection.id}/edit`}
       className="focus-visible:ring-ring block rounded-xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
     >
       <Card
@@ -129,15 +127,6 @@ export function ConnectionCard({ connection, onDelete }: ConnectionCardProps) {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem asChild>
-                      <Link
-                        href={`/my-items/connections/${connection.id}/edit`}
-                      >
-                        <Pencil className="mr-2 size-4" />
-                        Edit
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
                       onClick={handleDelete}

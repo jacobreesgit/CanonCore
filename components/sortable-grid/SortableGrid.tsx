@@ -102,7 +102,7 @@ export function SortableGrid({
       >
         <div
           data-testid="items-grid-view"
-          className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+          className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
         >
           {items.map((item) => (
             <SortableGridItem
@@ -117,6 +117,8 @@ export function SortableGrid({
               onDelete={onDeleteItem ? () => onDeleteItem(item.id) : undefined}
               sftpPath={item.sftpPath}
               artworkId={item.artworkId}
+              fileCounts={item.fileCounts}
+              childCount={item.childCount}
               showDescription={false}
             />
           ))}
@@ -130,6 +132,8 @@ export function SortableGrid({
                 id={activeId}
                 name={activeItem.name}
                 artworkId={activeItem.artworkId}
+                fileCounts={activeItem.fileCounts}
+                childCount={activeItem.childCount}
                 isOverlay
               />
             ) : null}

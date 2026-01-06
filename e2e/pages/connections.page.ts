@@ -152,10 +152,10 @@ export class ConnectionsPage {
     await this.page.getByRole("menuitem", { name: "Delete" }).click();
   }
 
-  /** Edit a connection via the actions menu. */
-  async editConnection(name: string) {
-    await this.openConnectionActions(name);
-    await this.page.getByRole("menuitem", { name: "Edit" }).click();
+  /** Click connection card to navigate to edit page. */
+  async clickConnectionCard(name: string) {
+    const card = this.getConnectionCard(name);
+    await card.click();
   }
 
   /** Expect a toast message. */

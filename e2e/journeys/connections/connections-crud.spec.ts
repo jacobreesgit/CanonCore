@@ -88,8 +88,8 @@ test.describe("Connection CRUD", () => {
     await connectionsPage.submitForm();
     await expect(page).toHaveURL("/my-items/connections", { timeout: 10000 });
 
-    // Now edit it
-    await connectionsPage.editConnection("Server To Edit");
+    // Now click the card to edit it
+    await connectionsPage.clickConnectionCard("Server To Edit");
 
     // Should be on edit page
     await expect(page.getByText("Edit Connection")).toBeVisible();

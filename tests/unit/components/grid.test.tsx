@@ -22,6 +22,8 @@ const mockItems: ItemWithArtwork[] = [
     sftpModifiedAt: null,
     connectionId: null,
     artworkId: "artwork-1",
+    fileCounts: { media: 2, artwork: 1, subtitles: 0 },
+    childCount: 3,
   },
   {
     id: "2",
@@ -37,6 +39,8 @@ const mockItems: ItemWithArtwork[] = [
     sftpModifiedAt: null,
     connectionId: "conn-1",
     artworkId: null,
+    fileCounts: { media: 0, artwork: 0, subtitles: 1 },
+    childCount: 0,
   },
 ];
 

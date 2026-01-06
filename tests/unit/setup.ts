@@ -1,6 +1,14 @@
 import { vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 
+// Mock Pointer Capture API for Radix UI (jsdom doesn't implement it)
+Element.prototype.hasPointerCapture = vi.fn().mockReturnValue(false);
+Element.prototype.setPointerCapture = vi.fn();
+Element.prototype.releasePointerCapture = vi.fn();
+
+// Mock scrollIntoView for Radix UI
+Element.prototype.scrollIntoView = vi.fn();
+
 // Mock Prisma
 vi.mock("@/lib/prisma", () => ({
   prisma: {

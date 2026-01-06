@@ -1,6 +1,6 @@
 /**
  * E2E tests for items CRUD operations.
- * Tests create, rename, and delete folder functionality.
+ * Tests create, rename, and delete item functionality.
  */
 
 import { test, expect } from "../../fixtures";
@@ -20,14 +20,14 @@ test.describe("Items CRUD Journey", () => {
     await itemsPage.expectEmptyState();
   });
 
-  test("can create a new folder", async ({ itemsPage }) => {
+  test("can create a new item", async ({ itemsPage }) => {
     await itemsPage.goto();
     await itemsPage.createItem("My First Folder");
     await itemsPage.expectItemVisible("My First Folder");
     await itemsPage.expectSuccessToast('Created "My First Folder"');
   });
 
-  test("can rename a folder via context menu", async ({ itemsPage }) => {
+  test("can rename an item via context menu", async ({ itemsPage }) => {
     await itemsPage.goto();
     await itemsPage.createItem("Original Name");
     await itemsPage.waitForToastToDisappear();
@@ -37,7 +37,7 @@ test.describe("Items CRUD Journey", () => {
     await itemsPage.expectSuccessToast('Renamed to "Renamed Folder"');
   });
 
-  test("can delete a folder via context menu", async ({ itemsPage }) => {
+  test("can delete an item via context menu", async ({ itemsPage }) => {
     await itemsPage.goto();
     await itemsPage.createItem("To Delete");
     await itemsPage.waitForToastToDisappear();

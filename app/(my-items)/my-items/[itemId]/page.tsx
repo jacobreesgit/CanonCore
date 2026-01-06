@@ -1,12 +1,13 @@
 /**
- * Item detail page displaying folder contents and attached files.
- * Shows children of the specified folder, breadcrumb navigation,
+ * Item detail page displaying item contents and attached files.
+ * Shows children of the specified item, breadcrumb navigation,
  * and any media files attached to this item.
  */
 
 import { notFound } from "next/navigation";
 import { ItemsView, ItemDetail } from "@/components/items";
 import { SiteHeader } from "@/components/site-header";
+import { ItemSyncButton } from "@/components/sftp";
 import { getItem, getItems } from "@/lib/item-actions";
 import { getItemFiles } from "@/lib/item-file-actions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,8 +18,8 @@ interface ItemDetailPageProps {
 }
 
 /**
- * Renders the folder detail view with its children and attached files.
- * Shows tabs for navigating between children folders and media files.
+ * Renders the item detail view with its children and attached files.
+ * Shows tabs for navigating between child items and media files.
  */
 export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
   const { itemId } = await params;
@@ -59,6 +60,9 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
     files.artwork.length > 0 ||
     files.subtitles.length > 0;
 
+  // Check if item is connected to SFTP
+  const isSftpConnected = Boolean(item.connectionId && item.sftpPath);
+
   // If no files, just show the items view
   if (!hasFiles) {
     return (
@@ -69,7 +73,16 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
           breadcrumbs={breadcrumbs}
         />
         <div className="flex flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
-          <ItemsView items={childItems} parentId={itemId} />
+          <ItemsView
+            items={childItems}
+            parentId={itemId}
+            currentConnection={item.connection}
+            itemSyncProps={
+              isSftpConnected
+                ? { itemId: item.id, itemName: item.name }
+                : undefined
+            }
+          />
         </div>
       </>
     );
@@ -85,6 +98,11 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
           breadcrumbs={breadcrumbs}
         />
         <div className="flex flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
+          {isSftpConnected && (
+            <div className="flex justify-end">
+              <ItemSyncButton itemId={item.id} itemName={item.name} size="sm" />
+            </div>
+          )}
           <ItemDetail item={item} files={files} />
         </div>
       </>
@@ -117,7 +135,16 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
           </TabsContent>
 
           <TabsContent value="folders">
-            <ItemsView items={childItems} parentId={itemId} />
+            <ItemsView
+              items={childItems}
+              parentId={itemId}
+              currentConnection={item.connection}
+              itemSyncProps={
+                isSftpConnected
+                  ? { itemId: item.id, itemName: item.name }
+                  : undefined
+              }
+            />
           </TabsContent>
         </Tabs>
       </div>

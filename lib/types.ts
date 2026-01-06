@@ -28,6 +28,15 @@ export interface Item {
 }
 
 /**
+ * Item with connection details for detail pages.
+ * Used when displaying item details with connection info.
+ */
+export interface ItemWithConnection extends Item {
+  /** Connection details if this item is SFTP-linked */
+  connection: { id: string; name: string } | null;
+}
+
+/**
  * Tree item for hierarchical display.
  * Used by SortableTree component.
  */
@@ -43,6 +52,7 @@ export interface TreeItem {
   // SFTP-specific fields for display
   sftpPath?: string | null;
   connectionId?: string | null;
+  connectionName?: string | null;
   // Artwork thumbnail
   artworkId?: string | null;
 }
@@ -146,10 +156,29 @@ export interface ItemWithFiles extends Item {
 }
 
 /**
+ * File counts by type for display in grid/tree views.
+ * Shows how many files of each type are attached to an item.
+ */
+export interface FileCounts {
+  /** Number of media files (video, audio) */
+  media: number;
+  /** Number of artwork files (images) */
+  artwork: number;
+  /** Number of subtitle files */
+  subtitles: number;
+}
+
+/**
  * Item with optional artwork thumbnail for list views.
  * Used by grid and tree views to display item thumbnails.
  */
 export interface ItemWithArtwork extends Item {
   /** First artwork file ID for thumbnail display */
   artworkId: string | null;
+  /** Connection name for badge display (optional) */
+  connectionName?: string | null;
+  /** Counts of attached files by type (media, artwork, subtitles) */
+  fileCounts: FileCounts;
+  /** Number of child items (subfolders) */
+  childCount: number;
 }

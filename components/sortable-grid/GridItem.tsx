@@ -1,6 +1,7 @@
 /**
- * Grid item card component for sortable grid view.
- * Displays item container with refined hover states and smooth transitions.
+ * Grid item card component with Feature222 aesthetic.
+ * Full background image with dark overlay, content overlaid at bottom.
+ * Displays name, description, file counts, and connection badges.
  */
 
 "use client";
@@ -8,7 +9,9 @@
 import React, { forwardRef, HTMLAttributes, useState } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
-import { Folder } from "lucide-react";
+import { Folder, Film, ImageIcon, FileText } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import type { FileCounts } from "@/lib/types";
 
 export interface GridItemProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -30,6 +33,14 @@ export interface GridItemProps extends Omit<
   showArtwork?: boolean;
   /** Whether to show description. Defaults to true. Hidden in edit mode. */
   showDescription?: boolean;
+  /** Whether to show file/child counts. Defaults to true. Hidden in edit mode. */
+  showCounts?: boolean;
+  /** Connection name for badge display. */
+  connectionName?: string | null;
+  /** File counts by type for display. */
+  fileCounts?: FileCounts;
+  /** Number of child items (subfolders). */
+  childCount?: number;
 }
 
 export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
@@ -47,6 +58,10 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       artworkId,
       showArtwork = true,
       showDescription = true,
+      showCounts = true,
+      connectionName,
+      fileCounts,
+      childCount,
       sftpPath: _sftpPath, // eslint-disable-line @typescript-eslint/no-unused-vars
       ...props
     },
@@ -55,99 +70,169 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
     const [imageError, setImageError] = useState(false);
     const shouldShowArtwork = showArtwork && artworkId && !imageError;
     const shouldShowDescription = showDescription && description;
+    const shouldShowCounts = showCounts;
+    const hasFiles =
+      fileCounts &&
+      (fileCounts.media > 0 ||
+        fileCounts.artwork > 0 ||
+        fileCounts.subtitles > 0);
+    const hasChildren = childCount !== undefined && childCount > 0;
+    const hasContent = hasFiles || hasChildren;
+
+    // Build accessible label
+    const ariaLabel = connectionName
+      ? `${name}, synced from ${connectionName}`
+      : name;
+
     return (
       <div
         ref={ref}
         data-id={String(id)}
         onClick={onClick}
+        role="button"
+        tabIndex={0}
+        aria-label={ariaLabel}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onClick?.();
+          }
+        }}
         className={cn(
-          "group relative flex cursor-pointer flex-col overflow-hidden",
-          "bg-card rounded-xl border",
-          "transition-all duration-200 ease-out",
-          "hover:bg-accent/40 hover:border-accent-foreground/20 hover:shadow-md",
-          "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+          // Base styles - Feature222 sizing
+          "group relative w-full cursor-pointer overflow-hidden rounded-lg",
+          "aspect-[2/3] sm:aspect-square md:aspect-[2/3]",
+          // Background and overlay
+          "bg-black/80 bg-cover bg-center bg-no-repeat",
+          // Overlay pseudo-element
+          "before:absolute before:inset-0 before:z-10 before:bg-black/50",
+          "before:transition-all before:duration-300",
+          "hover:before:bg-black/30",
+          // Focus styles for accessibility
+          "focus-visible:ring-primary focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+          // Drag states
           isDragging && "scale-[0.98] opacity-40",
           isOverlay && [
             "ring-primary/50 shadow-2xl ring-2 shadow-black/25",
-            "bg-card/95 backdrop-blur-sm",
             "scale-[1.03]",
-            "border-primary/30",
           ],
           className
         )}
-        style={style}
+        style={{
+          ...style,
+          backgroundImage: shouldShowArtwork
+            ? `url(/api/artwork/${artworkId})`
+            : undefined,
+        }}
         {...handleProps}
         {...props}
       >
-        {/* Artwork Thumbnail */}
-        {shouldShowArtwork ? (
-          <div className="relative h-24 w-full overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={`/api/artwork/${artworkId}`}
-              alt=""
-              className={cn(
-                "h-full w-full object-cover",
-                "transition-transform duration-300",
-                "group-hover:scale-105"
-              )}
-              onError={() => setImageError(true)}
-            />
-            <div
-              className={cn(
-                "absolute inset-0",
-                "from-card/60 bg-gradient-to-t via-transparent to-transparent"
-              )}
-            />
-          </div>
-        ) : (
+        {/* Hidden img for error detection - browser caches so minimal overhead */}
+        {showArtwork && artworkId && !imageError && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`/api/artwork/${artworkId}`}
+            alt=""
+            className="hidden"
+            onError={() => setImageError(true)}
+          />
+        )}
+
+        {/* Fallback gradient when no artwork */}
+        {!shouldShowArtwork && (
           <div
             className={cn(
-              "flex h-24 w-full items-center justify-center",
+              "absolute inset-0 z-0",
+              "flex items-center justify-center",
               "from-muted/80 to-muted bg-gradient-to-br"
             )}
           >
             <Folder
-              className={cn(
-                "size-10 transition-colors duration-200",
-                "text-muted-foreground/50",
-                "group-hover:text-primary/60"
-              )}
+              className="text-muted-foreground/50 size-16"
               strokeWidth={1.5}
             />
           </div>
         )}
 
-        {/* Item Name and Description */}
-        <div className="flex flex-col gap-0.5 p-3">
-          <div className="flex items-center gap-2">
-            <Folder
-              className={cn(
-                "size-4 shrink-0 transition-colors duration-200",
-                "text-muted-foreground/70",
-                "group-hover:text-primary/80"
-              )}
-              strokeWidth={1.75}
-            />
-            <span
-              className={cn(
-                "truncate text-sm font-medium",
-                "text-foreground/85 transition-colors duration-150",
-                "group-hover:text-foreground"
-              )}
-            >
-              {name}
-            </span>
-          </div>
+        {/* Connection badge - top left */}
+        {connectionName && (
+          <Badge
+            variant="secondary"
+            className="absolute top-3 left-3 z-20 text-xs"
+          >
+            {connectionName}
+          </Badge>
+        )}
+
+        {/* Content overlay - bottom */}
+        <div className="relative z-20 flex h-full flex-col justify-end p-4">
+          {/* Title */}
+          <h3 className="text-lg leading-tight font-semibold text-white drop-shadow-md md:text-xl">
+            {name}
+          </h3>
+
+          {/* Description */}
           {shouldShowDescription && (
-            <p
-              className={cn(
-                "text-muted-foreground truncate pl-6 text-xs",
-                "transition-colors duration-150"
-              )}
-            >
+            <p className="mt-1 line-clamp-2 text-sm text-white/80 drop-shadow-sm">
               {description}
             </p>
+          )}
+
+          {/* Stats row */}
+          {shouldShowCounts && (
+            <div className="mt-3" data-testid="grid-item-stats">
+              {hasContent ? (
+                <div className="flex flex-wrap items-center gap-3 text-sm text-white/90">
+                  {hasChildren && (
+                    <span
+                      className="flex items-center gap-1.5"
+                      data-testid="child-count"
+                    >
+                      <Folder className="size-4" />
+                      <span>{childCount}</span>
+                    </span>
+                  )}
+                  {hasFiles && (
+                    <>
+                      {fileCounts.media > 0 && (
+                        <span
+                          className="flex items-center gap-1.5"
+                          data-testid="media-count"
+                        >
+                          <Film className="size-4" />
+                          <span>{fileCounts.media}</span>
+                        </span>
+                      )}
+                      {fileCounts.artwork > 0 && (
+                        <span
+                          className="flex items-center gap-1.5"
+                          data-testid="artwork-count"
+                        >
+                          <ImageIcon className="size-4" />
+                          <span>{fileCounts.artwork}</span>
+                        </span>
+                      )}
+                      {fileCounts.subtitles > 0 && (
+                        <span
+                          className="flex items-center gap-1.5"
+                          data-testid="subtitle-count"
+                        >
+                          <FileText className="size-4" />
+                          <span>{fileCounts.subtitles}</span>
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : (
+                <span
+                  className="text-sm text-white/60"
+                  data-testid="empty-state"
+                >
+                  Empty
+                </span>
+              )}
+            </div>
           )}
         </div>
       </div>

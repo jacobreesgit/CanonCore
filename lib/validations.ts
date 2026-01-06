@@ -89,7 +89,7 @@ export const sftpConnectionSchema = z.object({
 });
 
 /**
- * Validates SFTP file/folder names.
+ * Validates SFTP file and item names.
  */
 export const sftpFileNameSchema = z
   .string()
