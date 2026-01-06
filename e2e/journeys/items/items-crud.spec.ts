@@ -20,6 +20,11 @@ test.describe("Items CRUD Journey", () => {
     await itemsPage.expectEmptyState();
   });
 
+  test("shows hero on root My Items page", async ({ itemsPage }) => {
+    await itemsPage.goto();
+    await itemsPage.expectHeroVisible("My Items");
+  });
+
   test("can create a new item", async ({ itemsPage }) => {
     await itemsPage.goto();
     await itemsPage.createItem("My First Folder");
