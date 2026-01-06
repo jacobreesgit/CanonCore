@@ -59,7 +59,7 @@ export function ConnectionFilter({
       }
       disabled={isDisabled}
     >
-      <SelectTrigger className="w-[200px]">
+      <SelectTrigger className="w-[200px]" suppressHydrationWarning>
         <div className="flex items-center gap-2">
           <Server className="text-muted-foreground size-4" />
           <SelectValue placeholder="All Items" />
