@@ -1,8 +1,7 @@
 /**
  * Client-side wrapper for item detail pages.
  * Manages shared state between ItemsToolbar and ItemsView.
- * Provides unified toolbar with Settings, Sync, and content actions.
- * Supports optional tabs when both files and children exist.
+ * Always shows hero banner followed by children grid/tree.
  */
 
 "use client";
@@ -11,9 +10,9 @@ import { useState, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ItemsToolbar } from "./items-toolbar";
 import { ItemsView } from "./items-view";
-import { ItemDetail } from "./item-detail";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Folder, Film } from "lucide-react";
+import { ItemHero } from "./item-hero";
+import { MediaOverlay } from "@/components/media/media-overlay";
+import { updatePlaybackPosition } from "@/lib/item-file-actions";
 import type { ItemWithArtwork, SerializedItemFile } from "@/lib/types";
 import { getItems } from "@/lib/item-actions";
 import { getItemsByConnection } from "@/lib/sftp-actions";
@@ -31,38 +30,50 @@ interface ItemDetailClientProps {
   childItems: ItemWithArtwork[];
   /** Parent connection info for context. */
   connection?: { id: string; name: string } | null;
-  /** Optional files for tabbed view. */
+  /** Optional files for display. */
   files?: {
     media: SerializedItemFile[];
     artwork: SerializedItemFile[];
     subtitles: SerializedItemFile[];
   };
+  /** Primary artwork ID for hero background. */
+  artworkId?: string | null;
 }
 
 /**
- * Client wrapper for item detail page with unified toolbar.
+ * Client wrapper for item detail page with hero banner and unified toolbar.
  * Manages edit mode and add item dialog state shared between toolbar and view.
- * When files are provided, shows tabs for navigating between media and subfolders.
+ * Displays: Toolbar -> Hero -> Children grid/tree.
  */
 export function ItemDetailClient({
   item,
   childItems: initialChildItems,
   connection,
   files,
+  artworkId,
 }: ItemDetailClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [childItems, setChildItems] = useState(initialChildItems);
   const [isEditing, setIsEditing] = useState(false);
   const [addItemOpen, setAddItemOpen] = useState(false);
+  const [playingFile, setPlayingFile] = useState<SerializedItemFile | null>(
+    null
+  );
 
   const isSftpConnected = Boolean(item.connectionId && item.sftpPath);
-  const hasFiles =
-    files &&
-    (files.media.length > 0 ||
-      files.artwork.length > 0 ||
-      files.subtitles.length > 0);
   const hasChildren = childItems.length > 0;
+  const hasMedia = files && files.media.length > 0;
+
+  // Check if any media has progress
+  const hasProgress =
+    hasMedia &&
+    files.media.some((f) => f.playbackPosition && f.playbackPosition > 0);
+
+  // Get primary media file for play button
+  const primaryMedia = hasMedia
+    ? files.media.find((f) => f.isPrimary) || files.media[0]
+    : null;
 
   /**
    * Refetches child items from server.
@@ -87,7 +98,26 @@ export function ItemDetailClient({
     router.refresh();
   }, [refetchItems, router]);
 
-  // Shared toolbar props to avoid duplication between tabbed and standard views
+  /**
+   * Handles play button click from hero.
+   */
+  const handlePlay = useCallback(() => {
+    if (primaryMedia) {
+      setPlayingFile(primaryMedia);
+    }
+  }, [primaryMedia]);
+
+  /**
+   * Handles playback position updates from media player.
+   */
+  const handlePositionUpdate = useCallback(
+    async (fileId: string, position: number, duration: number | null) => {
+      await updatePlaybackPosition(fileId, position, duration);
+    },
+    []
+  );
+
+  // Shared toolbar props
   const toolbarProps = {
     hasItems: hasChildren,
     isEditing,
@@ -103,52 +133,26 @@ export function ItemDetailClient({
     isSftpConnected,
   };
 
-  // Tabbed view when both files and children exist
-  if (hasFiles && hasChildren) {
-    return (
-      <div className={`flex flex-col gap-6 ${isPending ? "opacity-70" : ""}`}>
-        <ItemsToolbar {...toolbarProps} />
-
-        <Tabs defaultValue="files" className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="files" className="gap-2">
-              <Film className="size-4" />
-              Media ({files.media.length})
-            </TabsTrigger>
-            <TabsTrigger value="folders" className="gap-2">
-              <Folder className="size-4" />
-              Subfolders ({childItems.length})
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="files">
-            <ItemDetail item={item} files={files} />
-          </TabsContent>
-
-          <TabsContent value="folders">
-            <ItemsView
-              items={childItems}
-              parentId={item.id}
-              connectionId={item.connectionId}
-              hideToolbar
-              isEditing={isEditing}
-              onEditingChange={setIsEditing}
-              addItemOpen={addItemOpen}
-              onAddItemOpenChange={setAddItemOpen}
-              currentConnection={connection}
-              onSyncComplete={refetchItems}
-            />
-          </TabsContent>
-        </Tabs>
-      </div>
-    );
-  }
-
-  // Standard view without tabs (no files, or no children)
   return (
     <div className={`flex flex-col gap-6 ${isPending ? "opacity-70" : ""}`}>
+      {/* Toolbar - above hero */}
       <ItemsToolbar {...toolbarProps} />
 
+      {/* Hero banner */}
+      <ItemHero
+        name={item.name}
+        description={item.description}
+        artworkId={artworkId || files?.artwork[0]?.id}
+        hasMedia={hasMedia}
+        hasProgress={hasProgress}
+        mediaCount={files?.media.length ?? 0}
+        artworkCount={files?.artwork.length ?? 0}
+        subtitleCount={files?.subtitles.length ?? 0}
+        childCount={childItems.length}
+        onPlay={handlePlay}
+      />
+
+      {/* Children section - always shown (may be empty state) */}
       <ItemsView
         items={childItems}
         parentId={item.id}
@@ -161,6 +165,16 @@ export function ItemDetailClient({
         currentConnection={connection}
         onSyncComplete={refetchItems}
       />
+
+      {/* Media player overlay */}
+      {playingFile && files && (
+        <MediaOverlay
+          file={playingFile}
+          subtitles={files.subtitles}
+          onClose={() => setPlayingFile(null)}
+          onPositionUpdate={handlePositionUpdate}
+        />
+      )}
     </div>
   );
 }

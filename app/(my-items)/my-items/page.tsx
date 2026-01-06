@@ -42,6 +42,7 @@ export default async function MyItemsPage({ searchParams }: MyItemsPageProps) {
           initialItems={items}
           connections={connections}
           initialConnectionId={connectionId ?? null}
+          heroTitle="My Items"
         />
       </div>
     </>

@@ -57,27 +57,6 @@ interface ItemSettingsDialogProps {
 }
 
 /**
- * Formats bytes to human-readable file size.
- */
-function formatSize(bytes: number | null): string {
-  if (!bytes) return "";
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  if (bytes < 1024 * 1024 * 1024)
-    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
-}
-
-/**
- * Formats duration in seconds to human-readable time.
- */
-function formatDuration(seconds: number | null): string {
-  if (!seconds) return "";
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
-
-/**
  * Finds the primary file in an array, or returns the first file.
  */
 function findPrimaryFile(
@@ -175,7 +154,7 @@ export function ItemSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div
@@ -186,7 +165,7 @@ export function ItemSettingsDialog({
             >
               <Settings2 className="text-primary size-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <DialogTitle className="text-lg">Item Settings</DialogTitle>
               <DialogDescription className="text-sm">
                 Configure display preferences
@@ -195,7 +174,7 @@ export function ItemSettingsDialog({
           </div>
         </DialogHeader>
 
-        <div className="space-y-6 py-2">
+        <div className="min-w-0 space-y-6 py-2">
           {/* Name Section */}
           <div className="space-y-3">
             <Label htmlFor="item-name" className="text-sm font-medium">
@@ -313,24 +292,10 @@ export function ItemSettingsDialog({
                         <SelectValue placeholder="Select media file" />
                       )}
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="w-[var(--radix-select-trigger-width)]">
                       {files.media.map((file) => (
                         <SelectItem key={file.id} value={file.id}>
-                          <span className="flex items-center gap-2">
-                            <span className="truncate">{file.filename}</span>
-                            {(file.size || file.playbackDuration) && (
-                              <span className="text-muted-foreground text-xs">
-                                (
-                                {[
-                                  formatSize(file.size),
-                                  formatDuration(file.playbackDuration),
-                                ]
-                                  .filter(Boolean)
-                                  .join(", ")}
-                                )
-                              </span>
-                            )}
-                          </span>
+                          {file.filename}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -377,12 +342,12 @@ export function ItemSettingsDialog({
                           ) : (
                             <SelectValue placeholder="Select artwork">
                               {primaryArtwork && (
-                                <span className="flex items-center gap-2">
+                                <span className="flex min-w-0 items-center gap-2">
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img
                                     src={`/api/artwork/${primaryArtwork.id}`}
                                     alt=""
-                                    className="size-5 rounded object-cover"
+                                    className="size-5 shrink-0 rounded object-cover"
                                     onError={(e) => {
                                       e.currentTarget.style.display = "none";
                                     }}
@@ -395,23 +360,10 @@ export function ItemSettingsDialog({
                             </SelectValue>
                           )}
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="w-[var(--radix-select-trigger-width)]">
                           {files.artwork.map((file) => (
                             <SelectItem key={file.id} value={file.id}>
-                              <span className="flex items-center gap-2">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={`/api/artwork/${file.id}`}
-                                  alt=""
-                                  className="size-6 rounded object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = "none";
-                                  }}
-                                />
-                                <span className="truncate">
-                                  {file.filename}
-                                </span>
-                              </span>
+                              {file.filename}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -457,7 +409,7 @@ export function ItemSettingsDialog({
                         <SelectValue placeholder="Select subtitle" />
                       )}
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="w-[var(--radix-select-trigger-width)]">
                       {files.subtitles.map((file) => (
                         <SelectItem key={file.id} value={file.id}>
                           {file.filename}

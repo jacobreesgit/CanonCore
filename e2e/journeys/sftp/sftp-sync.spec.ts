@@ -82,12 +82,13 @@ describeOrSkip("SFTP Sync Operations", () => {
       treeView.getByRole("listitem").filter({ hasText: "sync-folder-2" })
     ).toBeVisible();
 
-    // Click folder to verify file was synced
+    // Click folder to verify file was synced (hero shows media count)
     await treeView
       .getByRole("listitem")
       .filter({ hasText: "sync-folder-1" })
       .click();
-    await expect(page.getByText("test-file.mp4")).toBeVisible();
+    await expect(page.getByTestId("item-hero")).toBeVisible();
+    await expect(page.getByText("1 media file")).toBeVisible();
   });
 
   test("sync shows loading state", async ({ page, sftpConfig }) => {

@@ -83,17 +83,18 @@ describeOrSkip("SFTP to Web Operations", () => {
       treeView.getByRole("listitem").filter({ hasText: "RemoteFolder" })
     ).toBeVisible({ timeout: 10000 });
 
-    // Click folder to see attached files
+    // Click folder to see hero with file count
     await treeView
       .getByRole("listitem")
       .filter({ hasText: "RemoteFolder" })
       .click();
 
-    // File appears in item detail as media file
+    // Hero shows folder name and media file count
+    await expect(page.getByTestId("item-hero")).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
       "RemoteFolder"
     );
-    await expect(page.getByText("remote-file.mp4")).toBeVisible();
+    await expect(page.getByText("1 media file")).toBeVisible();
   });
 
   test("folder created on SFTP appears in web after sync", async ({
@@ -166,9 +167,10 @@ describeOrSkip("SFTP to Web Operations", () => {
       .filter({ hasText: "DeleteFolder" });
     await expect(folderItem).toBeVisible({ timeout: 10000 });
 
-    // Click folder to see attached file
+    // Click folder to see hero with file count
     await folderItem.click();
-    await expect(page.getByText("file-to-delete.mp4")).toBeVisible();
+    await expect(page.getByTestId("item-hero")).toBeVisible();
+    await expect(page.getByText("1 media file")).toBeVisible();
 
     // Delete file directly on SFTP
     await deleteSftpTestPath(`${folderPath}/file-to-delete.mp4`, sftpConfig);
@@ -184,9 +186,10 @@ describeOrSkip("SFTP to Web Operations", () => {
       timeout: 30000,
     });
 
-    // Click folder again - file should be gone
+    // Click folder again - hero should show no media files
     await folderItem.click();
-    await expect(page.getByText("file-to-delete.mp4")).not.toBeVisible({
+    await expect(page.getByTestId("item-hero")).toBeVisible();
+    await expect(page.getByText(/media file/)).not.toBeVisible({
       timeout: 5000,
     });
   });
@@ -246,14 +249,15 @@ describeOrSkip("SFTP to Web Operations", () => {
       .filter({ hasText: "child-folder" });
     await expect(childFolder).toBeVisible({ timeout: 10000 });
 
-    // Navigate to child folder - should show item detail with file
+    // Navigate to child folder - should show hero with file count
     await childFolder.click();
     await page.waitForLoadState("networkidle");
 
-    // Verify nested file appears in item detail (as ItemFile)
+    // Verify hero shows folder name and media file count
+    await expect(page.getByTestId("item-hero")).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
       "child-folder"
     );
-    await expect(page.getByText("nested-file.mp4")).toBeVisible();
+    await expect(page.getByText("1 media file")).toBeVisible();
   });
 });
