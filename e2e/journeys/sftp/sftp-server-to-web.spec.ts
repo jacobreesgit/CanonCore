@@ -67,8 +67,8 @@ describeOrSkip("SFTP to Web Operations", () => {
     // With single connection, filter auto-selects it
     await expect(page.getByRole("combobox")).toContainText("Test SFTP Server");
 
-    // Click Sync All button
-    const syncButton = page.getByRole("button", { name: /^sync$/i });
+    // Click Sync Connection button (single connection auto-selected)
+    const syncButton = page.getByRole("button", { name: /sync connection/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
 
@@ -110,8 +110,8 @@ describeOrSkip("SFTP to Web Operations", () => {
     // With single connection, filter auto-selects it
     await expect(page.getByRole("combobox")).toContainText("Test SFTP Server");
 
-    // Click Sync All button
-    const syncButton = page.getByRole("button", { name: /^sync$/i });
+    // Click Sync Connection button (single connection auto-selected)
+    const syncButton = page.getByRole("button", { name: /sync connection/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
 
@@ -147,8 +147,8 @@ describeOrSkip("SFTP to Web Operations", () => {
     // With single connection, filter auto-selects it
     await expect(page.getByRole("combobox")).toContainText("Test SFTP Server");
 
-    // Click Sync All button
-    let syncButton = page.getByRole("button", { name: /^sync$/i });
+    // Click Sync Connection button (single connection auto-selected)
+    let syncButton = page.getByRole("button", { name: /sync connection/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
 
@@ -175,7 +175,7 @@ describeOrSkip("SFTP to Web Operations", () => {
 
     // Go back and sync again
     await page.goBack();
-    syncButton = page.getByRole("button", { name: /^sync$/i });
+    syncButton = page.getByRole("button", { name: /sync connection/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
 
@@ -214,8 +214,8 @@ describeOrSkip("SFTP to Web Operations", () => {
     // With single connection, filter auto-selects it
     await expect(page.getByRole("combobox")).toContainText("Test SFTP Server");
 
-    // Wait for Sync All button to be ready, then click
-    const syncButton = page.getByRole("button", { name: /^sync$/i });
+    // Wait for Sync Connection button to be ready, then click
+    const syncButton = page.getByRole("button", { name: /sync connection/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
 

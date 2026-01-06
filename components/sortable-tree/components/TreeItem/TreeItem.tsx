@@ -51,6 +51,8 @@ export interface TreeItemProps extends Omit<
   showDescription?: boolean;
   /** Connection name for badge display. */
   connectionName?: string | null;
+  /** Whether to show connection badge. Defaults to true. */
+  showConnectionBadge?: boolean;
 }
 
 export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
@@ -80,6 +82,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       description,
       showDescription = true,
       connectionName,
+      showConnectionBadge = true,
       sftpPath: _sftpPath, // eslint-disable-line @typescript-eslint/no-unused-vars
       ...props
     },
@@ -215,7 +218,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                 >
                   {value}
                 </span>
-                {connectionName && (
+                {connectionName && showConnectionBadge && (
                   <span
                     className={cn(
                       "inline-flex flex-shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5",

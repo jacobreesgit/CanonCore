@@ -74,8 +74,8 @@ describeOrSkip("Media Playback", () => {
     await page.goto("/my-items");
     await expect(page.getByRole("combobox")).toContainText("Media Server");
 
-    // Wait for Sync All button and click (single connection, filter auto-selects)
-    const syncButton = page.getByRole("button", { name: /^sync$/i });
+    // Wait for Sync Connection button and click (single connection, filter auto-selects)
+    const syncButton = page.getByRole("button", { name: /sync connection/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
 
@@ -117,7 +117,7 @@ describeOrSkip("Media Playback", () => {
     // Navigate to my-items - with single connection, filter auto-selects it
     await page.goto("/my-items");
     await expect(page.getByRole("combobox")).toContainText("Media Server");
-    const syncButton = page.getByRole("button", { name: /^sync$/i });
+    const syncButton = page.getByRole("button", { name: /sync connection/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
     await expect(page.getByRole("button", { name: /synced/i })).toBeVisible({
@@ -154,7 +154,7 @@ describeOrSkip("Media Playback", () => {
     // Navigate to my-items - with single connection, filter auto-selects it
     await page.goto("/my-items");
     await expect(page.getByRole("combobox")).toContainText("Media Server");
-    const syncButton = page.getByRole("button", { name: /^sync$/i });
+    const syncButton = page.getByRole("button", { name: /sync connection/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
     await expect(page.getByRole("button", { name: /synced/i })).toBeVisible({
@@ -188,7 +188,7 @@ describeOrSkip("Media Playback", () => {
     // Navigate to my-items - with single connection, filter auto-selects it
     await page.goto("/my-items");
     await expect(page.getByRole("combobox")).toContainText("Media Server");
-    const syncButton = page.getByRole("button", { name: /^sync$/i });
+    const syncButton = page.getByRole("button", { name: /sync connection/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
     await expect(page.getByRole("button", { name: /synced/i })).toBeVisible({
@@ -223,7 +223,7 @@ describeOrSkip("Media Playback", () => {
     // Navigate to my-items - with single connection, filter auto-selects it
     await page.goto("/my-items");
     await expect(page.getByRole("combobox")).toContainText("Media Server");
-    const syncButton = page.getByRole("button", { name: /^sync$/i });
+    const syncButton = page.getByRole("button", { name: /sync connection/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
     await expect(page.getByRole("button", { name: /synced/i })).toBeVisible({
@@ -261,7 +261,7 @@ describeOrSkip("Media Playback", () => {
     // Navigate to my-items - with single connection, filter auto-selects it
     await page.goto("/my-items");
     await expect(page.getByRole("combobox")).toContainText("Media Server");
-    const syncButton = page.getByRole("button", { name: /^sync$/i });
+    const syncButton = page.getByRole("button", { name: /sync connection/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
     await expect(page.getByRole("button", { name: /synced/i })).toBeVisible({
@@ -297,7 +297,7 @@ describeOrSkip("Media Playback", () => {
     // Navigate to my-items - with single connection, filter auto-selects it
     await page.goto("/my-items");
     await expect(page.getByRole("combobox")).toContainText("Media Server");
-    const syncButton = page.getByRole("button", { name: /^sync$/i });
+    const syncButton = page.getByRole("button", { name: /sync connection/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
     await expect(page.getByRole("button", { name: /synced/i })).toBeVisible({
@@ -330,7 +330,7 @@ describeOrSkip("Media Playback", () => {
     // Navigate to my-items - with single connection, filter auto-selects it
     await page.goto("/my-items");
     await expect(page.getByRole("combobox")).toContainText("Media Server");
-    const syncButton = page.getByRole("button", { name: /^sync$/i });
+    const syncButton = page.getByRole("button", { name: /sync connection/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
     await expect(page.getByRole("button", { name: /synced/i })).toBeVisible({
