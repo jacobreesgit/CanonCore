@@ -87,6 +87,8 @@ interface SortableTreeProps {
   indicator?: boolean;
   removable?: boolean;
   maxDepth?: number;
+  /** Whether to show connection badges on items. Defaults to true. Not used in edit mode. */
+  showConnectionBadge?: boolean;
 }
 
 export function SortableTree({
@@ -101,6 +103,7 @@ export function SortableTree({
   indicator = false,
   removable = true,
   maxDepth = 10,
+  showConnectionBadge: _showConnectionBadge, // eslint-disable-line @typescript-eslint/no-unused-vars
 }: SortableTreeProps) {
   const [items, setItems] = useState(() => defaultItems);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);

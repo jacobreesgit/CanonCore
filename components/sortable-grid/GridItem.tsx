@@ -37,6 +37,8 @@ export interface GridItemProps extends Omit<
   showCounts?: boolean;
   /** Connection name for badge display. */
   connectionName?: string | null;
+  /** Whether to show connection badge. Defaults to true. */
+  showConnectionBadge?: boolean;
   /** File counts by type for display. */
   fileCounts?: FileCounts;
   /** Number of child items (subfolders). */
@@ -60,6 +62,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       showDescription = true,
       showCounts = true,
       connectionName,
+      showConnectionBadge = true,
       fileCounts,
       childCount,
       sftpPath: _sftpPath, // eslint-disable-line @typescript-eslint/no-unused-vars
@@ -155,7 +158,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
         )}
 
         {/* Connection badge - top left */}
-        {connectionName && (
+        {connectionName && showConnectionBadge && (
           <Badge
             variant="secondary"
             className="absolute top-3 left-3 z-20 text-xs"

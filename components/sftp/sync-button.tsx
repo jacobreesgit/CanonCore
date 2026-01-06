@@ -14,6 +14,8 @@ import { RefreshCw, Check, AlertTriangle } from "lucide-react";
 
 interface SyncButtonProps {
   connectionId: string;
+  /** Custom button label. Defaults to "Sync". */
+  label?: string;
   variant?: "default" | "outline" | "ghost";
   size?: "default" | "sm" | "lg" | "icon";
   className?: string;
@@ -31,6 +33,7 @@ interface SyncButtonProps {
  */
 export function SyncButton({
   connectionId,
+  label,
   variant = "outline",
   size = "default",
   className,
@@ -125,7 +128,7 @@ export function SyncButton({
               ? "Syncing..."
               : status === "success"
                 ? "Synced"
-                : "Sync"}
+                : (label ?? "Sync")}
           </span>
         )}
       </span>

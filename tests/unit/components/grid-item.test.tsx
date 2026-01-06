@@ -102,6 +102,37 @@ describe("GridItem", () => {
     });
   });
 
+  describe("showConnectionBadge prop", () => {
+    it("should show connection badge by default when connectionName provided", () => {
+      render(<GridItem id="1" name="Test Item" connectionName="Server" />);
+      expect(screen.getByText("Server")).toBeInTheDocument();
+    });
+
+    it("should show connection badge when showConnectionBadge is true", () => {
+      render(
+        <GridItem
+          id="1"
+          name="Test Item"
+          connectionName="Server"
+          showConnectionBadge
+        />
+      );
+      expect(screen.getByText("Server")).toBeInTheDocument();
+    });
+
+    it("should hide connection badge when showConnectionBadge is false", () => {
+      render(
+        <GridItem
+          id="1"
+          name="Test Item"
+          connectionName="Server"
+          showConnectionBadge={false}
+        />
+      );
+      expect(screen.queryByText("Server")).not.toBeInTheDocument();
+    });
+  });
+
   describe("file counts", () => {
     it("should render media count when fileCounts.media > 0", () => {
       render(
