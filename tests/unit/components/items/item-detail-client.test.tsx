@@ -4,7 +4,6 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { ItemDetailClient } from "@/components/items/item-detail-client";
 
 // Mock next/navigation
@@ -28,6 +27,7 @@ vi.mock("@/lib/item-file-actions", () => ({
     success: true,
     data: { media: [], artwork: [], subtitles: [] },
   }),
+  updatePlaybackPosition: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 // Mock child components to simplify tests
@@ -71,10 +71,16 @@ vi.mock("@/components/items/items-view", () => ({
   ),
 }));
 
-vi.mock("@/components/items/item-detail", () => ({
-  ItemDetail: ({ item }: { item: { id: string; name: string } }) => (
-    <div data-testid="item-detail">{item.name} detail</div>
+vi.mock("@/components/items/item-hero", () => ({
+  ItemHero: ({ name, hasMedia }: { name: string; hasMedia?: boolean }) => (
+    <div data-testid="item-hero" data-name={name} data-has-media={hasMedia}>
+      {name} hero
+    </div>
   ),
+}));
+
+vi.mock("@/components/media/media-overlay", () => ({
+  MediaOverlay: () => <div data-testid="media-overlay">Media overlay</div>,
 }));
 
 // Mock sonner toast
@@ -119,17 +125,23 @@ describe("ItemDetailClient", () => {
   });
 
   describe("rendering", () => {
-    it("should render toolbar and items view without crashing", () => {
+    it("should render hero, toolbar, and items view", () => {
       render(<ItemDetailClient item={defaultItem} childItems={[]} />);
 
+      expect(screen.getByTestId("item-hero")).toBeInTheDocument();
       expect(screen.getByTestId("items-toolbar")).toBeInTheDocument();
       expect(screen.getByTestId("items-view")).toBeInTheDocument();
     });
 
-    it("should pass item to toolbar", () => {
+    it("should always render hero regardless of files/children", () => {
       render(<ItemDetailClient item={defaultItem} childItems={[]} />);
+      expect(screen.getByTestId("item-hero")).toBeInTheDocument();
+    });
 
-      expect(screen.getByTestId("toolbar-item-name")).toHaveTextContent(
+    it("should pass item name to hero", () => {
+      render(<ItemDetailClient item={defaultItem} childItems={[]} />);
+      expect(screen.getByTestId("item-hero")).toHaveAttribute(
+        "data-name",
         "Movies"
       );
     });
@@ -163,30 +175,7 @@ describe("ItemDetailClient", () => {
     });
   });
 
-  describe("SFTP connection state", () => {
-    it("should not show SFTP connected when connectionId is null", () => {
-      render(<ItemDetailClient item={defaultItem} childItems={[]} />);
-
-      // isSftpConnected should be false (no connectionId + sftpPath)
-      const toolbar = screen.getByTestId("items-toolbar");
-      expect(toolbar).toBeInTheDocument();
-    });
-
-    it("should detect SFTP connected when both connectionId and sftpPath exist", () => {
-      const sftpItem = {
-        ...defaultItem,
-        connectionId: "conn-1",
-        sftpPath: "/media/movies",
-      };
-
-      render(<ItemDetailClient item={sftpItem} childItems={[]} />);
-
-      // Component should render without error
-      expect(screen.getByTestId("items-toolbar")).toBeInTheDocument();
-    });
-  });
-
-  describe("tabbed view", () => {
+  describe("hero with files", () => {
     const filesWithMedia = {
       media: [
         {
@@ -209,32 +198,7 @@ describe("ItemDetailClient", () => {
       subtitles: [],
     };
 
-    it("should show tabs when both files and children exist", () => {
-      render(
-        <ItemDetailClient
-          item={defaultItem}
-          childItems={defaultChildItems}
-          files={filesWithMedia}
-        />
-      );
-
-      // Should have tabs for Media and Subfolders
-      expect(screen.getByRole("tablist")).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /media/i })).toBeInTheDocument();
-      expect(
-        screen.getByRole("tab", { name: /subfolders/i })
-      ).toBeInTheDocument();
-    });
-
-    it("should not show tabs when only children exist (no files)", () => {
-      render(
-        <ItemDetailClient item={defaultItem} childItems={defaultChildItems} />
-      );
-
-      expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
-    });
-
-    it("should not show tabs when only files exist (no children)", () => {
+    it("should pass hasMedia=true to hero when media files exist", () => {
       render(
         <ItemDetailClient
           item={defaultItem}
@@ -243,13 +207,27 @@ describe("ItemDetailClient", () => {
         />
       );
 
-      // No tabs because there are no children to show in subfolder tab
-      expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+      expect(screen.getByTestId("item-hero")).toHaveAttribute(
+        "data-has-media",
+        "true"
+      );
     });
 
-    it("should switch between tabs", async () => {
-      const user = userEvent.setup();
+    it("should show hero without file cards (MediaOverlay only when playing)", () => {
+      render(
+        <ItemDetailClient
+          item={defaultItem}
+          childItems={[]}
+          files={filesWithMedia}
+        />
+      );
 
+      expect(screen.getByTestId("item-hero")).toBeInTheDocument();
+      // No file cards - MediaOverlay only appears when playing
+      expect(screen.queryByTestId("media-overlay")).not.toBeInTheDocument();
+    });
+
+    it("should NOT show tabs - always flat layout", () => {
       render(
         <ItemDetailClient
           item={defaultItem}
@@ -258,14 +236,23 @@ describe("ItemDetailClient", () => {
         />
       );
 
-      // Files tab is default, should show ItemDetail
-      expect(screen.getByTestId("item-detail")).toBeInTheDocument();
+      // Tabs should never appear
+      expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    });
+  });
 
-      // Click Subfolders tab
-      await user.click(screen.getByRole("tab", { name: /subfolders/i }));
+  describe("SFTP connection state", () => {
+    it("should detect SFTP connected when both connectionId and sftpPath exist", () => {
+      const sftpItem = {
+        ...defaultItem,
+        connectionId: "conn-1",
+        sftpPath: "/media/movies",
+      };
 
-      // Should now show ItemsView
-      expect(screen.getByTestId("items-view")).toBeInTheDocument();
+      render(<ItemDetailClient item={sftpItem} childItems={[]} />);
+
+      // Component should render without error
+      expect(screen.getByTestId("items-toolbar")).toBeInTheDocument();
     });
   });
 
@@ -283,6 +270,20 @@ describe("ItemDetailClient", () => {
 
       // ItemsView should receive the connection context
       expect(screen.getByTestId("items-view")).toBeInTheDocument();
+    });
+  });
+
+  describe("render order", () => {
+    it("should render toolbar before hero", () => {
+      render(<ItemDetailClient item={defaultItem} childItems={[]} />);
+
+      const toolbar = screen.getByTestId("items-toolbar");
+      const hero = screen.getByTestId("item-hero");
+
+      // Toolbar should come before hero in DOM order
+      expect(toolbar.compareDocumentPosition(hero)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING
+      );
     });
   });
 });

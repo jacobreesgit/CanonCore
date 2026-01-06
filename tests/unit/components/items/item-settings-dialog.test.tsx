@@ -189,7 +189,7 @@ describe("ItemSettingsDialog", () => {
   });
 
   describe("Primary Artwork Select", () => {
-    it("should show artwork thumbnails in select options", async () => {
+    it("should show artwork filenames in select options", async () => {
       const user = userEvent.setup();
       const files = {
         media: [],
@@ -216,15 +216,11 @@ describe("ItemSettingsDialog", () => {
       const select = screen.getByRole("combobox", { name: /primary artwork/i });
       await user.click(select);
 
-      // Options should contain images with correct src
+      // Options should show filenames
       const options = screen.getAllByRole("option");
       expect(options).toHaveLength(2);
-      const img = options[0].querySelector("img");
-      expect(img).not.toBeNull();
-      expect(img).toHaveAttribute(
-        "src",
-        expect.stringContaining("/api/artwork/a1")
-      );
+      expect(options[0]).toHaveTextContent("poster.jpg");
+      expect(options[1]).toHaveTextContent("fanart.jpg");
     });
   });
 

@@ -31,6 +31,7 @@ export class ItemsPage {
   readonly treeView: Locator;
   readonly gridView: Locator;
   readonly breadcrumbHome: Locator;
+  readonly heroSection: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -49,6 +50,7 @@ export class ItemsPage {
     this.breadcrumbHome = page
       .getByLabel("Breadcrumb")
       .getByRole("link", { name: /my items/i });
+    this.heroSection = page.getByTestId("item-hero");
   }
 
   async goto() {
@@ -172,6 +174,20 @@ export class ItemsPage {
 
   async expectEmptyState() {
     await expect(this.emptyState).toBeVisible();
+  }
+
+  /**
+   * Expects the hero section to be visible with optional title check.
+   *
+   * @param title - Optional title to verify in the hero heading
+   */
+  async expectHeroVisible(title?: string): Promise<void> {
+    await expect(this.heroSection).toBeVisible({ timeout: 10000 });
+    if (title) {
+      await expect(
+        this.heroSection.getByRole("heading", { name: title })
+      ).toBeVisible();
+    }
   }
 
   getItemLocator(name: string): Locator {

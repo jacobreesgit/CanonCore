@@ -20,6 +20,8 @@ interface FilteredItemsViewProps {
   connections: Array<{ id: string; name: string }>;
   /** Initial connection filter from server-side searchParams */
   initialConnectionId: string | null;
+  /** Hero title (displays ItemHero after toolbar when provided). */
+  heroTitle?: string;
 }
 
 /**
@@ -29,6 +31,7 @@ function FilteredItemsViewInner({
   initialItems,
   connections,
   initialConnectionId,
+  heroTitle,
 }: FilteredItemsViewProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -88,6 +91,14 @@ function FilteredItemsViewInner({
     [router, pathname, searchParams]
   );
 
+  // Get connection name for hero when filtered
+  const activeConnection = connectionId
+    ? connections.find((c) => c.id === connectionId)
+    : null;
+  const effectiveHeroTitle = activeConnection
+    ? activeConnection.name
+    : heroTitle;
+
   return (
     <ItemsView
       items={items}
@@ -98,6 +109,8 @@ function FilteredItemsViewInner({
       onConnectionChange={handleConnectionChange}
       isFilterPending={isPending}
       onSyncComplete={refetchItems}
+      heroTitle={effectiveHeroTitle}
+      heroItemCount={items.length}
     />
   );
 }

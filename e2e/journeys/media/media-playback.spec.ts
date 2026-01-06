@@ -54,7 +54,7 @@ describeOrSkip("Media Playback", () => {
     await expect(page).toHaveURL("/my-items/connections", { timeout: 10000 });
   });
 
-  test("syncs and displays media files in item detail", async ({
+  test("syncs and displays media files in hero stats", async ({
     page,
     connectionsPage,
     sftpConfig,
@@ -93,14 +93,14 @@ describeOrSkip("Media Playback", () => {
     // Click on Movie item to see item detail
     await treeView.getByRole("listitem").filter({ hasText: "Movie" }).click();
 
-    // Verify item detail shows files
+    // Verify hero shows file stats
     await mediaPage.expectHeroWithTitle("Movie");
-    await mediaPage.expectMediaFile("video.mp4");
-    await mediaPage.expectSubtitleFile("subtitles.srt");
-    await mediaPage.expectArtworkCount(1);
+    await mediaPage.expectHeroMediaCount(1);
+    await mediaPage.expectHeroSubtitleCount(1);
+    await mediaPage.expectHeroArtworkCount(1);
   });
 
-  test("shows play button for media files", async ({
+  test("shows play button in hero for media files", async ({
     page,
     connectionsPage,
     sftpConfig,
@@ -131,13 +131,13 @@ describeOrSkip("Media Playback", () => {
     ).toBeVisible({ timeout: 10000 });
     await treeView.getByRole("listitem").filter({ hasText: "Episode" }).click();
 
-    // Verify play button exists
+    // Verify play button exists in hero
     await mediaPage.expectHeroWithTitle("Episode");
-    const playButton = page.getByRole("button", { name: /^play$/i });
+    const playButton = page.getByTestId("item-hero-play");
     await expect(playButton).toBeVisible();
   });
 
-  test("opens media overlay when clicking play", async ({
+  test("opens media overlay when clicking hero play", async ({
     page,
     connectionsPage,
     sftpConfig,
@@ -168,8 +168,8 @@ describeOrSkip("Media Playback", () => {
     ).toBeVisible({ timeout: 10000 });
     await treeView.getByRole("listitem").filter({ hasText: "Show" }).click();
 
-    // Click play button
-    await mediaPage.clickPlayButton("episode.mkv");
+    // Click hero play button
+    await mediaPage.clickPlayButton();
 
     // Verify media overlay opens
     await mediaPage.expectMediaOverlayVisible();
@@ -202,51 +202,12 @@ describeOrSkip("Media Playback", () => {
     ).toBeVisible({ timeout: 10000 });
     await treeView.getByRole("listitem").filter({ hasText: "Content" }).click();
 
-    await mediaPage.clickPlayButton("content.mp4");
+    await mediaPage.clickPlayButton();
     await mediaPage.expectMediaOverlayVisible();
 
     // Close overlay
     await mediaPage.closeMediaOverlay();
     await mediaPage.expectMediaOverlayNotVisible();
-  });
-
-  test("shows download button for files", async ({
-    page,
-    connectionsPage,
-    sftpConfig,
-  }) => {
-    // Create a folder with a video file
-    const folderPath = `${sftpConfig.basePath}/Downloads`;
-    await createSftpTestDir(folderPath, sftpConfig);
-    await createSftpTestFile(`${folderPath}/download.mp4`, "video", sftpConfig);
-
-    // Navigate to my-items - with single connection, filter auto-selects it
-    await page.goto("/my-items");
-    await expect(page.getByRole("combobox")).toContainText("Media Server");
-    const syncButton = page.getByRole("button", { name: /sync connection/i });
-    await expect(syncButton).toBeVisible({ timeout: 10000 });
-    await syncButton.click();
-    await expect(page.getByRole("button", { name: /synced/i })).toBeVisible({
-      timeout: 30000,
-    });
-
-    // Navigate to folder
-    const treeView = page.getByTestId("items-tree-view");
-    await expect(
-      treeView.getByRole("listitem").filter({ hasText: "Downloads" })
-    ).toBeVisible({ timeout: 10000 });
-    await treeView
-      .getByRole("listitem")
-      .filter({ hasText: "Downloads" })
-      .click();
-
-    // Verify download link exists and has correct href pattern
-    const downloadLink = mediaPage.getDownloadLink("download.mp4");
-    await expect(downloadLink).toBeVisible();
-    await expect(downloadLink).toHaveAttribute(
-      "href",
-      /\/api\/sftp\/download\/file\//
-    );
   });
 
   test("shows empty state when no files attached", async ({
@@ -282,7 +243,7 @@ describeOrSkip("Media Playback", () => {
     await expect(page.getByText(/no items yet/i)).toBeVisible();
   });
 
-  test("displays artwork as thumbnails", async ({
+  test("displays artwork count in hero stats", async ({
     page,
     connectionsPage,
     sftpConfig,
@@ -311,11 +272,11 @@ describeOrSkip("Media Playback", () => {
     ).toBeVisible({ timeout: 10000 });
     await treeView.getByRole("listitem").filter({ hasText: "Gallery" }).click();
 
-    // Verify artwork gallery section exists with images
-    await mediaPage.expectArtworkCount(2);
+    // Verify hero shows artwork count
+    await mediaPage.expectHeroArtworkCount(2);
   });
 
-  test("shows tabs when item has both files and child items", async ({
+  test("shows hero with stats and child items below", async ({
     page,
     connectionsPage,
     sftpConfig,
@@ -344,15 +305,13 @@ describeOrSkip("Media Playback", () => {
     ).toBeVisible({ timeout: 10000 });
     await treeView.getByRole("listitem").filter({ hasText: "Mixed" }).click();
 
-    // Verify tabs are visible
-    await mediaPage.expectTabsVisible();
+    // Verify hero is visible with stats
+    await mediaPage.expectHeroVisible();
+    await mediaPage.expectHeroWithTitle("Mixed");
+    await mediaPage.expectHeroMediaCount(1);
+    await mediaPage.expectHeroItemCount(1);
 
-    // Click media tab and verify files
-    await mediaPage.clickMediaTab();
-    await mediaPage.expectMediaFile("video.mp4");
-
-    // Click subfolders tab and verify subfolder appears in tree
-    await mediaPage.clickSubfoldersTab();
+    // Verify subfolder appears in items view below
     await expect(
       page.getByTestId("items-tree-view").getByText("Subfolder")
     ).toBeVisible();
