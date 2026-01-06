@@ -30,6 +30,7 @@ export function itemsToTree(items: ItemInput[]): TreeItem[] {
       // Include SFTP fields for display
       sftpPath: item.sftpPath,
       connectionId: item.connectionId,
+      connectionName: "connectionName" in item ? item.connectionName : null,
       // Include artwork if available
       artworkId: "artworkId" in item ? item.artworkId : null,
     });

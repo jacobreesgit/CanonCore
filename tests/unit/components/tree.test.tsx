@@ -60,13 +60,13 @@ describe("Tree", () => {
     expect(screen.getByText("Child")).toBeInTheDocument();
 
     const collapseButton = screen.getByRole("button", {
-      name: "Collapse folder",
+      name: "Collapse item",
     });
     fireEvent.click(collapseButton);
 
     expect(screen.queryByText("Child")).not.toBeInTheDocument();
 
-    const expandButton = screen.getByRole("button", { name: "Expand folder" });
+    const expandButton = screen.getByRole("button", { name: "Expand item" });
     fireEvent.click(expandButton);
 
     expect(screen.getByText("Child")).toBeInTheDocument();

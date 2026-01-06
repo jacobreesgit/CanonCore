@@ -110,6 +110,35 @@ export async function getItemsByConnection(
       return { success: false, error: "Connection not found" };
     }
 
+    // Fetch all items for this connection for descendant count calculation
+    const allConnectionItems = await prisma.item.findMany({
+      where: { userId, connectionId },
+      select: { id: true, parentId: true },
+    });
+
+    // Build descendant count map using recursive calculation
+    const childrenMap = new Map<string | null, string[]>();
+    for (const item of allConnectionItems) {
+      const siblings = childrenMap.get(item.parentId) ?? [];
+      siblings.push(item.id);
+      childrenMap.set(item.parentId, siblings);
+    }
+
+    const descendantCountCache = new Map<string, number>();
+    function countDescendants(itemId: string): number {
+      if (descendantCountCache.has(itemId)) {
+        return descendantCountCache.get(itemId)!;
+      }
+      const children = childrenMap.get(itemId) ?? [];
+      let count = children.length;
+      for (const childId of children) {
+        count += countDescendants(childId);
+      }
+      descendantCountCache.set(itemId, count);
+      return count;
+    }
+
+    // Fetch items at current level with files
     const items = await prisma.item.findMany({
       where: {
         userId,
@@ -119,30 +148,46 @@ export async function getItemsByConnection(
       orderBy: { order: "asc" },
       include: {
         files: {
-          where: { fileType: "ARTWORK" },
-          take: 1,
-          orderBy: { filename: "asc" },
-          select: { id: true },
+          select: { id: true, fileType: true, isPrimary: true },
         },
       },
     });
 
-    // Transform to ItemWithArtwork
-    const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => ({
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      parentId: item.parentId,
-      order: item.order,
-      depth: item.depth,
-      userId: item.userId,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
-      sftpPath: item.sftpPath,
-      sftpModifiedAt: item.sftpModifiedAt,
-      connectionId: item.connectionId,
-      artworkId: item.files[0]?.id ?? null,
-    }));
+    // Transform to ItemWithArtwork with file counts and descendant count
+    const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => {
+      // Find primary artwork, or first artwork if no primary
+      const primaryArtwork = item.files.find(
+        (f) => f.fileType === "ARTWORK" && f.isPrimary
+      );
+      const firstArtwork = item.files.find((f) => f.fileType === "ARTWORK");
+      const artworkId = primaryArtwork?.id ?? firstArtwork?.id ?? null;
+
+      // Calculate file counts by type
+      const fileCounts = {
+        media: item.files.filter((f) => f.fileType === "MEDIA").length,
+        artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
+        subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
+      };
+
+      return {
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        parentId: item.parentId,
+        order: item.order,
+        depth: item.depth,
+        userId: item.userId,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        sftpPath: item.sftpPath,
+        sftpModifiedAt: item.sftpModifiedAt,
+        connectionId: item.connectionId,
+        artworkId,
+        connectionName: connection.name,
+        fileCounts,
+        childCount: countDescendants(item.id),
+      };
+    });
 
     return { success: true, data: itemsWithArtwork };
   } catch (error) {
@@ -480,13 +525,13 @@ export async function testSftpConnection(
 }
 
 /**
- * Creates a folder on the SFTP server and in the database.
+ * Creates an item on the SFTP server and in the database.
  *
  * @param connectionId - Connection ID
  * @param parentItemId - Parent item ID (null for root)
- * @param name - Folder name
+ * @param name - Item name
  */
-export async function createSftpFolder(
+export async function createSftpItem(
   connectionId: string,
   parentItemId: string | null,
   name: string
@@ -513,7 +558,7 @@ export async function createSftpFolder(
         where: { id: parentItemId, userId, connectionId },
       });
       if (!parent || !parent.sftpPath) {
-        return { success: false, error: "Parent folder not found" };
+        return { success: false, error: "Parent item not found" };
       }
       parentPath = parent.sftpPath;
       depth = parent.depth + 1;
@@ -563,8 +608,8 @@ export async function createSftpFolder(
       },
     };
   } catch (error) {
-    console.error("[SFTP] Create folder error:", error);
-    return { success: false, error: "Failed to create folder" };
+    console.error("[SFTP] Create item error:", error);
+    return { success: false, error: "Failed to create item" };
   }
 }
 
@@ -586,7 +631,7 @@ export async function deleteSftpItem(itemId: string): Promise<ActionResult> {
       return { success: false, error: "Item not found" };
     }
 
-    // Delete folder from SFTP if connected
+    // Delete item from SFTP if connected
     if (item.connection && item.sftpPath) {
       try {
         await removeDirectory(item.connection, item.sftpPath);
@@ -678,10 +723,13 @@ const SYNC_MAX_ENTRIES = 10000;
  * Creates Items for folders and ItemFiles for files.
  *
  * @param connectionId - Connection ID to sync
+ * @param options - Optional settings
+ * @param options.skipRevalidate - If true, skip revalidating paths (for batch operations)
  * @returns Sync statistics
  */
 export async function syncFromSftp(
-  connectionId: string
+  connectionId: string,
+  options?: { skipRevalidate?: boolean }
 ): Promise<ActionResult<SyncResult>> {
   try {
     // Rate limit check
@@ -940,8 +988,10 @@ export async function syncFromSftp(
       data: { lastSyncAt: new Date(), lastError: null },
     });
 
-    revalidatePath("/my-items");
-    revalidatePath("/my-items/connections");
+    if (!options?.skipRevalidate) {
+      revalidatePath("/my-items");
+      revalidatePath("/my-items/connections");
+    }
 
     return {
       success: true,
@@ -958,11 +1008,429 @@ export async function syncFromSftp(
           lastError: error instanceof Error ? error.message : "Sync failed",
         },
       });
-      revalidatePath("/my-items/connections");
+      if (!options?.skipRevalidate) {
+        revalidatePath("/my-items/connections");
+      }
     } catch {
       // Ignore update error
     }
 
     return { success: false, error: "Failed to sync from SFTP" };
+  }
+}
+
+/** Result for syncing all connections */
+export interface SyncAllResult {
+  totalConnections: number;
+  successfulSyncs: number;
+  failedSyncs: number;
+  results: Array<{
+    connectionId: string;
+    connectionName: string;
+    success: boolean;
+    created: number;
+    updated: number;
+    deleted: number;
+    error?: string;
+  }>;
+}
+
+/**
+ * Syncs all SFTP connections for the current user.
+ * Processes connections sequentially with console progress logging.
+ *
+ * @returns Aggregated sync results
+ */
+export async function syncAllConnections(): Promise<
+  ActionResult<SyncAllResult>
+> {
+  try {
+    // Rate limit check
+    const rateLimitResult = await checkRateLimit("sftpSyncAll");
+    if (rateLimitResult) {
+      return { success: false, error: rateLimitResult.error };
+    }
+
+    const userId = await requireAuth();
+
+    const connections = await prisma.sftpConnection.findMany({
+      where: { userId, isActive: true },
+      orderBy: { name: "asc" },
+    });
+
+    console.log(
+      `[SFTP Sync All] Starting sync for ${connections.length} connection(s)`
+    );
+
+    const results: SyncAllResult["results"] = [];
+    let successfulSyncs = 0;
+    let failedSyncs = 0;
+
+    for (const connection of connections) {
+      console.log(
+        `[SFTP Sync All] Syncing "${connection.name}" (${connection.id})...`
+      );
+
+      const startTime = Date.now();
+      const syncResult = await syncFromSftp(connection.id, {
+        skipRevalidate: true,
+      });
+      const duration = Date.now() - startTime;
+
+      if (syncResult.success && syncResult.data) {
+        const { created, updated, deleted } = syncResult.data;
+        console.log(
+          `[SFTP Sync All] ✓ "${connection.name}" completed in ${duration}ms: ` +
+            `${created} created, ${updated} updated, ${deleted} deleted`
+        );
+        results.push({
+          connectionId: connection.id,
+          connectionName: connection.name,
+          success: true,
+          created,
+          updated,
+          deleted,
+        });
+        successfulSyncs++;
+      } else {
+        const error =
+          "error" in syncResult ? syncResult.error : "Unknown error";
+        console.error(
+          `[SFTP Sync All] ✗ "${connection.name}" failed: ${error}`
+        );
+        results.push({
+          connectionId: connection.id,
+          connectionName: connection.name,
+          success: false,
+          created: 0,
+          updated: 0,
+          deleted: 0,
+          error,
+        });
+        failedSyncs++;
+      }
+    }
+
+    console.log(
+      `[SFTP Sync All] Completed: ${successfulSyncs}/${connections.length} successful`
+    );
+
+    revalidatePath("/my-items");
+    revalidatePath("/my-items/connections");
+
+    return {
+      success: true,
+      data: {
+        totalConnections: connections.length,
+        successfulSyncs,
+        failedSyncs,
+        results,
+      },
+    };
+  } catch (error) {
+    console.error("[SFTP Sync All] Error:", error);
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return { success: false, error: "Unauthorized" };
+    }
+    return { success: false, error: "Failed to sync connections" };
+  }
+}
+
+/** Result for syncing an item tree */
+export interface SyncItemResult {
+  itemId: string;
+  itemName: string;
+  created: number;
+  updated: number;
+  deleted: number;
+}
+
+/** CUID format validation regex */
+const CUID_REGEX = /^c[a-z0-9]{24}$/;
+
+/**
+ * Syncs a specific item and all its descendants from SFTP.
+ * Only syncs the subtree rooted at the given item.
+ * Uses batch operations and transactions for performance and atomicity.
+ *
+ * @param itemId - Root item ID to sync
+ * @returns Sync statistics for the item tree
+ */
+export async function syncItemTree(
+  itemId: string
+): Promise<ActionResult<SyncItemResult>> {
+  try {
+    // Validate itemId format
+    if (!CUID_REGEX.test(itemId)) {
+      return { success: false, error: "Invalid item ID format" };
+    }
+
+    const userId = await requireAuth();
+
+    // Get item with connection
+    const item = await prisma.item.findFirst({
+      where: { id: itemId, userId },
+      include: { connection: true },
+    });
+
+    if (!item) {
+      return { success: false, error: "Item not found" };
+    }
+
+    if (!item.connectionId || !item.sftpPath || !item.connection) {
+      return { success: false, error: "Item is not connected to SFTP" };
+    }
+
+    console.log(
+      `[SFTP Sync Item] Starting sync for "${item.name}" (${item.sftpPath})`
+    );
+
+    const startTime = Date.now();
+    let created = 0;
+    let updated = 0;
+    let deleted = 0;
+
+    // Get pooled SFTP connection
+    const client = await getConnection(item.connection);
+
+    // Recursively list entries from item's SFTP path
+    const remoteEntries: Array<{
+      path: string;
+      name: string;
+      type: "d" | "-" | "l";
+      size: number;
+      modifyTime: number;
+      depth: number;
+      parentPath: string;
+    }> = [];
+
+    const failedDirs: string[] = [];
+    const baseDepth = item.depth;
+
+    async function listRecursive(dirPath: string, depth: number) {
+      if (depth > SYNC_MAX_DEPTH || remoteEntries.length >= SYNC_MAX_ENTRIES) {
+        return;
+      }
+
+      let entries;
+      try {
+        entries = await client.list(dirPath);
+      } catch (listError) {
+        console.warn(`[SFTP Sync Item] Failed to list: ${dirPath}`, listError);
+        failedDirs.push(dirPath);
+        return;
+      }
+
+      for (const entry of entries) {
+        if (entry.name === "." || entry.name === "..") continue;
+
+        const entryPath = `${dirPath}/${entry.name}`.replace(/\/+/g, "/");
+
+        remoteEntries.push({
+          path: entryPath,
+          name: entry.name,
+          type: entry.type,
+          size: entry.size,
+          modifyTime: entry.modifyTime,
+          depth,
+          parentPath: dirPath,
+        });
+
+        if (entry.type === "d" && depth < SYNC_MAX_DEPTH) {
+          await listRecursive(entryPath, depth + 1);
+        }
+      }
+    }
+
+    await listRecursive(item.sftpPath, baseDepth + 1);
+
+    if (failedDirs.length > 0) {
+      console.warn(
+        `[SFTP Sync Item] Completed with ${failedDirs.length} inaccessible directories`
+      );
+    }
+
+    // Separate folders and files
+    const remoteFolders = remoteEntries.filter((e) => e.type === "d");
+    const remoteFiles = remoteEntries.filter((e) => e.type !== "d");
+
+    // Get existing child items
+    const existingItems = await prisma.item.findMany({
+      where: {
+        userId,
+        connectionId: item.connectionId,
+        sftpPath: { startsWith: item.sftpPath + "/" },
+      },
+      select: { id: true, sftpPath: true, sftpModifiedAt: true },
+    });
+
+    const existingByPath = new Map(
+      existingItems.filter((i) => i.sftpPath).map((i) => [i.sftpPath!, i])
+    );
+    const remoteFolderPaths = new Set(remoteFolders.map((f) => f.path));
+
+    // Map paths to item IDs
+    const pathToItemId = new Map<string, string>();
+    pathToItemId.set(item.sftpPath, item.id);
+    for (const existingItem of existingItems) {
+      if (existingItem.sftpPath) {
+        pathToItemId.set(existingItem.sftpPath, existingItem.id);
+      }
+    }
+
+    // Pre-compute max orders per parent to avoid N+1
+    const orderCounters = new Map<string | null, number>();
+    const existingMaxOrders = await prisma.item.groupBy({
+      by: ["parentId"],
+      where: { userId },
+      _max: { order: true },
+    });
+    for (const row of existingMaxOrders) {
+      orderCounters.set(row.parentId, (row._max.order ?? -1) + 1);
+    }
+
+    // Process folders (parents before children)
+    const sortedFolders = remoteFolders.sort((a, b) => a.depth - b.depth);
+
+    // Wrap all DB operations in transaction
+    await prisma.$transaction(async (tx) => {
+      // Create/update folders
+      for (const folder of sortedFolders) {
+        const existing = existingByPath.get(folder.path);
+
+        if (!existing) {
+          const parentId = pathToItemId.get(folder.parentPath) ?? item.id;
+          const order = orderCounters.get(parentId) ?? 0;
+          orderCounters.set(parentId, order + 1);
+
+          const newItem = await tx.item.create({
+            data: {
+              name: folder.name,
+              userId,
+              parentId,
+              connectionId: item.connectionId,
+              sftpPath: folder.path,
+              sftpModifiedAt: new Date(folder.modifyTime),
+              order,
+              depth: folder.depth,
+            },
+          });
+
+          pathToItemId.set(folder.path, newItem.id);
+          created++;
+          console.log(`[SFTP Sync Item] Created: ${folder.path}`);
+        } else {
+          const remoteMtime = new Date(folder.modifyTime);
+          if (
+            !existing.sftpModifiedAt ||
+            remoteMtime.getTime() !== existing.sftpModifiedAt.getTime()
+          ) {
+            await tx.item.update({
+              where: { id: existing.id },
+              data: { sftpModifiedAt: remoteMtime },
+            });
+            updated++;
+          }
+        }
+      }
+
+      // Get existing files
+      const childItemIds = Array.from(pathToItemId.values());
+      const existingFiles = await tx.itemFile.findMany({
+        where: { itemId: { in: childItemIds } },
+        select: {
+          id: true,
+          itemId: true,
+          sftpPath: true,
+          sftpModifiedAt: true,
+        },
+      });
+
+      const existingFilesByPath = new Map(
+        existingFiles.map((f) => [f.sftpPath, f])
+      );
+      const remoteFilePaths = new Set(remoteFiles.map((f) => f.path));
+
+      // Create/update files
+      for (const file of remoteFiles) {
+        const fileType = getFileTypeByExtension(file.name);
+        if (!fileType) continue;
+
+        const parentItemId = pathToItemId.get(file.parentPath);
+        if (!parentItemId) continue;
+
+        const existing = existingFilesByPath.get(file.path);
+
+        if (!existing) {
+          await tx.itemFile.create({
+            data: {
+              itemId: parentItemId,
+              filename: file.name,
+              sftpPath: file.path,
+              fileType,
+              mimeType: getMimeTypeByExtension(file.name),
+              size: BigInt(file.size),
+              sftpModifiedAt: new Date(file.modifyTime),
+            },
+          });
+          created++;
+          console.log(`[SFTP Sync Item] Created file: ${file.path}`);
+        } else {
+          const remoteMtime = new Date(file.modifyTime);
+          if (
+            !existing.sftpModifiedAt ||
+            remoteMtime.getTime() !== existing.sftpModifiedAt.getTime()
+          ) {
+            await tx.itemFile.update({
+              where: { id: existing.id },
+              data: {
+                size: BigInt(file.size),
+                sftpModifiedAt: remoteMtime,
+                mimeType: getMimeTypeByExtension(file.name),
+              },
+            });
+            updated++;
+          }
+        }
+      }
+
+      // Delete files that no longer exist
+      for (const file of existingFiles) {
+        if (!remoteFilePaths.has(file.sftpPath)) {
+          await tx.itemFile.delete({ where: { id: file.id } });
+          deleted++;
+          console.log(`[SFTP Sync Item] Deleted file: ${file.sftpPath}`);
+        }
+      }
+
+      // Delete items that no longer exist
+      for (const existingItem of existingItems) {
+        if (
+          existingItem.sftpPath &&
+          !remoteFolderPaths.has(existingItem.sftpPath)
+        ) {
+          await tx.item.delete({ where: { id: existingItem.id } });
+          deleted++;
+          console.log(`[SFTP Sync Item] Deleted: ${existingItem.sftpPath}`);
+        }
+      }
+    });
+
+    const duration = Date.now() - startTime;
+    console.log(
+      `[SFTP Sync Item] ✓ "${item.name}" completed in ${duration}ms: ` +
+        `${created} created, ${updated} updated, ${deleted} deleted`
+    );
+
+    revalidatePath("/my-items");
+    revalidatePath(`/my-items/${itemId}`);
+
+    return {
+      success: true,
+      data: { itemId: item.id, itemName: item.name, created, updated, deleted },
+    };
+  } catch (error) {
+    console.error("[SFTP Sync Item] Error:", error);
+    return { success: false, error: "Failed to sync item" };
   }
 }

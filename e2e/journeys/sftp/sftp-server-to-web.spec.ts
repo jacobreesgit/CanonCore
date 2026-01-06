@@ -61,11 +61,13 @@ describeOrSkip("SFTP to Web Operations", () => {
       sftpConfig
     );
 
-    // Navigate to connection
-    const card = connectionsPage.getConnectionCard("Test SFTP Server");
-    await card.click();
+    // Navigate to my-items page
+    await page.goto("/my-items");
 
-    // Click sync button
+    // With single connection, filter auto-selects it
+    await expect(page.getByRole("combobox")).toContainText("Test SFTP Server");
+
+    // Click Sync All button
     const syncButton = page.getByRole("button", { name: /^sync$/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
@@ -102,11 +104,13 @@ describeOrSkip("SFTP to Web Operations", () => {
     // Create folder directly on SFTP server
     await createSftpTestDir(`${sftpConfig.basePath}/remote-folder`, sftpConfig);
 
-    // Navigate to connection
-    const card = connectionsPage.getConnectionCard("Test SFTP Server");
-    await card.click();
+    // Navigate to my-items page
+    await page.goto("/my-items");
 
-    // Click sync button
+    // With single connection, filter auto-selects it
+    await expect(page.getByRole("combobox")).toContainText("Test SFTP Server");
+
+    // Click Sync All button
     const syncButton = page.getByRole("button", { name: /^sync$/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
@@ -137,14 +141,13 @@ describeOrSkip("SFTP to Web Operations", () => {
       sftpConfig
     );
 
-    // Navigate and do initial sync
-    const card = connectionsPage.getConnectionCard("Test SFTP Server");
-    await card.click();
+    // Navigate to my-items page
+    await page.goto("/my-items");
 
-    // Scope to tree view to avoid matching toasts
-    const treeView = page.getByTestId("items-tree-view");
+    // With single connection, filter auto-selects it
+    await expect(page.getByRole("combobox")).toContainText("Test SFTP Server");
 
-    // Click sync button
+    // Click Sync All button
     let syncButton = page.getByRole("button", { name: /^sync$/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
@@ -153,6 +156,9 @@ describeOrSkip("SFTP to Web Operations", () => {
     await expect(page.getByRole("button", { name: /synced/i })).toBeVisible({
       timeout: 30000,
     });
+
+    // Scope to tree view to avoid matching toasts
+    const treeView = page.getByTestId("items-tree-view");
 
     // Folder appears in tree
     const folderItem = treeView
@@ -167,7 +173,7 @@ describeOrSkip("SFTP to Web Operations", () => {
     // Delete file directly on SFTP
     await deleteSftpTestPath(`${folderPath}/file-to-delete.mp4`, sftpConfig);
 
-    // Go back to connection and sync again
+    // Go back and sync again
     await page.goBack();
     syncButton = page.getByRole("button", { name: /^sync$/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
@@ -202,11 +208,13 @@ describeOrSkip("SFTP to Web Operations", () => {
       sftpConfig
     );
 
-    // Navigate to connection
-    const card = connectionsPage.getConnectionCard("Test SFTP Server");
-    await card.click();
+    // Navigate to my-items page
+    await page.goto("/my-items");
 
-    // Wait for sync button to be ready, then click
+    // With single connection, filter auto-selects it
+    await expect(page.getByRole("combobox")).toContainText("Test SFTP Server");
+
+    // Wait for Sync All button to be ready, then click
     const syncButton = page.getByRole("button", { name: /^sync$/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();

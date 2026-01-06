@@ -1,6 +1,6 @@
 /**
  * E2E tests for items navigation.
- * Tests folder navigation, breadcrumbs, and nested folder creation.
+ * Tests item navigation, breadcrumbs, and nested item creation.
  */
 
 import { test, expect } from "../../fixtures";
@@ -14,17 +14,14 @@ test.describe("Items Navigation Journey", () => {
     await expect(page).toHaveURL("/my-items", { timeout: 10000 });
   });
 
-  test("can navigate into a folder by clicking", async ({
-    page,
-    itemsPage,
-  }) => {
+  test("can navigate into an item by clicking", async ({ page, itemsPage }) => {
     await itemsPage.goto();
     await itemsPage.createItem("Parent Folder");
     await itemsPage.clickItem("Parent Folder");
 
     // Should navigate to item detail page
     await expect(page).toHaveURL(/\/my-items\/[a-z0-9]+/i);
-    // Breadcrumb should show the folder name
+    // Breadcrumb should show the item name
     await itemsPage.expectBreadcrumb("Parent Folder");
   });
 
@@ -39,10 +36,7 @@ test.describe("Items Navigation Journey", () => {
     await itemsPage.expectItemVisible("Parent Folder");
   });
 
-  test("can create nested folders and navigate", async ({
-    page,
-    itemsPage,
-  }) => {
+  test("can create nested items and navigate", async ({ page, itemsPage }) => {
     await itemsPage.goto();
 
     // Create parent

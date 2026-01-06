@@ -61,7 +61,16 @@ export function Tree({
   return (
     <ul data-testid="items-tree-view" className="space-y-0.5">
       {flattenedItems.map(
-        ({ id, name, description, children, depth, sftpPath, artworkId }) => (
+        ({
+          id,
+          name,
+          description,
+          children,
+          depth,
+          sftpPath,
+          artworkId,
+          connectionName,
+        }) => (
           <ItemContextMenu
             key={id}
             itemName={name}
@@ -88,6 +97,7 @@ export function Tree({
               onClick={() => onItemClick?.(String(id))}
               sftpPath={sftpPath}
               artworkId={artworkId}
+              connectionName={connectionName}
               showArtwork={true}
               showDragHandle={false}
               showDescription={true}

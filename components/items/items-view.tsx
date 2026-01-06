@@ -8,19 +8,20 @@
 
 import { useState, useCallback, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Folder, Plus } from "lucide-react";
-import { useQuickCreateOptional } from "@/contexts/add-folder-context";
+import { Folder, Plus, Loader2 } from "lucide-react";
+import { useQuickCreateOptional } from "@/contexts/add-item-context";
 import { UniqueIdentifier } from "@dnd-kit/core";
 import { toast } from "sonner";
 
 import { SortableTree, Tree } from "@/components/sortable-tree";
 import { SortableGrid, Grid } from "@/components/sortable-grid";
+import { ConnectionFilter } from "./connection-filter";
 import { EditModeToggle } from "./edit-mode-toggle";
 import { ViewToggle, useStoredViewMode } from "./view-toggle";
-import { AddFolderDialog } from "./add-folder-dialog";
+import { AddItemDialog } from "./add-item-dialog";
 import { ItemSettingsDialog } from "./item-settings-dialog";
 import { Button } from "@/components/ui/button";
-import { SyncButton } from "@/components/sftp/sync-button";
+import { SyncButton, SyncAllButton, ItemSyncButton } from "@/components/sftp";
 import type {
   ItemWithArtwork,
   TreeItems,
@@ -36,7 +37,7 @@ import {
 } from "@/lib/item-actions";
 import { getItemFiles } from "@/lib/item-file-actions";
 import {
-  createSftpFolder,
+  createSftpItem,
   renameSftpItem,
   deleteSftpItem,
   getItemsByConnection,
@@ -58,12 +59,36 @@ interface ItemsViewProps {
   parentId?: string | null;
   /** SFTP connection ID if this view is for an SFTP-connected folder. */
   connectionId?: string | null;
+  /** Available SFTP connections for filter and Sync All button. */
+  connections?: Array<{ id: string; name: string }>;
+  /** Currently selected connection ID for filter. */
+  selectedConnectionId?: string | null;
+  /** Callback when connection filter changes. */
+  onConnectionChange?: (connectionId: string | null) => void;
+  /** Whether connection filter change is pending. */
+  isFilterPending?: boolean;
+  /** Callback after sync completes to refetch items. */
+  onSyncComplete?: () => void;
+  /** Props for individual item sync button (for item detail pages). */
+  itemSyncProps?: {
+    itemId: string;
+    itemName: string;
+  };
+  /** Current connection to display in disabled filter (for item detail pages). */
+  currentConnection?: { id: string; name: string } | null;
 }
 
 export function ItemsView({
   items: initialItems,
   parentId = null,
   connectionId = null,
+  connections = [],
+  selectedConnectionId,
+  onConnectionChange,
+  isFilterPending = false,
+  onSyncComplete,
+  itemSyncProps,
+  currentConnection,
 }: ItemsViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -96,8 +121,8 @@ export function ItemsView({
   // Settings dialog state
   const [settingsDialog, setSettingsDialog] =
     useState<SettingsDialogState | null>(null);
-  // Add folder dialog state
-  const [addFolderOpen, setAddFolderOpen] = useState(false);
+  // Add item dialog state
+  const [addItemOpen, setAddItemOpen] = useState(false);
 
   // Exit edit mode when view mode changes - intentional minimal cascade
   useEffect(() => {
@@ -162,13 +187,9 @@ export function ItemsView({
   // Handle item click - navigate to item detail
   const handleItemClick = useCallback(
     (id: UniqueIdentifier) => {
-      if (connectionId) {
-        router.push(`/my-items/connections/${connectionId}/${id}`);
-      } else {
-        router.push(`/my-items/${id}`);
-      }
+      router.push(`/my-items/${id}`);
     },
-    [router, connectionId]
+    [router]
   );
 
   // Handle creating new item at root level
@@ -177,12 +198,14 @@ export function ItemsView({
       try {
         // Use SFTP action when in an SFTP-connected context
         if (connectionId) {
-          const result = await createSftpFolder(connectionId, parentId, name);
+          const result = await createSftpItem(connectionId, parentId, name);
           if (result.success && result.data) {
             // Update local state immediately with the returned item
             const newItem: ItemWithArtwork = {
               ...result.data,
               artworkId: null,
+              fileCounts: { media: 0, artwork: 0, subtitles: 0 },
+              childCount: 0,
             };
             setItems((prev) => [...prev, newItem]);
             startTransition(() => refetchItems());
@@ -191,8 +214,8 @@ export function ItemsView({
           }
           const errorMsg = !result.success
             ? result.error
-            : "Failed to create folder";
-          toast.error(errorMsg || "Failed to create folder");
+            : "Failed to create item";
+          toast.error(errorMsg || "Failed to create item");
           return errorMsg;
         } else {
           const result = await createItem(parentId, name, description);
@@ -200,18 +223,20 @@ export function ItemsView({
             const newItem: ItemWithArtwork = {
               ...result.data,
               artworkId: null,
+              fileCounts: { media: 0, artwork: 0, subtitles: 0 },
+              childCount: 0,
             };
             setItems((prev) => [...prev, newItem]);
             startTransition(() => refetchItems());
             toast.success(`Created "${name}"`);
             return undefined;
           }
-          toast.error(result.error || "Failed to create folder");
+          toast.error(result.error || "Failed to create item");
           return result.error;
         }
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : "Failed to create folder";
+          error instanceof Error ? error.message : "Failed to create item";
         toast.error(message);
         return message;
       }
@@ -291,12 +316,14 @@ export function ItemsView({
         const connId = parentItem?.connectionId || connectionId;
 
         if (connId) {
-          const result = await createSftpFolder(connId, parentItemId, name);
+          const result = await createSftpItem(connId, parentItemId, name);
           if (result.success && result.data) {
             // Update local state immediately with the returned item
             const newItem: ItemWithArtwork = {
               ...result.data,
               artworkId: null,
+              fileCounts: { media: 0, artwork: 0, subtitles: 0 },
+              childCount: 0,
             };
             setItems((prev) => [...prev, newItem]);
             startTransition(() => refetchItems());
@@ -305,8 +332,8 @@ export function ItemsView({
           }
           const errorMsg = !result.success
             ? result.error
-            : "Failed to create folder";
-          toast.error(errorMsg || "Failed to create folder");
+            : "Failed to create item";
+          toast.error(errorMsg || "Failed to create item");
           return errorMsg;
         } else {
           const result = await createItem(parentItemId, name, description);
@@ -314,18 +341,20 @@ export function ItemsView({
             const newItem: ItemWithArtwork = {
               ...result.data,
               artworkId: null,
+              fileCounts: { media: 0, artwork: 0, subtitles: 0 },
+              childCount: 0,
             };
             setItems((prev) => [...prev, newItem]);
             startTransition(() => refetchItems());
             toast.success(`Created "${name}"`);
             return undefined;
           }
-          toast.error(result.error || "Failed to create folder");
+          toast.error(result.error || "Failed to create item");
           return result.error;
         }
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : "Failed to create folder";
+          error instanceof Error ? error.message : "Failed to create item";
         toast.error(message);
         return message;
       }
@@ -383,43 +412,93 @@ export function ItemsView({
   return (
     <div className={cn("flex flex-col gap-6", isPending && "opacity-70")}>
       {/* Controls */}
-      <div className="flex items-center justify-end gap-3">
-        {/* SFTP Sync button - only show when connected */}
-        {connectionId && (
-          <SyncButton
-            connectionId={connectionId}
-            size="sm"
-            onSyncComplete={async () => {
-              await refetchItems();
-            }}
-          />
-        )}
-        {items.length > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setAddFolderOpen(true)}
-            className="gap-1.5"
-          >
-            <Plus className="size-4" strokeWidth={2} />
-            <span>Add Folder</span>
-          </Button>
-        )}
-        {items.length > 0 && (
-          <>
-            <EditModeToggle
-              isEditing={isEditing}
-              onToggle={() => setIsEditing((prev) => !prev)}
+      <div className="flex items-center justify-between gap-3">
+        {/* Left side: Connection filter + Sync buttons */}
+        <div className="flex items-center gap-3">
+          {/* Connection filter - show when connections exist with handler, OR when currentConnection provided (disabled) */}
+          {connections.length > 0 && onConnectionChange && (
+            <>
+              <ConnectionFilter
+                connections={connections}
+                selectedConnectionId={selectedConnectionId ?? null}
+                onConnectionChange={onConnectionChange}
+              />
+              {isFilterPending && (
+                <Loader2 className="text-muted-foreground size-4 animate-spin" />
+              )}
+            </>
+          )}
+          {/* Disabled connection filter for item detail pages */}
+          {currentConnection && !onConnectionChange && (
+            <ConnectionFilter
+              connections={[currentConnection]}
+              selectedConnectionId={currentConnection.id}
+              disabled
             />
-            <ViewToggle />
-          </>
-        )}
+          )}
+          {/* Sync All button - only show when connections exist */}
+          {connections.length > 0 && (
+            <SyncAllButton
+              connectionCount={connections.length}
+              size="sm"
+              onSyncComplete={async () => {
+                await refetchItems();
+                onSyncComplete?.();
+              }}
+            />
+          )}
+          {/* Per-connection Sync button - only show when multiple connections exist */}
+          {connectionId && connections.length > 1 && (
+            <SyncButton
+              connectionId={connectionId}
+              size="sm"
+              onSyncComplete={async () => {
+                await refetchItems();
+              }}
+            />
+          )}
+          {/* Individual item sync button - for item detail pages */}
+          {itemSyncProps && (
+            <ItemSyncButton
+              itemId={itemSyncProps.itemId}
+              itemName={itemSyncProps.itemName}
+              size="sm"
+              onSyncComplete={async () => {
+                await refetchItems();
+              }}
+            />
+          )}
+        </div>
+
+        {/* Right side: Add Item + Edit + View toggle */}
+        <div className="flex items-center gap-3">
+          {items.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAddItemOpen(true)}
+              className="gap-1.5"
+            >
+              <Plus className="size-4" strokeWidth={2} />
+              <span>Add Item</span>
+            </Button>
+          )}
+          {items.length > 0 && (
+            <>
+              <EditModeToggle
+                isEditing={isEditing}
+                onToggle={() => setIsEditing((prev) => !prev)}
+              />
+              <ViewToggle />
+            </>
+          )}
+        </div>
       </div>
 
       {/* Items display */}
       <div className="min-h-[200px]">
         {items.length === 0 ? (
-          <EmptyState onOpenAddFolder={() => setAddFolderOpen(true)} />
+          <EmptyState onOpenAddItem={() => setAddItemOpen(true)} />
         ) : viewMode === "grid" ? (
           isEditing ? (
             <SortableGrid
@@ -490,18 +569,18 @@ export function ItemsView({
         />
       )}
 
-      {/* Add Folder Dialog */}
-      <AddFolderDialog
-        open={addFolderOpen}
-        onOpenChange={setAddFolderOpen}
+      {/* Add Item Dialog */}
+      <AddItemDialog
+        open={addItemOpen}
+        onOpenChange={setAddItemOpen}
         onAdd={handleCreateItem}
       />
     </div>
   );
 }
 
-/** Empty state with call-to-action for folder creation. */
-function EmptyState({ onOpenAddFolder }: { onOpenAddFolder: () => void }) {
+/** Empty state with call-to-action for item creation. */
+function EmptyState({ onOpenAddItem }: { onOpenAddItem: () => void }) {
   return (
     <div
       className={cn(
@@ -519,19 +598,19 @@ function EmptyState({ onOpenAddFolder }: { onOpenAddFolder: () => void }) {
         <Folder className="size-8" strokeWidth={1.5} />
       </div>
       <div className="text-center">
-        <h3 className="text-foreground text-lg font-medium">No folders yet</h3>
+        <h3 className="text-foreground text-lg font-medium">No items yet</h3>
         <p className="text-muted-foreground mt-1 text-sm">
-          Create your first folder to get started
+          Create your first item to get started
         </p>
       </div>
       <Button
         variant="outline"
         size="sm"
-        onClick={onOpenAddFolder}
+        onClick={onOpenAddItem}
         className="gap-1.5"
       >
         <Plus className="size-4" strokeWidth={2} />
-        <span>Add Folder</span>
+        <span>Add Item</span>
       </Button>
     </div>
   );

@@ -16,7 +16,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { useQuickCreateOptional } from "@/contexts/add-folder-context";
+import { useQuickCreateOptional } from "@/contexts/add-item-context";
 
 /**
  * Renders the main navigation section with quick create action.

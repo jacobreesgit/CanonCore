@@ -65,7 +65,7 @@ export default async function ConnectionsPage() {
             </div>
             <h3 className="mt-4 text-lg font-medium">No connections yet</h3>
             <p className="text-muted-foreground mt-1 text-sm">
-              Add your first SFTP connection to start syncing files
+              Add your first SFTP connection to start syncing items
             </p>
             <Button asChild className="mt-6">
               <Link href="/my-items/connections/new">

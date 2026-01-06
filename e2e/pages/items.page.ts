@@ -1,13 +1,13 @@
 /**
- * Page object for items (folders) management.
+ * Page object for items management.
  * Provides helpers for CRUD operations, navigation, view switching,
  * and drag-and-drop operations for dnd-kit sortable components.
  *
  * @example
  * ```ts
- * await itemsPage.createItem("Folder A");
- * await itemsPage.dragItemTo("Folder A", "Folder B");
- * await itemsPage.expectItemOrder(["Folder B", "Folder A"]);
+ * await itemsPage.createItem("Item A");
+ * await itemsPage.dragItemTo("Item A", "Item B");
+ * await itemsPage.expectItemOrder(["Item B", "Item A"]);
  * ```
  */
 
@@ -36,13 +36,13 @@ export class ItemsPage {
     this.page = page;
     this.viewToggleTree = page.getByRole("button", { name: /tree view/i });
     this.viewToggleGrid = page.getByRole("button", { name: /grid view/i });
-    this.addFolderButton = page.getByRole("button", { name: /add folder/i });
-    this.addFolderDialog = page.getByRole("dialog", { name: /create folder/i });
-    this.addFolderInput = page.getByLabel(/folder name/i);
+    this.addFolderButton = page.getByRole("button", { name: /add item/i });
+    this.addFolderDialog = page.getByRole("dialog", { name: /create item/i });
+    this.addFolderInput = page.getByLabel(/item name/i);
     this.addFolderDescription = page.getByLabel(/description/i);
     this.addFolderSubmit = page.getByRole("button", { name: /^create$/i });
     this.addFolderCancel = page.getByRole("button", { name: /cancel/i });
-    this.emptyState = page.getByText(/no folders yet/i);
+    this.emptyState = page.getByText(/no items yet/i);
     this.treeView = page.getByTestId("items-tree-view");
     this.gridView = page.getByTestId("items-grid-view");
     // Target the SiteHeader breadcrumb nav
@@ -166,7 +166,7 @@ export class ItemsPage {
     ).toBeVisible({
       timeout: 15000,
     });
-    // Wait for the Add folder button to confirm ItemsView is rendered
+    // Wait for the Add item button to confirm ItemsView is rendered
     await expect(this.addFolderButton).toBeVisible({ timeout: 10000 });
   }
 

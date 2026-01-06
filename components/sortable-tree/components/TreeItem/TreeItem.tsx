@@ -13,6 +13,7 @@ import {
   Folder,
   FolderOpen,
   GripVertical,
+  Server,
   Trash2,
 } from "lucide-react";
 
@@ -48,6 +49,8 @@ export interface TreeItemProps extends Omit<
   showDragHandle?: boolean;
   /** Whether to show description. Defaults to true. Hidden in edit mode. */
   showDescription?: boolean;
+  /** Connection name for badge display. */
+  connectionName?: string | null;
 }
 
 export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
@@ -76,6 +79,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       showDragHandle = true,
       description,
       showDescription = true,
+      connectionName,
       sftpPath: _sftpPath, // eslint-disable-line @typescript-eslint/no-unused-vars
       ...props
     },
@@ -108,7 +112,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
           ref={ref}
           onClick={onClick}
           className={cn(
-            "group bg-card relative flex items-center gap-1.5 rounded-lg border px-2 py-1.5",
+            "group bg-card relative flex items-center gap-2 rounded-lg border px-2 py-1.5",
             "transition-all duration-200 ease-out",
             "hover:bg-accent/50 hover:border-accent-foreground/20",
             "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
@@ -132,7 +136,8 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
               type="button"
               aria-label="Drag handle"
               className={cn(
-                "flex-shrink-0 touch-none rounded p-0.5",
+                "flex-shrink-0 touch-none rounded",
+                "flex size-5 items-center justify-center",
                 "text-muted-foreground/50 transition-colors duration-150",
                 "hover:text-muted-foreground hover:bg-muted/50",
                 "focus-visible:ring-ring focus-visible:ring-1 focus-visible:outline-none",
@@ -148,7 +153,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
           {!ghost && onCollapse && (
             <button
               type="button"
-              aria-label={collapsed ? "Expand folder" : "Collapse folder"}
+              aria-label={collapsed ? "Expand item" : "Collapse item"}
               onClick={(e) => {
                 e.stopPropagation();
                 onCollapse();
@@ -170,8 +175,8 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
             </button>
           )}
 
-          {/* Item Icon - Show artwork thumbnail or folder icon */}
-          {!ghost && (
+          {/* Item Icon - Show artwork thumbnail or folder icon (only in view mode) */}
+          {!ghost && showArtwork && (
             <span className="flex-shrink-0">
               {shouldShowArtwork ? (
                 <div className="size-5 overflow-hidden rounded">
@@ -200,25 +205,39 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
           {/* Item Name and Description */}
           {!ghost && (
             <div className="min-w-0 flex-1">
-              <span
-                className={cn(
-                  "block truncate text-sm font-medium",
-                  "text-foreground/90 group-hover:text-foreground",
-                  "transition-colors duration-150"
-                )}
-              >
-                {value}
-              </span>
-              {shouldShowDescription && (
+              <div className="flex items-center gap-1.5">
                 <span
                   className={cn(
-                    "text-muted-foreground block truncate text-xs",
+                    "truncate text-sm font-medium",
+                    "text-foreground/90 group-hover:text-foreground",
                     "transition-colors duration-150"
                   )}
                 >
-                  {description}
+                  {value}
                 </span>
-              )}
+                {connectionName && (
+                  <span
+                    className={cn(
+                      "inline-flex flex-shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5",
+                      "bg-primary/10 text-primary text-[10px] font-medium"
+                    )}
+                  >
+                    <Server className="size-2.5" />
+                    {connectionName}
+                  </span>
+                )}
+              </div>
+              {/* Description line - always reserve space to prevent layout shift */}
+              <span
+                className={cn(
+                  "block min-h-4 truncate text-xs",
+                  "transition-colors duration-150",
+                  shouldShowDescription ? "text-muted-foreground" : "invisible"
+                )}
+                aria-hidden={!shouldShowDescription}
+              >
+                {description || "\u00A0"}
+              </span>
             </div>
           )}
 
