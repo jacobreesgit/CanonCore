@@ -54,6 +54,7 @@ export function NavUser({
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               data-testid="my-items-user-menu"
+              suppressHydrationWarning
             >
               <Avatar className="h-8 w-8 rounded-full grayscale">
                 <AvatarImage src={user.avatar} alt={user.name} />
