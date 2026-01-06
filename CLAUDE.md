@@ -80,8 +80,11 @@ pnpm run db:reset         # Reset database and re-seed
 │   │   ├── edit-mode-toggle.tsx      # Edit/Done button for reordering mode
 │   │   ├── filtered-items-view.tsx   # Display items from selected connection
 │   │   ├── item-context-menu.tsx     # Right-click actions menu
+│   │   ├── item-detail-client.tsx    # Client wrapper coordinating toolbar and items
 │   │   ├── item-detail.tsx           # Item detail with files display
-│   │   ├── item-settings-dialog.tsx  # Settings dialog with primary file selection
+│   │   ├── item-settings-dialog.tsx  # Settings dialog with Select-based file selection
+│   │   ├── item-stats.tsx            # Reusable child/file count stats display
+│   │   ├── items-toolbar.tsx         # Unified toolbar for root and detail pages
 │   │   ├── items-view.tsx            # Main view with tree/grid/edit toggle
 │   │   └── view-toggle.tsx           # Tree/grid view switcher
 │   ├── media/                        # Media playback components
@@ -149,6 +152,7 @@ pnpm run db:reset         # Reset database and re-seed
 ├── contexts/
 │   └── add-item-context.tsx          # Quick Create global state
 ├── hooks/
+│   ├── use-controllable-state.ts     # Controlled/uncontrolled component state
 │   ├── use-mobile.ts                 # Mobile breakpoint hook
 │   └── use-tree-collapse.ts          # Shared tree collapse/expand state
 ├── content/
@@ -185,7 +189,7 @@ pnpm run db:reset         # Reset database and re-seed
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.23.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.24.0)
     └── plans/                        # Design documents
 ```
 
@@ -295,7 +299,7 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 428 total tests (375 unit + 53 integration)
+- 464 total tests (411 unit + 53 integration)
 
 ### E2E Testing
 

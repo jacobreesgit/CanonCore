@@ -71,8 +71,9 @@ export function Tree({
           children,
           depth,
           sftpPath,
-          artworkId,
           connectionName,
+          fileCounts,
+          childCount,
         }) => (
           <ItemContextMenu
             key={id}
@@ -94,17 +95,16 @@ export function Tree({
               depth={depth}
               indentationWidth={indentationWidth}
               collapsed={isCollapsed(id)}
+              childCount={childCount}
               onCollapse={
                 children.length > 0 ? () => toggleCollapse(id) : undefined
               }
               onClick={() => onItemClick?.(String(id))}
               sftpPath={sftpPath}
-              artworkId={artworkId}
               connectionName={connectionName}
               showConnectionBadge={showConnectionBadge}
-              showArtwork={true}
               showDragHandle={false}
-              showDescription={true}
+              fileCounts={fileCounts}
             />
           </ItemContextMenu>
         )

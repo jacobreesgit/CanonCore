@@ -1,12 +1,12 @@
-- primary media thing
-- other shadcn blocks for item pages
-- settings button for item pages
+- other shadcn blocks for item pages, always header, including remove tabbed
 
 - test drag and drop from 2 views.
 
 - look at all codebase
 
 - loading artwork and it showing tree before grid when loading
+
+- my items turns into profile with that header thing shadcdn
 
 - make items, then add sftp connection edge case
 
