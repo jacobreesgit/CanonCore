@@ -28,6 +28,8 @@ interface TreeProps {
   onAddChild?(parentId: string, name: string): Promise<string | undefined>;
   /** Indentation width per depth level. Defaults to 20. */
   indentationWidth?: number;
+  /** Whether to show connection badges on items. Defaults to true. */
+  showConnectionBadge?: boolean;
 }
 
 /**
@@ -44,6 +46,7 @@ export function Tree({
   onDeleteItem,
   onAddChild,
   indentationWidth = 20,
+  showConnectionBadge = true,
 }: TreeProps) {
   const { isCollapsed, toggleCollapse } = useTreeCollapse(items);
 
@@ -98,6 +101,7 @@ export function Tree({
               sftpPath={sftpPath}
               artworkId={artworkId}
               connectionName={connectionName}
+              showConnectionBadge={showConnectionBadge}
               showArtwork={true}
               showDragHandle={false}
               showDescription={true}

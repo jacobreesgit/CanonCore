@@ -53,8 +53,7 @@ pnpm run db:reset         # Reset database and re-seed
 │   ├── (my-items)/
 │   │   ├── my-items/
 │   │   │   ├── connections/
-│   │   │   │   ├── [id]/
-│   │   │   │   │   └── edit/page.tsx      # Edit connection form
+│   │   │   │   ├── [id]/edit/page.tsx     # Edit connection form
 │   │   │   │   ├── new/page.tsx           # New connection form
 │   │   │   │   └── page.tsx               # Connections list with sync actions
 │   │   │   ├── [itemId]/page.tsx     # Item detail with children
@@ -153,7 +152,7 @@ pnpm run db:reset         # Reset database and re-seed
 │   ├── use-mobile.ts                 # Mobile breakpoint hook
 │   └── use-tree-collapse.ts          # Shared tree collapse/expand state
 ├── content/
-│   └── docs/                         # MDX documentation pages (21 files)
+│   └── docs/                         # MDX documentation pages (20 files)
 ├── lib/
 │   ├── auth.ts                       # NextAuth config, extractSidebarUser helper
 │   ├── auth-actions.ts               # Auth server actions
@@ -186,7 +185,7 @@ pnpm run db:reset         # Reset database and re-seed
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.22.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.23.0)
     └── plans/                        # Design documents
 ```
 
@@ -247,6 +246,7 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 - **Item descriptions**: Optional 200-character notes, displayed in view mode
 - **Primary file selection**: Choose which file plays/displays when multiple files attached
 - **Connection filtering**: Browse items filtered by SFTP connection source
+- **Context-aware sync**: "Sync All" when viewing all items, "Sync Connection" when filtered; badges show/hide accordingly
 - **Toast notifications**: Success/error feedback via Sonner
 - **Max depth**: 10 levels of nesting
 
@@ -276,7 +276,7 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 ### User Documentation
 
 - **Fumadocs** for MDX-based documentation at `/docs`
-- **23 pages** covering getting started, account, files/folders, connections, views, and preferences
+- **20 pages** covering getting started, account, files/folders, connections, views, and preferences
 - **Unified layout** with context-aware sidebar navigation using app sidebar shell
 - **NavDocs component** renders Fumadocs page tree with collapsible folders
 - Content in `content/docs/` with `meta.json` for structure
@@ -295,7 +295,7 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 415 total tests (362 unit + 53 integration)
+- 428 total tests (375 unit + 53 integration)
 
 ### E2E Testing
 

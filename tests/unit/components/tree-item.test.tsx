@@ -46,4 +46,33 @@ describe("TreeItem", () => {
     const dragHandle = screen.getByRole("button", { name: "Drag handle" });
     expect(dragHandle).toBeInTheDocument();
   });
+
+  describe("showConnectionBadge prop", () => {
+    it("should show connection badge by default when connectionName provided", () => {
+      render(<TreeItem {...defaultProps} connectionName="Server" />);
+      expect(screen.getByText("Server")).toBeInTheDocument();
+    });
+
+    it("should show connection badge when showConnectionBadge is true", () => {
+      render(
+        <TreeItem
+          {...defaultProps}
+          connectionName="Server"
+          showConnectionBadge
+        />
+      );
+      expect(screen.getByText("Server")).toBeInTheDocument();
+    });
+
+    it("should hide connection badge when showConnectionBadge is false", () => {
+      render(
+        <TreeItem
+          {...defaultProps}
+          connectionName="Server"
+          showConnectionBadge={false}
+        />
+      );
+      expect(screen.queryByText("Server")).not.toBeInTheDocument();
+    });
+  });
 });
