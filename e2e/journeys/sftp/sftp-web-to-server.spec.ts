@@ -58,8 +58,8 @@ describeOrSkip("Web to SFTP Operations", () => {
     // Verify connection is selected (filter shows connection name when single)
     await expect(page.getByRole("combobox")).toContainText("Test SFTP Server");
 
-    // Wait for Sync button (visible when connection is selected, shows "Sync" for single connection)
-    const syncButton = page.getByRole("button", { name: /^sync$/i });
+    // Wait for Sync Connection button (visible when single connection is auto-selected)
+    const syncButton = page.getByRole("button", { name: /sync connection/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
 
     // Create item via UI

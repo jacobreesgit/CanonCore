@@ -138,6 +138,15 @@ export function ItemsView({
   // Convert flat items to tree structure for SortableTree
   const treeItems = itemsToTree(items);
 
+  // Derive filter state for conditional rendering
+  // Handle single connection auto-selection (ConnectionFilter auto-selects when only 1 exists)
+  const effectiveSelectedConnection =
+    connections.length === 1
+      ? connections[0].id
+      : (selectedConnectionId ?? null);
+  const isFilteredToConnection = effectiveSelectedConnection !== null;
+  const showConnectionBadge = !isFilteredToConnection;
+
   /**
    * Refetch items from server and update local state.
    * Uses appropriate action based on whether viewing SFTP connection or regular items.
@@ -436,8 +445,8 @@ export function ItemsView({
               disabled
             />
           )}
-          {/* Sync All button - only show when connections exist */}
-          {connections.length > 0 && (
+          {/* Sync All button - show when viewing All Items */}
+          {connections.length > 0 && !isFilteredToConnection && (
             <SyncAllButton
               connectionCount={connections.length}
               size="sm"
@@ -447,16 +456,20 @@ export function ItemsView({
               }}
             />
           )}
-          {/* Per-connection Sync button - only show when multiple connections exist */}
-          {connectionId && connections.length > 1 && (
-            <SyncButton
-              connectionId={connectionId}
-              size="sm"
-              onSyncComplete={async () => {
-                await refetchItems();
-              }}
-            />
-          )}
+          {/* Sync Connection button - show when filtered to individual connection */}
+          {connections.length > 0 &&
+            isFilteredToConnection &&
+            effectiveSelectedConnection && (
+              <SyncButton
+                connectionId={effectiveSelectedConnection}
+                label="Sync Connection"
+                size="sm"
+                onSyncComplete={async () => {
+                  await refetchItems();
+                  onSyncComplete?.();
+                }}
+              />
+            )}
           {/* Individual item sync button - for item detail pages */}
           {itemSyncProps && (
             <ItemSyncButton
@@ -514,6 +527,7 @@ export function ItemsView({
               onItemClick={handleItemClick}
               onOpenSettings={handleOpenSettings}
               onDeleteItem={handleDeleteItem}
+              showConnectionBadge={showConnectionBadge}
             />
           )
         ) : isEditing ? (
@@ -532,6 +546,7 @@ export function ItemsView({
             onOpenSettings={handleOpenSettings}
             onDeleteItem={handleDeleteItem}
             onAddChild={handleAddChild}
+            showConnectionBadge={showConnectionBadge}
           />
         )}
       </div>

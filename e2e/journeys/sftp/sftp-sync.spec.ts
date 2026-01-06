@@ -63,8 +63,8 @@ describeOrSkip("SFTP Sync Operations", () => {
     // With single connection, filter auto-selects it
     await expect(page.getByRole("combobox")).toContainText("Test SFTP Server");
 
-    // Wait for Sync All button to be ready (exact match to avoid "Syncing..." or "Synced")
-    const syncButton = page.getByRole("button", { name: /^sync$/i });
+    // Wait for Sync Connection button to be ready (single connection shows "Sync Connection")
+    const syncButton = page.getByRole("button", { name: /sync connection/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
 
@@ -102,8 +102,8 @@ describeOrSkip("SFTP Sync Operations", () => {
     // With single connection, filter auto-selects it
     await expect(page.getByRole("combobox")).toContainText("Test SFTP Server");
 
-    // Wait for Sync button to be ready (single connection shows "Sync", not "Sync All")
-    const syncButton = page.getByRole("button", { name: /^sync$/i });
+    // Wait for Sync Connection button to be ready (single connection shows "Sync Connection")
+    const syncButton = page.getByRole("button", { name: /sync connection/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
 
@@ -148,8 +148,8 @@ describeOrSkip("SFTP Sync Operations", () => {
     // With single connection, filter auto-selects it
     await expect(page.getByRole("combobox")).toContainText("Test SFTP Server");
 
-    // Wait for Sync All button to be ready, then click
-    const syncButton = page.getByRole("button", { name: /^sync$/i });
+    // Wait for Sync Connection button to be ready, then click
+    const syncButton = page.getByRole("button", { name: /sync connection/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
 
@@ -186,8 +186,8 @@ describeOrSkip("SFTP Sync Operations", () => {
     // With single connection, filter auto-selects it
     await expect(page.getByRole("combobox")).toContainText("Test SFTP Server");
 
-    // Wait for Sync All button to be ready, then click
-    const syncButton = page.getByRole("button", { name: /^sync$/i });
+    // Wait for Sync Connection button to be ready, then click
+    const syncButton = page.getByRole("button", { name: /sync connection/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
 
@@ -207,5 +207,193 @@ describeOrSkip("SFTP Sync Operations", () => {
       .catch(() => false);
 
     expect(hasAlreadyInSync || hasEmptyMessage).toBe(true);
+  });
+});
+
+describeOrSkip("Connection filter sync behavior", () => {
+  test.beforeEach(async ({ page, signUpPage, connectionsPage, sftpConfig }) => {
+    // Clean SFTP directory before each test
+    try {
+      await cleanSftpTestDir(sftpConfig);
+    } catch {
+      // Ignore if SFTP not available
+    }
+
+    // Create user and sign in
+    const userEmail = generateUniqueEmail("filter-sync");
+    await signUpPage.goto();
+    await signUpPage.signUp(userEmail, TEST_PASSWORD, TEST_PASSWORD);
+    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+
+    // Create first SFTP connection
+    await connectionsPage.gotoNew();
+    await connectionsPage.fillConnectionForm({
+      name: "Server One",
+      host: sftpConfig.host,
+      port: sftpConfig.port,
+      username: sftpConfig.username,
+      credential: sftpConfig.password,
+      basePath: sftpConfig.basePath,
+    });
+    await connectionsPage.submitForm();
+    await expect(page).toHaveURL("/my-items/connections", { timeout: 10000 });
+
+    // Create second SFTP connection (same server, different name)
+    await connectionsPage.gotoNew();
+    await connectionsPage.fillConnectionForm({
+      name: "Server Two",
+      host: sftpConfig.host,
+      port: sftpConfig.port,
+      username: sftpConfig.username,
+      credential: sftpConfig.password,
+      basePath: sftpConfig.basePath,
+    });
+    await connectionsPage.submitForm();
+    await expect(page).toHaveURL("/my-items/connections", { timeout: 10000 });
+  });
+
+  test("shows Sync All button when All Items selected", async ({ page }) => {
+    await page.goto("/my-items");
+
+    // With multiple connections, filter defaults to "All Items"
+    await expect(page.getByRole("combobox")).toContainText("All Items");
+
+    // Should show "Sync All" button
+    const syncAllButton = page.getByRole("button", { name: /sync all/i });
+    await expect(syncAllButton).toBeVisible({ timeout: 10000 });
+  });
+
+  test("shows Sync Connection button when individual connection selected", async ({
+    page,
+  }) => {
+    await page.goto("/my-items");
+
+    // Select individual connection from filter
+    await page.getByRole("combobox").click();
+    await page.getByRole("option", { name: "Server One" }).click();
+
+    // Should show "Sync Connection" button instead of "Sync All"
+    const syncConnectionButton = page.getByRole("button", {
+      name: /sync connection/i,
+    });
+    await expect(syncConnectionButton).toBeVisible({ timeout: 10000 });
+
+    // "Sync All" should not be visible
+    const syncAllButton = page.getByRole("button", { name: /sync all/i });
+    await expect(syncAllButton).not.toBeVisible();
+  });
+
+  test("hides connection badges when filtered to individual connection", async ({
+    page,
+    sftpConfig,
+  }) => {
+    // Create folder on SFTP
+    await createSftpTestDir(`${sftpConfig.basePath}/badge-test`, sftpConfig);
+
+    await page.goto("/my-items");
+
+    // First sync with "All Items" selected
+    await expect(page.getByRole("combobox")).toContainText("All Items");
+    const syncAllButton = page.getByRole("button", { name: /sync all/i });
+    await expect(syncAllButton).toBeVisible({ timeout: 10000 });
+    await syncAllButton.click();
+    await expect(page.getByRole("button", { name: /synced/i })).toBeVisible({
+      timeout: 30000,
+    });
+
+    // Both connections sync the same folder, creating 2 items (one per connection)
+    // Verify at least one badge is visible when "All Items" selected
+    const treeView = page.getByTestId("items-tree-view");
+
+    // Wait for items to appear (may have duplicates from both connections)
+    const folderItems = treeView
+      .getByRole("listitem")
+      .filter({ hasText: "badge-test" });
+    await expect(folderItems.first()).toBeVisible({ timeout: 10000 });
+
+    // At least one connection badge should be visible (both may be present)
+    const serverOneBadge = treeView.getByText("Server One");
+    const serverTwoBadge = treeView.getByText("Server Two");
+    await expect(serverOneBadge.or(serverTwoBadge).first()).toBeVisible();
+
+    // Now filter to individual connection
+    await page.getByRole("combobox").click();
+    await page.getByRole("option", { name: "Server One" }).click();
+
+    // Wait for filter to apply - should show only Server One's item
+    await expect(page.getByRole("combobox")).toContainText("Server One");
+
+    // Badge should be hidden when filtered to individual connection
+    // The filtered view only shows that connection's items, and badges are hidden
+    await expect(treeView.getByText("Server One")).not.toBeVisible({
+      timeout: 5000,
+    });
+    await expect(treeView.getByText("Server Two")).not.toBeVisible();
+  });
+
+  test("shows connection badges when All Items selected", async ({
+    page,
+    sftpConfig,
+  }) => {
+    // Create folder on SFTP
+    await createSftpTestDir(
+      `${sftpConfig.basePath}/all-items-badge`,
+      sftpConfig
+    );
+
+    await page.goto("/my-items");
+
+    // Sync to get the folder
+    const syncAllButton = page.getByRole("button", { name: /sync all/i });
+    await expect(syncAllButton).toBeVisible({ timeout: 10000 });
+    await syncAllButton.click();
+    await expect(page.getByRole("button", { name: /synced/i })).toBeVisible({
+      timeout: 30000,
+    });
+
+    // Verify "All Items" is selected
+    await expect(page.getByRole("combobox")).toContainText("All Items");
+
+    // Both connections sync the same folder, creating 2 items (one per connection)
+    // Wait for at least one item to appear
+    const treeView = page.getByTestId("items-tree-view");
+    const folderItems = treeView
+      .getByRole("listitem")
+      .filter({ hasText: "all-items-badge" });
+    await expect(folderItems.first()).toBeVisible({ timeout: 10000 });
+
+    // Connection badges should be visible when viewing All Items
+    // Both badges may be present (one for each connection's synced item)
+    const serverOneBadge = treeView.getByText("Server One");
+    const serverTwoBadge = treeView.getByText("Server Two");
+    await expect(serverOneBadge.or(serverTwoBadge).first()).toBeVisible();
+  });
+
+  test("shows Sync Connection when only one connection exists", async ({
+    page,
+    connectionsPage,
+  }) => {
+    // Delete second connection to have only one
+    await connectionsPage.goto();
+
+    // Use the page object's deleteConnection method which handles the confirm dialog
+    await connectionsPage.deleteConnection("Server Two");
+
+    // Wait for card to be removed
+    await expect(
+      connectionsPage.getConnectionCard("Server Two")
+    ).not.toBeVisible({ timeout: 5000 });
+
+    // Navigate to my-items
+    await page.goto("/my-items");
+
+    // With single connection, filter auto-selects it and should be disabled
+    await expect(page.getByRole("combobox")).toContainText("Server One");
+
+    // Should show "Sync Connection" button (not "Sync All") because single connection is auto-selected
+    // Note: With our implementation, single connection means effectiveSelectedConnection is set,
+    // so it shows "Sync Connection" not "Sync All"
+    const syncButton = page.getByRole("button", { name: /sync connection/i });
+    await expect(syncButton).toBeVisible({ timeout: 10000 });
   });
 });

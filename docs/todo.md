@@ -1,9 +1,10 @@
-- only show sync badge when all is selected
-- settings button for item pages
 - primary media thing
 - other shadcn blocks for item pages
+- settings button for item pages
 
 - test drag and drop from 2 views.
+
+- look at all codebase
 
 - loading artwork and it showing tree before grid when loading
 
