@@ -1,12 +1,17 @@
-- elipsis button for item pages
+- only show sync badge when all is selected
+- settings button for item pages
+- primary media thing
+- other shadcn blocks for item pages
 
-- look at entire codebase after current commit
+- test drag and drop from 2 views.
+
+- loading artwork and it showing tree before grid when loading
+
+- make items, then add sftp connection edge case
 
 - spotlight search
 
 - sorting for 'my items' dashboard, not for individual item pages
-
-- look at entire codebase
 
 - imdb/other
 

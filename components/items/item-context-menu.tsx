@@ -22,8 +22,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { AddFolderDialog } from "./add-folder-dialog";
-import { FolderPlus, Settings, Trash2 } from "lucide-react";
+import { AddItemDialog } from "./add-item-dialog";
+import { Plus, Settings, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ItemContextMenuProps {
@@ -69,8 +69,8 @@ export function ItemContextMenu({
               onClick={() => setAddChildOpen(true)}
               className="gap-2"
             >
-              <FolderPlus className="size-4" strokeWidth={2} />
-              <span>Add Subfolder</span>
+              <Plus className="size-4" strokeWidth={2} />
+              <span>Add Child Item</span>
             </ContextMenuItem>
           )}
           {onSettings && (
@@ -101,10 +101,10 @@ export function ItemContextMenu({
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete Folder</DialogTitle>
+            <DialogTitle>Delete Item</DialogTitle>
             <DialogDescription>
               Are you sure you want to delete &ldquo;{itemName}&rdquo;? This
-              will also delete all subfolders. This action cannot be undone.
+              will also delete all child items. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
@@ -126,8 +126,8 @@ export function ItemContextMenu({
         </DialogContent>
       </Dialog>
 
-      {/* Add Subfolder Dialog */}
-      <AddFolderDialog
+      {/* Add Child Item Dialog */}
+      <AddItemDialog
         open={addChildOpen}
         onOpenChange={setAddChildOpen}
         onAdd={async (name, description) => {

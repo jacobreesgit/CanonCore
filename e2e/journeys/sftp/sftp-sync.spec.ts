@@ -46,11 +46,7 @@ describeOrSkip("SFTP Sync Operations", () => {
     await expect(page).toHaveURL("/my-items/connections", { timeout: 10000 });
   });
 
-  test("sync button triggers full sync", async ({
-    page,
-    connectionsPage,
-    sftpConfig,
-  }) => {
+  test("sync button triggers full sync", async ({ page, sftpConfig }) => {
     // Create folders on SFTP (only folders appear in tree)
     await createSftpTestDir(`${sftpConfig.basePath}/sync-folder-1`, sftpConfig);
     await createSftpTestDir(`${sftpConfig.basePath}/sync-folder-2`, sftpConfig);
@@ -61,11 +57,13 @@ describeOrSkip("SFTP Sync Operations", () => {
       sftpConfig
     );
 
-    // Navigate to connection
-    const card = connectionsPage.getConnectionCard("Test SFTP Server");
-    await card.click();
+    // Navigate to my-items page
+    await page.goto("/my-items");
 
-    // Wait for sync button to be ready (exact match to avoid "Syncing..." or "Synced")
+    // With single connection, filter auto-selects it
+    await expect(page.getByRole("combobox")).toContainText("Test SFTP Server");
+
+    // Wait for Sync All button to be ready (exact match to avoid "Syncing..." or "Synced")
     const syncButton = page.getByRole("button", { name: /^sync$/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
@@ -92,21 +90,19 @@ describeOrSkip("SFTP Sync Operations", () => {
     await expect(page.getByText("test-file.mp4")).toBeVisible();
   });
 
-  test("sync shows loading state", async ({
-    page,
-    connectionsPage,
-    sftpConfig,
-  }) => {
+  test("sync shows loading state", async ({ page, sftpConfig }) => {
     // Create folders on SFTP (only folders appear in tree)
     for (let i = 0; i < 5; i++) {
       await createSftpTestDir(`${sftpConfig.basePath}/folder-${i}`, sftpConfig);
     }
 
-    // Navigate to connection
-    const card = connectionsPage.getConnectionCard("Test SFTP Server");
-    await card.click();
+    // Navigate to my-items page
+    await page.goto("/my-items");
 
-    // Wait for sync button to be ready (exact match to avoid "Syncing..." or "Synced")
+    // With single connection, filter auto-selects it
+    await expect(page.getByRole("combobox")).toContainText("Test SFTP Server");
+
+    // Wait for Sync button to be ready (single connection shows "Sync", not "Sync All")
     const syncButton = page.getByRole("button", { name: /^sync$/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
@@ -139,22 +135,20 @@ describeOrSkip("SFTP Sync Operations", () => {
     });
   });
 
-  test("displays sync status badge on items", async ({
-    page,
-    connectionsPage,
-    sftpConfig,
-  }) => {
+  test("displays sync status badge on items", async ({ page, sftpConfig }) => {
     // Create folder on SFTP (only folders appear as Items in tree)
     await createSftpTestDir(
       `${sftpConfig.basePath}/status-test-folder`,
       sftpConfig
     );
 
-    // Navigate to connection
-    const card = connectionsPage.getConnectionCard("Test SFTP Server");
-    await card.click();
+    // Navigate to my-items page
+    await page.goto("/my-items");
 
-    // Wait for sync button to be ready, then click
+    // With single connection, filter auto-selects it
+    await expect(page.getByRole("combobox")).toContainText("Test SFTP Server");
+
+    // Wait for Sync All button to be ready, then click
     const syncButton = page.getByRole("button", { name: /^sync$/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
@@ -185,15 +179,14 @@ describeOrSkip("SFTP Sync Operations", () => {
     }
   });
 
-  test("empty sync shows appropriate message", async ({
-    page,
-    connectionsPage,
-  }) => {
-    // Navigate to connection (SFTP is empty)
-    const card = connectionsPage.getConnectionCard("Test SFTP Server");
-    await card.click();
+  test("empty sync shows appropriate message", async ({ page }) => {
+    // Navigate to my-items page (SFTP is empty)
+    await page.goto("/my-items");
 
-    // Wait for sync button to be ready, then click
+    // With single connection, filter auto-selects it
+    await expect(page.getByRole("combobox")).toContainText("Test SFTP Server");
+
+    // Wait for Sync All button to be ready, then click
     const syncButton = page.getByRole("button", { name: /^sync$/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
@@ -209,7 +202,7 @@ describeOrSkip("SFTP Sync Operations", () => {
       .isVisible({ timeout: 3000 })
       .catch(() => false);
     const hasEmptyMessage = await page
-      .getByText(/no folders yet/i)
+      .getByText(/no items yet/i)
       .isVisible({ timeout: 3000 })
       .catch(() => false);
 

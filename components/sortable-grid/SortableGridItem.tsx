@@ -13,6 +13,7 @@ import { CSS } from "@dnd-kit/utilities";
 
 import { GridItem, GridItemProps } from "./GridItem";
 import { ItemContextMenu } from "@/components/items/item-context-menu";
+import type { FileCounts } from "@/lib/types";
 
 interface SortableGridItemProps extends Omit<GridItemProps, "handleProps"> {
   id: UniqueIdentifier;
@@ -23,6 +24,10 @@ interface SortableGridItemProps extends Omit<GridItemProps, "handleProps"> {
   sftpPath?: string | null;
   /** Artwork file ID for thumbnail display. */
   artworkId?: string | null;
+  /** File counts by type for display. */
+  fileCounts?: FileCounts;
+  /** Number of child items (subfolders). */
+  childCount?: number;
 }
 
 export function SortableGridItem({
@@ -32,6 +37,8 @@ export function SortableGridItem({
   onDelete,
   sftpPath,
   artworkId,
+  fileCounts,
+  childCount,
   ...props
 }: SortableGridItemProps) {
   const {
@@ -67,7 +74,10 @@ export function SortableGridItem({
         }}
         sftpPath={sftpPath}
         artworkId={artworkId}
+        fileCounts={fileCounts}
+        childCount={childCount}
         showArtwork={false}
+        showCounts={false}
         {...props}
       />
     </ItemContextMenu>

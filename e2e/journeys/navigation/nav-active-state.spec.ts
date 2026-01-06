@@ -49,22 +49,29 @@ test.describe("Navigation Active State", () => {
       await expect(connectionsNav).toHaveAttribute("data-active", "true");
     });
 
-    test("Get Help nav is active on /docs", async ({ page }) => {
+    test("docs context shows docs tree navigation instead of footer nav", async ({
+      page,
+    }) => {
       await page.goto("/docs");
 
+      // Docs context doesn't show the footer nav with "Get Help" button
+      // Instead it shows the Fumadocs tree navigation
       const getHelpNav = page.locator('[data-slot="sidebar-menu-button"]', {
         hasText: "Get Help",
       });
-      await expect(getHelpNav).toHaveAttribute("data-active", "true");
-    });
+      await expect(getHelpNav).not.toBeVisible();
 
-    test("Get Help nav is active on nested docs page", async ({ page }) => {
-      await page.goto("/docs/getting-started");
+      // Verify docs tree is shown with the Documentation label in sidebar
+      await expect(
+        page.locator('[data-slot="sidebar-group-label"]', {
+          hasText: "Documentation",
+        })
+      ).toBeVisible();
 
-      const getHelpNav = page.locator('[data-slot="sidebar-menu-button"]', {
-        hasText: "Get Help",
-      });
-      await expect(getHelpNav).toHaveAttribute("data-active", "true");
+      // Verify docs tree has "Back to My Items" link (for authenticated users)
+      await expect(
+        page.getByRole("link", { name: /back to my items/i })
+      ).toBeVisible();
     });
   });
 
@@ -78,13 +85,15 @@ test.describe("Navigation Active State", () => {
       await expect(getHelpNav).toHaveAttribute("data-active", "true");
     });
 
-    test("Get Started nav is active on /sign-in", async ({ page }) => {
+    test("sign-in page does not have sidebar navigation", async ({ page }) => {
       await page.goto("/sign-in");
 
-      const getStartedNav = page.locator('[data-slot="sidebar-menu-button"]', {
-        hasText: "Get Started",
-      });
-      await expect(getStartedNav).toHaveAttribute("data-active", "true");
+      // Sign-in page is a standalone auth page without sidebar
+      const sidebar = page.locator('[data-slot="sidebar"]');
+      await expect(sidebar).not.toBeVisible();
+
+      // The sign-in form is visible
+      await expect(page.getByTestId("sign-in-email-input")).toBeVisible();
     });
 
     test("Get Started nav is inactive on home page", async ({ page }) => {

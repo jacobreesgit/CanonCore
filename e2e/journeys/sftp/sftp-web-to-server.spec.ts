@@ -46,21 +46,25 @@ describeOrSkip("Web to SFTP Operations", () => {
     await expect(page).toHaveURL("/my-items/connections", { timeout: 10000 });
   });
 
-  test("creates folder via web, exists on SFTP server", async ({
+  test("creates item via web, exists on SFTP server", async ({
     page,
     connectionsPage,
     sftpConfig,
   }) => {
-    // Navigate to connection and sync to initialize
-    const card = connectionsPage.getConnectionCard("Test SFTP Server");
-    await card.click();
-
-    // Wait for sync to complete
+    // Navigate to my-items - with single connection, filter auto-selects it
+    await page.goto("/my-items");
     await page.waitForLoadState("networkidle");
 
-    // Create folder via UI
+    // Verify connection is selected (filter shows connection name when single)
+    await expect(page.getByRole("combobox")).toContainText("Test SFTP Server");
+
+    // Wait for Sync button (visible when connection is selected, shows "Sync" for single connection)
+    const syncButton = page.getByRole("button", { name: /^sync$/i });
+    await expect(syncButton).toBeVisible({ timeout: 10000 });
+
+    // Create item via UI
     await page.getByRole("button", { name: /add/i }).click();
-    await page.getByPlaceholder(/folder name/i).fill("web-created-folder");
+    await page.getByPlaceholder(/item name/i).fill("web-created-folder");
     await page.keyboard.press("Enter");
 
     // Wait for SFTP server to confirm folder exists
@@ -81,17 +85,17 @@ describeOrSkip("Web to SFTP Operations", () => {
     connectionsPage,
     sftpConfig,
   }) => {
-    // Navigate to connection and sync
-    const card = connectionsPage.getConnectionCard("Test SFTP Server");
-    await card.click();
+    // Navigate to my-items - with single connection, filter auto-selects it
+    await page.goto("/my-items");
     await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("combobox")).toContainText("Test SFTP Server");
 
     // Scope to tree view to avoid matching toast notifications
     const treeView = page.getByTestId("items-tree-view");
 
-    // Create folder first
+    // Create item first
     await page.getByRole("button", { name: /add/i }).click();
-    await page.getByPlaceholder(/folder name/i).fill("folder-to-rename");
+    await page.getByPlaceholder(/item name/i).fill("folder-to-rename");
     await page.keyboard.press("Enter");
 
     // Wait for SFTP to confirm creation
@@ -147,17 +151,17 @@ describeOrSkip("Web to SFTP Operations", () => {
     connectionsPage,
     sftpConfig,
   }) => {
-    // Navigate to connection and sync
-    const card = connectionsPage.getConnectionCard("Test SFTP Server");
-    await card.click();
+    // Navigate to my-items - with single connection, filter auto-selects it
+    await page.goto("/my-items");
     await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("combobox")).toContainText("Test SFTP Server");
 
     // Scope to tree view to avoid matching toast notifications
     const treeView = page.getByTestId("items-tree-view");
 
-    // Create folder first
+    // Create item first
     await page.getByRole("button", { name: /add/i }).click();
-    await page.getByPlaceholder(/folder name/i).fill("folder-to-delete");
+    await page.getByPlaceholder(/item name/i).fill("folder-to-delete");
     await page.keyboard.press("Enter");
 
     // Wait for SFTP to confirm creation

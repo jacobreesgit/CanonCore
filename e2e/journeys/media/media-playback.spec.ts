@@ -70,11 +70,11 @@ describeOrSkip("Media Playback", () => {
     await createSftpTestImage(`${folderPath}/poster.jpg`, sftpConfig);
     await createSftpTestSubtitle(`${folderPath}/subtitles.srt`, sftpConfig);
 
-    // Navigate to connection and sync
-    const card = connectionsPage.getConnectionCard("Media Server");
-    await card.click();
+    // Navigate to my-items - with single connection, filter auto-selects it
+    await page.goto("/my-items");
+    await expect(page.getByRole("combobox")).toContainText("Media Server");
 
-    // Wait for sync button and click
+    // Wait for Sync All button and click (single connection, filter auto-selects)
     const syncButton = page.getByRole("button", { name: /^sync$/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
@@ -84,13 +84,13 @@ describeOrSkip("Media Playback", () => {
       timeout: 30000,
     });
 
-    // Wait for Movie folder to appear (scope to tree view)
+    // Wait for Movie item to appear (scope to tree view)
     const treeView = page.getByTestId("items-tree-view");
     await expect(
       treeView.getByRole("listitem").filter({ hasText: "Movie" })
     ).toBeVisible({ timeout: 10000 });
 
-    // Click on Movie folder to see item detail
+    // Click on Movie item to see item detail
     await treeView.getByRole("listitem").filter({ hasText: "Movie" }).click();
 
     // Verify item detail shows files
@@ -114,9 +114,9 @@ describeOrSkip("Media Playback", () => {
       sftpConfig
     );
 
-    // Navigate to connection and sync
-    const card = connectionsPage.getConnectionCard("Media Server");
-    await card.click();
+    // Navigate to my-items - with single connection, filter auto-selects it
+    await page.goto("/my-items");
+    await expect(page.getByRole("combobox")).toContainText("Media Server");
     const syncButton = page.getByRole("button", { name: /^sync$/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
@@ -151,9 +151,9 @@ describeOrSkip("Media Playback", () => {
       sftpConfig
     );
 
-    // Navigate to connection and sync
-    const card = connectionsPage.getConnectionCard("Media Server");
-    await card.click();
+    // Navigate to my-items - with single connection, filter auto-selects it
+    await page.goto("/my-items");
+    await expect(page.getByRole("combobox")).toContainText("Media Server");
     const syncButton = page.getByRole("button", { name: /^sync$/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
@@ -185,9 +185,9 @@ describeOrSkip("Media Playback", () => {
     await createSftpTestDir(folderPath, sftpConfig);
     await createSftpTestFile(`${folderPath}/content.mp4`, "video", sftpConfig);
 
-    // Navigate to connection and sync
-    const card = connectionsPage.getConnectionCard("Media Server");
-    await card.click();
+    // Navigate to my-items - with single connection, filter auto-selects it
+    await page.goto("/my-items");
+    await expect(page.getByRole("combobox")).toContainText("Media Server");
     const syncButton = page.getByRole("button", { name: /^sync$/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
@@ -220,9 +220,9 @@ describeOrSkip("Media Playback", () => {
     await createSftpTestDir(folderPath, sftpConfig);
     await createSftpTestFile(`${folderPath}/download.mp4`, "video", sftpConfig);
 
-    // Navigate to connection and sync
-    const card = connectionsPage.getConnectionCard("Media Server");
-    await card.click();
+    // Navigate to my-items - with single connection, filter auto-selects it
+    await page.goto("/my-items");
+    await expect(page.getByRole("combobox")).toContainText("Media Server");
     const syncButton = page.getByRole("button", { name: /^sync$/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
@@ -258,9 +258,9 @@ describeOrSkip("Media Playback", () => {
     const folderPath = `${sftpConfig.basePath}/EmptyFolder`;
     await createSftpTestDir(folderPath, sftpConfig);
 
-    // Navigate to connection and sync
-    const card = connectionsPage.getConnectionCard("Media Server");
-    await card.click();
+    // Navigate to my-items - with single connection, filter auto-selects it
+    await page.goto("/my-items");
+    await expect(page.getByRole("combobox")).toContainText("Media Server");
     const syncButton = page.getByRole("button", { name: /^sync$/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
@@ -278,8 +278,8 @@ describeOrSkip("Media Playback", () => {
       .filter({ hasText: "EmptyFolder" })
       .click();
 
-    // Empty state shows "No folders yet" for empty items view
-    await expect(page.getByText(/no folders yet/i)).toBeVisible();
+    // Empty state shows "No items yet" for empty items view
+    await expect(page.getByText(/no items yet/i)).toBeVisible();
   });
 
   test("displays artwork as thumbnails", async ({
@@ -294,9 +294,9 @@ describeOrSkip("Media Playback", () => {
     await createSftpTestImage(`${folderPath}/art2.png`, sftpConfig);
     await createSftpTestFile(`${folderPath}/video.mp4`, "video", sftpConfig);
 
-    // Navigate to connection and sync
-    const card = connectionsPage.getConnectionCard("Media Server");
-    await card.click();
+    // Navigate to my-items - with single connection, filter auto-selects it
+    await page.goto("/my-items");
+    await expect(page.getByRole("combobox")).toContainText("Media Server");
     const syncButton = page.getByRole("button", { name: /^sync$/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
@@ -315,7 +315,7 @@ describeOrSkip("Media Playback", () => {
     await mediaPage.expectArtworkCount(2);
   });
 
-  test("shows tabs when folder has both files and subfolders", async ({
+  test("shows tabs when item has both files and child items", async ({
     page,
     connectionsPage,
     sftpConfig,
@@ -327,9 +327,9 @@ describeOrSkip("Media Playback", () => {
     await createSftpTestDir(subfolderPath, sftpConfig);
     await createSftpTestFile(`${folderPath}/video.mp4`, "video", sftpConfig);
 
-    // Navigate to connection and sync
-    const card = connectionsPage.getConnectionCard("Media Server");
-    await card.click();
+    // Navigate to my-items - with single connection, filter auto-selects it
+    await page.goto("/my-items");
+    await expect(page.getByRole("combobox")).toContainText("Media Server");
     const syncButton = page.getByRole("button", { name: /^sync$/i });
     await expect(syncButton).toBeVisible({ timeout: 10000 });
     await syncButton.click();
@@ -337,7 +337,7 @@ describeOrSkip("Media Playback", () => {
       timeout: 30000,
     });
 
-    // Navigate to Mixed folder
+    // Navigate to Mixed item
     const treeView = page.getByTestId("items-tree-view");
     await expect(
       treeView.getByRole("listitem").filter({ hasText: "Mixed" })

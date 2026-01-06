@@ -1,6 +1,6 @@
 /**
  * Server actions for item CRUD operations.
- * Handles folder hierarchy with ownership verification.
+ * Handles item hierarchy with ownership verification.
  */
 
 "use server";
@@ -11,6 +11,7 @@ import { itemNameSchema, itemDescriptionSchema } from "@/lib/validations";
 import { checkRateLimit } from "@/lib/rate-limit";
 import type {
   Item,
+  ItemWithConnection,
   ItemResult,
   BreadcrumbItem,
   ItemWithArtwork,
@@ -34,6 +35,35 @@ export async function getItems(
     return { error: "Unauthorized" };
   }
 
+  // Fetch all items for descendant count calculation
+  const allItems = await prisma.item.findMany({
+    where: { userId: session.user.id },
+    select: { id: true, parentId: true },
+  });
+
+  // Build descendant count map using recursive calculation
+  const childrenMap = new Map<string | null, string[]>();
+  for (const item of allItems) {
+    const siblings = childrenMap.get(item.parentId) ?? [];
+    siblings.push(item.id);
+    childrenMap.set(item.parentId, siblings);
+  }
+
+  const descendantCountCache = new Map<string, number>();
+  function countDescendants(itemId: string): number {
+    if (descendantCountCache.has(itemId)) {
+      return descendantCountCache.get(itemId)!;
+    }
+    const children = childrenMap.get(itemId) ?? [];
+    let count = children.length;
+    for (const childId of children) {
+      count += countDescendants(childId);
+    }
+    descendantCountCache.set(itemId, count);
+    return count;
+  }
+
+  // Fetch items at current level with files and connection
   const items = await prisma.item.findMany({
     where: {
       userId: session.user.id,
@@ -42,30 +72,49 @@ export async function getItems(
     orderBy: { order: "asc" },
     include: {
       files: {
-        where: { fileType: "ARTWORK" },
-        take: 1,
-        orderBy: { filename: "asc" },
-        select: { id: true },
+        select: { id: true, fileType: true, isPrimary: true },
+      },
+      connection: {
+        select: { name: true },
       },
     },
   });
 
-  // Transform to ItemWithArtwork
-  const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => ({
-    id: item.id,
-    name: item.name,
-    description: item.description,
-    parentId: item.parentId,
-    order: item.order,
-    depth: item.depth,
-    userId: item.userId,
-    createdAt: item.createdAt,
-    updatedAt: item.updatedAt,
-    sftpPath: item.sftpPath,
-    sftpModifiedAt: item.sftpModifiedAt,
-    connectionId: item.connectionId,
-    artworkId: item.files[0]?.id ?? null,
-  }));
+  // Transform to ItemWithArtwork with file counts and descendant count
+  const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => {
+    // Find primary artwork, or first artwork if no primary
+    const primaryArtwork = item.files.find(
+      (f) => f.fileType === "ARTWORK" && f.isPrimary
+    );
+    const firstArtwork = item.files.find((f) => f.fileType === "ARTWORK");
+    const artworkId = primaryArtwork?.id ?? firstArtwork?.id ?? null;
+
+    // Calculate file counts by type
+    const fileCounts = {
+      media: item.files.filter((f) => f.fileType === "MEDIA").length,
+      artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
+      subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
+    };
+
+    return {
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      parentId: item.parentId,
+      order: item.order,
+      depth: item.depth,
+      userId: item.userId,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+      sftpPath: item.sftpPath,
+      sftpModifiedAt: item.sftpModifiedAt,
+      connectionId: item.connectionId,
+      artworkId,
+      connectionName: item.connection?.name ?? null,
+      fileCounts,
+      childCount: countDescendants(item.id),
+    };
+  });
 
   return { success: true, data: itemsWithArtwork };
 }
@@ -78,7 +127,9 @@ export async function getItems(
  */
 export async function getItem(
   id: string
-): Promise<ItemResult<{ item: Item; ancestors: BreadcrumbItem[] }>> {
+): Promise<
+  ItemResult<{ item: ItemWithConnection; ancestors: BreadcrumbItem[] }>
+> {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "Unauthorized" };
@@ -86,6 +137,11 @@ export async function getItem(
 
   const item = await prisma.item.findUnique({
     where: { id },
+    include: {
+      connection: {
+        select: { id: true, name: true },
+      },
+    },
   });
 
   if (!item) {
@@ -117,7 +173,10 @@ export async function getItem(
       `
     : [];
 
-  return { success: true, data: { item: item as Item, ancestors } };
+  return {
+    success: true,
+    data: { item: item as ItemWithConnection, ancestors },
+  };
 }
 
 /**
