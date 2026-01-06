@@ -145,7 +145,7 @@ export function AddItemDialog({
               className="min-h-[80px] resize-none"
               maxLength={200}
             />
-            <p className="text-muted-foreground text-xs">
+            <p className="text-muted-foreground text-xs tabular-nums">
               {description.length}/200 characters
             </p>
           </div>

@@ -519,4 +519,47 @@ export class ItemsPage {
     const toasts = this.page.locator("[data-sonner-toast]");
     await expect(toasts).toHaveCount(0, { timeout: 15000 });
   }
+
+  /**
+   * Selects a primary media file in settings dialog.
+   *
+   * @param filename - The filename to select as primary media
+   */
+  async selectPrimaryMedia(filename: string): Promise<void> {
+    const select = this.page.getByRole("combobox", { name: /primary media/i });
+    await select.click();
+    await this.page
+      .getByRole("option", { name: new RegExp(filename, "i") })
+      .click();
+  }
+
+  /**
+   * Selects a primary artwork file in settings dialog.
+   *
+   * @param filename - The filename to select as primary artwork
+   */
+  async selectPrimaryArtwork(filename: string): Promise<void> {
+    const select = this.page.getByRole("combobox", {
+      name: /primary artwork/i,
+    });
+    await select.click();
+    await this.page
+      .getByRole("option", { name: new RegExp(filename, "i") })
+      .click();
+  }
+
+  /**
+   * Selects a default subtitle file in settings dialog.
+   *
+   * @param filename - The filename to select as default subtitle
+   */
+  async selectDefaultSubtitle(filename: string): Promise<void> {
+    const select = this.page.getByRole("combobox", {
+      name: /default subtitle/i,
+    });
+    await select.click();
+    await this.page
+      .getByRole("option", { name: new RegExp(filename, "i") })
+      .click();
+  }
 }

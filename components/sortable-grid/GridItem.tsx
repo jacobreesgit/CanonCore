@@ -9,8 +9,9 @@
 import React, { forwardRef, HTMLAttributes, useState } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
-import { Folder, Film, ImageIcon, FileText } from "lucide-react";
+import { Folder } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ItemStats } from "@/components/items/item-stats";
 import type { FileCounts } from "@/lib/types";
 
 export interface GridItemProps extends Omit<
@@ -74,13 +75,6 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
     const shouldShowArtwork = showArtwork && artworkId && !imageError;
     const shouldShowDescription = showDescription && description;
     const shouldShowCounts = showCounts;
-    const hasFiles =
-      fileCounts &&
-      (fileCounts.media > 0 ||
-        fileCounts.artwork > 0 ||
-        fileCounts.subtitles > 0);
-    const hasChildren = childCount !== undefined && childCount > 0;
-    const hasContent = hasFiles || hasChildren;
 
     // Build accessible label
     const ariaLabel = connectionName
@@ -141,6 +135,14 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
           />
         )}
 
+        {/* Bottom gradient for text legibility over artwork */}
+        {shouldShowArtwork && (
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-2/3 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
+            aria-hidden="true"
+          />
+        )}
+
         {/* Fallback gradient when no artwork */}
         {!shouldShowArtwork && (
           <div
@@ -184,57 +186,12 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
           {/* Stats row */}
           {shouldShowCounts && (
             <div className="mt-3" data-testid="grid-item-stats">
-              {hasContent ? (
-                <div className="flex flex-wrap items-center gap-3 text-sm text-white/90">
-                  {hasChildren && (
-                    <span
-                      className="flex items-center gap-1.5"
-                      data-testid="child-count"
-                    >
-                      <Folder className="size-4" />
-                      <span>{childCount}</span>
-                    </span>
-                  )}
-                  {hasFiles && (
-                    <>
-                      {fileCounts.media > 0 && (
-                        <span
-                          className="flex items-center gap-1.5"
-                          data-testid="media-count"
-                        >
-                          <Film className="size-4" />
-                          <span>{fileCounts.media}</span>
-                        </span>
-                      )}
-                      {fileCounts.artwork > 0 && (
-                        <span
-                          className="flex items-center gap-1.5"
-                          data-testid="artwork-count"
-                        >
-                          <ImageIcon className="size-4" />
-                          <span>{fileCounts.artwork}</span>
-                        </span>
-                      )}
-                      {fileCounts.subtitles > 0 && (
-                        <span
-                          className="flex items-center gap-1.5"
-                          data-testid="subtitle-count"
-                        >
-                          <FileText className="size-4" />
-                          <span>{fileCounts.subtitles}</span>
-                        </span>
-                      )}
-                    </>
-                  )}
-                </div>
-              ) : (
-                <span
-                  className="text-sm text-white/60"
-                  data-testid="empty-state"
-                >
-                  Empty
-                </span>
-              )}
+              <ItemStats
+                childCount={childCount}
+                fileCounts={fileCounts}
+                variant="overlay"
+                showEmpty
+              />
             </div>
           )}
         </div>
