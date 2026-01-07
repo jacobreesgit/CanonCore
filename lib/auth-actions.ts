@@ -17,6 +17,7 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
 } from "@/lib/validations";
+import { logger } from "@/lib/logger";
 
 /**
  * Result type for auth actions.
@@ -39,11 +40,7 @@ async function logSecurityEvent(
   const headersList = await headers();
   const ip = headersList.get("x-forwarded-for") ?? "127.0.0.1";
 
-  console.warn(`[SECURITY] ${event}`, {
-    ip,
-    timestamp: new Date().toISOString(),
-    ...details,
-  });
+  logger.warn({ event, ip, ...details }, `[SECURITY] ${event}`);
 }
 
 /**
@@ -97,7 +94,7 @@ export async function signUp(
     await logSecurityEvent("SIGNUP_SUCCESS", { email });
     return { success: true };
   } catch (error) {
-    console.error("Sign up error:", error);
+    logger.error({ err: error, email }, "Sign up error");
     throw error;
   }
 }

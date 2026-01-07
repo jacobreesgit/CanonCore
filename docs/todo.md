@@ -1,5 +1,5 @@
-- tree needs all children
-- test drag and drop from 2 views. think about the github example
+- test drag and drop from 2 views.
+- think about the github examples for grid and test - the blue
 
 - add a loading spinner to pages. as it shows tree before grid sometimes. and then if grid, it should load the first best practice amount of artworks within the loading spinner too.
 

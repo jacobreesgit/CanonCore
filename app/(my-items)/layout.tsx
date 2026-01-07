@@ -5,6 +5,7 @@
 
 import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { MyItemsProviders } from "@/components/my-items-providers";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { auth, extractSidebarUser } from "@/lib/auth";
@@ -40,7 +41,7 @@ export default async function MyItemsLayout({
         <SidebarInset>
           <div className="flex flex-1 flex-col">
             <div className="@container/main flex flex-1 flex-col gap-2">
-              {children}
+              <ErrorBoundary>{children}</ErrorBoundary>
             </div>
           </div>
         </SidebarInset>

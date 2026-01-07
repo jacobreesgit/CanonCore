@@ -15,6 +15,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { emailSchema, passwordSchema } from "@/lib/validations";
+import { logger } from "@/lib/logger";
 
 /** Result type for user actions. */
 type ActionResult<T = void> =
@@ -53,11 +54,7 @@ async function logSecurityEvent(
   const headersList = await headers();
   const ip = headersList.get("x-forwarded-for") ?? "127.0.0.1";
 
-  console.warn(`[SECURITY] ${event}`, {
-    ip,
-    timestamp: new Date().toISOString(),
-    ...details,
-  });
+  logger.warn({ event, ip, ...details }, `[SECURITY] ${event}`);
 }
 
 /**
@@ -183,7 +180,7 @@ export async function updateProfile(data: {
 
     return { success: true };
   } catch (error) {
-    console.error("Update profile error:", error);
+    logger.error({ err: error }, "Update profile error");
     return { success: false, error: "Failed to update profile" };
   }
 }
@@ -252,7 +249,7 @@ export async function changePassword(data: {
 
     return { success: true };
   } catch (error) {
-    console.error("Change password error:", error);
+    logger.error({ err: error }, "Change password error");
     return { success: false, error: "Failed to change password" };
   }
 }
@@ -371,7 +368,7 @@ export async function removeProfileImage(): Promise<ActionResult<void>> {
 
     return { success: true };
   } catch (error) {
-    console.error("Remove profile image error:", error);
+    logger.error({ err: error }, "Remove profile image error");
     return { success: false, error: "Failed to remove image" };
   }
 }
@@ -398,7 +395,7 @@ export async function removeHeroImage(): Promise<ActionResult<void>> {
 
     return { success: true };
   } catch (error) {
-    console.error("Remove hero image error:", error);
+    logger.error({ err: error }, "Remove hero image error");
     return { success: false, error: "Failed to remove image" };
   }
 }
@@ -446,7 +443,7 @@ export async function getProfile(): Promise<
       },
     };
   } catch (error) {
-    console.error("Get profile error:", error);
+    logger.error({ err: error }, "Get profile error");
     return { success: false, error: "Failed to get profile" };
   }
 }
