@@ -369,12 +369,34 @@ export function ItemsView({
   const handleTreeItemsChange = useCallback(
     async (newTreeItems: TreeItems) => {
       const updates = treeToItemUpdates(newTreeItems);
-      const result = await reorderItems(updates);
+
+      // Fix: On detail pages, the tree treats descendants as "root" nodes with parentId=null
+      // and depth=0. We need to correct these based on actual context.
+      // Get the base depth from initial items (they have correct DB depths).
+      const directChildren = parentId
+        ? items.filter((i) => i.parentId === parentId)
+        : [];
+      const baseDepth =
+        directChildren.length > 0
+          ? Math.min(...directChildren.map((i) => i.depth))
+          : 0;
+
+      const correctedUpdates = parentId
+        ? updates.map((update) => ({
+            ...update,
+            // Offset tree depth by base depth to get actual depth
+            depth: update.depth + baseDepth,
+            // For items at tree depth 0, set parentId to the current page's item
+            parentId: update.depth === 0 ? parentId : update.parentId,
+          }))
+        : updates;
+
+      const result = await reorderItems(correctedUpdates);
       if (result.success) {
         // Update local state with new positions
         setItems((prev) =>
           prev.map((item) => {
-            const update = updates.find((u) => u.id === item.id);
+            const update = correctedUpdates.find((u) => u.id === item.id);
             if (update) {
               return {
                 ...item,
@@ -388,7 +410,7 @@ export function ItemsView({
         );
       }
     },
-    [setItems]
+    [setItems, parentId, items]
   );
 
   // Handle grid reordering (same level only)

@@ -100,7 +100,7 @@ export function SortableTree({
   onAddChild,
   collapsible = true,
   indentationWidth = 20,
-  indicator = false,
+  indicator = true,
   removable = true,
   maxDepth = 10,
   showConnectionBadge: _showConnectionBadge, // eslint-disable-line @typescript-eslint/no-unused-vars

@@ -6,7 +6,7 @@
 import { notFound } from "next/navigation";
 import { ItemDetailClient } from "@/components/items";
 import { SiteHeader } from "@/components/site-header";
-import { getItem, getItems } from "@/lib/item-actions";
+import { getItem, getDescendants } from "@/lib/item-actions";
 import { getItemFiles } from "@/lib/item-file-actions";
 
 interface ItemDetailPageProps {
@@ -38,9 +38,9 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
     })
   );
 
-  // Fetch children of current item and attached files in parallel
+  // Fetch descendants of current item and attached files in parallel
   const [childrenResult, filesResult] = await Promise.all([
-    getItems(itemId),
+    getDescendants(itemId),
     getItemFiles(itemId),
   ]);
 

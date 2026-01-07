@@ -16,6 +16,7 @@ import type {
   BreadcrumbItem,
   ItemWithArtwork,
 } from "@/lib/types";
+import { buildDescendantCounter } from "@/lib/item-utils";
 
 const MAX_DEPTH = 10;
 
@@ -41,27 +42,8 @@ export async function getItems(
     select: { id: true, parentId: true },
   });
 
-  // Build descendant count map using recursive calculation
-  const childrenMap = new Map<string | null, string[]>();
-  for (const item of allItems) {
-    const siblings = childrenMap.get(item.parentId) ?? [];
-    siblings.push(item.id);
-    childrenMap.set(item.parentId, siblings);
-  }
-
-  const descendantCountCache = new Map<string, number>();
-  function countDescendants(itemId: string): number {
-    if (descendantCountCache.has(itemId)) {
-      return descendantCountCache.get(itemId)!;
-    }
-    const children = childrenMap.get(itemId) ?? [];
-    let count = children.length;
-    for (const childId of children) {
-      count += countDescendants(childId);
-    }
-    descendantCountCache.set(itemId, count);
-    return count;
-  }
+  // Use helper to build descendant counter (DRY)
+  const countDescendants = buildDescendantCounter(allItems);
 
   // Fetch items at current level with files and connection
   const items = await prisma.item.findMany({
@@ -90,6 +72,180 @@ export async function getItems(
     const artworkId = primaryArtwork?.id ?? firstArtwork?.id ?? null;
 
     // Calculate file counts by type
+    const fileCounts = {
+      media: item.files.filter((f) => f.fileType === "MEDIA").length,
+      artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
+      subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
+    };
+
+    return {
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      parentId: item.parentId,
+      order: item.order,
+      depth: item.depth,
+      userId: item.userId,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+      sftpPath: item.sftpPath,
+      sftpModifiedAt: item.sftpModifiedAt,
+      connectionId: item.connectionId,
+      artworkId,
+      connectionName: item.connection?.name ?? null,
+      fileCounts,
+      childCount: countDescendants(item.id),
+    };
+  });
+
+  return { success: true, data: itemsWithArtwork };
+}
+
+/**
+ * Fetches ALL items for the current user with artwork thumbnails.
+ * Returns full hierarchy (all levels) for inline tree display.
+ * Items are ordered by depth then order for proper tree building.
+ *
+ * @returns All items array with artworkId or error
+ */
+export async function getAllItems(): Promise<ItemResult<ItemWithArtwork[]>> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  // Fetch all items for descendant count calculation
+  const allItems = await prisma.item.findMany({
+    where: { userId: session.user.id },
+    select: { id: true, parentId: true },
+  });
+
+  // Use helper to build descendant counter (DRY)
+  const countDescendants = buildDescendantCounter(allItems);
+
+  // Fetch ALL items with files and connection
+  const items = await prisma.item.findMany({
+    where: {
+      userId: session.user.id,
+    },
+    orderBy: [{ depth: "asc" }, { order: "asc" }],
+    include: {
+      files: {
+        select: { id: true, fileType: true, isPrimary: true },
+      },
+      connection: {
+        select: { name: true },
+      },
+    },
+  });
+
+  // Transform to ItemWithArtwork with file counts and descendant count
+  const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => {
+    const primaryArtwork = item.files.find(
+      (f) => f.fileType === "ARTWORK" && f.isPrimary
+    );
+    const firstArtwork = item.files.find((f) => f.fileType === "ARTWORK");
+    const artworkId = primaryArtwork?.id ?? firstArtwork?.id ?? null;
+
+    const fileCounts = {
+      media: item.files.filter((f) => f.fileType === "MEDIA").length,
+      artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
+      subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
+    };
+
+    return {
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      parentId: item.parentId,
+      order: item.order,
+      depth: item.depth,
+      userId: item.userId,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+      sftpPath: item.sftpPath,
+      sftpModifiedAt: item.sftpModifiedAt,
+      connectionId: item.connectionId,
+      artworkId,
+      connectionName: item.connection?.name ?? null,
+      fileCounts,
+      childCount: countDescendants(item.id),
+    };
+  });
+
+  return { success: true, data: itemsWithArtwork };
+}
+
+/**
+ * Fetches all descendants of an item (children, grandchildren, etc.).
+ * Used for displaying full subtree on item detail pages.
+ *
+ * @param parentId - Parent item ID
+ * @returns All descendant items with artworkId or error
+ */
+export async function getDescendants(
+  parentId: string
+): Promise<ItemResult<ItemWithArtwork[]>> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  // Verify parent ownership
+  const parent = await prisma.item.findFirst({
+    where: { id: parentId, userId: session.user.id },
+  });
+  if (!parent) {
+    return { error: "Item not found" };
+  }
+
+  // Use recursive CTE to get all descendants
+  const descendants = await prisma.$queryRaw<{ id: string }[]>`
+    WITH RECURSIVE descendants AS (
+      SELECT id, "parentId"
+      FROM "Item"
+      WHERE "parentId" = ${parentId} AND "userId" = ${session.user.id}
+      UNION ALL
+      SELECT i.id, i."parentId"
+      FROM "Item" i
+      INNER JOIN descendants d ON i."parentId" = d.id
+      WHERE i."userId" = ${session.user.id}
+    )
+    SELECT id FROM descendants
+  `;
+
+  const descendantIds = descendants.map((d) => d.id);
+
+  if (descendantIds.length === 0) {
+    return { success: true, data: [] };
+  }
+
+  // Fetch full item data (single query instead of two)
+  const items = await prisma.item.findMany({
+    where: { id: { in: descendantIds } },
+    orderBy: [{ depth: "asc" }, { order: "asc" }],
+    include: {
+      files: {
+        select: { id: true, fileType: true, isPrimary: true },
+      },
+      connection: {
+        select: { name: true },
+      },
+    },
+  });
+
+  // Build descendant count map from fetched items (DRY)
+  const countDescendants = buildDescendantCounter(
+    items.map((item) => ({ id: item.id, parentId: item.parentId }))
+  );
+
+  const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => {
+    const primaryArtwork = item.files.find(
+      (f) => f.fileType === "ARTWORK" && f.isPrimary
+    );
+    const firstArtwork = item.files.find((f) => f.fileType === "ARTWORK");
+    const artworkId = primaryArtwork?.id ?? firstArtwork?.id ?? null;
+
     const fileCounts = {
       media: item.files.filter((f) => f.fileType === "MEDIA").length,
       artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
