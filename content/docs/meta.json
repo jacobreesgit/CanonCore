@@ -7,6 +7,7 @@
     "getting-started/sign-in",
     "getting-started/quick-tour",
     "---Your Account---",
+    "account/profile-settings",
     "account/password-reset",
     "account/sign-out",
     "account/security",

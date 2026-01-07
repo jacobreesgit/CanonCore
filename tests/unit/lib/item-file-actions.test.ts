@@ -56,6 +56,7 @@ const mockItemFile = (
     size: bigint | null;
     sftpModifiedAt: Date | null;
     isPrimary: boolean;
+    isHero: boolean;
     playbackPosition: number | null;
     playbackDuration: number | null;
     createdAt: Date;
@@ -72,6 +73,7 @@ const mockItemFile = (
   size: BigInt(1000000),
   sftpModifiedAt: new Date(),
   isPrimary: false,
+  isHero: false,
   playbackPosition: null,
   playbackDuration: null,
   createdAt: new Date(),

@@ -22,6 +22,8 @@ interface FilteredItemsViewProps {
   initialConnectionId: string | null;
   /** Hero title (displays ItemHero after toolbar when provided). */
   heroTitle?: string;
+  /** Whether user has a hero image set. */
+  hasHeroImage?: boolean;
 }
 
 /**
@@ -32,6 +34,7 @@ function FilteredItemsViewInner({
   connections,
   initialConnectionId,
   heroTitle,
+  hasHeroImage,
 }: FilteredItemsViewProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -91,13 +94,8 @@ function FilteredItemsViewInner({
     [router, pathname, searchParams]
   );
 
-  // Get connection name for hero when filtered
-  const activeConnection = connectionId
-    ? connections.find((c) => c.id === connectionId)
-    : null;
-  const effectiveHeroTitle = activeConnection
-    ? activeConnection.name
-    : heroTitle;
+  // Always use heroTitle for root page - don't override with connection name
+  const effectiveHeroTitle = heroTitle;
 
   return (
     <ItemsView
@@ -111,6 +109,7 @@ function FilteredItemsViewInner({
       onSyncComplete={refetchItems}
       heroTitle={effectiveHeroTitle}
       heroItemCount={items.length}
+      heroBackgroundUrl={hasHeroImage ? "/api/user/hero" : undefined}
     />
   );
 }

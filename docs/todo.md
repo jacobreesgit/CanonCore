@@ -1,7 +1,5 @@
-- look at all codebase - specifically dead/redundant files/code
-- look at all codebase - specifically playwright/e2e
-- look at all codebase
-- test drag and drop from 2 views.
+- tree needs all children
+- test drag and drop from 2 views. think about the github example
 
 - add a loading spinner to pages. as it shows tree before grid sometimes. and then if grid, it should load the first best practice amount of artworks within the loading spinner too.
 
@@ -13,7 +11,7 @@
 
 - imdb/other
 
-- upload
+- upload. already doing this for profile (maybe improve this and reduce limit? OMG... INSTEAD OF HOSTING THE DATA IN OUR POSTGRE, ALSO DO SFTP? OH WAIT WHAT IF NOT SFTP)
 
 - public and explore
 - "item templates" make a copy/fork, you can "add" and it adds all the stuff to your sftp apart from subtitles and media files

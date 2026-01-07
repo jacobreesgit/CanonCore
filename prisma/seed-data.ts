@@ -19,6 +19,7 @@ export interface SeedFile {
   mimeType: string;
   size: bigint;
   isPrimary?: boolean;
+  isHero?: boolean;
 }
 
 /**
@@ -72,6 +73,7 @@ export const MOVIES: SeedItem[] = [
         fileType: FileType.ARTWORK,
         mimeType: "image/jpeg",
         size: BigInt(949 * KB),
+        isHero: true,
       },
       {
         filename: "The.Shawshank.Redemption.1994.en.srt",
@@ -164,6 +166,7 @@ export const MOVIES: SeedItem[] = [
         fileType: FileType.ARTWORK,
         mimeType: "image/jpeg",
         size: BigInt(Math.floor(7.1 * KB)),
+        isHero: true,
       },
       {
         filename: "logo.jpg",
@@ -476,6 +479,7 @@ export const TV_SHOWS: SeedItem[] = [
             fileType: FileType.ARTWORK,
             mimeType: "image/jpeg",
             size: BigInt(56 * KB),
+            isHero: true,
           },
         ],
         children: [
@@ -616,6 +620,7 @@ export const TV_SHOWS: SeedItem[] = [
             fileType: FileType.ARTWORK,
             mimeType: "image/jpeg",
             size: BigInt(227 * KB),
+            isHero: true,
           },
         ],
         children: [
@@ -645,6 +650,7 @@ export const TV_SHOWS: SeedItem[] = [
                 mimeType: "image/jpeg",
                 size: BigInt(Math.floor(8.0 * MB)),
                 isPrimary: true,
+                isHero: true,
               },
               {
                 filename: "title.webp",
@@ -832,6 +838,7 @@ export const TV_SHOWS: SeedItem[] = [
             fileType: FileType.ARTWORK,
             mimeType: "image/jpeg",
             size: BigInt(53 * KB),
+            isHero: true,
           },
         ],
         children: [
@@ -861,6 +868,7 @@ export const TV_SHOWS: SeedItem[] = [
                 mimeType: "image/jpeg",
                 size: BigInt(Math.floor(1.3 * MB)),
                 isPrimary: true,
+                isHero: true,
               },
               {
                 filename: "title.jpg",

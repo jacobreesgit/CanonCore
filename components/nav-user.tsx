@@ -5,8 +5,10 @@
 
 "use client";
 
-import { LogOut, MoreVertical } from "lucide-react";
+import { useState, useCallback } from "react";
+import { LogOut, MoreVertical, Settings } from "lucide-react";
 import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -23,6 +25,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { ProfileSettingsDialog } from "@/components/profile/profile-settings-dialog";
 
 /**
  * Renders user menu in sidebar footer with dropdown for account actions.
@@ -37,13 +40,22 @@ export function NavUser({
     name: string;
     email: string;
     avatar?: string;
+    hasImage?: boolean;
+    hasHeroImage?: boolean;
   };
 }) {
   const { isMobile } = useSidebar();
+  const router = useRouter();
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: "/" });
   };
+
+  const handleProfileChange = useCallback(async () => {
+    // Refresh the page to update user data
+    router.refresh();
+  }, [router]);
 
   return (
     <SidebarMenu>
@@ -95,6 +107,13 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem
+              onClick={() => setProfileDialogOpen(true)}
+              data-testid="my-items-profile-settings-button"
+            >
+              <Settings />
+              Profile Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem
               onClick={handleSignOut}
               data-testid="my-items-sign-out-button"
             >
@@ -103,6 +122,19 @@ export function NavUser({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Profile Settings Dialog */}
+        <ProfileSettingsDialog
+          open={profileDialogOpen}
+          onOpenChange={setProfileDialogOpen}
+          user={{
+            name: user.name || null,
+            email: user.email,
+            hasImage: user.hasImage ?? false,
+            hasHeroImage: user.hasHeroImage ?? false,
+          }}
+          onProfileChange={handleProfileChange}
+        />
       </SidebarMenuItem>
     </SidebarMenu>
   );

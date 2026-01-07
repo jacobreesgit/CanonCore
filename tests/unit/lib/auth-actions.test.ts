@@ -27,6 +27,40 @@ vi.mock("next/headers", () => ({
 // Set BYPASS_RATE_LIMIT for tests (for rate-limit.ts which reads process.env directly)
 vi.stubEnv("BYPASS_RATE_LIMIT", "true");
 
+/**
+ * Creates a mock user object with all required fields.
+ */
+function createMockUser(
+  overrides: Partial<{
+    id: string;
+    email: string;
+    passwordHash: string;
+    emailVerified: Date | null;
+    name: string | null;
+    image: Uint8Array<ArrayBuffer> | null;
+    imageMime: string | null;
+    heroImage: Uint8Array<ArrayBuffer> | null;
+    heroImageMime: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }> = {}
+) {
+  return {
+    id: "1",
+    email: "test@example.com",
+    passwordHash: "hashed",
+    emailVerified: null,
+    name: null,
+    image: null,
+    imageMime: null,
+    heroImage: null,
+    heroImageMime: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
+
 describe("signUp", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -34,16 +68,7 @@ describe("signUp", () => {
 
   it("creates user with hashed password when email is new", async () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
-    vi.mocked(prisma.user.create).mockResolvedValue({
-      id: "1",
-      email: "test@example.com",
-      passwordHash: "hashed",
-      emailVerified: null,
-      name: null,
-      image: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    vi.mocked(prisma.user.create).mockResolvedValue(createMockUser());
 
     const result = await signUp("test@example.com", "Password123!");
 
@@ -60,16 +85,9 @@ describe("signUp", () => {
   });
 
   it("returns error when email already exists", async () => {
-    vi.mocked(prisma.user.findUnique).mockResolvedValue({
-      id: "1",
-      email: "exists@example.com",
-      passwordHash: "hashed",
-      emailVerified: null,
-      name: null,
-      image: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(
+      createMockUser({ email: "exists@example.com" })
+    );
 
     const result = await signUp("exists@example.com", "Password123!");
 
@@ -79,16 +97,7 @@ describe("signUp", () => {
 
   it("hashes password before storing", async () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
-    vi.mocked(prisma.user.create).mockResolvedValue({
-      id: "1",
-      email: "test@example.com",
-      passwordHash: "hashed",
-      emailVerified: null,
-      name: null,
-      image: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    vi.mocked(prisma.user.create).mockResolvedValue(createMockUser());
 
     await signUp("test@example.com", "Password1");
 
@@ -128,16 +137,9 @@ describe("forgotPassword", () => {
   });
 
   it("creates reset token and sends email when user exists", async () => {
-    vi.mocked(prisma.user.findUnique).mockResolvedValue({
-      id: "user-1",
-      email: "test@example.com",
-      passwordHash: "hashed",
-      emailVerified: null,
-      name: null,
-      image: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(
+      createMockUser({ id: "user-1" })
+    );
     vi.mocked(prisma.passwordReset.deleteMany).mockResolvedValue({ count: 0 });
     vi.mocked(prisma.passwordReset.create).mockResolvedValue({
       id: "reset-1",
@@ -220,27 +222,11 @@ describe("resetPassword", () => {
       userId: "user-1",
       expires: new Date(Date.now() + 60000), // Valid for 1 minute
       createdAt: new Date(),
-      user: {
-        id: "user-1",
-        email: "test@example.com",
-        passwordHash: "hashed",
-        emailVerified: null,
-        name: null,
-        image: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
+      user: createMockUser({ id: "user-1" }),
     } as never);
-    vi.mocked(prisma.user.update).mockResolvedValue({
-      id: "user-1",
-      email: "test@example.com",
-      passwordHash: "new-hash",
-      emailVerified: null,
-      name: null,
-      image: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    vi.mocked(prisma.user.update).mockResolvedValue(
+      createMockUser({ id: "user-1", passwordHash: "new-hash" })
+    );
     vi.mocked(prisma.passwordReset.delete).mockResolvedValue({
       id: "reset-1",
       token: "valid-token",

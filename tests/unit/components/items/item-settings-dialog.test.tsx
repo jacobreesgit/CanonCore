@@ -1,6 +1,6 @@
 /**
  * Unit tests for ItemSettingsDialog component.
- * Tests Select-based primary file selection.
+ * Tests Select-based file selection with single atomic save.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -8,12 +8,12 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ItemSettingsDialog } from "@/components/items/item-settings-dialog";
 import type { SerializedItemFile } from "@/lib/types";
-import { setPrimaryFile } from "@/lib/item-file-actions";
+import { updateItemSettings } from "@/lib/item-file-actions";
 import { toast } from "sonner";
 
 // Mock server actions
 vi.mock("@/lib/item-file-actions", () => ({
-  setPrimaryFile: vi.fn().mockResolvedValue({ success: true }),
+  updateItemSettings: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 vi.mock("sonner", () => ({
@@ -26,8 +26,6 @@ describe("ItemSettingsDialog", () => {
     onOpenChange: vi.fn(),
     item: { id: "item-1", name: "Test Item", description: null },
     files: { media: [], artwork: [], subtitles: [] },
-    onRename: vi.fn(),
-    onDescriptionChange: vi.fn(),
   };
 
   beforeEach(() => {
@@ -37,7 +35,7 @@ describe("ItemSettingsDialog", () => {
   // Helper to create complete mock file objects
   const createMockFile = (
     overrides: Partial<SerializedItemFile> & { id: string; filename: string }
-  ) => ({
+  ): SerializedItemFile => ({
     itemId: "item-1",
     sftpPath: `/${overrides.filename}`,
     fileType: "MEDIA" as const,
@@ -45,6 +43,7 @@ describe("ItemSettingsDialog", () => {
     size: null,
     sftpModifiedAt: null,
     isPrimary: false,
+    isHero: false,
     playbackPosition: null,
     playbackDuration: null,
     createdAt: new Date(),
@@ -105,7 +104,7 @@ describe("ItemSettingsDialog", () => {
       expect(select).not.toBeDisabled();
     });
 
-    it("should call setPrimaryFile when selection changes", async () => {
+    it("should enable Save button when selection changes", async () => {
       const user = userEvent.setup();
       const files = {
         media: [
@@ -127,15 +126,50 @@ describe("ItemSettingsDialog", () => {
       };
       render(<ItemSettingsDialog {...defaultProps} files={files} />);
 
+      // Save button should be disabled initially (no changes)
+      const saveButton = screen.getByRole("button", { name: /save changes/i });
+      expect(saveButton).toBeDisabled();
+
+      // Change selection
       const select = screen.getByRole("combobox", { name: /primary media/i });
       await user.click(select);
       await user.click(screen.getByRole("option", { name: /movie-hd\.mkv/i }));
 
-      expect(vi.mocked(setPrimaryFile)).toHaveBeenCalledWith("m2");
+      // Save button should now be enabled
+      expect(saveButton).not.toBeDisabled();
     });
 
-    it("should show error toast when setPrimaryFile fails", async () => {
-      vi.mocked(setPrimaryFile).mockResolvedValueOnce({
+    it("should call updateItemSettings when Save is clicked", async () => {
+      const user = userEvent.setup();
+      const files = {
+        media: [
+          createMockFile({ id: "m1", filename: "movie.mp4", isPrimary: true }),
+          createMockFile({
+            id: "m2",
+            filename: "movie-hd.mkv",
+            isPrimary: false,
+          }),
+        ],
+        artwork: [],
+        subtitles: [],
+      };
+      render(<ItemSettingsDialog {...defaultProps} files={files} />);
+
+      // Change selection
+      const select = screen.getByRole("combobox", { name: /primary media/i });
+      await user.click(select);
+      await user.click(screen.getByRole("option", { name: /movie-hd\.mkv/i }));
+
+      // Click Save
+      await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+      expect(vi.mocked(updateItemSettings)).toHaveBeenCalledWith("item-1", {
+        primaryMediaId: "m2",
+      });
+    });
+
+    it("should show error toast when updateItemSettings fails", async () => {
+      vi.mocked(updateItemSettings).mockResolvedValueOnce({
         success: false,
         error: "Failed to update",
       });
@@ -157,34 +191,9 @@ describe("ItemSettingsDialog", () => {
       const select = screen.getByRole("combobox", { name: /primary media/i });
       await user.click(select);
       await user.click(screen.getByRole("option", { name: /movie-hd\.mkv/i }));
+      await user.click(screen.getByRole("button", { name: /save changes/i }));
 
       expect(vi.mocked(toast.error)).toHaveBeenCalledWith("Failed to update");
-    });
-
-    it("should disable select during save operation", async () => {
-      // Make setPrimaryFile hang to test loading state
-      vi.mocked(setPrimaryFile).mockImplementation(() => new Promise(() => {}));
-      const user = userEvent.setup();
-      const files = {
-        media: [
-          createMockFile({ id: "m1", filename: "movie.mp4", isPrimary: true }),
-          createMockFile({
-            id: "m2",
-            filename: "movie-hd.mkv",
-            isPrimary: false,
-          }),
-        ],
-        artwork: [],
-        subtitles: [],
-      };
-      render(<ItemSettingsDialog {...defaultProps} files={files} />);
-
-      const select = screen.getByRole("combobox", { name: /primary media/i });
-      await user.click(select);
-      await user.click(screen.getByRole("option", { name: /movie-hd\.mkv/i }));
-
-      // Select should be disabled while saving
-      expect(select).toBeDisabled();
     });
   });
 
@@ -276,7 +285,7 @@ describe("ItemSettingsDialog", () => {
       expect(select).toBeDisabled();
     });
 
-    it("should call setPrimaryFile when subtitle selection changes", async () => {
+    it("should save subtitle selection via updateItemSettings", async () => {
       const user = userEvent.setup();
       const files = {
         media: [],
@@ -305,8 +314,11 @@ describe("ItemSettingsDialog", () => {
       });
       await user.click(select);
       await user.click(screen.getByRole("option", { name: /movie\.es\.srt/i }));
+      await user.click(screen.getByRole("button", { name: /save changes/i }));
 
-      expect(vi.mocked(setPrimaryFile)).toHaveBeenCalledWith("s2");
+      expect(vi.mocked(updateItemSettings)).toHaveBeenCalledWith("item-1", {
+        primarySubtitleId: "s2",
+      });
     });
   });
 });

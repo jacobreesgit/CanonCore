@@ -125,24 +125,6 @@ export async function downloadFileBuffer(
 }
 
 /**
- * Deletes a file from the remote server.
- *
- * @param connection - SFTP connection configuration
- * @param remotePath - Path to delete
- */
-export async function deleteFile(
-  connection: SftpConnection,
-  remotePath: string
-): Promise<void> {
-  const client = await getConnection(connection);
-  await withTimeout(
-    client.delete(remotePath),
-    OPERATION_TIMEOUT_MS,
-    "delete file"
-  );
-}
-
-/**
  * Renames/moves a file or directory.
  *
  * @param connection - SFTP connection configuration
@@ -223,11 +205,9 @@ export async function removeDirectory(
 
 /**
  * Cleans up stale connections from the pool.
- * Called periodically and can be invoked manually.
- *
- * @returns Number of connections cleaned up
+ * Called periodically by the cleanup interval.
  */
-export function cleanupStaleConnections(): number {
+function cleanupStaleConnections(): number {
   const now = Date.now();
   let cleaned = 0;
 
@@ -263,16 +243,6 @@ export async function closeAllConnections(): Promise<number> {
   return count;
 }
 
-/**
- * Gets the current number of pooled connections.
- * Useful for monitoring and debugging.
- *
- * @returns Number of active connections in the pool
- */
-export function getPoolSize(): number {
-  return connectionPool.size;
-}
-
 // Cleanup stale connections periodically (only in long-running processes)
 // Check less frequently to reduce overhead
 const CLEANUP_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
@@ -282,22 +252,11 @@ let cleanupInterval: NodeJS.Timeout | null = null;
  * Starts the periodic cleanup interval.
  * Safe to call multiple times - will not create duplicate intervals.
  */
-export function startCleanupInterval(): void {
+function startCleanupInterval(): void {
   if (cleanupInterval) return;
   cleanupInterval = setInterval(cleanupStaleConnections, CLEANUP_INTERVAL_MS);
   // Allow the process to exit even if the interval is running
   cleanupInterval.unref?.();
-}
-
-/**
- * Stops the periodic cleanup interval.
- * Useful for testing or graceful shutdown.
- */
-export function stopCleanupInterval(): void {
-  if (cleanupInterval) {
-    clearInterval(cleanupInterval);
-    cleanupInterval = null;
-  }
 }
 
 // Auto-start cleanup in non-test environments

@@ -188,6 +188,7 @@ describe("ItemDetailClient", () => {
           size: 1024000,
           sftpModifiedAt: new Date(),
           isPrimary: true,
+          isHero: false,
           playbackPosition: null,
           playbackDuration: null,
           createdAt: new Date(),
