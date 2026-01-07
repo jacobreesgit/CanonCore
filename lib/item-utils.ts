@@ -72,6 +72,42 @@ export function itemsToTree(items: ItemInput[]): TreeItem[] {
 }
 
 /**
+ * Builds a map of item IDs to their descendant counts.
+ * Used by getAllItems, getDescendants, and related functions.
+ *
+ * @param items - Array of items with id and parentId
+ * @returns Function to get descendant count for any item ID
+ */
+export function buildDescendantCounter(
+  items: { id: string; parentId: string | null }[]
+): (itemId: string) => number {
+  // Build parent -> children map
+  const childrenMap = new Map<string | null, string[]>();
+  for (const item of items) {
+    const siblings = childrenMap.get(item.parentId) ?? [];
+    siblings.push(item.id);
+    childrenMap.set(item.parentId, siblings);
+  }
+
+  // Cache for memoization
+  const cache = new Map<string, number>();
+
+  // Recursive counter with memoization
+  return function countDescendants(itemId: string): number {
+    if (cache.has(itemId)) {
+      return cache.get(itemId)!;
+    }
+    const children = childrenMap.get(itemId) ?? [];
+    let count = children.length;
+    for (const childId of children) {
+      count += countDescendants(childId);
+    }
+    cache.set(itemId, count);
+    return count;
+  };
+}
+
+/**
  * Extracts updates from tree items for database persistence.
  * Returns an array of item updates with id, parentId, depth, and order.
  */

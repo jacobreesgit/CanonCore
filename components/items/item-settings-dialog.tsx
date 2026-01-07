@@ -437,7 +437,18 @@ export function ItemSettingsDialog({
                     <SelectContent className="w-[var(--radix-select-trigger-width)]">
                       {files.artwork.map((file) => (
                         <SelectItem key={file.id} value={file.id}>
-                          {file.filename}
+                          <span className="flex min-w-0 items-center gap-2">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={`/api/artwork/${file.id}`}
+                              alt=""
+                              className="size-5 shrink-0 rounded object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                            <span className="truncate">{file.filename}</span>
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -494,7 +505,18 @@ export function ItemSettingsDialog({
                     <SelectContent className="w-[var(--radix-select-trigger-width)]">
                       {files.artwork.map((file) => (
                         <SelectItem key={file.id} value={file.id}>
-                          {file.filename}
+                          <span className="flex min-w-0 items-center gap-2">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={`/api/artwork/${file.id}`}
+                              alt=""
+                              className="size-5 shrink-0 rounded object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                            <span className="truncate">{file.filename}</span>
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
