@@ -117,6 +117,7 @@ pnpm run db:reset         # Reset database and re-seed
 │   │   └── theme-provider.tsx        # next-themes provider wrapper
 │   ├── ui/                           # shadcn/ui components
 │   ├── app-sidebar.tsx               # Context-aware navigation sidebar
+│   ├── error-boundary.tsx            # React error boundary for graceful error handling
 │   ├── my-items-providers.tsx        # Client-side providers for protected routes
 │   ├── nav-docs.tsx                  # Docs tree navigation (Fumadocs)
 │   ├── nav-guest.tsx                 # Guest navigation with auth buttons
@@ -136,6 +137,7 @@ pnpm run db:reset         # Reset database and re-seed
 │   │   ├── media/                    # Media playback tests
 │   │   ├── navigation/               # Sidebar navigation active state tests
 │   │   ├── profile/                  # Profile settings tests
+│   │   ├── security/                 # Security header tests (HSTS, CSP)
 │   │   ├── sftp/                     # SFTP sync and file operation tests
 │   │   ├── theme/                    # Dark mode E2E tests
 │   │   ├── global.setup.ts           # Docker container startup
@@ -167,6 +169,7 @@ pnpm run db:reset         # Reset database and re-seed
 ├── lib/
 │   ├── auth.ts                       # NextAuth config, extractSidebarUser helper
 │   ├── auth-actions.ts               # Auth server actions
+│   ├── circuit-breaker.ts            # Circuit breaker for resilient external calls
 │   ├── crypto.ts                     # AES-256-GCM credential encryption
 │   ├── email.ts                      # Resend email helper
 │   ├── env.ts                        # Zod environment variable validation
@@ -174,6 +177,7 @@ pnpm run db:reset         # Reset database and re-seed
 │   ├── item-actions.ts               # Item CRUD server actions
 │   ├── item-file-actions.ts          # ItemFile operations, playback progress
 │   ├── item-utils.ts                 # Tree/flat conversion utilities
+│   ├── logger.ts                     # Pino structured logging with request context
 │   ├── prisma.ts                     # Prisma client singleton
 │   ├── rate-limit.ts                 # Upstash Redis rate limiting
 │   ├── sftp-actions.ts               # SFTP connection and sync server actions
@@ -192,12 +196,13 @@ pnpm run db:reset         # Reset database and re-seed
 │   ├── seed-data.ts                  # Declarative seed data definitions
 │   ├── seed-utils.ts                 # File discovery and path mapping
 │   └── clear-seed.ts                 # Clear seed data script
+├── middleware.ts                     # Next.js middleware for request ID injection
 ├── skills/                           # Claude Code skills
 │   ├── code-review-excellence/       # Code review best practices
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.25.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.26.0)
     └── plans/                        # Design documents
 ```
 
@@ -277,6 +282,7 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 - **Artwork API**: `/api/artwork/[fileId]` downloads artwork via SFTP for thumbnails
 - **WebDAV streaming**: Optional WebDAV endpoint for direct media streaming
 - **Server actions**: `lib/sftp-actions.ts` for all SFTP operations
+- **Circuit breaker**: Protects against cascade failures (5 failures, 60s recovery)
 - **Path security**: Directory traversal prevention via `lib/sftp-utils.ts`
 
 ### Media Playback
@@ -310,7 +316,7 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 528 total tests (463 unit + 65 integration)
+- 548 total tests (481 unit + 67 integration)
 
 ### E2E Testing
 
@@ -325,12 +331,20 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 ### Security
 
 - **OWASP security headers** configured in `next.config.mjs`
+- **Strict-Transport-Security (HSTS)**: 1-year max-age with includeSubDomains and preload
 - **Content Security Policy (CSP)**: Restricts resource loading to trusted sources
 - **X-Frame-Options**: DENY prevents clickjacking via iframe embedding
 - **X-Content-Type-Options**: nosniff prevents MIME-type sniffing
 - **X-XSS-Protection**: Enables browser XSS filtering
 - **Referrer-Policy**: strict-origin-when-cross-origin controls referrer leakage
 - **Permissions-Policy**: Disables camera, microphone, and geolocation
+
+### Observability
+
+- **Structured logging**: Pino logger with JSON output in production, pretty print in development
+- **Request tracing**: Middleware injects `x-request-id` header for distributed tracing
+- **Child loggers**: `createRequestLogger(requestId)` and `createUserLogger(userId)` for context
+- **Log levels**: Configurable via `LOG_LEVEL` env var (debug, info, warn, error)
 
 ### Styling
 
@@ -367,6 +381,7 @@ Optional:
 - `NEXT_PUBLIC_APP_URL` - Base URL for email links (default: `http://localhost:3000`)
 - `SEED_PASSWORD` - Shared password for seed users (required for seeding)
 - `ALLOW_SEEDING` - Set to `"true"` to enable database seeding
+- `LOG_LEVEL` - Pino log level: debug, info, warn, error (default: info)
 
 ## Documentation Standards
 
