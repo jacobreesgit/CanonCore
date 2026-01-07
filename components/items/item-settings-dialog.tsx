@@ -1,19 +1,27 @@
 /**
- * Unified item settings dialog.
- * Consolidates name editing, primary media, artwork, and subtitle selection.
- * Features progressive disclosure - only shows sections with actionable choices.
+ * Unified item settings dialog with single atomic save.
+ * Consolidates name, description, and file selections into one save action.
+ * Features progressive disclosure and dirty state tracking.
  */
 
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import { Loader2, ImageIcon, FileText, Film, Settings2 } from "lucide-react";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import {
+  Loader2,
+  ImageIcon,
+  FileText,
+  Film,
+  Settings2,
+  Sparkles,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -27,7 +35,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { setPrimaryFile } from "@/lib/item-file-actions";
+import { updateItemSettings } from "@/lib/item-file-actions";
 import { toast } from "sonner";
 import type { SerializedItemFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -48,10 +56,6 @@ interface ItemSettingsDialogProps {
   };
   /** Number of child items for stats display */
   childCount?: number;
-  /** Callback to rename the item */
-  onRename: (newName: string) => Promise<void>;
-  /** Callback to update the description */
-  onDescriptionChange: (description: string) => Promise<void>;
   /** Optional callback when settings change (for refreshing data). Awaited to ensure sync. */
   onSettingsChange?: () => Promise<void>;
 }
@@ -66,15 +70,25 @@ function findPrimaryFile(
 }
 
 /**
- * Item settings dialog with progressive disclosure.
+ * Finds the hero file in an array, or returns undefined.
+ */
+function findHeroFile(
+  files: SerializedItemFile[]
+): SerializedItemFile | undefined {
+  return files.find((f) => f.isHero);
+}
+
+/**
+ * Item settings dialog with single atomic save.
  * Only shows file selection sections when there are 2+ files of a type.
+ * Tracks dirty state and saves all changes in one transaction.
  *
  * @param open - Whether dialog is visible
  * @param onOpenChange - Callback for visibility changes
  * @param item - Item metadata
  * @param files - Files grouped by type
- * @param onRename - Callback to rename item
- * @param onSettingsChange - Optional callback when primary file changes
+ * @param childCount - Number of child items
+ * @param onSettingsChange - Optional callback when settings are saved
  */
 export function ItemSettingsDialog({
   open,
@@ -82,22 +96,57 @@ export function ItemSettingsDialog({
   item,
   files,
   childCount,
-  onRename,
-  onDescriptionChange,
   onSettingsChange,
 }: ItemSettingsDialogProps) {
+  // Form state
   const [name, setName] = useState(item.name);
   const [description, setDescription] = useState(item.description ?? "");
-  const [isSaving, setIsSaving] = useState(false);
-  const [isSavingDescription, setIsSavingDescription] = useState(false);
-  const [loadingFileId, setLoadingFileId] = useState<string | null>(null);
+  const [primaryMediaId, setPrimaryMediaId] = useState<string | undefined>(
+    findPrimaryFile(files.media)?.id
+  );
+  const [primaryArtworkId, setPrimaryArtworkId] = useState<string | undefined>(
+    findPrimaryFile(files.artwork)?.id
+  );
+  const [heroArtworkId, setHeroArtworkId] = useState<string | undefined>(
+    findHeroFile(files.artwork)?.id ?? findPrimaryFile(files.artwork)?.id
+  );
+  const [primarySubtitleId, setPrimarySubtitleId] = useState<
+    string | undefined
+  >(findPrimaryFile(files.subtitles)?.id);
 
-  // Sync state when item prop changes (prevents stale state on dialog reopen)
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Original values for dirty checking
+  const originalValues = useMemo(
+    () => ({
+      name: item.name,
+      description: item.description ?? "",
+      primaryMediaId: findPrimaryFile(files.media)?.id,
+      primaryArtworkId: findPrimaryFile(files.artwork)?.id,
+      heroArtworkId:
+        findHeroFile(files.artwork)?.id ?? findPrimaryFile(files.artwork)?.id,
+      primarySubtitleId: findPrimaryFile(files.subtitles)?.id,
+    }),
+    [item.name, item.description, files]
+  );
+
+  // Sync name/description when item changes (separate from files to prevent race condition)
   useEffect(() => {
     setName(item.name);
     setDescription(item.description ?? "");
   }, [item.name, item.description]);
 
+  // Sync file selections when files change
+  useEffect(() => {
+    setPrimaryMediaId(findPrimaryFile(files.media)?.id);
+    setPrimaryArtworkId(findPrimaryFile(files.artwork)?.id);
+    setHeroArtworkId(
+      findHeroFile(files.artwork)?.id ?? findPrimaryFile(files.artwork)?.id
+    );
+    setPrimarySubtitleId(findPrimaryFile(files.subtitles)?.id);
+  }, [files]);
+
+  // Computed flags
   const hasMedia = files.media.length > 0;
   const hasArtwork = files.artwork.length > 0;
   const hasSubtitles = files.subtitles.length > 0;
@@ -106,51 +155,120 @@ export function ItemSettingsDialog({
   const hasMultipleSubtitles = files.subtitles.length > 1;
   const hasMediaSettings = hasMedia || hasArtwork || hasSubtitles;
 
-  const handleSaveName = useCallback(async () => {
-    if (!name.trim() || name === item.name) return;
+  // Dirty state detection
+  const isDirty = useMemo(() => {
+    return (
+      name !== originalValues.name ||
+      description !== originalValues.description ||
+      primaryMediaId !== originalValues.primaryMediaId ||
+      primaryArtworkId !== originalValues.primaryArtworkId ||
+      heroArtworkId !== originalValues.heroArtworkId ||
+      primarySubtitleId !== originalValues.primarySubtitleId
+    );
+  }, [
+    name,
+    description,
+    primaryMediaId,
+    primaryArtworkId,
+    heroArtworkId,
+    primarySubtitleId,
+    originalValues,
+  ]);
+
+  /**
+   * Resets form to original values.
+   */
+  const handleCancel = useCallback(() => {
+    setName(originalValues.name);
+    setDescription(originalValues.description);
+    setPrimaryMediaId(originalValues.primaryMediaId);
+    setPrimaryArtworkId(originalValues.primaryArtworkId);
+    setHeroArtworkId(originalValues.heroArtworkId);
+    setPrimarySubtitleId(originalValues.primarySubtitleId);
+    onOpenChange(false);
+  }, [originalValues, onOpenChange]);
+
+  /**
+   * Saves all changes atomically.
+   */
+  const handleSave = useCallback(async () => {
+    if (!name.trim()) {
+      toast.error("Name is required");
+      return;
+    }
+
     setIsSaving(true);
     try {
-      await onRename(name.trim());
-      // Note: Toast is shown by parent component (items-view) via handleRenameItem
+      // Build changes object - only include changed values
+      const changes: {
+        name?: string;
+        description?: string;
+        primaryMediaId?: string;
+        primaryArtworkId?: string;
+        heroArtworkId?: string;
+        primarySubtitleId?: string;
+      } = {};
+
+      if (name !== originalValues.name) {
+        changes.name = name.trim();
+      }
+      if (description !== originalValues.description) {
+        changes.description = description;
+      }
+      if (primaryMediaId !== originalValues.primaryMediaId && primaryMediaId) {
+        changes.primaryMediaId = primaryMediaId;
+      }
+      if (
+        primaryArtworkId !== originalValues.primaryArtworkId &&
+        primaryArtworkId
+      ) {
+        changes.primaryArtworkId = primaryArtworkId;
+      }
+      if (heroArtworkId !== originalValues.heroArtworkId && heroArtworkId) {
+        changes.heroArtworkId = heroArtworkId;
+      }
+      if (
+        primarySubtitleId !== originalValues.primarySubtitleId &&
+        primarySubtitleId
+      ) {
+        changes.primarySubtitleId = primarySubtitleId;
+      }
+
+      const result = await updateItemSettings(item.id, changes);
+
+      if (result.success) {
+        toast.success("Settings saved");
+        // Refetch is best-effort - save already succeeded, log errors for debugging
+        await onSettingsChange?.().catch((err) => {
+          console.warn("[ItemSettingsDialog] Refetch failed after save:", err);
+        });
+        onOpenChange(false);
+      } else {
+        toast.error(result.error || "Failed to save settings");
+      }
     } catch {
-      toast.error("Failed to update name");
+      toast.error("Failed to save settings");
     } finally {
       setIsSaving(false);
     }
-  }, [name, item.name, onRename]);
+  }, [
+    name,
+    description,
+    primaryMediaId,
+    primaryArtworkId,
+    heroArtworkId,
+    primarySubtitleId,
+    originalValues,
+    item.id,
+    onSettingsChange,
+    onOpenChange,
+  ]);
 
-  const handleSaveDescription = useCallback(async () => {
-    if (description === (item.description ?? "")) return;
-    setIsSavingDescription(true);
-    try {
-      await onDescriptionChange(description);
-      // Refetch is best-effort - save already succeeded, so don't show error if refetch fails
-      await onSettingsChange?.().catch(() => {});
-    } catch {
-      toast.error("Failed to update description");
-    } finally {
-      setIsSavingDescription(false);
-    }
-  }, [description, item.description, onDescriptionChange, onSettingsChange]);
-
-  const handleSetPrimary = useCallback(
-    async (fileId: string, label: string) => {
-      setLoadingFileId(fileId);
-      try {
-        const result = await setPrimaryFile(fileId);
-        if (result.success) {
-          toast.success(`Primary ${label} updated`);
-          // Refetch is best-effort - save already succeeded
-          await onSettingsChange?.().catch(() => {});
-        } else {
-          toast.error(result.error || "Failed to update");
-        }
-      } finally {
-        setLoadingFileId(null);
-      }
-    },
-    [onSettingsChange]
+  // Get current artwork for preview
+  const currentPrimaryArtwork = files.artwork.find(
+    (f) => f.id === primaryArtworkId
   );
+  const currentHeroArtwork = files.artwork.find((f) => f.id === heroArtworkId);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -180,27 +298,12 @@ export function ItemSettingsDialog({
             <Label htmlFor="item-name" className="text-sm font-medium">
               Name
             </Label>
-            <div className="flex gap-2">
-              <Input
-                id="item-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSaveName()}
-                className="h-10"
-              />
-              <Button
-                onClick={handleSaveName}
-                disabled={!name.trim() || name === item.name || isSaving}
-                size="default"
-                className="shrink-0 px-4"
-              >
-                {isSaving ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  "Save"
-                )}
-              </Button>
-            </div>
+            <Input
+              id="item-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="h-10"
+            />
           </div>
 
           {/* Description Section */}
@@ -216,25 +319,9 @@ export function ItemSettingsDialog({
               maxLength={200}
               className="min-h-[80px] resize-none"
             />
-            <div className="flex items-center justify-between">
-              <p className="text-muted-foreground text-xs tabular-nums">
-                {description.length}/200 characters
-              </p>
-              <Button
-                onClick={handleSaveDescription}
-                disabled={
-                  description === (item.description ?? "") ||
-                  isSavingDescription
-                }
-                size="sm"
-              >
-                {isSavingDescription ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  "Save"
-                )}
-              </Button>
-            </div>
+            <p className="text-muted-foreground text-xs tabular-nums">
+              {description.length}/200 characters
+            </p>
           </div>
 
           {/* File Summary */}
@@ -280,17 +367,12 @@ export function ItemSettingsDialog({
                       : "The file that plays when clicking on this item."}
                   </p>
                   <Select
-                    value={findPrimaryFile(files.media)?.id}
-                    onValueChange={(id) => handleSetPrimary(id, "media")}
-                    disabled={!hasMultipleMedia || !!loadingFileId}
+                    value={primaryMediaId}
+                    onValueChange={setPrimaryMediaId}
+                    disabled={!hasMultipleMedia}
                   >
                     <SelectTrigger id="primary-media" className="w-full">
-                      {loadingFileId &&
-                      files.media.some((f) => f.id === loadingFileId) ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <SelectValue placeholder="Select media file" />
-                      )}
+                      <SelectValue placeholder="Select media file" />
                     </SelectTrigger>
                     <SelectContent className="w-[var(--radix-select-trigger-width)]">
                       {files.media.map((file) => (
@@ -304,73 +386,121 @@ export function ItemSettingsDialog({
               )}
 
               {/* Primary Artwork */}
-              {hasArtwork &&
-                (() => {
-                  const primaryArtwork = findPrimaryFile(files.artwork);
-                  return (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={cn(
-                            "flex size-7 items-center justify-center rounded-lg",
-                            "bg-primary/10"
-                          )}
-                        >
-                          <ImageIcon className="text-primary size-3.5" />
-                        </div>
-                        <Label
-                          htmlFor="primary-artwork"
-                          className="text-sm font-medium"
-                        >
-                          Primary Artwork
-                        </Label>
-                      </div>
-                      <p className="text-muted-foreground text-xs">
-                        {hasMultipleArtwork
-                          ? "Select which image to use as the thumbnail."
-                          : "The image used as the thumbnail."}
-                      </p>
-                      <Select
-                        value={primaryArtwork?.id}
-                        onValueChange={(id) => handleSetPrimary(id, "artwork")}
-                        disabled={!hasMultipleArtwork || !!loadingFileId}
-                      >
-                        <SelectTrigger id="primary-artwork" className="w-full">
-                          {loadingFileId &&
-                          files.artwork.some((f) => f.id === loadingFileId) ? (
-                            <Loader2 className="size-4 animate-spin" />
-                          ) : (
-                            <SelectValue placeholder="Select artwork">
-                              {primaryArtwork && (
-                                <span className="flex min-w-0 items-center gap-2">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
-                                    src={`/api/artwork/${primaryArtwork.id}`}
-                                    alt=""
-                                    className="size-5 shrink-0 rounded object-cover"
-                                    onError={(e) => {
-                                      e.currentTarget.style.display = "none";
-                                    }}
-                                  />
-                                  <span className="truncate">
-                                    {primaryArtwork.filename}
-                                  </span>
-                                </span>
-                              )}
-                            </SelectValue>
-                          )}
-                        </SelectTrigger>
-                        <SelectContent className="w-[var(--radix-select-trigger-width)]">
-                          {files.artwork.map((file) => (
-                            <SelectItem key={file.id} value={file.id}>
-                              {file.filename}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+              {hasArtwork && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={cn(
+                        "flex size-7 items-center justify-center rounded-lg",
+                        "bg-primary/10"
+                      )}
+                    >
+                      <ImageIcon className="text-primary size-3.5" />
                     </div>
-                  );
-                })()}
+                    <Label
+                      htmlFor="primary-artwork"
+                      className="text-sm font-medium"
+                    >
+                      Primary Artwork
+                    </Label>
+                  </div>
+                  <p className="text-muted-foreground text-xs">
+                    {hasMultipleArtwork
+                      ? "Select which image to use as the thumbnail."
+                      : "The image used as the thumbnail."}
+                  </p>
+                  <Select
+                    value={primaryArtworkId}
+                    onValueChange={setPrimaryArtworkId}
+                    disabled={!hasMultipleArtwork}
+                  >
+                    <SelectTrigger id="primary-artwork" className="w-full">
+                      <SelectValue placeholder="Select artwork">
+                        {currentPrimaryArtwork && (
+                          <span className="flex min-w-0 items-center gap-2">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={`/api/artwork/${currentPrimaryArtwork.id}`}
+                              alt=""
+                              className="size-5 shrink-0 rounded object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                            <span className="truncate">
+                              {currentPrimaryArtwork.filename}
+                            </span>
+                          </span>
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="w-[var(--radix-select-trigger-width)]">
+                      {files.artwork.map((file) => (
+                        <SelectItem key={file.id} value={file.id}>
+                          {file.filename}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Hero Image (only when 2+ artwork) */}
+              {hasMultipleArtwork && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={cn(
+                        "flex size-7 items-center justify-center rounded-lg",
+                        "bg-primary/10"
+                      )}
+                    >
+                      <Sparkles className="text-primary size-3.5" />
+                    </div>
+                    <Label
+                      htmlFor="hero-artwork"
+                      className="text-sm font-medium"
+                    >
+                      Hero Image
+                    </Label>
+                  </div>
+                  <p className="text-muted-foreground text-xs">
+                    Select which image to use as the banner background.
+                  </p>
+                  <Select
+                    value={heroArtworkId}
+                    onValueChange={setHeroArtworkId}
+                  >
+                    <SelectTrigger id="hero-artwork" className="w-full">
+                      <SelectValue placeholder="Select hero image">
+                        {currentHeroArtwork && (
+                          <span className="flex min-w-0 items-center gap-2">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={`/api/artwork/${currentHeroArtwork.id}`}
+                              alt=""
+                              className="size-5 shrink-0 rounded object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                            <span className="truncate">
+                              {currentHeroArtwork.filename}
+                            </span>
+                          </span>
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="w-[var(--radix-select-trigger-width)]">
+                      {files.artwork.map((file) => (
+                        <SelectItem key={file.id} value={file.id}>
+                          {file.filename}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* Default Subtitle */}
               {hasSubtitles && (
@@ -397,17 +527,12 @@ export function ItemSettingsDialog({
                       : "The subtitle track that loads by default."}
                   </p>
                   <Select
-                    value={findPrimaryFile(files.subtitles)?.id}
-                    onValueChange={(id) => handleSetPrimary(id, "subtitle")}
-                    disabled={!hasMultipleSubtitles || !!loadingFileId}
+                    value={primarySubtitleId}
+                    onValueChange={setPrimarySubtitleId}
+                    disabled={!hasMultipleSubtitles}
                   >
                     <SelectTrigger id="default-subtitle" className="w-full">
-                      {loadingFileId &&
-                      files.subtitles.some((f) => f.id === loadingFileId) ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <SelectValue placeholder="Select subtitle" />
-                      )}
+                      <SelectValue placeholder="Select subtitle" />
                     </SelectTrigger>
                     <SelectContent className="w-[var(--radix-select-trigger-width)]">
                       {files.subtitles.map((file) => (
@@ -422,6 +547,22 @@ export function ItemSettingsDialog({
             </>
           )}
         </div>
+
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={!isDirty || isSaving}>
+            {isSaving ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Save Changes"
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

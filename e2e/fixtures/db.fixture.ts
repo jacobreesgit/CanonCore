@@ -14,11 +14,25 @@ import { generateTestUserData, TEST_PASSWORD } from "../helpers/test-user";
 // Load environment variables from .env.local
 config({ path: ".env.local" });
 
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
-});
+/**
+ * Singleton PrismaClient instance for E2E tests.
+ * Ensures only one database connection is created across all test imports.
+ */
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
 
-const prisma = new PrismaClient({ adapter });
+function getPrismaClient(): PrismaClient {
+  if (!globalForPrisma.prisma) {
+    const adapter = new PrismaPg({
+      connectionString: process.env.DATABASE_URL!,
+    });
+    globalForPrisma.prisma = new PrismaClient({ adapter });
+  }
+  return globalForPrisma.prisma;
+}
+
+const prisma = getPrismaClient();
 
 export interface TestUser {
   email: string;

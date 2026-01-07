@@ -6,6 +6,7 @@
 import { FilteredItemsView } from "@/components/items";
 import { getItems } from "@/lib/item-actions";
 import { getSftpConnections, getItemsByConnection } from "@/lib/sftp-actions";
+import { getProfile } from "@/lib/user-actions";
 import { SiteHeader } from "@/components/site-header";
 
 interface MyItemsPageProps {
@@ -34,6 +35,11 @@ export default async function MyItemsPage({ searchParams }: MyItemsPageProps) {
     ? (connectionsResult.data ?? []).map((c) => ({ id: c.id, name: c.name }))
     : [];
 
+  // Check if user has hero image
+  const profileResult = await getProfile();
+  const hasHeroImage =
+    profileResult.success && profileResult.data?.hasHeroImage;
+
   return (
     <>
       <SiteHeader title="My Items" titleHref="/my-items" />
@@ -43,6 +49,7 @@ export default async function MyItemsPage({ searchParams }: MyItemsPageProps) {
           connections={connections}
           initialConnectionId={connectionId ?? null}
           heroTitle="My Items"
+          hasHeroImage={hasHeroImage}
         />
       </div>
     </>

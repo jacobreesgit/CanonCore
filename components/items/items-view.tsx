@@ -32,7 +32,6 @@ import type {
 import { itemsToTree, treeToItemUpdates } from "@/lib/item-utils";
 import {
   createItem,
-  updateItem,
   deleteItem,
   reorderItems,
   getItems,
@@ -40,7 +39,6 @@ import {
 import { getItemFiles } from "@/lib/item-file-actions";
 import {
   createSftpItem,
-  renameSftpItem,
   deleteSftpItem,
   getItemsByConnection,
 } from "@/lib/sftp-actions";
@@ -93,6 +91,8 @@ interface ItemsViewProps {
   heroTitle?: string;
   /** Item count for hero stats display. */
   heroItemCount?: number;
+  /** Background URL for hero (e.g., /api/user/hero for My Items page). */
+  heroBackgroundUrl?: string;
 }
 
 export function ItemsView({
@@ -113,6 +113,7 @@ export function ItemsView({
   onAddItemOpenChange,
   heroTitle,
   heroItemCount,
+  heroBackgroundUrl,
 }: ItemsViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -284,46 +285,6 @@ export function ItemsView({
       }
     },
     [parentId, connectionId, refetchItems, setItems]
-  );
-
-  // Handle renaming an item
-  const handleRenameItem = useCallback(
-    async (id: string, newName: string) => {
-      // Check if item has sftpPath to determine which action to use
-      const item = items.find((i) => i.id === id);
-      const result = item?.sftpPath
-        ? await renameSftpItem(id, newName)
-        : await updateItem(id, { name: newName });
-      if (result.success) {
-        setItems((prev) =>
-          prev.map((i) => (i.id === id ? { ...i, name: newName } : i))
-        );
-        startTransition(() => refetchItems());
-        toast.success(`Renamed to "${newName}"`);
-      } else {
-        toast.error(result.error || "Failed to rename");
-      }
-    },
-    [items, refetchItems, setItems]
-  );
-
-  // Handle updating item description
-  const handleUpdateDescription = useCallback(
-    async (id: string, description: string) => {
-      const result = await updateItem(id, { description });
-      if (result.success) {
-        setItems((prev) =>
-          prev.map((i) =>
-            i.id === id ? { ...i, description: description || null } : i
-          )
-        );
-        startTransition(() => refetchItems());
-        toast.success("Description updated");
-      } else {
-        toast.error(result.error || "Failed to update description");
-      }
-    },
-    [refetchItems, setItems]
   );
 
   // Handle deleting an item
@@ -545,7 +506,11 @@ export function ItemsView({
 
       {/* Hero section - shown when heroTitle provided */}
       {heroTitle && (
-        <ItemHero name={heroTitle} childCount={heroItemCount ?? items.length} />
+        <ItemHero
+          name={heroTitle}
+          childCount={heroItemCount ?? items.length}
+          backgroundUrl={heroBackgroundUrl}
+        />
       )}
 
       {/* Items display */}
@@ -599,29 +564,31 @@ export function ItemsView({
           item={settingsDialog.item}
           files={settingsDialog.files}
           childCount={settingsDialog.childCount}
-          onRename={async (newName) => {
-            await handleRenameItem(settingsDialog.item.id, newName);
-            // Update dialog state with new name
-            setSettingsDialog((prev) =>
-              prev ? { ...prev, item: { ...prev.item, name: newName } } : null
+          onSettingsChange={async () => {
+            await refetchItems();
+            // Refetch dialog state to show updated values
+            const filesResult = await getItemFiles(settingsDialog.item.id);
+            const updatedFiles =
+              filesResult.success && filesResult.data
+                ? filesResult.data
+                : settingsDialog.files;
+
+            // Refetch item data from local state to get updated name/description
+            const updatedItem = itemsRef.current.find(
+              (i) => i.id === settingsDialog.item.id
             );
+            if (updatedItem) {
+              setSettingsDialog({
+                item: {
+                  id: updatedItem.id,
+                  name: updatedItem.name,
+                  description: updatedItem.description,
+                },
+                files: updatedFiles,
+                childCount: updatedItem.childCount,
+              });
+            }
           }}
-          onDescriptionChange={async (description) => {
-            await handleUpdateDescription(settingsDialog.item.id, description);
-            // Update dialog state with new description
-            setSettingsDialog((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    item: {
-                      ...prev.item,
-                      description: description || null,
-                    },
-                  }
-                : null
-            );
-          }}
-          onSettingsChange={refetchItems}
         />
       )}
 

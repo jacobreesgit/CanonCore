@@ -75,6 +75,24 @@ export function ItemDetailClient({
     ? files.media.find((f) => f.isPrimary) || files.media[0]
     : null;
 
+  // Resolve hero artwork using fallback chain: isHero -> isPrimary -> first
+  // Single pass through artwork array for efficiency
+  const heroArtworkId = (() => {
+    if (!files) return artworkId ?? null;
+    const artwork = files.artwork;
+    if (artwork.length === 0) return null;
+    let heroFile: (typeof artwork)[0] | undefined;
+    let primaryFile: (typeof artwork)[0] | undefined;
+    for (const f of artwork) {
+      if (f.isHero) {
+        heroFile = f;
+        break; // isHero takes priority, stop searching
+      }
+      if (f.isPrimary && !primaryFile) primaryFile = f;
+    }
+    return heroFile?.id ?? primaryFile?.id ?? artwork[0]?.id ?? null;
+  })();
+
   /**
    * Refetches child items from server.
    */
@@ -142,7 +160,7 @@ export function ItemDetailClient({
       <ItemHero
         name={item.name}
         description={item.description}
-        artworkId={artworkId || files?.artwork[0]?.id}
+        artworkId={heroArtworkId}
         hasMedia={hasMedia}
         hasProgress={hasProgress}
         mediaCount={files?.media.length ?? 0}

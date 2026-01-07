@@ -209,20 +209,111 @@ function validateEnvironment(): void {
   }
 }
 
+/** Unsplash image URLs for seed users */
+const UNSPLASH_PROFILE =
+  "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=1200&q=100";
+const UNSPLASH_HERO =
+  "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=2400&q=100";
+
+/** Cached images to avoid re-fetching */
+let cachedProfileImage: { data: Uint8Array; mime: string } | null = null;
+let cachedHeroImage: { data: Uint8Array; mime: string } | null = null;
+
 /**
- * Creates a user with hashed password.
+ * Fetch image from URL and return as Uint8Array with MIME type.
+ * Used for seeding user profile and hero images from Unsplash.
+ *
+ * @param url - Unsplash image URL
+ * @returns Image data and MIME type
+ */
+async function fetchImageAsBytes(
+  url: string
+): Promise<{ data: Uint8Array; mime: string }> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Failed to fetch ${url}`);
+
+  const contentType = response.headers.get("content-type") ?? "image/jpeg";
+  const arrayBuffer = await response.arrayBuffer();
+
+  return {
+    data: new Uint8Array(arrayBuffer),
+    mime: contentType,
+  };
+}
+
+/**
+ * Prefetch images from Unsplash for seed users.
+ * Caches results to avoid re-fetching.
+ */
+async function prefetchSeedImages(): Promise<void> {
+  console.log("  Fetching profile and hero images from Unsplash...");
+  try {
+    const [profileImage, heroImage] = await Promise.all([
+      fetchImageAsBytes(UNSPLASH_PROFILE),
+      fetchImageAsBytes(UNSPLASH_HERO),
+    ]);
+    cachedProfileImage = profileImage;
+    cachedHeroImage = heroImage;
+    console.log(
+      `    Profile image: ${formatBytes(profileImage.data.length)} (${profileImage.mime})`
+    );
+    console.log(
+      `    Hero image: ${formatBytes(heroImage.data.length)} (${heroImage.mime})`
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`  ⚠️  Failed to fetch images: ${message}`);
+    console.warn("  Seed users will not have profile/hero images");
+  }
+}
+
+/**
+ * Creates a user with hashed password and optional images.
+ *
+ * @param email - User email
+ * @param name - Display name
+ * @param passwordHash - Hashed password
+ * @param includeProfile - Include profile image from cache
+ * @param includeHero - Include hero image from cache
+ * @returns User ID
  */
 async function createUser(
   email: string,
   name: string,
-  passwordHash: string
+  passwordHash: string,
+  includeProfile: boolean = false,
+  includeHero: boolean = false
 ): Promise<string> {
+  const imageFields: {
+    image?: Uint8Array<ArrayBuffer>;
+    imageMime?: string;
+    heroImage?: Uint8Array<ArrayBuffer>;
+    heroImageMime?: string;
+  } = {};
+
+  if (includeProfile && cachedProfileImage) {
+    imageFields.image = cachedProfileImage.data as Uint8Array<ArrayBuffer>;
+    imageFields.imageMime = cachedProfileImage.mime;
+  }
+
+  if (includeHero && cachedHeroImage) {
+    imageFields.heroImage = cachedHeroImage.data as Uint8Array<ArrayBuffer>;
+    imageFields.heroImageMime = cachedHeroImage.mime;
+  }
+
   const user = await prisma.user.upsert({
     where: { email },
-    update: { name, passwordHash },
-    create: { email, name, passwordHash },
+    update: { name, passwordHash, ...imageFields },
+    create: { email, name, passwordHash, ...imageFields },
   });
-  console.log(`  Created user: ${email}`);
+
+  const imageSuffix = [];
+  if (includeProfile && cachedProfileImage) imageSuffix.push("profile");
+  if (includeHero && cachedHeroImage) imageSuffix.push("hero");
+  const imageInfo =
+    imageSuffix.length > 0 ? ` (${imageSuffix.join(", ")})` : "";
+
+  console.log(`  Created user: ${email}${imageInfo}`);
   return user.id;
 }
 
@@ -328,7 +419,8 @@ async function createFile(
   fileType: FileType,
   mimeType: string,
   size: bigint,
-  isPrimary: boolean = false
+  isPrimary: boolean = false,
+  isHero: boolean = false
 ): Promise<void> {
   await prisma.itemFile.create({
     data: {
@@ -339,6 +431,7 @@ async function createFile(
       mimeType,
       size,
       isPrimary,
+      isHero,
     },
   });
 }
@@ -403,7 +496,8 @@ async function seedItems(
         file.fileType,
         file.mimeType,
         file.size,
-        file.isPrimary ?? false
+        file.isPrimary ?? false,
+        file.isHero ?? false
       );
     }
 
@@ -802,20 +896,37 @@ async function main(): Promise<void> {
   // Clean up existing seed users for idempotency
   await cleanupSeedUsers();
 
+  // Prefetch images from Unsplash
+  console.log("\n🖼️  Prefetching seed images...");
+  await prefetchSeedImages();
+
   const passwordHash = await hash(process.env.SEED_PASSWORD!, 10);
 
   console.log("\n📦 Creating users...");
+  // seed@canoncore.com - full demo with profile and hero images
   const alexId = await createUser(
     "seed@canoncore.com",
     "Alex Demo",
-    passwordHash
+    passwordHash,
+    true, // includeProfile
+    true // includeHero
   );
+  // seed2@canoncore.com - partial data with profile only (hero shows shader)
   const jordanId = await createUser(
     "seed2@canoncore.com",
     "Jordan Test",
-    passwordHash
+    passwordHash,
+    true, // includeProfile
+    false // no hero
   );
-  await createUser("seed3@canoncore.com", "Sam Empty", passwordHash);
+  // seed3@canoncore.com - empty account (both show shaders)
+  await createUser(
+    "seed3@canoncore.com",
+    "Sam Empty",
+    passwordHash,
+    false, // no profile
+    false // no hero
+  );
 
   console.log("\n🔌 Creating SFTP connections...");
   const alexConnectionId = await createSftpConnection(alexId);

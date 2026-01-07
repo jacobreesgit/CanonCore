@@ -16,7 +16,6 @@ import {
   closeConnection,
   createDirectory,
   removeDirectory,
-  rename as sftpRename,
   getConnection,
 } from "@/lib/sftp-client";
 import {
@@ -651,59 +650,6 @@ export async function deleteSftpItem(itemId: string): Promise<ActionResult> {
   } catch (error) {
     console.error("[SFTP] Delete item error:", error);
     return { success: false, error: "Failed to delete item" };
-  }
-}
-
-/**
- * Renames an item on SFTP server and in database.
- *
- * @param itemId - Item ID to rename
- * @param newName - New name
- */
-export async function renameSftpItem(
-  itemId: string,
-  newName: string
-): Promise<ActionResult> {
-  try {
-    const userId = await requireAuth();
-
-    // Validate filename
-    validateFileName(newName);
-
-    // Get item with connection
-    const item = await prisma.item.findFirst({
-      where: { id: itemId, userId },
-      include: { connection: true, parent: true },
-    });
-    if (!item) {
-      return { success: false, error: "Item not found" };
-    }
-
-    // Rename on SFTP if connected
-    if (item.connection && item.sftpPath) {
-      const parentPath = item.parent?.sftpPath ?? item.connection.basePath;
-      const newPath = sanitizePath(parentPath, newName);
-
-      await sftpRename(item.connection, item.sftpPath, newPath);
-
-      // Update path in database
-      await prisma.item.update({
-        where: { id: itemId },
-        data: { name: newName, sftpPath: newPath },
-      });
-    } else {
-      // Just update name in database
-      await prisma.item.update({
-        where: { id: itemId },
-        data: { name: newName },
-      });
-    }
-
-    revalidatePath("/my-items");
-    return { success: true };
-  } catch (error) {
-    console.error("[SFTP] Rename item error:", error);
-    return { success: false, error: "Failed to rename item" };
   }
 }
 

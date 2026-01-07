@@ -37,9 +37,9 @@ test.describe("Items CRUD Journey", () => {
     await itemsPage.createItem("Original Name");
     await itemsPage.waitForToastToDisappear();
     await itemsPage.renameItemViaContextMenu("Original Name", "Renamed Folder");
+    // Toast is verified in renameItemViaContextMenu, just verify UI state
     await itemsPage.expectItemVisible("Renamed Folder");
     await itemsPage.expectItemNotVisible("Original Name");
-    await itemsPage.expectSuccessToast('Renamed to "Renamed Folder"');
   });
 
   test("can delete an item via context menu", async ({ itemsPage }) => {

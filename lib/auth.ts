@@ -86,7 +86,8 @@ export const { handlers, auth } = NextAuth({
           id: user.id,
           email: user.email,
           name: user.name,
-          image: user.image,
+          // Return avatar URL if user has image, otherwise null
+          image: user.image ? "/api/user/avatar" : null,
         };
       },
     }),

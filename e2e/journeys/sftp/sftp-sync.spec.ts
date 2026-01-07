@@ -319,10 +319,16 @@ describeOrSkip("Connection filter sync behavior", () => {
 
     // Now filter to individual connection
     await page.getByRole("combobox").click();
+    // Wait for dropdown to open
+    await expect(page.getByRole("option", { name: "Server One" })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByRole("option", { name: "Server One" }).click();
 
     // Wait for filter to apply - should show only Server One's item
-    await expect(page.getByRole("combobox")).toContainText("Server One");
+    await expect(page.getByRole("combobox")).toContainText("Server One", {
+      timeout: 5000,
+    });
 
     // Badge should be hidden when filtered to individual connection
     // The filtered view only shows that connection's items, and badges are hidden
@@ -384,6 +390,9 @@ describeOrSkip("Connection filter sync behavior", () => {
     await expect(
       connectionsPage.getConnectionCard("Server Two")
     ).not.toBeVisible({ timeout: 5000 });
+
+    // Wait for any pending navigations to settle
+    await page.waitForLoadState("networkidle");
 
     // Navigate to my-items
     await page.goto("/my-items");

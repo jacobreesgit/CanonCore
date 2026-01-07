@@ -1,6 +1,6 @@
 {
   "name": "canoncore",
-  "version": "0.24.0",
+  "version": "0.25.0",
   "private": true,
   "scripts": {
     "build": "next build",
@@ -44,6 +44,7 @@
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@react-three/fiber": "^9.5.0",
     "@types/mdx": "^2.0.13",
     "@upstash/ratelimit": "^2.0.7",
     "@upstash/redis": "^1.36.0",
@@ -54,6 +55,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
+    "file-type": "^21.3.0",
     "fumadocs-core": "^16.4.1",
     "fumadocs-mdx": "^14.2.3",
     "fumadocs-ui": "^16.4.1",
@@ -64,9 +66,11 @@
     "react": "^19",
     "react-dom": "^19",
     "resend": "^6.6.0",
+    "sharp": "^0.34.5",
     "sonner": "^2.0.7",
     "ssh2-sftp-client": "^12.0.1",
     "tailwind-merge": "^2.5.5",
+    "three": "^0.182.0",
     "zod": "^4.2.1"
   },
   "devDependencies": {
@@ -83,6 +87,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/ssh2-sftp-client": "^9.0.6",
+    "@types/three": "^0.182.0",
     "@vitest/coverage-v8": "^4.0.16",
     "eslint": "^9.39.2",
     "eslint-plugin-react": "^7.37.5",
