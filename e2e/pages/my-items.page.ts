@@ -11,6 +11,7 @@ export class MyItemsPage {
   readonly welcomeMessage: Locator;
   readonly userMenu: Locator;
   readonly signOutButton: Locator;
+  readonly profileSettingsButton: Locator;
   readonly sidebarTrigger: Locator;
 
   constructor(page: Page) {
@@ -18,6 +19,9 @@ export class MyItemsPage {
     this.welcomeMessage = page.getByTestId("my-items-welcome-message");
     this.userMenu = page.getByTestId("my-items-user-menu");
     this.signOutButton = page.getByTestId("my-items-sign-out-button");
+    this.profileSettingsButton = page.getByTestId(
+      "my-items-profile-settings-button"
+    );
     this.sidebarTrigger = page.getByTestId("sidebar-trigger");
   }
 
@@ -40,6 +44,11 @@ export class MyItemsPage {
   async signOut() {
     await this.openUserMenu();
     await this.signOutButton.click();
+  }
+
+  async openProfileSettings() {
+    await this.openUserMenu();
+    await this.profileSettingsButton.click();
   }
 
   async expectVisible() {

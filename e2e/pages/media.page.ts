@@ -22,8 +22,8 @@ export class MediaPage {
     // Hero section with artwork (uses data-testid from ItemHero)
     this.heroSection = page.getByTestId("item-hero");
     this.heroTitle = page.getByRole("heading", { level: 1 });
-    // Hero stats row showing file counts
-    this.heroStats = this.heroSection.locator(".text-white\\/70");
+    // Hero stats row showing file counts (uses data-testid for resilience)
+    this.heroStats = page.getByTestId("item-hero-stats");
     this.emptyState = page.getByText("No items yet");
     // Media overlay components
     this.mediaOverlay = page.getByRole("dialog");

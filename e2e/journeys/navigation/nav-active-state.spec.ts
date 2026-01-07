@@ -6,6 +6,16 @@
 import { test, expect } from "../../fixtures";
 import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
+// Helper to open sidebar on mobile (collapsed by default)
+async function openSidebarIfMobile(page: import("@playwright/test").Page) {
+  const toggleButton = page.getByRole("button", { name: "Toggle Sidebar" });
+  if (await toggleButton.isVisible()) {
+    await toggleButton.click();
+    // Wait for sidebar to animate open
+    await page.waitForTimeout(300);
+  }
+}
+
 test.describe("Navigation Active State", () => {
   test.describe("authenticated user", () => {
     test.beforeEach(async ({ page, signUpPage }) => {
@@ -16,6 +26,8 @@ test.describe("Navigation Active State", () => {
     });
 
     test("My Items nav is active on /my-items", async ({ page }) => {
+      await openSidebarIfMobile(page);
+
       // Find the My Items nav button in sidebar
       const myItemsNav = page.locator('[data-slot="sidebar-menu-button"]', {
         hasText: "My Items",
@@ -28,9 +40,12 @@ test.describe("Navigation Active State", () => {
       page,
       itemsPage,
     }) => {
+      // Create item first (sidebar covers content on mobile)
       await itemsPage.createItem("Test Folder");
       await itemsPage.clickItem("Test Folder");
 
+      // Now open sidebar to check nav state
+      await openSidebarIfMobile(page);
       // Should still show My Items as active
       const myItemsNav = page.locator('[data-slot="sidebar-menu-button"]', {
         hasText: "My Items",
@@ -42,6 +57,7 @@ test.describe("Navigation Active State", () => {
       page,
     }) => {
       await page.goto("/my-items/connections");
+      await openSidebarIfMobile(page);
 
       const connectionsNav = page.locator('[data-slot="sidebar-menu-button"]', {
         hasText: "Connections",
@@ -53,6 +69,7 @@ test.describe("Navigation Active State", () => {
       page,
     }) => {
       await page.goto("/docs");
+      await openSidebarIfMobile(page);
 
       // Docs context doesn't show the footer nav with "Get Help" button
       // Instead it shows the Fumadocs tree navigation

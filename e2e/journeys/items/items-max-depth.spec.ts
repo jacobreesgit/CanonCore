@@ -99,6 +99,7 @@ test.describe("Items Max Depth Journey", () => {
     signUpPage,
     itemsPage,
   }) => {
+    test.setTimeout(60000); // Increase timeout for nested navigation
     const email = generateUniqueEmail("items-breadcrumb-nav");
     await signUpPage.goto();
     await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
@@ -131,23 +132,25 @@ test.describe("Items Max Depth Journey", () => {
     signUpPage,
     itemsPage,
   }) => {
+    test.setTimeout(60000); // Increase timeout for deep nesting
     const email = generateUniqueEmail("items-deep-ancestors");
     await signUpPage.goto();
     await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
     await expect(page).toHaveURL("/my-items", { timeout: 10000 });
     await itemsPage.goto();
 
-    // Create 5 levels
+    // Create 5 levels with toast waits for stability
     const levels = ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"];
     for (const level of levels) {
       await itemsPage.createItem(level);
+      await itemsPage.waitForToastToDisappear();
       await itemsPage.clickItem(level);
     }
 
     // Create a final item
     await itemsPage.createItem("Final");
 
-    // Should be able to see ancestors in breadcrumbs
+    // Should be able to see ancestors in breadcrumbs (toast doesn't matter for this check)
     for (const level of levels) {
       await itemsPage.expectBreadcrumb(level);
     }

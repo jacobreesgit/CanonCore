@@ -12,7 +12,15 @@ model User {
   emailVerified   DateTime?
   passwordHash    String
   name            String?
-  image           String?
+
+  // Profile image - binary storage
+  image           Bytes?           // Profile picture (max 1MB)
+  imageMime       String?          // MIME type (image/jpeg, image/png, etc.)
+
+  // Hero banner - binary storage
+  heroImage       Bytes?           // Hero banner image (max 2MB)
+  heroImageMime   String?          // MIME type for hero
+
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   passwordResets  PasswordReset[]
@@ -132,6 +140,7 @@ model ItemFile {
 
   // User overrides
   isPrimary Boolean  @default(false)
+  isHero    Boolean  @default(false)
 
   // Playback (for MEDIA files)
   playbackPosition Float?    // Seconds

@@ -1,7 +1,8 @@
 /**
- * Hero banner component for item detail pages.
+ * Hero banner component for item detail pages and My Items page.
  * CTA16-style full-bleed artwork with centered content overlay.
- * Uses GridItem's background image pattern for consistency.
+ * Supports both item artwork (via artworkId) and direct URLs (via backgroundUrl).
+ * Falls back to animated shader when no image available.
  */
 
 "use client";
@@ -9,6 +10,7 @@
 import { useState } from "react";
 import { Play, Film, ImageIcon, FileText, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Shader1 } from "@/components/shader1";
 import { cn } from "@/lib/utils";
 
 interface ItemHeroProps {
@@ -16,8 +18,10 @@ interface ItemHeroProps {
   name: string;
   /** Optional description (max 200 chars). */
   description?: string | null;
-  /** Artwork file ID for background image. */
+  /** Artwork file ID for background image (via /api/artwork/{id}). */
   artworkId?: string | null;
+  /** Direct URL for background image (e.g., /api/user/hero). Takes precedence over artworkId. */
+  backgroundUrl?: string | null;
   /** Whether item has playable media files. */
   hasMedia?: boolean;
   /** Whether media has watch progress (shows Resume vs Play). */
@@ -39,6 +43,7 @@ interface ItemHeroProps {
 /**
  * CTA-style hero banner with full-bleed artwork background.
  * Always renders regardless of files/children state.
+ * Display priority: backgroundUrl -> artworkId -> Shader1 fallback.
  *
  * @param props - Hero configuration
  */
@@ -46,6 +51,7 @@ export function ItemHero({
   name,
   description,
   artworkId,
+  backgroundUrl,
   hasMedia = false,
   hasProgress = false,
   mediaCount = 0,
@@ -56,7 +62,11 @@ export function ItemHero({
   className,
 }: ItemHeroProps) {
   const [imageError, setImageError] = useState(false);
-  const shouldShowArtwork = artworkId && !imageError;
+
+  // Determine background source: backgroundUrl takes precedence over artworkId
+  const backgroundSrc =
+    backgroundUrl ?? (artworkId ? `/api/artwork/${artworkId}` : null);
+  const shouldShowBackground = backgroundSrc && !imageError;
 
   return (
     <section
@@ -64,40 +74,39 @@ export function ItemHero({
       className={cn(
         // CTA16-inspired height and centering
         "relative flex min-h-[320px] items-center justify-center overflow-hidden rounded-xl",
-        // Background image styles (GridItem pattern)
-        "bg-black/80 bg-cover bg-center bg-no-repeat",
-        // Dark overlay for text legibility
-        "before:absolute before:inset-0 before:z-10 before:bg-black/50",
+        // Background image styles (only when showing image, not shader)
+        shouldShowBackground &&
+          "bg-black/80 bg-cover bg-center bg-no-repeat before:absolute before:inset-0 before:z-10 before:bg-black/50",
         className
       )}
       style={{
-        backgroundImage: shouldShowArtwork
-          ? `url(/api/artwork/${artworkId})`
+        backgroundImage: shouldShowBackground
+          ? `url(${backgroundSrc})`
           : undefined,
       }}
     >
       {/* Hidden img for error detection */}
-      {artworkId && !imageError && (
+      {backgroundSrc && !imageError && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={`/api/artwork/${artworkId}`}
+          src={backgroundSrc}
           alt=""
           className="hidden"
           onError={() => setImageError(true)}
         />
       )}
 
-      {/* Fallback gradient when no artwork */}
-      {!shouldShowArtwork && (
-        <div
-          data-testid="hero-fallback"
-          className={cn(
-            "absolute inset-0 z-0",
-            "flex items-center justify-center",
-            "from-muted/80 to-muted bg-gradient-to-br"
+      {/* Shader fallback when no background image */}
+      {/* navigator.webdriver is true when running in Playwright/Selenium automated tests.
+          We use a simple CSS gradient instead of the WebGL Shader1 component to avoid
+          GPU load and rendering inconsistencies in headless browser environments. */}
+      {!shouldShowBackground && (
+        <div data-testid="hero-fallback" className="absolute inset-0 z-0">
+          {typeof window !== "undefined" && navigator.webdriver ? (
+            <div className="h-full w-full bg-gradient-to-br from-blue-900 via-purple-900 to-slate-900" />
+          ) : (
+            <Shader1 className="h-full" />
           )}
-        >
-          <Film className="text-muted-foreground/30 size-24" strokeWidth={1} />
         </div>
       )}
 
@@ -116,7 +125,10 @@ export function ItemHero({
         )}
 
         {/* Stats row */}
-        <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/70">
+        <div
+          data-testid="item-hero-stats"
+          className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/70"
+        >
           {mediaCount > 0 && (
             <span className="flex items-center gap-1.5">
               <Film className="size-4" />

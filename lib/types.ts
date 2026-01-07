@@ -111,6 +111,7 @@ export interface ItemFile {
   size: bigint | null;
   sftpModifiedAt: Date | null;
   isPrimary: boolean;
+  isHero: boolean;
   playbackPosition: number | null;
   playbackDuration: number | null;
   createdAt: Date;
@@ -131,6 +132,7 @@ export interface SerializedItemFile {
   size: number | null;
   sftpModifiedAt: Date | null;
   isPrimary: boolean;
+  isHero: boolean;
   playbackPosition: number | null;
   playbackDuration: number | null;
   createdAt: Date;
@@ -149,13 +151,6 @@ export function serializeItemFile(file: ItemFile): SerializedItemFile {
     ...file,
     size: file.size !== null ? Number(file.size) : null,
   };
-}
-
-/**
- * Item with attached files for detail view.
- */
-export interface ItemWithFiles extends Item {
-  files: ItemFile[];
 }
 
 /**

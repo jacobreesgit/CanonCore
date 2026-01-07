@@ -5,6 +5,25 @@
 import { test, expect } from "../../fixtures";
 import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
+// Helper to get the add item dialog (excludes mobile sidebar which is also a dialog)
+const getAddItemDialog = (page: import("@playwright/test").Page) =>
+  page.locator('[data-slot="dialog-content"]');
+
+// Helper to ensure sidebar is open (for accessing Quick Create button)
+async function ensureSidebarOpen(page: import("@playwright/test").Page) {
+  const quickCreateBtn = page.getByRole("button", { name: /quick create/i });
+  // If Quick Create is already visible, sidebar is open
+  if (await quickCreateBtn.isVisible()) {
+    return;
+  }
+  // Otherwise click toggle to open sidebar
+  const toggleButton = page.getByRole("button", { name: "Toggle Sidebar" });
+  if (await toggleButton.isVisible()) {
+    await toggleButton.click();
+    await page.waitForTimeout(300);
+  }
+}
+
 test.describe("Quick Create Journey", () => {
   test.beforeEach(async ({ page, signUpPage }) => {
     const email = generateUniqueEmail("quick-create");
@@ -14,21 +33,19 @@ test.describe("Quick Create Journey", () => {
   });
 
   test("Quick Create button opens add item dialog", async ({ page }) => {
+    await ensureSidebarOpen(page);
     await page.getByRole("button", { name: /quick create/i }).click();
-    await expect(
-      page.getByRole("dialog", { name: /create item/i })
-    ).toBeVisible({ timeout: 5000 });
+    await expect(getAddItemDialog(page)).toBeVisible({ timeout: 5000 });
   });
 
   test("can create item via Quick Create", async ({ page, itemsPage }) => {
+    await ensureSidebarOpen(page);
     await page.getByRole("button", { name: /quick create/i }).click();
     await page.getByLabel(/item name/i).fill("Quick Created Item");
     await page.getByRole("button", { name: /^create$/i }).click();
 
     // Wait for dialog to close (confirms create completed)
-    await expect(
-      page.getByRole("dialog", { name: /create item/i })
-    ).not.toBeVisible({ timeout: 5000 });
+    await expect(getAddItemDialog(page)).not.toBeVisible({ timeout: 5000 });
 
     // Wait for success toast (confirms server action succeeded)
     await itemsPage.expectSuccessToast('Created "Quick Created Item"');
@@ -40,22 +57,18 @@ test.describe("Quick Create Journey", () => {
   });
 
   test("Quick Create dialog can be cancelled", async ({ page }) => {
+    await ensureSidebarOpen(page);
     await page.getByRole("button", { name: /quick create/i }).click();
-    await expect(
-      page.getByRole("dialog", { name: /create item/i })
-    ).toBeVisible();
+    await expect(getAddItemDialog(page)).toBeVisible();
 
     await page.getByRole("button", { name: /cancel/i }).click();
-    await expect(
-      page.getByRole("dialog", { name: /create item/i })
-    ).not.toBeVisible();
+    await expect(getAddItemDialog(page)).not.toBeVisible();
   });
 
   test("Quick Create dialog has description field", async ({ page }) => {
+    await ensureSidebarOpen(page);
     await page.getByRole("button", { name: /quick create/i }).click();
-    await expect(
-      page.getByRole("dialog", { name: /create item/i })
-    ).toBeVisible();
+    await expect(getAddItemDialog(page)).toBeVisible();
 
     // Verify description field exists
     await expect(page.getByLabel(/description/i)).toBeVisible();
@@ -66,15 +79,14 @@ test.describe("Quick Create Journey", () => {
     page,
     itemsPage,
   }) => {
+    await ensureSidebarOpen(page);
     await page.getByRole("button", { name: /quick create/i }).click();
     await page.getByLabel(/item name/i).fill("Item With Description");
     await page.getByLabel(/description/i).fill("This is my test description");
     await page.getByRole("button", { name: /^create$/i }).click();
 
     // Wait for dialog to close
-    await expect(
-      page.getByRole("dialog", { name: /create item/i })
-    ).not.toBeVisible({ timeout: 5000 });
+    await expect(getAddItemDialog(page)).not.toBeVisible({ timeout: 5000 });
 
     // Wait for page to update
     await page.waitForLoadState("networkidle");
