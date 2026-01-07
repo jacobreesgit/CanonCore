@@ -5,6 +5,7 @@
 
 import { Resend } from "resend";
 import { env } from "@/lib/env";
+import { logger } from "@/lib/logger";
 
 const resend = new Resend(env.RESEND_API_KEY);
 
@@ -37,7 +38,7 @@ export async function sendPasswordResetEmail(
   });
 
   if (error) {
-    console.error("Failed to send email:", error);
+    logger.error({ err: error, email }, "Failed to send email");
     throw new Error("Failed to send email");
   }
 }

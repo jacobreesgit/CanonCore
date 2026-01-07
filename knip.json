@@ -8,6 +8,7 @@
     "scripts/**"
   ],
   "ignoreBinaries": ["pkill", "lsof"],
+  "ignoreDependencies": ["pino-pretty"],
   "ignoreExportsUsedInFile": {
     "interface": true,
     "type": true

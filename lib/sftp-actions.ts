@@ -25,6 +25,7 @@ import {
 import type { SftpConnection } from "@prisma/client";
 import type { Item, ItemWithArtwork } from "@/lib/types";
 import Client from "ssh2-sftp-client";
+import { logger } from "@/lib/logger";
 
 /** Result type for server actions. */
 type ActionResult<T = void> =
@@ -82,7 +83,7 @@ export async function getSftpConnections(): Promise<
       data: connections as Omit<SftpConnection, "encryptedCredential">[],
     };
   } catch (error) {
-    console.error("[SFTP] Get connections error:", error);
+    logger.error({ err: error }, "[SFTP] Get connections error");
     return { success: false, error: "Failed to load connections" };
   }
 }
@@ -190,7 +191,7 @@ export async function getItemsByConnection(
 
     return { success: true, data: itemsWithArtwork };
   } catch (error) {
-    console.error("[SFTP] Get items by connection error:", error);
+    logger.error({ err: error }, "[SFTP] Get items by connection error");
     return { success: false, error: "Failed to load items" };
   }
 }
@@ -236,7 +237,7 @@ export async function getSftpConnection(
       data: connection as Omit<SftpConnection, "encryptedCredential">,
     };
   } catch (error) {
-    console.error("[SFTP] Get connection error:", error);
+    logger.error({ err: error }, "[SFTP] Get connection error");
     return { success: false, error: "Failed to load connection" };
   }
 }
@@ -310,7 +311,7 @@ export async function createSftpConnection(data: {
     revalidatePath("/my-items/connections");
     return { success: true, data: { id: connection.id } };
   } catch (error) {
-    console.error("[SFTP] Create connection error:", error);
+    logger.error({ err: error }, "[SFTP] Create connection error");
     if (error instanceof Error && error.message.includes("Unique constraint")) {
       return {
         success: false,
@@ -400,7 +401,7 @@ export async function updateSftpConnection(
     revalidatePath("/my-items/connections");
     return { success: true };
   } catch (error) {
-    console.error("[SFTP] Update connection error:", error);
+    logger.error({ err: error }, "[SFTP] Update connection error");
     return { success: false, error: "Failed to update connection" };
   }
 }
@@ -435,7 +436,7 @@ export async function deleteSftpConnection(
     revalidatePath("/my-items/connections");
     return { success: true };
   } catch (error) {
-    console.error("[SFTP] Delete connection error:", error);
+    logger.error({ err: error }, "[SFTP] Delete connection error");
     return { success: false, error: "Failed to delete connection" };
   }
 }
@@ -500,7 +501,7 @@ export async function testSftpConnection(
     revalidatePath("/my-items/connections");
     return { success: true, data: { latencyMs } };
   } catch (error) {
-    console.error("[SFTP] Test connection error:", error);
+    logger.error({ err: error }, "[SFTP] Test connection error");
 
     // Update error state
     try {
@@ -607,7 +608,7 @@ export async function createSftpItem(
       },
     };
   } catch (error) {
-    console.error("[SFTP] Create item error:", error);
+    logger.error({ err: error }, "[SFTP] Create item error");
     return { success: false, error: "Failed to create item" };
   }
 }
@@ -635,7 +636,7 @@ export async function deleteSftpItem(itemId: string): Promise<ActionResult> {
       try {
         await removeDirectory(item.connection, item.sftpPath);
       } catch (sftpError) {
-        console.error("[SFTP] Delete from server failed:", sftpError);
+        logger.error({ err: sftpError }, "[SFTP] Delete from server failed");
         // Continue to delete from DB even if SFTP delete fails
       }
     }
@@ -648,7 +649,7 @@ export async function deleteSftpItem(itemId: string): Promise<ActionResult> {
     revalidatePath("/my-items");
     return { success: true };
   } catch (error) {
-    console.error("[SFTP] Delete item error:", error);
+    logger.error({ err: error }, "[SFTP] Delete item error");
     return { success: false, error: "Failed to delete item" };
   }
 }
@@ -721,7 +722,10 @@ export async function syncFromSftp(
         entries = await client.list(dirPath);
       } catch (listError) {
         // Log the error but continue with other directories
-        console.warn(`[SFTP] Failed to list directory: ${dirPath}`, listError);
+        logger.warn(
+          { err: listError, dirPath },
+          "[SFTP] Failed to list directory"
+        );
         failedDirs.push(dirPath);
         return;
       }
@@ -751,8 +755,9 @@ export async function syncFromSftp(
 
     // Log if any directories failed
     if (failedDirs.length > 0) {
-      console.warn(
-        `[SFTP] Sync completed with ${failedDirs.length} inaccessible directories`
+      logger.warn(
+        { count: failedDirs.length },
+        "[SFTP] Sync completed with inaccessible directories"
       );
     }
 
@@ -944,7 +949,7 @@ export async function syncFromSftp(
       data: { created, updated, deleted },
     };
   } catch (error) {
-    console.error("[SFTP] Sync error:", error);
+    logger.error({ err: error }, "[SFTP] Sync error");
 
     // Update error state
     try {
@@ -1004,8 +1009,9 @@ export async function syncAllConnections(): Promise<
       orderBy: { name: "asc" },
     });
 
-    console.log(
-      `[SFTP Sync All] Starting sync for ${connections.length} connection(s)`
+    logger.info(
+      { connectionCount: connections.length },
+      "[SFTP Sync All] Starting sync"
     );
 
     const results: SyncAllResult["results"] = [];
@@ -1013,8 +1019,9 @@ export async function syncAllConnections(): Promise<
     let failedSyncs = 0;
 
     for (const connection of connections) {
-      console.log(
-        `[SFTP Sync All] Syncing "${connection.name}" (${connection.id})...`
+      logger.info(
+        { connectionName: connection.name, connectionId: connection.id },
+        "[SFTP Sync All] Syncing connection"
       );
 
       const startTime = Date.now();
@@ -1025,9 +1032,15 @@ export async function syncAllConnections(): Promise<
 
       if (syncResult.success && syncResult.data) {
         const { created, updated, deleted } = syncResult.data;
-        console.log(
-          `[SFTP Sync All] ✓ "${connection.name}" completed in ${duration}ms: ` +
-            `${created} created, ${updated} updated, ${deleted} deleted`
+        logger.info(
+          {
+            connectionName: connection.name,
+            duration,
+            created,
+            updated,
+            deleted,
+          },
+          "[SFTP Sync All] Connection sync completed"
         );
         results.push({
           connectionId: connection.id,
@@ -1041,8 +1054,9 @@ export async function syncAllConnections(): Promise<
       } else {
         const error =
           "error" in syncResult ? syncResult.error : "Unknown error";
-        console.error(
-          `[SFTP Sync All] ✗ "${connection.name}" failed: ${error}`
+        logger.error(
+          { connectionName: connection.name, error },
+          "[SFTP Sync All] Connection sync failed"
         );
         results.push({
           connectionId: connection.id,
@@ -1057,8 +1071,9 @@ export async function syncAllConnections(): Promise<
       }
     }
 
-    console.log(
-      `[SFTP Sync All] Completed: ${successfulSyncs}/${connections.length} successful`
+    logger.info(
+      { successfulSyncs, totalConnections: connections.length },
+      "[SFTP Sync All] Completed"
     );
 
     revalidatePath("/my-items");
@@ -1074,7 +1089,7 @@ export async function syncAllConnections(): Promise<
       },
     };
   } catch (error) {
-    console.error("[SFTP Sync All] Error:", error);
+    logger.error({ err: error }, "[SFTP Sync All] Error");
     if (error instanceof Error && error.message === "Unauthorized") {
       return { success: false, error: "Unauthorized" };
     }
@@ -1127,8 +1142,9 @@ export async function syncItemTree(
       return { success: false, error: "Item is not connected to SFTP" };
     }
 
-    console.log(
-      `[SFTP Sync Item] Starting sync for "${item.name}" (${item.sftpPath})`
+    logger.info(
+      { itemName: item.name, sftpPath: item.sftpPath },
+      "[SFTP Sync Item] Starting sync"
     );
 
     const startTime = Date.now();
@@ -1162,7 +1178,10 @@ export async function syncItemTree(
       try {
         entries = await client.list(dirPath);
       } catch (listError) {
-        console.warn(`[SFTP Sync Item] Failed to list: ${dirPath}`, listError);
+        logger.warn(
+          { err: listError, dirPath },
+          "[SFTP Sync Item] Failed to list directory"
+        );
         failedDirs.push(dirPath);
         return;
       }
@@ -1191,8 +1210,9 @@ export async function syncItemTree(
     await listRecursive(item.sftpPath, baseDepth + 1);
 
     if (failedDirs.length > 0) {
-      console.warn(
-        `[SFTP Sync Item] Completed with ${failedDirs.length} inaccessible directories`
+      logger.warn(
+        { count: failedDirs.length },
+        "[SFTP Sync Item] Completed with inaccessible directories"
       );
     }
 
@@ -1264,7 +1284,10 @@ export async function syncItemTree(
 
           pathToItemId.set(folder.path, newItem.id);
           created++;
-          console.log(`[SFTP Sync Item] Created: ${folder.path}`);
+          logger.debug(
+            { path: folder.path },
+            "[SFTP Sync Item] Created folder"
+          );
         } else {
           const remoteMtime = new Date(folder.modifyTime);
           if (
@@ -1320,7 +1343,7 @@ export async function syncItemTree(
             },
           });
           created++;
-          console.log(`[SFTP Sync Item] Created file: ${file.path}`);
+          logger.debug({ path: file.path }, "[SFTP Sync Item] Created file");
         } else {
           const remoteMtime = new Date(file.modifyTime);
           if (
@@ -1345,7 +1368,10 @@ export async function syncItemTree(
         if (!remoteFilePaths.has(file.sftpPath)) {
           await tx.itemFile.delete({ where: { id: file.id } });
           deleted++;
-          console.log(`[SFTP Sync Item] Deleted file: ${file.sftpPath}`);
+          logger.debug(
+            { path: file.sftpPath },
+            "[SFTP Sync Item] Deleted file"
+          );
         }
       }
 
@@ -1357,15 +1383,18 @@ export async function syncItemTree(
         ) {
           await tx.item.delete({ where: { id: existingItem.id } });
           deleted++;
-          console.log(`[SFTP Sync Item] Deleted: ${existingItem.sftpPath}`);
+          logger.debug(
+            { path: existingItem.sftpPath },
+            "[SFTP Sync Item] Deleted item"
+          );
         }
       }
     });
 
     const duration = Date.now() - startTime;
-    console.log(
-      `[SFTP Sync Item] ✓ "${item.name}" completed in ${duration}ms: ` +
-        `${created} created, ${updated} updated, ${deleted} deleted`
+    logger.info(
+      { itemName: item.name, duration, created, updated, deleted },
+      "[SFTP Sync Item] Completed"
     );
 
     revalidatePath("/my-items");
@@ -1376,7 +1405,7 @@ export async function syncItemTree(
       data: { itemId: item.id, itemName: item.name, created, updated, deleted },
     };
   } catch (error) {
-    console.error("[SFTP Sync Item] Error:", error);
+    logger.error({ err: error }, "[SFTP Sync Item] Error");
     return { success: false, error: "Failed to sync item" };
   }
 }

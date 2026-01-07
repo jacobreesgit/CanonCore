@@ -4,6 +4,7 @@
  */
 
 import Client from "ssh2-sftp-client";
+import { CircuitBreaker } from "@/lib/circuit-breaker";
 import { decryptCredential } from "@/lib/crypto";
 import { withTimeout } from "@/lib/sftp-utils";
 import type { SftpConnection } from "@prisma/client";
@@ -14,60 +15,89 @@ const connectionLocks = new Map<string, Promise<Client>>();
 const POOL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 const OPERATION_TIMEOUT_MS = 30 * 1000; // 30 seconds per operation
 
+// Per-connection circuit breakers to isolate failures
+const connectionBreakers = new Map<string, CircuitBreaker>();
+
+/**
+ * Gets or creates a circuit breaker for a specific connection.
+ * Each connection has its own breaker to isolate failures.
+ *
+ * @param connectionId - ID of the SFTP connection
+ * @returns Circuit breaker for this connection
+ */
+function getCircuitBreaker(connectionId: string): CircuitBreaker {
+  let breaker = connectionBreakers.get(connectionId);
+  if (!breaker) {
+    breaker = new CircuitBreaker({
+      name: `sftp-${connectionId.slice(0, 8)}`,
+      failureThreshold: 5,
+      resetTimeout: 60000, // 1 minute
+    });
+    connectionBreakers.set(connectionId, breaker);
+  }
+  return breaker;
+}
+
 /**
  * Gets or creates an SFTP connection from the pool with mutex lock.
  * Prevents race conditions when multiple requests try to create connections.
+ * Protected by circuit breaker to fail fast on repeated failures.
  *
  * @param connection - SFTP connection configuration
  * @returns Connected SFTP client
+ * @throws CircuitBreakerOpen if connection has failed repeatedly
  */
 export async function getConnection(
   connection: SftpConnection
 ): Promise<Client> {
-  // Check if connection exists in pool
-  const pooled = connectionPool.get(connection.id);
-  if (pooled) {
-    pooled.lastUsed = Date.now();
-    return pooled.client;
-  }
+  const breaker = getCircuitBreaker(connection.id);
 
-  // Check if connection is being created (mutex)
-  const existingLock = connectionLocks.get(connection.id);
-  if (existingLock) {
-    return existingLock;
-  }
-
-  // Create new connection with lock
-  const connectionPromise = (async () => {
-    try {
-      const client = new Client();
-      const credential = decryptCredential(connection.encryptedCredential);
-
-      await withTimeout(
-        client.connect({
-          host: connection.host,
-          port: connection.port,
-          username: connection.username,
-          ...(connection.authType === "PASSWORD"
-            ? { password: credential }
-            : { privateKey: credential }),
-          readyTimeout: 10000,
-          retries: 2,
-          retry_minTimeout: 2000,
-        }),
-        15000,
-        "SFTP connection"
-      );
-
-      connectionPool.set(connection.id, { client, lastUsed: Date.now() });
-      return client;
-    } finally {
-      connectionLocks.delete(connection.id);
+  return breaker.execute(async () => {
+    // Check if connection exists in pool
+    const pooled = connectionPool.get(connection.id);
+    if (pooled) {
+      pooled.lastUsed = Date.now();
+      return pooled.client;
     }
-  })();
 
-  connectionLocks.set(connection.id, connectionPromise);
-  return connectionPromise;
+    // Check if connection is being created (mutex)
+    const existingLock = connectionLocks.get(connection.id);
+    if (existingLock) {
+      return existingLock;
+    }
+
+    // Create new connection with lock
+    const connectionPromise = (async () => {
+      try {
+        const client = new Client();
+        const credential = decryptCredential(connection.encryptedCredential);
+
+        await withTimeout(
+          client.connect({
+            host: connection.host,
+            port: connection.port,
+            username: connection.username,
+            ...(connection.authType === "PASSWORD"
+              ? { password: credential }
+              : { privateKey: credential }),
+            readyTimeout: 10000,
+            retries: 2,
+            retry_minTimeout: 2000,
+          }),
+          15000,
+          "SFTP connection"
+        );
+
+        connectionPool.set(connection.id, { client, lastUsed: Date.now() });
+        return client;
+      } finally {
+        connectionLocks.delete(connection.id);
+      }
+    })();
+
+    connectionLocks.set(connection.id, connectionPromise);
+    return connectionPromise;
+  });
 }
 
 /**

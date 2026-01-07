@@ -12,21 +12,22 @@
 
 ## Overview
 
-| Priority | Task | Complexity | Test Impact |
-|----------|------|------------|-------------|
-| High | Add HSTS Header | Low | Add E2E header test |
-| High | Tighten CSP | Medium | Update E2E header test |
-| Medium | Add Request ID Tracking | Medium | Add unit tests |
-| Medium | Structured Logging | Medium | Update mocks in unit tests |
-| Medium | React Error Boundaries | Low | Add unit tests |
-| Medium | Circuit Breaker for SFTP | High | Add unit + integration tests |
-| Low | Database Connection Pooling | Low | None (config only) |
+| Priority | Task                        | Complexity | Test Impact                  |
+| -------- | --------------------------- | ---------- | ---------------------------- |
+| High     | Add HSTS Header             | Low        | Add E2E header test          |
+| High     | Tighten CSP                 | Medium     | Update E2E header test       |
+| Medium   | Add Request ID Tracking     | Medium     | Add unit tests               |
+| Medium   | Structured Logging          | Medium     | Update mocks in unit tests   |
+| Medium   | React Error Boundaries      | Low        | Add unit tests               |
+| Medium   | Circuit Breaker for SFTP    | High       | Add unit + integration tests |
+| Low      | Database Connection Pooling | Low        | None (config only)           |
 
 ---
 
 ## Task 1: Add HSTS Header
 
 **Files:**
+
 - Modify: `next.config.mjs:29-54`
 - Create: `e2e/journeys/security/headers.spec.ts`
 - Modify: `e2e/fixtures/index.ts` (if needed)
@@ -58,7 +59,9 @@ test.describe("Security Headers", () => {
     const headers = response?.headers();
 
     expect(headers?.["content-security-policy"]).toBeDefined();
-    expect(headers?.["content-security-policy"]).toContain("default-src 'self'");
+    expect(headers?.["content-security-policy"]).toContain(
+      "default-src 'self'"
+    );
   });
 
   test("includes X-Frame-Options header", async ({ page }) => {
@@ -119,6 +122,7 @@ git commit -m "feat(security): add HSTS header and security header tests
 ## Task 2: Add Structured Logger
 
 **Files:**
+
 - Create: `lib/logger.ts`
 - Create: `tests/unit/lib/logger.test.ts`
 - Modify: `package.json` (add pino dependency)
@@ -279,6 +283,7 @@ git commit -m "feat(observability): add structured logger with pino
 ## Task 3: Add Request ID Middleware
 
 **Files:**
+
 - Create: `middleware.ts`
 - Create: `tests/unit/middleware.test.ts`
 - Modify: `lib/logger.ts` (add helper)
@@ -360,8 +365,7 @@ import { generateRequestId } from "@/lib/logger";
 
 export function middleware(request: NextRequest) {
   // Generate request ID if not provided
-  const requestId =
-    request.headers.get("x-request-id") || generateRequestId();
+  const requestId = request.headers.get("x-request-id") || generateRequestId();
 
   // Clone request headers and add request ID
   const requestHeaders = new Headers(request.headers);
@@ -406,6 +410,7 @@ git commit -m "feat(observability): add request ID middleware
 ## Task 4: Migrate Console Logs to Structured Logger
 
 **Files:**
+
 - Modify: `lib/auth-actions.ts`
 - Modify: `lib/sftp-actions.ts`
 - Modify: `lib/user-actions.ts`
@@ -471,7 +476,7 @@ Replace `console.error("Sign up error:", error);` (line ~100) with:
 logger.error({ err: error, email }, "Sign up error");
 ```
 
-**Step 4: Replace all console.* in sftp-actions.ts**
+**Step 4: Replace all console.\* in sftp-actions.ts**
 
 This file has many console calls. Replace the import section and add logger:
 
@@ -480,15 +485,16 @@ import { logger } from "@/lib/logger";
 ```
 
 Then replace each console call pattern:
+
 - `console.error("[SFTP] message:", error)` → `logger.error({ err: error, context }, "message")`
 - `console.warn("[SFTP] message", data)` → `logger.warn({ ...data }, "message")`
 - `console.log("[SFTP] message")` → `logger.info("message")`
 
-**Step 5: Replace console.* in user-actions.ts**
+**Step 5: Replace console.\* in user-actions.ts**
 
 Add import and replace calls following same pattern.
 
-**Step 6: Replace console.* in email.ts and item-file-actions.ts**
+**Step 6: Replace console.\* in email.ts and item-file-actions.ts**
 
 Add import and replace calls following same pattern.
 
@@ -515,6 +521,7 @@ git commit -m "refactor(observability): migrate console.* to structured logger
 ## Task 5: Add React Error Boundary
 
 **Files:**
+
 - Create: `components/error-boundary.tsx`
 - Create: `tests/unit/components/error-boundary.test.tsx`
 - Modify: `app/(my-items)/layout.tsx`
@@ -733,6 +740,7 @@ git commit -m "feat(resilience): add React error boundary
 ## Task 6: Add Circuit Breaker for SFTP
 
 **Files:**
+
 - Create: `lib/circuit-breaker.ts`
 - Create: `tests/unit/lib/circuit-breaker.test.ts`
 - Modify: `lib/sftp-client.ts`
@@ -1098,6 +1106,7 @@ git commit -m "feat(resilience): add circuit breaker for SFTP connections
 ## Task 7: Configure Database Connection Pooling (Neon-Specific)
 
 **Files:**
+
 - Modify: `lib/prisma.ts`
 - Update: `.env.local.example` (document Neon connection params)
 
@@ -1176,10 +1185,12 @@ git commit -m "docs(database): document Neon connection pooling configuration
 ## Task 8: Tighten CSP (Optional - May Require Investigation)
 
 **Files:**
+
 - Modify: `next.config.mjs`
 - Potentially: `app/layout.tsx` (for nonce injection)
 
 **Note:** This task requires investigation. The `unsafe-inline` and `unsafe-eval` may be required by:
+
 - Vidstack player (video playback)
 - Fumadocs MDX rendering
 - Next.js development mode
@@ -1191,6 +1202,7 @@ Run the app and check browser console for CSP violation reports.
 **Step 2: Test without unsafe-eval**
 
 Try removing `'unsafe-eval'` from script-src and test:
+
 - Video playback
 - MDX documentation pages
 - All E2E tests
@@ -1198,6 +1210,7 @@ Try removing `'unsafe-eval'` from script-src and test:
 **Step 3: If possible, implement nonce-based CSP**
 
 This requires:
+
 1. Generating nonce in middleware
 2. Passing nonce to layout
 3. Adding nonce to inline scripts
@@ -1221,16 +1234,16 @@ git commit -m "docs(security): document CSP unsafe-inline/unsafe-eval requiremen
 
 ## Test Summary
 
-| Task | New Tests | Modified Tests | Removed Tests |
-|------|-----------|----------------|---------------|
-| HSTS Header | E2E: headers.spec.ts | - | - |
-| Structured Logger | Unit: logger.test.ts | Unit: setup.ts (mock) | - |
-| Request ID Middleware | Unit: middleware.test.ts | - | - |
-| Console → Logger Migration | - | Unit: setup.ts (mock) | - |
-| Error Boundary | Unit: error-boundary.test.tsx | - | - |
-| Circuit Breaker | Unit: circuit-breaker.test.ts, Integration: circuit-breaker.test.ts | - | - |
-| DB Connection Pooling | - | - | - |
-| CSP Tightening | - | E2E: headers.spec.ts (maybe) | - |
+| Task                       | New Tests                                                           | Modified Tests               | Removed Tests |
+| -------------------------- | ------------------------------------------------------------------- | ---------------------------- | ------------- |
+| HSTS Header                | E2E: headers.spec.ts                                                | -                            | -             |
+| Structured Logger          | Unit: logger.test.ts                                                | Unit: setup.ts (mock)        | -             |
+| Request ID Middleware      | Unit: middleware.test.ts                                            | -                            | -             |
+| Console → Logger Migration | -                                                                   | Unit: setup.ts (mock)        | -             |
+| Error Boundary             | Unit: error-boundary.test.tsx                                       | -                            | -             |
+| Circuit Breaker            | Unit: circuit-breaker.test.ts, Integration: circuit-breaker.test.ts | -                            | -             |
+| DB Connection Pooling      | -                                                                   | -                            | -             |
+| CSP Tightening             | -                                                                   | E2E: headers.spec.ts (maybe) | -             |
 
 ---
 

@@ -7,6 +7,19 @@ import { createMDX } from "fumadocs-mdx/next";
 /**
  * Content Security Policy directives.
  * Configured to allow necessary features while maintaining security.
+ *
+ * Note on 'unsafe-inline' and 'unsafe-eval':
+ * These are required for the following dependencies:
+ * - Next.js: Development mode hot reload requires eval
+ * - Vidstack: Video player uses inline styles and scripts
+ * - Fumadocs: MDX rendering requires inline script evaluation
+ *
+ * Alternatives considered but not viable:
+ * - Nonce-based CSP: Would require middleware changes and break caching
+ * - Strict CSP: Would break video playback and documentation
+ *
+ * Security impact: Low - all scripts are first-party and XSS is mitigated
+ * by React's built-in escaping and server component architecture.
  */
 const cspHeader = `
   default-src 'self';
@@ -50,6 +63,10 @@ const securityHeaders = [
   {
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=()",
+  },
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=31536000; includeSubDomains; preload",
   },
 ];
 
