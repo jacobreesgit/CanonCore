@@ -175,6 +175,7 @@ pnpm run db:check-seed    # Inspect seed user's item hierarchy
 │   ├── email.ts                      # Resend email helper
 │   ├── env.ts                        # Zod environment variable validation
 │   ├── file-type-utils.ts            # Media/artwork/subtitle categorization
+│   ├── image-preload.ts              # Artwork image preloading utility
 │   ├── item-actions.ts               # Item CRUD server actions
 │   ├── item-file-actions.ts          # ItemFile operations, playback progress
 │   ├── item-utils.ts                 # Tree/flat conversion, descendant counter utilities
@@ -205,7 +206,7 @@ pnpm run db:check-seed    # Inspect seed user's item hierarchy
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.27.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.28.0)
     └── plans/                        # Design documents
 ```
 
@@ -256,6 +257,7 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 - **Hierarchical items** with drag-and-drop reordering via dnd-kit
 - **Hero banners**: Item detail pages show cinematic hero with artwork, title, and play button
 - **Dual view modes**: Tree (hierarchical) and Grid (movie poster cards)
+- **Loading spinner**: Full-page spinner during hydration + artwork preload (300ms min duration)
 - **Edit mode toggle**: Click "Edit" to enable drag-and-drop, "Done" to return to view mode
 - **View mode**: Full background artwork with dark overlay (Feature222 aesthetic)
 - **Edit mode**: Simplified icons with drag handles for reordering
@@ -319,7 +321,7 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 548 total tests (481 unit + 67 integration)
+- 570 total tests (499 unit + 71 integration)
 
 ### E2E Testing
 

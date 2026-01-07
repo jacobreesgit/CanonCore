@@ -6,7 +6,14 @@
 
 "use client";
 
-import { useState, useTransition, useEffect, useRef, useCallback } from "react";
+import {
+  useState,
+  useTransition,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import { useRouter } from "next/navigation";
 import { Folder, Plus, Loader2 } from "lucide-react";
 import { useQuickCreateOptional } from "@/contexts/add-item-context";
@@ -23,6 +30,7 @@ import { AddItemDialog } from "./add-item-dialog";
 import { ItemSettingsDialog } from "./item-settings-dialog";
 import { ItemHero } from "./item-hero";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { SyncButton, SyncAllButton, ItemSyncButton } from "@/components/sftp";
 import type {
   ItemWithArtwork,
@@ -43,6 +51,7 @@ import {
   getItemsByConnection,
 } from "@/lib/sftp-actions";
 import { cn } from "@/lib/utils";
+import { preloadImages } from "@/lib/image-preload";
 
 /** State for the settings dialog */
 interface SettingsDialogState {
@@ -433,6 +442,101 @@ export function ItemsView({
 
   // Filter items for current level (grid view shows only current level)
   const currentLevelItems = items.filter((item) => item.parentId === parentId);
+
+  // --- Hydration and artwork preloading state ---
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [artworkPreloadState, setArtworkPreloadState] = useState<{
+    key: string;
+    ready: boolean;
+  }>({ key: "", ready: false });
+  const [minDurationMet, setMinDurationMet] = useState(false);
+
+  // Stable key for artwork preloading - memoized to prevent re-render loops
+  const artworkPreloadKey = useMemo(() => {
+    return `${parentId ?? "root"}:${currentLevelItems
+      .slice(0, 8)
+      .map((item) => item.artworkId)
+      .filter(Boolean)
+      .join(",")}`;
+  }, [parentId, currentLevelItems]);
+
+  // Hydration detection - standard React pattern to detect client-side hydration
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: one-time hydration marker
+  useEffect(() => setIsHydrated(true), []);
+
+  // Minimum spinner duration (300ms) - prevents flicker for fast loads
+  // Best practice: show spinner for at least 200-300ms once visible
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMinDurationMet(true);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Artwork preloading (only for grid view)
+  // When artworkPreloadKey changes, this effect runs and starts fresh preloading
+  useEffect(() => {
+    if (!isHydrated) return;
+
+    // Extract artwork IDs from key (after the ":" separator)
+    const keyParts = artworkPreloadKey.split(":");
+    const artworkIds = keyParts[1]
+      ? keyParts[1].split(",").filter(Boolean)
+      : [];
+
+    // Tree view or no artworks to preload - use microtask to avoid sync setState
+    if (viewMode !== "grid" || artworkIds.length === 0) {
+      const timeoutId = setTimeout(() => {
+        setArtworkPreloadState({ key: artworkPreloadKey, ready: true });
+      }, 0);
+      return () => clearTimeout(timeoutId);
+    }
+
+    // Track if effect is still active (cleanup on unmount or deps change)
+    let cancelled = false;
+
+    // Start preloading - use microtask to mark not ready
+    const resetTimeoutId = setTimeout(() => {
+      if (!cancelled) {
+        setArtworkPreloadState((prev) =>
+          prev.key === artworkPreloadKey
+            ? prev
+            : { key: artworkPreloadKey, ready: false }
+        );
+      }
+    }, 0);
+
+    preloadImages(artworkIds).then(() => {
+      if (!cancelled) {
+        setArtworkPreloadState({ key: artworkPreloadKey, ready: true });
+      }
+    });
+
+    // Cleanup: ignore stale preload results
+    return () => {
+      cancelled = true;
+      clearTimeout(resetTimeoutId);
+    };
+  }, [isHydrated, viewMode, artworkPreloadKey]);
+
+  // Loading is true until: hydrated, artworks ready, AND minimum duration met
+  const isLoading =
+    !isHydrated ||
+    !minDurationMet ||
+    artworkPreloadState.key !== artworkPreloadKey ||
+    !artworkPreloadState.ready;
+
+  // Show full-page spinner until hydrated and artworks preloaded
+  if (isLoading) {
+    return (
+      <div
+        className="flex flex-1 items-center justify-center"
+        data-testid="items-loading"
+      >
+        <Spinner className="text-muted-foreground size-8" />
+      </div>
+    );
+  }
 
   return (
     <div className={cn("flex flex-col gap-6", isPending && "opacity-70")}>

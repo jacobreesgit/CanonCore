@@ -7,8 +7,8 @@
 
 import { Suspense, useState, useCallback, useTransition } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { ItemsView } from "./items-view";
+import { Spinner } from "@/components/ui/spinner";
 import type { ItemWithArtwork } from "@/lib/types";
 import { getItems } from "@/lib/item-actions";
 import { getItemsByConnection } from "@/lib/sftp-actions";
@@ -126,9 +126,11 @@ export function FilteredItemsView(props: FilteredItemsViewProps) {
   return (
     <Suspense
       fallback={
-        <div className="text-muted-foreground flex items-center gap-2">
-          <Loader2 className="size-4 animate-spin" />
-          <span>Loading...</span>
+        <div
+          className="flex flex-1 items-center justify-center"
+          data-testid="items-loading"
+        >
+          <Spinner className="text-muted-foreground size-8" />
         </div>
       }
     >

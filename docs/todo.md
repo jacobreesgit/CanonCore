@@ -1,12 +1,10 @@
-- make items, then add sftp connection edge case
-
+- google drive
+- identify any issues/limitations with the project
 - spotlight search
 
 - sorting for 'my items' dashboard, not for individual item pages
 
 - imdb/other
-
-- upload. already doing this for profile (maybe improve this and reduce limit? OMG... INSTEAD OF HOSTING THE DATA IN OUR POSTGRE, ALSO DO SFTP? OH WAIT WHAT IF NOT SFTP)
 
 - public and explore
 - "item templates" make a copy/fork, you can "add" and it adds all the stuff to your sftp apart from subtitles and media files
@@ -16,5 +14,9 @@
 - ai making items
 - content pages, using that shadcn block
 
+- upload to complete bidirectional thing fully
+
 - design focus, look at all my photos. tweet folder saved. 'refined cinematic aesthetic'? attenas for logo and favicon
 - more alien thing
+
+- agents
