@@ -6,12 +6,13 @@
 
 "use client";
 
-import { useState, useCallback, useTransition } from "react";
+import { useState, useCallback, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ItemsToolbar } from "./items-toolbar";
 import { ItemsView } from "./items-view";
 import { ItemHero } from "./item-hero";
 import { MediaOverlay } from "@/components/media/media-overlay";
+import { Spinner } from "@/components/ui/spinner";
 import { updatePlaybackPosition } from "@/lib/item-file-actions";
 import type { ItemWithArtwork, SerializedItemFile } from "@/lib/types";
 import { getItems } from "@/lib/item-actions";
@@ -60,6 +61,23 @@ export function ItemDetailClient({
   const [playingFile, setPlayingFile] = useState<SerializedItemFile | null>(
     null
   );
+
+  // Hydration detection
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [minDurationMet, setMinDurationMet] = useState(false);
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: one-time hydration marker
+  useEffect(() => setIsHydrated(true), []);
+
+  // Minimum spinner duration (300ms) - prevents flicker for fast loads
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMinDurationMet(true);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const isLoading = !isHydrated || !minDurationMet;
 
   const isSftpConnected = Boolean(item.connectionId && item.sftpPath);
   const hasChildren = childItems.length > 0;
@@ -150,6 +168,18 @@ export function ItemDetailClient({
     childCount: childItems.length,
     isSftpConnected,
   };
+
+  // Show full-page spinner until hydrated
+  if (isLoading) {
+    return (
+      <div
+        className="flex flex-1 items-center justify-center"
+        data-testid="items-loading"
+      >
+        <Spinner className="text-muted-foreground size-8" />
+      </div>
+    );
+  }
 
   return (
     <div className={`flex flex-col gap-6 ${isPending ? "opacity-70" : ""}`}>

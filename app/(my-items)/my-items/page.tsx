@@ -46,7 +46,7 @@ export default async function MyItemsPage({ searchParams }: MyItemsPageProps) {
   return (
     <>
       <SiteHeader title="My Items" titleHref="/my-items" />
-      <div className="flex flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
+      <div className="flex flex-1 flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
         <FilteredItemsView
           initialItems={items}
           connections={connections}
