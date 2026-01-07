@@ -13,6 +13,7 @@ import { itemNameSchema, itemDescriptionSchema } from "@/lib/validations";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { validateFileName, sanitizePath } from "@/lib/sftp-utils";
 import { rename as sftpRename } from "@/lib/sftp-client";
+import { logger } from "@/lib/logger";
 import type { SerializedItemFile } from "@/lib/types";
 
 /** Result type for item file actions */
@@ -365,7 +366,7 @@ export async function updateItemSettings(
           await sftpRename(item.connection, item.sftpPath, newPath);
           itemUpdateData.sftpPath = newPath;
         } catch (error) {
-          console.error("[SFTP] Rename error:", error);
+          logger.error({ err: error }, "[SFTP] Rename error");
           return { success: false, error: "Failed to rename on SFTP server" };
         }
       }
