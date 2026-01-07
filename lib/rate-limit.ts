@@ -34,6 +34,11 @@ export const rateLimiters = {
     limiter: Ratelimit.slidingWindow(2, "1 m"),
     prefix: "ratelimit:forgot",
   }),
+  passwordChange: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(5, "1 h"),
+    prefix: "ratelimit:password-change",
+  }),
 
   // SFTP rate limiters (moderate - prevent abuse of expensive operations)
   sftpSync: new Ratelimit({

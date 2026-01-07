@@ -114,18 +114,14 @@ describeOrSkip("Web to SFTP Operations", () => {
     await folderItem.click({ button: "right" });
     await page.getByRole("menuitem", { name: /settings/i }).click();
 
-    // Rename via settings dialog (label is "Name", first Save button)
+    // Rename via settings dialog
     await page.getByLabel(/^name$/i).fill("renamed-folder");
-    await page
-      .getByRole("button", { name: /^save$/i })
-      .first()
-      .click();
-    // Wait for success toast (shown by handleRenameItem in items-view)
+    await page.getByRole("button", { name: /save changes/i }).click();
+    // Wait for success toast
     await expect(
-      page.locator("[data-sonner-toast]").filter({ hasText: "Renamed to" })
+      page.locator("[data-sonner-toast]").filter({ hasText: "Settings saved" })
     ).toBeVisible({ timeout: 10000 });
-    // Close settings dialog
-    await page.getByRole("button", { name: /close/i }).click();
+    // Dialog closes automatically on success
     await expect(
       page.getByRole("dialog", { name: /settings/i })
     ).not.toBeVisible({ timeout: 5000 });

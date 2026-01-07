@@ -3,9 +3,18 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ItemHero } from "@/components/items/item-hero";
+
+// Mock Shader1 component
+vi.mock("@/components/shader1", () => ({
+  Shader1: ({ className }: { className?: string }) => (
+    <div data-testid="shader1-fallback" className={className}>
+      Shader Fallback
+    </div>
+  ),
+}));
 
 describe("ItemHero", () => {
   const defaultProps = {
@@ -41,10 +50,84 @@ describe("ItemHero", () => {
       });
     });
 
-    it("should show fallback gradient when no artworkId", () => {
+    it("should show fallback when no artworkId", () => {
       render(<ItemHero {...defaultProps} />);
       const fallback = screen.getByTestId("hero-fallback");
       expect(fallback).toBeInTheDocument();
+    });
+  });
+
+  describe("backgroundUrl prop", () => {
+    it("should display backgroundUrl as background", () => {
+      render(<ItemHero {...defaultProps} backgroundUrl="/api/user/hero" />);
+      const hero = screen.getByTestId("item-hero");
+      expect(hero).toHaveStyle({
+        backgroundImage: "url(/api/user/hero)",
+      });
+    });
+
+    it("should take precedence over artworkId", () => {
+      render(
+        <ItemHero
+          {...defaultProps}
+          backgroundUrl="/api/user/hero"
+          artworkId="art-123"
+        />
+      );
+      const hero = screen.getByTestId("item-hero");
+      // backgroundUrl should be used, not artworkId
+      expect(hero).toHaveStyle({
+        backgroundImage: "url(/api/user/hero)",
+      });
+    });
+
+    it("should fall back to artworkId when backgroundUrl is null", () => {
+      render(
+        <ItemHero {...defaultProps} backgroundUrl={null} artworkId="art-456" />
+      );
+      const hero = screen.getByTestId("item-hero");
+      expect(hero).toHaveStyle({
+        backgroundImage: "url(/api/artwork/art-456)",
+      });
+    });
+  });
+
+  describe("Shader1 fallback", () => {
+    it("should render Shader1 when no background provided", () => {
+      render(<ItemHero {...defaultProps} />);
+      expect(screen.getByTestId("shader1-fallback")).toBeInTheDocument();
+    });
+
+    it("should render Shader1 when both backgroundUrl and artworkId are null", () => {
+      render(
+        <ItemHero {...defaultProps} backgroundUrl={null} artworkId={null} />
+      );
+      expect(screen.getByTestId("shader1-fallback")).toBeInTheDocument();
+    });
+
+    it("should not render Shader1 when backgroundUrl is provided", () => {
+      render(<ItemHero {...defaultProps} backgroundUrl="/api/user/hero" />);
+      expect(screen.queryByTestId("shader1-fallback")).not.toBeInTheDocument();
+    });
+
+    it("should not render Shader1 when artworkId is provided", () => {
+      render(<ItemHero {...defaultProps} artworkId="art-123" />);
+      expect(screen.queryByTestId("shader1-fallback")).not.toBeInTheDocument();
+    });
+
+    it("should render Shader1 on image load error", () => {
+      render(<ItemHero {...defaultProps} backgroundUrl="/api/user/hero" />);
+
+      // Initially no shader (image loading)
+      expect(screen.queryByTestId("shader1-fallback")).not.toBeInTheDocument();
+
+      // Simulate image error via hidden img element
+      const hiddenImg = document.querySelector('img[src="/api/user/hero"]');
+      expect(hiddenImg).toBeInTheDocument();
+      fireEvent.error(hiddenImg!);
+
+      // Now shader should appear
+      expect(screen.getByTestId("shader1-fallback")).toBeInTheDocument();
     });
   });
 

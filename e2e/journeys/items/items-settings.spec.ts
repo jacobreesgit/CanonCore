@@ -78,19 +78,19 @@ test.describe("Item Settings Dialog", () => {
 
     await itemsPage.openSettingsViaContextMenu("Unchanged Name");
 
-    // First save button (for name) should be disabled when name hasn't changed
-    const nameSaveButton = itemsPage.page
-      .getByRole("button", { name: /^save$/i })
-      .first();
-    await expect(nameSaveButton).toBeDisabled();
+    // "Save Changes" button should be disabled when nothing has changed
+    const saveButton = itemsPage.page.getByRole("button", {
+      name: /save changes/i,
+    });
+    await expect(saveButton).toBeDisabled();
 
     // Type something different
     await itemsPage.page.getByLabel(/^name$/i).fill("Changed Name");
-    await expect(nameSaveButton).toBeEnabled();
+    await expect(saveButton).toBeEnabled();
 
     // Change back to original
     await itemsPage.page.getByLabel(/^name$/i).fill("Unchanged Name");
-    await expect(nameSaveButton).toBeDisabled();
+    await expect(saveButton).toBeDisabled();
 
     await itemsPage.closeSettingsDialog();
   });
@@ -222,19 +222,19 @@ test.describe("Item Settings Dialog", () => {
 
     await itemsPage.openSettingsViaContextMenu("Disabled Save Test");
 
-    // Second save button (for description) should be disabled initially
-    const descSaveButton = itemsPage.page
-      .getByRole("button", { name: /^save$/i })
-      .nth(1);
-    await expect(descSaveButton).toBeDisabled();
+    // "Save Changes" button should be disabled initially
+    const saveButton = itemsPage.page.getByRole("button", {
+      name: /save changes/i,
+    });
+    await expect(saveButton).toBeDisabled();
 
     // Type something to enable it
     await itemsPage.page.getByLabel(/^description$/i).fill("New description");
-    await expect(descSaveButton).toBeEnabled();
+    await expect(saveButton).toBeEnabled();
 
     // Clear to original (empty) to disable again
     await itemsPage.page.getByLabel(/^description$/i).fill("");
-    await expect(descSaveButton).toBeDisabled();
+    await expect(saveButton).toBeDisabled();
 
     await itemsPage.closeSettingsDialog();
   });
@@ -340,20 +340,13 @@ test.describe("Item Page Settings", () => {
     const nameInput = page.getByLabel(/^name$/i);
     await nameInput.fill("Updated Name");
 
-    // Click Save button (first save button for name section)
-    await page
-      .getByRole("button", { name: /^save$/i })
-      .first()
-      .click();
+    // Click "Save Changes" button
+    await page.getByRole("button", { name: /save changes/i }).click();
 
     // Verify success toast
-    await itemsPage.expectSuccessToast("Item renamed");
+    await itemsPage.expectSuccessToast("Settings saved");
 
-    // Wait for the input to reflect new value
-    await expect(nameInput).toHaveValue("Updated Name", { timeout: 5000 });
-
-    // Close the dialog
-    await page.getByRole("button", { name: /close/i }).click();
+    // Dialog closes automatically on success
     await expect(settingsDialog).not.toBeVisible({ timeout: 5000 });
 
     // Verify breadcrumb is updated
@@ -382,17 +375,13 @@ test.describe("Item Page Settings", () => {
     const descriptionInput = page.getByLabel(/^description$/i);
     await descriptionInput.fill("This is a test description");
 
-    // Click Save button (second save button for description section)
-    await page
-      .getByRole("button", { name: /^save$/i })
-      .nth(1)
-      .click();
+    // Click "Save Changes" button
+    await page.getByRole("button", { name: /save changes/i }).click();
 
     // Verify success toast
-    await itemsPage.expectSuccessToast("Description updated");
+    await itemsPage.expectSuccessToast("Settings saved");
 
-    // Close the dialog
-    await page.getByRole("button", { name: /close/i }).click();
+    // Dialog closes automatically on success
     await expect(settingsDialog).not.toBeVisible({ timeout: 5000 });
   });
 });

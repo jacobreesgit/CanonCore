@@ -161,10 +161,9 @@ export class ItemsPage {
     // Wait for navigation and page content to be ready
     await this.page.waitForLoadState("networkidle");
     await this.page.waitForLoadState("domcontentloaded");
-    // Wait for the clicked item to appear in SiteHeader breadcrumbs (confirms page loaded)
-    // Breadcrumbs are Link elements (role="link")
+    // Wait for the hero heading to show item name (works on mobile where breadcrumbs collapse)
     await expect(
-      this.page.getByLabel("Breadcrumb").getByRole("link", { name })
+      this.heroSection.getByRole("heading", { level: 1, name })
     ).toBeVisible({
       timeout: 15000,
     });
@@ -230,19 +229,14 @@ export class ItemsPage {
     await this.openSettingsViaContextMenu(oldName);
     // Find the name input in the settings dialog (label is "Name")
     await this.page.getByLabel(/^name$/i).fill(newName);
-    // Click first save button (for name section)
-    await this.page
-      .getByRole("button", { name: /^save$/i })
-      .first()
-      .click();
-    // Wait for success toast (shown by handleRenameItem in items-view)
-    await this.expectSuccessToast("Renamed to");
-    // Wait for input to reflect new value
-    await expect(this.page.getByLabel(/^name$/i)).toHaveValue(newName, {
-      timeout: 5000,
-    });
-    // Close the dialog
-    await this.closeSettingsDialog();
+    // Click "Save Changes" button (single save for all settings)
+    await this.page.getByRole("button", { name: /save changes/i }).click();
+    // Wait for success toast
+    await this.expectSuccessToast("Settings saved");
+    // Wait for dialog to close automatically on success
+    await expect(
+      this.page.getByRole("dialog", { name: /settings/i })
+    ).not.toBeVisible({ timeout: 5000 });
   }
 
   /**
@@ -268,21 +262,14 @@ export class ItemsPage {
   ): Promise<void> {
     await this.openSettingsViaContextMenu(itemName);
     await this.page.getByLabel(/^description$/i).fill(description);
-    // Find the save button in the description section (second save button)
-    await this.page
-      .getByRole("button", { name: /^save$/i })
-      .nth(1)
-      .click();
-    // Wait for toast confirmation that save completed
-    await this.page
-      .getByText("Description updated")
-      .waitFor({ state: "visible" });
-    await this.page.waitForLoadState("networkidle");
-    // Wait for toast to disappear to ensure React state has settled
-    await this.page
-      .getByText("Description updated")
-      .waitFor({ state: "hidden", timeout: TOAST_DISMISS_TIMEOUT });
-    await this.closeSettingsDialog();
+    // Click "Save Changes" button (single save for all settings)
+    await this.page.getByRole("button", { name: /save changes/i }).click();
+    // Wait for success toast
+    await this.expectSuccessToast("Settings saved");
+    // Wait for dialog to close automatically on success
+    await expect(
+      this.page.getByRole("dialog", { name: /settings/i })
+    ).not.toBeVisible({ timeout: 5000 });
   }
 
   /**

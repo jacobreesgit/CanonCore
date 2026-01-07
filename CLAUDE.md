@@ -70,7 +70,10 @@ pnpm run db:reset         # Reset database and re-seed
 │   │   ├── artwork/[fileId]/route.ts    # SFTP artwork download for thumbnails
 │   │   ├── auth/[...nextauth]/route.ts  # NextAuth API route
 │   │   ├── sftp/download/file/[fileId]/route.ts  # Download file by ID
-│   │   └── stream/[fileId]/route.ts     # Stream media via WebDAV
+│   │   ├── stream/[fileId]/route.ts     # Stream media via WebDAV
+│   │   └── user/
+│   │       ├── avatar/route.ts          # User avatar image endpoint
+│   │       └── hero/route.ts            # User hero banner endpoint
 │   ├── globals.css
 │   └── layout.tsx                    # Root layout with providers
 ├── components/
@@ -80,8 +83,8 @@ pnpm run db:reset         # Reset database and re-seed
 │   │   ├── edit-mode-toggle.tsx      # Edit/Done button for reordering mode
 │   │   ├── filtered-items-view.tsx   # Display items from selected connection
 │   │   ├── item-context-menu.tsx     # Right-click actions menu
-│   │   ├── item-detail-client.tsx    # Client wrapper coordinating toolbar and items
-│   │   ├── item-detail.tsx           # Item detail with files display
+│   │   ├── item-detail-client.tsx    # Client wrapper with hero and media player
+│   │   ├── item-hero.tsx             # Hero banner with artwork, title, play button
 │   │   ├── item-settings-dialog.tsx  # Settings dialog with Select-based file selection
 │   │   ├── item-stats.tsx            # Reusable child/file count stats display
 │   │   ├── items-toolbar.tsx         # Unified toolbar for root and detail pages
@@ -90,6 +93,8 @@ pnpm run db:reset         # Reset database and re-seed
 │   ├── media/                        # Media playback components
 │   │   ├── media-overlay.tsx         # Full-screen media viewer
 │   │   └── media-player.tsx          # Vidstack video player wrapper
+│   ├── profile/                      # User profile components
+│   │   └── profile-settings-dialog.tsx  # Avatar, hero image, name settings
 │   ├── sftp/                         # SFTP connection components
 │   │   ├── connection-card.tsx       # Connection card with actions
 │   │   ├── connection-form.tsx       # Create/edit connection form
@@ -130,6 +135,7 @@ pnpm run db:reset         # Reset database and re-seed
 │   │   ├── items/                    # Items E2E tests (CRUD, drag, views)
 │   │   ├── media/                    # Media playback tests
 │   │   ├── navigation/               # Sidebar navigation active state tests
+│   │   ├── profile/                  # Profile settings tests
 │   │   ├── sftp/                     # SFTP sync and file operation tests
 │   │   ├── theme/                    # Dark mode E2E tests
 │   │   ├── global.setup.ts           # Docker container startup
@@ -146,6 +152,7 @@ pnpm run db:reset         # Reset database and re-seed
 │   │   ├── auth/                     # Auth integration tests
 │   │   ├── items/                    # Items integration tests (CRUD, hierarchy)
 │   │   ├── sftp/                     # SFTP connection integration tests
+│   │   ├── user/                     # User profile integration tests
 │   │   ├── setup.ts                  # DB cleanup, env loading, rate-limit bypass
 │   │   └── vitest.config.ts
 │   └── vitest.config.ts              # Base Vitest config
@@ -174,6 +181,7 @@ pnpm run db:reset         # Reset database and re-seed
 │   ├── sftp-utils.ts                 # Path sanitization, timeout helpers
 │   ├── source.ts                     # Fumadocs source configuration
 │   ├── types.ts                      # Shared TypeScript types (Item, ItemFile, SerializedItemFile)
+│   ├── user-actions.ts               # User profile server actions
 │   ├── utils.ts                      # cn() helper
 │   ├── validations.ts                # Zod schemas (auth, items, SFTP)
 │   └── webdav-utils.ts               # WebDAV URL construction for streaming
@@ -189,7 +197,7 @@ pnpm run db:reset         # Reset database and re-seed
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.24.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.25.0)
     └── plans/                        # Design documents
 ```
 
@@ -210,10 +218,11 @@ pnpm run db:reset         # Reset database and re-seed
 
 - **Prisma 7** with PostgreSQL (Neon)
 - Schema: User, PasswordReset, Item, ItemFile, SftpConnection models
+- User has optional `image`/`heroImage` blob fields for avatar and hero banner
 - Item has self-referential parent/child relationships for hierarchy
 - Item has optional `description` field (max 200 chars) for short notes
 - Item has SFTP fields: `sftpPath`, `sftpModifiedAt`, `connectionId`
-- ItemFile stores files per item: `filename`, `sftpPath`, `fileType`, `mimeType`, `playbackPosition`
+- ItemFile stores files per item: `filename`, `sftpPath`, `fileType`, `mimeType`, `playbackPosition`, `isPrimary`, `isHero`
 - SftpConnection stores encrypted credentials with AES-256-GCM (plus optional WebDAV credentials)
 - Enums: `FileType` (MEDIA, ARTWORK, SUBTITLE), `AuthType` (PASSWORD, PRIVATE_KEY)
 - Config in `prisma.config.ts` (loads DATABASE_URL from .env.local)
@@ -237,6 +246,7 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 ### Items System
 
 - **Hierarchical items** with drag-and-drop reordering via dnd-kit
+- **Hero banners**: Item detail pages show cinematic hero with artwork, title, and play button
 - **Dual view modes**: Tree (hierarchical) and Grid (movie poster cards)
 - **Edit mode toggle**: Click "Edit" to enable drag-and-drop, "Done" to return to view mode
 - **View mode**: Full background artwork with dark overlay (Feature222 aesthetic)
@@ -246,9 +256,10 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 - **Server actions**: `createItem`, `updateItem`, `deleteItem`, `reorderItems` in `lib/item-actions.ts`
 - **Breadcrumb navigation** for item drill-down
 - **Context menu**: Right-click for Settings, Delete, Add Child Item
-- **Settings dialog**: Rename items, add descriptions, and select primary files
+- **Settings dialog**: Rename items, add descriptions, and select primary/hero files
 - **Item descriptions**: Optional 200-character notes, displayed in view mode
 - **Primary file selection**: Choose which file plays/displays when multiple files attached
+- **Hero artwork selection**: Choose separate artwork for hero banner display (isHero field)
 - **Connection filtering**: Browse items filtered by SFTP connection source
 - **Context-aware sync**: "Sync All" when viewing all items, "Sync Connection" when filtered; badges show/hide accordingly
 - **Toast notifications**: Success/error feedback via Sonner
@@ -299,7 +310,7 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 464 total tests (411 unit + 53 integration)
+- 528 total tests (463 unit + 65 integration)
 
 ### E2E Testing
 

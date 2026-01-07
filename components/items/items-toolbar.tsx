@@ -16,9 +16,7 @@ import { SyncButton, SyncAllButton, ItemSyncButton } from "@/components/sftp";
 import type { SerializedItemFile } from "@/lib/types";
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { updateItem } from "@/lib/item-actions";
 import { getItemFiles } from "@/lib/item-file-actions";
-import { toast } from "sonner";
 
 /** Empty files state for initial dialog load */
 const emptyFiles = {
@@ -113,47 +111,7 @@ export function ItemsToolbar({
   }, [item]);
 
   /**
-   * Handles item rename via settings dialog.
-   */
-  const handleRename = useCallback(
-    async (newName: string) => {
-      if (!item) return;
-      const result = await updateItem(item.id, { name: newName });
-      if (result.success) {
-        toast.success("Item renamed");
-        router.refresh();
-      } else {
-        const errorMessage = result.error || "Failed to rename";
-        toast.error(errorMessage);
-        throw new Error(errorMessage);
-      }
-    },
-    [item, router]
-  );
-
-  /**
-   * Handles description update via settings dialog.
-   */
-  const handleDescriptionChange = useCallback(
-    async (description: string) => {
-      if (!item) return;
-      const result = await updateItem(item.id, {
-        description: description || undefined,
-      });
-      if (result.success) {
-        toast.success("Description updated");
-        router.refresh();
-      } else {
-        const errorMessage = result.error || "Failed to update description";
-        toast.error(errorMessage);
-        throw new Error(errorMessage);
-      }
-    },
-    [item, router]
-  );
-
-  /**
-   * Refreshes files after settings change.
+   * Refreshes files after settings change and refreshes page.
    */
   const handleSettingsChange = useCallback(async () => {
     if (!item) return;
@@ -161,7 +119,8 @@ export function ItemsToolbar({
     if (result.success && result.data) {
       setFiles(result.data);
     }
-  }, [item]);
+    router.refresh();
+  }, [item, router]);
 
   /**
    * Refreshes page after sync completes.
@@ -267,8 +226,6 @@ export function ItemsToolbar({
           item={item}
           files={files}
           childCount={childCount}
-          onRename={handleRename}
-          onDescriptionChange={handleDescriptionChange}
           onSettingsChange={handleSettingsChange}
         />
       )}
