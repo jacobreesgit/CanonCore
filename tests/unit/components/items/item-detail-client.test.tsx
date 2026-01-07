@@ -2,8 +2,8 @@
  * Unit tests for ItemDetailClient component.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, act } from "@testing-library/react";
 import { ItemDetailClient } from "@/components/items/item-detail-client";
 
 // Mock next/navigation
@@ -122,42 +122,62 @@ describe("ItemDetailClient", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /**
+   * Helper to wait for loading state to complete.
+   * Component shows spinner for 300ms min duration + hydration.
+   */
+  async function waitForLoading() {
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+  }
+
   describe("rendering", () => {
-    it("should render hero, toolbar, and items view", () => {
+    it("should render hero, toolbar, and items view", async () => {
       render(<ItemDetailClient item={defaultItem} childItems={[]} />);
+      await waitForLoading();
 
       expect(screen.getByTestId("item-hero")).toBeInTheDocument();
       expect(screen.getByTestId("items-toolbar")).toBeInTheDocument();
       expect(screen.getByTestId("items-view")).toBeInTheDocument();
     });
 
-    it("should always render hero regardless of files/children", () => {
+    it("should always render hero regardless of files/children", async () => {
       render(<ItemDetailClient item={defaultItem} childItems={[]} />);
+      await waitForLoading();
       expect(screen.getByTestId("item-hero")).toBeInTheDocument();
     });
 
-    it("should pass item name to hero", () => {
+    it("should pass item name to hero", async () => {
       render(<ItemDetailClient item={defaultItem} childItems={[]} />);
+      await waitForLoading();
       expect(screen.getByTestId("item-hero")).toHaveAttribute(
         "data-name",
         "Movies"
       );
     });
 
-    it("should pass childItems to items view", () => {
+    it("should pass childItems to items view", async () => {
       render(
         <ItemDetailClient item={defaultItem} childItems={defaultChildItems} />
       );
+      await waitForLoading();
 
       expect(screen.getByTestId("items-view")).toHaveTextContent("1 items");
     });
 
-    it("should set hasItems=true when children exist", () => {
+    it("should set hasItems=true when children exist", async () => {
       render(
         <ItemDetailClient item={defaultItem} childItems={defaultChildItems} />
       );
+      await waitForLoading();
 
       expect(screen.getByTestId("items-toolbar")).toHaveAttribute(
         "data-has-items",
@@ -165,8 +185,9 @@ describe("ItemDetailClient", () => {
       );
     });
 
-    it("should set hasItems=false when no children", () => {
+    it("should set hasItems=false when no children", async () => {
       render(<ItemDetailClient item={defaultItem} childItems={[]} />);
+      await waitForLoading();
 
       expect(screen.getByTestId("items-toolbar")).toHaveAttribute(
         "data-has-items",
@@ -199,7 +220,7 @@ describe("ItemDetailClient", () => {
       subtitles: [],
     };
 
-    it("should pass hasMedia=true to hero when media files exist", () => {
+    it("should pass hasMedia=true to hero when media files exist", async () => {
       render(
         <ItemDetailClient
           item={defaultItem}
@@ -207,6 +228,7 @@ describe("ItemDetailClient", () => {
           files={filesWithMedia}
         />
       );
+      await waitForLoading();
 
       expect(screen.getByTestId("item-hero")).toHaveAttribute(
         "data-has-media",
@@ -214,7 +236,7 @@ describe("ItemDetailClient", () => {
       );
     });
 
-    it("should show hero without file cards (MediaOverlay only when playing)", () => {
+    it("should show hero without file cards (MediaOverlay only when playing)", async () => {
       render(
         <ItemDetailClient
           item={defaultItem}
@@ -222,13 +244,14 @@ describe("ItemDetailClient", () => {
           files={filesWithMedia}
         />
       );
+      await waitForLoading();
 
       expect(screen.getByTestId("item-hero")).toBeInTheDocument();
       // No file cards - MediaOverlay only appears when playing
       expect(screen.queryByTestId("media-overlay")).not.toBeInTheDocument();
     });
 
-    it("should NOT show tabs - always flat layout", () => {
+    it("should NOT show tabs - always flat layout", async () => {
       render(
         <ItemDetailClient
           item={defaultItem}
@@ -236,6 +259,7 @@ describe("ItemDetailClient", () => {
           files={filesWithMedia}
         />
       );
+      await waitForLoading();
 
       // Tabs should never appear
       expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
@@ -243,7 +267,7 @@ describe("ItemDetailClient", () => {
   });
 
   describe("SFTP connection state", () => {
-    it("should detect SFTP connected when both connectionId and sftpPath exist", () => {
+    it("should detect SFTP connected when both connectionId and sftpPath exist", async () => {
       const sftpItem = {
         ...defaultItem,
         connectionId: "conn-1",
@@ -251,6 +275,7 @@ describe("ItemDetailClient", () => {
       };
 
       render(<ItemDetailClient item={sftpItem} childItems={[]} />);
+      await waitForLoading();
 
       // Component should render without error
       expect(screen.getByTestId("items-toolbar")).toBeInTheDocument();
@@ -258,7 +283,7 @@ describe("ItemDetailClient", () => {
   });
 
   describe("connection context", () => {
-    it("should pass connection to items view when provided", () => {
+    it("should pass connection to items view when provided", async () => {
       const connection = { id: "conn-1", name: "My Server" };
 
       render(
@@ -268,6 +293,7 @@ describe("ItemDetailClient", () => {
           connection={connection}
         />
       );
+      await waitForLoading();
 
       // ItemsView should receive the connection context
       expect(screen.getByTestId("items-view")).toBeInTheDocument();
@@ -275,8 +301,9 @@ describe("ItemDetailClient", () => {
   });
 
   describe("render order", () => {
-    it("should render toolbar before hero", () => {
+    it("should render toolbar before hero", async () => {
       render(<ItemDetailClient item={defaultItem} childItems={[]} />);
+      await waitForLoading();
 
       const toolbar = screen.getByTestId("items-toolbar");
       const hero = screen.getByTestId("item-hero");

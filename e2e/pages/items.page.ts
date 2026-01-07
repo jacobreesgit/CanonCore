@@ -32,6 +32,7 @@ export class ItemsPage {
   readonly gridView: Locator;
   readonly breadcrumbHome: Locator;
   readonly heroSection: Locator;
+  readonly loadingSpinner: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -51,6 +52,7 @@ export class ItemsPage {
       .getByLabel("Breadcrumb")
       .getByRole("link", { name: /my items/i });
     this.heroSection = page.getByTestId("item-hero");
+    this.loadingSpinner = page.getByTestId("items-loading");
   }
 
   async goto() {
@@ -602,5 +604,51 @@ export class ItemsPage {
       name: /collapse item|expand item/i,
     });
     return collapseButton.isVisible();
+  }
+
+  /**
+   * Waits for the loading spinner to disappear and content to be ready.
+   * Use this after navigation to ensure hydration completes.
+   */
+  async waitForLoadingComplete(): Promise<void> {
+    // Wait for loading spinner to disappear (if visible)
+    await expect(this.loadingSpinner).not.toBeVisible({ timeout: 10000 });
+    // Ensure content is rendered (either empty state or tree/grid)
+    await expect(
+      this.emptyState.or(this.treeView).or(this.gridView).first()
+    ).toBeVisible({ timeout: 10000 });
+  }
+
+  /**
+   * Expects the loading spinner to be visible.
+   */
+  async expectLoadingVisible(): Promise<void> {
+    await expect(this.loadingSpinner).toBeVisible();
+  }
+
+  /**
+   * Expects the loading spinner to not be visible.
+   */
+  async expectLoadingHidden(): Promise<void> {
+    await expect(this.loadingSpinner).not.toBeVisible();
+  }
+
+  /**
+   * Navigates to My Items and waits for loading to complete.
+   * This is the preferred method when you need content to be ready.
+   */
+  async gotoAndWaitForContent(): Promise<void> {
+    await this.goto();
+    await this.waitForLoadingComplete();
+  }
+
+  /**
+   * Navigates to an item detail page and waits for loading to complete.
+   *
+   * @param itemId - ID of the item to navigate to
+   */
+  async gotoItemAndWaitForContent(itemId: string): Promise<void> {
+    await this.gotoItem(itemId);
+    await this.waitForLoadingComplete();
   }
 }
