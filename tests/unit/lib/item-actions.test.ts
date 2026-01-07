@@ -7,7 +7,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Session } from "next-auth";
 import {
   getItems,
+  getAllItems,
   getItem,
+  getDescendants,
   createItem,
   updateItem,
   deleteItem,
@@ -160,6 +162,127 @@ describe("getItems", () => {
         },
       },
     });
+  });
+});
+
+describe("getAllItems", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns all items for user regardless of parent", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-123", "test@example.com"));
+
+    const mockItems = [
+      { id: "root1", parentId: null, name: "Root 1", depth: 0 },
+      { id: "child1", parentId: "root1", name: "Child 1", depth: 1 },
+      { id: "grandchild1", parentId: "child1", name: "Grandchild 1", depth: 2 },
+      { id: "root2", parentId: null, name: "Root 2", depth: 0 },
+    ];
+
+    vi.mocked(prisma.item.findMany)
+      .mockResolvedValueOnce(mockItems as never) // For descendant count
+      .mockResolvedValueOnce(
+        mockItems.map((item) => ({
+          ...item,
+          description: null,
+          order: 0,
+          userId: "user-123",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          sftpPath: null,
+          sftpModifiedAt: null,
+          connectionId: null,
+          files: [],
+          connection: null,
+        })) as never
+      );
+
+    const result = await getAllItems();
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toHaveLength(4);
+      expect(result.data?.map((i) => i.id)).toEqual([
+        "root1",
+        "child1",
+        "grandchild1",
+        "root2",
+      ]);
+    }
+  });
+
+  it("returns error when not authenticated", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const result = await getAllItems();
+
+    expect(result.error).toBe("Unauthorized");
+  });
+});
+
+describe("getDescendants", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns all descendants of an item", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-123", "test@example.com"));
+
+    const mockItems = [
+      { id: "child1", parentId: "parent1", depth: 1 },
+      { id: "grandchild1", parentId: "child1", depth: 2 },
+      { id: "grandchild2", parentId: "child1", depth: 2 },
+    ];
+
+    vi.mocked(prisma.item.findFirst).mockResolvedValue({
+      id: "parent1",
+      userId: "user-123",
+    } as never);
+    vi.mocked(prisma.$queryRaw).mockResolvedValue(
+      mockItems.map((item) => ({ id: item.id }))
+    );
+    // Single findMany call now (optimized to combine count + data queries)
+    vi.mocked(prisma.item.findMany).mockResolvedValueOnce(
+      mockItems.map((item) => ({
+        ...item,
+        name: "Item",
+        description: null,
+        order: 0,
+        userId: "user-123",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        sftpPath: null,
+        sftpModifiedAt: null,
+        connectionId: null,
+        files: [],
+        connection: null,
+      })) as never
+    );
+
+    const result = await getDescendants("parent1");
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toHaveLength(3);
+    }
+  });
+
+  it("returns error when not authenticated", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const result = await getDescendants("parent1");
+
+    expect(result.error).toBe("Unauthorized");
+  });
+
+  it("returns error when item not found", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-123", "test@example.com"));
+    vi.mocked(prisma.item.findFirst).mockResolvedValue(null);
+
+    const result = await getDescendants("nonexistent");
+
+    expect(result.error).toBe("Item not found");
   });
 });
 

@@ -34,6 +34,7 @@ pnpm run test:e2e:ui                        # UI mode
 pnpm run db:seed          # Seed database with sample data
 pnpm run db:clear-seed    # Remove seed data only
 pnpm run db:reset         # Reset database and re-seed
+pnpm run db:check-seed    # Inspect seed user's item hierarchy
 ```
 
 ## Architecture
@@ -176,7 +177,7 @@ pnpm run db:reset         # Reset database and re-seed
 │   ├── file-type-utils.ts            # Media/artwork/subtitle categorization
 │   ├── item-actions.ts               # Item CRUD server actions
 │   ├── item-file-actions.ts          # ItemFile operations, playback progress
-│   ├── item-utils.ts                 # Tree/flat conversion utilities
+│   ├── item-utils.ts                 # Tree/flat conversion, descendant counter utilities
 │   ├── logger.ts                     # Pino structured logging with request context
 │   ├── prisma.ts                     # Prisma client singleton
 │   ├── rate-limit.ts                 # Upstash Redis rate limiting
@@ -197,12 +198,14 @@ pnpm run db:reset         # Reset database and re-seed
 │   ├── seed-utils.ts                 # File discovery and path mapping
 │   └── clear-seed.ts                 # Clear seed data script
 ├── middleware.ts                     # Next.js middleware for request ID injection
+├── scripts/
+│   └── check-seed-items.ts           # Inspect seed user's item hierarchy
 ├── skills/                           # Claude Code skills
 │   ├── code-review-excellence/       # Code review best practices
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.26.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 0.27.0)
     └── plans/                        # Design documents
 ```
 

@@ -1,6 +1,6 @@
 {
   "name": "canoncore",
-  "version": "0.26.0",
+  "version": "0.27.0",
   "private": true,
   "scripts": {
     "build": "next build",
@@ -24,7 +24,8 @@
     "test:integration": "vitest run --config tests/integration/vitest.config.ts",
     "db:seed": "npx prisma db seed",
     "db:clear-seed": "npx tsx prisma/clear-seed.ts",
-    "db:reset": "npx prisma migrate reset"
+    "db:reset": "npx prisma migrate reset",
+    "db:check-seed": "npx tsx scripts/check-seed-items.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

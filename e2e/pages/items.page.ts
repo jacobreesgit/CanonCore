@@ -565,4 +565,42 @@ export class ItemsPage {
       .getByRole("option", { name: new RegExp(filename, "i") })
       .click();
   }
+
+  /**
+   * Collapses an item in tree view.
+   *
+   * @param name - Name of the item to collapse
+   */
+  async collapseItem(name: string): Promise<void> {
+    const item = this.page.getByRole("listitem").filter({ hasText: name });
+    const collapseButton = item.getByRole("button", {
+      name: /collapse item/i,
+    });
+    await collapseButton.click();
+  }
+
+  /**
+   * Expands an item in tree view.
+   *
+   * @param name - Name of the item to expand
+   */
+  async expandItem(name: string): Promise<void> {
+    const item = this.page.getByRole("listitem").filter({ hasText: name });
+    const expandButton = item.getByRole("button", { name: /expand item/i });
+    await expandButton.click();
+  }
+
+  /**
+   * Checks if an item has a collapse/expand button visible.
+   *
+   * @param name - Name of the item to check
+   * @returns True if the item has children (can be collapsed/expanded)
+   */
+  async itemHasChildren(name: string): Promise<boolean> {
+    const item = this.page.getByRole("listitem").filter({ hasText: name });
+    const collapseButton = item.getByRole("button", {
+      name: /collapse item|expand item/i,
+    });
+    return collapseButton.isVisible();
+  }
 }

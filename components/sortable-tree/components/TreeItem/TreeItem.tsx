@@ -154,7 +154,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                 onCollapse();
               }}
               className={cn(
-                "flex-shrink-0 rounded p-0.5",
+                "flex-shrink-0 cursor-pointer rounded p-0.5",
                 "text-muted-foreground transition-all duration-200",
                 "hover:text-foreground hover:bg-muted/50",
                 "focus-visible:ring-ring focus-visible:ring-1 focus-visible:outline-none"
