@@ -12,6 +12,7 @@ import {
   updateSftpConnection,
   deleteSftpConnection,
   testSftpConnection,
+  getAllItemsByConnection,
 } from "@/lib/sftp-actions";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
@@ -465,5 +466,72 @@ describe("testSftpConnection", () => {
       where: { id: "conn-1" },
       data: { lastError: "Connection refused" },
     });
+  });
+});
+
+describe("getAllItemsByConnection", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns all items for connection regardless of parent", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-123", "test@example.com"));
+
+    const mockConnectionData = { id: "conn-1", userId: "user-123" };
+    const mockItems = [
+      { id: "root1", parentId: null, connectionId: "conn-1", depth: 0 },
+      { id: "child1", parentId: "root1", connectionId: "conn-1", depth: 1 },
+    ];
+
+    vi.mocked(prisma.sftpConnection.findFirst).mockResolvedValue(
+      mockConnectionData as never
+    );
+    vi.mocked(prisma.item.findMany)
+      .mockResolvedValueOnce(mockItems as never) // For descendant count
+      .mockResolvedValueOnce(
+        mockItems.map((item) => ({
+          ...item,
+          name: "Item",
+          description: null,
+          order: 0,
+          userId: "user-123",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          sftpPath: null,
+          sftpModifiedAt: null,
+          files: [],
+          connection: { name: "Test Connection" },
+        })) as never
+      );
+
+    const result = await getAllItemsByConnection("conn-1");
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toHaveLength(2);
+    }
+  });
+
+  it("returns error when not authenticated", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const result = await getAllItemsByConnection("conn-1");
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Failed to fetch items");
+    }
+  });
+
+  it("returns error when connection not found", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-123", "test@example.com"));
+    vi.mocked(prisma.sftpConnection.findFirst).mockResolvedValue(null);
+
+    const result = await getAllItemsByConnection("conn-1");
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Connection not found");
+    }
   });
 });

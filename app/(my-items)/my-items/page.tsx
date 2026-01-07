@@ -4,8 +4,11 @@
  */
 
 import { FilteredItemsView } from "@/components/items";
-import { getItems } from "@/lib/item-actions";
-import { getSftpConnections, getItemsByConnection } from "@/lib/sftp-actions";
+import { getAllItems } from "@/lib/item-actions";
+import {
+  getSftpConnections,
+  getAllItemsByConnection,
+} from "@/lib/sftp-actions";
 import { getProfile } from "@/lib/user-actions";
 import { SiteHeader } from "@/components/site-header";
 
@@ -24,8 +27,8 @@ export default async function MyItemsPage({ searchParams }: MyItemsPageProps) {
 
   // Fetch items based on filter (server-side)
   const itemsResult = connectionId
-    ? await getItemsByConnection(connectionId, null)
-    : await getItems(null);
+    ? await getAllItemsByConnection(connectionId)
+    : await getAllItems();
 
   const items = itemsResult.success ? (itemsResult.data ?? []) : [];
 

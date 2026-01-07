@@ -9,7 +9,7 @@
 import React, { forwardRef, HTMLAttributes, useState } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
-import { Folder } from "lucide-react";
+import { Folder, GripVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ItemStats } from "@/components/items/item-stats";
 import type { FileCounts } from "@/lib/types";
@@ -121,9 +121,29 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
             ? `url(/api/artwork/${artworkId})`
             : undefined,
         }}
-        {...handleProps}
         {...props}
       >
+        {/* Drag Handle - top right, only in edit mode */}
+        {handleProps && (
+          <button
+            type="button"
+            aria-label="Drag handle"
+            className={cn(
+              "absolute top-3 right-3 z-30",
+              "flex size-8 items-center justify-center",
+              "touch-none rounded-md",
+              "bg-black/40 backdrop-blur-sm",
+              "text-white/60 transition-all duration-150",
+              "hover:bg-black/60 hover:text-white",
+              "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+              "cursor-grab active:cursor-grabbing"
+            )}
+            {...handleProps}
+          >
+            <GripVertical className="size-5" strokeWidth={2.5} />
+          </button>
+        )}
+
         {/* Hidden img for error detection - browser caches so minimal overhead */}
         {showArtwork && artworkId && !imageError && (
           // eslint-disable-next-line @next/next/no-img-element

@@ -26,6 +26,7 @@ import type { SftpConnection } from "@prisma/client";
 import type { Item, ItemWithArtwork } from "@/lib/types";
 import Client from "ssh2-sftp-client";
 import { logger } from "@/lib/logger";
+import { buildDescendantCounter } from "@/lib/item-utils";
 
 /** Result type for server actions. */
 type ActionResult<T = void> =
@@ -116,27 +117,8 @@ export async function getItemsByConnection(
       select: { id: true, parentId: true },
     });
 
-    // Build descendant count map using recursive calculation
-    const childrenMap = new Map<string | null, string[]>();
-    for (const item of allConnectionItems) {
-      const siblings = childrenMap.get(item.parentId) ?? [];
-      siblings.push(item.id);
-      childrenMap.set(item.parentId, siblings);
-    }
-
-    const descendantCountCache = new Map<string, number>();
-    function countDescendants(itemId: string): number {
-      if (descendantCountCache.has(itemId)) {
-        return descendantCountCache.get(itemId)!;
-      }
-      const children = childrenMap.get(itemId) ?? [];
-      let count = children.length;
-      for (const childId of children) {
-        count += countDescendants(childId);
-      }
-      descendantCountCache.set(itemId, count);
-      return count;
-    }
+    // Use helper to build descendant counter (DRY)
+    const countDescendants = buildDescendantCounter(allConnectionItems);
 
     // Fetch items at current level with files
     const items = await prisma.item.findMany({
@@ -193,6 +175,90 @@ export async function getItemsByConnection(
   } catch (error) {
     logger.error({ err: error }, "[SFTP] Get items by connection error");
     return { success: false, error: "Failed to load items" };
+  }
+}
+
+/**
+ * Fetches ALL items for a connection with artwork thumbnails.
+ * Returns full hierarchy (all levels) for inline tree display.
+ *
+ * @param connectionId - SFTP connection ID to filter by
+ * @returns All items for connection with artworkId or error
+ */
+export async function getAllItemsByConnection(
+  connectionId: string
+): Promise<ActionResult<ItemWithArtwork[]>> {
+  try {
+    const userId = await requireAuth();
+
+    // Verify connection ownership
+    const connection = await prisma.sftpConnection.findFirst({
+      where: { id: connectionId, userId },
+    });
+    if (!connection) {
+      return { success: false, error: "Connection not found" };
+    }
+
+    // Fetch all items for this connection for descendant count calculation
+    const allConnectionItems = await prisma.item.findMany({
+      where: { userId, connectionId },
+      select: { id: true, parentId: true },
+    });
+
+    // Use helper to build descendant counter (DRY)
+    const countDescendants = buildDescendantCounter(allConnectionItems);
+
+    // Fetch ALL items for this connection
+    const items = await prisma.item.findMany({
+      where: { userId, connectionId },
+      orderBy: [{ depth: "asc" }, { order: "asc" }],
+      include: {
+        files: {
+          select: { id: true, fileType: true, isPrimary: true },
+        },
+        connection: {
+          select: { name: true },
+        },
+      },
+    });
+
+    const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => {
+      const primaryArtwork = item.files.find(
+        (f) => f.fileType === "ARTWORK" && f.isPrimary
+      );
+      const firstArtwork = item.files.find((f) => f.fileType === "ARTWORK");
+      const artworkId = primaryArtwork?.id ?? firstArtwork?.id ?? null;
+
+      const fileCounts = {
+        media: item.files.filter((f) => f.fileType === "MEDIA").length,
+        artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
+        subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
+      };
+
+      return {
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        parentId: item.parentId,
+        order: item.order,
+        depth: item.depth,
+        userId: item.userId,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        sftpPath: item.sftpPath,
+        sftpModifiedAt: item.sftpModifiedAt,
+        connectionId: item.connectionId,
+        artworkId,
+        connectionName: item.connection?.name ?? null,
+        fileCounts,
+        childCount: countDescendants(item.id),
+      };
+    });
+
+    return { success: true, data: itemsWithArtwork };
+  } catch (error) {
+    logger.error({ err: error }, "[SFTP] Get all items by connection error");
+    return { success: false, error: "Failed to fetch items" };
   }
 }
 
