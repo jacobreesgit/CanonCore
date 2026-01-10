@@ -23,6 +23,19 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "CanonCore",
   description: "CanonCore - Media Library Manager",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", media: "(prefers-color-scheme: light)" },
+      { url: "/favicon-dark.ico", media: "(prefers-color-scheme: dark)" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", media: "(prefers-color-scheme: light)" },
+      {
+        url: "/apple-touch-icon-dark.png",
+        media: "(prefers-color-scheme: dark)",
+      },
+    ],
+  },
 };
 
 /**

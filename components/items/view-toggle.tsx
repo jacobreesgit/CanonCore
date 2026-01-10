@@ -53,6 +53,14 @@ export function useStoredViewMode(): [ViewMode, (mode: ViewMode) => void] {
   return [storedValue, setValue];
 }
 
+/**
+ * Segmented control for switching between tree and grid view modes.
+ * Persists preference in localStorage with hydration-safe access.
+ *
+ * @param value - Controlled view mode value
+ * @param onChange - Callback when view mode changes
+ * @param disabled - Whether the toggle is disabled
+ */
 export function ViewToggle({
   value,
   onChange,

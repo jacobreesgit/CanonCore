@@ -28,6 +28,16 @@ const animateLayoutChanges: AnimateLayoutChanges = ({
   wasDragging,
 }) => (isSorting || wasDragging ? false : true);
 
+/**
+ * Draggable tree item wrapper with dnd-kit sortable integration.
+ * Wraps TreeItem with context menu and drag capabilities.
+ *
+ * @param id - Unique item identifier
+ * @param value - Item display name
+ * @param onSettings - Callback to open settings dialog
+ * @param onDelete - Callback to delete the item
+ * @param onAddChild - Callback to add a child item
+ */
 export function SortableTreeItem({
   id,
   value,

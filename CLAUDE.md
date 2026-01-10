@@ -131,7 +131,9 @@ pnpm run test:e2e:ui                        # UI mode
 │   └── playwright.config.ts
 ├── tests/
 │   ├── unit/
-│   │   ├── lib/                      # Unit tests (auth, items, google-drive, crypto)
+│   │   ├── api/                      # API route tests (stream, artwork, user)
+│   │   ├── components/               # Component tests (media, items, ui)
+│   │   ├── lib/                      # Library tests (auth, items, google-drive, crypto)
 │   │   ├── e2e/                      # E2E fixture unit tests
 │   │   ├── setup.ts                  # Mocks for Prisma, email, rate-limit
 │   │   └── vitest.config.ts
@@ -182,7 +184,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 1.0.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 1.1.0)
     └── plans/                        # Design documents
 ```
 
@@ -283,7 +285,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 464+ unit tests covering auth, items, Google Drive, crypto
+- 524 unit tests covering auth, items, Google Drive, crypto, API routes, media components
 
 ### E2E Testing
 

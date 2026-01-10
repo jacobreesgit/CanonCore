@@ -38,6 +38,16 @@ interface SortableGridProps {
   onDeleteItem?(id: string): Promise<void>;
 }
 
+/**
+ * Drag-and-drop sortable grid for item reordering in edit mode.
+ * Uses dnd-kit for smooth animations and keyboard support.
+ *
+ * @param items - Items to display and reorder
+ * @param onItemsChange - Callback when items are reordered
+ * @param onItemClick - Callback when an item is clicked
+ * @param onOpenSettings - Callback to open settings dialog
+ * @param onDeleteItem - Callback to delete an item
+ */
 export function SortableGrid({
   items: defaultItems,
   onItemsChange,

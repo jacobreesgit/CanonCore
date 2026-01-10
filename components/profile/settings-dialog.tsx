@@ -15,8 +15,6 @@ import {
   Sparkles,
   Upload,
   Trash2,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 import {
   Dialog,
@@ -29,6 +27,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -96,8 +95,6 @@ export function SettingsDialog({
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
 
   // Image state
   const [profileImage, setProfileImage] = useState<File | null>(null);
@@ -613,29 +610,13 @@ export function SettingsDialog({
                     <span className="text-destructive ml-1">*</span>
                   )}
                 </Label>
-                <div className="relative">
-                  <Input
-                    id="settings-current-password"
-                    type={showCurrentPassword ? "text" : "password"}
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="h-10 pr-10"
-                    placeholder={isPasswordRequired ? "Required" : "Optional"}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute top-1/2 right-1 size-8 -translate-y-1/2"
-                    onClick={() => setShowCurrentPassword((p) => !p)}
-                  >
-                    {showCurrentPassword ? (
-                      <EyeOff className="size-4" />
-                    ) : (
-                      <Eye className="size-4" />
-                    )}
-                  </Button>
-                </div>
+                <PasswordInput
+                  id="settings-current-password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="h-10"
+                  placeholder={isPasswordRequired ? "Required" : "Optional"}
+                />
               </div>
 
               <div className="space-y-2">
@@ -645,29 +626,13 @@ export function SettingsDialog({
                 >
                   New Password
                 </Label>
-                <div className="relative">
-                  <Input
-                    id="settings-new-password"
-                    type={showNewPassword ? "text" : "password"}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="h-10 pr-10"
-                    placeholder="Leave blank to keep current"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute top-1/2 right-1 size-8 -translate-y-1/2"
-                    onClick={() => setShowNewPassword((p) => !p)}
-                  >
-                    {showNewPassword ? (
-                      <EyeOff className="size-4" />
-                    ) : (
-                      <Eye className="size-4" />
-                    )}
-                  </Button>
-                </div>
+                <PasswordInput
+                  id="settings-new-password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="h-10"
+                  placeholder="Leave blank to keep current"
+                />
               </div>
 
               <div className="space-y-2">
@@ -677,9 +642,8 @@ export function SettingsDialog({
                 >
                   Confirm New Password
                 </Label>
-                <Input
+                <PasswordInput
                   id="settings-confirm-password"
-                  type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="h-10"
