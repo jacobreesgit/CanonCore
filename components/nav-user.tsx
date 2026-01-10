@@ -25,7 +25,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { SettingsDialog } from "@/components/profile/settings-dialog";
+import { SettingsDialog } from "@/components/profile";
 
 /**
  * Google Drive connection data for settings dialog.
