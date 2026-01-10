@@ -99,13 +99,14 @@ export function AppSidebar({
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <Link href={logoHref}>
+              <Link href={logoHref} className="flex items-center gap-1.5">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/black.png"
                   alt="CanonCore"
-                  className="h-8 w-auto dark:invert"
+                  className="h-5 w-auto dark:invert"
                 />
+                <span className="text-base font-semibold">CanonCore</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

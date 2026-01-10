@@ -103,7 +103,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   └── utilities.ts              # Tree manipulation helpers
 │   ├── providers/
 │   │   └── theme-provider.tsx        # next-themes provider wrapper
-│   ├── ui/                           # shadcn/ui components
+│   ├── ui/                           # shadcn/ui components + password-input.tsx
 │   ├── app-sidebar.tsx               # Context-aware navigation sidebar
 │   ├── error-boundary.tsx            # React error boundary for graceful error handling
 │   ├── my-items-providers.tsx        # Client-side providers for protected routes
@@ -184,7 +184,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 1.1.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 1.2.0)
     └── plans/                        # Design documents
 ```
 
@@ -244,6 +244,7 @@ pnpm run test:e2e:ui                        # UI mode
 - **Encrypted tokens**: AES-256-GCM encryption for access and refresh tokens
 - **Auto token refresh**: Transparent refresh before expiry (5-minute buffer)
 - **Bidirectional sync**: Sync folders/files between Google Drive and web interface
+- **Auto-sync on connect**: Existing CanonCore folders are automatically synced when connecting
 - **Browser uploads**: Direct browser-to-Drive uploads with progress tracking
 - **Resumable uploads**: Google's resumable upload protocol for large files
 - **Rate limiting**: Bottleneck library (10 concurrent, 100ms min interval) + exponential backoff

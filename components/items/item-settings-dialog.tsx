@@ -109,6 +109,9 @@ export function ItemSettingsDialog({
 
   const [isSaving, setIsSaving] = useState(false);
 
+  // Track successful uploads during this dialog session
+  const [uploadCount, setUploadCount] = useState(0);
+
   // Original values for dirty checking - captured once when dialog opens
   // Uses open state to reset when dialog reopens, but NOT when files change after upload
   const [originalValues, setOriginalValues] = useState(() => ({
@@ -121,9 +124,10 @@ export function ItemSettingsDialog({
     primarySubtitleId: findPrimaryFile(files.subtitles)?.id,
   }));
 
-  // Reset original values when dialog opens (not on every files change)
+  // Reset original values and upload count when dialog opens
   useEffect(() => {
     if (open) {
+      setUploadCount(0);
       setOriginalValues({
         name: item.name,
         description: item.description ?? "",
@@ -238,7 +242,13 @@ export function ItemSettingsDialog({
       const result = await updateItemSettings(item.id, changes);
 
       if (result.success) {
-        toast.success("Settings saved");
+        // Include upload count in success message if files were uploaded
+        if (uploadCount > 0) {
+          const fileWord = uploadCount === 1 ? "file" : "files";
+          toast.success(`Settings saved. ${uploadCount} ${fileWord} uploaded.`);
+        } else {
+          toast.success("Settings saved");
+        }
         // Refetch is best-effort - save already succeeded, log errors for debugging
         await onSettingsChange?.().catch((err) => {
           console.warn("[ItemSettingsDialog] Refetch failed after save:", err);
@@ -260,19 +270,26 @@ export function ItemSettingsDialog({
     heroArtworkId,
     primarySubtitleId,
     originalValues,
+    uploadCount,
     item.id,
     onSettingsChange,
     onOpenChange,
   ]);
 
   /**
-   * Handles upload completion - refreshes file list.
+   * Handles upload completion - accumulates success count and refreshes file list.
+   *
+   * @param successCount - Number of files successfully uploaded
    */
-  const handleUploadComplete = useCallback(async () => {
-    await onSettingsChange?.().catch((err) => {
-      console.warn("[ItemSettingsDialog] Refetch failed after upload:", err);
-    });
-  }, [onSettingsChange]);
+  const handleUploadComplete = useCallback(
+    async (successCount: number) => {
+      setUploadCount((prev) => prev + successCount);
+      await onSettingsChange?.().catch((err) => {
+        console.warn("[ItemSettingsDialog] Refetch failed after upload:", err);
+      });
+    },
+    [onSettingsChange]
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

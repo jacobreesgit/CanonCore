@@ -1,8 +1,3 @@
-- does sync button in a deep item page, sync everything?
-- sync after all crud operations? e.g. renamed and i clicked sync button and toast said "Sync complete: 1 updated".
-- also saving the item settings modal after upload should sync
-- if already a canoncore folder during connecting to google drive, delete or something? or can we do nothing
-
 - change password seperate modal
 
 - combobox upload motion

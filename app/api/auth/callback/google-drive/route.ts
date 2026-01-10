@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
     tempAuth.setCredentials({ access_token: accessToken });
     const drive = google.drive({ version: "v3", auth: tempAuth });
 
-    const rootFolderId = await createRootFolder(drive);
+    const rootFolder = await createRootFolder(drive);
 
     // Upsert connection (single per user)
     await prisma.googleDriveConnection.upsert({
@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
         encryptedRefreshToken: encryptCredential(refreshToken),
         encryptedAccessToken: encryptCredential(accessToken),
         accessTokenExpiry: new Date(Date.now() + expiresIn * 1000),
-        rootFolderId,
+        rootFolderId: rootFolder.id,
         isActive: true,
         needsReauth: false,
       },
@@ -107,15 +107,20 @@ export async function GET(request: NextRequest) {
         encryptedRefreshToken: encryptCredential(refreshToken),
         encryptedAccessToken: encryptCredential(accessToken),
         accessTokenExpiry: new Date(Date.now() + expiresIn * 1000),
-        rootFolderId,
+        rootFolderId: rootFolder.id,
         needsReauth: false,
         lastError: null,
       },
     });
 
-    return NextResponse.redirect(
-      new URL("/my-items?success=connected", request.url)
-    );
+    // Redirect with existing flag so client can auto-sync existing content
+    const redirectUrl = new URL("/my-items", request.url);
+    redirectUrl.searchParams.set("drive", "connected");
+    if (rootFolder.wasExisting) {
+      redirectUrl.searchParams.set("existing", "true");
+    }
+
+    return NextResponse.redirect(redirectUrl);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     logger.error({ err }, "[GoogleDrive] OAuth callback error");
