@@ -79,6 +79,23 @@ interface ItemsViewProps {
   hasDriveConnection?: boolean;
 }
 
+/**
+ * Client-side items view with tree/grid toggle and drag-drop support.
+ * Manages CRUD operations, reordering, and settings dialogs.
+ * Supports both internal state and external control via props.
+ *
+ * @param items - Initial items to display
+ * @param parentId - Parent item ID (null for root)
+ * @param hideToolbar - Hide internal toolbar (when using external toolbar)
+ * @param isEditing - External edit mode control
+ * @param onEditingChange - Callback when edit mode changes
+ * @param addItemOpen - External add dialog control
+ * @param onAddItemOpenChange - Callback when add dialog state changes
+ * @param heroTitle - Title for hero banner (when provided)
+ * @param heroItemCount - Item count for hero stats
+ * @param heroBackgroundUrl - Background URL for hero
+ * @param hasDriveConnection - Whether Google Drive is connected
+ */
 export function ItemsView({
   items: initialItems,
   parentId = null,

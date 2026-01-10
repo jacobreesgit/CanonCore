@@ -1,3 +1,9 @@
+/**
+ * WebGL shader background component.
+ * Animated 3D shader effect using react-three-fiber.
+ * Used as fallback when no artwork is available.
+ */
+
 "use client";
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
@@ -54,6 +60,16 @@ interface ShaderBackgroundProps {
   color?: string;
 }
 
+/**
+ * Animated shader background with customizable color.
+ * Renders a fullscreen WebGL shader effect using Three.js.
+ *
+ * @param vertexShader - Custom vertex shader (optional)
+ * @param fragmentShader - Custom fragment shader (optional)
+ * @param uniforms - Additional shader uniforms (optional)
+ * @param className - Additional CSS classes
+ * @param color - Base color for the shader effect (default: blue)
+ */
 const Shader1 = ({
   vertexShader = `
     varying vec2 vUv;

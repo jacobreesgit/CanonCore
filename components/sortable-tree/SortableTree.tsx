@@ -87,6 +87,21 @@ interface SortableTreeProps {
   maxDepth?: number;
 }
 
+/**
+ * Drag-and-drop sortable tree for hierarchical item reordering.
+ * Uses dnd-kit with keyboard navigation and accessibility announcements.
+ *
+ * @param items - Tree items to display and reorder
+ * @param onItemsChange - Callback when tree structure changes
+ * @param onItemClick - Callback when an item is clicked
+ * @param onOpenSettings - Callback to open settings dialog
+ * @param onDeleteItem - Callback to delete an item
+ * @param onAddChild - Callback to add a child item
+ * @param collapsible - Whether items can be collapsed
+ * @param indentationWidth - Pixels per depth level
+ * @param indicator - Show depth indicator line
+ * @param maxDepth - Maximum nesting depth (default: 10)
+ */
 export function SortableTree({
   items: defaultItems,
   onItemsChange,

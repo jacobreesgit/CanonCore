@@ -8,9 +8,10 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import Image from "next/image";
+import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { resetPassword } from "@/lib/auth-actions";
 
 /**
@@ -63,45 +64,34 @@ function ResetPasswordForm() {
 
   if (success) {
     return (
-      <section className="bg-background">
-        <div className="flex min-h-screen flex-col items-center justify-between gap-20 py-16 lg:flex-row lg:py-0">
-          <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-8">
-            <div className="flex flex-col items-center gap-2">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-500 text-2xl text-white">
-                ✓
-              </div>
-              <div className="space-y-2 text-center">
-                <h1 className="text-foreground text-3xl font-medium tracking-tighter md:text-4xl">
-                  Password reset successful
-                </h1>
-                <p
-                  data-testid="reset-password-success-message"
-                  className="text-muted-foreground text-sm"
-                >
-                  Your password has been reset. You can now sign in with your
-                  new password.
-                </p>
-              </div>
+      <section className="bg-muted h-screen">
+        <div className="flex h-full items-center justify-center">
+          <div className="flex flex-col items-center gap-6 lg:justify-start">
+            {/* Success checkmark */}
+            <div className="flex size-14 items-center justify-center rounded-full bg-green-500 text-white">
+              <Check className="size-7" />
             </div>
 
-            <Button
-              asChild
-              className="w-full max-w-lg"
-              data-testid="reset-password-sign-in-link"
-            >
-              <Link href="/sign-in">Sign in</Link>
-            </Button>
-          </div>
-          <div className="bg-muted relative hidden h-screen w-[40%] overflow-hidden lg:block">
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="size-full object-cover"
-              src="/auth-bg.mp4"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20" />
+            <div className="border-muted bg-background flex w-full max-w-sm min-w-sm flex-col items-center gap-y-4 rounded-md border px-6 py-8 shadow-md">
+              <h1 className="text-xl font-semibold">
+                Password reset successful
+              </h1>
+              <p
+                data-testid="reset-password-success-message"
+                className="text-muted-foreground text-center text-sm"
+              >
+                Your password has been reset. You can now sign in with your new
+                password.
+              </p>
+
+              <Button
+                asChild
+                className="w-full"
+                data-testid="reset-password-sign-in-link"
+              >
+                <Link href="/sign-in">Sign in</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </section>
@@ -109,55 +99,63 @@ function ResetPasswordForm() {
   }
 
   return (
-    <section className="bg-background">
-      <div className="flex min-h-screen flex-col items-center justify-between gap-20 py-16 lg:flex-row lg:py-0">
-        <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-8">
-          <div className="flex flex-col items-center gap-2">
-            <Image
-              src="/logo.png"
-              alt="Canoncore"
-              width={80}
-              height={80}
-              priority
+    <section className="bg-muted h-screen">
+      <div className="flex h-full items-center justify-center">
+        <div className="flex flex-col items-center gap-6 lg:justify-start">
+          {/* Logo */}
+          <Link href="/">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/black.png"
+              alt="CanonCore"
+              className="h-10 dark:invert"
             />
-            <div className="space-y-2 text-center">
-              <h1 className="text-foreground text-3xl font-medium tracking-tighter md:text-4xl">
-                Set new password
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                Choose a strong password for your account
-              </p>
-            </div>
-          </div>
+          </Link>
 
-          <form onSubmit={onSubmit} className="w-full max-w-lg space-y-4">
+          <form
+            onSubmit={onSubmit}
+            className="border-muted bg-background flex w-full max-w-sm min-w-sm flex-col items-center gap-y-4 rounded-md border px-6 py-8 shadow-md"
+          >
+            <h1 className="text-xl font-semibold">Set new password</h1>
+            <p className="text-muted-foreground text-center text-sm">
+              Choose a strong password for your account
+            </p>
+
             {error && (
               <div
                 data-testid="reset-password-error-message"
-                className="bg-destructive/10 text-destructive rounded-md px-4 py-3 text-center text-sm"
+                className="bg-destructive/10 text-destructive w-full rounded-md px-4 py-3 text-center text-sm"
               >
                 {error}
               </div>
             )}
 
-            <Input
-              type="password"
-              placeholder="New password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              data-testid="reset-password-password-input"
-            />
+            <div className="flex w-full flex-col gap-2">
+              <Label htmlFor="password">New password</Label>
+              <PasswordInput
+                id="password"
+                placeholder="New password"
+                className="text-sm"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+                data-testid="reset-password-password-input"
+              />
+            </div>
 
-            <Input
-              type="password"
-              placeholder="Confirm new password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              data-testid="reset-password-confirm-password-input"
-            />
+            <div className="flex w-full flex-col gap-2">
+              <Label htmlFor="confirmPassword">Confirm new password</Label>
+              <PasswordInput
+                id="confirmPassword"
+                placeholder="Confirm new password"
+                className="text-sm"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                data-testid="reset-password-confirm-password-input"
+              />
+            </div>
 
             <Button
               type="submit"
@@ -168,17 +166,6 @@ function ResetPasswordForm() {
               {loading ? "Resetting..." : "Reset password"}
             </Button>
           </form>
-        </div>
-        <div className="bg-muted relative hidden h-screen w-[40%] overflow-hidden lg:block">
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="size-full object-cover"
-            src="/auth-bg.mp4"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20" />
         </div>
       </div>
     </section>
@@ -192,8 +179,8 @@ export default function ResetPasswordPage() {
   return (
     <Suspense
       fallback={
-        <section className="bg-background">
-          <div className="flex min-h-screen items-center justify-center">
+        <section className="bg-muted h-screen">
+          <div className="flex h-full items-center justify-center">
             <div className="text-muted-foreground">Loading...</div>
           </div>
         </section>
