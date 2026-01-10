@@ -18,10 +18,6 @@ vi.mock("@/lib/item-actions", () => ({
   updateItem: vi.fn().mockResolvedValue({ success: true }),
 }));
 
-vi.mock("@/lib/sftp-actions", () => ({
-  getItemsByConnection: vi.fn().mockResolvedValue({ success: true, data: [] }),
-}));
-
 vi.mock("@/lib/item-file-actions", () => ({
   getItemFiles: vi.fn().mockResolvedValue({
     success: true,
@@ -96,8 +92,8 @@ describe("ItemDetailClient", () => {
     id: "item-1",
     name: "Movies",
     description: "My movie collection",
-    connectionId: null,
-    sftpPath: null,
+    driveConnectionId: null,
+    driveFileId: null,
   };
 
   const defaultChildItems = [
@@ -111,12 +107,18 @@ describe("ItemDetailClient", () => {
       userId: "user-1",
       createdAt: new Date(),
       updatedAt: new Date(),
-      connectionId: null,
-      sftpPath: null,
-      sftpModifiedAt: null,
+      // Google Drive fields
+      driveFileId: null,
+      driveModifiedAt: null,
+      driveThumbnailUrl: null,
+      syncStatus: "SYNCED" as const,
+      syncError: null,
+      driveConnectionId: null,
       artworkId: null,
       fileCounts: { media: 0, artwork: 0, subtitles: 0 },
       childCount: 0,
+      primaryMediaName: null,
+      mediaIconType: null,
     },
   ];
 
@@ -203,11 +205,12 @@ describe("ItemDetailClient", () => {
           id: "file-1",
           itemId: "item-1",
           filename: "movie.mp4",
-          sftpPath: "/movie.mp4",
+          driveFileId: "drive-file-123",
           fileType: "MEDIA" as const,
           mimeType: "video/mp4",
           size: 1024000,
-          sftpModifiedAt: new Date(),
+          syncStatus: "SYNCED" as const,
+          syncError: null,
           isPrimary: true,
           isHero: false,
           playbackPosition: null,
@@ -266,15 +269,15 @@ describe("ItemDetailClient", () => {
     });
   });
 
-  describe("SFTP connection state", () => {
-    it("should detect SFTP connected when both connectionId and sftpPath exist", async () => {
-      const sftpItem = {
+  describe("Google Drive connection state", () => {
+    it("should detect Drive connected when both driveConnectionId and driveFileId exist", async () => {
+      const driveItem = {
         ...defaultItem,
-        connectionId: "conn-1",
-        sftpPath: "/media/movies",
+        driveConnectionId: "drive-conn-1",
+        driveFileId: "drive-file-456",
       };
 
-      render(<ItemDetailClient item={sftpItem} childItems={[]} />);
+      render(<ItemDetailClient item={driveItem} childItems={[]} />);
       await waitForLoading();
 
       // Component should render without error
@@ -282,35 +285,17 @@ describe("ItemDetailClient", () => {
     });
   });
 
-  describe("connection context", () => {
-    it("should pass connection to items view when provided", async () => {
-      const connection = { id: "conn-1", name: "My Server" };
-
-      render(
-        <ItemDetailClient
-          item={defaultItem}
-          childItems={defaultChildItems}
-          connection={connection}
-        />
-      );
-      await waitForLoading();
-
-      // ItemsView should receive the connection context
-      expect(screen.getByTestId("items-view")).toBeInTheDocument();
-    });
-  });
-
   describe("render order", () => {
-    it("should render toolbar before hero", async () => {
+    it("should render toolbar after hero", async () => {
       render(<ItemDetailClient item={defaultItem} childItems={[]} />);
       await waitForLoading();
 
       const toolbar = screen.getByTestId("items-toolbar");
       const hero = screen.getByTestId("item-hero");
 
-      // Toolbar should come before hero in DOM order
+      // Toolbar should come after hero in DOM order
       expect(toolbar.compareDocumentPosition(hero)).toBe(
-        Node.DOCUMENT_POSITION_FOLLOWING
+        Node.DOCUMENT_POSITION_PRECEDING
       );
     });
   });

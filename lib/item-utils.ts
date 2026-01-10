@@ -5,6 +5,40 @@
 
 import type { Item, ItemWithArtwork, TreeItem } from "./types";
 
+/**
+ * Determines the media icon type based on all media files' MIME types.
+ * - "film" if all media files are video/*
+ * - "music" if all media files are audio/*
+ * - "mixed" if both video and audio files exist
+ * - null if no media files
+ */
+export function getMediaIconType(
+  mediaFiles: { mimeType: string | null }[]
+): "film" | "music" | "mixed" | null {
+  if (mediaFiles.length === 0) return null;
+
+  let hasAudio = false;
+  let hasVideo = false;
+
+  for (const file of mediaFiles) {
+    if (file.mimeType?.startsWith("audio/")) {
+      hasAudio = true;
+    } else if (file.mimeType?.startsWith("video/")) {
+      hasVideo = true;
+    } else {
+      // Unknown media type - treat as video (default)
+      hasVideo = true;
+    }
+
+    // Early exit if we already know it's mixed
+    if (hasAudio && hasVideo) return "mixed";
+  }
+
+  // After loop: at most one of hasAudio/hasVideo is true (mixed already returned)
+  if (hasAudio) return "music";
+  return "film";
+}
+
 /** Input type for itemsToTree - supports both Item and ItemWithArtwork */
 type ItemInput = Item | ItemWithArtwork;
 
@@ -27,15 +61,16 @@ export function itemsToTree(items: ItemInput[]): TreeItem[] {
       depth: item.depth,
       parentId: item.parentId,
       children: [],
-      // Include SFTP fields for display
-      sftpPath: item.sftpPath,
-      connectionId: item.connectionId,
-      connectionName: "connectionName" in item ? item.connectionName : null,
       // Include artwork if available
       artworkId: "artworkId" in item ? item.artworkId : null,
       // Include file and child counts for stats display
       fileCounts: "fileCounts" in item ? item.fileCounts : undefined,
       childCount: "childCount" in item ? item.childCount : undefined,
+      // Include primary media name for "now playing" display
+      primaryMediaName:
+        "primaryMediaName" in item ? item.primaryMediaName : undefined,
+      // Include media icon type for audio/video/mixed display
+      mediaIconType: "mediaIconType" in item ? item.mediaIconType : undefined,
     });
   }
 

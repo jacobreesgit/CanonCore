@@ -21,7 +21,7 @@ test.describe("Edit Mode", () => {
   test("should toggle between view and edit mode", async ({ itemsPage }) => {
     // Start in view mode
     await expect(
-      itemsPage.page.getByRole("button", { name: "Edit items" })
+      itemsPage.page.getByRole("button", { name: "Enter edit mode" })
     ).toBeVisible();
 
     // Enter edit mode
@@ -29,7 +29,7 @@ test.describe("Edit Mode", () => {
 
     // Should show Done button
     await expect(
-      itemsPage.page.getByRole("button", { name: "Done editing" })
+      itemsPage.page.getByRole("button", { name: "Exit edit mode" })
     ).toBeVisible();
 
     // Exit edit mode
@@ -37,7 +37,7 @@ test.describe("Edit Mode", () => {
 
     // Should show Edit button again
     await expect(
-      itemsPage.page.getByRole("button", { name: "Edit items" })
+      itemsPage.page.getByRole("button", { name: "Enter edit mode" })
     ).toBeVisible();
   });
 
@@ -53,19 +53,22 @@ test.describe("Edit Mode", () => {
 
     // Should exit edit mode - wait for the button to appear
     await expect(
-      itemsPage.page.getByRole("button", { name: "Edit items" })
+      itemsPage.page.getByRole("button", { name: "Enter edit mode" })
     ).toBeVisible();
     expect(await itemsPage.isInEditMode()).toBe(false);
   });
 
-  test("should hide edit toggle when no items", async ({ itemsPage, page }) => {
+  test("should disable edit toggle when no items", async ({
+    itemsPage,
+    page,
+  }) => {
     // Delete all items
     await itemsPage.deleteItemViaContextMenu("Test Folder 1");
     await itemsPage.deleteItemViaContextMenu("Test Folder 2");
 
-    // Edit button should not be visible
+    // Edit button should be disabled when no items
     await expect(
-      page.getByRole("button", { name: "Edit items" })
-    ).not.toBeVisible();
+      page.getByRole("button", { name: "Enter edit mode" })
+    ).toBeDisabled();
   });
 });

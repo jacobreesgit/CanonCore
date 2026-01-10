@@ -1,58 +1,47 @@
 /**
  * My Items page displaying sortable items.
- * Server component that fetches items and renders the FilteredItemsView.
+ * Server component that fetches items and renders the ItemsView.
  */
 
-import { FilteredItemsView } from "@/components/items";
+import { Suspense } from "react";
+import { ItemsView } from "@/components/items";
 import { getAllItems } from "@/lib/item-actions";
-import {
-  getSftpConnections,
-  getAllItemsByConnection,
-} from "@/lib/sftp-actions";
 import { getProfile } from "@/lib/user-actions";
+import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
+import { OAuthToast } from "@/components/google-drive";
 import { SiteHeader } from "@/components/site-header";
 
-interface MyItemsPageProps {
-  searchParams: Promise<{ connection?: string }>;
-}
-
 /**
- * Renders the My Items page with filterable items view.
- * Supports filtering by SFTP connection via URL query param.
- *
- * @param searchParams - URL search parameters (connection filter)
+ * Renders the My Items page with items view.
+ * Displays all user items with hero banner.
  */
-export default async function MyItemsPage({ searchParams }: MyItemsPageProps) {
-  const { connection: connectionId } = await searchParams;
-
-  // Fetch items based on filter (server-side)
-  const itemsResult = connectionId
-    ? await getAllItemsByConnection(connectionId)
-    : await getAllItems();
-
+export default async function MyItemsPage() {
+  // Fetch all items
+  const itemsResult = await getAllItems();
   const items = itemsResult.success ? (itemsResult.data ?? []) : [];
-
-  // Fetch connections for filter dropdown
-  const connectionsResult = await getSftpConnections();
-  const connections = connectionsResult.success
-    ? (connectionsResult.data ?? []).map((c) => ({ id: c.id, name: c.name }))
-    : [];
 
   // Check if user has hero image
   const profileResult = await getProfile();
   const hasHeroImage =
     profileResult.success && profileResult.data?.hasHeroImage;
 
+  // Check for Google Drive connection
+  const driveConnection = await getGoogleDriveConnection();
+  const hasDriveConnection =
+    driveConnection !== null && !driveConnection.needsReauth;
+
   return (
     <>
+      <Suspense fallback={null}>
+        <OAuthToast />
+      </Suspense>
       <SiteHeader title="My Items" titleHref="/my-items" />
       <div className="flex flex-1 flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
-        <FilteredItemsView
-          initialItems={items}
-          connections={connections}
-          initialConnectionId={connectionId ?? null}
+        <ItemsView
+          items={items}
           heroTitle="My Items"
-          hasHeroImage={hasHeroImage}
+          heroBackgroundUrl={hasHeroImage ? "/api/user/hero" : undefined}
+          hasDriveConnection={hasDriveConnection}
         />
       </div>
     </>

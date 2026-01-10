@@ -1,9 +1,14 @@
 /**
  * Playwright test fixtures for E2E tests.
- * Provides page objects and SFTP configuration for parallel test execution.
+ * Composes all fixtures and provides page objects.
  */
 
-import { test as base } from "@playwright/test";
+import { test as base, expect } from "@playwright/test";
+import {
+  googleDriveFixture,
+  type GoogleDriveFixture,
+} from "./google-drive.fixture";
+import type { TestUserWithId } from "./test-user.fixture";
 import { LandingPage } from "../pages/landing.page";
 import { SignInPage } from "../pages/sign-in.page";
 import { SignUpPage } from "../pages/sign-up.page";
@@ -12,11 +17,13 @@ import { ResetPasswordPage } from "../pages/reset-password.page";
 import { MyItemsPage } from "../pages/my-items.page";
 import { ItemsPage } from "../pages/items.page";
 import { DocsPage } from "../pages/docs.page";
-import { ConnectionsPage } from "../pages/connections.page";
 import { MediaPage } from "../pages/media.page";
-import { getSftpConfigForWorker, SftpTestConfig } from "./sftp.fixture";
+import { SettingsPage } from "../pages/settings.page";
 
-type TestFixtures = {
+/**
+ * Page object fixtures available in all tests.
+ */
+type PageObjectFixtures = {
   landingPage: LandingPage;
   signInPage: SignInPage;
   signUpPage: SignUpPage;
@@ -25,56 +32,54 @@ type TestFixtures = {
   myItemsPage: MyItemsPage;
   itemsPage: ItemsPage;
   docsPage: DocsPage;
-  connectionsPage: ConnectionsPage;
   mediaPage: MediaPage;
-  sftpConfig: SftpTestConfig;
+  settingsPage: SettingsPage;
 };
 
-export const test = base.extend<TestFixtures>({
+/**
+ * All fixtures available in tests.
+ */
+type AllFixtures = PageObjectFixtures &
+  GoogleDriveFixture & {
+    testUser: TestUserWithId;
+  };
+
+// Compose Google Drive fixture (includes testUser) with page objects
+const composedTest = googleDriveFixture.extend<PageObjectFixtures>({
   landingPage: async ({ page }, use) => {
     await use(new LandingPage(page));
   },
-
   signInPage: async ({ page }, use) => {
     await use(new SignInPage(page));
   },
-
   signUpPage: async ({ page }, use) => {
     await use(new SignUpPage(page));
   },
-
   forgotPasswordPage: async ({ page }, use) => {
     await use(new ForgotPasswordPage(page));
   },
-
   resetPasswordPage: async ({ page }, use) => {
     await use(new ResetPasswordPage(page));
   },
-
   myItemsPage: async ({ page }, use) => {
     await use(new MyItemsPage(page));
   },
-
   itemsPage: async ({ page }, use) => {
     await use(new ItemsPage(page));
   },
-
   docsPage: async ({ page }, use) => {
     await use(new DocsPage(page));
   },
-
-  connectionsPage: async ({ page }, use) => {
-    await use(new ConnectionsPage(page));
-  },
-
   mediaPage: async ({ page }, use) => {
     await use(new MediaPage(page));
   },
-
-  sftpConfig: async ({}, use, testInfo) => {
-    const config = getSftpConfigForWorker(testInfo.parallelIndex);
-    await use(config);
+  settingsPage: async ({ page }, use) => {
+    await use(new SettingsPage(page));
   },
 });
 
-export { expect } from "@playwright/test";
+export const test = composedTest;
+export { expect };
+
+// Re-export prisma for tests that need direct DB access
+export { testPrisma as prisma } from "./test-user.fixture";

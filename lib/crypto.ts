@@ -47,7 +47,7 @@ function getEncryptionKey(): Uint8Array {
  * @returns Base64-encoded encrypted string (IV + AuthTag + Ciphertext)
  *
  * @example
- * const encrypted = encryptCredential("my-sftp-password");
+ * const encrypted = encryptCredential("my-secret-token");
  */
 export function encryptCredential(plaintext: string): string {
   const key = getEncryptionKey();

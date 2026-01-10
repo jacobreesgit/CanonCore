@@ -6,7 +6,14 @@
 
 "use client";
 
-import { Folder, Film, ImageIcon, FileText } from "lucide-react";
+import {
+  Folder,
+  Film,
+  ImageIcon,
+  FileText,
+  Music,
+  FolderOpen,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FileCounts } from "@/lib/types";
 
@@ -17,6 +24,8 @@ interface ItemStatsProps {
   childCount?: number;
   /** File counts by type */
   fileCounts?: FileCounts;
+  /** Media icon type: film (all video), music (all audio), mixed (both) */
+  mediaIconType?: "film" | "music" | "mixed" | null;
   /** Visual variant - overlay (white text) or muted (muted-foreground) */
   variant?: "overlay" | "muted";
   /** Display format - icons (with icons) or text (x2 children, x2 media) */
@@ -34,6 +43,7 @@ interface ItemStatsProps {
  *
  * @param childCount - Number of child items
  * @param fileCounts - File counts by type (media, artwork, subtitles)
+ * @param mediaIconType - Icon type: film (video), music (audio), mixed (both)
  * @param variant - Visual style variant (default: "muted")
  * @param format - Display format (default: "icons")
  * @param showEmpty - Whether to show "Empty" when no content (default: false)
@@ -42,6 +52,7 @@ interface ItemStatsProps {
 export function ItemStats({
   childCount = 0,
   fileCounts = { media: 0, artwork: 0, subtitles: 0 },
+  mediaIconType,
   variant = "muted",
   format = "icons",
   showEmpty = false,
@@ -51,6 +62,14 @@ export function ItemStats({
   const hasFiles =
     fileCounts.media > 0 || fileCounts.artwork > 0 || fileCounts.subtitles > 0;
   const hasContent = hasChildren || hasFiles;
+
+  // Determine icon: Film (video), Music (audio), FolderOpen (mixed)
+  const MediaIcon =
+    mediaIconType === "music"
+      ? Music
+      : mediaIconType === "mixed"
+        ? FolderOpen
+        : Film;
 
   if (!hasContent && !showEmpty) {
     return null;
@@ -120,7 +139,7 @@ export function ItemStats({
       )}
       {fileCounts.media > 0 && (
         <span className="flex items-center gap-1.5" data-testid="media-count">
-          <Film className="size-4" />
+          <MediaIcon className="size-4" />
           <span>{fileCounts.media}</span>
         </span>
       )}

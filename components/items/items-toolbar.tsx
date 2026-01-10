@@ -1,22 +1,22 @@
 /**
  * Unified toolbar for items views.
- * Handles connection filter, sync buttons, content actions, and view controls.
+ * Handles content actions and view controls.
  * Used on both root /my-items and item detail pages for consistent UX.
  */
 
 "use client";
 
-import { Loader2, Plus, Settings2 } from "lucide-react";
+import { Loader2, Plus, RefreshCw, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ConnectionFilter } from "./connection-filter";
 import { EditModeToggle } from "./edit-mode-toggle";
 import { ViewToggle } from "./view-toggle";
 import { ItemSettingsDialog } from "./item-settings-dialog";
-import { SyncButton, SyncAllButton, ItemSyncButton } from "@/components/sftp";
 import type { SerializedItemFile } from "@/lib/types";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { getItemFiles } from "@/lib/item-file-actions";
+import { syncFromGoogleDrive } from "@/lib/google-drive-actions";
+import { toast } from "sonner";
 
 /** Empty files state for initial dialog load */
 const emptyFiles = {
@@ -35,16 +35,6 @@ interface ItemsToolbarProps {
   /** Callback to open add item dialog (only needed when hasItems=true). */
   onAddItem?: () => void;
 
-  // --- Connection filter props (root page) ---
-  /** Available SFTP connections for filter dropdown. */
-  connections?: Array<{ id: string; name: string }>;
-  /** Currently selected connection ID. */
-  selectedConnectionId?: string | null;
-  /** Callback when connection filter changes. */
-  onConnectionChange?: (connectionId: string | null) => void;
-  /** Whether connection filter change is pending. */
-  isFilterPending?: boolean;
-
   // --- Sync props ---
   /** Callback after any sync completes. */
   onSyncComplete?: () => void;
@@ -56,47 +46,57 @@ interface ItemsToolbarProps {
     name: string;
     description: string | null;
   };
-  /** Number of child items for settings dialog stats. */
-  childCount?: number;
-  /** Whether item is SFTP connected (shows Sync button). */
-  isSftpConnected?: boolean;
+  /** Whether user has Google Drive connected (enables uploads in settings). */
+  hasDriveConnection?: boolean;
 }
 
 /**
  * Unified toolbar component for items views.
  *
  * Layout:
- * - Left: Connection filter + Sync button(s)
- * - Right: Add Item, Edit, View toggle, Settings (detail page only)
+ * - Left: (empty for now, reserved for future use)
+ * - Right: Add Item, Edit, View toggle, Upload, Settings (detail page only)
  */
 export function ItemsToolbar({
   hasItems,
   isEditing = false,
   onEditToggle,
   onAddItem,
-  connections = [],
-  selectedConnectionId,
-  onConnectionChange,
-  isFilterPending = false,
   onSyncComplete,
   item,
-  childCount = 0,
-  isSftpConnected = false,
+  hasDriveConnection = false,
 }: ItemsToolbarProps) {
   const router = useRouter();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [files, setFiles] = useState(emptyFiles);
-
-  // Derive sync button context
-  const hasConnectionFilter = connections.length > 0 && onConnectionChange;
-  const effectiveSelectedConnection =
-    connections.length === 1
-      ? connections[0].id
-      : (selectedConnectionId ?? null);
-  const isFilteredToConnection = effectiveSelectedConnection !== null;
+  const [isSyncing, startSyncTransition] = useTransition();
 
   // Item detail page context
   const isItemDetailPage = Boolean(item);
+
+  /**
+   * Triggers a sync from Google Drive.
+   */
+  const handleSync = useCallback(() => {
+    startSyncTransition(async () => {
+      const result = await syncFromGoogleDrive();
+
+      if (result.success) {
+        const parts = [];
+        if (result.itemsCreated) parts.push(`${result.itemsCreated} created`);
+        if (result.itemsUpdated) parts.push(`${result.itemsUpdated} updated`);
+        if (result.itemsErrored) parts.push(`${result.itemsErrored} failed`);
+
+        const message =
+          parts.length > 0 ? parts.join(", ") : "Already up to date";
+        toast.success(`Sync complete: ${message}`);
+        router.refresh();
+        onSyncComplete?.();
+      } else {
+        toast.error(result.error || "Sync failed");
+      }
+    });
+  }, [router, onSyncComplete]);
 
   /**
    * Opens settings dialog and fetches files.
@@ -122,85 +122,45 @@ export function ItemsToolbar({
     router.refresh();
   }, [item, router]);
 
-  /**
-   * Refreshes page after sync completes.
-   */
-  const handleSyncComplete = useCallback(async () => {
-    router.refresh();
-    onSyncComplete?.();
-  }, [router, onSyncComplete]);
-
   return (
     <>
       <div className="flex items-center justify-between gap-3">
-        {/* Left side: Connection filter + Sync buttons */}
+        {/* Left side: Sync button */}
         <div className="flex items-center gap-3">
-          {/* Connection filter - root page only */}
-          {hasConnectionFilter && (
-            <>
-              <ConnectionFilter
-                connections={connections}
-                selectedConnectionId={selectedConnectionId ?? null}
-                onConnectionChange={onConnectionChange}
-              />
-              {isFilterPending && (
-                <Loader2 className="text-muted-foreground size-4 animate-spin" />
-              )}
-            </>
-          )}
-
-          {/* Sync All button - root page, viewing All Items */}
-          {hasConnectionFilter && !isFilteredToConnection && (
-            <SyncAllButton
-              connectionCount={connections.length}
-              size="sm"
-              onSyncComplete={handleSyncComplete}
-            />
-          )}
-
-          {/* Sync Connection button - root page, filtered to connection */}
-          {hasConnectionFilter &&
-            isFilteredToConnection &&
-            effectiveSelectedConnection && (
-              <SyncButton
-                connectionId={effectiveSelectedConnection}
-                label="Sync Connection"
-                size="sm"
-                onSyncComplete={handleSyncComplete}
-              />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSync}
+            disabled={!hasDriveConnection || isSyncing}
+            className="gap-1.5"
+          >
+            {isSyncing ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <RefreshCw className="size-4" />
             )}
-
-          {/* Item Sync button - item detail page */}
-          {isItemDetailPage && isSftpConnected && item && (
-            <ItemSyncButton
-              itemId={item.id}
-              itemName={item.name}
-              size="sm"
-              onSyncComplete={handleSyncComplete}
-            />
-          )}
+            <span>{isSyncing ? "Syncing..." : "Sync"}</span>
+          </Button>
         </div>
 
-        {/* Right side: Add Item + Edit + View toggle + Settings */}
+        {/* Right side: Add Item + Edit + View toggle + Upload + Settings */}
         <div className="flex items-center gap-3">
-          {hasItems && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onAddItem}
-                className="gap-1.5"
-              >
-                <Plus className="size-4" strokeWidth={2} />
-                <span>Add Item</span>
-              </Button>
-              <EditModeToggle
-                isEditing={isEditing}
-                onToggle={onEditToggle ?? (() => {})}
-              />
-              <ViewToggle />
-            </>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onAddItem}
+            disabled={!hasItems && !isItemDetailPage}
+            className="gap-1.5"
+          >
+            <Plus className="size-4" strokeWidth={2} />
+            <span>Add Item</span>
+          </Button>
+          <EditModeToggle
+            isEditing={isEditing}
+            onToggle={onEditToggle ?? (() => {})}
+            disabled={!hasItems}
+          />
+          <ViewToggle disabled={!hasItems} />
 
           {/* Settings button - item detail page only */}
           {isItemDetailPage && item && (
@@ -225,7 +185,7 @@ export function ItemsToolbar({
           onOpenChange={setSettingsOpen}
           item={item}
           files={files}
-          childCount={childCount}
+          hasDriveConnection={hasDriveConnection}
           onSettingsChange={handleSettingsChange}
         />
       )}

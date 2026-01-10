@@ -4,7 +4,9 @@
 
 import type { MutableRefObject } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
-import type { FileType } from "@prisma/client";
+import type { FileType, SyncStatus } from "@prisma/client";
+// Re-export SyncStatus enum for client-side use
+export { SyncStatus } from "@prisma/client";
 
 /**
  * Database Item type (from Prisma).
@@ -21,19 +23,13 @@ export interface Item {
   userId: string;
   createdAt: Date;
   updatedAt: Date;
-  // SFTP-specific fields
-  sftpPath: string | null;
-  sftpModifiedAt: Date | null;
-  connectionId: string | null;
-}
-
-/**
- * Item with connection details for detail pages.
- * Used when displaying item details with connection info.
- */
-export interface ItemWithConnection extends Item {
-  /** Connection details if this item is SFTP-linked */
-  connection: { id: string; name: string } | null;
+  // Google Drive fields
+  driveFileId: string | null;
+  driveModifiedAt: Date | null;
+  driveThumbnailUrl: string | null;
+  syncStatus: SyncStatus;
+  syncError: string | null;
+  driveConnectionId: string | null;
 }
 
 /**
@@ -49,15 +45,15 @@ export interface TreeItem {
   parentId: UniqueIdentifier | null;
   children: TreeItem[];
   collapsed?: boolean;
-  // SFTP-specific fields for display
-  sftpPath?: string | null;
-  connectionId?: string | null;
-  connectionName?: string | null;
   // Artwork thumbnail
   artworkId?: string | null;
   // File and child counts for stats display
   fileCounts?: FileCounts;
   childCount?: number;
+  // Primary media filename for "now playing" display
+  primaryMediaName?: string | null;
+  // Media icon type: 'film' (all video), 'music' (all audio), 'mixed' (both)
+  mediaIconType?: "film" | "music" | "mixed" | null;
 }
 
 export type TreeItems = TreeItem[];
@@ -105,11 +101,15 @@ export interface ItemFile {
   id: string;
   itemId: string;
   filename: string;
-  sftpPath: string;
   fileType: FileType;
   mimeType: string | null;
   size: bigint | null;
-  sftpModifiedAt: Date | null;
+  // Google Drive file ID
+  driveFileId: string | null;
+  // Sync status
+  syncStatus: SyncStatus;
+  syncError: string | null;
+  // User overrides
   isPrimary: boolean;
   isHero: boolean;
   playbackPosition: number | null;
@@ -126,11 +126,15 @@ export interface SerializedItemFile {
   id: string;
   itemId: string;
   filename: string;
-  sftpPath: string;
   fileType: FileType;
   mimeType: string | null;
   size: number | null;
-  sftpModifiedAt: Date | null;
+  // Google Drive file ID
+  driveFileId: string | null;
+  // Sync status
+  syncStatus: SyncStatus;
+  syncError: string | null;
+  // User overrides
   isPrimary: boolean;
   isHero: boolean;
   playbackPosition: number | null;
@@ -173,10 +177,19 @@ export interface FileCounts {
 export interface ItemWithArtwork extends Item {
   /** First artwork file ID for thumbnail display */
   artworkId: string | null;
-  /** Connection name for badge display (optional) */
-  connectionName?: string | null;
   /** Counts of attached files by type (media, artwork, subtitles) */
   fileCounts: FileCounts;
   /** Number of child items (subfolders) */
   childCount: number;
+  /** Primary media filename for "now playing" display */
+  primaryMediaName: string | null;
+  /** Media icon type: 'film' (all video), 'music' (all audio), 'mixed' (both) */
+  mediaIconType: "film" | "music" | "mixed" | null;
 }
+
+/**
+ * Item type alias with sync fields emphasized.
+ * Use when working specifically with sync-related functionality.
+ * Same as Item - provided for semantic clarity in sync contexts.
+ */
+export type ItemWithSync = Item;

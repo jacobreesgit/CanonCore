@@ -40,28 +40,6 @@ export const rateLimiters = {
     prefix: "ratelimit:password-change",
   }),
 
-  // SFTP rate limiters (moderate - prevent abuse of expensive operations)
-  sftpSync: new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(10, "1 m"),
-    prefix: "ratelimit:sftp:sync",
-  }),
-  sftpSyncAll: new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(5, "1 m"),
-    prefix: "ratelimit:sftp:syncall",
-  }),
-  sftpTest: new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(20, "1 m"),
-    prefix: "ratelimit:sftp:test",
-  }),
-  sftpCreate: new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(10, "1 m"),
-    prefix: "ratelimit:sftp:create",
-  }),
-
   // Item rate limiters (generous - normal user operations)
   itemCreate: new Ratelimit({
     redis,

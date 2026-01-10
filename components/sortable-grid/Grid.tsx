@@ -21,8 +21,6 @@ interface GridProps {
   onOpenSettings?(id: string): void;
   /** Callback to delete an item. */
   onDeleteItem?(id: string): Promise<void>;
-  /** Whether to show connection badges on items. Defaults to true. */
-  showConnectionBadge?: boolean;
 }
 
 /**
@@ -37,7 +35,6 @@ export function Grid({
   onItemClick,
   onOpenSettings,
   onDeleteItem,
-  showConnectionBadge = true,
 }: GridProps) {
   return (
     <div
@@ -59,12 +56,11 @@ export function Grid({
             name={item.name}
             description={item.description}
             onClick={() => onItemClick?.(item.id)}
-            sftpPath={item.sftpPath}
             artworkId={item.artworkId}
-            connectionName={item.connectionName}
-            showConnectionBadge={showConnectionBadge}
             fileCounts={item.fileCounts}
             childCount={item.childCount}
+            primaryMediaName={item.primaryMediaName}
+            mediaIconType={item.mediaIconType}
             showArtwork={true}
             showDescription={true}
           />

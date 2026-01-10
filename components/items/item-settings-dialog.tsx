@@ -1,7 +1,7 @@
 /**
  * Unified item settings dialog with single atomic save.
  * Consolidates name, description, and file selections into one save action.
- * Features progressive disclosure and dirty state tracking.
+ * Features FileTypeCombobox for file selection with inline upload capability.
  */
 
 "use client";
@@ -23,23 +23,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { FileTypeCombobox } from "@/components/items/file-type-combobox";
 import { updateItemSettings } from "@/lib/item-file-actions";
 import { toast } from "sonner";
 import type { SerializedItemFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { ItemStats } from "@/components/items/item-stats";
 
 interface ItemSettingsDialogProps {
   /** Whether the dialog is open */
@@ -54,8 +47,8 @@ interface ItemSettingsDialogProps {
     artwork: SerializedItemFile[];
     subtitles: SerializedItemFile[];
   };
-  /** Number of child items for stats display */
-  childCount?: number;
+  /** Whether user has Google Drive connected (enables uploads) */
+  hasDriveConnection?: boolean;
   /** Optional callback when settings change (for refreshing data). Awaited to ensure sync. */
   onSettingsChange?: () => Promise<void>;
 }
@@ -80,14 +73,14 @@ function findHeroFile(
 
 /**
  * Item settings dialog with single atomic save.
- * Only shows file selection sections when there are 2+ files of a type.
+ * Always shows file type comboboxes with upload capability.
  * Tracks dirty state and saves all changes in one transaction.
  *
  * @param open - Whether dialog is visible
  * @param onOpenChange - Callback for visibility changes
  * @param item - Item metadata
  * @param files - Files grouped by type
- * @param childCount - Number of child items
+ * @param hasDriveConnection - Whether uploads are enabled
  * @param onSettingsChange - Optional callback when settings are saved
  */
 export function ItemSettingsDialog({
@@ -95,7 +88,7 @@ export function ItemSettingsDialog({
   onOpenChange,
   item,
   files,
-  childCount,
+  hasDriveConnection = false,
   onSettingsChange,
 }: ItemSettingsDialogProps) {
   // Form state
@@ -116,19 +109,33 @@ export function ItemSettingsDialog({
 
   const [isSaving, setIsSaving] = useState(false);
 
-  // Original values for dirty checking
-  const originalValues = useMemo(
-    () => ({
-      name: item.name,
-      description: item.description ?? "",
-      primaryMediaId: findPrimaryFile(files.media)?.id,
-      primaryArtworkId: findPrimaryFile(files.artwork)?.id,
-      heroArtworkId:
-        findHeroFile(files.artwork)?.id ?? findPrimaryFile(files.artwork)?.id,
-      primarySubtitleId: findPrimaryFile(files.subtitles)?.id,
-    }),
-    [item.name, item.description, files]
-  );
+  // Original values for dirty checking - captured once when dialog opens
+  // Uses open state to reset when dialog reopens, but NOT when files change after upload
+  const [originalValues, setOriginalValues] = useState(() => ({
+    name: item.name,
+    description: item.description ?? "",
+    primaryMediaId: findPrimaryFile(files.media)?.id,
+    primaryArtworkId: findPrimaryFile(files.artwork)?.id,
+    heroArtworkId:
+      findHeroFile(files.artwork)?.id ?? findPrimaryFile(files.artwork)?.id,
+    primarySubtitleId: findPrimaryFile(files.subtitles)?.id,
+  }));
+
+  // Reset original values when dialog opens (not on every files change)
+  useEffect(() => {
+    if (open) {
+      setOriginalValues({
+        name: item.name,
+        description: item.description ?? "",
+        primaryMediaId: findPrimaryFile(files.media)?.id,
+        primaryArtworkId: findPrimaryFile(files.artwork)?.id,
+        heroArtworkId:
+          findHeroFile(files.artwork)?.id ?? findPrimaryFile(files.artwork)?.id,
+        primarySubtitleId: findPrimaryFile(files.subtitles)?.id,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   // Sync name/description when item changes (separate from files to prevent race condition)
   useEffect(() => {
@@ -147,13 +154,7 @@ export function ItemSettingsDialog({
   }, [files]);
 
   // Computed flags
-  const hasMedia = files.media.length > 0;
-  const hasArtwork = files.artwork.length > 0;
-  const hasSubtitles = files.subtitles.length > 0;
-  const hasMultipleMedia = files.media.length > 1;
   const hasMultipleArtwork = files.artwork.length > 1;
-  const hasMultipleSubtitles = files.subtitles.length > 1;
-  const hasMediaSettings = hasMedia || hasArtwork || hasSubtitles;
 
   // Dirty state detection
   const isDirty = useMemo(() => {
@@ -264,15 +265,18 @@ export function ItemSettingsDialog({
     onOpenChange,
   ]);
 
-  // Get current artwork for preview
-  const currentPrimaryArtwork = files.artwork.find(
-    (f) => f.id === primaryArtworkId
-  );
-  const currentHeroArtwork = files.artwork.find((f) => f.id === heroArtworkId);
+  /**
+   * Handles upload completion - refreshes file list.
+   */
+  const handleUploadComplete = useCallback(async () => {
+    await onSettingsChange?.().catch((err) => {
+      console.warn("[ItemSettingsDialog] Refetch failed after upload:", err);
+    });
+  }, [onSettingsChange]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] max-w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div
@@ -286,7 +290,7 @@ export function ItemSettingsDialog({
             <div className="min-w-0">
               <DialogTitle className="text-lg">Item Settings</DialogTitle>
               <DialogDescription className="text-sm">
-                Configure display preferences
+                Configure display preferences and upload files
               </DialogDescription>
             </div>
           </div>
@@ -324,253 +328,68 @@ export function ItemSettingsDialog({
             </p>
           </div>
 
-          {/* File Summary */}
-          <div className={cn("rounded-lg px-4 py-3", "bg-muted/50")}>
-            <ItemStats
-              childCount={childCount}
-              fileCounts={{
-                media: files.media.length,
-                artwork: files.artwork.length,
-                subtitles: files.subtitles.length,
-              }}
-              variant="muted"
+          <Separator />
+
+          {/* Primary Media */}
+          <FileTypeCombobox
+            label="Primary Media"
+            description="The file that plays when clicking on this item."
+            icon={Film}
+            files={files.media}
+            selectedId={primaryMediaId}
+            onSelect={setPrimaryMediaId}
+            onUploadComplete={handleUploadComplete}
+            itemId={item.id}
+            fileType="media"
+            disabled={!hasDriveConnection}
+          />
+
+          {/* Primary Artwork */}
+          <FileTypeCombobox
+            label="Primary Artwork"
+            description="The image used as the thumbnail."
+            icon={ImageIcon}
+            files={files.artwork}
+            selectedId={primaryArtworkId}
+            onSelect={setPrimaryArtworkId}
+            onUploadComplete={handleUploadComplete}
+            itemId={item.id}
+            fileType="artwork"
+            disabled={!hasDriveConnection}
+          />
+
+          {/* Hero Image (only when 2+ artwork) */}
+          {hasMultipleArtwork && (
+            <FileTypeCombobox
+              label="Hero Image"
+              description="The image used as the banner background."
+              icon={Sparkles}
+              files={files.artwork}
+              selectedId={heroArtworkId}
+              onSelect={setHeroArtworkId}
+              onUploadComplete={handleUploadComplete}
+              itemId={item.id}
+              fileType="artwork"
+              disabled={!hasDriveConnection}
             />
-          </div>
-
-          {/* Media Settings (conditional) */}
-          {hasMediaSettings && (
-            <>
-              <Separator />
-
-              {/* Primary Media */}
-              {hasMedia && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={cn(
-                        "flex size-7 items-center justify-center rounded-lg",
-                        "bg-primary/10"
-                      )}
-                    >
-                      <Film className="text-primary size-3.5" />
-                    </div>
-                    <Label
-                      htmlFor="primary-media"
-                      className="text-sm font-medium"
-                    >
-                      Primary Media
-                    </Label>
-                  </div>
-                  <p className="text-muted-foreground text-xs">
-                    {hasMultipleMedia
-                      ? "Select which file plays when clicking on this item."
-                      : "The file that plays when clicking on this item."}
-                  </p>
-                  <Select
-                    value={primaryMediaId}
-                    onValueChange={setPrimaryMediaId}
-                    disabled={!hasMultipleMedia}
-                  >
-                    <SelectTrigger id="primary-media" className="w-full">
-                      <SelectValue placeholder="Select media file" />
-                    </SelectTrigger>
-                    <SelectContent className="w-[var(--radix-select-trigger-width)]">
-                      {files.media.map((file) => (
-                        <SelectItem key={file.id} value={file.id}>
-                          {file.filename}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Primary Artwork */}
-              {hasArtwork && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={cn(
-                        "flex size-7 items-center justify-center rounded-lg",
-                        "bg-primary/10"
-                      )}
-                    >
-                      <ImageIcon className="text-primary size-3.5" />
-                    </div>
-                    <Label
-                      htmlFor="primary-artwork"
-                      className="text-sm font-medium"
-                    >
-                      Primary Artwork
-                    </Label>
-                  </div>
-                  <p className="text-muted-foreground text-xs">
-                    {hasMultipleArtwork
-                      ? "Select which image to use as the thumbnail."
-                      : "The image used as the thumbnail."}
-                  </p>
-                  <Select
-                    value={primaryArtworkId}
-                    onValueChange={setPrimaryArtworkId}
-                    disabled={!hasMultipleArtwork}
-                  >
-                    <SelectTrigger id="primary-artwork" className="w-full">
-                      <SelectValue placeholder="Select artwork">
-                        {currentPrimaryArtwork && (
-                          <span className="flex min-w-0 items-center gap-2">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={`/api/artwork/${currentPrimaryArtwork.id}`}
-                              alt=""
-                              className="size-5 shrink-0 rounded object-cover"
-                              onError={(e) => {
-                                e.currentTarget.style.display = "none";
-                              }}
-                            />
-                            <span className="truncate">
-                              {currentPrimaryArtwork.filename}
-                            </span>
-                          </span>
-                        )}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="w-[var(--radix-select-trigger-width)]">
-                      {files.artwork.map((file) => (
-                        <SelectItem key={file.id} value={file.id}>
-                          <span className="flex min-w-0 items-center gap-2">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={`/api/artwork/${file.id}`}
-                              alt=""
-                              className="size-5 shrink-0 rounded object-cover"
-                              onError={(e) => {
-                                e.currentTarget.style.display = "none";
-                              }}
-                            />
-                            <span className="truncate">{file.filename}</span>
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Hero Image (only when 2+ artwork) */}
-              {hasMultipleArtwork && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={cn(
-                        "flex size-7 items-center justify-center rounded-lg",
-                        "bg-primary/10"
-                      )}
-                    >
-                      <Sparkles className="text-primary size-3.5" />
-                    </div>
-                    <Label
-                      htmlFor="hero-artwork"
-                      className="text-sm font-medium"
-                    >
-                      Hero Image
-                    </Label>
-                  </div>
-                  <p className="text-muted-foreground text-xs">
-                    Select which image to use as the banner background.
-                  </p>
-                  <Select
-                    value={heroArtworkId}
-                    onValueChange={setHeroArtworkId}
-                  >
-                    <SelectTrigger id="hero-artwork" className="w-full">
-                      <SelectValue placeholder="Select hero image">
-                        {currentHeroArtwork && (
-                          <span className="flex min-w-0 items-center gap-2">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={`/api/artwork/${currentHeroArtwork.id}`}
-                              alt=""
-                              className="size-5 shrink-0 rounded object-cover"
-                              onError={(e) => {
-                                e.currentTarget.style.display = "none";
-                              }}
-                            />
-                            <span className="truncate">
-                              {currentHeroArtwork.filename}
-                            </span>
-                          </span>
-                        )}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="w-[var(--radix-select-trigger-width)]">
-                      {files.artwork.map((file) => (
-                        <SelectItem key={file.id} value={file.id}>
-                          <span className="flex min-w-0 items-center gap-2">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={`/api/artwork/${file.id}`}
-                              alt=""
-                              className="size-5 shrink-0 rounded object-cover"
-                              onError={(e) => {
-                                e.currentTarget.style.display = "none";
-                              }}
-                            />
-                            <span className="truncate">{file.filename}</span>
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Default Subtitle */}
-              {hasSubtitles && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={cn(
-                        "flex size-7 items-center justify-center rounded-lg",
-                        "bg-primary/10"
-                      )}
-                    >
-                      <FileText className="text-primary size-3.5" />
-                    </div>
-                    <Label
-                      htmlFor="default-subtitle"
-                      className="text-sm font-medium"
-                    >
-                      Default Subtitle
-                    </Label>
-                  </div>
-                  <p className="text-muted-foreground text-xs">
-                    {hasMultipleSubtitles
-                      ? "Select which subtitle track loads by default."
-                      : "The subtitle track that loads by default."}
-                  </p>
-                  <Select
-                    value={primarySubtitleId}
-                    onValueChange={setPrimarySubtitleId}
-                    disabled={!hasMultipleSubtitles}
-                  >
-                    <SelectTrigger id="default-subtitle" className="w-full">
-                      <SelectValue placeholder="Select subtitle" />
-                    </SelectTrigger>
-                    <SelectContent className="w-[var(--radix-select-trigger-width)]">
-                      {files.subtitles.map((file) => (
-                        <SelectItem key={file.id} value={file.id}>
-                          {file.filename}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </>
           )}
+
+          {/* Default Subtitle */}
+          <FileTypeCombobox
+            label="Default Subtitle"
+            description="The subtitle track that loads by default."
+            icon={FileText}
+            files={files.subtitles}
+            selectedId={primarySubtitleId}
+            onSelect={setPrimarySubtitleId}
+            onUploadComplete={handleUploadComplete}
+            itemId={item.id}
+            fileType="subtitle"
+            disabled={!hasDriveConnection}
+          />
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter>
           <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
             Cancel
           </Button>

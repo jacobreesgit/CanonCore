@@ -15,6 +15,7 @@ import {
   deleteItem,
   reorderItems,
 } from "@/lib/item-actions";
+import { getMediaIconType } from "@/lib/item-utils";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
@@ -61,21 +62,20 @@ const mockItem = (overrides: {
   ...overrides,
   description: overrides.description ?? null,
   type: "FOLDER" as const,
-  sftpPath: null,
-  mimeType: null,
-  size: null,
-  checksum: null,
+  // Google Drive fields
+  driveFileId: null,
+  driveModifiedAt: null,
+  driveThumbnailUrl: null,
   syncStatus: "SYNCED" as const,
-  lastSyncedAt: null,
-  sftpModifiedAt: null,
-  connectionId: null,
+  syncError: null,
+  driveConnectionId: null,
   createdAt: new Date(),
   updatedAt: new Date(),
   // Include files array with fileType and isPrimary for fileCounts support
   files: overrides.artworkId
     ? [{ id: overrides.artworkId, fileType: "ARTWORK", isPrimary: true }]
     : [],
-  connection: null,
+  driveConnection: null,
 });
 
 describe("getItems", () => {
@@ -124,10 +124,16 @@ describe("getItems", () => {
       orderBy: { order: "asc" },
       include: {
         files: {
-          select: { id: true, fileType: true, isPrimary: true },
+          select: {
+            id: true,
+            fileType: true,
+            isPrimary: true,
+            filename: true,
+            mimeType: true,
+          },
         },
-        connection: {
-          select: { name: true },
+        driveConnection: {
+          select: { id: true },
         },
       },
     });
@@ -155,10 +161,16 @@ describe("getItems", () => {
       orderBy: { order: "asc" },
       include: {
         files: {
-          select: { id: true, fileType: true, isPrimary: true },
+          select: {
+            id: true,
+            fileType: true,
+            isPrimary: true,
+            filename: true,
+            mimeType: true,
+          },
         },
-        connection: {
-          select: { name: true },
+        driveConnection: {
+          select: { id: true },
         },
       },
     });
@@ -190,11 +202,15 @@ describe("getAllItems", () => {
           userId: "user-123",
           createdAt: new Date(),
           updatedAt: new Date(),
-          sftpPath: null,
-          sftpModifiedAt: null,
-          connectionId: null,
+          // Google Drive fields
+          driveFileId: null,
+          driveModifiedAt: null,
+          driveThumbnailUrl: null,
+          syncStatus: "SYNCED" as const,
+          syncError: null,
+          driveConnectionId: null,
           files: [],
-          connection: null,
+          driveConnection: null,
         })) as never
       );
 
@@ -252,11 +268,15 @@ describe("getDescendants", () => {
         userId: "user-123",
         createdAt: new Date(),
         updatedAt: new Date(),
-        sftpPath: null,
-        sftpModifiedAt: null,
-        connectionId: null,
+        // Google Drive fields
+        driveFileId: null,
+        driveModifiedAt: null,
+        driveThumbnailUrl: null,
+        syncStatus: "SYNCED" as const,
+        syncError: null,
+        driveConnectionId: null,
         files: [],
-        connection: null,
+        driveConnection: null,
       })) as never
     );
 
@@ -726,5 +746,69 @@ describe("reorderItems", () => {
 
     expect(result.success).toBe(true);
     expect(prisma.$transaction).toHaveBeenCalled();
+  });
+});
+
+describe("getMediaIconType", () => {
+  it("returns null for empty array", () => {
+    expect(getMediaIconType([])).toBe(null);
+  });
+
+  it("returns 'music' for all audio files", () => {
+    const files = [
+      { mimeType: "audio/mpeg" },
+      { mimeType: "audio/mp3" },
+      { mimeType: "audio/wav" },
+    ];
+    expect(getMediaIconType(files)).toBe("music");
+  });
+
+  it("returns 'film' for all video files", () => {
+    const files = [
+      { mimeType: "video/mp4" },
+      { mimeType: "video/webm" },
+      { mimeType: "video/mkv" },
+    ];
+    expect(getMediaIconType(files)).toBe("film");
+  });
+
+  it("returns 'mixed' when both audio and video files exist", () => {
+    const files = [{ mimeType: "audio/mpeg" }, { mimeType: "video/mp4" }];
+    expect(getMediaIconType(files)).toBe("mixed");
+  });
+
+  it("treats null mimeType as video (default)", () => {
+    const files = [{ mimeType: null }];
+    expect(getMediaIconType(files)).toBe("film");
+  });
+
+  it("treats unknown mimeType as video (default)", () => {
+    const files = [{ mimeType: "application/octet-stream" }];
+    expect(getMediaIconType(files)).toBe("film");
+  });
+
+  it("returns 'mixed' when audio and null mimeType files exist", () => {
+    const files = [{ mimeType: "audio/mpeg" }, { mimeType: null }];
+    expect(getMediaIconType(files)).toBe("mixed");
+  });
+
+  it("handles single audio file", () => {
+    expect(getMediaIconType([{ mimeType: "audio/flac" }])).toBe("music");
+  });
+
+  it("handles single video file", () => {
+    expect(getMediaIconType([{ mimeType: "video/x-matroska" }])).toBe("film");
+  });
+
+  it("returns 'mixed' early when both types detected", () => {
+    // This tests the early exit optimization - with many files,
+    // it should return as soon as both types are found
+    const files = [
+      { mimeType: "audio/mpeg" },
+      { mimeType: "video/mp4" },
+      { mimeType: "audio/wav" },
+      { mimeType: "video/webm" },
+    ];
+    expect(getMediaIconType(files)).toBe("mixed");
   });
 });
