@@ -10,9 +10,20 @@ export class SettingsPage {
 
   /**
    * Opens Settings dialog from the nav user menu.
+   * Handles mobile sidebar being collapsed.
    */
   async openFromNavUser(): Promise<void> {
-    await this.page.getByTestId("my-items-user-menu").click();
+    const userMenu = this.page.getByTestId("my-items-user-menu");
+    const sidebarTrigger = this.page.getByTestId("sidebar-trigger");
+
+    // On mobile, sidebar is collapsed - need to open it first
+    const isUserMenuVisible = await userMenu.isVisible();
+    if (!isUserMenuVisible) {
+      await sidebarTrigger.click();
+      await userMenu.waitFor({ state: "visible", timeout: 5000 });
+    }
+
+    await userMenu.click();
     await this.page.getByTestId("my-items-settings-button").click();
     await this.page.getByRole("dialog").waitFor({ state: "visible" });
   }

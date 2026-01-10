@@ -7,9 +7,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { forgotPassword } from "@/lib/auth-actions";
 
 /**
@@ -43,36 +43,30 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <section className="bg-background">
-      <div className="flex min-h-screen flex-col items-center justify-between gap-20 py-16 lg:flex-row lg:py-0">
-        <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-8">
-          <div className="flex flex-col items-center gap-2">
-            <Image
-              src="/logo.png"
-              alt="Canoncore"
-              width={80}
-              height={80}
-              priority
+    <section className="bg-muted h-screen">
+      <div className="flex h-full items-center justify-center">
+        <div className="flex flex-col items-center gap-6 lg:justify-start">
+          {/* Logo */}
+          <Link href="/">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/black.png"
+              alt="CanonCore"
+              className="h-10 dark:invert"
             />
-            <div className="space-y-2 text-center">
-              <h1 className="text-foreground text-3xl font-medium tracking-tighter md:text-4xl">
-                Reset your password
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                Enter your email address and we&apos;ll send you a link to reset
-                your password.
-              </p>
-            </div>
-          </div>
+          </Link>
 
           {message ? (
-            <div className="w-full max-w-lg space-y-4">
+            <div className="border-muted bg-background flex w-full max-w-sm min-w-sm flex-col items-center gap-y-4 rounded-md border px-6 py-8 shadow-md">
+              <h1 className="text-xl font-semibold">Check your email</h1>
+
               <div
                 data-testid="forgot-password-success-message"
-                className="rounded-md bg-green-500/10 px-4 py-3 text-center text-sm text-green-600"
+                className="w-full rounded-md bg-green-500/10 px-4 py-3 text-center text-sm text-green-600"
               >
                 {message}
               </div>
+
               <Button
                 asChild
                 variant="outline"
@@ -83,24 +77,38 @@ export default function ForgotPasswordPage() {
               </Button>
             </div>
           ) : (
-            <form onSubmit={onSubmit} className="w-full max-w-lg space-y-4">
+            <form
+              onSubmit={onSubmit}
+              className="border-muted bg-background flex w-full max-w-sm min-w-sm flex-col items-center gap-y-4 rounded-md border px-6 py-8 shadow-md"
+            >
+              <h1 className="text-xl font-semibold">Reset your password</h1>
+              <p className="text-muted-foreground text-center text-sm">
+                Enter your email address and we&apos;ll send you a link to reset
+                your password.
+              </p>
+
               {error && (
                 <div
                   data-testid="forgot-password-error-message"
-                  className="bg-destructive/10 text-destructive rounded-md px-4 py-3 text-center text-sm"
+                  className="bg-destructive/10 text-destructive w-full rounded-md px-4 py-3 text-center text-sm"
                 >
                   {error}
                 </div>
               )}
 
-              <Input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                data-testid="forgot-password-email-input"
-              />
+              <div className="flex w-full flex-col gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Email"
+                  className="text-sm"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  data-testid="forgot-password-email-input"
+                />
+              </div>
 
               <Button
                 type="submit"
@@ -121,17 +129,6 @@ export default function ForgotPasswordPage() {
               </Button>
             </form>
           )}
-        </div>
-        <div className="bg-muted relative hidden h-screen w-[40%] overflow-hidden lg:block">
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="size-full object-cover"
-            src="/auth-bg.mp4"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20" />
         </div>
       </div>
     </section>

@@ -28,6 +28,18 @@ interface SortableGridItemProps extends Omit<GridItemProps, "handleProps"> {
   childCount?: number;
 }
 
+/**
+ * Draggable grid item wrapper with dnd-kit sortable integration.
+ * Wraps GridItem with context menu and drag handle.
+ *
+ * @param id - Unique item identifier
+ * @param name - Item display name
+ * @param onSettings - Callback to open settings dialog
+ * @param onDelete - Callback to delete the item
+ * @param artworkId - Artwork file ID for thumbnail
+ * @param fileCounts - File counts by type
+ * @param childCount - Number of child items
+ */
 export function SortableGridItem({
   id,
   name,
