@@ -9,10 +9,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { signUp } from "@/lib/auth-actions";
 
 /**
@@ -73,64 +73,74 @@ export default function SignUpPage() {
   };
 
   return (
-    <section className="bg-background">
-      <div className="flex min-h-screen flex-col items-center justify-between gap-20 py-16 lg:flex-row lg:py-0">
-        <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-8">
-          <div className="flex flex-col items-center gap-2">
-            <Image
-              src="/logo.png"
-              alt="Canoncore"
-              width={80}
-              height={80}
-              priority
+    <section className="bg-muted h-screen">
+      <div className="flex h-full items-center justify-center">
+        <div className="flex flex-col items-center gap-6 lg:justify-start">
+          {/* Logo */}
+          <Link href="/">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/black.png"
+              alt="CanonCore"
+              className="h-10 dark:invert"
             />
-            <div className="space-y-2 text-center">
-              <h1 className="text-foreground text-3xl font-medium tracking-tighter md:text-4xl">
-                Create your free account
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                Build your own universe of content
-              </p>
-            </div>
-          </div>
+          </Link>
 
-          <form onSubmit={onSubmit} className="w-full max-w-lg space-y-4">
+          <form
+            onSubmit={onSubmit}
+            className="border-muted bg-background flex w-full max-w-sm min-w-sm flex-col items-center gap-y-4 rounded-md border px-6 py-8 shadow-md"
+          >
+            <h1 className="text-xl font-semibold">Create your account</h1>
+
             {error && (
               <div
                 data-testid="sign-up-error-message"
-                className="bg-destructive/10 text-destructive rounded-md px-4 py-3 text-center text-sm"
+                className="bg-destructive/10 text-destructive w-full rounded-md px-4 py-3 text-center text-sm"
               >
                 {error}
               </div>
             )}
 
-            <Input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              data-testid="sign-up-email-input"
-            />
+            <div className="flex w-full flex-col gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="Email"
+                className="text-sm"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                data-testid="sign-up-email-input"
+              />
+            </div>
 
-            <Input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              data-testid="sign-up-password-input"
-            />
+            <div className="flex w-full flex-col gap-2">
+              <Label htmlFor="password">Password</Label>
+              <PasswordInput
+                id="password"
+                placeholder="Password"
+                className="text-sm"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+                data-testid="sign-up-password-input"
+              />
+            </div>
 
-            <Input
-              type="password"
-              placeholder="Confirm password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              data-testid="sign-up-confirm-password-input"
-            />
+            <div className="flex w-full flex-col gap-2">
+              <Label htmlFor="confirmPassword">Confirm password</Label>
+              <PasswordInput
+                id="confirmPassword"
+                placeholder="Confirm password"
+                className="text-sm"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                data-testid="sign-up-confirm-password-input"
+              />
+            </div>
 
             <Button
               type="submit"
@@ -142,33 +152,16 @@ export default function SignUpPage() {
             </Button>
           </form>
 
-          <div className="flex w-full max-w-lg items-center gap-6">
-            <Separator className="flex-1" />
-            <span className="font-medium tracking-tight">or</span>
-            <Separator className="flex-1" />
-          </div>
-
-          <p className="mb-20 w-full text-center text-sm font-medium tracking-tight">
-            Already have an account?{" "}
+          <div className="text-muted-foreground flex justify-center gap-1 text-sm">
+            <p>Already have an account?</p>
             <Link
               href="/sign-in"
-              className="cursor-pointer underline"
+              className="text-primary font-medium hover:underline"
               data-testid="sign-up-sign-in-link"
             >
               Sign in
             </Link>
-          </p>
-        </div>
-        <div className="bg-muted relative hidden h-screen w-[40%] overflow-hidden lg:block">
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="size-full object-cover"
-            src="/auth-bg.mp4"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20" />
+          </div>
         </div>
       </div>
     </section>

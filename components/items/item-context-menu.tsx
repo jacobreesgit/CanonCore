@@ -36,6 +36,17 @@ interface ItemContextMenuProps {
   onAddChild?(name: string, description?: string): Promise<string | undefined>;
 }
 
+/**
+ * Context menu wrapper for item actions.
+ * Provides right-click menu with settings, delete, and add child options.
+ *
+ * @param children - The element to wrap with context menu
+ * @param itemName - Name of the item for delete confirmation
+ * @param showAddChild - Whether to show "Add Child Item" option
+ * @param onSettings - Callback to open settings dialog
+ * @param onDelete - Callback to delete the item
+ * @param onAddChild - Callback to create a child item
+ */
 export function ItemContextMenu({
   children,
   itemName,
