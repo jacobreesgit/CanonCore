@@ -8,7 +8,7 @@
 "use client";
 
 import { useState } from "react";
-import { Play, Film, ImageIcon, FileText, Folder } from "lucide-react";
+import { Play, Film, ImageIcon, FileText, Folder, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Shader1 } from "@/components/shader1";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,10 @@ interface ItemHeroProps {
   subtitleCount?: number;
   /** Number of child items. */
   childCount?: number;
+  /** Primary media filename for "now playing" display. */
+  primaryMediaName?: string | null;
+  /** Primary media MIME type (e.g., "audio/mpeg", "video/mp4") for icon display. */
+  primaryMediaMimeType?: string | null;
   /** Callback when play button clicked. */
   onPlay?: () => void;
   /** Additional CSS classes. */
@@ -58,10 +62,16 @@ export function ItemHero({
   artworkCount = 0,
   subtitleCount = 0,
   childCount = 0,
+  primaryMediaName,
+  primaryMediaMimeType,
   onPlay,
   className,
 }: ItemHeroProps) {
   const [imageError, setImageError] = useState(false);
+
+  // Determine if primary media is audio (show Music icon) or video (show Film icon)
+  const isAudio = primaryMediaMimeType?.startsWith("audio/") ?? false;
+  const MediaIcon = isAudio ? Music : Film;
 
   // Determine background source: backgroundUrl takes precedence over artworkId
   const backgroundSrc =
@@ -72,8 +82,8 @@ export function ItemHero({
     <section
       data-testid="item-hero"
       className={cn(
-        // CTA16-inspired height and centering
-        "relative flex min-h-[320px] items-center justify-center overflow-hidden rounded-xl",
+        // CTA16-inspired height and centering - hybrid approach: never smaller than 240px, scales to 30% of dynamic viewport
+        "relative flex min-h-[max(240px,30dvh)] items-center justify-center overflow-hidden rounded-xl",
         // Background image styles (only when showing image, not shader)
         shouldShowBackground &&
           "bg-black/80 bg-cover bg-center bg-no-repeat before:absolute before:inset-0 before:z-10 before:bg-black/50",
@@ -131,7 +141,7 @@ export function ItemHero({
         >
           {mediaCount > 0 && (
             <span className="flex items-center gap-1.5">
-              <Film className="size-4" />
+              <MediaIcon className="size-4" />
               {mediaCount} media file{mediaCount !== 1 ? "s" : ""}
             </span>
           )}
@@ -155,17 +165,20 @@ export function ItemHero({
           )}
         </div>
 
-        {/* Play button */}
+        {/* Play button with primary media name in label */}
         {hasMedia && onPlay && (
           <Button
             size="lg"
             variant="glass"
             onClick={onPlay}
-            className="gap-2"
+            className="max-w-xs gap-2"
             data-testid="item-hero-play"
           >
-            <Play className="size-5" />
-            {hasProgress ? "Resume" : "Play"}
+            <Play className="size-5 shrink-0" />
+            <span className="truncate">
+              {hasProgress ? "Resume" : "Play"}
+              {primaryMediaName && ` ${primaryMediaName}`}
+            </span>
           </Button>
         )}
       </div>

@@ -36,8 +36,6 @@ interface SortableGridProps {
   /** Opens the settings dialog for an item */
   onOpenSettings?(id: string): void;
   onDeleteItem?(id: string): Promise<void>;
-  /** Whether to show connection badges on items. Defaults to true. Not used in edit mode. */
-  showConnectionBadge?: boolean;
 }
 
 export function SortableGrid({
@@ -46,7 +44,6 @@ export function SortableGrid({
   onItemClick,
   onOpenSettings,
   onDeleteItem,
-  showConnectionBadge: _showConnectionBadge, // eslint-disable-line @typescript-eslint/no-unused-vars
 }: SortableGridProps) {
   const [items, setItems] = useState(defaultItems);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
@@ -118,7 +115,6 @@ export function SortableGrid({
                 onOpenSettings ? () => onOpenSettings(item.id) : undefined
               }
               onDelete={onDeleteItem ? () => onDeleteItem(item.id) : undefined}
-              sftpPath={item.sftpPath}
               artworkId={item.artworkId}
               fileCounts={item.fileCounts}
               childCount={item.childCount}

@@ -23,15 +23,15 @@ const envSchema = z.object({
   UPSTASH_REDIS_REST_URL: z.string().url(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1),
 
-  // SFTP
+  // Encryption (for sensitive data like OAuth tokens)
   ENCRYPTION_KEY: z.string().min(1, "ENCRYPTION_KEY is required"),
 
   // Testing (optional)
   BYPASS_RATE_LIMIT: z.string().optional(),
 
-  // Seeding (optional - only needed for seed script)
-  SEED_PASSWORD: z.string().optional(),
-  ALLOW_SEEDING: z.string().optional(),
+  // Google Drive (optional - only needed for Drive integration)
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
 });
 
 /**

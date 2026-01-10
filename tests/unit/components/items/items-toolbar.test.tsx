@@ -14,6 +14,11 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: mockRefresh }),
 }));
 
+// Mock auth to avoid next-auth module resolution issues
+vi.mock("@/lib/auth", () => ({
+  auth: vi.fn().mockResolvedValue({ user: { id: "test-user" } }),
+}));
+
 // Mock server actions
 vi.mock("@/lib/item-actions", () => ({
   updateItem: vi.fn().mockResolvedValue({ success: true }),
@@ -24,29 +29,6 @@ vi.mock("@/lib/item-file-actions", () => ({
     success: true,
     data: { media: [], artwork: [], subtitles: [] },
   }),
-}));
-
-// Mock sftp components
-vi.mock("@/components/sftp", () => ({
-  SyncButton: ({ connectionId }: { connectionId: string }) => (
-    <button data-testid="sync-connection-button">
-      Sync Connection ({connectionId})
-    </button>
-  ),
-  SyncAllButton: ({ connectionCount }: { connectionCount: number }) => (
-    <button data-testid="sync-all-button">Sync All ({connectionCount})</button>
-  ),
-  ItemSyncButton: ({
-    itemId,
-    itemName,
-  }: {
-    itemId: string;
-    itemName: string;
-  }) => (
-    <button data-testid="item-sync-button">
-      Sync {itemName} ({itemId})
-    </button>
-  ),
 }));
 
 // Mock sonner toast
@@ -79,15 +61,14 @@ describe("ItemsToolbar", () => {
       expect(document.body).toBeDefined();
     });
 
-    it("should not render Add/Edit/View controls when hasItems is false", () => {
+    it("should disable Add/Edit/View controls when hasItems is false", () => {
       render(<ItemsToolbar {...defaultProps} />);
 
+      // Controls are rendered but disabled
+      expect(screen.getByRole("button", { name: /add item/i })).toBeDisabled();
       expect(
-        screen.queryByRole("button", { name: /add item/i })
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: /edit/i })
-      ).not.toBeInTheDocument();
+        screen.getByRole("button", { name: /enter edit mode/i })
+      ).toBeDisabled();
     });
 
     it("should render Add/Edit/View controls when hasItems is true", () => {
@@ -107,7 +88,7 @@ describe("ItemsToolbar", () => {
         screen.getByRole("button", { name: /add item/i })
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: /edit items/i })
+        screen.getByRole("button", { name: /enter edit mode/i })
       ).toBeInTheDocument();
     });
   });
@@ -171,92 +152,6 @@ describe("ItemsToolbar", () => {
     });
   });
 
-  describe("Sync buttons", () => {
-    it("should render ItemSyncButton when item is SFTP connected", () => {
-      render(
-        <ItemsToolbar
-          {...defaultProps}
-          item={mockItem}
-          isSftpConnected={true}
-        />
-      );
-
-      expect(screen.getByTestId("item-sync-button")).toBeInTheDocument();
-    });
-
-    it("should not render ItemSyncButton when not SFTP connected", () => {
-      render(
-        <ItemsToolbar
-          {...defaultProps}
-          item={mockItem}
-          isSftpConnected={false}
-        />
-      );
-
-      expect(screen.queryByTestId("item-sync-button")).not.toBeInTheDocument();
-    });
-
-    it("should render SyncAllButton when connections exist and no filter selected", () => {
-      const connections = [
-        { id: "conn-1", name: "Server 1" },
-        { id: "conn-2", name: "Server 2" },
-      ];
-      const onConnectionChange = vi.fn();
-
-      render(
-        <ItemsToolbar
-          {...defaultProps}
-          connections={connections}
-          selectedConnectionId={null}
-          onConnectionChange={onConnectionChange}
-        />
-      );
-
-      expect(screen.getByTestId("sync-all-button")).toBeInTheDocument();
-      expect(
-        screen.queryByTestId("sync-connection-button")
-      ).not.toBeInTheDocument();
-    });
-
-    it("should render SyncButton when filtered to specific connection", () => {
-      const connections = [
-        { id: "conn-1", name: "Server 1" },
-        { id: "conn-2", name: "Server 2" },
-      ];
-      const onConnectionChange = vi.fn();
-
-      render(
-        <ItemsToolbar
-          {...defaultProps}
-          connections={connections}
-          selectedConnectionId="conn-1"
-          onConnectionChange={onConnectionChange}
-        />
-      );
-
-      expect(screen.getByTestId("sync-connection-button")).toBeInTheDocument();
-      expect(screen.queryByTestId("sync-all-button")).not.toBeInTheDocument();
-    });
-
-    it("should auto-select single connection", () => {
-      const connections = [{ id: "conn-1", name: "Server 1" }];
-      const onConnectionChange = vi.fn();
-
-      render(
-        <ItemsToolbar
-          {...defaultProps}
-          connections={connections}
-          selectedConnectionId={null}
-          onConnectionChange={onConnectionChange}
-        />
-      );
-
-      // With single connection, should show SyncButton (auto-selected), not SyncAllButton
-      expect(screen.getByTestId("sync-connection-button")).toBeInTheDocument();
-      expect(screen.queryByTestId("sync-all-button")).not.toBeInTheDocument();
-    });
-  });
-
   describe("Add Item button", () => {
     it("should call onAddItem when Add Item clicked", async () => {
       const user = userEvent.setup();
@@ -290,7 +185,9 @@ describe("ItemsToolbar", () => {
         />
       );
 
-      await user.click(screen.getByRole("button", { name: /edit items/i }));
+      await user.click(
+        screen.getByRole("button", { name: /enter edit mode/i })
+      );
       expect(onEditToggle).toHaveBeenCalledTimes(1);
     });
 
@@ -305,7 +202,7 @@ describe("ItemsToolbar", () => {
       );
 
       expect(
-        screen.getByRole("button", { name: /done editing/i })
+        screen.getByRole("button", { name: /exit edit mode/i })
       ).toBeInTheDocument();
     });
   });

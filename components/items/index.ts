@@ -1,7 +1,6 @@
 export { AddItemDialog } from "./add-item-dialog";
-export { ConnectionFilter } from "./connection-filter";
 export { EditModeToggle } from "./edit-mode-toggle";
-export { FilteredItemsView } from "./filtered-items-view";
+export { FileTypeCombobox } from "./file-type-combobox";
 export { ItemContextMenu } from "./item-context-menu";
 export { ItemDetailClient } from "./item-detail-client";
 export { ItemHero } from "./item-hero";
@@ -9,4 +8,5 @@ export { ItemSettingsDialog } from "./item-settings-dialog";
 export { ItemStats } from "./item-stats";
 export { ItemsToolbar } from "./items-toolbar";
 export { ItemsView } from "./items-view";
+export { SyncBadge, SyncIcon } from "./sync-badge";
 export { ViewToggle, useStoredViewMode } from "./view-toggle";

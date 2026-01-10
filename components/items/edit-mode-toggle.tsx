@@ -14,13 +14,13 @@ interface EditModeToggleProps {
   isEditing: boolean;
   /** Callback to toggle edit mode. */
   onToggle(): void;
-  /** If true, the toggle is hidden (e.g., when no items). */
+  /** If true, the toggle is disabled (e.g., when no items). */
   disabled?: boolean;
 }
 
 /**
  * Button to toggle between view and edit modes.
- * Shows "Edit" in view mode, "Done" in edit mode.
+ * Shows "Edit Mode" in view mode, "View Mode" in edit mode.
  *
  * @param props - Toggle properties
  */
@@ -29,27 +29,24 @@ export function EditModeToggle({
   onToggle,
   disabled = false,
 }: EditModeToggleProps) {
-  if (disabled) {
-    return null;
-  }
-
   return (
     <Button
       variant="outline"
       size="sm"
       onClick={onToggle}
-      aria-label={isEditing ? "Done editing" : "Edit items"}
+      disabled={disabled}
+      aria-label={isEditing ? "Exit edit mode" : "Enter edit mode"}
       className="gap-1.5"
     >
       {isEditing ? (
         <>
           <Check className="size-4" />
-          Done
+          View Mode
         </>
       ) : (
         <>
           <Pencil className="size-4" />
-          Edit
+          Edit Mode
         </>
       )}
     </Button>

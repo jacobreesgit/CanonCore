@@ -20,8 +20,6 @@ interface SortableGridItemProps extends Omit<GridItemProps, "handleProps"> {
   /** Opens the item settings dialog */
   onSettings?(): void;
   onDelete?(): Promise<void>;
-  /** SFTP path if linked to remote server. */
-  sftpPath?: string | null;
   /** Artwork file ID for thumbnail display. */
   artworkId?: string | null;
   /** File counts by type for display. */
@@ -35,7 +33,6 @@ export function SortableGridItem({
   name,
   onSettings,
   onDelete,
-  sftpPath,
   artworkId,
   fileCounts,
   childCount,
@@ -72,7 +69,6 @@ export function SortableGridItem({
           ...attributes,
           ...listeners,
         }}
-        sftpPath={sftpPath}
         artworkId={artworkId}
         fileCounts={fileCounts}
         childCount={childCount}

@@ -1,6 +1,6 @@
 {
   "name": "canoncore",
-  "version": "0.28.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "build": "next build",
@@ -21,27 +21,21 @@
     "test:watch": "vitest --config tests/unit/vitest.config.ts",
     "test:coverage": "vitest run --coverage --config tests/unit/vitest.config.ts",
     "test:unit": "vitest run --config tests/unit/vitest.config.ts",
-    "test:integration": "vitest run --config tests/integration/vitest.config.ts",
-    "db:seed": "npx prisma db seed",
-    "db:clear-seed": "npx tsx prisma/clear-seed.ts",
-    "db:reset": "npx prisma migrate reset",
-    "db:check-seed": "npx tsx scripts/check-seed-items.ts"
-  },
-  "prisma": {
-    "seed": "npx tsx prisma/seed.ts"
+    "test:integration": "vitest run --config tests/integration/vitest.config.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@prisma/adapter-pg": "^7.2.0",
+    "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-collapsible": "^1.1.12",
     "@radix-ui/react-context-menu": "^2.2.16",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-label": "^2.1.8",
-    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-popover": "^1.1.15",
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tooltip": "^1.2.8",
@@ -52,6 +46,7 @@
     "@vercel/analytics": "1.3.1",
     "@vidstack/react": "^1.12.13",
     "bcryptjs": "^3.0.3",
+    "bottleneck": "^2.19.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -60,6 +55,7 @@
     "fumadocs-core": "^16.4.1",
     "fumadocs-mdx": "^14.2.3",
     "fumadocs-ui": "^16.4.1",
+    "googleapis": "^170.0.0",
     "lucide-react": "^0.454.0",
     "next": "16.1.1",
     "next-auth": "5.0.0-beta.30",
@@ -70,7 +66,6 @@
     "resend": "^6.6.0",
     "sharp": "^0.34.5",
     "sonner": "^2.0.7",
-    "ssh2-sftp-client": "^12.0.1",
     "tailwind-merge": "^2.5.5",
     "three": "^0.182.0",
     "zod": "^4.2.1"
@@ -88,9 +83,9 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/ssh2-sftp-client": "^9.0.6",
     "@types/three": "^0.182.0",
     "@vitest/coverage-v8": "^4.0.16",
+    "baseline-browser-mapping": "^2.9.14",
     "eslint": "^9.39.2",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",

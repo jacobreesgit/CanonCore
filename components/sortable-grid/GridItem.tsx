@@ -1,7 +1,7 @@
 /**
  * Grid item card component with Feature222 aesthetic.
  * Full background image with dark overlay, content overlaid at bottom.
- * Displays name, description, file counts, and connection badges.
+ * Displays name, description, and file counts.
  */
 
 "use client";
@@ -9,10 +9,10 @@
 import React, { forwardRef, HTMLAttributes, useState } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
-import { Folder, GripVertical } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Folder, GripVertical, Play } from "lucide-react";
 import { ItemStats } from "@/components/items/item-stats";
-import type { FileCounts } from "@/lib/types";
+import { SyncIcon } from "@/components/items/sync-badge";
+import type { FileCounts, SyncStatus } from "@/lib/types";
 
 export interface GridItemProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -26,8 +26,6 @@ export interface GridItemProps extends Omit<
   isOverlay?: boolean;
   handleProps?: Record<string, unknown>;
   onClick?(): void;
-  /** SFTP path if linked to remote server. */
-  sftpPath?: string | null;
   /** Artwork file ID for thumbnail display. */
   artworkId?: string | null;
   /** Whether to show artwork thumbnail. Defaults to true. */
@@ -36,14 +34,18 @@ export interface GridItemProps extends Omit<
   showDescription?: boolean;
   /** Whether to show file/child counts. Defaults to true. Hidden in edit mode. */
   showCounts?: boolean;
-  /** Connection name for badge display. */
-  connectionName?: string | null;
-  /** Whether to show connection badge. Defaults to true. */
-  showConnectionBadge?: boolean;
   /** File counts by type for display. */
   fileCounts?: FileCounts;
   /** Number of child items (subfolders). */
   childCount?: number;
+  /** Sync status for displaying indicator. */
+  syncStatus?: SyncStatus;
+  /** Sync error message if status is ERROR. */
+  syncError?: string | null;
+  /** Primary media filename for "now playing" display. */
+  primaryMediaName?: string | null;
+  /** Media icon type: film (all video), music (all audio), mixed (both). */
+  mediaIconType?: "film" | "music" | "mixed" | null;
 }
 
 export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
@@ -62,11 +64,12 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       showArtwork = true,
       showDescription = true,
       showCounts = true,
-      connectionName,
-      showConnectionBadge = true,
       fileCounts,
       childCount,
-      sftpPath: _sftpPath, // eslint-disable-line @typescript-eslint/no-unused-vars
+      syncStatus,
+      syncError: _syncError, // eslint-disable-line @typescript-eslint/no-unused-vars
+      primaryMediaName,
+      mediaIconType,
       ...props
     },
     ref
@@ -75,11 +78,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
     const shouldShowArtwork = showArtwork && artworkId && !imageError;
     const shouldShowDescription = showDescription && description;
     const shouldShowCounts = showCounts;
-
-    // Build accessible label
-    const ariaLabel = connectionName
-      ? `${name}, synced from ${connectionName}`
-      : name;
+    const shouldShowPrimaryMedia = primaryMediaName && !handleProps; // Hide in edit mode
 
     return (
       <div
@@ -88,7 +87,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
         onClick={onClick}
         role="button"
         tabIndex={0}
-        aria-label={ariaLabel}
+        aria-label={name}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
@@ -179,22 +178,17 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
           </div>
         )}
 
-        {/* Connection badge - top left */}
-        {connectionName && showConnectionBadge && (
-          <Badge
-            variant="secondary"
-            className="absolute top-3 left-3 z-20 text-xs"
-          >
-            {connectionName}
-          </Badge>
-        )}
-
         {/* Content overlay - bottom */}
         <div className="relative z-20 flex h-full flex-col justify-end p-4">
-          {/* Title */}
-          <h3 className="text-lg leading-tight font-semibold text-white drop-shadow-md md:text-xl">
-            {name}
-          </h3>
+          {/* Title with sync indicator */}
+          <div className="flex items-center gap-1.5">
+            <h3 className="truncate text-lg leading-tight font-semibold text-white drop-shadow-md md:text-xl">
+              {name}
+            </h3>
+            {syncStatus && syncStatus !== "SYNCED" && (
+              <SyncIcon syncStatus={syncStatus} className="flex-shrink-0" />
+            )}
+          </div>
 
           {/* Description */}
           {shouldShowDescription && (
@@ -203,12 +197,21 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
             </p>
           )}
 
+          {/* Primary media indicator - subtle inline display */}
+          {shouldShowPrimaryMedia && (
+            <span className="mt-1.5 flex items-center gap-1.5 text-sm text-white/60">
+              <Play className="size-3 shrink-0 fill-current opacity-70" />
+              <span className="truncate">{primaryMediaName}</span>
+            </span>
+          )}
+
           {/* Stats row */}
           {shouldShowCounts && (
             <div className="mt-3" data-testid="grid-item-stats">
               <ItemStats
                 childCount={childCount}
                 fileCounts={fileCounts}
+                mediaIconType={mediaIconType}
                 variant="overlay"
                 showEmpty
               />

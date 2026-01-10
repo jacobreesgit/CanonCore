@@ -13,11 +13,11 @@ This release adds a loading spinner that prevents the jarring view mode flash wh
 
 New full-page loading state that hides all content until ready:
 
-| Component | Loading Behavior |
-|-----------|------------------|
-| ItemsView (My Items page) | Hydration + artwork preload + 300ms min |
-| ItemDetailClient (Item detail page) | Hydration + 300ms min |
-| FilteredItemsView Suspense | Consistent spinner fallback |
+| Component                           | Loading Behavior                        |
+| ----------------------------------- | --------------------------------------- |
+| ItemsView (My Items page)           | Hydration + artwork preload + 300ms min |
+| ItemDetailClient (Item detail page) | Hydration + 300ms min                   |
+| FilteredItemsView Suspense          | Consistent spinner fallback             |
 
 ### Image Preloading Utility
 
@@ -51,11 +51,11 @@ This prevents jarring flash when loading completes very quickly (< 100ms).
 
 ### UI Updates
 
-| Change | Description |
-|--------|-------------|
-| Full-page spinner | Hides toolbar, hero, and items during load |
-| flex-1 containers | Page containers grow to fill space for centered spinner |
-| Consistent styling | Same spinner across all item pages |
+| Change             | Description                                             |
+| ------------------ | ------------------------------------------------------- |
+| Full-page spinner  | Hides toolbar, hero, and items during load              |
+| flex-1 containers  | Page containers grow to fill space for centered spinner |
+| Consistent styling | Same spinner across all item pages                      |
 
 ## Files Changed
 
@@ -85,19 +85,19 @@ package.json                                      # Version bump to 0.28.0
 
 ## Test Results
 
-| Suite | Result |
-|-------|--------|
-| Unit tests | 499 passed |
-| Integration tests | 71 passed |
-| E2E tests | ~293 passed |
+| Suite             | Result      |
+| ----------------- | ----------- |
+| Unit tests        | 499 passed  |
+| Integration tests | 71 passed   |
+| E2E tests         | ~293 passed |
 
 ### New Tests
 
-| Test File | Tests | Coverage |
-|-----------|-------|----------|
-| items-view-loading.test.ts | 10 | preloadImages utility |
-| items-loading.spec.ts | 6 | Loading spinner E2E |
-| item-detail-client.test.ts | 12 | Updated with fake timers |
+| Test File                  | Tests | Coverage                 |
+| -------------------------- | ----- | ------------------------ |
+| items-view-loading.test.ts | 10    | preloadImages utility    |
+| items-loading.spec.ts      | 6     | Loading spinner E2E      |
+| item-detail-client.test.ts | 12    | Updated with fake timers |
 
 ## Deployment Steps
 

@@ -1,19 +1,99 @@
 /**
- * WebDAV streaming proxy route.
- * Proxies media files from WebDAV server with range request support.
+ * Media streaming endpoint with Range header support.
+ * Streams from Google Drive.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { decryptCredential } from "@/lib/crypto";
-import { buildWebDavUrl, isValidWebDavPath } from "@/lib/webdav-utils";
-
-/** Timeout for WebDAV requests (30 seconds) */
-const WEBDAV_TIMEOUT = 30000;
+import { getDriveClient, withRateLimit } from "@/lib/google-drive-client";
+import { getMimeTypeByExtension } from "@/lib/file-type-utils";
+import { logger } from "@/lib/logger";
 
 /**
- * Streams a file from WebDAV server to client.
+ * Parses HTTP Range header for partial content requests.
+ *
+ * @param range - The Range header value
+ * @param fileSize - Total file size in bytes
+ * @returns Parsed start and end positions, or null if invalid
+ */
+function parseRangeHeader(
+  range: string,
+  fileSize: number
+): { start: number; end: number } | null {
+  if (!range.startsWith("bytes=")) {
+    return null;
+  }
+
+  const rangeValue = range.slice(6);
+  const [startStr, endStr] = rangeValue.split("-");
+
+  const start = parseInt(startStr, 10);
+
+  if (isNaN(start) || start < 0 || start >= fileSize) {
+    return null;
+  }
+
+  let end: number;
+  if (endStr && endStr.length > 0) {
+    end = parseInt(endStr, 10);
+    if (isNaN(end) || end < start) {
+      return null;
+    }
+  } else {
+    // Default to 10MB chunks for streaming
+    end = Math.min(start + 10 * 1024 * 1024 - 1, fileSize - 1);
+  }
+
+  end = Math.min(end, fileSize - 1);
+
+  return { start, end };
+}
+
+/**
+ * Converts a Node.js readable stream to a Web ReadableStream.
+ * Handles race conditions where data events may fire after close/error.
+ *
+ * @param nodeStream - Node.js readable stream
+ * @returns Web ReadableStream of Uint8Array chunks
+ */
+function nodeStreamToWeb(
+  nodeStream: NodeJS.ReadableStream
+): ReadableStream<Uint8Array> {
+  let closed = false;
+
+  return new ReadableStream({
+    start(controller) {
+      nodeStream.on("data", (chunk: Buffer) => {
+        if (!closed) {
+          controller.enqueue(new Uint8Array(chunk));
+        }
+      });
+      nodeStream.on("end", () => {
+        if (!closed) {
+          closed = true;
+          controller.close();
+        }
+      });
+      nodeStream.on("error", (err: Error) => {
+        if (!closed) {
+          closed = true;
+          controller.error(err);
+        }
+      });
+    },
+    cancel() {
+      closed = true;
+      // Destroy the node stream if it supports it
+      if ("destroy" in nodeStream && typeof nodeStream.destroy === "function") {
+        nodeStream.destroy();
+      }
+    },
+  });
+}
+
+/**
+ * Streams a file from Google Drive to client.
  * Supports HTTP range requests for video seeking.
  */
 export async function GET(
@@ -29,13 +109,13 @@ export async function GET(
 
     const { fileId } = await params;
 
-    // Get ItemFile with its Item and Connection
+    // Get ItemFile with its Item and Drive connection
     const itemFile = await prisma.itemFile.findUnique({
       where: { id: fileId },
       include: {
         item: {
           include: {
-            connection: true,
+            driveConnection: true,
           },
         },
       },
@@ -50,124 +130,98 @@ export async function GET(
       return new NextResponse("Forbidden", { status: 403 });
     }
 
-    // Check WebDAV configuration
-    const connection = itemFile.item.connection;
-    if (!connection?.webdavUrl) {
-      return new NextResponse("Streaming not configured", { status: 501 });
+    // Require Google Drive connection and file ID
+    if (!itemFile.driveFileId || !itemFile.item.driveConnection) {
+      return new NextResponse("No storage connection for file", {
+        status: 404,
+      });
     }
 
-    // Validate path security
-    if (!isValidWebDavPath(itemFile.sftpPath)) {
-      console.error("[Stream] Invalid path detected:", itemFile.sftpPath);
-      return new NextResponse("Invalid file path", { status: 400 });
+    const driveConnection = itemFile.item.driveConnection;
+
+    if (driveConnection.needsReauth) {
+      return new NextResponse("Reconnect Google Drive", { status: 401 });
     }
-
-    // Build WebDAV URL
-    const webdavUrl = buildWebDavUrl(connection.webdavUrl, itemFile.sftpPath);
-
-    // Prepare headers for WebDAV request
-    const headers: HeadersInit = {};
-
-    // Add WebDAV authentication if configured
-    if (connection.webdavUsername && connection.encryptedWebdavPassword) {
-      const password = decryptCredential(connection.encryptedWebdavPassword);
-      const auth = Buffer.from(
-        `${connection.webdavUsername}:${password}`
-      ).toString("base64");
-      headers["Authorization"] = `Basic ${auth}`;
-    }
-
-    // Forward range header for video seeking
-    const rangeHeader = request.headers.get("Range");
-    if (rangeHeader) {
-      headers["Range"] = rangeHeader;
-    }
-
-    // Fetch from WebDAV server with timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), WEBDAV_TIMEOUT);
 
     try {
-      const response = await fetch(webdavUrl, {
-        method: "GET",
-        headers,
-        signal: controller.signal,
-      });
+      const drive = await getDriveClient(driveConnection);
+      const fileSize = Number(itemFile.size) || 0;
+      // Prioritize filename inference over database value (more reliable)
+      const inferredMimeType = getMimeTypeByExtension(itemFile.filename);
+      const mimeType =
+        inferredMimeType || itemFile.mimeType || "application/octet-stream";
 
-      clearTimeout(timeoutId);
+      const range = request.headers.get("range");
 
-      // Handle WebDAV errors
-      if (response.status === 401) {
-        console.error("[Stream] WebDAV authentication failed");
-        return new NextResponse("Streaming unavailable", { status: 502 });
-      }
+      // Handle Range request for seeking
+      // If fileSize unknown (0), skip range handling and stream full file
+      // This ensures playback works even before size is captured during sync
+      if (range && fileSize > 0) {
+        const parsed = parseRangeHeader(range, fileSize);
 
-      if (response.status === 404) {
-        console.error("[Stream] File not found on WebDAV:", webdavUrl);
-        return new NextResponse("File not found on server", { status: 404 });
-      }
+        if (!parsed) {
+          return new NextResponse("Invalid Range header", {
+            status: 416,
+            headers: {
+              "Content-Range": `bytes */${fileSize}`,
+            },
+          });
+        }
 
-      if (response.status >= 500) {
-        console.error("[Stream] WebDAV server error:", response.status);
-        return new NextResponse("Server error", {
-          status: 502,
-          headers: { "Retry-After": "10" },
+        const { start, end } = parsed;
+
+        const response = await withRateLimit(() =>
+          drive.files.get(
+            { fileId: itemFile.driveFileId!, alt: "media" },
+            {
+              responseType: "stream",
+              headers: { Range: `bytes=${start}-${end}` },
+            }
+          )
+        );
+
+        const webStream = nodeStreamToWeb(
+          response.data as unknown as NodeJS.ReadableStream
+        );
+
+        return new NextResponse(webStream, {
+          status: 206,
+          headers: {
+            "Content-Type": mimeType,
+            "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+            "Accept-Ranges": "bytes",
+            "Content-Length": String(end - start + 1),
+          },
         });
       }
 
-      if (!response.ok && response.status !== 206) {
-        console.error("[Stream] WebDAV error:", response.status);
-        return new NextResponse("Failed to stream file", { status: 502 });
+      // Full file download (no Range header or unknown size)
+      const response = await withRateLimit(() =>
+        drive.files.get(
+          { fileId: itemFile.driveFileId!, alt: "media" },
+          { responseType: "stream" }
+        )
+      );
+
+      const webStream = nodeStreamToWeb(
+        response.data as unknown as NodeJS.ReadableStream
+      );
+
+      const headers: Record<string, string> = {
+        "Content-Type": mimeType,
+        "Accept-Ranges": "bytes",
+      };
+      if (fileSize > 0) {
+        headers["Content-Length"] = String(fileSize);
       }
 
-      // Build response headers
-      const responseHeaders = new Headers();
-
-      // Forward content headers
-      const contentType = response.headers.get("Content-Type");
-      if (contentType) {
-        responseHeaders.set("Content-Type", contentType);
-      } else if (itemFile.mimeType) {
-        responseHeaders.set("Content-Type", itemFile.mimeType);
-      }
-
-      const contentLength = response.headers.get("Content-Length");
-      if (contentLength) {
-        responseHeaders.set("Content-Length", contentLength);
-      }
-
-      const contentRange = response.headers.get("Content-Range");
-      if (contentRange) {
-        responseHeaders.set("Content-Range", contentRange);
-      }
-
-      const acceptRanges = response.headers.get("Accept-Ranges");
-      if (acceptRanges) {
-        responseHeaders.set("Accept-Ranges", acceptRanges);
-      } else {
-        responseHeaders.set("Accept-Ranges", "bytes");
-      }
-
-      // Set cache headers
-      responseHeaders.set("Cache-Control", "private, max-age=3600");
-
-      // Stream the response body
-      return new NextResponse(response.body, {
-        status: response.status,
-        headers: responseHeaders,
-      });
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-
-      if (fetchError instanceof Error && fetchError.name === "AbortError") {
-        console.error("[Stream] Request timeout");
-        return new NextResponse("Gateway timeout", { status: 504 });
-      }
-
-      throw fetchError;
+      return new NextResponse(webStream, { headers });
+    } catch (error) {
+      logger.error({ err: error }, "[Stream] Google Drive error");
+      return new NextResponse("Failed to stream file", { status: 500 });
     }
   } catch (error) {
-    console.error("[Stream] Error:", error);
+    logger.error({ err: error }, "[Stream] Error");
     return new NextResponse("Internal server error", { status: 500 });
   }
 }

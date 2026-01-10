@@ -14,7 +14,6 @@ const mockItems: TreeItems = [
     order: 0,
     depth: 0,
     parentId: null,
-    sftpPath: null,
     artworkId: "artwork-1",
     children: [
       {
@@ -23,7 +22,6 @@ const mockItems: TreeItems = [
         order: 0,
         depth: 1,
         parentId: "1",
-        sftpPath: null,
         artworkId: null,
         children: [],
       },

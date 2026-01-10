@@ -46,7 +46,7 @@ describe("ItemFile integration", () => {
       data: {
         itemId: testItemId,
         filename: "video.mp4",
-        sftpPath: "/media/video.mp4",
+        driveFileId: "drive-media-video-mp4",
         fileType: FileType.MEDIA,
         mimeType: "video/mp4",
         size: BigInt(1024000),
@@ -55,7 +55,7 @@ describe("ItemFile integration", () => {
 
     expect(file.id).toBeDefined();
     expect(file.filename).toBe("video.mp4");
-    expect(file.sftpPath).toBe("/media/video.mp4");
+    expect(file.driveFileId).toBe("drive-media-video-mp4");
     expect(file.fileType).toBe(FileType.MEDIA);
     expect(file.mimeType).toBe("video/mp4");
     expect(file.size).toBe(BigInt(1024000));
@@ -69,7 +69,7 @@ describe("ItemFile integration", () => {
       data: {
         itemId: testItemId,
         filename: "cover.jpg",
-        sftpPath: "/media/cover.jpg",
+        driveFileId: "drive-media-cover-jpg",
         fileType: FileType.ARTWORK,
         mimeType: "image/jpeg",
         size: BigInt(50000),
@@ -89,7 +89,7 @@ describe("ItemFile integration", () => {
       data: {
         itemId: testItemId,
         filename: "subtitles.srt",
-        sftpPath: "/media/subtitles.srt",
+        driveFileId: "drive-media-subtitles-srt",
         fileType: FileType.SUBTITLE,
         mimeType: "application/x-subrip",
       },
@@ -103,13 +103,13 @@ describe("ItemFile integration", () => {
     await prisma.itemFile.delete({ where: { id: file.id } });
   });
 
-  it("enforces unique constraint on itemId + sftpPath", async () => {
+  it("enforces unique constraint on itemId + driveFileId", async () => {
     // Create first file
     await prisma.itemFile.create({
       data: {
         itemId: testItemId,
         filename: "unique-test.mp4",
-        sftpPath: "/media/unique-test.mp4",
+        driveFileId: "drive-unique-test-mp4",
         fileType: FileType.MEDIA,
       },
     });
@@ -120,7 +120,7 @@ describe("ItemFile integration", () => {
         data: {
           itemId: testItemId,
           filename: "unique-test-duplicate.mp4",
-          sftpPath: "/media/unique-test.mp4", // Same path
+          driveFileId: "drive-unique-test-mp4", // Same drive file
           fileType: FileType.MEDIA,
         },
       })
@@ -128,7 +128,7 @@ describe("ItemFile integration", () => {
 
     // Clean up
     await prisma.itemFile.deleteMany({
-      where: { itemId: testItemId, sftpPath: "/media/unique-test.mp4" },
+      where: { itemId: testItemId, driveFileId: "drive-unique-test-mp4" },
     });
   });
 
@@ -146,7 +146,7 @@ describe("ItemFile integration", () => {
       data: {
         itemId: item.id,
         filename: "file1.mp4",
-        sftpPath: "/cascade/file1.mp4",
+        driveFileId: "drive-cascade-file1-mp4",
         fileType: FileType.MEDIA,
       },
     });
@@ -155,7 +155,7 @@ describe("ItemFile integration", () => {
       data: {
         itemId: item.id,
         filename: "file2.jpg",
-        sftpPath: "/cascade/file2.jpg",
+        driveFileId: "drive-cascade-file2-jpg",
         fileType: FileType.ARTWORK,
       },
     });
@@ -186,7 +186,7 @@ describe("ItemFile integration", () => {
       data: {
         itemId: testItemId,
         filename: "movie.mkv",
-        sftpPath: "/media/movie.mkv",
+        driveFileId: "drive-media-movie-mkv",
         fileType: FileType.MEDIA,
         mimeType: "video/x-matroska",
         playbackPosition: 1234.5,
@@ -217,13 +217,13 @@ describe("ItemFile integration", () => {
         {
           itemId: testItemId,
           filename: "relation-test.mp4",
-          sftpPath: "/relation/video.mp4",
+          driveFileId: "drive-relation-video-mp4",
           fileType: FileType.MEDIA,
         },
         {
           itemId: testItemId,
           filename: "relation-cover.jpg",
-          sftpPath: "/relation/cover.jpg",
+          driveFileId: "drive-relation-cover-jpg",
           fileType: FileType.ARTWORK,
         },
       ],
@@ -239,10 +239,10 @@ describe("ItemFile integration", () => {
     expect(itemWithFiles?.files.length).toBeGreaterThanOrEqual(2);
 
     const mediaFile = itemWithFiles?.files.find(
-      (f) => f.sftpPath === "/relation/video.mp4"
+      (f) => f.driveFileId === "drive-relation-video-mp4"
     );
     const artworkFile = itemWithFiles?.files.find(
-      (f) => f.sftpPath === "/relation/cover.jpg"
+      (f) => f.driveFileId === "drive-relation-cover-jpg"
     );
 
     expect(mediaFile?.fileType).toBe(FileType.MEDIA);
@@ -251,28 +251,11 @@ describe("ItemFile integration", () => {
     // Clean up
     await prisma.itemFile.deleteMany({
       where: {
-        sftpPath: { in: ["/relation/video.mp4", "/relation/cover.jpg"] },
+        driveFileId: {
+          in: ["drive-relation-video-mp4", "drive-relation-cover-jpg"],
+        },
       },
     });
-  });
-
-  it("stores sftpModifiedAt timestamp", async () => {
-    const modifiedAt = new Date("2025-12-01T12:00:00Z");
-
-    const file = await prisma.itemFile.create({
-      data: {
-        itemId: testItemId,
-        filename: "timestamped.mp4",
-        sftpPath: "/media/timestamped.mp4",
-        fileType: FileType.MEDIA,
-        sftpModifiedAt: modifiedAt,
-      },
-    });
-
-    expect(file.sftpModifiedAt).toEqual(modifiedAt);
-
-    // Clean up
-    await prisma.itemFile.delete({ where: { id: file.id } });
   });
 
   describe("isPrimary functionality", () => {
@@ -281,7 +264,7 @@ describe("ItemFile integration", () => {
         data: {
           itemId: testItemId,
           filename: "default-primary.mp4",
-          sftpPath: "/primary/default.mp4",
+          driveFileId: "drive-primary-default-mp4",
           fileType: FileType.MEDIA,
         },
       });
@@ -297,7 +280,7 @@ describe("ItemFile integration", () => {
         data: {
           itemId: testItemId,
           filename: "explicit-primary.mp4",
-          sftpPath: "/primary/explicit.mp4",
+          driveFileId: "drive-primary-explicit-mp4",
           fileType: FileType.MEDIA,
           isPrimary: true,
         },
@@ -315,7 +298,7 @@ describe("ItemFile integration", () => {
         data: {
           itemId: testItemId,
           filename: "primary-1.jpg",
-          sftpPath: "/primary/artwork1.jpg",
+          driveFileId: "drive-primary-artwork1-jpg",
           fileType: FileType.ARTWORK,
           isPrimary: true,
         },
@@ -325,7 +308,7 @@ describe("ItemFile integration", () => {
         data: {
           itemId: testItemId,
           filename: "primary-2.jpg",
-          sftpPath: "/primary/artwork2.jpg",
+          driveFileId: "drive-primary-artwork2-jpg",
           fileType: FileType.ARTWORK,
           isPrimary: false,
         },
@@ -361,8 +344,8 @@ describe("ItemFile integration", () => {
       // Clean up
       await prisma.itemFile.deleteMany({
         where: {
-          sftpPath: {
-            in: ["/primary/artwork1.jpg", "/primary/artwork2.jpg"],
+          driveFileId: {
+            in: ["drive-primary-artwork1-jpg", "drive-primary-artwork2-jpg"],
           },
         },
       });
@@ -374,7 +357,7 @@ describe("ItemFile integration", () => {
         data: {
           itemId: testItemId,
           filename: "primary-media.mp4",
-          sftpPath: "/primary/types-media.mp4",
+          driveFileId: "drive-primary-types-media-mp4",
           fileType: FileType.MEDIA,
           isPrimary: true,
         },
@@ -384,7 +367,7 @@ describe("ItemFile integration", () => {
         data: {
           itemId: testItemId,
           filename: "primary-artwork.jpg",
-          sftpPath: "/primary/types-artwork.jpg",
+          driveFileId: "drive-primary-types-artwork-jpg",
           fileType: FileType.ARTWORK,
           isPrimary: true,
         },
@@ -417,8 +400,11 @@ describe("ItemFile integration", () => {
       // Clean up
       await prisma.itemFile.deleteMany({
         where: {
-          sftpPath: {
-            in: ["/primary/types-media.mp4", "/primary/types-artwork.jpg"],
+          driveFileId: {
+            in: [
+              "drive-primary-types-media-mp4",
+              "drive-primary-types-artwork-jpg",
+            ],
           },
         },
       });
@@ -431,21 +417,21 @@ describe("ItemFile integration", () => {
           {
             itemId: testItemId,
             filename: "z-file.mp4",
-            sftpPath: "/primary/order-z.mp4",
+            driveFileId: "drive-primary-order-z-mp4",
             fileType: FileType.MEDIA,
             isPrimary: false,
           },
           {
             itemId: testItemId,
             filename: "a-file.mp4",
-            sftpPath: "/primary/order-a.mp4",
+            driveFileId: "drive-primary-order-a-mp4",
             fileType: FileType.MEDIA,
             isPrimary: false,
           },
           {
             itemId: testItemId,
             filename: "m-primary.mp4",
-            sftpPath: "/primary/order-m.mp4",
+            driveFileId: "drive-primary-order-m-mp4",
             fileType: FileType.MEDIA,
             isPrimary: true,
           },
@@ -456,7 +442,7 @@ describe("ItemFile integration", () => {
       const files = await prisma.itemFile.findMany({
         where: {
           itemId: testItemId,
-          sftpPath: { startsWith: "/primary/order-" },
+          driveFileId: { startsWith: "drive-primary-order-" },
         },
         orderBy: [{ isPrimary: "desc" }, { filename: "asc" }],
       });
@@ -468,7 +454,7 @@ describe("ItemFile integration", () => {
 
       // Clean up
       await prisma.itemFile.deleteMany({
-        where: { sftpPath: { startsWith: "/primary/order-" } },
+        where: { driveFileId: { startsWith: "drive-primary-order-" } },
       });
     });
   });

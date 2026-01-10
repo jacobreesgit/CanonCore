@@ -16,7 +16,6 @@ import { Spinner } from "@/components/ui/spinner";
 import { updatePlaybackPosition } from "@/lib/item-file-actions";
 import type { ItemWithArtwork, SerializedItemFile } from "@/lib/types";
 import { getItems } from "@/lib/item-actions";
-import { getItemsByConnection } from "@/lib/sftp-actions";
 
 interface ItemDetailClientProps {
   /** Current item being viewed. */
@@ -24,13 +23,9 @@ interface ItemDetailClientProps {
     id: string;
     name: string;
     description: string | null;
-    connectionId: string | null;
-    sftpPath: string | null;
   };
   /** Child items to display. */
   childItems: ItemWithArtwork[];
-  /** Parent connection info for context. */
-  connection?: { id: string; name: string } | null;
   /** Optional files for display. */
   files?: {
     media: SerializedItemFile[];
@@ -39,6 +34,8 @@ interface ItemDetailClientProps {
   };
   /** Primary artwork ID for hero background. */
   artworkId?: string | null;
+  /** Whether user has Google Drive connected (shows Upload button). */
+  hasDriveConnection?: boolean;
 }
 
 /**
@@ -49,9 +46,9 @@ interface ItemDetailClientProps {
 export function ItemDetailClient({
   item,
   childItems: initialChildItems,
-  connection,
   files,
   artworkId,
+  hasDriveConnection = false,
 }: ItemDetailClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -79,7 +76,6 @@ export function ItemDetailClient({
 
   const isLoading = !isHydrated || !minDurationMet;
 
-  const isSftpConnected = Boolean(item.connectionId && item.sftpPath);
   const hasChildren = childItems.length > 0;
   const hasMedia = files && files.media.length > 0;
 
@@ -116,15 +112,13 @@ export function ItemDetailClient({
    */
   const refetchItems = useCallback(async () => {
     startTransition(async () => {
-      const result = item.connectionId
-        ? await getItemsByConnection(item.connectionId, item.id)
-        : await getItems(item.id);
+      const result = await getItems(item.id);
 
       if (result.success && result.data) {
         setChildItems(result.data);
       }
     });
-  }, [item.id, item.connectionId]);
+  }, [item.id]);
 
   /**
    * Handles sync completion - refresh items and page.
@@ -166,7 +160,7 @@ export function ItemDetailClient({
       description: item.description,
     },
     childCount: childItems.length,
-    isSftpConnected,
+    hasDriveConnection,
   };
 
   // Show full-page spinner until hydrated
@@ -182,10 +176,9 @@ export function ItemDetailClient({
   }
 
   return (
-    <div className={`flex flex-col gap-6 ${isPending ? "opacity-70" : ""}`}>
-      {/* Toolbar - above hero */}
-      <ItemsToolbar {...toolbarProps} />
-
+    <div
+      className={`flex flex-col gap-6 ${!hasChildren ? "flex-1" : ""} ${isPending ? "opacity-70" : ""}`}
+    >
       {/* Hero banner */}
       <ItemHero
         name={item.name}
@@ -197,21 +190,24 @@ export function ItemDetailClient({
         artworkCount={files?.artwork.length ?? 0}
         subtitleCount={files?.subtitles.length ?? 0}
         childCount={childItems.length}
+        primaryMediaName={primaryMedia?.filename ?? null}
+        primaryMediaMimeType={primaryMedia?.mimeType ?? null}
         onPlay={handlePlay}
       />
+
+      {/* Toolbar - below hero */}
+      <ItemsToolbar {...toolbarProps} />
 
       {/* Children section - always shown (may be empty state) */}
       <ItemsView
         items={childItems}
         parentId={item.id}
-        connectionId={item.connectionId}
         hideToolbar
         isEditing={isEditing}
         onEditingChange={setIsEditing}
         addItemOpen={addItemOpen}
         onAddItemOpenChange={setAddItemOpen}
-        currentConnection={connection}
-        onSyncComplete={refetchItems}
+        hasDriveConnection={hasDriveConnection}
       />
 
       {/* Media player overlay */}
@@ -219,6 +215,9 @@ export function ItemDetailClient({
         <MediaOverlay
           file={playingFile}
           subtitles={files.subtitles}
+          posterUrl={
+            heroArtworkId ? `/api/artwork/${heroArtworkId}` : undefined
+          }
           onClose={() => setPlayingFile(null)}
           onPositionUpdate={handlePositionUpdate}
         />
