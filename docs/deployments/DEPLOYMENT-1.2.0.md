@@ -13,11 +13,11 @@ This release fixes sync feedback accuracy, adds auto-sync for existing Google Dr
 
 Previously, clicking **Sync** after renaming an item locally showed "Sync complete: 1 updated" even when nothing changed from Drive's perspective. The sync now compares current values with Drive values before counting updates.
 
-| Scenario                        | Before          | After                         |
-| ------------------------------- | --------------- | ----------------------------- |
-| Rename item locally, click Sync | "1 updated"     | "Sync complete" (no count)    |
-| External changes in Drive       | "1 updated"     | "1 updated" (accurate)        |
-| No changes anywhere             | "0 updated"     | "Sync complete" (cleaner)     |
+| Scenario                        | Before      | After                      |
+| ------------------------------- | ----------- | -------------------------- |
+| Rename item locally, click Sync | "1 updated" | "Sync complete" (no count) |
+| External changes in Drive       | "1 updated" | "1 updated" (accurate)     |
+| No changes anywhere             | "0 updated" | "Sync complete" (cleaner)  |
 
 ### Auto-sync existing folders on connect
 
@@ -82,6 +82,7 @@ docs/todo.md                           # Completed items removed
 ### Change detection in sync
 
 New `hasItemChanges()` function compares:
+
 - Item name
 - Parent ID
 - Thumbnail URL

@@ -27,18 +27,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PasswordInput } from "@/components/ui/password-input";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   updateProfile,
-  changePassword,
   uploadProfileImage,
   uploadHeroImage,
   removeProfileImage,
   removeHeroImage,
 } from "@/lib/user-actions";
 import { GoogleDriveSettingsSection } from "@/components/google-drive";
+import { ChangePasswordDialog } from "./change-password-dialog";
+import { ChangeEmailDialog } from "./change-email-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -91,10 +91,9 @@ export function SettingsDialog({
   const [name, setName] = useState(user.name ?? "");
   const [email, setEmail] = useState(user.email);
 
-  // Password state
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  // Modal state
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [changeEmailOpen, setChangeEmailOpen] = useState(false);
 
   // Image state
   const [profileImage, setProfileImage] = useState<File | null>(null);
@@ -125,9 +124,6 @@ export function SettingsDialog({
   useEffect(() => {
     setName(user.name ?? "");
     setEmail(user.email);
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
     setProfileImage(null);
     setHeroImage(null);
     setProfileImagePreview(null);
@@ -139,37 +135,18 @@ export function SettingsDialog({
   // Dirty state detection
   const isDirty = useMemo(() => {
     const nameChanged = name !== originalValues.name;
-    const emailChanged = email !== originalValues.email;
-    const passwordChanging =
-      newPassword.length > 0 || confirmPassword.length > 0;
     const profileImageChanging = profileImage !== null || removeProfile;
     const heroImageChanging = heroImage !== null || removeHero;
 
-    return (
-      nameChanged ||
-      emailChanged ||
-      passwordChanging ||
-      profileImageChanging ||
-      heroImageChanging
-    );
+    return nameChanged || profileImageChanging || heroImageChanging;
   }, [
     name,
-    email,
-    newPassword,
-    confirmPassword,
     profileImage,
     heroImage,
     removeProfile,
     removeHero,
     originalValues,
   ]);
-
-  // Check if password is required (email change or password change)
-  const isPasswordRequired = useMemo(() => {
-    const emailChanged = email !== originalValues.email;
-    const passwordChanging = newPassword.length > 0;
-    return emailChanged || passwordChanging;
-  }, [email, newPassword, originalValues.email]);
 
   /**
    * Handle profile image file selection.
@@ -235,9 +212,6 @@ export function SettingsDialog({
   const handleCancel = useCallback(() => {
     setName(originalValues.name);
     setEmail(originalValues.email);
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
     setProfileImage(null);
     setHeroImage(null);
     setProfileImagePreview(null);
@@ -251,43 +225,16 @@ export function SettingsDialog({
    * Saves all changes.
    */
   const handleSave = useCallback(async () => {
-    // Validation
-    if (isPasswordRequired && !currentPassword) {
-      toast.error("Current password required for email or password changes");
-      return;
-    }
-
-    if (newPassword && newPassword !== confirmPassword) {
-      toast.error("New passwords do not match");
-      return;
-    }
-
     setIsSaving(true);
     try {
       let hasError = false;
 
-      // Update profile (name/email)
+      // Update profile (name only - email handled by modal)
       const nameChanged = name !== originalValues.name;
-      const emailChanged = email !== originalValues.email;
 
-      if (nameChanged || emailChanged) {
+      if (nameChanged) {
         const result = await updateProfile({
-          name: nameChanged ? name : undefined,
-          email: emailChanged ? email : undefined,
-          currentPassword: emailChanged ? currentPassword : undefined,
-        });
-
-        if (!result.success) {
-          toast.error(result.error);
-          hasError = true;
-        }
-      }
-
-      // Change password
-      if (newPassword && !hasError) {
-        const result = await changePassword({
-          currentPassword,
-          newPassword,
+          name: name,
         });
 
         if (!result.success) {
@@ -344,16 +291,11 @@ export function SettingsDialog({
     }
   }, [
     name,
-    email,
-    currentPassword,
-    newPassword,
-    confirmPassword,
     profileImage,
     heroImage,
     removeProfile,
     removeHero,
     originalValues,
-    isPasswordRequired,
     onProfileChange,
     onOpenChange,
   ]);
@@ -493,20 +435,21 @@ export function SettingsDialog({
               >
                 <Mail className="text-primary size-3.5" />
               </div>
-              <Label htmlFor="settings-email" className="text-sm font-medium">
-                Email
-              </Label>
+              <Label className="text-sm font-medium">Email</Label>
             </div>
-            <Input
-              id="settings-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="h-10"
-            />
-            <p className="text-muted-foreground text-xs">
-              Requires current password to change.
-            </p>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground truncate text-sm">
+                {email}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setChangeEmailOpen(true)}
+              >
+                Change Email
+              </Button>
+            </div>
           </div>
 
           <Separator />
@@ -586,7 +529,7 @@ export function SettingsDialog({
           <Separator />
 
           {/* Password Section */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center gap-2">
               <div
                 className={cn(
@@ -596,64 +539,19 @@ export function SettingsDialog({
               >
                 <Lock className="text-primary size-3.5" />
               </div>
-              <Label className="text-sm font-medium">Change Password</Label>
+              <Label className="text-sm font-medium">Password</Label>
             </div>
-
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <Label
-                  htmlFor="settings-current-password"
-                  className="text-muted-foreground text-xs"
-                >
-                  Current Password
-                  {isPasswordRequired && (
-                    <span className="text-destructive ml-1">*</span>
-                  )}
-                </Label>
-                <PasswordInput
-                  id="settings-current-password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="h-10"
-                  placeholder={isPasswordRequired ? "Required" : "Optional"}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label
-                  htmlFor="settings-new-password"
-                  className="text-muted-foreground text-xs"
-                >
-                  New Password
-                </Label>
-                <PasswordInput
-                  id="settings-new-password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="h-10"
-                  placeholder="Leave blank to keep current"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label
-                  htmlFor="settings-confirm-password"
-                  className="text-muted-foreground text-xs"
-                >
-                  Confirm New Password
-                </Label>
-                <PasswordInput
-                  id="settings-confirm-password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="h-10"
-                  placeholder="Repeat new password"
-                />
-              </div>
-            </div>
-
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setChangePasswordOpen(true)}
+              className="w-full"
+            >
+              <Lock className="mr-2 size-4" />
+              Change Password
+            </Button>
             <p className="text-muted-foreground text-xs">
-              8+ characters with uppercase, lowercase, and number.
+              Update your password to keep your account secure.
             </p>
           </div>
         </div>
@@ -674,6 +572,22 @@ export function SettingsDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Change Password Modal */}
+      <ChangePasswordDialog
+        open={changePasswordOpen}
+        onOpenChange={setChangePasswordOpen}
+      />
+
+      {/* Change Email Modal */}
+      <ChangeEmailDialog
+        open={changeEmailOpen}
+        onOpenChange={setChangeEmailOpen}
+        currentEmail={email}
+        onEmailChange={async () => {
+          await onProfileChange?.();
+        }}
+      />
     </Dialog>
   );
 }

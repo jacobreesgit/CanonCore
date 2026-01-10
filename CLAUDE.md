@@ -89,6 +89,9 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── media-overlay.tsx         # Full-screen media viewer
 │   │   └── media-player.tsx          # Vidstack video player wrapper
 │   ├── profile/                      # User profile components
+│   │   ├── change-email-dialog.tsx   # Modal for email changes with password verification
+│   │   ├── change-password-dialog.tsx # Modal for password changes with validation
+│   │   ├── index.ts                  # Barrel export for profile components
 │   │   └── settings-dialog.tsx       # Settings dialog with profile and Google Drive
 │   ├── sortable-grid/                # Grid view with drag-drop
 │   │   ├── Grid.tsx                  # View-only grid (no dnd-kit)
@@ -184,7 +187,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 1.2.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 1.3.0)
     └── plans/                        # Design documents
 ```
 
@@ -286,7 +289,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 524 unit tests covering auth, items, Google Drive, crypto, API routes, media components
+- 553 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals
 
 ### E2E Testing
 
