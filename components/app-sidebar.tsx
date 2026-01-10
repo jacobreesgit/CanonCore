@@ -8,7 +8,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Cable, Folder, HelpCircle } from "lucide-react";
+import { Folder, HelpCircle } from "lucide-react";
 import type { Root as PageTreeRoot } from "fumadocs-core/page-tree";
 import type { SidebarUser } from "@/lib/auth";
 
@@ -32,6 +32,17 @@ import {
 type SidebarContext = "my-items" | "docs" | "home";
 
 /**
+ * Google Drive connection data for settings dialog.
+ */
+interface GoogleDriveConnection {
+  email: string;
+  isActive: boolean;
+  needsReauth: boolean;
+  lastSyncAt: Date | null;
+  lastError: string | null;
+}
+
+/**
  * Props for AppSidebar component.
  */
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
@@ -41,6 +52,8 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   context: SidebarContext;
   /** Fumadocs page tree (required when context="docs") */
   docsTree?: PageTreeRoot;
+  /** Google Drive connection (null if not connected) */
+  driveConnection?: GoogleDriveConnection | null;
 }
 
 /** Main navigation items for authenticated users. */
@@ -59,11 +72,13 @@ const myItemsNavMain = [
  * @param user - Current user data (null for guests)
  * @param context - Determines which navigation items to display
  * @param docsTree - Fumadocs page tree for docs context
+ * @param driveConnection - Google Drive connection or null
  */
 export function AppSidebar({
   user,
   context,
   docsTree,
+  driveConnection,
   ...props
 }: AppSidebarProps) {
   const pathname = usePathname();
@@ -73,9 +88,6 @@ export function AppSidebar({
 
   // Active state for footer nav items
   // Pattern: exact match OR prefix with trailing slash (prevents false positives)
-  const isConnectionsActive =
-    pathname === "/my-items/connections" ||
-    pathname.startsWith("/my-items/connections/");
   const isDocsActive = pathname === "/docs" || pathname.startsWith("/docs/");
 
   return (
@@ -113,18 +125,6 @@ export function AppSidebar({
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                tooltip="Connections"
-                isActive={isConnectionsActive}
-              >
-                <Link href="/my-items/connections">
-                  <Cable />
-                  <span>Connections</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
                 tooltip="Get Help"
                 isActive={isDocsActive}
               >
@@ -137,7 +137,11 @@ export function AppSidebar({
           </SidebarMenu>
         )}
 
-        {user ? <NavUser user={user} /> : <AuthButtons />}
+        {user ? (
+          <NavUser user={user} driveConnection={driveConnection} />
+        ) : (
+          <AuthButtons />
+        )}
       </SidebarFooter>
     </Sidebar>
   );

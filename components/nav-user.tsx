@@ -25,17 +25,24 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { ProfileSettingsDialog } from "@/components/profile/profile-settings-dialog";
+import { SettingsDialog } from "@/components/profile/settings-dialog";
 
 /**
- * Renders user menu in sidebar footer with dropdown for account actions.
- * Handles sign-out and navigation to account settings.
- *
- * @param user - User data including name, email, and optional avatar
+ * Google Drive connection data for settings dialog.
  */
-export function NavUser({
-  user,
-}: {
+interface GoogleDriveConnection {
+  email: string;
+  isActive: boolean;
+  needsReauth: boolean;
+  lastSyncAt: Date | null;
+  lastError: string | null;
+}
+
+/**
+ * Props for NavUser component.
+ */
+interface NavUserProps {
+  /** User data including name, email, and optional avatar */
   user: {
     name: string;
     email: string;
@@ -43,7 +50,18 @@ export function NavUser({
     hasImage?: boolean;
     hasHeroImage?: boolean;
   };
-}) {
+  /** Google Drive connection (null if not connected) */
+  driveConnection?: GoogleDriveConnection | null;
+}
+
+/**
+ * Renders user menu in sidebar footer with dropdown for account actions.
+ * Handles sign-out and navigation to account settings.
+ *
+ * @param user - User data including name, email, and optional avatar
+ * @param driveConnection - Google Drive connection or null
+ */
+export function NavUser({ user, driveConnection }: NavUserProps) {
   const { isMobile } = useSidebar();
   const router = useRouter();
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
@@ -108,10 +126,10 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => setProfileDialogOpen(true)}
-              data-testid="my-items-profile-settings-button"
+              data-testid="my-items-settings-button"
             >
               <Settings />
-              Profile Settings
+              Settings
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={handleSignOut}
@@ -123,8 +141,8 @@ export function NavUser({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Profile Settings Dialog */}
-        <ProfileSettingsDialog
+        {/* Settings Dialog */}
+        <SettingsDialog
           open={profileDialogOpen}
           onOpenChange={setProfileDialogOpen}
           user={{
@@ -133,6 +151,7 @@ export function NavUser({
             hasImage: user.hasImage ?? false,
             hasHeroImage: user.hasHeroImage ?? false,
           }}
+          googleDriveConnection={driveConnection ?? null}
           onProfileChange={handleProfileChange}
         />
       </SidebarMenuItem>

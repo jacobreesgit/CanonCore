@@ -18,7 +18,7 @@ export default async function LandingPage() {
   const isAuthenticated = !!session?.user;
 
   return (
-    <section className="relative flex h-full w-full items-center justify-center overflow-hidden">
+    <section className="relative flex flex-1 items-center justify-center overflow-hidden">
       {/* Background Pattern */}
       <div
         className="absolute inset-0 z-0"
@@ -44,7 +44,7 @@ export default async function LandingPage() {
               <p className="text-muted-foreground mx-auto max-w-2xl font-light tracking-tighter text-pretty md:text-lg lg:text-xl">
                 Your all-in-one platform for managing and streaming your media
                 library. Organize movies, TV shows, and music with powerful item
-                hierarchies and SFTP sync.
+                hierarchies and Google Drive integration.
               </p>
             </div>
 

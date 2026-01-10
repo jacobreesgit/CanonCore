@@ -70,7 +70,7 @@ export class ErrorBoundary extends Component<
 
       // Default fallback UI
       return (
-        <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 p-8">
+        <div className="flex min-h-[400px] flex-1 flex-col items-center justify-center gap-4 p-8">
           <div className="bg-destructive/10 flex size-16 items-center justify-center rounded-full">
             <AlertTriangle className="text-destructive size-8" />
           </div>

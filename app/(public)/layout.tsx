@@ -22,6 +22,7 @@ export default async function PublicLayout({
 
   return (
     <SidebarProvider
+      className="h-svh overflow-hidden"
       style={
         {
           "--sidebar-width": "calc(var(--spacing) * 72)",
@@ -30,12 +31,10 @@ export default async function PublicLayout({
       }
     >
       <AppSidebar variant="inset" user={user} context="home" />
-      <SidebarInset>
-        <SiteHeader title="Home" titleHref="/" />
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">
-            {children}
-          </div>
+      <SidebarInset className="overflow-hidden">
+        <div className="@container/main flex min-h-full flex-col overflow-y-auto">
+          <SiteHeader title="Home" titleHref="/" />
+          {children}
         </div>
       </SidebarInset>
     </SidebarProvider>

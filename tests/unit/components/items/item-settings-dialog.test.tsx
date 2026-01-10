@@ -1,10 +1,10 @@
 /**
  * Unit tests for ItemSettingsDialog component.
- * Tests Select-based file selection with single atomic save.
+ * Tests FileTypeCombobox-based file selection with single atomic save.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ItemSettingsDialog } from "@/components/items/item-settings-dialog";
 import type { SerializedItemFile } from "@/lib/types";
@@ -14,6 +14,19 @@ import { toast } from "sonner";
 // Mock server actions
 vi.mock("@/lib/item-file-actions", () => ({
   updateItemSettings: vi.fn().mockResolvedValue({ success: true }),
+  getItemFiles: vi.fn().mockResolvedValue({
+    success: true,
+    data: { media: [], artwork: [], subtitles: [] },
+  }),
+}));
+
+vi.mock("@/lib/google-drive-actions", () => ({
+  createUploadSessions: vi
+    .fn()
+    .mockResolvedValue({ success: false, error: "Not connected" }),
+  confirmUpload: vi
+    .fn()
+    .mockResolvedValue({ success: false, error: "Not connected" }),
 }));
 
 vi.mock("sonner", () => ({
@@ -26,6 +39,7 @@ describe("ItemSettingsDialog", () => {
     onOpenChange: vi.fn(),
     item: { id: "item-1", name: "Test Item", description: null },
     files: { media: [], artwork: [], subtitles: [] },
+    hasDriveConnection: true,
   };
 
   beforeEach(() => {
@@ -37,11 +51,12 @@ describe("ItemSettingsDialog", () => {
     overrides: Partial<SerializedItemFile> & { id: string; filename: string }
   ): SerializedItemFile => ({
     itemId: "item-1",
-    sftpPath: `/${overrides.filename}`,
+    driveFileId: `drive-${overrides.id}`,
     fileType: "MEDIA" as const,
     mimeType: "video/mp4",
     size: null,
-    sftpModifiedAt: null,
+    syncStatus: "SYNCED",
+    syncError: null,
     isPrimary: false,
     isHero: false,
     playbackPosition: null,
@@ -51,155 +66,322 @@ describe("ItemSettingsDialog", () => {
     ...overrides,
   });
 
-  describe("Primary Media Select", () => {
-    it("should hide media section when no media files", () => {
+  describe("Dialog Rendering", () => {
+    it("should render dialog with title and description", () => {
       render(<ItemSettingsDialog {...defaultProps} />);
-      expect(screen.queryByLabelText(/primary media/i)).not.toBeInTheDocument();
+      expect(screen.getByText("Item Settings")).toBeInTheDocument();
+      expect(
+        screen.getByText(/Configure display preferences/i)
+      ).toBeInTheDocument();
     });
 
-    it("should show disabled select when 1 media file", () => {
-      const files = {
-        media: [
-          createMockFile({
-            id: "m1",
-            filename: "movie.mp4",
-            isPrimary: true,
-            size: 1024,
-            playbackDuration: 7200,
-          }),
-        ],
-        artwork: [],
-        subtitles: [],
-      };
-      render(<ItemSettingsDialog {...defaultProps} files={files} />);
-
-      const select = screen.getByRole("combobox", { name: /primary media/i });
-      expect(select).toBeDisabled();
+    it("should render name and description fields", () => {
+      render(<ItemSettingsDialog {...defaultProps} />);
+      expect(screen.getByLabelText(/name/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
     });
 
-    it("should show interactive select when 2+ media files", () => {
-      const files = {
-        media: [
-          createMockFile({
-            id: "m1",
-            filename: "movie.mp4",
-            isPrimary: true,
-            size: 1024,
-            playbackDuration: 7200,
-          }),
-          createMockFile({
-            id: "m2",
-            filename: "movie-hd.mkv",
-            isPrimary: false,
-            size: 2048,
-            playbackDuration: 7200,
-          }),
-        ],
-        artwork: [],
-        subtitles: [],
-      };
-      render(<ItemSettingsDialog {...defaultProps} files={files} />);
-
-      const select = screen.getByRole("combobox", { name: /primary media/i });
-      expect(select).not.toBeDisabled();
-    });
-
-    it("should enable Save button when selection changes", async () => {
-      const user = userEvent.setup();
-      const files = {
-        media: [
-          createMockFile({
-            id: "m1",
-            filename: "movie.mp4",
-            isPrimary: true,
-            size: 1024,
-          }),
-          createMockFile({
-            id: "m2",
-            filename: "movie-hd.mkv",
-            isPrimary: false,
-            size: 2048,
-          }),
-        ],
-        artwork: [],
-        subtitles: [],
-      };
-      render(<ItemSettingsDialog {...defaultProps} files={files} />);
-
-      // Save button should be disabled initially (no changes)
-      const saveButton = screen.getByRole("button", { name: /save changes/i });
-      expect(saveButton).toBeDisabled();
-
-      // Change selection
-      const select = screen.getByRole("combobox", { name: /primary media/i });
-      await user.click(select);
-      await user.click(screen.getByRole("option", { name: /movie-hd\.mkv/i }));
-
-      // Save button should now be enabled
-      expect(saveButton).not.toBeDisabled();
-    });
-
-    it("should call updateItemSettings when Save is clicked", async () => {
-      const user = userEvent.setup();
-      const files = {
-        media: [
-          createMockFile({ id: "m1", filename: "movie.mp4", isPrimary: true }),
-          createMockFile({
-            id: "m2",
-            filename: "movie-hd.mkv",
-            isPrimary: false,
-          }),
-        ],
-        artwork: [],
-        subtitles: [],
-      };
-      render(<ItemSettingsDialog {...defaultProps} files={files} />);
-
-      // Change selection
-      const select = screen.getByRole("combobox", { name: /primary media/i });
-      await user.click(select);
-      await user.click(screen.getByRole("option", { name: /movie-hd\.mkv/i }));
-
-      // Click Save
-      await user.click(screen.getByRole("button", { name: /save changes/i }));
-
-      expect(vi.mocked(updateItemSettings)).toHaveBeenCalledWith("item-1", {
-        primaryMediaId: "m2",
-      });
-    });
-
-    it("should show error toast when updateItemSettings fails", async () => {
-      vi.mocked(updateItemSettings).mockResolvedValueOnce({
-        success: false,
-        error: "Failed to update",
-      });
-      const user = userEvent.setup();
-      const files = {
-        media: [
-          createMockFile({ id: "m1", filename: "movie.mp4", isPrimary: true }),
-          createMockFile({
-            id: "m2",
-            filename: "movie-hd.mkv",
-            isPrimary: false,
-          }),
-        ],
-        artwork: [],
-        subtitles: [],
-      };
-      render(<ItemSettingsDialog {...defaultProps} files={files} />);
-
-      const select = screen.getByRole("combobox", { name: /primary media/i });
-      await user.click(select);
-      await user.click(screen.getByRole("option", { name: /movie-hd\.mkv/i }));
-      await user.click(screen.getByRole("button", { name: /save changes/i }));
-
-      expect(vi.mocked(toast.error)).toHaveBeenCalledWith("Failed to update");
+    it("should render file type sections", () => {
+      render(<ItemSettingsDialog {...defaultProps} />);
+      expect(screen.getByText("Primary Media")).toBeInTheDocument();
+      expect(screen.getByText("Primary Artwork")).toBeInTheDocument();
+      expect(screen.getByText("Default Subtitle")).toBeInTheDocument();
     });
   });
 
-  describe("Primary Artwork Select", () => {
-    it("should show artwork filenames in select options", async () => {
+  describe("Name and Description", () => {
+    it("should populate name field with item name", () => {
+      render(<ItemSettingsDialog {...defaultProps} />);
+      const nameInput = screen.getByLabelText(/name/i);
+      expect(nameInput).toHaveValue("Test Item");
+    });
+
+    it("should enable Save button when name changes", async () => {
       const user = userEvent.setup();
+      render(<ItemSettingsDialog {...defaultProps} />);
+
+      const saveButton = screen.getByRole("button", { name: /save changes/i });
+      expect(saveButton).toBeDisabled();
+
+      const nameInput = screen.getByLabelText(/name/i);
+      await user.clear(nameInput);
+      await user.type(nameInput, "New Name");
+
+      expect(saveButton).not.toBeDisabled();
+    });
+
+    it("should enable Save button when description changes", async () => {
+      const user = userEvent.setup();
+      render(<ItemSettingsDialog {...defaultProps} />);
+
+      const saveButton = screen.getByRole("button", { name: /save changes/i });
+      expect(saveButton).toBeDisabled();
+
+      const descInput = screen.getByLabelText(/description/i);
+      await user.type(descInput, "A new description");
+
+      expect(saveButton).not.toBeDisabled();
+    });
+
+    it("should show error toast when name is empty", async () => {
+      const user = userEvent.setup();
+      render(<ItemSettingsDialog {...defaultProps} />);
+
+      const nameInput = screen.getByLabelText(/name/i);
+      await user.clear(nameInput);
+
+      // Need to change something else to enable the button
+      const descInput = screen.getByLabelText(/description/i);
+      await user.type(descInput, "test");
+
+      await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith("Name is required");
+    });
+  });
+
+  describe("File Selection", () => {
+    it("should show selected media file in combobox trigger", () => {
+      const files = {
+        media: [
+          createMockFile({
+            id: "m1",
+            filename: "movie.mp4",
+            isPrimary: true,
+          }),
+        ],
+        artwork: [],
+        subtitles: [],
+      };
+      render(<ItemSettingsDialog {...defaultProps} files={files} />);
+
+      // Find the combobox trigger that shows the selected file
+      const mediaSection = screen
+        .getByText("Primary Media")
+        .closest("div")?.parentElement;
+      expect(mediaSection).toHaveTextContent("movie.mp4");
+    });
+
+    it("should show empty state when no files for a type", () => {
+      render(<ItemSettingsDialog {...defaultProps} />);
+
+      // The comboboxes should show placeholder text
+      const comboboxes = screen.getAllByRole("combobox");
+      expect(comboboxes.length).toBeGreaterThan(0);
+    });
+
+    it("should enable Save button when file selection changes", async () => {
+      // pointerEventsCheck: 0 bypasses JSDOM limitation with portal z-index
+      const user = userEvent.setup({ pointerEventsCheck: 0 });
+      const files = {
+        media: [
+          createMockFile({
+            id: "m1",
+            filename: "movie.mp4",
+            isPrimary: true,
+          }),
+          createMockFile({
+            id: "m2",
+            filename: "movie-hd.mkv",
+            isPrimary: false,
+          }),
+        ],
+        artwork: [],
+        subtitles: [],
+      };
+      render(<ItemSettingsDialog {...defaultProps} files={files} />);
+
+      const saveButton = screen.getByRole("button", { name: /save changes/i });
+      expect(saveButton).toBeDisabled();
+
+      // Find and click the media combobox
+      const mediaSection = screen
+        .getByText("Primary Media")
+        .closest("div")?.parentElement;
+      const combobox = within(mediaSection!).getByRole("combobox");
+      await user.click(combobox);
+
+      // Select the other option (rendered in portal to document.body)
+      const option = await screen.findByText("movie-hd.mkv");
+      await user.click(option);
+
+      expect(saveButton).not.toBeDisabled();
+    });
+  });
+
+  describe("Save Changes", () => {
+    it("should call updateItemSettings with changed name", async () => {
+      const user = userEvent.setup();
+      render(<ItemSettingsDialog {...defaultProps} />);
+
+      const nameInput = screen.getByLabelText(/name/i);
+      await user.clear(nameInput);
+      await user.type(nameInput, "Updated Name");
+
+      await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+      expect(vi.mocked(updateItemSettings)).toHaveBeenCalledWith("item-1", {
+        name: "Updated Name",
+      });
+    });
+
+    it("should call updateItemSettings with changed description", async () => {
+      const user = userEvent.setup();
+      render(<ItemSettingsDialog {...defaultProps} />);
+
+      const descInput = screen.getByLabelText(/description/i);
+      await user.type(descInput, "New description");
+
+      await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+      expect(vi.mocked(updateItemSettings)).toHaveBeenCalledWith("item-1", {
+        description: "New description",
+      });
+    });
+
+    it("should show success toast on successful save", async () => {
+      const user = userEvent.setup();
+      render(<ItemSettingsDialog {...defaultProps} />);
+
+      const nameInput = screen.getByLabelText(/name/i);
+      await user.clear(nameInput);
+      await user.type(nameInput, "New Name");
+
+      await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+      expect(vi.mocked(toast.success)).toHaveBeenCalledWith("Settings saved");
+    });
+
+    it("should show error toast when save fails", async () => {
+      vi.mocked(updateItemSettings).mockResolvedValueOnce({
+        success: false,
+        error: "Update failed",
+      });
+      const user = userEvent.setup();
+      render(<ItemSettingsDialog {...defaultProps} />);
+
+      const nameInput = screen.getByLabelText(/name/i);
+      await user.clear(nameInput);
+      await user.type(nameInput, "New Name");
+
+      await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith("Update failed");
+    });
+  });
+
+  describe("Cancel Button", () => {
+    it("should reset form to original values on cancel", async () => {
+      const user = userEvent.setup();
+      render(<ItemSettingsDialog {...defaultProps} />);
+
+      const nameInput = screen.getByLabelText(/name/i);
+      await user.clear(nameInput);
+      await user.type(nameInput, "Changed Name");
+
+      await user.click(screen.getByRole("button", { name: /cancel/i }));
+
+      // After cancel, if dialog reopens, values should be reset
+      // The onOpenChange callback should have been called
+      expect(defaultProps.onOpenChange).toHaveBeenCalledWith(false);
+    });
+  });
+
+  describe("Upload Dirty State", () => {
+    it("should enable Save button when files are added via upload (rerender)", () => {
+      // This tests the bug scenario: item has no artwork, user uploads artwork,
+      // files prop updates, but save button should be enabled because state differs
+      // from original values captured at dialog open time
+
+      const { rerender } = render(<ItemSettingsDialog {...defaultProps} />);
+
+      // Initially no files, save button disabled
+      const saveButton = screen.getByRole("button", { name: /save changes/i });
+      expect(saveButton).toBeDisabled();
+
+      // Simulate upload completing - parent rerenders with new files
+      const newFiles = {
+        media: [],
+        artwork: [
+          createMockFile({
+            id: "a1",
+            filename: "uploaded-poster.jpg",
+            isPrimary: true,
+            fileType: "ARTWORK",
+            mimeType: "image/jpeg",
+          }),
+        ],
+        subtitles: [],
+      };
+
+      rerender(<ItemSettingsDialog {...defaultProps} files={newFiles} />);
+
+      // Save button should now be enabled because primaryArtworkId changed
+      // from undefined (original) to "a1" (current)
+      expect(saveButton).not.toBeDisabled();
+    });
+
+    it("should preserve dirty state after file upload when other changes exist", async () => {
+      const user = userEvent.setup();
+      const { rerender } = render(<ItemSettingsDialog {...defaultProps} />);
+
+      // Change name first
+      const nameInput = screen.getByLabelText(/name/i);
+      await user.clear(nameInput);
+      await user.type(nameInput, "New Name");
+
+      const saveButton = screen.getByRole("button", { name: /save changes/i });
+      expect(saveButton).not.toBeDisabled();
+
+      // Then simulate upload (files prop changes)
+      const newFiles = {
+        media: [],
+        artwork: [
+          createMockFile({
+            id: "a1",
+            filename: "uploaded.jpg",
+            isPrimary: true,
+            fileType: "ARTWORK",
+            mimeType: "image/jpeg",
+          }),
+        ],
+        subtitles: [],
+      };
+
+      rerender(
+        <ItemSettingsDialog
+          {...defaultProps}
+          files={newFiles}
+          item={{ id: "item-1", name: "Test Item", description: null }}
+        />
+      );
+
+      // Save should still be enabled (name change + file upload)
+      expect(saveButton).not.toBeDisabled();
+    });
+  });
+
+  describe("Hero Image Section", () => {
+    it("should not show hero image section when less than 2 artworks", () => {
+      const files = {
+        media: [],
+        artwork: [
+          createMockFile({
+            id: "a1",
+            filename: "poster.jpg",
+            isPrimary: true,
+            fileType: "ARTWORK",
+            mimeType: "image/jpeg",
+          }),
+        ],
+        subtitles: [],
+      };
+      render(<ItemSettingsDialog {...defaultProps} files={files} />);
+
+      expect(screen.queryByText("Hero Image")).not.toBeInTheDocument();
+    });
+
+    it("should show hero image section when 2+ artworks", () => {
       const files = {
         media: [],
         artwork: [
@@ -222,103 +404,7 @@ describe("ItemSettingsDialog", () => {
       };
       render(<ItemSettingsDialog {...defaultProps} files={files} />);
 
-      const select = screen.getByRole("combobox", { name: /primary artwork/i });
-      await user.click(select);
-
-      // Options should show filenames
-      const options = screen.getAllByRole("option");
-      expect(options).toHaveLength(2);
-      expect(options[0]).toHaveTextContent("poster.jpg");
-      expect(options[1]).toHaveTextContent("fanart.jpg");
-    });
-  });
-
-  describe("Default Subtitle Select", () => {
-    it("should show subtitle filenames in select", () => {
-      const files = {
-        media: [],
-        artwork: [],
-        subtitles: [
-          createMockFile({
-            id: "s1",
-            filename: "movie.en.srt",
-            isPrimary: true,
-            fileType: "SUBTITLE",
-            mimeType: "text/srt",
-          }),
-          createMockFile({
-            id: "s2",
-            filename: "movie.es.srt",
-            isPrimary: false,
-            fileType: "SUBTITLE",
-            mimeType: "text/srt",
-          }),
-        ],
-      };
-      render(<ItemSettingsDialog {...defaultProps} files={files} />);
-
-      const select = screen.getByRole("combobox", {
-        name: /default subtitle/i,
-      });
-      expect(select).toBeInTheDocument();
-    });
-
-    it("should show disabled select when 1 subtitle file", () => {
-      const files = {
-        media: [],
-        artwork: [],
-        subtitles: [
-          createMockFile({
-            id: "s1",
-            filename: "movie.en.srt",
-            isPrimary: true,
-            fileType: "SUBTITLE",
-            mimeType: "text/srt",
-          }),
-        ],
-      };
-      render(<ItemSettingsDialog {...defaultProps} files={files} />);
-
-      const select = screen.getByRole("combobox", {
-        name: /default subtitle/i,
-      });
-      expect(select).toBeDisabled();
-    });
-
-    it("should save subtitle selection via updateItemSettings", async () => {
-      const user = userEvent.setup();
-      const files = {
-        media: [],
-        artwork: [],
-        subtitles: [
-          createMockFile({
-            id: "s1",
-            filename: "movie.en.srt",
-            isPrimary: true,
-            fileType: "SUBTITLE",
-            mimeType: "text/srt",
-          }),
-          createMockFile({
-            id: "s2",
-            filename: "movie.es.srt",
-            isPrimary: false,
-            fileType: "SUBTITLE",
-            mimeType: "text/srt",
-          }),
-        ],
-      };
-      render(<ItemSettingsDialog {...defaultProps} files={files} />);
-
-      const select = screen.getByRole("combobox", {
-        name: /default subtitle/i,
-      });
-      await user.click(select);
-      await user.click(screen.getByRole("option", { name: /movie\.es\.srt/i }));
-      await user.click(screen.getByRole("button", { name: /save changes/i }));
-
-      expect(vi.mocked(updateItemSettings)).toHaveBeenCalledWith("item-1", {
-        primarySubtitleId: "s2",
-      });
+      expect(screen.getByText("Hero Image")).toBeInTheDocument();
     });
   });
 });

@@ -19,9 +19,7 @@ export class MyItemsPage {
     this.welcomeMessage = page.getByTestId("my-items-welcome-message");
     this.userMenu = page.getByTestId("my-items-user-menu");
     this.signOutButton = page.getByTestId("my-items-sign-out-button");
-    this.profileSettingsButton = page.getByTestId(
-      "my-items-profile-settings-button"
-    );
+    this.profileSettingsButton = page.getByTestId("my-items-settings-button");
     this.sidebarTrigger = page.getByTestId("sidebar-trigger");
   }
 

@@ -33,7 +33,7 @@ vi.mock("@/lib/prisma", () => ({
       delete: vi.fn(),
       aggregate: vi.fn(),
     },
-    sftpConnection: {
+    googleDriveConnection: {
       findUnique: vi.fn(),
       findFirst: vi.fn(),
       findMany: vi.fn(),

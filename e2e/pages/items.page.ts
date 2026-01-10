@@ -38,7 +38,10 @@ export class ItemsPage {
     this.page = page;
     this.viewToggleTree = page.getByRole("button", { name: /tree view/i });
     this.viewToggleGrid = page.getByRole("button", { name: /grid view/i });
-    this.addFolderButton = page.getByRole("button", { name: /add item/i });
+    // Use .first() to avoid strict mode violation when both toolbar and empty state buttons are visible
+    this.addFolderButton = page
+      .getByRole("button", { name: /add item/i })
+      .first();
     this.addFolderDialog = page.getByRole("dialog", { name: /create item/i });
     this.addFolderInput = page.getByLabel(/item name/i);
     this.addFolderDescription = page.getByLabel(/description/i);
@@ -77,17 +80,19 @@ export class ItemsPage {
 
   /** Click the Edit button to enter edit mode */
   async enterEditMode() {
-    await this.page.getByRole("button", { name: "Edit items" }).click();
+    await this.page.getByRole("button", { name: "Enter edit mode" }).click();
   }
 
   /** Click the Done button to exit edit mode */
   async exitEditMode() {
-    await this.page.getByRole("button", { name: "Done editing" }).click();
+    await this.page.getByRole("button", { name: "Exit edit mode" }).click();
   }
 
   /** Check if currently in edit mode */
   async isInEditMode(): Promise<boolean> {
-    return this.page.getByRole("button", { name: "Done editing" }).isVisible();
+    return this.page
+      .getByRole("button", { name: "Exit edit mode" })
+      .isVisible();
   }
 
   async createItem(name: string, description?: string) {

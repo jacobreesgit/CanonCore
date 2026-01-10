@@ -10,27 +10,28 @@
 
 The current SFTP sync implementation has several gaps:
 
-| Issue | Impact | Severity |
-|-------|--------|----------|
+| Issue                                       | Impact                                      | Severity |
+| ------------------------------------------- | ------------------------------------------- | -------- |
 | No transaction wrapping in `syncFromSftp()` | Partial sync on failure, data inconsistency | Critical |
-| Manual items ignored during sync | Duplicates created with same names | Critical |
-| Race condition on concurrent syncs | Duplicate items from parallel calls | Critical |
-| No path validation in merge | Path traversal security risk | Critical |
-| Symlink cycle detection missing | Infinite loop possible | Critical |
-| Orphaned items unrecoverable | Items stuck after connection deleted | High |
-| Silent depth/entry limits | Users unaware sync incomplete | High |
-| Silent unknown file skips | Files missing with no notice | High |
-| N+1 queries in folder creation | Performance degradation on large syncs | High |
-| mtime-only change detection | Unreliable with clock skew | Medium |
-| No dry-run/preview mode | Users can't preview before commit | Medium |
-| No circuit breaker integration | Cascade failures possible | Medium |
-| No include/exclude filters | Can't selectively sync | Low |
+| Manual items ignored during sync            | Duplicates created with same names          | Critical |
+| Race condition on concurrent syncs          | Duplicate items from parallel calls         | Critical |
+| No path validation in merge                 | Path traversal security risk                | Critical |
+| Symlink cycle detection missing             | Infinite loop possible                      | Critical |
+| Orphaned items unrecoverable                | Items stuck after connection deleted        | High     |
+| Silent depth/entry limits                   | Users unaware sync incomplete               | High     |
+| Silent unknown file skips                   | Files missing with no notice                | High     |
+| N+1 queries in folder creation              | Performance degradation on large syncs      | High     |
+| mtime-only change detection                 | Unreliable with clock skew                  | Medium   |
+| No dry-run/preview mode                     | Users can't preview before commit           | Medium   |
+| No circuit breaker integration              | Cascade failures possible                   | Medium   |
+| No include/exclude filters                  | Can't selectively sync                      | Low      |
 
 ---
 
 ## Solution Overview
 
 ### Core Fixes
+
 1. **Transaction wrapping** with proper isolation level
 2. **Conflict detection** for manual items matching SFTP folders
 3. **Warning collection** instead of silent skips
@@ -39,6 +40,7 @@ The current SFTP sync implementation has several gaps:
 6. **Circuit breaker** integration for resilience
 
 ### New Features
+
 7. **SyncDialog component** with results, conflicts, warnings
 8. **Dry-run/preview mode** before committing changes
 9. **Sync badges** on tree/grid views
@@ -47,6 +49,7 @@ The current SFTP sync implementation has several gaps:
 12. **Batch operations** for performance
 
 ### Cleanup
+
 13. **Orphaned item cleanup** on connection delete
 14. **Connection health check** before sync
 
@@ -81,14 +84,14 @@ interface SyncConflict {
 
 /** Warning types for sync issues */
 type SyncWarningType =
-  | 'depth_limit'
-  | 'max_entries'
-  | 'unknown_file'
-  | 'inaccessible_dir'
-  | 'symlink_skipped'
-  | 'symlink_cycle'
-  | 'permission_denied'
-  | 'invalid_filename';
+  | "depth_limit"
+  | "max_entries"
+  | "unknown_file"
+  | "inaccessible_dir"
+  | "symlink_skipped"
+  | "symlink_cycle"
+  | "permission_denied"
+  | "invalid_filename";
 
 /** Warning for non-fatal sync issues */
 interface SyncWarning {
@@ -169,7 +172,7 @@ export function validatePathWithinBase(
   }
 
   // Check for null bytes (can bypass checks in some systems)
-  if (sftpPath.includes('\0')) {
+  if (sftpPath.includes("\0")) {
     return false;
   }
 
@@ -185,18 +188,18 @@ export function validateFileNameStrict(name: string): void {
   validateFileName(name);
 
   // Additional checks
-  if (name.includes('\0')) {
-    throw new Error('Filename contains null byte');
+  if (name.includes("\0")) {
+    throw new Error("Filename contains null byte");
   }
-  if (name.startsWith('-')) {
-    throw new Error('Filename starts with dash (potential command injection)');
+  if (name.startsWith("-")) {
+    throw new Error("Filename starts with dash (potential command injection)");
   }
   if (/[<>:"|?*]/.test(name)) {
-    throw new Error('Filename contains invalid characters');
+    throw new Error("Filename contains invalid characters");
   }
   // Check for excessive length
-  if (Buffer.byteLength(name, 'utf8') > 255) {
-    throw new Error('Filename exceeds 255 bytes');
+  if (Buffer.byteLength(name, "utf8") > 255) {
+    throw new Error("Filename exceeds 255 bytes");
   }
 }
 ```
@@ -215,7 +218,7 @@ export async function mergeManualItemWithSftp(
 
   // Validate IDs (Prisma handles most, but be explicit)
   if (!manualItemId || !connectionId) {
-    return { success: false, error: 'Invalid parameters' };
+    return { success: false, error: "Invalid parameters" };
   }
 
   // Get connection first to validate path
@@ -223,16 +226,16 @@ export async function mergeManualItemWithSftp(
     where: { id: connectionId, userId },
   });
   if (!connection) {
-    return { success: false, error: 'Connection not found' };
+    return { success: false, error: "Connection not found" };
   }
 
   // CRITICAL: Validate sftpPath is within connection's basePath
   if (!validatePathWithinBase(sftpPath, connection.basePath)) {
     logger.warn(
       { userId, sftpPath, basePath: connection.basePath },
-      '[SFTP] Path traversal attempt blocked'
+      "[SFTP] Path traversal attempt blocked"
     );
-    return { success: false, error: 'Invalid path' };
+    return { success: false, error: "Invalid path" };
   }
 
   // Continue with existing logic...
@@ -260,7 +263,7 @@ async function listRecursive(
   const pathKey = realPath || dirPath;
   if (visitedPaths.has(pathKey)) {
     warnings.push({
-      type: 'symlink_cycle',
+      type: "symlink_cycle",
       path: dirPath,
       message: `Symlink cycle detected, skipping`,
     });
@@ -272,7 +275,7 @@ async function listRecursive(
   if (depth > maxDepth || remoteEntries.length >= SYNC_MAX_ENTRIES) {
     if (depth > maxDepth) {
       warnings.push({
-        type: 'depth_limit',
+        type: "depth_limit",
         path: dirPath,
         message: `Exceeds max depth of ${maxDepth}`,
       });
@@ -285,15 +288,15 @@ async function listRecursive(
     entries = await client.list(dirPath);
   } catch (error) {
     // Handle permission denied specifically
-    if (error.message?.includes('Permission denied')) {
+    if (error.message?.includes("Permission denied")) {
       warnings.push({
-        type: 'permission_denied',
+        type: "permission_denied",
         path: dirPath,
-        message: 'Permission denied',
+        message: "Permission denied",
       });
     } else {
       warnings.push({
-        type: 'inaccessible_dir',
+        type: "inaccessible_dir",
         path: dirPath,
         message: error.message,
       });
@@ -302,17 +305,17 @@ async function listRecursive(
   }
 
   for (const entry of entries) {
-    if (entry.name === '.' || entry.name === '..') continue;
+    if (entry.name === "." || entry.name === "..") continue;
 
-    const entryPath = `${dirPath}/${entry.name}`.replace(/\/+/g, '/');
+    const entryPath = `${dirPath}/${entry.name}`.replace(/\/+/g, "/");
 
     // Handle symlinks
-    if (entry.type === 'l') {
+    if (entry.type === "l") {
       // Option 1: Skip symlinks (safer)
       warnings.push({
-        type: 'symlink_skipped',
+        type: "symlink_skipped",
         path: entryPath,
-        message: 'Symlinks are not synced',
+        message: "Symlinks are not synced",
       });
       continue;
 
@@ -355,7 +358,7 @@ await prisma.$transaction(
 ```typescript
 // lib/sftp-actions.ts - Wrap SFTP operations
 
-import { circuitBreaker } from '@/lib/circuit-breaker';
+import { circuitBreaker } from "@/lib/circuit-breaker";
 
 /**
  * Execute SFTP operation with circuit breaker protection.
@@ -398,7 +401,7 @@ export async function syncFromSftp(
 
   try {
     // Rate limit check
-    const rateLimitResult = await checkRateLimit('sftpSync');
+    const rateLimitResult = await checkRateLimit("sftpSync");
     if (rateLimitResult) {
       return { success: false, error: rateLimitResult.error };
     }
@@ -410,18 +413,24 @@ export async function syncFromSftp(
       where: { id: connectionId, userId },
     });
     if (!connection) {
-      return { success: false, error: 'Connection not found' };
+      return { success: false, error: "Connection not found" };
     }
 
     // Connection health check before long operation
     const healthCheck = await testConnectionHealth(connection);
     if (!healthCheck.healthy) {
-      return { success: false, error: `Connection unhealthy: ${healthCheck.error}` };
+      return {
+        success: false,
+        error: `Connection unhealthy: ${healthCheck.error}`,
+      };
     }
 
     // Acquire sync lock
     if (syncLocks.has(connectionId)) {
-      return { success: false, error: 'Sync already in progress for this connection' };
+      return {
+        success: false,
+        error: "Sync already in progress for this connection",
+      };
     }
 
     const lockPromise = new Promise<void>((resolve) => {
@@ -450,10 +459,10 @@ export async function syncFromSftp(
       const maxDepth = options?.filters?.maxDepth ?? SYNC_MAX_DEPTH;
       const includePatterns = options?.filters?.include ?? [];
       const excludePatterns = options?.filters?.exclude ?? [
-        '.DS_Store',
-        'Thumbs.db',
-        '*.tmp',
-        '*.partial',
+        ".DS_Store",
+        "Thumbs.db",
+        "*.tmp",
+        "*.partial",
       ];
 
       // Recursively list with all safety checks
@@ -467,8 +476,8 @@ export async function syncFromSftp(
       );
 
       // Separate folders and files
-      const remoteFolders = remoteEntries.filter((e) => e.type === 'd');
-      const remoteFiles = remoteEntries.filter((e) => e.type === '-');
+      const remoteFolders = remoteEntries.filter((e) => e.type === "d");
+      const remoteFiles = remoteEntries.filter((e) => e.type === "-");
 
       // If dry-run, calculate preview without modifying
       if (options?.dryRun) {
@@ -497,7 +506,12 @@ export async function syncFromSftp(
           // Get existing items
           const existingItems = await tx.item.findMany({
             where: { userId, connectionId },
-            select: { id: true, sftpPath: true, sftpModifiedAt: true, name: true },
+            select: {
+              id: true,
+              sftpPath: true,
+              sftpModifiedAt: true,
+              name: true,
+            },
           });
 
           const existingByPath = new Map(
@@ -507,7 +521,7 @@ export async function syncFromSftp(
           // Pre-compute order counters (fixes N+1)
           const orderCounters = new Map<string | null, number>();
           const existingMaxOrders = await tx.item.groupBy({
-            by: ['parentId'],
+            by: ["parentId"],
             where: { userId },
             _max: { order: true },
           });
@@ -548,7 +562,7 @@ export async function syncFromSftp(
                 where: {
                   userId,
                   parentId,
-                  name: { equals: folder.name, mode: 'insensitive' },
+                  name: { equals: folder.name, mode: "insensitive" },
                   connectionId: null,
                   sftpPath: null,
                 },
@@ -662,8 +676,8 @@ export async function syncFromSftp(
       });
 
       if (!options?.skipRevalidate) {
-        revalidatePath('/my-items');
-        revalidatePath('/my-items/connections');
+        revalidatePath("/my-items");
+        revalidatePath("/my-items/connections");
       }
 
       return {
@@ -685,21 +699,21 @@ export async function syncFromSftp(
       }
     }
   } catch (error) {
-    logger.error({ err: error }, '[SFTP] Sync error');
+    logger.error({ err: error }, "[SFTP] Sync error");
 
     // Update error state
     try {
       await prisma.sftpConnection.update({
         where: { id: connectionId },
         data: {
-          lastError: error instanceof Error ? error.message : 'Sync failed',
+          lastError: error instanceof Error ? error.message : "Sync failed",
         },
       });
     } catch {
       // Ignore update error
     }
 
-    return { success: false, error: 'Failed to sync from SFTP' };
+    return { success: false, error: "Failed to sync from SFTP" };
   }
 }
 ```
@@ -721,11 +735,7 @@ async function testConnectionHealth(
     const client = await getConnection(connection);
 
     // Simple list of base path to verify access
-    await withTimeout(
-      client.list(connection.basePath),
-      5000,
-      'Health check'
-    );
+    await withTimeout(client.list(connection.basePath), 5000, "Health check");
 
     return {
       healthy: true,
@@ -734,7 +744,7 @@ async function testConnectionHealth(
   } catch (error) {
     return {
       healthy: false,
-      error: error instanceof Error ? error.message : 'Connection failed',
+      error: error instanceof Error ? error.message : "Connection failed",
     };
   }
 }
@@ -755,16 +765,18 @@ export async function mergeManualItemWithSftp(
     /** Recursively merge matching children */
     recursive?: boolean;
   }
-): Promise<ActionResult<{
-  merged: boolean;
-  itemsMerged: number;
-  filesAdded: number;
-}>> {
+): Promise<
+  ActionResult<{
+    merged: boolean;
+    itemsMerged: number;
+    filesAdded: number;
+  }>
+> {
   const userId = await requireAuth();
 
   // Validate IDs
   if (!manualItemId || !connectionId) {
-    return { success: false, error: 'Invalid parameters' };
+    return { success: false, error: "Invalid parameters" };
   }
 
   // Get connection first for path validation
@@ -772,16 +784,16 @@ export async function mergeManualItemWithSftp(
     where: { id: connectionId, userId },
   });
   if (!connection) {
-    return { success: false, error: 'Connection not found' };
+    return { success: false, error: "Connection not found" };
   }
 
   // SECURITY: Validate path is within base
   if (!validatePathWithinBase(sftpPath, connection.basePath)) {
     logger.warn(
       { userId, sftpPath, basePath: connection.basePath },
-      '[SFTP] Path traversal attempt blocked in merge'
+      "[SFTP] Path traversal attempt blocked in merge"
     );
-    return { success: false, error: 'Invalid path' };
+    return { success: false, error: "Invalid path" };
   }
 
   // Get manual item
@@ -790,7 +802,7 @@ export async function mergeManualItemWithSftp(
     include: { children: true },
   });
   if (!item) {
-    return { success: false, error: 'Item not found or already synced' };
+    return { success: false, error: "Item not found or already synced" };
   }
 
   let itemsMerged = 0;
@@ -817,14 +829,13 @@ export async function mergeManualItemWithSftp(
         // Find matching remote folder (case-insensitive)
         const remoteMatch = remoteChildren.find(
           (r) =>
-            r.type === 'd' &&
-            r.name.toLowerCase() === child.name.toLowerCase()
+            r.type === "d" && r.name.toLowerCase() === child.name.toLowerCase()
         );
 
         if (remoteMatch) {
           const childSftpPath = `${sftpPath}/${remoteMatch.name}`.replace(
             /\/+/g,
-            '/'
+            "/"
           );
 
           // Recursively merge
@@ -848,12 +859,12 @@ export async function mergeManualItemWithSftp(
     const remoteFiles = await client.list(sftpPath);
 
     for (const file of remoteFiles) {
-      if (file.type !== '-') continue;
+      if (file.type !== "-") continue;
 
       const fileType = getFileTypeByExtension(file.name);
       if (!fileType) continue;
 
-      const fileSftpPath = `${sftpPath}/${file.name}`.replace(/\/+/g, '/');
+      const fileSftpPath = `${sftpPath}/${file.name}`.replace(/\/+/g, "/");
 
       // Check if file already exists
       const existingFile = await tx.itemFile.findFirst({
@@ -877,7 +888,7 @@ export async function mergeManualItemWithSftp(
     }
   });
 
-  revalidatePath('/my-items');
+  revalidatePath("/my-items");
   return { success: true, data: { merged: true, itemsMerged, filesAdded } };
 }
 ```
@@ -1071,6 +1082,7 @@ export function SyncBadge({ connectionName, className }: SyncBadgeProps) {
 ```
 
 **Grid View** (`components/sortable-grid/GridItem.tsx`):
+
 ```typescript
 {!isEditMode && (
   <div className="absolute top-2 right-2">
@@ -1080,6 +1092,7 @@ export function SyncBadge({ connectionName, className }: SyncBadgeProps) {
 ```
 
 **Tree View** (`components/sortable-tree/components/TreeItem/TreeItem.tsx`):
+
 ```typescript
 <span className="flex items-center gap-1.5">
   {item.name}
@@ -1106,7 +1119,7 @@ export async function deleteSftpConnection(
       where: { id: connectionId, userId },
     });
     if (!existing) {
-      return { success: false, error: 'Connection not found' };
+      return { success: false, error: "Connection not found" };
     }
 
     // Close pooled connection
@@ -1146,13 +1159,13 @@ export async function deleteSftpConnection(
       });
     });
 
-    revalidatePath('/my-items/connections');
-    revalidatePath('/my-items');
+    revalidatePath("/my-items/connections");
+    revalidatePath("/my-items");
 
     return { success: true };
   } catch (error) {
-    logger.error({ err: error }, '[SFTP] Delete connection error');
-    return { success: false, error: 'Failed to delete connection' };
+    logger.error({ err: error }, "[SFTP] Delete connection error");
+    return { success: false, error: "Failed to delete connection" };
   }
 }
 ```
@@ -1180,7 +1193,7 @@ async function withRetry<T>(
     maxAttempts = 3,
     baseDelayMs = 1000,
     maxDelayMs = 10000,
-    retryableErrors = ['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND'],
+    retryableErrors = ["ECONNRESET", "ETIMEDOUT", "ENOTFOUND"],
   } = options;
 
   let lastError: Error | undefined;
@@ -1208,7 +1221,7 @@ async function withRetry<T>(
 
       logger.warn(
         { attempt, maxAttempts, delay, error: lastError.message },
-        '[SFTP] Retrying after error'
+        "[SFTP] Retrying after error"
       );
 
       await sleep(delay);
@@ -1235,7 +1248,7 @@ setInterval(() => {
   for (const [id, lock] of syncLocks.entries()) {
     // Locks older than 5 minutes are considered stale
     if (now - lock.startedAt.getTime() > 5 * 60 * 1000) {
-      logger.warn({ connectionId: id }, '[SFTP] Cleaning stale sync lock');
+      logger.warn({ connectionId: id }, "[SFTP] Cleaning stale sync lock");
       lock.resolve();
       syncLocks.delete(id);
     }
@@ -1249,68 +1262,68 @@ setInterval(() => {
 
 ### Unit Tests (`tests/unit/lib/`)
 
-| Test | Purpose |
-|------|---------|
+| Test                                                        | Purpose                          |
+| ----------------------------------------------------------- | -------------------------------- |
 | `syncFromSftp collects conflicts for matching manual items` | Verify conflicts array populated |
-| `syncFromSftp collects conflicts case-insensitively` | "Movies" matches "movies" |
-| `syncFromSftp collects warnings for depth limit` | Verify warning at depth 10 |
-| `syncFromSftp collects warnings for depth limit boundary` | Exactly 10 vs 11 levels |
-| `syncFromSftp collects warnings for max entries` | Verify at 10,000 entries |
-| `syncFromSftp collects warnings for unknown file types` | Verify warning for .xyz |
-| `syncFromSftp skips symlinks with warning` | Verify symlink handling |
-| `syncFromSftp detects symlink cycles` | Verify cycle detection |
-| `syncFromSftp rolls back on transaction failure` | Verify atomicity |
-| `syncFromSftp dry-run returns preview without changes` | Verify preview mode |
-| `syncFromSftp applies include filters` | Only matching paths synced |
-| `syncFromSftp applies exclude filters` | Matching paths skipped |
-| `mergeManualItemWithSftp links item to SFTP path` | Verify merge updates |
-| `mergeManualItemWithSftp validates path traversal` | Security test |
-| `mergeManualItemWithSftp recursively merges children` | Verify nested merge |
-| `deleteSftpConnection clears orphaned item paths` | Verify cleanup |
-| `deleteSftpConnection preserves item organization` | Items still exist |
-| `syncFromSftp rejects concurrent sync` | Verify locking |
-| `withRetry retries transient failures` | Verify retry logic |
-| `withRetry respects max attempts` | Stops after limit |
-| `validatePathWithinBase blocks traversal` | Security test |
-| `validateFileNameStrict catches edge cases` | Unicode, long names |
+| `syncFromSftp collects conflicts case-insensitively`        | "Movies" matches "movies"        |
+| `syncFromSftp collects warnings for depth limit`            | Verify warning at depth 10       |
+| `syncFromSftp collects warnings for depth limit boundary`   | Exactly 10 vs 11 levels          |
+| `syncFromSftp collects warnings for max entries`            | Verify at 10,000 entries         |
+| `syncFromSftp collects warnings for unknown file types`     | Verify warning for .xyz          |
+| `syncFromSftp skips symlinks with warning`                  | Verify symlink handling          |
+| `syncFromSftp detects symlink cycles`                       | Verify cycle detection           |
+| `syncFromSftp rolls back on transaction failure`            | Verify atomicity                 |
+| `syncFromSftp dry-run returns preview without changes`      | Verify preview mode              |
+| `syncFromSftp applies include filters`                      | Only matching paths synced       |
+| `syncFromSftp applies exclude filters`                      | Matching paths skipped           |
+| `mergeManualItemWithSftp links item to SFTP path`           | Verify merge updates             |
+| `mergeManualItemWithSftp validates path traversal`          | Security test                    |
+| `mergeManualItemWithSftp recursively merges children`       | Verify nested merge              |
+| `deleteSftpConnection clears orphaned item paths`           | Verify cleanup                   |
+| `deleteSftpConnection preserves item organization`          | Items still exist                |
+| `syncFromSftp rejects concurrent sync`                      | Verify locking                   |
+| `withRetry retries transient failures`                      | Verify retry logic               |
+| `withRetry respects max attempts`                           | Stops after limit                |
+| `validatePathWithinBase blocks traversal`                   | Security test                    |
+| `validateFileNameStrict catches edge cases`                 | Unicode, long names              |
 
 ### Integration Tests (`tests/integration/sftp/`)
 
-| Test | Purpose |
-|------|---------|
-| `sync-conflicts.test.ts` | Manual items + sync = conflicts |
-| `sync-case-insensitive.test.ts` | Case variations detected |
-| `merge-items.test.ts` | Merge updates connectionId/sftpPath |
-| `merge-recursive.test.ts` | Nested children merged correctly |
-| `orphaned-items.test.ts` | Delete connection converts to manual |
-| `sync-transaction.test.ts` | Failure mid-sync rolls back |
-| `sync-filters.test.ts` | Include/exclude patterns work |
-| `sync-dry-run.test.ts` | Preview matches actual sync |
-| `concurrent-sync.test.ts` | Two syncs don't race |
+| Test                            | Purpose                              |
+| ------------------------------- | ------------------------------------ |
+| `sync-conflicts.test.ts`        | Manual items + sync = conflicts      |
+| `sync-case-insensitive.test.ts` | Case variations detected             |
+| `merge-items.test.ts`           | Merge updates connectionId/sftpPath  |
+| `merge-recursive.test.ts`       | Nested children merged correctly     |
+| `orphaned-items.test.ts`        | Delete connection converts to manual |
+| `sync-transaction.test.ts`      | Failure mid-sync rolls back          |
+| `sync-filters.test.ts`          | Include/exclude patterns work        |
+| `sync-dry-run.test.ts`          | Preview matches actual sync          |
+| `concurrent-sync.test.ts`       | Two syncs don't race                 |
 
 ### E2E Tests (`e2e/journeys/sftp/`)
 
-| Test | Purpose |
-|------|---------|
-| `sync-dialog.spec.ts` | Dialog phases work correctly |
-| `sync-preview.spec.ts` | Dry-run shows accurate preview |
-| `sync-filters.spec.ts` | Filter UI works |
-| `sync-merge-conflict.spec.ts` | Merge button resolves conflict |
-| `sync-badges.spec.ts` | Badges show in tree/grid |
-| `sync-badges-mobile.spec.ts` | Badges work on mobile |
-| `sync-progress.spec.ts` | Progress updates during sync |
-| `sync-warnings.spec.ts` | Warnings expandable and readable |
-| `sync-large.spec.ts` | Large sync (1000+ items) completes |
+| Test                          | Purpose                            |
+| ----------------------------- | ---------------------------------- |
+| `sync-dialog.spec.ts`         | Dialog phases work correctly       |
+| `sync-preview.spec.ts`        | Dry-run shows accurate preview     |
+| `sync-filters.spec.ts`        | Filter UI works                    |
+| `sync-merge-conflict.spec.ts` | Merge button resolves conflict     |
+| `sync-badges.spec.ts`         | Badges show in tree/grid           |
+| `sync-badges-mobile.spec.ts`  | Badges work on mobile              |
+| `sync-progress.spec.ts`       | Progress updates during sync       |
+| `sync-warnings.spec.ts`       | Warnings expandable and readable   |
+| `sync-large.spec.ts`          | Large sync (1000+ items) completes |
 
 ### Boundary Tests
 
-| Test | Boundary |
-|------|----------|
-| Depth exactly 10 | Should sync |
-| Depth exactly 11 | Should warn and skip |
-| Entries exactly 10,000 | Should sync |
-| Entries exactly 10,001 | Should warn and stop |
-| Filename 255 bytes UTF-8 | Should sync |
+| Test                     | Boundary             |
+| ------------------------ | -------------------- |
+| Depth exactly 10         | Should sync          |
+| Depth exactly 11         | Should warn and skip |
+| Entries exactly 10,000   | Should sync          |
+| Entries exactly 10,001   | Should warn and stop |
+| Filename 255 bytes UTF-8 | Should sync          |
 | Filename 256 bytes UTF-8 | Should warn and skip |
 
 ---
@@ -1319,31 +1332,31 @@ setInterval(() => {
 
 ### Files to Create
 
-| File | Purpose |
-|------|---------|
-| `components/sftp/sync-dialog.tsx` | Multi-phase sync dialog |
-| `components/sftp/sync-preview.tsx` | Dry-run preview component |
-| `components/sftp/sync-progress.tsx` | Progress indicator |
-| `components/sftp/sync-results.tsx` | Results with conflicts/warnings |
-| `components/sftp/sync-filters-form.tsx` | Filter configuration UI |
-| `components/items/sync-badge.tsx` | Reusable sync badge |
-| `lib/sftp-sync-utils.ts` | Helper functions for sync |
-| `tests/unit/lib/sftp-sync-conflicts.test.ts` | Unit tests |
-| `tests/unit/lib/sftp-path-validation.test.ts` | Security tests |
-| `tests/integration/sftp/sync-conflicts.test.ts` | Integration tests |
-| `e2e/journeys/sftp/sync-dialog.spec.ts` | E2E tests |
+| File                                            | Purpose                         |
+| ----------------------------------------------- | ------------------------------- |
+| `components/sftp/sync-dialog.tsx`               | Multi-phase sync dialog         |
+| `components/sftp/sync-preview.tsx`              | Dry-run preview component       |
+| `components/sftp/sync-progress.tsx`             | Progress indicator              |
+| `components/sftp/sync-results.tsx`              | Results with conflicts/warnings |
+| `components/sftp/sync-filters-form.tsx`         | Filter configuration UI         |
+| `components/items/sync-badge.tsx`               | Reusable sync badge             |
+| `lib/sftp-sync-utils.ts`                        | Helper functions for sync       |
+| `tests/unit/lib/sftp-sync-conflicts.test.ts`    | Unit tests                      |
+| `tests/unit/lib/sftp-path-validation.test.ts`   | Security tests                  |
+| `tests/integration/sftp/sync-conflicts.test.ts` | Integration tests               |
+| `e2e/journeys/sftp/sync-dialog.spec.ts`         | E2E tests                       |
 
 ### Files to Modify
 
-| File | Changes |
-|------|---------|
-| `lib/sftp-actions.ts` | Refactor sync with transactions, conflicts, dry-run, filters |
-| `lib/sftp-utils.ts` | Add path validation, strict filename validation |
-| `lib/types.ts` | Add all new types |
-| `components/sftp/sync-button.tsx` | Open SyncDialog |
-| `components/sftp/sync-all-button.tsx` | Aggregate into SyncDialog |
-| `components/sortable-grid/GridItem.tsx` | Add SyncBadge |
-| `components/sortable-tree/components/TreeItem/TreeItem.tsx` | Add SyncBadge |
+| File                                                        | Changes                                                      |
+| ----------------------------------------------------------- | ------------------------------------------------------------ |
+| `lib/sftp-actions.ts`                                       | Refactor sync with transactions, conflicts, dry-run, filters |
+| `lib/sftp-utils.ts`                                         | Add path validation, strict filename validation              |
+| `lib/types.ts`                                              | Add all new types                                            |
+| `components/sftp/sync-button.tsx`                           | Open SyncDialog                                              |
+| `components/sftp/sync-all-button.tsx`                       | Aggregate into SyncDialog                                    |
+| `components/sortable-grid/GridItem.tsx`                     | Add SyncBadge                                                |
+| `components/sortable-tree/components/TreeItem/TreeItem.tsx` | Add SyncBadge                                                |
 
 ### Migration Path
 
@@ -1355,9 +1368,8 @@ No database migrations needed - all changes use existing schema fields.
 
 These behaviors are documented rather than fixed due to complexity:
 
-| Limitation | Behavior | Rationale |
-|------------|----------|-----------|
-| Folder rename detection | Delete + Create (loses customizations) | Would require stable IDs from SFTP |
-| File move detection | Delete + Create (loses playbackPosition) | Same as above |
-| Bidirectional sync | Not supported (SFTP → local only) | Different feature scope |
-
+| Limitation              | Behavior                                 | Rationale                          |
+| ----------------------- | ---------------------------------------- | ---------------------------------- |
+| Folder rename detection | Delete + Create (loses customizations)   | Would require stable IDs from SFTP |
+| File move detection     | Delete + Create (loses playbackPosition) | Same as above                      |
+| Bidirectional sync      | Not supported (SFTP → local only)        | Different feature scope            |

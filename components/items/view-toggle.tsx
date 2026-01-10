@@ -15,6 +15,8 @@ export type ViewMode = "tree" | "grid";
 interface ViewToggleProps {
   value?: ViewMode;
   onChange?(value: ViewMode): void;
+  /** If true, the toggle is disabled. */
+  disabled?: boolean;
 }
 
 const STORAGE_KEY = "items-view-mode";
@@ -51,13 +53,18 @@ export function useStoredViewMode(): [ViewMode, (mode: ViewMode) => void] {
   return [storedValue, setValue];
 }
 
-export function ViewToggle({ value, onChange }: ViewToggleProps) {
+export function ViewToggle({
+  value,
+  onChange,
+  disabled = false,
+}: ViewToggleProps) {
   const [storedView, setStoredView] = useStoredViewMode();
 
   // Use controlled value if provided, otherwise use stored value
   const view = value ?? storedView;
 
   function handleChange(newView: ViewMode) {
+    if (disabled) return;
     setStoredView(newView);
     onChange?.(newView);
   }
@@ -67,7 +74,8 @@ export function ViewToggle({ value, onChange }: ViewToggleProps) {
       className={cn(
         "relative inline-flex h-8 items-center rounded-md p-0.5",
         "bg-muted/60 border-border/50 border",
-        "shadow-sm"
+        "shadow-sm",
+        disabled && "pointer-events-none opacity-50"
       )}
     >
       {/* Sliding background indicator */}
@@ -85,6 +93,7 @@ export function ViewToggle({ value, onChange }: ViewToggleProps) {
         aria-label="Tree view"
         aria-pressed={view === "tree"}
         onClick={() => handleChange("tree")}
+        disabled={disabled}
         className={cn(
           "relative z-10 inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-sm px-3",
           "text-sm font-medium transition-colors duration-150",
@@ -102,6 +111,7 @@ export function ViewToggle({ value, onChange }: ViewToggleProps) {
         aria-label="Grid view"
         aria-pressed={view === "grid"}
         onClick={() => handleChange("grid")}
+        disabled={disabled}
         className={cn(
           "relative z-10 inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-sm px-3",
           "text-sm font-medium transition-colors duration-150",

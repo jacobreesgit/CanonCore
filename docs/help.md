@@ -12,6 +12,8 @@
 
 - use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md, context7 and sequential thinking to ensure best practices on this current commit. really take your time and look at everything.
 
+- use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md, context7 and sequential thinking to ensure best practices on this current commit's unstaged changes. really take your time and look at everything.
+
 - use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md, context7 and sequential thinking to ensure best practices on this entire project. really take your time and look at every single file.
 
 - use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md, context7 and sequential thinking to validate the document.
@@ -19,3 +21,5 @@
 - for each of the new fumodocs, for each line tripple check its claim via code. tripple check. and also do last commits ones.
 
 - for tasks that require front-end design skill, update those todo items
+
+- use context7 and sequential thinking to do so

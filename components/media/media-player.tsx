@@ -1,17 +1,20 @@
 /**
- * Vidstack media player wrapper with cinematic styling.
+ * Vidstack media player wrapper.
  * Handles playback with subtitle support and progress tracking.
+ * Shows artwork for audio files.
  */
 
 "use client";
 
-import { useRef, useCallback, useEffect, useState } from "react";
+import { useRef, useCallback, useEffect } from "react";
 import {
   MediaPlayer,
   MediaProvider,
+  Poster,
   Track,
   type MediaPlayerInstance,
   type MediaTimeUpdateEventDetail,
+  type PlayerSrc,
 } from "@vidstack/react";
 import {
   DefaultVideoLayout,
@@ -21,12 +24,16 @@ import "@vidstack/react/player/styles/default/theme.css";
 import "@vidstack/react/player/styles/default/layouts/video.css";
 import type { SerializedItemFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { getMimeTypeByExtension } from "@/lib/file-type-utils";
+import { Shader1 } from "@/components/shader1";
 
 interface VideoPlayerProps {
   /** The media file to play */
   file: SerializedItemFile;
   /** Optional subtitle files to load */
   subtitles?: SerializedItemFile[];
+  /** Optional poster/artwork URL (displayed for audio files or before video plays) */
+  posterUrl?: string;
   /** Callback fired when time updates (throttled) */
   onTimeUpdate?: (currentTime: number, duration: number) => void;
   /** Callback fired when video ends */
@@ -36,24 +43,19 @@ interface VideoPlayerProps {
 }
 
 /**
- * Cinematic video player with Vidstack.
+ * Video player with Vidstack.
  * Features auto-resume, subtitle support, and progress tracking.
- *
- * @param file - The media file to play
- * @param subtitles - Optional subtitle tracks
- * @param onTimeUpdate - Progress callback
- * @param onEnded - Completion callback
  */
 export function VideoPlayer({
   file,
   subtitles,
+  posterUrl,
   onTimeUpdate,
   onEnded,
   className,
 }: VideoPlayerProps) {
   const playerRef = useRef<MediaPlayerInstance>(null);
   const lastUpdateRef = useRef<number>(0);
-  const [isLoaded, setIsLoaded] = useState(false);
 
   // Debounced time update handler (every 5 seconds max)
   const handleTimeUpdate = useCallback(
@@ -61,7 +63,6 @@ export function VideoPlayer({
       const now = Date.now();
       if (now - lastUpdateRef.current >= 5000) {
         lastUpdateRef.current = now;
-        // Get duration from the player state
         const duration = playerRef.current?.state.duration || 0;
         onTimeUpdate?.(detail.currentTime, duration);
       }
@@ -73,92 +74,78 @@ export function VideoPlayer({
     onEnded?.();
   }, [onEnded]);
 
-  const handleCanPlay = useCallback(() => {
-    setIsLoaded(true);
-  }, []);
-
-  // Seek to saved position when loaded
+  // Seek to saved position when mounted
   useEffect(() => {
-    if (isLoaded && playerRef.current && file.playbackPosition) {
+    if (playerRef.current && file.playbackPosition) {
       const player = playerRef.current;
-      // Small delay to ensure player is ready
       const timeout = setTimeout(() => {
         player.currentTime = file.playbackPosition || 0;
       }, 100);
       return () => clearTimeout(timeout);
     }
-  }, [isLoaded, file.playbackPosition]);
+  }, [file.playbackPosition]);
 
   const streamUrl = `/api/stream/${file.id}`;
+  // Prioritize filename inference over database value (more reliable)
+  const inferredMimeType = getMimeTypeByExtension(file.filename);
+  const mimeType = inferredMimeType || file.mimeType || "video/mp4";
+  const isAudio = mimeType.startsWith("audio/");
+  // Audio without artwork shows shader background (cinematic experience)
+  const showShaderBackground = isAudio && !posterUrl;
 
   return (
-    <div
-      className={cn(
-        "relative aspect-video w-full overflow-hidden rounded-lg",
-        // Cinematic frame with subtle ambient glow
-        "ring-1 ring-white/5",
-        "shadow-[0_0_80px_rgba(0,0,0,0.8),inset_0_0_60px_rgba(0,0,0,0.3)]",
-        // Fade in animation
-        "animate-in fade-in duration-700",
-        className
-      )}
+    <MediaPlayer
+      ref={playerRef}
+      src={{ src: streamUrl, type: mimeType } as PlayerSrc}
+      title={file.filename || "Media"}
+      poster={posterUrl}
+      viewType="video"
+      crossOrigin
+      playsInline
+      onTimeUpdate={handleTimeUpdate}
+      onEnded={handleEnded}
+      className={cn("h-full w-full", className)}
     >
-      {/* Ambient glow effect behind player */}
-      <div
-        className="pointer-events-none absolute -inset-4 -z-10 opacity-50 blur-3xl"
-        style={{
-          background:
-            "radial-gradient(ellipse at center, rgba(59, 130, 246, 0.15) 0%, transparent 70%)",
-        }}
-      />
+      <MediaProvider>
+        {subtitles?.map((sub, idx) => (
+          <Track
+            key={sub.id}
+            src={`/api/stream/${sub.id}`}
+            kind="subtitles"
+            label={sub.filename.replace(/\.[^/.]+$/, "")}
+            lang={extractLanguageCode(sub.filename)}
+            default={idx === 0}
+          />
+        ))}
+      </MediaProvider>
 
-      <MediaPlayer
-        ref={playerRef}
-        src={streamUrl}
-        aspectRatio="16/9"
-        crossOrigin
-        playsInline
-        onTimeUpdate={handleTimeUpdate}
-        onEnded={handleEnded}
-        onCanPlay={handleCanPlay}
-        className="h-full w-full"
-      >
-        <MediaProvider>
-          {subtitles?.map((sub, idx) => (
-            <Track
-              key={sub.id}
-              src={`/api/stream/${sub.id}`}
-              kind="subtitles"
-              label={sub.filename.replace(/\.[^/.]+$/, "")}
-              lang={extractLanguageCode(sub.filename)}
-              default={idx === 0}
-            />
-          ))}
-        </MediaProvider>
-
-        <DefaultVideoLayout
-          icons={defaultLayoutIcons}
-          colorScheme="dark"
-          noScrubGesture={false}
+      {/* Show artwork as background for audio files with poster */}
+      {isAudio && posterUrl && (
+        <Poster
+          className="absolute inset-0 block h-full w-full object-cover"
+          src={posterUrl}
+          alt="Album artwork"
         />
-      </MediaPlayer>
+      )}
 
-      {/* Loading shimmer overlay */}
-      {!isLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/80">
-          <div className="flex flex-col items-center gap-4">
-            <div className="relative size-12">
-              <div className="absolute inset-0 animate-ping rounded-full bg-blue-500/20" />
-              <div className="absolute inset-2 animate-pulse rounded-full bg-blue-500/40" />
-              <div className="absolute inset-4 rounded-full bg-blue-500" />
-            </div>
-            <p className="animate-pulse text-sm font-medium tracking-wide text-white/60">
-              Loading media...
-            </p>
-          </div>
+      {/* Show animated shader background for audio without artwork */}
+      {showShaderBackground && (
+        <div className="absolute inset-0 z-0">
+          {typeof window !== "undefined" && navigator.webdriver ? (
+            <div className="h-full w-full bg-gradient-to-br from-blue-900 via-purple-900 to-slate-900" />
+          ) : (
+            <Shader1 className="h-full" />
+          )}
         </div>
       )}
-    </div>
+
+      {/* Always use video layout for cinematic experience */}
+      <DefaultVideoLayout
+        icons={defaultLayoutIcons}
+        colorScheme="dark"
+        noScrubGesture={false}
+      />
+    </MediaPlayer>
   );
 }
 
@@ -171,7 +158,6 @@ function extractLanguageCode(filename: string): string {
   const parts = nameWithoutExt.split(".");
   const lastPart = parts[parts.length - 1]?.toLowerCase() || "";
 
-  // Common language codes/names
   const languageMap: Record<string, string> = {
     en: "en",
     eng: "en",

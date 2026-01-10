@@ -85,46 +85,6 @@ describe("AppSidebar footer active state", () => {
   });
 
   describe("when authenticated on my-items context", () => {
-    it("renders Connections as active on /my-items/connections", () => {
-      mockPathname.mockReturnValue("/my-items/connections");
-      render(<AppSidebar user={mockUser} context="my-items" />);
-
-      const footer = screen.getByTestId("sidebar-footer");
-      const buttons = footer.querySelectorAll(
-        '[data-testid="sidebar-menu-button"]'
-      );
-
-      // First footer button is Connections
-      const connectionsButton = buttons[0];
-      expect(connectionsButton.getAttribute("data-active")).toBe("true");
-    });
-
-    it("renders Connections as active on /my-items/connections/123/edit", () => {
-      mockPathname.mockReturnValue("/my-items/connections/123/edit");
-      render(<AppSidebar user={mockUser} context="my-items" />);
-
-      const footer = screen.getByTestId("sidebar-footer");
-      const buttons = footer.querySelectorAll(
-        '[data-testid="sidebar-menu-button"]'
-      );
-
-      const connectionsButton = buttons[0];
-      expect(connectionsButton.getAttribute("data-active")).toBe("true");
-    });
-
-    it("renders Connections as inactive on /my-items", () => {
-      mockPathname.mockReturnValue("/my-items");
-      render(<AppSidebar user={mockUser} context="my-items" />);
-
-      const footer = screen.getByTestId("sidebar-footer");
-      const buttons = footer.querySelectorAll(
-        '[data-testid="sidebar-menu-button"]'
-      );
-
-      const connectionsButton = buttons[0];
-      expect(connectionsButton.getAttribute("data-active")).toBe("false");
-    });
-
     it("renders Get Help as active on /docs", () => {
       mockPathname.mockReturnValue("/docs");
       render(<AppSidebar user={mockUser} context="my-items" />);
@@ -134,8 +94,8 @@ describe("AppSidebar footer active state", () => {
         '[data-testid="sidebar-menu-button"]'
       );
 
-      // Second footer button is Get Help
-      const getHelpButton = buttons[1];
+      // Get Help is the only footer nav button
+      const getHelpButton = buttons[0];
       expect(getHelpButton.getAttribute("data-active")).toBe("true");
     });
 
@@ -148,7 +108,7 @@ describe("AppSidebar footer active state", () => {
         '[data-testid="sidebar-menu-button"]'
       );
 
-      const getHelpButton = buttons[1];
+      const getHelpButton = buttons[0];
       expect(getHelpButton.getAttribute("data-active")).toBe("true");
     });
 
@@ -161,7 +121,7 @@ describe("AppSidebar footer active state", () => {
         '[data-testid="sidebar-menu-button"]'
       );
 
-      const getHelpButton = buttons[1];
+      const getHelpButton = buttons[0];
       expect(getHelpButton.getAttribute("data-active")).toBe("false");
     });
   });

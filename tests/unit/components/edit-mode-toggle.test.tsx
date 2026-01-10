@@ -7,16 +7,16 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { EditModeToggle } from "@/components/items/edit-mode-toggle";
 
 describe("EditModeToggle", () => {
-  it("should show 'Edit' when not editing", () => {
+  it("should show 'Edit Mode' when not editing", () => {
     render(<EditModeToggle isEditing={false} onToggle={() => {}} />);
 
-    expect(screen.getByRole("button")).toHaveTextContent("Edit");
+    expect(screen.getByRole("button")).toHaveTextContent("Edit Mode");
   });
 
-  it("should show 'Done' when editing", () => {
+  it("should show 'View Mode' when editing", () => {
     render(<EditModeToggle isEditing={true} onToggle={() => {}} />);
 
-    expect(screen.getByRole("button")).toHaveTextContent("Done");
+    expect(screen.getByRole("button")).toHaveTextContent("View Mode");
   });
 
   it("should call onToggle when clicked", () => {
@@ -34,22 +34,22 @@ describe("EditModeToggle", () => {
 
     expect(screen.getByRole("button")).toHaveAttribute(
       "aria-label",
-      "Edit items"
+      "Enter edit mode"
     );
 
     rerender(<EditModeToggle isEditing={true} onToggle={() => {}} />);
 
     expect(screen.getByRole("button")).toHaveAttribute(
       "aria-label",
-      "Done editing"
+      "Exit edit mode"
     );
   });
 
-  it("should be hidden when disabled", () => {
+  it("should be disabled when disabled prop is true", () => {
     render(
       <EditModeToggle isEditing={false} onToggle={() => {}} disabled={true} />
     );
 
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getByRole("button")).toBeDisabled();
   });
 });

@@ -9,14 +9,20 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { itemNameSchema, itemDescriptionSchema } from "@/lib/validations";
 import { checkRateLimit } from "@/lib/rate-limit";
+import {
+  createDriveFolderOnly,
+  deleteItemFromGoogleDrive,
+  renameItemInGoogleDrive,
+  moveItemInGoogleDrive,
+} from "@/lib/google-drive-actions";
+import { logger } from "@/lib/logger";
 import type {
   Item,
-  ItemWithConnection,
   ItemResult,
   BreadcrumbItem,
   ItemWithArtwork,
 } from "@/lib/types";
-import { buildDescendantCounter } from "@/lib/item-utils";
+import { buildDescendantCounter, getMediaIconType } from "@/lib/item-utils";
 
 const MAX_DEPTH = 10;
 
@@ -54,10 +60,16 @@ export async function getItems(
     orderBy: { order: "asc" },
     include: {
       files: {
-        select: { id: true, fileType: true, isPrimary: true },
+        select: {
+          id: true,
+          fileType: true,
+          isPrimary: true,
+          filename: true,
+          mimeType: true,
+        },
       },
-      connection: {
-        select: { name: true },
+      driveConnection: {
+        select: { id: true },
       },
     },
   });
@@ -71,12 +83,24 @@ export async function getItems(
     const firstArtwork = item.files.find((f) => f.fileType === "ARTWORK");
     const artworkId = primaryArtwork?.id ?? firstArtwork?.id ?? null;
 
+    // Find primary media, or first media if no primary
+    const primaryMedia = item.files.find(
+      (f) => f.fileType === "MEDIA" && f.isPrimary
+    );
+    const firstMedia = item.files.find((f) => f.fileType === "MEDIA");
+    const resolvedPrimaryMedia = primaryMedia ?? firstMedia;
+    const primaryMediaName = resolvedPrimaryMedia?.filename ?? null;
+
     // Calculate file counts by type
+    const mediaFiles = item.files.filter((f) => f.fileType === "MEDIA");
     const fileCounts = {
-      media: item.files.filter((f) => f.fileType === "MEDIA").length,
+      media: mediaFiles.length,
       artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
       subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
     };
+
+    // Determine media icon type: film (all video), music (all audio), mixed (both)
+    const mediaIconType = getMediaIconType(mediaFiles);
 
     return {
       id: item.id,
@@ -88,13 +112,18 @@ export async function getItems(
       userId: item.userId,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
-      sftpPath: item.sftpPath,
-      sftpModifiedAt: item.sftpModifiedAt,
-      connectionId: item.connectionId,
+      // Google Drive fields
+      driveFileId: item.driveFileId,
+      driveModifiedAt: item.driveModifiedAt,
+      driveThumbnailUrl: item.driveThumbnailUrl,
+      syncStatus: item.syncStatus,
+      syncError: item.syncError,
+      driveConnectionId: item.driveConnectionId,
       artworkId,
-      connectionName: item.connection?.name ?? null,
       fileCounts,
       childCount: countDescendants(item.id),
+      primaryMediaName,
+      mediaIconType,
     };
   });
 
@@ -131,10 +160,16 @@ export async function getAllItems(): Promise<ItemResult<ItemWithArtwork[]>> {
     orderBy: [{ depth: "asc" }, { order: "asc" }],
     include: {
       files: {
-        select: { id: true, fileType: true, isPrimary: true },
+        select: {
+          id: true,
+          fileType: true,
+          isPrimary: true,
+          filename: true,
+          mimeType: true,
+        },
       },
-      connection: {
-        select: { name: true },
+      driveConnection: {
+        select: { id: true },
       },
     },
   });
@@ -147,11 +182,24 @@ export async function getAllItems(): Promise<ItemResult<ItemWithArtwork[]>> {
     const firstArtwork = item.files.find((f) => f.fileType === "ARTWORK");
     const artworkId = primaryArtwork?.id ?? firstArtwork?.id ?? null;
 
+    // Find primary media, or first media if no primary
+    const primaryMedia = item.files.find(
+      (f) => f.fileType === "MEDIA" && f.isPrimary
+    );
+    const firstMedia = item.files.find((f) => f.fileType === "MEDIA");
+    const resolvedPrimaryMedia = primaryMedia ?? firstMedia;
+    const primaryMediaName = resolvedPrimaryMedia?.filename ?? null;
+
+    // Calculate file counts by type
+    const mediaFiles = item.files.filter((f) => f.fileType === "MEDIA");
     const fileCounts = {
-      media: item.files.filter((f) => f.fileType === "MEDIA").length,
+      media: mediaFiles.length,
       artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
       subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
     };
+
+    // Determine media icon type: film (all video), music (all audio), mixed (both)
+    const mediaIconType = getMediaIconType(mediaFiles);
 
     return {
       id: item.id,
@@ -163,13 +211,18 @@ export async function getAllItems(): Promise<ItemResult<ItemWithArtwork[]>> {
       userId: item.userId,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
-      sftpPath: item.sftpPath,
-      sftpModifiedAt: item.sftpModifiedAt,
-      connectionId: item.connectionId,
+      // Google Drive fields
+      driveFileId: item.driveFileId,
+      driveModifiedAt: item.driveModifiedAt,
+      driveThumbnailUrl: item.driveThumbnailUrl,
+      syncStatus: item.syncStatus,
+      syncError: item.syncError,
+      driveConnectionId: item.driveConnectionId,
       artworkId,
-      connectionName: item.connection?.name ?? null,
       fileCounts,
       childCount: countDescendants(item.id),
+      primaryMediaName,
+      mediaIconType,
     };
   });
 
@@ -226,10 +279,16 @@ export async function getDescendants(
     orderBy: [{ depth: "asc" }, { order: "asc" }],
     include: {
       files: {
-        select: { id: true, fileType: true, isPrimary: true },
+        select: {
+          id: true,
+          fileType: true,
+          isPrimary: true,
+          filename: true,
+          mimeType: true,
+        },
       },
-      connection: {
-        select: { name: true },
+      driveConnection: {
+        select: { id: true },
       },
     },
   });
@@ -246,11 +305,24 @@ export async function getDescendants(
     const firstArtwork = item.files.find((f) => f.fileType === "ARTWORK");
     const artworkId = primaryArtwork?.id ?? firstArtwork?.id ?? null;
 
+    // Find primary media, or first media if no primary
+    const primaryMedia = item.files.find(
+      (f) => f.fileType === "MEDIA" && f.isPrimary
+    );
+    const firstMedia = item.files.find((f) => f.fileType === "MEDIA");
+    const resolvedPrimaryMedia = primaryMedia ?? firstMedia;
+    const primaryMediaName = resolvedPrimaryMedia?.filename ?? null;
+
+    // Calculate file counts by type
+    const mediaFiles = item.files.filter((f) => f.fileType === "MEDIA");
     const fileCounts = {
-      media: item.files.filter((f) => f.fileType === "MEDIA").length,
+      media: mediaFiles.length,
       artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
       subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
     };
+
+    // Determine media icon type: film (all video), music (all audio), mixed (both)
+    const mediaIconType = getMediaIconType(mediaFiles);
 
     return {
       id: item.id,
@@ -262,13 +334,18 @@ export async function getDescendants(
       userId: item.userId,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
-      sftpPath: item.sftpPath,
-      sftpModifiedAt: item.sftpModifiedAt,
-      connectionId: item.connectionId,
+      // Google Drive fields
+      driveFileId: item.driveFileId,
+      driveModifiedAt: item.driveModifiedAt,
+      driveThumbnailUrl: item.driveThumbnailUrl,
+      syncStatus: item.syncStatus,
+      syncError: item.syncError,
+      driveConnectionId: item.driveConnectionId,
       artworkId,
-      connectionName: item.connection?.name ?? null,
       fileCounts,
       childCount: countDescendants(item.id),
+      primaryMediaName,
+      mediaIconType,
     };
   });
 
@@ -283,9 +360,7 @@ export async function getDescendants(
  */
 export async function getItem(
   id: string
-): Promise<
-  ItemResult<{ item: ItemWithConnection; ancestors: BreadcrumbItem[] }>
-> {
+): Promise<ItemResult<{ item: Item; ancestors: BreadcrumbItem[] }>> {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "Unauthorized" };
@@ -293,11 +368,6 @@ export async function getItem(
 
   const item = await prisma.item.findUnique({
     where: { id },
-    include: {
-      connection: {
-        select: { id: true, name: true },
-      },
-    },
   });
 
   if (!item) {
@@ -331,7 +401,7 @@ export async function getItem(
 
   return {
     success: true,
-    data: { item: item as ItemWithConnection, ancestors },
+    data: { item, ancestors },
   };
 }
 
@@ -418,6 +488,52 @@ export async function createItem(
     },
   });
 
+  // Sync to Google Drive if user has connection
+  const connection = await prisma.googleDriveConnection.findUnique({
+    where: { userId: session.user.id },
+  });
+
+  if (connection) {
+    // Create folder in Drive (async, don't block UI response)
+    // Note: revalidatePath runs before Drive sync completes - UI may show stale syncStatus briefly
+    // Uses createDriveFolderOnly which only creates Drive folder, NOT a duplicate Item
+    createDriveFolderOnly(parentId, nameValidation.data)
+      .then(async (result) => {
+        if (result.success && result.data) {
+          // Update item with Drive file ID
+          await prisma.item.update({
+            where: { id: item.id },
+            data: {
+              driveFileId: result.data.driveFileId,
+              driveConnectionId: connection.id,
+              syncStatus: "SYNCED",
+            },
+          });
+        } else if (!result.success) {
+          // Mark as pending if Drive folder creation failed
+          await prisma.item
+            .update({
+              where: { id: item.id },
+              data: { syncStatus: "PENDING" },
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(async (err) => {
+        logger.error(
+          { err, itemId: item.id },
+          "Failed to create folder in Drive"
+        );
+        // Mark as pending sync
+        await prisma.item
+          .update({
+            where: { id: item.id },
+            data: { syncStatus: "PENDING" },
+          })
+          .catch(() => {}); // Ignore secondary failure
+      });
+  }
+
   return { success: true, data: item as Item };
 }
 
@@ -444,16 +560,16 @@ export async function updateItem(
     return { error: "Unauthorized" };
   }
 
-  const item = await prisma.item.findUnique({
+  const existingItem = await prisma.item.findUnique({
     where: { id },
-    select: { userId: true },
+    select: { userId: true, name: true, driveFileId: true },
   });
 
-  if (!item) {
+  if (!existingItem) {
     return { error: "Item not found" };
   }
 
-  if (item.userId !== session.user.id) {
+  if (existingItem.userId !== session.user.id) {
     return { error: "Unauthorized" };
   }
 
@@ -488,12 +604,24 @@ export async function updateItem(
     data: updateData,
   });
 
+  // If name changed and item is in Drive, rename there too
+  if (
+    updateData.name &&
+    updateData.name !== existingItem.name &&
+    existingItem.driveFileId
+  ) {
+    renameItemInGoogleDrive(id, updateData.name).catch((err) => {
+      logger.error({ err, itemId: id }, "Failed to rename in Drive");
+    });
+  }
+
   return { success: true };
 }
 
 /**
  * Deletes an item and all descendants.
  * Verifies ownership before delete.
+ * Deletes from Google Drive first if item is connected.
  *
  * @param id - Item ID
  * @returns Success or error
@@ -506,7 +634,7 @@ export async function deleteItem(id: string): Promise<ItemResult> {
 
   const item = await prisma.item.findUnique({
     where: { id },
-    select: { userId: true },
+    select: { userId: true, driveFileId: true, driveConnectionId: true },
   });
 
   if (!item) {
@@ -517,7 +645,19 @@ export async function deleteItem(id: string): Promise<ItemResult> {
     return { error: "Unauthorized" };
   }
 
-  // Cascade delete handled by Prisma relation
+  // Delete from Drive first if connected (moves to trash, recoverable)
+  if (item.driveFileId && item.driveConnectionId) {
+    const driveResult = await deleteItemFromGoogleDrive(id);
+    if (!driveResult.success) {
+      // Log but continue with local delete
+      logger.error(
+        { error: driveResult.error, itemId: id },
+        "Failed to delete from Drive"
+      );
+    }
+  }
+
+  // Always delete from local DB (Drive delete is soft-delete to trash)
   await prisma.item.delete({
     where: { id },
   });
@@ -528,6 +668,7 @@ export async function deleteItem(id: string): Promise<ItemResult> {
 /**
  * Batch reorders items. Used after drag operations.
  * Verifies ownership of ALL items before update.
+ * Syncs parent changes to Google Drive.
  *
  * @param updates - Array of item updates with new order/parentId
  * @returns Success or error
@@ -549,11 +690,17 @@ export async function reorderItems(
     return { success: true };
   }
 
-  // Verify ownership of ALL items in batch
+  // Verify ownership and get current parent IDs to detect moves
   const itemIds = updates.map((u) => u.id);
   const items = await prisma.item.findMany({
     where: { id: { in: itemIds } },
-    select: { id: true, userId: true, depth: true },
+    select: {
+      id: true,
+      userId: true,
+      depth: true,
+      parentId: true,
+      driveFileId: true,
+    },
   });
 
   // Check all items exist
@@ -575,6 +722,14 @@ export async function reorderItems(
     }
   }
 
+  // Build map of current parent IDs for detecting moves
+  const currentParentMap = new Map(
+    items.map((i) => [
+      i.id,
+      { parentId: i.parentId, driveFileId: i.driveFileId },
+    ])
+  );
+
   // Perform batch update in transaction
   await prisma.$transaction(
     updates.map((update) =>
@@ -588,6 +743,23 @@ export async function reorderItems(
       })
     )
   );
+
+  // Sync moves to Drive (async, don't block response)
+  for (const update of updates) {
+    const current = currentParentMap.get(update.id);
+    if (
+      current?.driveFileId &&
+      update.parentId !== undefined &&
+      current.parentId !== update.parentId
+    ) {
+      // Parent changed - move in Drive (pass old parentId since DB already updated)
+      moveItemInGoogleDrive(update.id, update.parentId, current.parentId).catch(
+        (err) => {
+          logger.error({ err, itemId: update.id }, "Failed to move in Drive");
+        }
+      );
+    }
+  }
 
   return { success: true };
 }

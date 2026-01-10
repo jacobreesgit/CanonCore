@@ -1,7 +1,7 @@
 /**
  * Database fixtures for E2E tests.
  *
- * Uses Prisma to directly seed and cleanup test users in the database.
+ * Uses Prisma to directly create and cleanup test users in the database.
  * This allows for reliable, fast test setup without hitting external APIs.
  */
 
@@ -48,10 +48,10 @@ export function generateTestUser(): TestUser {
 }
 
 /**
- * Seeds a test user directly in the database.
+ * Creates a test user directly in the database.
  * Returns the created user's email for reference.
  */
-export async function seedTestUser(
+export async function createTestUser(
   email: string,
   password: string
 ): Promise<void> {

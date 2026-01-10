@@ -11,8 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { serializeItemFile } from "@/lib/types";
 import { itemNameSchema, itemDescriptionSchema } from "@/lib/validations";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { validateFileName, sanitizePath } from "@/lib/sftp-utils";
-import { rename as sftpRename } from "@/lib/sftp-client";
+import { renameItemInGoogleDrive } from "@/lib/google-drive-actions";
 import { logger } from "@/lib/logger";
 import type { SerializedItemFile } from "@/lib/types";
 
@@ -257,15 +256,15 @@ export async function updateItemSettings(
   }
 
   try {
-    // Verify user owns the item and get SFTP connection info
+    // Verify user owns the item and get connection info
     const item = await prisma.item.findUnique({
       where: { id: itemId },
       select: {
         userId: true,
         name: true,
-        sftpPath: true,
-        connection: true,
-        parent: { select: { sftpPath: true } },
+        driveFileId: true,
+        driveConnection: true,
+        parent: { select: { driveFileId: true } },
       },
     });
 
@@ -344,10 +343,9 @@ export async function updateItemSettings(
     const itemUpdateData: {
       name?: string;
       description?: string | null;
-      sftpPath?: string;
     } = {};
 
-    // Handle name change - may require SFTP rename
+    // Handle name change - may require Google Drive rename
     if (changes.name !== undefined && changes.name !== item.name) {
       const validation = itemNameSchema.safeParse(changes.name);
       if (!validation.success) {
@@ -355,20 +353,11 @@ export async function updateItemSettings(
       }
       itemUpdateData.name = validation.data;
 
-      // If item is SFTP-connected, rename on server first
-      if (item.connection && item.sftpPath) {
-        try {
-          validateFileName(validation.data);
-          const parentPath =
-            item.parent?.sftpPath ?? item.connection.basePath ?? "/";
-          const newPath = sanitizePath(parentPath, validation.data);
-
-          await sftpRename(item.connection, item.sftpPath, newPath);
-          itemUpdateData.sftpPath = newPath;
-        } catch (error) {
-          logger.error({ err: error }, "[SFTP] Rename error");
-          return { success: false, error: "Failed to rename on SFTP server" };
-        }
+      // If item is connected to Google Drive, rename there too (async, don't block)
+      if (item.driveFileId) {
+        renameItemInGoogleDrive(itemId, validation.data).catch((err) => {
+          logger.error({ err, itemId }, "[GoogleDrive] Rename error");
+        });
       }
     }
 
@@ -386,7 +375,7 @@ export async function updateItemSettings(
 
     // Execute all updates in a single transaction
     await prisma.$transaction(async (tx) => {
-      // Update item name/description/sftpPath if provided
+      // Update item name/description if provided
       if (Object.keys(itemUpdateData).length > 0) {
         await tx.item.update({
           where: { id: itemId },

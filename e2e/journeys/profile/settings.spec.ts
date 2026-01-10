@@ -25,12 +25,12 @@ test.describe("Profile Settings Journey", () => {
   }) => {
     await myItemsPage.openProfileSettings();
 
-    // Dialog should be visible
+    // Dialog should be visible with correct title
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "Profile Settings" })
+      page.getByText("Manage your account and connections")
     ).toBeVisible();
-    await expect(page.getByText("Manage your account")).toBeVisible();
   });
 
   test("shows profile sections in dialog", async ({ page, myItemsPage }) => {
@@ -64,7 +64,7 @@ test.describe("Profile Settings Journey", () => {
     await expect(getProfileDialog(page)).not.toBeVisible({ timeout: 5000 });
 
     // Verify success toast
-    await expect(page.getByText("Profile updated")).toBeVisible();
+    await expect(page.getByText("Settings updated")).toBeVisible();
   });
 
   test("cancel closes dialog without saving", async ({ page, myItemsPage }) => {

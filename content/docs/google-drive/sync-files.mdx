@@ -1,0 +1,66 @@
+---
+title: Sync Files
+description: Keep your Google Drive and CanonCore in sync
+---
+
+## How syncing works
+
+CanonCore syncs with the "CanonCore" folder in your Google Drive. When you create items or upload files in CanonCore, they appear in Drive. When you add files to Drive, they sync to CanonCore.
+
+## Automatic sync
+
+Items sync automatically when you:
+
+- Create a new item in CanonCore
+- Upload files to an item
+- Rename or move items
+- Delete items
+
+You don't need to manually sync - changes flow to Google Drive in the background.
+
+## Sync status indicators
+
+Items show their sync status with visual indicators:
+
+- **No badge** - Synced with Google Drive (clean UI)
+- **Animated spinner** - Sync in progress
+- **Small dot** - Waiting to sync
+- **Warning triangle** - Sync error (hover to see details)
+
+## What gets synced
+
+**From CanonCore to Drive:**
+
+- New items become folders in Drive
+- Uploaded files appear in the matching folder
+- Renames update the folder name in Drive
+- Deletions move items to Drive's trash
+
+**From Drive to CanonCore:**
+
+- Folders become items with their hierarchy preserved
+- Video files (MP4, MKV, etc.) become playable media
+- Images become artwork thumbnails
+- Subtitles (SRT, VTT) link to their videos
+
+## Manual sync from Drive
+
+If you add content directly to Google Drive, CanonCore picks it up on the next sync. The sync happens automatically, but changes may take a few moments to appear.
+
+## File organization
+
+CanonCore mirrors your Drive folder structure:
+
+- Top-level folders in "CanonCore" become root items
+- Subfolders become child items
+- Files attach to their parent folder's item
+
+Keep your media organized in Drive, and that organization carries over to CanonCore.
+
+## Troubleshooting
+
+**Items not appearing?** Make sure files are in the "CanonCore" folder in your Google Drive. Content outside this folder won't sync.
+
+**Sync stuck?** Check your internet connection. If the issue persists, try disconnecting and reconnecting your Google Drive in Settings.
+
+**Error showing?** Hover over the warning triangle to see what went wrong. Common issues include permission changes or network timeouts.
