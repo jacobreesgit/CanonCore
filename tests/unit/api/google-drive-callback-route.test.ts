@@ -172,7 +172,10 @@ describe("GET /api/auth/callback/google-drive", () => {
       expiresIn: 3600,
     });
     mockGetUserEmail.mockResolvedValue("user@example.com");
-    mockCreateRootFolder.mockResolvedValue("root-folder-id");
+    mockCreateRootFolder.mockResolvedValue({
+      id: "root-folder-id",
+      wasExisting: false,
+    });
     mockUpsert.mockResolvedValue({} as never);
 
     const response = await GET(
@@ -181,7 +184,7 @@ describe("GET /api/auth/callback/google-drive", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toContain(
-      "/my-items?success=connected"
+      "/my-items?drive=connected"
     );
     expect(mockExchangeCode).toHaveBeenCalledWith("test-code");
     expect(mockGetUserEmail).toHaveBeenCalledWith("access-token");

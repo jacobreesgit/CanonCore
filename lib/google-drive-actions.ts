@@ -446,7 +446,50 @@ async function processBatch(
 }
 
 /**
+ * Checks if an item's values differ from Drive values.
+ *
+ * @param current - Current item values from database
+ * @param file - Drive file with new values
+ * @param parentItemId - Expected parent ID
+ * @returns True if any values differ and need updating
+ */
+function hasItemChanges(
+  current: {
+    name: string;
+    driveModifiedAt: Date | null;
+    driveThumbnailUrl: string | null;
+    parentId: string | null;
+  },
+  file: drive_v3.Schema$File,
+  parentItemId: string | null
+): boolean {
+  const newName = file.name || "Untitled";
+  const newModifiedAt = file.modifiedTime ? new Date(file.modifiedTime) : null;
+
+  // Compare name
+  if (current.name !== newName) return true;
+
+  // Compare parent
+  if (current.parentId !== parentItemId) return true;
+
+  // Compare thumbnail URL
+  if (current.driveThumbnailUrl !== (file.thumbnailLink || null)) return true;
+
+  // Compare modifiedAt (with null handling)
+  if (newModifiedAt) {
+    if (!current.driveModifiedAt) return true;
+    if (current.driveModifiedAt.getTime() !== newModifiedAt.getTime())
+      return true;
+  } else if (current.driveModifiedAt) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Processes a single file or folder from Google Drive.
+ * Only counts as 'updated' when values actually differ from current state.
  *
  * @param drive - Google Drive API client
  * @param ctx - Sync context
@@ -470,22 +513,44 @@ async function processFile(
   if (isFolder) {
     // Folders become Items
     if (existing) {
-      // Update existing folder
-      await prisma.item.update({
+      // Fetch current values to check if update is needed
+      const currentItem = await prisma.item.findUnique({
         where: { id: existing.id },
-        data: {
-          name: file.name || "Untitled",
-          driveModifiedAt: file.modifiedTime
-            ? new Date(file.modifiedTime)
-            : undefined,
-          driveThumbnailUrl: file.thumbnailLink,
-          parentId: parentItemId,
-          depth,
-          syncStatus: SyncStatus.SYNCED,
-          syncError: null,
+        select: {
+          name: true,
+          driveModifiedAt: true,
+          driveThumbnailUrl: true,
+          parentId: true,
         },
       });
-      ctx.stats.updated++;
+
+      if (currentItem && hasItemChanges(currentItem, file, parentItemId)) {
+        // Values differ - update and count
+        await prisma.item.update({
+          where: { id: existing.id },
+          data: {
+            name: file.name || "Untitled",
+            driveModifiedAt: file.modifiedTime
+              ? new Date(file.modifiedTime)
+              : undefined,
+            driveThumbnailUrl: file.thumbnailLink,
+            parentId: parentItemId,
+            depth,
+            syncStatus: SyncStatus.SYNCED,
+            syncError: null,
+          },
+        });
+        ctx.stats.updated++;
+      } else {
+        // No changes - just mark as synced without counting
+        await prisma.item.update({
+          where: { id: existing.id },
+          data: {
+            syncStatus: SyncStatus.SYNCED,
+            syncError: null,
+          },
+        });
+      }
       await syncFolder(drive, ctx, file.id!, existing.id, depth + 1);
     } else {
       // Create new folder Item
@@ -516,22 +581,44 @@ async function processFile(
   } else {
     // Files handling - attach as ItemFile to parent folder
     if (existing) {
-      // Existing Item for this file - update it (backward compat)
-      await prisma.item.update({
+      // Existing Item for this file - check if values changed (backward compat)
+      const currentItem = await prisma.item.findUnique({
         where: { id: existing.id },
-        data: {
-          name: file.name || "Untitled",
-          driveModifiedAt: file.modifiedTime
-            ? new Date(file.modifiedTime)
-            : undefined,
-          driveThumbnailUrl: file.thumbnailLink,
-          parentId: parentItemId,
-          depth,
-          syncStatus: SyncStatus.SYNCED,
-          syncError: null,
+        select: {
+          name: true,
+          driveModifiedAt: true,
+          driveThumbnailUrl: true,
+          parentId: true,
         },
       });
-      ctx.stats.updated++;
+
+      if (currentItem && hasItemChanges(currentItem, file, parentItemId)) {
+        // Values differ - update and count
+        await prisma.item.update({
+          where: { id: existing.id },
+          data: {
+            name: file.name || "Untitled",
+            driveModifiedAt: file.modifiedTime
+              ? new Date(file.modifiedTime)
+              : undefined,
+            driveThumbnailUrl: file.thumbnailLink,
+            parentId: parentItemId,
+            depth,
+            syncStatus: SyncStatus.SYNCED,
+            syncError: null,
+          },
+        });
+        ctx.stats.updated++;
+      } else {
+        // No changes - just mark as synced without counting
+        await prisma.item.update({
+          where: { id: existing.id },
+          data: {
+            syncStatus: SyncStatus.SYNCED,
+            syncError: null,
+          },
+        });
+      }
       await syncItemFile(existing.id, file);
     } else if (parentItemId) {
       // File with parent folder - create or update ItemFile on parent
@@ -539,12 +626,13 @@ async function processFile(
         { fileName: file.name, driveFileId: file.id, parentItemId },
         "[GoogleDrive] processFile: attaching file as ItemFile to parent"
       );
-      const wasCreated = await syncItemFile(parentItemId, file);
-      if (wasCreated) {
+      const syncResult = await syncItemFile(parentItemId, file);
+      if (syncResult.wasCreated) {
         ctx.stats.created++;
-      } else {
+      } else if (syncResult.hadChanges) {
         ctx.stats.updated++;
       }
+      // If no changes, don't count anything
     } else {
       // NEW file at root level (no parent) - create Item + ItemFile
       logger.info(
@@ -574,48 +662,85 @@ async function processFile(
   }
 }
 
+/** Result of syncing an ItemFile. */
+interface SyncItemFileResult {
+  wasCreated: boolean;
+  hadChanges: boolean;
+}
+
 /**
  * Syncs or creates an ItemFile record for a Drive file.
+ * Only reports hadChanges when values actually differ.
  *
  * @param itemId - The item ID
  * @param file - The Drive file
- * @returns Whether the file was created (true) or updated (false)
+ * @returns Object indicating if file was created and if it had changes
  */
 async function syncItemFile(
   itemId: string,
   file: drive_v3.Schema$File
-): Promise<boolean> {
+): Promise<SyncItemFileResult> {
   const fileType = categorizeFileType(file.mimeType || "", file.name || "");
+  const newFilename = file.name || "unknown";
+  const newMimeType = file.mimeType || "application/octet-stream";
+  const newSize = file.size ? BigInt(file.size) : null;
 
-  // Check if file already exists to determine create vs update
+  // Check if file already exists and compare values
   const existing = await prisma.itemFile.findFirst({
     where: { itemId, driveFileId: file.id! },
-    select: { id: true },
-  });
-
-  await prisma.itemFile.upsert({
-    where: {
-      itemId_driveFileId: { itemId, driveFileId: file.id! },
-    },
-    create: {
-      itemId,
-      driveFileId: file.id!,
-      filename: file.name || "unknown",
-      fileType,
-      mimeType: file.mimeType || "application/octet-stream",
-      size: file.size ? BigInt(file.size) : null,
-      syncStatus: SyncStatus.SYNCED,
-    },
-    update: {
-      filename: file.name || "unknown",
-      mimeType: file.mimeType || "application/octet-stream",
-      size: file.size ? BigInt(file.size) : null,
-      syncStatus: SyncStatus.SYNCED,
-      syncError: null,
+    select: {
+      id: true,
+      filename: true,
+      mimeType: true,
+      size: true,
     },
   });
 
-  return !existing; // true if created, false if updated
+  if (!existing) {
+    // Create new file
+    await prisma.itemFile.create({
+      data: {
+        itemId,
+        driveFileId: file.id!,
+        filename: newFilename,
+        fileType,
+        mimeType: newMimeType,
+        size: newSize,
+        syncStatus: SyncStatus.SYNCED,
+      },
+    });
+    return { wasCreated: true, hadChanges: false };
+  }
+
+  // Check if values actually changed
+  const hadChanges =
+    existing.filename !== newFilename ||
+    existing.mimeType !== newMimeType ||
+    existing.size !== newSize;
+
+  if (hadChanges) {
+    await prisma.itemFile.update({
+      where: { id: existing.id },
+      data: {
+        filename: newFilename,
+        mimeType: newMimeType,
+        size: newSize,
+        syncStatus: SyncStatus.SYNCED,
+        syncError: null,
+      },
+    });
+  } else {
+    // Just mark as synced without updating other fields
+    await prisma.itemFile.update({
+      where: { id: existing.id },
+      data: {
+        syncStatus: SyncStatus.SYNCED,
+        syncError: null,
+      },
+    });
+  }
+
+  return { wasCreated: false, hadChanges };
 }
 
 /**

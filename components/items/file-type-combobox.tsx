@@ -49,8 +49,8 @@ interface FileTypeComboboxProps {
   selectedId?: string;
   /** Callback when selection changes */
   onSelect: (id: string) => void;
-  /** Callback when upload completes (for refreshing file list) */
-  onUploadComplete: () => void;
+  /** Callback when upload completes with success count (for refreshing file list) */
+  onUploadComplete: (successCount: number) => void;
   /** Item ID for uploads */
   itemId: string;
   /** File type category for filtering */
@@ -220,7 +220,7 @@ export function FileTypeCombobox({
 
       // Refresh file list if any succeeded
       if (finalState.successCount > 0) {
-        onUploadComplete();
+        onUploadComplete(finalState.successCount);
       }
 
       // Auto-dismiss on complete success
@@ -271,7 +271,7 @@ export function FileTypeCombobox({
     setFailedFiles(stillFailed);
 
     if (finalState.successCount > 0) {
-      onUploadComplete();
+      onUploadComplete(finalState.successCount);
     }
 
     // Auto-dismiss on complete success
