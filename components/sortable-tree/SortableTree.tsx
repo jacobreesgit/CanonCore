@@ -37,7 +37,6 @@ import {
   flattenTree,
   getProjection,
   getChildCount,
-  removeItem,
   removeChildrenOf,
   setProperty,
 } from "./utilities";
@@ -85,10 +84,7 @@ interface SortableTreeProps {
   collapsible?: boolean;
   indentationWidth?: number;
   indicator?: boolean;
-  removable?: boolean;
   maxDepth?: number;
-  /** Whether to show connection badges on items. Defaults to true. Not used in edit mode. */
-  showConnectionBadge?: boolean;
 }
 
 export function SortableTree({
@@ -101,9 +97,7 @@ export function SortableTree({
   collapsible = true,
   indentationWidth = 20,
   indicator = true,
-  removable = true,
   maxDepth = 10,
-  showConnectionBadge: _showConnectionBadge, // eslint-disable-line @typescript-eslint/no-unused-vars
 }: SortableTreeProps) {
   const [items, setItems] = useState(() => defaultItems);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
@@ -212,15 +206,7 @@ export function SortableTree({
       <SortableContext items={sortedIds} strategy={verticalListSortingStrategy}>
         <ul data-testid="items-tree-view" className="space-y-0.5">
           {flattenedItems.map(
-            ({
-              id,
-              name,
-              description,
-              children,
-              collapsed,
-              depth,
-              sftpPath,
-            }) => (
+            ({ id, name, description, children, collapsed, depth }) => (
               <SortableTreeItem
                 key={id}
                 id={id}
@@ -235,7 +221,6 @@ export function SortableTree({
                     ? () => handleCollapse(id)
                     : undefined
                 }
-                onRemove={removable ? () => handleRemove(id) : undefined}
                 onClick={() => onItemClick?.(id)}
                 onSettings={
                   onOpenSettings ? () => onOpenSettings(String(id)) : undefined
@@ -248,7 +233,6 @@ export function SortableTree({
                     ? (childName) => onAddChild(String(id), childName)
                     : undefined
                 }
-                sftpPath={sftpPath}
                 showDescription={false}
               />
             )
@@ -331,12 +315,6 @@ export function SortableTree({
     setCurrentPosition(null);
 
     document.body.style.setProperty("cursor", "");
-  }
-
-  function handleRemove(id: UniqueIdentifier) {
-    const newItems = removeItem(items, id);
-    setItems(newItems);
-    onItemsChange?.(newItems);
   }
 
   function handleCollapse(id: UniqueIdentifier) {

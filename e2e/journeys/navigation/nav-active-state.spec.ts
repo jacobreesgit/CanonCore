@@ -53,17 +53,8 @@ test.describe("Navigation Active State", () => {
       await expect(myItemsNav).toHaveAttribute("data-active", "true");
     });
 
-    test("Connections nav is active on /my-items/connections", async ({
-      page,
-    }) => {
-      await page.goto("/my-items/connections");
-      await openSidebarIfMobile(page);
-
-      const connectionsNav = page.locator('[data-slot="sidebar-menu-button"]', {
-        hasText: "Connections",
-      });
-      await expect(connectionsNav).toHaveAttribute("data-active", "true");
-    });
+    // Note: /my-items/connections route was removed with SFTP-to-Google-Drive migration
+    // Google Drive connection is now managed through the Settings dialog
 
     test("docs context shows docs tree navigation instead of footer nav", async ({
       page,

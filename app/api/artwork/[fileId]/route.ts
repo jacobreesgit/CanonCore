@@ -1,23 +1,61 @@
 /**
- * SFTP artwork download route.
- * Downloads artwork files via SFTP for thumbnail display.
- * Unlike /api/stream, does not require WebDAV - uses direct SFTP download.
+ * Artwork streaming endpoint.
+ * Fetches artwork from Google Drive.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { downloadFileBuffer } from "@/lib/sftp-client";
-import { isValidPath } from "@/lib/sftp-utils";
+import { getDriveClient, withRateLimit } from "@/lib/google-drive-client";
+import { logger } from "@/lib/logger";
 
 /** Cache artwork for 1 hour (immutable content) */
 const CACHE_MAX_AGE = 3600;
 
-/** Maximum artwork file size (10MB) to prevent memory issues */
-const MAX_ARTWORK_SIZE = 10 * 1024 * 1024;
+/**
+ * Converts a Node.js readable stream to a Web ReadableStream.
+ * Handles race conditions where data events may fire after close/error.
+ *
+ * @param nodeStream - Node.js readable stream
+ * @returns Web ReadableStream of Uint8Array chunks
+ */
+function nodeStreamToWeb(
+  nodeStream: NodeJS.ReadableStream
+): ReadableStream<Uint8Array> {
+  let closed = false;
+
+  return new ReadableStream({
+    start(controller) {
+      nodeStream.on("data", (chunk: Buffer) => {
+        if (!closed) {
+          controller.enqueue(new Uint8Array(chunk));
+        }
+      });
+      nodeStream.on("end", () => {
+        if (!closed) {
+          closed = true;
+          controller.close();
+        }
+      });
+      nodeStream.on("error", (err: Error) => {
+        if (!closed) {
+          closed = true;
+          controller.error(err);
+        }
+      });
+    },
+    cancel() {
+      closed = true;
+      // Destroy the node stream if it supports it
+      if ("destroy" in nodeStream && typeof nodeStream.destroy === "function") {
+        nodeStream.destroy();
+      }
+    },
+  });
+}
 
 /**
- * Downloads artwork file via SFTP and serves to client.
+ * Downloads artwork file via Google Drive and serves to client.
  * Returns image with appropriate caching headers.
  */
 export async function GET(
@@ -32,13 +70,13 @@ export async function GET(
 
     const { fileId } = await params;
 
-    // Get ItemFile with Item and Connection
+    // Get ItemFile with Item and Drive connection
     const itemFile = await prisma.itemFile.findUnique({
       where: { id: fileId },
       include: {
         item: {
           include: {
-            connection: true,
+            driveConnection: true,
           },
         },
       },
@@ -58,68 +96,46 @@ export async function GET(
       return new NextResponse("Not an artwork file", { status: 400 });
     }
 
-    // Require SFTP connection
-    const connection = itemFile.item.connection;
-    if (!connection) {
-      return new NextResponse("No connection configured", { status: 501 });
+    // Require Google Drive connection and file ID
+    if (!itemFile.driveFileId || !itemFile.item.driveConnection) {
+      return new NextResponse("No storage connection for file", {
+        status: 404,
+      });
     }
 
-    // Validate path security (prevent traversal attacks)
-    if (!isValidPath(itemFile.sftpPath)) {
-      console.error("[Artwork] Invalid path:", itemFile.sftpPath);
-      return new NextResponse("Invalid file path", { status: 400 });
+    const driveConnection = itemFile.item.driveConnection;
+
+    if (driveConnection.needsReauth) {
+      return new NextResponse("Reconnect Google Drive", { status: 401 });
     }
 
-    // Check file size if known (prevent memory exhaustion)
-    if (itemFile.size && Number(itemFile.size) > MAX_ARTWORK_SIZE) {
-      console.error("[Artwork] File too large:", itemFile.size);
-      return new NextResponse("File too large", { status: 413 });
-    }
-
-    // Download via SFTP
-    let buffer: Buffer;
     try {
-      buffer = await downloadFileBuffer(connection, itemFile.sftpPath);
-    } catch (sftpError) {
-      const message = sftpError instanceof Error ? sftpError.message : "";
+      const drive = await getDriveClient(driveConnection);
 
-      // Handle specific SFTP errors
-      if (message.includes("No such file") || message.includes("not found")) {
-        console.error("[Artwork] File not found on SFTP:", itemFile.sftpPath);
-        return new NextResponse("File not found on server", { status: 404 });
-      }
-      if (message.includes("Permission denied")) {
-        console.error("[Artwork] Permission denied:", itemFile.sftpPath);
-        return new NextResponse("Access denied", { status: 403 });
-      }
-      if (message.includes("timeout") || message.includes("Timeout")) {
-        console.error("[Artwork] Connection timeout");
-        return new NextResponse("Connection timeout", { status: 504 });
-      }
+      const response = await withRateLimit(() =>
+        drive.files.get(
+          { fileId: itemFile.driveFileId!, alt: "media" },
+          { responseType: "stream" }
+        )
+      );
 
-      // Generic SFTP error
-      console.error("[Artwork] SFTP error:", sftpError);
-      return new NextResponse("Connection failed", { status: 502 });
+      // Convert Node.js stream to Web stream
+      const webStream = nodeStreamToWeb(
+        response.data as unknown as NodeJS.ReadableStream
+      );
+
+      return new NextResponse(webStream, {
+        headers: {
+          "Content-Type": itemFile.mimeType || "image/jpeg",
+          "Cache-Control": `private, max-age=${CACHE_MAX_AGE}`,
+        },
+      });
+    } catch (error) {
+      logger.error({ err: error }, "[Artwork] Google Drive fetch error");
+      return new NextResponse("Failed to fetch artwork", { status: 500 });
     }
-
-    // Verify downloaded size
-    if (buffer.length > MAX_ARTWORK_SIZE) {
-      console.error("[Artwork] Downloaded file too large:", buffer.length);
-      return new NextResponse("File too large", { status: 413 });
-    }
-
-    // Build response with caching
-    const headers = new Headers();
-    headers.set("Content-Type", itemFile.mimeType ?? "image/jpeg");
-    headers.set("Content-Length", buffer.length.toString());
-    headers.set(
-      "Cache-Control",
-      `private, max-age=${CACHE_MAX_AGE}, immutable`
-    );
-
-    return new NextResponse(new Uint8Array(buffer), { status: 200, headers });
   } catch (error) {
-    console.error("[Artwork] Error:", error);
+    logger.error({ err: error }, "[Artwork] Error");
     return new NextResponse("Internal server error", { status: 500 });
   }
 }

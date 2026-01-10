@@ -1,6 +1,3 @@
-# Seed media files (local development only)
-seed-media/
-
 # Test artifacts
 e2e/
 tests/

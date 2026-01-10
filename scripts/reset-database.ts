@@ -42,7 +42,7 @@ async function resetDatabase() {
 
     // Use TRUNCATE with CASCADE to handle foreign key constraints
     await prisma.$executeRawUnsafe(`
-      TRUNCATE TABLE "Item", "SftpConnection", "PasswordReset", "User" CASCADE;
+      TRUNCATE TABLE "ItemFile", "Item", "GoogleDriveConnection", "PasswordReset", "User" CASCADE;
     `);
 
     console.log("✓ All tables truncated successfully");
@@ -50,13 +50,13 @@ async function resetDatabase() {
     // Verify tables are empty
     const userCount = await prisma.user.count();
     const itemCount = await prisma.item.count();
-    const connectionCount = await prisma.sftpConnection.count();
+    const driveCount = await prisma.googleDriveConnection.count();
     const resetCount = await prisma.passwordReset.count();
 
     console.log("\nVerification:");
     console.log(`  Users: ${userCount}`);
     console.log(`  Items: ${itemCount}`);
-    console.log(`  SFTP Connections: ${connectionCount}`);
+    console.log(`  Google Drive Connections: ${driveCount}`);
     console.log(`  Password Resets: ${resetCount}`);
   } catch (error) {
     console.error("Error resetting database:", error);

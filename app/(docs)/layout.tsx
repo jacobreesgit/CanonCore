@@ -25,6 +25,7 @@ export default async function DocsLayout({
 
   return (
     <SidebarProvider
+      className="h-svh overflow-hidden"
       style={
         {
           "--sidebar-width": "calc(var(--spacing) * 72)",
@@ -38,12 +39,10 @@ export default async function DocsLayout({
         context="docs"
         docsTree={source.pageTree}
       />
-      <SidebarInset>
-        <SiteHeader title="Documentation" titleHref="/docs" />
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">
-            {children}
-          </div>
+      <SidebarInset className="overflow-hidden">
+        <div className="@container/main flex min-h-full flex-col overflow-y-auto">
+          <SiteHeader title="Documentation" titleHref="/docs" />
+          {children}
         </div>
       </SidebarInset>
     </SidebarProvider>

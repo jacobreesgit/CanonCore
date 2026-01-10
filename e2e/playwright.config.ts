@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import { config } from "dotenv";
 
-// Load .env.local for test configuration (SEED_PASSWORD, etc.)
+// Load .env.local for test configuration
 config({ path: ".env.local" });
 
 export default defineConfig({

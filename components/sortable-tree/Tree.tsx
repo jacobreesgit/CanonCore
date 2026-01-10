@@ -28,8 +28,6 @@ interface TreeProps {
   onAddChild?(parentId: string, name: string): Promise<string | undefined>;
   /** Indentation width per depth level. Defaults to 20. */
   indentationWidth?: number;
-  /** Whether to show connection badges on items. Defaults to true. */
-  showConnectionBadge?: boolean;
 }
 
 /**
@@ -46,7 +44,6 @@ export function Tree({
   onDeleteItem,
   onAddChild,
   indentationWidth = 20,
-  showConnectionBadge = true,
 }: TreeProps) {
   const { isCollapsed, toggleCollapse } = useTreeCollapse(items);
 
@@ -70,10 +67,10 @@ export function Tree({
           description,
           children,
           depth,
-          sftpPath,
-          connectionName,
           fileCounts,
           childCount,
+          primaryMediaName,
+          mediaIconType,
         }) => (
           <ItemContextMenu
             key={id}
@@ -100,11 +97,10 @@ export function Tree({
                 children.length > 0 ? () => toggleCollapse(id) : undefined
               }
               onClick={() => onItemClick?.(String(id))}
-              sftpPath={sftpPath}
-              connectionName={connectionName}
-              showConnectionBadge={showConnectionBadge}
               showDragHandle={false}
               fileCounts={fileCounts}
+              primaryMediaName={primaryMediaName}
+              mediaIconType={mediaIconType}
             />
           </ItemContextMenu>
         )

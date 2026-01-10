@@ -1,7 +1,6 @@
 /**
  * Client-side items view with tree/grid toggle and drag-drop support.
  * Handles all item CRUD operations and reordering.
- * Supports SFTP integration with sync and upload functionality.
  */
 
 "use client";
@@ -15,7 +14,7 @@ import {
   useMemo,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Folder, Plus, Loader2 } from "lucide-react";
+import { Folder, Loader2, Plus, RefreshCw } from "lucide-react";
 import { useQuickCreateOptional } from "@/contexts/add-item-context";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { UniqueIdentifier } from "@dnd-kit/core";
@@ -23,7 +22,6 @@ import { toast } from "sonner";
 
 import { SortableTree, Tree } from "@/components/sortable-tree";
 import { SortableGrid, Grid } from "@/components/sortable-grid";
-import { ConnectionFilter } from "./connection-filter";
 import { EditModeToggle } from "./edit-mode-toggle";
 import { ViewToggle, useStoredViewMode } from "./view-toggle";
 import { AddItemDialog } from "./add-item-dialog";
@@ -31,7 +29,6 @@ import { ItemSettingsDialog } from "./item-settings-dialog";
 import { ItemHero } from "./item-hero";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { SyncButton, SyncAllButton, ItemSyncButton } from "@/components/sftp";
 import type {
   ItemWithArtwork,
   TreeItems,
@@ -45,11 +42,7 @@ import {
   getItems,
 } from "@/lib/item-actions";
 import { getItemFiles } from "@/lib/item-file-actions";
-import {
-  createSftpItem,
-  deleteSftpItem,
-  getItemsByConnection,
-} from "@/lib/sftp-actions";
+import { syncFromGoogleDrive } from "@/lib/google-drive-actions";
 import { cn } from "@/lib/utils";
 import { preloadImages } from "@/lib/image-preload";
 
@@ -61,31 +54,11 @@ interface SettingsDialogState {
     artwork: SerializedItemFile[];
     subtitles: SerializedItemFile[];
   };
-  childCount: number;
 }
 
 interface ItemsViewProps {
   items: ItemWithArtwork[];
   parentId?: string | null;
-  /** SFTP connection ID if this view is for an SFTP-connected folder. */
-  connectionId?: string | null;
-  /** Available SFTP connections for filter and Sync All button. */
-  connections?: Array<{ id: string; name: string }>;
-  /** Currently selected connection ID for filter. */
-  selectedConnectionId?: string | null;
-  /** Callback when connection filter changes. */
-  onConnectionChange?: (connectionId: string | null) => void;
-  /** Whether connection filter change is pending. */
-  isFilterPending?: boolean;
-  /** Callback after sync completes to refetch items. */
-  onSyncComplete?: () => void;
-  /** Props for individual item sync button (for item detail pages). */
-  itemSyncProps?: {
-    itemId: string;
-    itemName: string;
-  };
-  /** Current connection to display in disabled filter (for item detail pages). */
-  currentConnection?: { id: string; name: string } | null;
   /** Hide the internal toolbar (when using external ItemsToolbar). */
   hideToolbar?: boolean;
   /** External edit mode control - when provided, overrides internal state. */
@@ -102,19 +75,13 @@ interface ItemsViewProps {
   heroItemCount?: number;
   /** Background URL for hero (e.g., /api/user/hero for My Items page). */
   heroBackgroundUrl?: string;
+  /** Whether user has Google Drive connected (shows Sync button). */
+  hasDriveConnection?: boolean;
 }
 
 export function ItemsView({
   items: initialItems,
   parentId = null,
-  connectionId = null,
-  connections = [],
-  selectedConnectionId,
-  onConnectionChange,
-  isFilterPending = false,
-  onSyncComplete,
-  itemSyncProps,
-  currentConnection,
   hideToolbar = false,
   isEditing: externalIsEditing,
   onEditingChange,
@@ -123,6 +90,7 @@ export function ItemsView({
   heroTitle,
   heroItemCount,
   heroBackgroundUrl,
+  hasDriveConnection = false,
 }: ItemsViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -165,6 +133,8 @@ export function ItemsView({
     defaultValue: false,
     onChange: onAddItemOpenChange,
   });
+  // Sync state
+  const [isSyncing, startSyncTransition] = useTransition();
 
   // Exit edit mode when view mode changes - intentional minimal cascade
   useEffect(() => {
@@ -179,29 +149,39 @@ export function ItemsView({
   // Convert flat items to tree structure for SortableTree
   const treeItems = itemsToTree(items);
 
-  // Derive filter state for conditional rendering
-  // Handle single connection auto-selection (ConnectionFilter auto-selects when only 1 exists)
-  const effectiveSelectedConnection =
-    connections.length === 1
-      ? connections[0].id
-      : (selectedConnectionId ?? null);
-  const isFilteredToConnection = effectiveSelectedConnection !== null;
-  // Hide badges when filtered to connection OR when viewing item detail (currentConnection set)
-  const showConnectionBadge = !isFilteredToConnection && !currentConnection;
-
   /**
    * Refetch items from server and update local state.
-   * Uses appropriate action based on whether viewing SFTP connection or regular items.
    */
   const refetchItems = useCallback(async () => {
-    const result = connectionId
-      ? await getItemsByConnection(connectionId, parentId)
-      : await getItems(parentId);
+    const result = await getItems(parentId);
 
     if (result.success && result.data) {
       setItems(result.data);
     }
-  }, [connectionId, parentId, setItems]);
+  }, [parentId, setItems]);
+
+  /**
+   * Triggers a sync from Google Drive.
+   */
+  const handleSync = useCallback(() => {
+    startSyncTransition(async () => {
+      const result = await syncFromGoogleDrive();
+
+      if (result.success) {
+        const parts = [];
+        if (result.itemsCreated) parts.push(`${result.itemsCreated} created`);
+        if (result.itemsUpdated) parts.push(`${result.itemsUpdated} updated`);
+        if (result.itemsErrored) parts.push(`${result.itemsErrored} failed`);
+
+        const message =
+          parts.length > 0 ? parts.join(", ") : "Already up to date";
+        toast.success(`Sync complete: ${message}`);
+        await refetchItems();
+      } else {
+        toast.error(result.error || "Sync failed");
+      }
+    });
+  }, [refetchItems]);
 
   // Subscribe to Quick Create events for explicit refetch (only at root level)
   const quickCreate = useQuickCreateOptional();
@@ -232,7 +212,6 @@ export function ItemsView({
     setSettingsDialog({
       item: { id: item.id, name: item.name, description: item.description },
       files,
-      childCount: item.childCount,
     });
   }, []);
 
@@ -248,44 +227,23 @@ export function ItemsView({
   const handleCreateItem = useCallback(
     async (name: string, description?: string): Promise<string | undefined> => {
       try {
-        // Use SFTP action when in an SFTP-connected context
-        if (connectionId) {
-          const result = await createSftpItem(connectionId, parentId, name);
-          if (result.success && result.data) {
-            // Update local state immediately with the returned item
-            const newItem: ItemWithArtwork = {
-              ...result.data,
-              artworkId: null,
-              fileCounts: { media: 0, artwork: 0, subtitles: 0 },
-              childCount: 0,
-            };
-            setItems((prev) => [...prev, newItem]);
-            startTransition(() => refetchItems());
-            toast.success(`Created "${name}"`);
-            return undefined;
-          }
-          const errorMsg = !result.success
-            ? result.error
-            : "Failed to create item";
-          toast.error(errorMsg || "Failed to create item");
-          return errorMsg;
-        } else {
-          const result = await createItem(parentId, name, description);
-          if (result.success && result.data) {
-            const newItem: ItemWithArtwork = {
-              ...result.data,
-              artworkId: null,
-              fileCounts: { media: 0, artwork: 0, subtitles: 0 },
-              childCount: 0,
-            };
-            setItems((prev) => [...prev, newItem]);
-            startTransition(() => refetchItems());
-            toast.success(`Created "${name}"`);
-            return undefined;
-          }
-          toast.error(result.error || "Failed to create item");
-          return result.error;
+        const result = await createItem(parentId, name, description);
+        if (result.success && result.data) {
+          const newItem: ItemWithArtwork = {
+            ...result.data,
+            artworkId: null,
+            fileCounts: { media: 0, artwork: 0, subtitles: 0 },
+            childCount: 0,
+            primaryMediaName: null,
+            mediaIconType: null,
+          };
+          setItems((prev) => [...prev, newItem]);
+          startTransition(() => refetchItems());
+          toast.success(`Created "${name}"`);
+          return undefined;
         }
+        toast.error(result.error || "Failed to create item");
+        return result.error;
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Failed to create item";
@@ -293,17 +251,13 @@ export function ItemsView({
         return message;
       }
     },
-    [parentId, connectionId, refetchItems, setItems]
+    [parentId, refetchItems, setItems]
   );
 
   // Handle deleting an item
   const handleDeleteItem = useCallback(
     async (id: string) => {
-      // Check if item has sftpPath to determine which action to use
-      const item = items.find((i) => i.id === id);
-      const result = item?.sftpPath
-        ? await deleteSftpItem(id)
-        : await deleteItem(id);
+      const result = await deleteItem(id);
       if (result.success) {
         setItems((prev) => prev.filter((i) => i.id !== id));
         startTransition(() => refetchItems());
@@ -312,7 +266,7 @@ export function ItemsView({
         toast.error(result.error || "Failed to delete");
       }
     },
-    [items, refetchItems, setItems]
+    [refetchItems, setItems]
   );
 
   // Handle adding child item
@@ -323,47 +277,23 @@ export function ItemsView({
       description?: string
     ): Promise<string | undefined> => {
       try {
-        // Check if parent has connectionId to determine which action to use
-        const parentItem = items.find((i) => i.id === parentItemId);
-        const connId = parentItem?.connectionId || connectionId;
-
-        if (connId) {
-          const result = await createSftpItem(connId, parentItemId, name);
-          if (result.success && result.data) {
-            // Update local state immediately with the returned item
-            const newItem: ItemWithArtwork = {
-              ...result.data,
-              artworkId: null,
-              fileCounts: { media: 0, artwork: 0, subtitles: 0 },
-              childCount: 0,
-            };
-            setItems((prev) => [...prev, newItem]);
-            startTransition(() => refetchItems());
-            toast.success(`Created "${name}"`);
-            return undefined;
-          }
-          const errorMsg = !result.success
-            ? result.error
-            : "Failed to create item";
-          toast.error(errorMsg || "Failed to create item");
-          return errorMsg;
-        } else {
-          const result = await createItem(parentItemId, name, description);
-          if (result.success && result.data) {
-            const newItem: ItemWithArtwork = {
-              ...result.data,
-              artworkId: null,
-              fileCounts: { media: 0, artwork: 0, subtitles: 0 },
-              childCount: 0,
-            };
-            setItems((prev) => [...prev, newItem]);
-            startTransition(() => refetchItems());
-            toast.success(`Created "${name}"`);
-            return undefined;
-          }
-          toast.error(result.error || "Failed to create item");
-          return result.error;
+        const result = await createItem(parentItemId, name, description);
+        if (result.success && result.data) {
+          const newItem: ItemWithArtwork = {
+            ...result.data,
+            artworkId: null,
+            fileCounts: { media: 0, artwork: 0, subtitles: 0 },
+            childCount: 0,
+            primaryMediaName: null,
+            mediaIconType: null,
+          };
+          setItems((prev) => [...prev, newItem]);
+          startTransition(() => refetchItems());
+          toast.success(`Created "${name}"`);
+          return undefined;
         }
+        toast.error(result.error || "Failed to create item");
+        return result.error;
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Failed to create item";
@@ -371,7 +301,7 @@ export function ItemsView({
         return message;
       }
     },
-    [items, connectionId, refetchItems, setItems]
+    [refetchItems, setItems]
   );
 
   // Handle tree reordering
@@ -417,6 +347,9 @@ export function ItemsView({
             return item;
           })
         );
+        toast.success("Changes saved");
+      } else {
+        toast.error(result.error || "Failed to save changes");
       }
     },
     [setItems, parentId, items]
@@ -435,6 +368,9 @@ export function ItemsView({
       const result = await reorderItems(updates);
       if (result.success) {
         setItems(newItems);
+        toast.success("Changes saved");
+      } else {
+        toast.error(result.error || "Failed to save changes");
       }
     },
     [setItems]
@@ -520,11 +456,13 @@ export function ItemsView({
   }, [isHydrated, viewMode, artworkPreloadKey]);
 
   // Loading is true until: hydrated, artworks ready, AND minimum duration met
+  // Skip loading spinner when hideToolbar is true (parent component handles loading)
   const isLoading =
-    !isHydrated ||
-    !minDurationMet ||
-    artworkPreloadState.key !== artworkPreloadKey ||
-    !artworkPreloadState.ready;
+    !hideToolbar &&
+    (!isHydrated ||
+      !minDurationMet ||
+      artworkPreloadState.key !== artworkPreloadKey ||
+      !artworkPreloadState.ready);
 
   // Show full-page spinner until hydrated and artworks preloaded
   if (isLoading) {
@@ -539,97 +477,13 @@ export function ItemsView({
   }
 
   return (
-    <div className={cn("flex flex-col gap-6", isPending && "opacity-70")}>
-      {/* Controls - hidden when using external ItemsToolbar */}
-      {!hideToolbar && (
-        <div className="flex items-center justify-between gap-3">
-          {/* Left side: Connection filter + Sync buttons */}
-          <div className="flex items-center gap-3">
-            {/* Connection filter - show when connections exist with handler, OR when currentConnection provided (disabled) */}
-            {connections.length > 0 && onConnectionChange && (
-              <>
-                <ConnectionFilter
-                  connections={connections}
-                  selectedConnectionId={selectedConnectionId ?? null}
-                  onConnectionChange={onConnectionChange}
-                />
-                {isFilterPending && (
-                  <Loader2 className="text-muted-foreground size-4 animate-spin" />
-                )}
-              </>
-            )}
-            {/* Disabled connection filter for item detail pages */}
-            {currentConnection && !onConnectionChange && (
-              <ConnectionFilter
-                connections={[currentConnection]}
-                selectedConnectionId={currentConnection.id}
-                disabled
-              />
-            )}
-            {/* Sync All button - show when viewing All Items */}
-            {connections.length > 0 && !isFilteredToConnection && (
-              <SyncAllButton
-                connectionCount={connections.length}
-                size="sm"
-                onSyncComplete={async () => {
-                  await refetchItems();
-                  onSyncComplete?.();
-                }}
-              />
-            )}
-            {/* Sync Connection button - show when filtered to individual connection */}
-            {connections.length > 0 &&
-              isFilteredToConnection &&
-              effectiveSelectedConnection && (
-                <SyncButton
-                  connectionId={effectiveSelectedConnection}
-                  label="Sync Connection"
-                  size="sm"
-                  onSyncComplete={async () => {
-                    await refetchItems();
-                    onSyncComplete?.();
-                  }}
-                />
-              )}
-            {/* Individual item sync button - for item detail pages */}
-            {itemSyncProps && (
-              <ItemSyncButton
-                itemId={itemSyncProps.itemId}
-                itemName={itemSyncProps.itemName}
-                size="sm"
-                onSyncComplete={async () => {
-                  await refetchItems();
-                }}
-              />
-            )}
-          </div>
-
-          {/* Right side: Add Item + Edit + View toggle */}
-          <div className="flex items-center gap-3">
-            {items.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setAddItemOpen(true)}
-                className="gap-1.5"
-              >
-                <Plus className="size-4" strokeWidth={2} />
-                <span>Add Item</span>
-              </Button>
-            )}
-            {items.length > 0 && (
-              <>
-                <EditModeToggle
-                  isEditing={isEditing}
-                  onToggle={() => setIsEditing((prev) => !prev)}
-                />
-                <ViewToggle />
-              </>
-            )}
-          </div>
-        </div>
+    <div
+      className={cn(
+        "flex flex-col gap-6",
+        items.length === 0 && "flex-1",
+        isPending && "opacity-70"
       )}
-
+    >
       {/* Hero section - shown when heroTitle provided */}
       {heroTitle && (
         <ItemHero
@@ -639,48 +493,86 @@ export function ItemsView({
         />
       )}
 
+      {/* Toolbar - always visible, buttons disabled when not applicable */}
+      {!hideToolbar && (
+        <div className="flex items-center justify-between gap-3">
+          {/* Left side: Sync button */}
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSync}
+              disabled={!hasDriveConnection || isSyncing}
+              className="gap-1.5"
+            >
+              {isSyncing ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <RefreshCw className="size-4" />
+              )}
+              <span>{isSyncing ? "Syncing..." : "Sync"}</span>
+            </Button>
+          </div>
+
+          {/* Right side: Add Item + Edit + View toggle */}
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAddItemOpen(true)}
+              className="gap-1.5"
+            >
+              <Plus className="size-4" strokeWidth={2} />
+              <span>Add Item</span>
+            </Button>
+            <EditModeToggle
+              isEditing={isEditing}
+              onToggle={() => setIsEditing((prev) => !prev)}
+              disabled={items.length === 0}
+            />
+            <ViewToggle disabled={items.length === 0} />
+          </div>
+        </div>
+      )}
+
       {/* Items display */}
-      <div className="min-h-[200px]">
-        {items.length === 0 ? (
-          <EmptyState onOpenAddItem={() => setAddItemOpen(true)} />
-        ) : viewMode === "grid" ? (
-          isEditing ? (
-            <SortableGrid
-              items={currentLevelItems}
-              onItemsChange={handleGridItemsChange}
-              onItemClick={handleItemClick}
-              onOpenSettings={handleOpenSettings}
-              onDeleteItem={handleDeleteItem}
-            />
-          ) : (
-            <Grid
-              items={currentLevelItems}
-              onItemClick={handleItemClick}
-              onOpenSettings={handleOpenSettings}
-              onDeleteItem={handleDeleteItem}
-              showConnectionBadge={showConnectionBadge}
-            />
-          )
-        ) : isEditing ? (
-          <SortableTree
-            items={treeItems}
-            onItemsChange={handleTreeItemsChange}
+      {items.length === 0 ? (
+        <EmptyState onOpenAddItem={() => setAddItemOpen(true)} />
+      ) : viewMode === "grid" ? (
+        isEditing ? (
+          <SortableGrid
+            items={currentLevelItems}
+            onItemsChange={handleGridItemsChange}
             onItemClick={handleItemClick}
             onOpenSettings={handleOpenSettings}
             onDeleteItem={handleDeleteItem}
-            onAddChild={handleAddChild}
           />
         ) : (
-          <Tree
-            items={treeItems}
+          <Grid
+            items={currentLevelItems}
             onItemClick={handleItemClick}
             onOpenSettings={handleOpenSettings}
             onDeleteItem={handleDeleteItem}
-            onAddChild={handleAddChild}
-            showConnectionBadge={showConnectionBadge}
           />
-        )}
-      </div>
+        )
+      ) : isEditing ? (
+        <SortableTree
+          items={treeItems}
+          onItemsChange={handleTreeItemsChange}
+          onItemClick={handleItemClick}
+          onOpenSettings={handleOpenSettings}
+          onDeleteItem={handleDeleteItem}
+          onAddChild={handleAddChild}
+        />
+      ) : (
+        <Tree
+          items={treeItems}
+          onItemClick={handleItemClick}
+          onOpenSettings={handleOpenSettings}
+          onDeleteItem={handleDeleteItem}
+          onAddChild={handleAddChild}
+        />
+      )}
 
       {/* Item Settings Dialog */}
       {settingsDialog && (
@@ -689,7 +581,7 @@ export function ItemsView({
           onOpenChange={(open) => !open && setSettingsDialog(null)}
           item={settingsDialog.item}
           files={settingsDialog.files}
-          childCount={settingsDialog.childCount}
+          hasDriveConnection={hasDriveConnection}
           onSettingsChange={async () => {
             await refetchItems();
             // Refetch dialog state to show updated values
@@ -711,7 +603,6 @@ export function ItemsView({
                   description: updatedItem.description,
                 },
                 files: updatedFiles,
-                childCount: updatedItem.childCount,
               });
             }
           }}
@@ -733,7 +624,7 @@ function EmptyState({ onOpenAddItem }: { onOpenAddItem: () => void }) {
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center gap-4 py-16",
+        "flex flex-1 flex-col items-center justify-center gap-4",
         "border-border/60 rounded-xl border-2 border-dashed",
         "bg-muted/20"
       )}

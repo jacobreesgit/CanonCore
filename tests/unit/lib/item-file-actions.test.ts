@@ -50,11 +50,12 @@ const mockItemFile = (
     id: string;
     itemId: string;
     filename: string;
-    sftpPath: string;
+    driveFileId: string | null;
     fileType: FileType;
     mimeType: string | null;
     size: bigint | null;
-    sftpModifiedAt: Date | null;
+    syncStatus: "SYNCED" | "PENDING" | "SYNCING" | "ERROR";
+    syncError: string | null;
     isPrimary: boolean;
     isHero: boolean;
     playbackPosition: number | null;
@@ -67,11 +68,12 @@ const mockItemFile = (
   id: "file-1",
   itemId: "item-1",
   filename: "movie.mp4",
-  sftpPath: "/videos/movie.mp4",
+  driveFileId: "drive-file-123",
   fileType: FileType.MEDIA,
   mimeType: "video/mp4",
   size: BigInt(1000000),
-  sftpModifiedAt: new Date(),
+  syncStatus: "SYNCED" as const,
+  syncError: null,
   isPrimary: false,
   isHero: false,
   playbackPosition: null,

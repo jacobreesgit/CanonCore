@@ -8,8 +8,6 @@ import {
   emailSchema,
   passwordSchema,
   signUpSchema,
-  sftpConnectionSchema,
-  sftpFileNameSchema,
   itemDescriptionSchema,
 } from "@/lib/validations";
 
@@ -82,73 +80,6 @@ describe("signUpSchema", () => {
       password: "weak",
     });
     expect(result.success).toBe(false);
-  });
-});
-
-describe("sftpConnectionSchema", () => {
-  it("validates correct connection", () => {
-    const result = sftpConnectionSchema.safeParse({
-      name: "My Server",
-      host: "sftp.example.com",
-      port: 22,
-      username: "user",
-      authType: "PASSWORD",
-      credential: "password123",
-      basePath: "/uploads",
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("requires name", () => {
-    const result = sftpConnectionSchema.safeParse({
-      host: "sftp.example.com",
-      username: "user",
-      authType: "PASSWORD",
-      credential: "pass",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("validates port range", () => {
-    const result = sftpConnectionSchema.safeParse({
-      name: "Test",
-      host: "host",
-      port: 70000,
-      username: "user",
-      authType: "PASSWORD",
-      credential: "pass",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("defaults port to 22", () => {
-    const result = sftpConnectionSchema.safeParse({
-      name: "Test",
-      host: "host",
-      username: "user",
-      authType: "PASSWORD",
-      credential: "pass",
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.port).toBe(22);
-    }
-  });
-});
-
-describe("sftpFileNameSchema", () => {
-  it("accepts valid filenames", () => {
-    expect(sftpFileNameSchema.safeParse("document.pdf").success).toBe(true);
-    expect(sftpFileNameSchema.safeParse("my-file_2024.txt").success).toBe(true);
-  });
-
-  it("rejects invalid characters", () => {
-    expect(sftpFileNameSchema.safeParse("file<>.txt").success).toBe(false);
-    expect(sftpFileNameSchema.safeParse("file:name").success).toBe(false);
-  });
-
-  it("rejects empty string", () => {
-    expect(sftpFileNameSchema.safeParse("").success).toBe(false);
   });
 });
 

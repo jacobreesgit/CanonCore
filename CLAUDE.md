@@ -29,12 +29,6 @@ pnpm run test:e2e --project=chromium        # Desktop only
 pnpm run test:e2e --project=mobile-chrome   # Mobile only
 pnpm run test:e2e:debug                     # Debug mode
 pnpm run test:e2e:ui                        # UI mode
-
-# Database seeding (development only)
-pnpm run db:seed          # Seed database with sample data
-pnpm run db:clear-seed    # Remove seed data only
-pnpm run db:reset         # Reset database and re-seed
-pnpm run db:check-seed    # Inspect seed user's item hierarchy
 ```
 
 ## Architecture
@@ -53,10 +47,6 @@ pnpm run db:check-seed    # Inspect seed user's item hierarchy
 │   │   └── sign-up/page.tsx          # Account creation
 │   ├── (my-items)/
 │   │   ├── my-items/
-│   │   │   ├── connections/
-│   │   │   │   ├── [id]/edit/page.tsx     # Edit connection form
-│   │   │   │   ├── new/page.tsx           # New connection form
-│   │   │   │   └── page.tsx               # Connections list with sync actions
 │   │   │   ├── [itemId]/page.tsx     # Item detail with children
 │   │   │   └── page.tsx              # Root items view
 │   │   └── layout.tsx                # Protected layout with sidebar
@@ -68,41 +58,38 @@ pnpm run db:check-seed    # Inspect seed user's item hierarchy
 │   │   ├── layout.tsx                # Public layout with guest sidebar
 │   │   └── page.tsx                  # Public landing page
 │   ├── api/
-│   │   ├── artwork/[fileId]/route.ts    # SFTP artwork download for thumbnails
-│   │   ├── auth/[...nextauth]/route.ts  # NextAuth API route
-│   │   ├── sftp/download/file/[fileId]/route.ts  # Download file by ID
-│   │   ├── stream/[fileId]/route.ts     # Stream media via WebDAV
+│   │   ├── artwork/[fileId]/route.ts    # Google Drive artwork streaming
+│   │   ├── auth/
+│   │   │   ├── [...nextauth]/route.ts   # NextAuth API route
+│   │   │   └── callback/google-drive/route.ts  # OAuth callback
+│   │   ├── stream/[fileId]/route.ts     # Stream media from Google Drive
 │   │   └── user/
 │   │       ├── avatar/route.ts          # User avatar image endpoint
 │   │       └── hero/route.ts            # User hero banner endpoint
 │   ├── globals.css
 │   └── layout.tsx                    # Root layout with providers
 ├── components/
+│   ├── google-drive/                 # Google Drive integration
+│   │   ├── oauth-toast.tsx           # OAuth result notifications
+│   │   └── settings-section.tsx      # Drive connection UI in Settings
 │   ├── items/                        # Items feature components
 │   │   ├── add-item-dialog.tsx       # Modal dialog for item creation
-│   │   ├── connection-filter.tsx     # Dropdown to filter items by connection
 │   │   ├── edit-mode-toggle.tsx      # Edit/Done button for reordering mode
-│   │   ├── filtered-items-view.tsx   # Display items from selected connection
+│   │   ├── file-type-combobox.tsx    # Upload file type picker
 │   │   ├── item-context-menu.tsx     # Right-click actions menu
 │   │   ├── item-detail-client.tsx    # Client wrapper with hero and media player
 │   │   ├── item-hero.tsx             # Hero banner with artwork, title, play button
-│   │   ├── item-settings-dialog.tsx  # Settings dialog with Select-based file selection
+│   │   ├── item-settings-dialog.tsx  # Settings with file selection and upload
 │   │   ├── item-stats.tsx            # Reusable child/file count stats display
 │   │   ├── items-toolbar.tsx         # Unified toolbar for root and detail pages
 │   │   ├── items-view.tsx            # Main view with tree/grid/edit toggle
+│   │   ├── sync-badge.tsx            # Google Drive sync status indicators
 │   │   └── view-toggle.tsx           # Tree/grid view switcher
 │   ├── media/                        # Media playback components
 │   │   ├── media-overlay.tsx         # Full-screen media viewer
 │   │   └── media-player.tsx          # Vidstack video player wrapper
 │   ├── profile/                      # User profile components
-│   │   └── profile-settings-dialog.tsx  # Avatar, hero image, name settings
-│   ├── sftp/                         # SFTP connection components
-│   │   ├── connection-card.tsx       # Connection card with actions
-│   │   ├── connection-form.tsx       # Create/edit connection form
-│   │   ├── connection-test-button.tsx  # Test with latency display
-│   │   ├── item-sync-button.tsx      # Sync individual item with connection
-│   │   ├── sync-all-button.tsx       # Batch sync all connections
-│   │   └── sync-button.tsx           # Trigger sync with progress
+│   │   └── settings-dialog.tsx       # Settings dialog with profile and Google Drive
 │   ├── sortable-grid/                # Grid view with drag-drop
 │   │   ├── Grid.tsx                  # View-only grid (no dnd-kit)
 │   │   ├── GridItem.tsx              # Card display component
@@ -127,34 +114,30 @@ pnpm run db:check-seed    # Inspect seed user's item hierarchy
 │   ├── site-header.tsx               # Top header bar with breadcrumbs
 │   └── theme-toggle.tsx              # Dark/light mode toggle
 ├── e2e/
-│   ├── docker-compose.yml            # SFTP test containers (parallel workers)
-│   ├── fixtures/                     # Playwright fixtures (auth, db, sftp)
+│   ├── fixtures/                     # Playwright fixtures (auth, db, google-drive)
 │   ├── helpers/                      # Test utilities (test-user.ts)
 │   ├── journeys/
 │   │   ├── auth/                     # Auth E2E tests
-│   │   ├── connections/              # SFTP connection CRUD tests
 │   │   ├── docs/                     # Documentation E2E tests
+│   │   ├── google-drive/             # Google Drive integration tests
 │   │   ├── items/                    # Items E2E tests (CRUD, drag, views)
-│   │   ├── media/                    # Media playback tests
 │   │   ├── navigation/               # Sidebar navigation active state tests
 │   │   ├── profile/                  # Profile settings tests
 │   │   ├── security/                 # Security header tests (HSTS, CSP)
-│   │   ├── sftp/                     # SFTP sync and file operation tests
 │   │   ├── theme/                    # Dark mode E2E tests
-│   │   ├── global.setup.ts           # Docker container startup
-│   │   └── global.teardown.ts        # Docker container cleanup
+│   │   ├── global.setup.ts           # Global test setup
+│   │   └── global.teardown.ts        # Global test cleanup
 │   ├── pages/                        # Page Object Models
 │   └── playwright.config.ts
 ├── tests/
 │   ├── unit/
-│   │   ├── lib/                      # Unit tests (auth, items, sftp, crypto)
+│   │   ├── lib/                      # Unit tests (auth, items, google-drive, crypto)
 │   │   ├── e2e/                      # E2E fixture unit tests
 │   │   ├── setup.ts                  # Mocks for Prisma, email, rate-limit
 │   │   └── vitest.config.ts
 │   ├── integration/
 │   │   ├── auth/                     # Auth integration tests
 │   │   ├── items/                    # Items integration tests (CRUD, hierarchy)
-│   │   ├── sftp/                     # SFTP connection integration tests
 │   │   ├── user/                     # User profile integration tests
 │   │   ├── setup.ts                  # DB cleanup, env loading, rate-limit bypass
 │   │   └── vitest.config.ts
@@ -175,6 +158,8 @@ pnpm run db:check-seed    # Inspect seed user's item hierarchy
 │   ├── email.ts                      # Resend email helper
 │   ├── env.ts                        # Zod environment variable validation
 │   ├── file-type-utils.ts            # Media/artwork/subtitle categorization
+│   ├── google-drive-actions.ts       # Google Drive sync server actions
+│   ├── google-drive-client.ts        # Google Drive API client with OAuth
 │   ├── image-preload.ts              # Artwork image preloading utility
 │   ├── item-actions.ts               # Item CRUD server actions
 │   ├── item-file-actions.ts          # ItemFile operations, playback progress
@@ -182,31 +167,22 @@ pnpm run db:check-seed    # Inspect seed user's item hierarchy
 │   ├── logger.ts                     # Pino structured logging with request context
 │   ├── prisma.ts                     # Prisma client singleton
 │   ├── rate-limit.ts                 # Upstash Redis rate limiting
-│   ├── sftp-actions.ts               # SFTP connection and sync server actions
-│   ├── sftp-client.ts                # SFTP client wrapper with pooling
-│   ├── sftp-utils.ts                 # Path sanitization, timeout helpers
 │   ├── source.ts                     # Fumadocs source configuration
 │   ├── types.ts                      # Shared TypeScript types (Item, ItemFile, SerializedItemFile)
+│   ├── upload-utils.ts               # Browser-to-Drive upload utilities
 │   ├── user-actions.ts               # User profile server actions
 │   ├── utils.ts                      # cn() helper
-│   ├── validations.ts                # Zod schemas (auth, items, SFTP)
-│   └── webdav-utils.ts               # WebDAV URL construction for streaming
+│   └── validations.ts                # Zod schemas (auth, items, uploads)
 ├── prisma/
 │   ├── migrations/                   # Database migrations
-│   ├── schema.prisma                 # User, PasswordReset, Item, ItemFile, SftpConnection
-│   ├── seed.ts                       # Database seeding script (dev only)
-│   ├── seed-data.ts                  # Declarative seed data definitions
-│   ├── seed-utils.ts                 # File discovery and path mapping
-│   └── clear-seed.ts                 # Clear seed data script
-├── middleware.ts                     # Next.js middleware for request ID injection
-├── scripts/
-│   └── check-seed-items.ts           # Inspect seed user's item hierarchy
+│   └── schema.prisma                 # User, PasswordReset, Item, ItemFile, GoogleDriveConnection
+├── proxy.ts                          # Next.js proxy for request ID injection
 ├── skills/                           # Claude Code skills
 │   ├── code-review-excellence/       # Code review best practices
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 0.28.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 1.0.0)
     └── plans/                        # Design documents
 ```
 
@@ -219,38 +195,23 @@ pnpm run db:check-seed    # Inspect seed user's item hierarchy
 - Protected routes use `await auth()` + redirect in server components
 - Password hashing with bcryptjs
 - Password reset emails via Resend (30 min expiry)
-- **Rate limiting**: Upstash Redis for auth (sign-in: 5/min, sign-up: 3/min, forgot: 2/min), SFTP (sync: 10/min, test: 20/min, create: 10/min), and items (create: 30/min, update: 60/min)
+- **Rate limiting**: Upstash Redis for auth (sign-in: 5/min, sign-up: 3/min, forgot: 2/min) and items (create: 30/min, update: 60/min)
 - **Validation**: Zod schemas for email/password (8+ chars, uppercase, lowercase, number)
 - **Security logging**: All auth events logged with IP and timestamp
 
 ### Database
 
 - **Prisma 7** with PostgreSQL (Neon)
-- Schema: User, PasswordReset, Item, ItemFile, SftpConnection models
+- Schema: User, PasswordReset, Item, ItemFile, GoogleDriveConnection models
 - User has optional `image`/`heroImage` blob fields for avatar and hero banner
 - Item has self-referential parent/child relationships for hierarchy
 - Item has optional `description` field (max 200 chars) for short notes
-- Item has SFTP fields: `sftpPath`, `sftpModifiedAt`, `connectionId`
-- ItemFile stores files per item: `filename`, `sftpPath`, `fileType`, `mimeType`, `playbackPosition`, `isPrimary`, `isHero`
-- SftpConnection stores encrypted credentials with AES-256-GCM (plus optional WebDAV credentials)
-- Enums: `FileType` (MEDIA, ARTWORK, SUBTITLE), `AuthType` (PASSWORD, PRIVATE_KEY)
+- Item has Google Drive fields: `driveFileId`, `driveModifiedAt`, `syncStatus`, `driveConnectionId`
+- ItemFile stores files per item: `filename`, `driveFileId`, `fileType`, `mimeType`, `playbackPosition`, `isPrimary`, `isHero`
+- GoogleDriveConnection stores encrypted OAuth tokens with AES-256-GCM
+- Enums: `FileType` (MEDIA, ARTWORK, SUBTITLE), `SyncStatus` (SYNCED, PENDING, SYNCING, ERROR)
 - Config in `prisma.config.ts` (loads DATABASE_URL from .env.local)
 - Run migrations: `npx prisma migrate dev`
-- **Database seeding**: `prisma/seed.ts` creates sample data for dev/QA testing
-
-### Database Seeding
-
-For development and QA, seed the database with sample data:
-
-| Email               | Password        | Purpose           |
-| ------------------- | --------------- | ----------------- |
-| seed@canoncore.com  | (SEED_PASSWORD) | Full demo account |
-| seed2@canoncore.com | (same)          | Minimal data      |
-| seed3@canoncore.com | (same)          | Empty account     |
-
-Seed data includes 10 movies, 4 TV shows (11 episodes), 2 albums, ~111 files total. Run `pnpm run db:seed` after setting `ALLOW_SEEDING=true` and `SEED_PASSWORD` in `.env.local`.
-
-CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<text>`, `--no-upload`, `--upload-only`, `--help`.
 
 ### Items System
 
@@ -266,43 +227,44 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 - **Server actions**: `createItem`, `updateItem`, `deleteItem`, `reorderItems` in `lib/item-actions.ts`
 - **Breadcrumb navigation** for item drill-down
 - **Context menu**: Right-click for Settings, Delete, Add Child Item
-- **Settings dialog**: Rename items, add descriptions, and select primary/hero files
+- **Settings dialog**: Rename items, add descriptions, select primary/hero files, upload files
 - **Item descriptions**: Optional 200-character notes, displayed in view mode
 - **Primary file selection**: Choose which file plays/displays when multiple files attached
 - **Hero artwork selection**: Choose separate artwork for hero banner display (isHero field)
-- **Connection filtering**: Browse items filtered by SFTP connection source
-- **Context-aware sync**: "Sync All" when viewing all items, "Sync Connection" when filtered; badges show/hide accordingly
+- **Sync status badges**: Visual indicators showing sync state (synced, pending, error)
 - **Toast notifications**: Success/error feedback via Sonner
 - **Max depth**: 10 levels of nesting
 
-### SFTP Connections
+### Google Drive Integration
 
-- **Connection management**: Create, edit, delete SFTP server connections at `/my-items/connections`
-- **Auth methods**: Password or SSH private key authentication
-- **Encrypted credentials**: AES-256-GCM encryption with `ENCRYPTION_KEY` env var
-- **Connection testing**: Test button with latency display
-- **Bidirectional sync**: Sync files between SFTP server and web interface
-- **Sync All**: Batch sync all connections with aggregated progress
-- **Item sync**: Individual item sync with its associated connection
-- **Artwork API**: `/api/artwork/[fileId]` downloads artwork via SFTP for thumbnails
-- **WebDAV streaming**: Optional WebDAV endpoint for direct media streaming
-- **Server actions**: `lib/sftp-actions.ts` for all SFTP operations
+- **OAuth 2.0 authentication**: Secure OAuth flow with CSRF protection via signed state
+- **Single connection**: One Google Drive account per user, managed in Settings dialog
+- **Encrypted tokens**: AES-256-GCM encryption for access and refresh tokens
+- **Auto token refresh**: Transparent refresh before expiry (5-minute buffer)
+- **Bidirectional sync**: Sync folders/files between Google Drive and web interface
+- **Browser uploads**: Direct browser-to-Drive uploads with progress tracking
+- **Resumable uploads**: Google's resumable upload protocol for large files
+- **Rate limiting**: Bottleneck library (10 concurrent, 100ms min interval) + exponential backoff
+- **Artwork API**: `/api/artwork/[fileId]` streams artwork from Google Drive
+- **Media streaming**: `/api/stream/[fileId]` with HTTP Range header support
+- **Server actions**: `lib/google-drive-actions.ts` for all Drive operations
 - **Circuit breaker**: Protects against cascade failures (5 failures, 60s recovery)
-- **Path security**: Directory traversal prevention via `lib/sftp-utils.ts`
 
 ### Media Playback
 
 - **Video player**: Vidstack-based player with default controls
+- **All media types**: Unified player for video, audio, and images
 - **Subtitle support**: SRT, VTT, SUB, ASS subtitle tracks
 - **Playback tracking**: Auto-save and resume playback position
 - **File types**: MEDIA (video/audio), ARTWORK (images), SUBTITLE
 - **Media overlay**: Full-screen viewer with tabbed file navigation
-- **WebDAV streaming**: Stream media directly without downloading
+- **Range requests**: HTTP Range header support for video seeking
+- **Google Drive streaming**: Stream media directly from Drive without downloading
 
 ### User Documentation
 
 - **Fumadocs** for MDX-based documentation at `/docs`
-- **20 pages** covering getting started, account, files/folders, connections, views, and preferences
+- **20 pages** covering getting started, account, files/folders, google-drive, views, and preferences
 - **Unified layout** with context-aware sidebar navigation using app sidebar shell
 - **NavDocs component** renders Fumadocs page tree with collapsible folders
 - Content in `content/docs/` with `meta.json` for structure
@@ -321,16 +283,15 @@ CLI options for selective seeding: `--movies`, `--tv`, `--music`, `--filter=<tex
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 570 total tests (499 unit + 71 integration)
+- 464+ unit tests covering auth, items, Google Drive, crypto
 
 ### E2E Testing
 
 - **Playwright** with Page Object Model pattern
-- Tests in `e2e/journeys/` organized by feature (auth, connections, docs, items, media, sftp, theme)
+- Tests in `e2e/journeys/` organized by feature (auth, docs, google-drive, items, profile, theme)
 - Page objects in `e2e/pages/` for reusable interactions
-- Fixtures in `e2e/fixtures/` for auth, database, and SFTP setup
-- **Docker SFTP containers**: Parallel containers (up to 8 workers) via `e2e/docker-compose.yml`
-- Global setup/teardown for Docker container lifecycle
+- Fixtures in `e2e/fixtures/` for auth, database, and Google Drive setup
+- Google Drive E2E tests use real test account with refresh token
 - Runs on desktop Chrome and mobile Chrome (iPhone 14)
 
 ### Security
@@ -378,15 +339,24 @@ Required in `.env.local` (development):
 - `EMAIL_FROM` - Sender email address (default: `noreply@canoncore.com`)
 - `UPSTASH_REDIS_REST_URL` - Upstash Redis URL for rate limiting
 - `UPSTASH_REDIS_REST_TOKEN` - Upstash Redis token
-- `ENCRYPTION_KEY` - Base64 32-byte key for SFTP credential encryption (generate with: `openssl rand -base64 32`)
+- `ENCRYPTION_KEY` - Base64 32-byte key for credential encryption (generate with: `openssl rand -base64 32`)
 
 Optional:
 
 - `BYPASS_RATE_LIMIT` - Set to `"true"` to skip rate limiting (for E2E tests)
 - `NEXT_PUBLIC_APP_URL` - Base URL for email links (default: `http://localhost:3000`)
-- `SEED_PASSWORD` - Shared password for seed users (required for seeding)
-- `ALLOW_SEEDING` - Set to `"true"` to enable database seeding
 - `LOG_LEVEL` - Pino log level: debug, info, warn, error (default: info)
+
+Google Drive (required for Drive integration):
+
+- `GOOGLE_CLIENT_ID` - OAuth client ID from Google Cloud Console
+- `GOOGLE_CLIENT_SECRET` - OAuth client secret from Google Cloud Console
+
+E2E Testing (optional - for Google Drive E2E tests):
+
+- `GOOGLE_TEST_REFRESH_TOKEN` - Refresh token for E2E test Drive account
+- `GOOGLE_TEST_ROOT_FOLDER_ID` - Folder ID where E2E tests create/delete items
+- `GOOGLE_TEST_EMAIL` - Email of test account (optional, for display)
 
 ## Documentation Standards
 

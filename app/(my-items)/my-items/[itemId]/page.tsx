@@ -8,6 +8,7 @@ import { ItemDetailClient } from "@/components/items";
 import { SiteHeader } from "@/components/site-header";
 import { getItem, getDescendants } from "@/lib/item-actions";
 import { getItemFiles } from "@/lib/item-file-actions";
+import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
 
 interface ItemDetailPageProps {
   params: Promise<{ itemId: string }>;
@@ -38,10 +39,11 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
     })
   );
 
-  // Fetch descendants of current item and attached files in parallel
-  const [childrenResult, filesResult] = await Promise.all([
+  // Fetch descendants, attached files, and Drive connection status in parallel
+  const [childrenResult, filesResult, driveConnection] = await Promise.all([
     getDescendants(itemId),
     getItemFiles(itemId),
+    getGoogleDriveConnection(),
   ]);
 
   const childItems = childrenResult.success ? (childrenResult.data ?? []) : [];
@@ -49,6 +51,7 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
     filesResult.success && filesResult.data
       ? filesResult.data
       : { media: [], artwork: [], subtitles: [] };
+  const hasDriveConnection = Boolean(driveConnection);
 
   return (
     <>
@@ -63,12 +66,10 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
             id: item.id,
             name: item.name,
             description: item.description,
-            connectionId: item.connectionId,
-            sftpPath: item.sftpPath,
           }}
           childItems={childItems}
-          connection={item.connection}
           files={files}
+          hasDriveConnection={hasDriveConnection}
         />
       </div>
     </>

@@ -1,6 +1,6 @@
 /**
  * Unit tests for GridItem component.
- * Tests artwork display, connection badges, file counts, and accessibility.
+ * Tests artwork display, file counts, and accessibility.
  */
 
 import { describe, it, expect, vi } from "vitest";
@@ -76,60 +76,6 @@ describe("GridItem", () => {
 
       // Should not render hidden img
       expect(container.querySelector("img")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("connection badge", () => {
-    it("should render connection badge when connectionName provided", () => {
-      render(
-        <GridItem id="1" name="Test Item" connectionName="My SFTP Server" />
-      );
-
-      expect(screen.getByText("My SFTP Server")).toBeInTheDocument();
-    });
-
-    it("should not render badge when connectionName is null", () => {
-      render(<GridItem id="1" name="Test Item" connectionName={null} />);
-
-      expect(screen.queryByText(/server/i)).not.toBeInTheDocument();
-    });
-
-    it("should not render badge when connectionName is undefined", () => {
-      render(<GridItem id="1" name="Test Item" />);
-
-      // Only the name should be present
-      expect(screen.getByText("Test Item")).toBeInTheDocument();
-    });
-  });
-
-  describe("showConnectionBadge prop", () => {
-    it("should show connection badge by default when connectionName provided", () => {
-      render(<GridItem id="1" name="Test Item" connectionName="Server" />);
-      expect(screen.getByText("Server")).toBeInTheDocument();
-    });
-
-    it("should show connection badge when showConnectionBadge is true", () => {
-      render(
-        <GridItem
-          id="1"
-          name="Test Item"
-          connectionName="Server"
-          showConnectionBadge
-        />
-      );
-      expect(screen.getByText("Server")).toBeInTheDocument();
-    });
-
-    it("should hide connection badge when showConnectionBadge is false", () => {
-      render(
-        <GridItem
-          id="1"
-          name="Test Item"
-          connectionName="Server"
-          showConnectionBadge={false}
-        />
-      );
-      expect(screen.queryByText("Server")).not.toBeInTheDocument();
     });
   });
 
@@ -294,17 +240,6 @@ describe("GridItem", () => {
       expect(screen.getByRole("button")).toHaveAttribute(
         "aria-label",
         "My Folder"
-      );
-    });
-
-    it("should include connection name in aria-label", () => {
-      render(
-        <GridItem id="1" name="My Folder" connectionName="Remote Server" />
-      );
-
-      expect(screen.getByRole("button")).toHaveAttribute(
-        "aria-label",
-        "My Folder, synced from Remote Server"
       );
     });
 
