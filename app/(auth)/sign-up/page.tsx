@@ -73,17 +73,24 @@ export default function SignUpPage() {
   };
 
   return (
-    <section className="bg-muted h-screen">
-      <div className="flex h-full items-center justify-center">
+    <section className="bg-muted relative h-screen overflow-hidden">
+      {/* Background Gradient */}
+      <div
+        className="absolute inset-0 z-0"
+        style={{
+          backgroundImage: `
+            radial-gradient(circle 600px at 0% 200px, oklch(from var(--primary) calc(l * 0.7) calc(c * 0.6) h / 0.15), transparent),
+            radial-gradient(circle 600px at 100% 200px, oklch(from var(--primary) calc(l * 0.75) calc(c * 0.65) h / 0.12), transparent)
+          `,
+        }}
+      />
+      <div className="relative z-10 flex h-full items-center justify-center">
         <div className="flex flex-col items-center gap-6 lg:justify-start">
           {/* Logo */}
-          <Link href="/">
+          <Link href="/" className="flex items-center gap-1.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/black.png"
-              alt="CanonCore"
-              className="h-10 dark:invert"
-            />
+            <img src="/black.png" alt="CanonCore" className="h-6 dark:invert" />
+            <span className="text-xl font-semibold">CanonCore</span>
           </Link>
 
           <form
