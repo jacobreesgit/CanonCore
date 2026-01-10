@@ -1,5 +1,3 @@
-- change password seperate modal
-
 - combobox upload motion
 - way to remove files in item settings
 
@@ -9,8 +7,7 @@
 
 - imdb/other
 
-- public and explore
-- "item templates" make a copy/fork, you can "add" and it adds all the stuff to your sftp apart from subtitles and media files
+- public and explore "item templates" make a copy/fork, you can "add" and it adds all the stuff to your sftp apart from subtitles and media files
 
 - see about trakt and/or v1 for - up next and progress
 
