@@ -330,13 +330,21 @@ export async function getUserEmail(accessToken: string): Promise<string> {
   return email;
 }
 
+/** Result of creating or finding the root folder. */
+export interface RootFolderResult {
+  id: string;
+  wasExisting: boolean;
+}
+
 /**
- * Creates the CanonCore root folder in Google Drive.
+ * Creates or finds the CanonCore root folder in Google Drive.
  *
  * @param drive - An authenticated Drive client
- * @returns The folder ID
+ * @returns Object with folder ID and whether it was existing
  */
-export async function createRootFolder(drive: drive_v3.Drive): Promise<string> {
+export async function createRootFolder(
+  drive: drive_v3.Drive
+): Promise<RootFolderResult> {
   // First check if folder already exists
   const existingResponse = await withRateLimit(() =>
     drive.files.list({
@@ -347,7 +355,7 @@ export async function createRootFolder(drive: drive_v3.Drive): Promise<string> {
   );
 
   if (existingResponse.data.files && existingResponse.data.files.length > 0) {
-    return existingResponse.data.files[0].id!;
+    return { id: existingResponse.data.files[0].id!, wasExisting: true };
   }
 
   // Create new folder
@@ -365,7 +373,7 @@ export async function createRootFolder(drive: drive_v3.Drive): Promise<string> {
     throw new Error("Failed to create CanonCore folder");
   }
 
-  return response.data.id;
+  return { id: response.data.id, wasExisting: false };
 }
 
 /**
