@@ -19,6 +19,7 @@ import {
   renameFile,
   moveFile,
   createResumableUploadUrl,
+  checkRootFolderStatus,
 } from "@/lib/google-drive-client";
 import { decryptCredential } from "@/lib/crypto";
 import crypto from "crypto";
@@ -157,6 +158,7 @@ export async function getGoogleDriveConnection() {
       userId: true,
       name: true,
       email: true,
+      rootFolderId: true,
       isActive: true,
       needsReauth: true,
       lastSyncAt: true,
@@ -215,6 +217,48 @@ export async function syncFromGoogleDrive(): Promise<{
 
   try {
     const drive = await getDriveClient(connection);
+
+    // Check root folder status before syncing
+    const rootStatus = await checkRootFolderStatus(
+      drive,
+      connection.rootFolderId
+    );
+
+    if (!rootStatus.exists) {
+      await prisma.googleDriveConnection.update({
+        where: { id: connection.id },
+        data: { lastError: "ROOT_FOLDER_DELETED", lastSyncAt: new Date() },
+      });
+      logger.warn(
+        { connectionId: connection.id },
+        "[GoogleDrive] Root folder permanently deleted"
+      );
+      return { success: false, error: "ROOT_FOLDER_DELETED" };
+    }
+
+    if (rootStatus.trashed) {
+      await prisma.googleDriveConnection.update({
+        where: { id: connection.id },
+        data: { lastError: "ROOT_FOLDER_TRASHED", lastSyncAt: new Date() },
+      });
+      logger.warn(
+        { connectionId: connection.id },
+        "[GoogleDrive] Root folder is in trash"
+      );
+      return { success: false, error: "ROOT_FOLDER_TRASHED" };
+    }
+
+    // Clear any previous root folder error if folder is now healthy
+    if (connection.lastError?.startsWith("ROOT_FOLDER_")) {
+      await prisma.googleDriveConnection.update({
+        where: { id: connection.id },
+        data: { lastError: null },
+      });
+      logger.info(
+        { connectionId: connection.id },
+        "[GoogleDrive] Root folder restored, clearing error"
+      );
+    }
 
     if (connection.changePageToken) {
       await incrementalSync(drive, connection, ctx);
@@ -1161,6 +1205,44 @@ export async function deleteItemFromGoogleDrive(
     const message = error instanceof Error ? error.message : "Delete failed";
     logger.error({ err: error }, "[GoogleDrive] Delete item error");
     return { success: false, error: message };
+  }
+}
+
+/**
+ * Deletes a file from Google Drive.
+ * Called after deleting from database to clean up Drive storage.
+ * Silently succeeds if user has no Drive connection.
+ *
+ * @param driveFileId - The Google Drive file ID to delete
+ */
+export async function deleteFileFromDrive(driveFileId: string): Promise<void> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Unauthorized");
+  }
+
+  const connection = await prisma.googleDriveConnection.findUnique({
+    where: { userId: session.user.id },
+  });
+
+  if (!connection) {
+    logger.warn({ driveFileId }, "[deleteFileFromDrive] No Drive connection");
+    return;
+  }
+
+  try {
+    const drive = await getDriveClient(connection);
+    await withRateLimit(() => drive.files.delete({ fileId: driveFileId }));
+    logger.info(
+      { driveFileId },
+      "[deleteFileFromDrive] File deleted from Drive"
+    );
+  } catch (err) {
+    // Log but don't throw - file is already deleted from DB
+    logger.error(
+      { err, driveFileId },
+      "[deleteFileFromDrive] Drive delete failed"
+    );
   }
 }
 

@@ -1,9 +1,10 @@
-- combobox upload motion
-- way to remove files in item settings
+-drop zone
+-search
 
-- spotlight search
-
+- shader
 - sorting for 'my items' dashboard, not for individual item pages
+
+- identify any gaps or limitations ... update p2-p3 roadmap
 
 - imdb/other
 

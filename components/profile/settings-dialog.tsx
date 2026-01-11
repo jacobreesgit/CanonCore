@@ -41,17 +41,7 @@ import { ChangePasswordDialog } from "./change-password-dialog";
 import { ChangeEmailDialog } from "./change-email-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-
-/**
- * Google Drive connection data structure.
- */
-interface GoogleDriveConnection {
-  email: string;
-  isActive: boolean;
-  needsReauth: boolean;
-  lastSyncAt: Date | null;
-  lastError: string | null;
-}
+import type { GoogleDriveConnection } from "@/lib/types";
 
 interface SettingsDialogProps {
   /** Whether the dialog is open */

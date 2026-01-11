@@ -11,6 +11,7 @@ import { usePathname } from "next/navigation";
 import { Folder, HelpCircle } from "lucide-react";
 import type { Root as PageTreeRoot } from "fumadocs-core/page-tree";
 import type { SidebarUser } from "@/lib/auth";
+import type { GoogleDriveConnection } from "@/lib/types";
 
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
@@ -30,17 +31,6 @@ import {
  * Sidebar context determines which navigation items to display.
  */
 type SidebarContext = "my-items" | "docs" | "home";
-
-/**
- * Google Drive connection data for settings dialog.
- */
-interface GoogleDriveConnection {
-  email: string;
-  isActive: boolean;
-  needsReauth: boolean;
-  lastSyncAt: Date | null;
-  lastError: string | null;
-}
 
 /**
  * Props for AppSidebar component.

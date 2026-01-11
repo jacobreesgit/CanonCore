@@ -26,17 +26,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { SettingsDialog } from "@/components/profile";
-
-/**
- * Google Drive connection data for settings dialog.
- */
-interface GoogleDriveConnection {
-  email: string;
-  isActive: boolean;
-  needsReauth: boolean;
-  lastSyncAt: Date | null;
-  lastError: string | null;
-}
+import type { GoogleDriveConnection } from "@/lib/types";
 
 /**
  * Props for NavUser component.

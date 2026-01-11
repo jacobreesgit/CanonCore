@@ -1,13 +1,13 @@
 /**
  * Main navigation section for the sidebar.
- * Contains primary navigation items and quick create action.
+ * Contains primary navigation items.
  */
 
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CirclePlus, type LucideIcon } from "lucide-react";
+import { type LucideIcon } from "lucide-react";
 
 import {
   SidebarGroup,
@@ -16,10 +16,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { useQuickCreateOptional } from "@/contexts/add-item-context";
 
 /**
- * Renders the main navigation section with quick create action.
+ * Renders the main navigation section.
  *
  * @param items - Array of navigation items with title, url, and optional icon
  */
@@ -33,23 +32,10 @@ export function NavMain({
   }[];
 }) {
   const pathname = usePathname();
-  const quickCreate = useQuickCreateOptional();
 
   return (
     <SidebarGroup>
-      <SidebarGroupContent className="flex flex-col gap-2">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="Quick Create"
-              onClick={() => quickCreate?.openDialog()}
-              className="min-w-8 cursor-pointer bg-gradient-to-r from-teal-400 to-emerald-400 text-white transition-all duration-200 ease-out hover:from-teal-500 hover:to-emerald-500 hover:text-white focus-visible:text-white active:text-white dark:from-teal-600 dark:to-emerald-600 dark:hover:from-teal-500 dark:hover:to-emerald-500"
-            >
-              <CirclePlus />
-              <span>Quick Create</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) => {
             // Active when on exact path OR any nested child path

@@ -147,8 +147,6 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── setup.ts                  # DB cleanup, env loading, rate-limit bypass
 │   │   └── vitest.config.ts
 │   └── vitest.config.ts              # Base Vitest config
-├── contexts/
-│   └── add-item-context.tsx          # Quick Create global state
 ├── hooks/
 │   ├── use-controllable-state.ts     # Controlled/uncontrolled component state
 │   ├── use-mobile.ts                 # Mobile breakpoint hook
@@ -173,7 +171,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── prisma.ts                     # Prisma client singleton
 │   ├── rate-limit.ts                 # Upstash Redis rate limiting
 │   ├── source.ts                     # Fumadocs source configuration
-│   ├── types.ts                      # Shared TypeScript types (Item, ItemFile, SerializedItemFile)
+│   ├── types.ts                      # Shared TypeScript types (Item, ItemFile, GoogleDriveConnection)
 │   ├── upload-utils.ts               # Browser-to-Drive upload utilities
 │   ├── user-actions.ts               # User profile server actions
 │   ├── utils.ts                      # cn() helper
@@ -187,7 +185,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 1.3.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 1.4.0)
     └── plans/                        # Design documents
 ```
 
@@ -227,7 +225,6 @@ pnpm run test:e2e:ui                        # UI mode
 - **Edit mode toggle**: Click "Edit" to enable drag-and-drop, "Done" to return to view mode
 - **View mode**: Full background artwork with dark overlay (Feature222 aesthetic)
 - **Edit mode**: Simplified icons with drag handles for reordering
-- **Quick Create**: Sidebar button creates items at root level from anywhere
 - **Add Item dialog**: Modal dialog with name and optional description fields
 - **Server actions**: `createItem`, `updateItem`, `deleteItem`, `reorderItems` in `lib/item-actions.ts`
 - **Breadcrumb navigation** for item drill-down
@@ -255,6 +252,7 @@ pnpm run test:e2e:ui                        # UI mode
 - **Media streaming**: `/api/stream/[fileId]` with HTTP Range header support
 - **Server actions**: `lib/google-drive-actions.ts` for all Drive operations
 - **Circuit breaker**: Protects against cascade failures (5 failures, 60s recovery)
+- **Trashed folder detection**: Detects when CanonCore folder is in Trash and shows recovery guidance
 
 ### Media Playback
 
@@ -289,7 +287,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 553 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals
+- 608 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals
 
 ### E2E Testing
 
