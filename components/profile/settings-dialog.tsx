@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Loader2,
   Settings,
@@ -13,7 +13,6 @@ import {
   Lock,
   ImageIcon,
   Sparkles,
-  Upload,
   Trash2,
 } from "lucide-react";
 import {
@@ -29,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Dropzone, DropzoneEmptyState } from "@/components/ui/dropzone";
 import {
   updateProfile,
   uploadProfileImage,
@@ -95,10 +95,6 @@ export function SettingsDialog({
   const [removeProfile, setRemoveProfile] = useState(false);
   const [removeHero, setRemoveHero] = useState(false);
 
-  // Refs for file inputs
-  const profileInputRef = useRef<HTMLInputElement>(null);
-  const heroInputRef = useRef<HTMLInputElement>(null);
-
   const [isSaving, setIsSaving] = useState(false);
 
   // Original values for dirty checking
@@ -139,38 +135,28 @@ export function SettingsDialog({
   ]);
 
   /**
-   * Handle profile image file selection.
+   * Handle profile image drop from dropzone.
    */
-  const handleProfileImageChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        setProfileImage(file);
-        setRemoveProfile(false);
-        // Create preview URL
-        const url = URL.createObjectURL(file);
-        setProfileImagePreview(url);
-      }
-    },
-    []
-  );
+  const handleProfileImageDrop = useCallback((acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (file) {
+      setProfileImage(file);
+      setRemoveProfile(false);
+      setProfileImagePreview(URL.createObjectURL(file));
+    }
+  }, []);
 
   /**
-   * Handle hero image file selection.
+   * Handle hero image drop from dropzone.
    */
-  const handleHeroImageChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        setHeroImage(file);
-        setRemoveHero(false);
-        // Create preview URL
-        const url = URL.createObjectURL(file);
-        setHeroImagePreview(url);
-      }
-    },
-    []
-  );
+  const handleHeroImageDrop = useCallback((acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (file) {
+      setHeroImage(file);
+      setRemoveHero(false);
+      setHeroImagePreview(URL.createObjectURL(file));
+    }
+  }, []);
 
   /**
    * Remove profile image.
@@ -179,9 +165,6 @@ export function SettingsDialog({
     setProfileImage(null);
     setProfileImagePreview(null);
     setRemoveProfile(true);
-    if (profileInputRef.current) {
-      profileInputRef.current.value = "";
-    }
   }, []);
 
   /**
@@ -191,9 +174,6 @@ export function SettingsDialog({
     setHeroImage(null);
     setHeroImagePreview(null);
     setRemoveHero(true);
-    if (heroInputRef.current) {
-      heroInputRef.current.value = "";
-    }
   }, []);
 
   /**
@@ -358,45 +338,49 @@ export function SettingsDialog({
             </div>
 
             <div className="flex items-center gap-4">
-              <Avatar className="ring-offset-background ring-border size-16 ring-2 ring-offset-2">
-                <AvatarImage src={profileImageSrc ?? undefined} />
-                <AvatarFallback className="bg-muted text-muted-foreground">
-                  {name?.[0]?.toUpperCase() ?? user.email[0].toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <Dropzone
+                accept={{
+                  "image/jpeg": [],
+                  "image/png": [],
+                  "image/webp": [],
+                }}
+                maxSize={1024 * 1024}
+                maxFiles={1}
+                onDrop={handleProfileImageDrop}
+                onError={(error) => toast.error(error.message)}
+                src={profileImage ? [profileImage] : undefined}
+                className="size-16 rounded-full p-0"
+                data-testid="profile-dropzone"
+              >
+                {profileImageSrc ? (
+                  <Avatar className="size-full">
+                    <AvatarImage
+                      src={profileImageSrc}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="bg-muted text-muted-foreground">
+                      {name?.[0]?.toUpperCase() ?? user.email[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                ) : (
+                  <DropzoneEmptyState className="scale-75" />
+                )}
+              </Dropzone>
 
-              <div className="flex gap-2">
-                <input
-                  ref={profileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleProfileImageChange}
-                  className="hidden"
-                />
+              {(user.hasImage || profileImage) && !removeProfile && (
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => profileInputRef.current?.click()}
+                  onClick={handleRemoveProfileImage}
                 >
-                  <Upload className="mr-1.5 size-3.5" />
-                  Upload
+                  <Trash2 className="mr-1.5 size-3.5" />
+                  Remove
                 </Button>
-                {(user.hasImage || profileImage) && !removeProfile && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRemoveProfileImage}
-                  >
-                    <Trash2 className="mr-1.5 size-3.5" />
-                    Remove
-                  </Button>
-                )}
-              </div>
+              )}
             </div>
             <p className="text-muted-foreground text-xs">
-              JPEG, PNG, or WebP. Max 1MB.
+              Drag and drop or click to upload. JPEG, PNG, or WebP. Max 1MB.
             </p>
           </div>
 
@@ -461,56 +445,49 @@ export function SettingsDialog({
               Displayed at the top of your My Items page.
             </p>
 
-            {/* Hero Preview */}
-            <div
-              className={cn(
-                "relative h-24 overflow-hidden rounded-lg",
-                "bg-muted ring-border ring-1"
-              )}
+            {/* Hero Dropzone */}
+            <Dropzone
+              accept={{
+                "image/jpeg": [],
+                "image/png": [],
+                "image/webp": [],
+              }}
+              maxSize={2 * 1024 * 1024}
+              maxFiles={1}
+              onDrop={handleHeroImageDrop}
+              onError={(error) => toast.error(error.message)}
+              src={heroImage ? [heroImage] : undefined}
+              className="h-24 w-full rounded-lg p-0"
+              data-testid="hero-dropzone"
             >
               {heroImageSrc ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={heroImageSrc}
                   alt="Hero preview"
-                  className="size-full object-cover"
+                  className="size-full rounded-lg object-cover"
                 />
               ) : (
-                <div className="flex size-full items-center justify-center">
-                  <Sparkles className="text-muted-foreground/30 size-8" />
+                <div className="flex size-full flex-col items-center justify-center gap-1">
+                  <Sparkles className="text-muted-foreground/50 size-6" />
+                  <p className="text-muted-foreground text-xs">
+                    Drag and drop or click to upload
+                  </p>
                 </div>
               )}
-            </div>
+            </Dropzone>
 
-            <div className="flex gap-2">
-              <input
-                ref={heroInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={handleHeroImageChange}
-                className="hidden"
-              />
+            {(user.hasHeroImage || heroImage) && !removeHero && (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => heroInputRef.current?.click()}
+                onClick={handleRemoveHeroImage}
               >
-                <Upload className="mr-1.5 size-3.5" />
-                Upload Banner
+                <Trash2 className="mr-1.5 size-3.5" />
+                Remove Banner
               </Button>
-              {(user.hasHeroImage || heroImage) && !removeHero && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRemoveHeroImage}
-                >
-                  <Trash2 className="mr-1.5 size-3.5" />
-                  Remove
-                </Button>
-              )}
-            </div>
+            )}
             <p className="text-muted-foreground text-xs">
               Wide format recommended. Max 2MB.
             </p>
