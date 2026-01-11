@@ -1,6 +1,6 @@
 {
   "name": "canoncore",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "private": true,
   "scripts": {
     "build": "next build",
@@ -64,6 +64,7 @@
     "pino": "^10.1.0",
     "react": "^19",
     "react-dom": "^19",
+    "react-dropzone": "^14.3.8",
     "resend": "^6.6.0",
     "sharp": "^0.34.5",
     "sonner": "^2.0.7",

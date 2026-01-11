@@ -106,7 +106,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   └── utilities.ts              # Tree manipulation helpers
 │   ├── providers/
 │   │   └── theme-provider.tsx        # next-themes provider wrapper
-│   ├── ui/                           # shadcn/ui components + password-input.tsx
+│   ├── ui/                           # shadcn/ui components + dropzone.tsx, password-input.tsx
 │   ├── app-sidebar.tsx               # Context-aware navigation sidebar
 │   ├── error-boundary.tsx            # React error boundary for graceful error handling
 │   ├── my-items-providers.tsx        # Client-side providers for protected routes
@@ -185,7 +185,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 1.4.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 1.5.0)
     └── plans/                        # Design documents
 ```
 
@@ -287,7 +287,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 608 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals
+- 634 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone
 
 ### E2E Testing
 
