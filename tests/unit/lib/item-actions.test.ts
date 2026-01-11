@@ -14,6 +14,7 @@ import {
   updateItem,
   deleteItem,
   reorderItems,
+  getSearchableItems,
 } from "@/lib/item-actions";
 import { getMediaIconType } from "@/lib/item-utils";
 import { prisma } from "@/lib/prisma";
@@ -810,5 +811,183 @@ describe("getMediaIconType", () => {
       { mimeType: "video/webm" },
     ];
     expect(getMediaIconType(files)).toBe("mixed");
+  });
+});
+
+describe("getSearchableItems", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns all items with artwork and breadcrumbs for authenticated user", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-123", "test@example.com"));
+
+    const mockItems = [
+      {
+        id: "item-1",
+        name: "Star Wars",
+        parentId: null,
+        depth: 0,
+        description: "A classic movie",
+        files: [{ id: "artwork-123", isPrimary: true }],
+      },
+      {
+        id: "item-2",
+        name: "Empire Strikes Back",
+        parentId: "item-1",
+        depth: 1,
+        description: null,
+        files: [],
+      },
+    ];
+
+    vi.mocked(prisma.item.findMany).mockResolvedValue(mockItems as never);
+
+    const result = await getSearchableItems();
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toHaveLength(2);
+      // First item has artwork, no breadcrumb (root level)
+      expect(result.data![0].artworkId).toBe("artwork-123");
+      expect(result.data![0].breadcrumb).toBeNull();
+      // Second item has no artwork, has breadcrumb
+      expect(result.data![1].artworkId).toBeNull();
+      expect(result.data![1].breadcrumb).toBe("Star Wars");
+    }
+    expect(prisma.item.findMany).toHaveBeenCalledWith({
+      where: { userId: "user-123" },
+      select: {
+        id: true,
+        name: true,
+        parentId: true,
+        depth: true,
+        description: true,
+        files: {
+          where: { fileType: "ARTWORK" },
+          select: { id: true, isPrimary: true },
+          orderBy: { isPrimary: "desc" },
+        },
+      },
+      orderBy: { name: "asc" },
+      take: 500,
+    });
+  });
+
+  it("uses first artwork when no primary artwork exists", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-123", "test@example.com"));
+
+    const mockItems = [
+      {
+        id: "item-1",
+        name: "Star Wars",
+        parentId: null,
+        depth: 0,
+        description: null,
+        // Two artwork files, neither is primary - should use first one
+        files: [
+          { id: "artwork-1", isPrimary: false },
+          { id: "artwork-2", isPrimary: false },
+        ],
+      },
+    ];
+
+    vi.mocked(prisma.item.findMany).mockResolvedValue(mockItems as never);
+
+    const result = await getSearchableItems();
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      // Should use first artwork file (sorted by isPrimary desc, so first non-primary)
+      expect(result.data![0].artworkId).toBe("artwork-1");
+    }
+  });
+
+  it("builds nested breadcrumb paths correctly", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-123", "test@example.com"));
+
+    const mockItems = [
+      {
+        id: "item-1",
+        name: "Movies",
+        parentId: null,
+        depth: 0,
+        description: null,
+        files: [],
+      },
+      {
+        id: "item-2",
+        name: "Star Wars",
+        parentId: "item-1",
+        depth: 1,
+        description: null,
+        files: [],
+      },
+      {
+        id: "item-3",
+        name: "Deleted Scenes",
+        parentId: "item-2",
+        depth: 2,
+        description: null,
+        files: [],
+      },
+    ];
+
+    vi.mocked(prisma.item.findMany).mockResolvedValue(mockItems as never);
+
+    const result = await getSearchableItems();
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data![0].breadcrumb).toBeNull(); // Movies (root)
+      expect(result.data![1].breadcrumb).toBe("Movies"); // Star Wars
+      expect(result.data![2].breadcrumb).toBe("Movies / Star Wars"); // Deleted Scenes
+    }
+  });
+
+  it("returns error when not authenticated", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const result = await getSearchableItems();
+
+    expect(result.success).toBeFalsy();
+    expect(result.error).toBe("Not authenticated");
+  });
+
+  it("limits results to 500 items for performance", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-123", "test@example.com"));
+    vi.mocked(prisma.item.findMany).mockResolvedValue([]);
+
+    await getSearchableItems();
+
+    expect(prisma.item.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        take: 500,
+      })
+    );
+  });
+
+  it("handles database errors gracefully", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-123", "test@example.com"));
+    vi.mocked(prisma.item.findMany).mockRejectedValue(new Error("DB error"));
+
+    const result = await getSearchableItems();
+
+    expect(result.success).toBeFalsy();
+    expect(result.error).toBe("Failed to fetch items");
+  });
+
+  it("returns error when rate limited", async () => {
+    const { checkRateLimit } = await import("@/lib/rate-limit");
+    vi.mocked(checkRateLimit).mockResolvedValueOnce({
+      error: "Too many attempts. Please try again later.",
+    });
+
+    const result = await getSearchableItems();
+
+    expect(result.success).toBeFalsy();
+    expect(result.error).toBe("Too many attempts. Please try again later.");
+    // Should not reach authentication or database
+    expect(prisma.item.findMany).not.toHaveBeenCalled();
   });
 });

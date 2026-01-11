@@ -1,6 +1,14 @@
 import { vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 
+// Mock ResizeObserver for cmdk and Radix UI (jsdom doesn't implement it)
+class MockResizeObserver {
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+}
+global.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
+
 // Mock Pointer Capture API for Radix UI (jsdom doesn't implement it)
 Element.prototype.hasPointerCapture = vi.fn().mockReturnValue(false);
 Element.prototype.setPointerCapture = vi.fn();

@@ -26,6 +26,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { SettingsDialog } from "@/components/profile";
+import { clearSearchCache } from "@/components/search/spotlight-search";
 import type { GoogleDriveConnection } from "@/lib/types";
 
 /**
@@ -57,6 +58,7 @@ export function NavUser({ user, driveConnection }: NavUserProps) {
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
 
   const handleSignOut = async () => {
+    clearSearchCache();
     await signOut({ callbackUrl: "/" });
   };
 

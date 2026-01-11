@@ -237,6 +237,39 @@ export async function getDriveClient(connection: {
 }
 
 /**
+ * Gets a Drive client using a raw refresh token.
+ * For E2E test use only - bypasses encrypted DB token flow.
+ *
+ * @param refreshToken - Raw (unencrypted) refresh token
+ * @returns An authenticated Drive client
+ */
+export async function getDriveClientFromRefreshToken(
+  refreshToken: string
+): Promise<drive_v3.Drive> {
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID!,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to refresh token for E2E test");
+  }
+
+  const { access_token } = await response.json();
+
+  const auth = new google.auth.OAuth2();
+  auth.setCredentials({ access_token });
+
+  return google.drive({ version: "v3", auth });
+}
+
+/**
  * Generates the OAuth authorization URL for connecting Google Drive.
  * Includes both drive.file and userinfo.email scopes.
  *
@@ -656,6 +689,37 @@ export async function deleteFile(
       requestBody: { trashed: true },
     })
   );
+}
+
+/**
+ * Permanently deletes a file or folder from Google Drive.
+ * WARNING: This cannot be undone. Use only for E2E test cleanup.
+ *
+ * @param drive - An authenticated Drive client
+ * @param fileId - The file/folder ID to permanently delete
+ */
+export async function permanentlyDeleteFile(
+  drive: drive_v3.Drive,
+  fileId: string
+): Promise<void> {
+  await withRateLimit(() =>
+    drive.files.delete({
+      fileId,
+    })
+  );
+}
+
+/**
+ * Empties the user's Google Drive trash.
+ *
+ * WARNING: This permanently deletes ALL trashed items in the entire Drive account,
+ * not just items created by this application. Use only for E2E test cleanup with
+ * a dedicated test account (GOOGLE_TEST_REFRESH_TOKEN).
+ *
+ * @param drive - An authenticated Drive client
+ */
+export async function emptyTrash(drive: drive_v3.Drive): Promise<void> {
+  await withRateLimit(() => drive.files.emptyTrash({}));
 }
 
 /**

@@ -2,7 +2,7 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Add macOS Spotlight-style search with Cmd+K (Mac) / Ctrl+K (Windows) keyboard shortcut to quickly find and navigate to items.
+**Goal:** Add macOS Spotlight-style search with "/" keyboard shortcut to quickly find and navigate to items. Search is also accessible via a clickable nav item in the sidebar above "My Items".
 
 **Architecture:** Use shadcn/ui Command component (built on cmdk library) for the command palette UI with its built-in fuzzy filtering. Create a SpotlightContext to manage global keyboard shortcuts and dialog state. Fetch all user items on dialog open and let cmdk handle client-side fuzzy search for instant, typo-tolerant filtering.
 
@@ -342,15 +342,7 @@ describe("SpotlightContext", () => {
   });
 
   describe("keyboard shortcuts", () => {
-    beforeEach(() => {
-      // Mock window.navigator.platform for Mac detection
-      Object.defineProperty(navigator, "platform", {
-        value: "MacIntel",
-        writable: true,
-      });
-    });
-
-    it("opens spotlight on Cmd+K (Mac)", async () => {
+    it("opens spotlight on / key press", async () => {
       render(
         <SpotlightProvider>
           <TestConsumer />
@@ -359,32 +351,32 @@ describe("SpotlightContext", () => {
 
       await act(async () => {
         window.dispatchEvent(
-          new KeyboardEvent("keydown", { key: "k", metaKey: true })
+          new KeyboardEvent("keydown", { key: "/" })
         );
       });
 
       expect(screen.getByTestId("is-open")).toHaveTextContent("open");
     });
 
-    it("opens spotlight on Ctrl+K (Windows)", async () => {
-      Object.defineProperty(navigator, "platform", {
-        value: "Win32",
-        writable: true,
-      });
-
+    it("does not open spotlight when typing in input", async () => {
       render(
         <SpotlightProvider>
           <TestConsumer />
+          <input data-testid="text-input" />
         </SpotlightProvider>
       );
 
+      const input = screen.getByTestId("text-input");
+      input.focus();
+
       await act(async () => {
         window.dispatchEvent(
-          new KeyboardEvent("keydown", { key: "k", ctrlKey: true })
+          new KeyboardEvent("keydown", { key: "/" })
         );
       });
 
-      expect(screen.getByTestId("is-open")).toHaveTextContent("open");
+      // Should remain closed when focus is in an input
+      expect(screen.getByTestId("is-open")).toHaveTextContent("closed");
     });
 
     it("toggles spotlight when already open", async () => {
@@ -397,7 +389,7 @@ describe("SpotlightContext", () => {
       // Open
       await act(async () => {
         window.dispatchEvent(
-          new KeyboardEvent("keydown", { key: "k", metaKey: true })
+          new KeyboardEvent("keydown", { key: "/" })
         );
       });
       expect(screen.getByTestId("is-open")).toHaveTextContent("open");
@@ -405,7 +397,7 @@ describe("SpotlightContext", () => {
       // Toggle closed
       await act(async () => {
         window.dispatchEvent(
-          new KeyboardEvent("keydown", { key: "k", metaKey: true })
+          new KeyboardEvent("keydown", { key: "/" })
         );
       });
       expect(screen.getByTestId("is-open")).toHaveTextContent("closed");
@@ -426,7 +418,7 @@ Create `contexts/spotlight-context.tsx`:
 ```typescript
 /**
  * Context for the global Spotlight search dialog.
- * Manages dialog state and keyboard shortcut (Cmd+K / Ctrl+K).
+ * Manages dialog state and keyboard shortcut ("/").
  */
 
 "use client";
@@ -450,7 +442,7 @@ const SpotlightContext = createContext<SpotlightContextValue | null>(null);
 
 /**
  * Provider for Spotlight search dialog state.
- * Registers global keyboard shortcut for Cmd+K (Mac) / Ctrl+K (Windows).
+ * Registers global keyboard shortcut for "/" key.
  */
 export function SpotlightProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -460,11 +452,14 @@ export function SpotlightProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Check for Cmd+K (Mac) or Ctrl+K (Windows/Linux)
-      const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
-      const modifier = isMac ? event.metaKey : event.ctrlKey;
+      // Ignore if typing in an input, textarea, or contenteditable
+      const target = event.target as HTMLElement;
+      const isInput =
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable;
 
-      if (modifier && event.key === "k") {
+      if (event.key === "/" && !isInput) {
         event.preventDefault();
         setIsOpen((prev) => !prev);
       }
@@ -672,8 +667,8 @@ describe("SpotlightSearch", () => {
       </SpotlightProvider>
     );
 
-    // Should show Cmd+K or Ctrl+K hint
-    expect(screen.getByText(/k/i)).toBeInTheDocument();
+    // Should show "/" hint
+    expect(screen.getByText("/")).toBeInTheDocument();
   });
 
   it("shows item description when available", async () => {
@@ -774,7 +769,7 @@ interface SpotlightSearchProps {
 
 /**
  * Global spotlight search dialog.
- * Opens with Cmd+K (Mac) / Ctrl+K (Windows).
+ * Opens with "/" keyboard shortcut or sidebar button.
  * Fetches all items on open, cmdk handles fuzzy filtering client-side.
  */
 export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
@@ -820,12 +815,6 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
     [closeSpotlight]
   );
 
-  // Detect platform for shortcut display
-  const isMac =
-    typeof navigator !== "undefined" &&
-    navigator.platform.toUpperCase().indexOf("MAC") >= 0;
-  const modifierSymbol = isMac ? "\u2318" : "Ctrl+";
-
   return (
     <CommandDialog open={open} onOpenChange={handleOpenChange}>
       <CommandInput placeholder="Search items..." />
@@ -864,7 +853,7 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
       </CommandList>
       <div className="border-t px-3 py-2 text-muted-foreground text-xs">
         <kbd className="bg-muted rounded px-1.5 py-0.5 font-mono text-xs">
-          {modifierSymbol}K
+          /
         </kbd>
         <span className="ml-2">to toggle search</span>
       </div>
@@ -991,6 +980,8 @@ git commit -m "feat: integrate SpotlightProvider into protected routes"
 - Modify: `components/nav-main.tsx`
 - Test: `tests/unit/components/nav-main.test.tsx`
 
+> **Design Reference:** Search nav item positioned above "My Items" with "/" keyboard shortcut badge (see reference image showing sidebar with Search as first nav item with "/" indicator).
+
 **Step 1: Write the failing test**
 
 Add to `tests/unit/components/nav-main.test.tsx`:
@@ -1004,17 +995,25 @@ describe("Spotlight search button", () => {
     expect(searchButton).toBeInTheDocument();
   });
 
-  it("displays correct keyboard shortcut for platform", () => {
-    // Mock Mac platform
-    Object.defineProperty(navigator, "platform", {
-      value: "MacIntel",
-      writable: true,
-    });
-
+  it("displays / keyboard shortcut", () => {
     render(<NavMain items={mockItems} />);
 
-    // Should show Cmd+K on Mac
-    expect(screen.getByText(/\u2318k/i)).toBeInTheDocument();
+    // Should show "/" shortcut
+    expect(screen.getByText("/")).toBeInTheDocument();
+  });
+
+  it("renders search button before other nav items", () => {
+    render(<NavMain items={mockItems} />);
+
+    const menuItems = screen.getAllByRole("button");
+    const searchIndex = menuItems.findIndex((item) =>
+      item.textContent?.includes("Search")
+    );
+    const myItemsIndex = menuItems.findIndex((item) =>
+      item.textContent?.includes("My Items")
+    );
+
+    expect(searchIndex).toBeLessThan(myItemsIndex);
   });
 });
 ```
@@ -1026,7 +1025,7 @@ Expected: FAIL with "Unable to find role"
 
 **Step 3: Add search button to NavMain**
 
-Modify `components/nav-main.tsx` to add a search button that opens spotlight:
+Modify `components/nav-main.tsx` to add a search nav item above "My Items":
 
 Add imports:
 
@@ -1039,14 +1038,9 @@ Add before the navigation items mapping:
 
 ```typescript
 const spotlight = useSpotlightOptional();
-
-// Detect platform for shortcut display
-const isMac =
-  typeof navigator !== "undefined" &&
-  navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 ```
 
-Add search button in the sidebar content (before items):
+Add search nav item in the sidebar content (BEFORE the items mapping):
 
 ```typescript
 {spotlight && (
@@ -1058,7 +1052,7 @@ Add search button in the sidebar content (before items):
       <Search />
       <span>Search</span>
       <kbd className="ml-auto bg-muted rounded px-1.5 py-0.5 font-mono text-xs">
-        {isMac ? "\u2318" : "Ctrl+"}K
+        /
       </kbd>
     </SidebarMenuButton>
   </SidebarMenuItem>
@@ -1112,8 +1106,7 @@ export class SpotlightPage {
 
   /** Open spotlight with keyboard shortcut */
   async openWithKeyboard() {
-    const isMac = process.platform === "darwin";
-    await this.page.keyboard.press(isMac ? "Meta+k" : "Control+k");
+    await this.page.keyboard.press("/");
   }
 
   /** Open spotlight via sidebar button */
@@ -1276,8 +1269,8 @@ test.describe("Spotlight Search Journey", () => {
   test("shows keyboard shortcut hint", async ({ page }) => {
     await spotlightPage.openWithKeyboard();
 
-    // Should display keyboard shortcut
-    await expect(page.getByText(/k/i)).toBeVisible();
+    // Should display "/" keyboard shortcut
+    await expect(page.getByText("/")).toBeVisible();
   });
 });
 
@@ -1334,7 +1327,7 @@ Expected: All tests pass
 
 ```bash
 git add -A
-git commit -m "feat: complete spotlight search implementation (v1.4.0)"
+git commit -m "feat: complete spotlight search implementation (v1.6.0)"
 ```
 
 ---
@@ -1408,7 +1401,41 @@ The new spotlight feature should add approximately:
 
 ## Validation Notes
 
-This plan was validated using the code-review-excellence skill with sequential thinking analysis.
+This plan was validated using the code-review-excellence skill, Context7 (cmdk library docs), and sequential thinking analysis.
+
+### Validation Checklist
+
+✅ **Security**
+
+- [x] Auth check before data fetch (getSearchableItems uses auth())
+- [x] User isolation (items filtered by userId)
+- [x] Limited data exposure (only id, name, parentId, depth, description, artworkId)
+- [x] DoS protection (500 item limit)
+
+✅ **Performance**
+
+- [x] 500 item limit within cmdk's 2-3k capacity (Context7 verified)
+- [x] Client-side filtering eliminates network latency per keystroke
+- [x] Single fetch per dialog open
+
+✅ **Architecture**
+
+- [x] SpotlightContext follows QuickCreateContext pattern
+- [x] GlobalSpotlight follows GlobalAddItemDialog pattern
+- [x] Integration into existing MyItemsProviders structure
+
+✅ **Edge Cases**
+
+- [x] "/" shortcut ignored when typing in inputs (INPUT, TEXTAREA, contentEditable)
+- [x] Empty state handled when no items exist
+- [x] Fetch error handled gracefully
+- [x] Loading state during fetch
+
+### Implementation Notes
+
+- **cmdk behavior**: Fuzzy filtering is built-in but not guaranteed for all typo patterns. The E2E test "fuzzy matches with typos" may need adjustment based on actual cmdk behavior.
+- **Escape key**: cmdk's CommandDialog handles Escape to close automatically via Radix Dialog primitive.
+- **Search input focus**: When dialog opens, CommandInput auto-focuses, so "/" typed inside won't trigger the global shortcut (input exclusion works correctly).
 
 ### Key Technical Decisions
 
@@ -1417,14 +1444,25 @@ This plan was validated using the code-review-excellence skill with sequential t
    - Built-in accessibility (ARIA, keyboard navigation, screen reader support)
    - React 18 compatible with proper hydration handling
 
-2. **Client-Side Fuzzy Filtering (Option B)**: Using cmdk's built-in filtering because:
+2. **Keyboard Shortcut**: "/" (slash) key because:
+   - Single key press - faster than modifier combinations
+   - Well-established pattern (GitHub, Slack, YouTube, etc.)
+   - Discoverable via sidebar nav item with "/" badge
+   - Automatically ignores key press when user is typing in inputs
+
+3. **Sidebar Placement**: Search nav item positioned above "My Items" because:
+   - Primary action should be prominently placed
+   - Clickable alternative for users who prefer mouse
+   - Shows "/" keyboard hint for discoverability
+
+4. **Client-Side Fuzzy Filtering**: Using cmdk's built-in filtering because:
    - **Typo tolerance**: "Satr Wars" matches "Star Wars"
    - **Instant results**: No network latency on each keystroke
    - **No debounce needed**: Filtering is synchronous client-side
    - **Simpler implementation**: Fetch once on open, cmdk handles the rest
    - **500 item limit**: cmdk handles up to 2,000-3,000 items without virtualization
 
-3. **Data Fetching Strategy**: Fetch all items when dialog opens:
+5. **Data Fetching Strategy**: Fetch all items when dialog opens:
    - Single server request per dialog open
    - Items cached in component state while dialog is open
    - Fresh data on each open (no stale cache issues)

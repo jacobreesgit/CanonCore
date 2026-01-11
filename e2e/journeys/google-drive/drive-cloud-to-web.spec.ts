@@ -11,11 +11,21 @@ test.describe("Google Drive: Cloud to Web Sync", () => {
   let itemsPage: ItemsPage;
   let settingsPage: SettingsPage;
 
-  test.beforeEach(async ({ page, setupDriveConnection, testUser }) => {
-    await setupDriveConnection(testUser.id);
-    itemsPage = new ItemsPage(page);
-    settingsPage = new SettingsPage(page);
-  });
+  test.beforeEach(
+    async ({
+      page,
+      setupDriveConnection,
+      testUser,
+      cleanupTestDriveFolders,
+    }) => {
+      // Clean up any leftover test folders from Google Drive
+      await cleanupTestDriveFolders();
+
+      await setupDriveConnection(testUser.id);
+      itemsPage = new ItemsPage(page);
+      settingsPage = new SettingsPage(page);
+    }
+  );
 
   test("items sync to Drive on creation", async ({ page, testUser }) => {
     await itemsPage.goto();

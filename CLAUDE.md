@@ -93,6 +93,9 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── change-password-dialog.tsx # Modal for password changes with validation
 │   │   ├── index.ts                  # Barrel export for profile components
 │   │   └── settings-dialog.tsx       # Settings dialog with profile and Google Drive
+│   ├── search/                       # Spotlight search components
+│   │   ├── global-spotlight.tsx      # Wrapper that renders SpotlightSearch
+│   │   └── spotlight-search.tsx      # Main search dialog with fuzzy filtering
 │   ├── sortable-grid/                # Grid view with drag-drop
 │   │   ├── Grid.tsx                  # View-only grid (no dnd-kit)
 │   │   ├── GridItem.tsx              # Card display component
@@ -106,7 +109,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   └── utilities.ts              # Tree manipulation helpers
 │   ├── providers/
 │   │   └── theme-provider.tsx        # next-themes provider wrapper
-│   ├── ui/                           # shadcn/ui components + dropzone.tsx, password-input.tsx
+│   ├── ui/                           # shadcn/ui components + command.tsx, dropzone.tsx, kbd.tsx, password-input.tsx
 │   ├── app-sidebar.tsx               # Context-aware navigation sidebar
 │   ├── error-boundary.tsx            # React error boundary for graceful error handling
 │   ├── my-items-providers.tsx        # Client-side providers for protected routes
@@ -147,6 +150,8 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── setup.ts                  # DB cleanup, env loading, rate-limit bypass
 │   │   └── vitest.config.ts
 │   └── vitest.config.ts              # Base Vitest config
+├── contexts/
+│   └── spotlight-context.tsx         # Spotlight search state and "/" keyboard shortcut
 ├── hooks/
 │   ├── use-controllable-state.ts     # Controlled/uncontrolled component state
 │   ├── use-mobile.ts                 # Mobile breakpoint hook
@@ -171,7 +176,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── prisma.ts                     # Prisma client singleton
 │   ├── rate-limit.ts                 # Upstash Redis rate limiting
 │   ├── source.ts                     # Fumadocs source configuration
-│   ├── types.ts                      # Shared TypeScript types (Item, ItemFile, GoogleDriveConnection)
+│   ├── types.ts                      # Shared TypeScript types (Item, ItemFile, SearchableItem, GoogleDriveConnection)
 │   ├── upload-utils.ts               # Browser-to-Drive upload utilities
 │   ├── user-actions.ts               # User profile server actions
 │   ├── utils.ts                      # cn() helper
@@ -185,7 +190,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 1.5.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 1.6.0)
     └── plans/                        # Design documents
 ```
 
@@ -226,7 +231,7 @@ pnpm run test:e2e:ui                        # UI mode
 - **View mode**: Full background artwork with dark overlay (Feature222 aesthetic)
 - **Edit mode**: Simplified icons with drag handles for reordering
 - **Add Item dialog**: Modal dialog with name and optional description fields
-- **Server actions**: `createItem`, `updateItem`, `deleteItem`, `reorderItems` in `lib/item-actions.ts`
+- **Server actions**: `createItem`, `updateItem`, `deleteItem`, `reorderItems`, `getSearchableItems` in `lib/item-actions.ts`
 - **Breadcrumb navigation** for item drill-down
 - **Context menu**: Right-click for Settings, Delete, Add Child Item
 - **Settings dialog**: Rename items, add descriptions, select primary/hero files, upload files
@@ -236,6 +241,19 @@ pnpm run test:e2e:ui                        # UI mode
 - **Sync status badges**: Visual indicators showing sync state (synced, pending, error)
 - **Toast notifications**: Success/error feedback via Sonner
 - **Max depth**: 10 levels of nesting
+
+### Spotlight Search
+
+- **Keyboard shortcut**: Press "/" to open search dialog from any page
+- **Search button**: Sidebar button with "/" keyboard hint for mouse users
+- **Fuzzy filtering**: cmdk library handles client-side fuzzy search
+- **Artwork thumbnails**: Search results display item artwork (primary first, then first available)
+- **Breadcrumb paths**: Nested items show parent hierarchy (e.g., "Movies / Star Wars")
+- **SWR-style caching**: Shows cached results immediately while fetching fresh data
+- **Available everywhere**: Works on all pages for authenticated users (my-items, docs, homepage)
+- **Rate limiting**: Search requests limited to prevent abuse (itemSearch: 30/min)
+- **Context**: `SpotlightProvider` manages dialog state and keyboard listener
+- **Components**: `SpotlightSearch` dialog, `GlobalSpotlight` wrapper, `Kbd` keyboard hint
 
 ### Google Drive Integration
 
@@ -287,7 +305,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 634 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone
+- 668 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search
 
 ### E2E Testing
 
