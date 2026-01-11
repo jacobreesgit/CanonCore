@@ -126,6 +126,7 @@ export function SortableGrid({
               }
               onDelete={onDeleteItem ? () => onDeleteItem(item.id) : undefined}
               artworkId={item.artworkId}
+              driveFileId={item.driveFileId}
               fileCounts={item.fileCounts}
               childCount={item.childCount}
               showDescription={false}

@@ -92,13 +92,13 @@ export { ChangeEmailDialog } from "./change-email-dialog";
 
 ## Test Results
 
-| Suite       | Result     |
-| ----------- | ---------- |
-| Unit tests  | 553 passed |
-| E2E tests   | 17 profile |
-| Lint        | 0 errors   |
-| Types       | 0 errors   |
-| Build       | Success    |
+| Suite      | Result     |
+| ---------- | ---------- |
+| Unit tests | 553 passed |
+| E2E tests  | 17 profile |
+| Lint       | 0 errors   |
+| Types      | 0 errors   |
+| Build      | Success    |
 
 ## Deployment Steps
 

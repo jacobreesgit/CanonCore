@@ -17,6 +17,8 @@ import { ItemContextMenu } from "@/components/items/item-context-menu";
 
 interface SortableTreeItemProps extends Omit<TreeItemProps, "handleProps"> {
   id: UniqueIdentifier;
+  /** Google Drive folder ID (if synced) */
+  driveFileId?: string | null;
   /** Opens the item settings dialog */
   onSettings?(): void;
   onDelete?(): Promise<void>;
@@ -34,6 +36,7 @@ const animateLayoutChanges: AnimateLayoutChanges = ({
  *
  * @param id - Unique item identifier
  * @param value - Item display name
+ * @param driveFileId - Google Drive folder ID (shows "Open in Drive" if set)
  * @param onSettings - Callback to open settings dialog
  * @param onDelete - Callback to delete the item
  * @param onAddChild - Callback to add a child item
@@ -41,6 +44,7 @@ const animateLayoutChanges: AnimateLayoutChanges = ({
 export function SortableTreeItem({
   id,
   value,
+  driveFileId,
   onSettings,
   onDelete,
   onAddChild,
@@ -68,6 +72,7 @@ export function SortableTreeItem({
   return (
     <ItemContextMenu
       itemName={value}
+      driveFileId={driveFileId}
       onSettings={onSettings}
       onDelete={onDelete}
       onAddChild={onAddChild}

@@ -47,6 +47,8 @@ export interface TreeItem {
   collapsed?: boolean;
   // Artwork thumbnail
   artworkId?: string | null;
+  // Google Drive folder ID (if synced)
+  driveFileId?: string | null;
   // File and child counts for stats display
   fileCounts?: FileCounts;
   childCount?: number;
@@ -193,3 +195,16 @@ export interface ItemWithArtwork extends Item {
  * Same as Item - provided for semantic clarity in sync contexts.
  */
 export type ItemWithSync = Item;
+
+/**
+ * Google Drive connection status for UI display.
+ * Returned by getGoogleDriveConnection() server action.
+ */
+export interface GoogleDriveConnection {
+  email: string;
+  rootFolderId: string | null;
+  isActive: boolean;
+  needsReauth: boolean;
+  lastSyncAt: Date | null;
+  lastError: string | null;
+}

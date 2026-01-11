@@ -376,6 +376,40 @@ export async function createRootFolder(
   return { id: response.data.id, wasExisting: false };
 }
 
+/** Result of checking root folder status. */
+export type RootFolderStatus =
+  | { exists: true; trashed: boolean }
+  | { exists: false };
+
+/**
+ * Checks if the root folder exists and whether it's trashed.
+ * Used before sync to detect if user moved CanonCore folder to Trash.
+ *
+ * @param drive - Authenticated Drive client
+ * @param folderId - The root folder ID to check
+ * @returns Status object indicating existence and trashed state
+ */
+export async function checkRootFolderStatus(
+  drive: drive_v3.Drive,
+  folderId: string
+): Promise<RootFolderStatus> {
+  try {
+    const response = await withRateLimit(() =>
+      drive.files.get({
+        fileId: folderId,
+        fields: "id, trashed",
+      })
+    );
+    return { exists: true, trashed: response.data.trashed ?? false };
+  } catch (error) {
+    // googleapis errors use .code, not .status
+    if ((error as { code?: number })?.code === 404) {
+      return { exists: false };
+    }
+    throw error;
+  }
+}
+
 /**
  * Progress callback for file uploads.
  */

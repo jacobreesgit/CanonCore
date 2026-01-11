@@ -23,12 +23,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AddItemDialog } from "./add-item-dialog";
-import { Plus, Settings, Trash2 } from "lucide-react";
+import { Plus, Settings, Trash2, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ItemContextMenuProps {
   children: ReactNode;
   itemName: string;
+  /** Google Drive folder ID for this item (if synced) */
+  driveFileId?: string | null;
   showAddChild?: boolean;
   /** Opens the unified settings dialog */
   onSettings?(): void;
@@ -38,10 +40,11 @@ interface ItemContextMenuProps {
 
 /**
  * Context menu wrapper for item actions.
- * Provides right-click menu with settings, delete, and add child options.
+ * Provides right-click menu with settings, delete, add child, and Drive link options.
  *
  * @param children - The element to wrap with context menu
  * @param itemName - Name of the item for delete confirmation
+ * @param driveFileId - Google Drive folder ID (shows "Open in Drive" if set)
  * @param showAddChild - Whether to show "Add Child Item" option
  * @param onSettings - Callback to open settings dialog
  * @param onDelete - Callback to delete the item
@@ -50,6 +53,7 @@ interface ItemContextMenuProps {
 export function ItemContextMenu({
   children,
   itemName,
+  driveFileId,
   showAddChild = true,
   onSettings,
   onDelete,
@@ -88,6 +92,18 @@ export function ItemContextMenu({
             <ContextMenuItem onClick={onSettings} className="gap-2">
               <Settings className="size-4" strokeWidth={2} />
               <span>Settings</span>
+            </ContextMenuItem>
+          )}
+          {driveFileId && (
+            <ContextMenuItem asChild className="gap-2">
+              <a
+                href={`https://drive.google.com/drive/folders/${driveFileId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <ExternalLink className="size-4" strokeWidth={2} />
+                <span>Open in Drive</span>
+              </a>
             </ContextMenuItem>
           )}
           {onDelete && (

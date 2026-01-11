@@ -67,6 +67,7 @@ export function Tree({
           description,
           children,
           depth,
+          driveFileId,
           fileCounts,
           childCount,
           primaryMediaName,
@@ -75,6 +76,7 @@ export function Tree({
           <ItemContextMenu
             key={id}
             itemName={name}
+            driveFileId={driveFileId}
             onSettings={
               onOpenSettings ? () => onOpenSettings(String(id)) : undefined
             }

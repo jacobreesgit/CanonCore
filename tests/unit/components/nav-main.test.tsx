@@ -62,11 +62,6 @@ vi.mock("@/components/ui/sidebar", () => ({
   ),
 }));
 
-// Mock add-item-context
-vi.mock("@/contexts/add-item-context", () => ({
-  useQuickCreateOptional: () => null,
-}));
-
 const testItems = [{ title: "My Items", url: "/my-items", icon: Folder }];
 
 describe("NavMain", () => {
@@ -78,46 +73,40 @@ describe("NavMain", () => {
     mockPathname.mockReturnValue("/my-items");
     render(<NavMain items={testItems} />);
 
-    const buttons = screen.getAllByTestId("sidebar-menu-button");
-    // Second button is My Items (first is Quick Create)
-    const myItemsButton = buttons[1];
-    expect(myItemsButton.getAttribute("data-active")).toBe("true");
+    const button = screen.getByTestId("sidebar-menu-button");
+    expect(button.getAttribute("data-active")).toBe("true");
   });
 
   it("renders My Items button as active on nested path /my-items/123", () => {
     mockPathname.mockReturnValue("/my-items/abc123");
     render(<NavMain items={testItems} />);
 
-    const buttons = screen.getAllByTestId("sidebar-menu-button");
-    const myItemsButton = buttons[1];
-    expect(myItemsButton.getAttribute("data-active")).toBe("true");
+    const button = screen.getByTestId("sidebar-menu-button");
+    expect(button.getAttribute("data-active")).toBe("true");
   });
 
   it("renders My Items button as active on /my-items/connections", () => {
     mockPathname.mockReturnValue("/my-items/connections");
     render(<NavMain items={testItems} />);
 
-    const buttons = screen.getAllByTestId("sidebar-menu-button");
-    const myItemsButton = buttons[1];
-    expect(myItemsButton.getAttribute("data-active")).toBe("true");
+    const button = screen.getByTestId("sidebar-menu-button");
+    expect(button.getAttribute("data-active")).toBe("true");
   });
 
   it("renders My Items button as inactive on /docs", () => {
     mockPathname.mockReturnValue("/docs");
     render(<NavMain items={testItems} />);
 
-    const buttons = screen.getAllByTestId("sidebar-menu-button");
-    const myItemsButton = buttons[1];
-    expect(myItemsButton.getAttribute("data-active")).toBe("false");
+    const button = screen.getByTestId("sidebar-menu-button");
+    expect(button.getAttribute("data-active")).toBe("false");
   });
 
   it("renders My Items button as inactive on /", () => {
     mockPathname.mockReturnValue("/");
     render(<NavMain items={testItems} />);
 
-    const buttons = screen.getAllByTestId("sidebar-menu-button");
-    const myItemsButton = buttons[1];
-    expect(myItemsButton.getAttribute("data-active")).toBe("false");
+    const button = screen.getByTestId("sidebar-menu-button");
+    expect(button.getAttribute("data-active")).toBe("false");
   });
 
   it("renders My Items button as inactive on /my-items-other (no false positive)", () => {
@@ -126,8 +115,7 @@ describe("NavMain", () => {
     mockPathname.mockReturnValue("/my-items-other");
     render(<NavMain items={testItems} />);
 
-    const buttons = screen.getAllByTestId("sidebar-menu-button");
-    const myItemsButton = buttons[1];
-    expect(myItemsButton.getAttribute("data-active")).toBe("false");
+    const button = screen.getByTestId("sidebar-menu-button");
+    expect(button.getAttribute("data-active")).toBe("false");
   });
 });

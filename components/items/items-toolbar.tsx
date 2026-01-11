@@ -93,7 +93,18 @@ export function ItemsToolbar({
         router.refresh();
         onSyncComplete?.();
       } else {
-        toast.error(result.error || "Sync failed");
+        // Show user-friendly message for root folder errors (detailed UI in settings)
+        if (result.error === "ROOT_FOLDER_TRASHED") {
+          toast.error(
+            "Sync paused: CanonCore folder is in Trash. Check settings to restore."
+          );
+        } else if (result.error === "ROOT_FOLDER_DELETED") {
+          toast.error(
+            "Sync paused: CanonCore folder was deleted. Reconnect in settings."
+          );
+        } else {
+          toast.error(result.error || "Sync failed");
+        }
       }
     });
   }, [router, onSyncComplete]);

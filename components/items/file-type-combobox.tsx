@@ -7,13 +7,17 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Check,
   ChevronDown,
+  ExternalLink,
   Upload,
   X,
   AlertCircle,
   RefreshCw,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,9 +27,19 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   createUploadSessions,
   confirmUpload,
 } from "@/lib/google-drive-actions";
+import { deleteItemFile } from "@/lib/item-file-actions";
+import { toast } from "sonner";
 import {
   BatchUploadManager,
   type UploadState,
@@ -51,6 +65,8 @@ interface FileTypeComboboxProps {
   onSelect: (id: string) => void;
   /** Callback when upload completes with success count (for refreshing file list) */
   onUploadComplete: (successCount: number) => void;
+  /** Callback when a file is deleted (for refreshing file list) */
+  onFileDeleted?: () => void;
   /** Item ID for uploads */
   itemId: string;
   /** File type category for filtering */
@@ -71,6 +87,7 @@ export function FileTypeCombobox({
   selectedId,
   onSelect,
   onUploadComplete,
+  onFileDeleted,
   itemId,
   fileType,
   disabled = false,
@@ -79,6 +96,45 @@ export function FileTypeCombobox({
   const [search, setSearch] = useState("");
   const [uploadState, setUploadState] = useState<UploadState | null>(null);
   const [failedFiles, setFailedFiles] = useState<File[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<SerializedItemFile | null>(
+    null
+  );
+
+  /**
+   * Opens the delete confirmation dialog.
+   */
+  const handleDeleteClick = useCallback(
+    (e: React.MouseEvent, file: SerializedItemFile) => {
+      e.stopPropagation(); // Prevent selecting the file
+      setDeleteConfirm(file);
+    },
+    []
+  );
+
+  /**
+   * Confirms and executes file deletion with loading state and toast feedback.
+   */
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteConfirm) return;
+
+    setDeletingId(deleteConfirm.id);
+
+    try {
+      const result = await deleteItemFile(deleteConfirm.id);
+      if (result.success) {
+        toast.success("File deleted");
+        onFileDeleted?.();
+        setDeleteConfirm(null);
+      } else {
+        toast.error(result.error || "Failed to delete file");
+      }
+    } catch {
+      toast.error("Failed to delete file");
+    } finally {
+      setDeletingId(null);
+    }
+  }, [deleteConfirm, onFileDeleted]);
 
   /**
    * Handles popover open/close state changes.
@@ -383,32 +439,75 @@ export function FileTypeCombobox({
             )}
 
             {filteredFiles.map((file) => (
-              <button
+              <div
                 key={file.id}
-                type="button"
-                onClick={() => handleSelect(file.id)}
-                className={cn(
-                  "flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
-                  "hover:bg-accent hover:text-accent-foreground",
-                  selectedId === file.id && "bg-accent"
-                )}
+                data-file-row="true"
+                className="group flex items-center"
               >
-                {fileType === "artwork" && (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={`/api/artwork/${file.id}`}
-                    alt=""
-                    className="size-6 shrink-0 rounded object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
-                  />
+                <button
+                  type="button"
+                  onClick={() => handleSelect(file.id)}
+                  className={cn(
+                    "flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
+                    "hover:bg-accent hover:text-accent-foreground"
+                  )}
+                >
+                  {fileType === "artwork" && (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={`/api/artwork/${file.id}`}
+                      alt=""
+                      className="size-6 shrink-0 rounded object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  )}
+                  <span className="min-w-0 flex-1 truncate">
+                    {file.filename}
+                  </span>
+                </button>
+                {/* Drive link - show for files with driveFileId */}
+                {file.driveFileId && (
+                  <a
+                    href={`https://drive.google.com/file/d/${file.driveFileId}/view`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-testid={`drive-link-${file.id}`}
+                    className="hover:bg-accent rounded p-1"
+                    onClick={(e) => e.stopPropagation()}
+                    title="Open in Google Drive"
+                  >
+                    <ExternalLink className="text-muted-foreground size-3.5" />
+                  </a>
                 )}
-                <span className="min-w-0 flex-1 truncate">{file.filename}</span>
-                {selectedId === file.id && (
-                  <Check className="text-primary size-4 shrink-0" />
+                {/* Checkmark for selected, delete button for non-selected */}
+                {selectedId === file.id ? (
+                  <div className="mr-1 rounded p-1">
+                    <Check className="text-primary size-3.5" />
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    data-testid={`delete-file-${file.id}`}
+                    onClick={(e) => handleDeleteClick(e, file)}
+                    disabled={deletingId === file.id}
+                    className={cn(
+                      "mr-1 rounded p-1 opacity-0 transition-opacity",
+                      "hover:bg-destructive/10 hover:text-destructive",
+                      "group-hover:opacity-100",
+                      deletingId === file.id && "opacity-100"
+                    )}
+                    aria-label={`Delete ${file.filename}`}
+                  >
+                    {deletingId === file.id ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="size-3.5" />
+                    )}
+                  </button>
                 )}
-              </button>
+              </div>
             ))}
           </div>
 
@@ -443,80 +542,138 @@ export function FileTypeCombobox({
       />
 
       {/* Upload Progress / Error State */}
-      {uploadState && (
-        <div
-          className={cn(
-            "overflow-hidden rounded-lg border transition-all duration-300",
-            hasError ? "border-destructive/30 bg-destructive/5" : "bg-muted/30"
-          )}
-        >
-          {/* Progress Header */}
-          <div className="flex items-center justify-between px-3 py-2">
-            <div className="flex items-center gap-2 text-sm">
-              {isUploading && uploadProgress && (
-                <>
-                  <div className="border-primary size-4 animate-spin rounded-full border-2 border-t-transparent" />
-                  <span className="flex items-center gap-2">
-                    <span>Uploading...</span>
-                    <span className="bg-primary/15 text-primary inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 font-mono text-xs font-medium tracking-tight tabular-nums">
-                      <span>{uploadProgress.overallPercent}%</span>
-                      {uploadProgress.totalSize > 0 && (
-                        <>
-                          <span className="text-primary/50">·</span>
-                          <span>
-                            {formatBytes(uploadProgress.totalLoaded)}/
-                            {formatBytes(uploadProgress.totalSize)}
-                          </span>
-                        </>
+      <AnimatePresence>
+        {uploadState && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className={cn(
+              "overflow-hidden rounded-lg border",
+              hasError
+                ? "border-destructive/30 bg-destructive/5"
+                : "bg-muted/30"
+            )}
+          >
+            {/* Progress Header */}
+            <div className="flex items-center justify-between px-3 py-2">
+              <div className="flex items-center gap-2 text-sm">
+                {isUploading && uploadProgress && (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{
+                        duration: 1,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
+                      className="border-primary size-4 rounded-full border-2 border-t-transparent"
+                    />
+                    <span className="flex items-center gap-2">
+                      <span>Uploading...</span>
+                      <motion.span
+                        key={uploadProgress.overallPercent}
+                        initial={{ scale: 1.1 }}
+                        animate={{ scale: 1 }}
+                        className="bg-primary/15 text-primary inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 font-mono text-xs font-medium tracking-tight tabular-nums"
+                      >
+                        <span>{uploadProgress.overallPercent}%</span>
+                        {uploadProgress.totalSize > 0 && (
+                          <>
+                            <span className="text-primary/50">·</span>
+                            <span>
+                              {formatBytes(uploadProgress.totalLoaded)}/
+                              {formatBytes(uploadProgress.totalSize)}
+                            </span>
+                          </>
+                        )}
+                      </motion.span>
+                      {uploadProgress.fileCount > 1 && (
+                        <span className="text-muted-foreground text-xs">
+                          ({uploadProgress.currentFileIndex + 1}/
+                          {uploadProgress.fileCount})
+                        </span>
                       )}
                     </span>
-                    {uploadProgress.fileCount > 1 && (
-                      <span className="text-muted-foreground text-xs">
-                        ({uploadProgress.currentFileIndex + 1}/
-                        {uploadProgress.fileCount})
-                      </span>
-                    )}
-                  </span>
-                </>
-              )}
+                  </>
+                )}
+
+                {hasError && (
+                  <motion.div
+                    initial={{ x: -10, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    className="flex items-center gap-2"
+                  >
+                    <AlertCircle className="text-destructive size-4" />
+                    <span>
+                      {uploadState.successCount} uploaded, {failedFiles.length}{" "}
+                      failed
+                    </span>
+                  </motion.div>
+                )}
+              </div>
 
               {hasError && (
-                <>
-                  <AlertCircle className="text-destructive size-4" />
-                  <span>
-                    {uploadState.successCount} uploaded, {failedFiles.length}{" "}
-                    failed
-                  </span>
-                </>
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRetry}
+                    className="h-7 gap-1 px-2 text-xs"
+                  >
+                    <RefreshCw className="size-3" />
+                    Retry
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleDismiss}
+                    className="text-muted-foreground hover:text-foreground size-7 p-0"
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </div>
               )}
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            {hasError && (
-              <div className="flex items-center gap-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleRetry}
-                  className="h-7 gap-1 px-2 text-xs"
-                >
-                  <RefreshCw className="size-3" />
-                  Retry
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleDismiss}
-                  className="text-muted-foreground hover:text-foreground size-7 p-0"
-                >
-                  <X className="size-4" />
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteConfirm !== null}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete File</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &ldquo;{deleteConfirm?.filename}
+              &rdquo;? This will remove it from Google Drive. This action cannot
+              be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirm(null)}
+              disabled={deletingId !== null}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deletingId !== null}
+            >
+              {deletingId !== null ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
