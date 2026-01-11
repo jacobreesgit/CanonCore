@@ -63,6 +63,8 @@ export function itemsToTree(items: ItemInput[]): TreeItem[] {
       children: [],
       // Include artwork if available
       artworkId: "artworkId" in item ? item.artworkId : null,
+      // Include Google Drive folder ID if synced
+      driveFileId: "driveFileId" in item ? item.driveFileId : null,
       // Include file and child counts for stats display
       fileCounts: "fileCounts" in item ? item.fileCounts : undefined,
       childCount: "childCount" in item ? item.childCount : undefined,

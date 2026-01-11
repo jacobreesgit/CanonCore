@@ -291,6 +291,15 @@ export function ItemSettingsDialog({
     [onSettingsChange]
   );
 
+  /**
+   * Handles file deletion - refreshes file list.
+   */
+  const handleFileDeleted = useCallback(async () => {
+    await onSettingsChange?.().catch((err) => {
+      console.warn("[ItemSettingsDialog] Refetch failed after delete:", err);
+    });
+  }, [onSettingsChange]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-lg">
@@ -356,6 +365,7 @@ export function ItemSettingsDialog({
             selectedId={primaryMediaId}
             onSelect={setPrimaryMediaId}
             onUploadComplete={handleUploadComplete}
+            onFileDeleted={handleFileDeleted}
             itemId={item.id}
             fileType="media"
             disabled={!hasDriveConnection}
@@ -370,6 +380,7 @@ export function ItemSettingsDialog({
             selectedId={primaryArtworkId}
             onSelect={setPrimaryArtworkId}
             onUploadComplete={handleUploadComplete}
+            onFileDeleted={handleFileDeleted}
             itemId={item.id}
             fileType="artwork"
             disabled={!hasDriveConnection}
@@ -385,6 +396,7 @@ export function ItemSettingsDialog({
               selectedId={heroArtworkId}
               onSelect={setHeroArtworkId}
               onUploadComplete={handleUploadComplete}
+              onFileDeleted={handleFileDeleted}
               itemId={item.id}
               fileType="artwork"
               disabled={!hasDriveConnection}
@@ -400,6 +412,7 @@ export function ItemSettingsDialog({
             selectedId={primarySubtitleId}
             onSelect={setPrimarySubtitleId}
             onUploadComplete={handleUploadComplete}
+            onFileDeleted={handleFileDeleted}
             itemId={item.id}
             fileType="subtitle"
             disabled={!hasDriveConnection}

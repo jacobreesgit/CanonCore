@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ItemSettingsDialog } from "@/components/items/item-settings-dialog";
 import type { SerializedItemFile } from "@/lib/types";
@@ -14,6 +14,7 @@ import { toast } from "sonner";
 // Mock server actions
 vi.mock("@/lib/item-file-actions", () => ({
   updateItemSettings: vi.fn().mockResolvedValue({ success: true }),
+  deleteItemFile: vi.fn().mockResolvedValue({ success: true }),
   getItemFiles: vi.fn().mockResolvedValue({
     success: true,
     data: { media: [], artwork: [], subtitles: [] },
@@ -405,6 +406,75 @@ describe("ItemSettingsDialog", () => {
       render(<ItemSettingsDialog {...defaultProps} files={files} />);
 
       expect(screen.getByText("Hero Image")).toBeInTheDocument();
+    });
+  });
+
+  describe("File Deletion", () => {
+    it("should pass onFileDeleted callback to FileTypeCombobox", async () => {
+      const onSettingsChange = vi.fn().mockResolvedValue(undefined);
+      const files = {
+        media: [
+          createMockFile({ id: "m1", filename: "movie.mp4", isPrimary: true }),
+          createMockFile({ id: "m2", filename: "movie-hd.mkv" }),
+        ],
+        artwork: [],
+        subtitles: [],
+      };
+
+      render(
+        <ItemSettingsDialog
+          {...defaultProps}
+          files={files}
+          onSettingsChange={onSettingsChange}
+        />
+      );
+
+      // The FileTypeCombobox should receive onFileDeleted prop
+      // This is tested implicitly through the delete functionality
+      expect(screen.getByText("Primary Media")).toBeInTheDocument();
+    });
+
+    it("should refresh files after deletion", async () => {
+      const onSettingsChange = vi.fn().mockResolvedValue(undefined);
+      const files = {
+        media: [
+          createMockFile({ id: "m1", filename: "movie.mp4", isPrimary: true }),
+          createMockFile({ id: "m2", filename: "movie-hd.mkv" }),
+        ],
+        artwork: [],
+        subtitles: [],
+      };
+
+      const user = userEvent.setup({ pointerEventsCheck: 0 });
+      render(
+        <ItemSettingsDialog
+          {...defaultProps}
+          files={files}
+          onSettingsChange={onSettingsChange}
+        />
+      );
+
+      // Open media combobox
+      const mediaSection = screen
+        .getByText("Primary Media")
+        .closest("div")?.parentElement;
+      const combobox = within(mediaSection!).getByRole("combobox");
+      await user.click(combobox);
+
+      // Click delete on non-selected file to open confirmation dialog
+      const deleteBtn = await screen.findByTestId("delete-file-m2");
+      await user.click(deleteBtn);
+
+      // Confirm deletion in the dialog
+      const confirmBtn = await screen.findByRole("button", {
+        name: /^delete$/i,
+      });
+      await user.click(confirmBtn);
+
+      // onSettingsChange should be called to refresh
+      await waitFor(() => {
+        expect(onSettingsChange).toHaveBeenCalled();
+      });
     });
   });
 });

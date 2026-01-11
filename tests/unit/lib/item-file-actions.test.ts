@@ -10,6 +10,7 @@ import {
   getItemFiles,
   getItemFile,
   setPrimaryFile,
+  deleteItemFile,
 } from "@/lib/item-file-actions";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
@@ -29,9 +30,60 @@ vi.mock("@/lib/env", () => ({
   },
 }));
 
+// Mock Prisma
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    item: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    itemFile: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+    $transaction: vi.fn((updates) => Promise.all(updates)),
+  },
+}));
+
 // Mock auth
 vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
+}));
+
+// Mock Google Drive actions
+vi.mock("@/lib/google-drive-actions", () => ({
+  deleteFileFromDrive: vi.fn().mockResolvedValue(undefined),
+  renameItemInGoogleDrive: vi.fn().mockResolvedValue({ success: true }),
+}));
+
+// Mock rate limiting
+vi.mock("@/lib/rate-limit", () => ({
+  checkRateLimit: vi.fn().mockResolvedValue(null),
+}));
+
+// Mock Next.js cache
+vi.mock("next/cache", () => ({
+  revalidatePath: vi.fn(),
+}));
+
+// Mock logger
+vi.mock("@/lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
 }));
 
 const mockAuth = auth as unknown as ReturnType<
@@ -586,5 +638,114 @@ describe("setPrimaryFile", () => {
     const result = await setPrimaryFile("file-1");
 
     expect(result.success).toBe(true);
+  });
+});
+
+describe("deleteItemFile", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should return error when rate limited", async () => {
+    const { checkRateLimit } = await import("@/lib/rate-limit");
+    vi.mocked(checkRateLimit).mockResolvedValueOnce({
+      error: "Too many attempts. Please try again later.",
+    });
+
+    const result = await deleteItemFile("file-1");
+
+    expect(result).toEqual({
+      success: false,
+      error: "Too many attempts. Please try again later.",
+    });
+  });
+
+  it("should return error when not authenticated", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const result = await deleteItemFile("file-1");
+
+    expect(result).toEqual({ success: false, error: "Unauthorized" });
+  });
+
+  it("should return error when file not found", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.itemFile.findUnique).mockResolvedValue(null);
+
+    const result = await deleteItemFile("nonexistent");
+
+    expect(result).toEqual({ success: false, error: "File not found" });
+  });
+
+  it("should return error when user does not own file", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.itemFile.findUnique).mockResolvedValue({
+      id: "file-1",
+      itemId: "item-1",
+      driveFileId: "drive-1",
+      item: { userId: "other-user" },
+    } as unknown as Awaited<ReturnType<typeof prisma.itemFile.findUnique>>);
+
+    const result = await deleteItemFile("file-1");
+
+    expect(result).toEqual({ success: false, error: "Access denied" });
+  });
+
+  it("should delete file from database and Google Drive", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.itemFile.findUnique).mockResolvedValue({
+      id: "file-1",
+      itemId: "item-1",
+      driveFileId: "drive-file-123",
+      item: {
+        userId: "user-1",
+        driveConnection: { id: "conn-1" },
+      },
+    } as unknown as Awaited<ReturnType<typeof prisma.itemFile.findUnique>>);
+    vi.mocked(prisma.itemFile.delete).mockResolvedValue(
+      {} as unknown as Awaited<ReturnType<typeof prisma.itemFile.delete>>
+    );
+
+    const result = await deleteItemFile("file-1");
+
+    expect(result).toEqual({ success: true });
+    expect(prisma.itemFile.delete).toHaveBeenCalledWith({
+      where: { id: "file-1" },
+    });
+  });
+
+  it("should delete file even without Drive connection", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.itemFile.findUnique).mockResolvedValue({
+      id: "file-1",
+      itemId: "item-1",
+      driveFileId: null,
+      item: {
+        userId: "user-1",
+        driveConnection: null,
+      },
+    } as unknown as Awaited<ReturnType<typeof prisma.itemFile.findUnique>>);
+    vi.mocked(prisma.itemFile.delete).mockResolvedValue(
+      {} as unknown as Awaited<ReturnType<typeof prisma.itemFile.delete>>
+    );
+
+    const result = await deleteItemFile("file-1");
+
+    expect(result).toEqual({ success: true });
+  });
+
+  it("should return error when database delete fails", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.itemFile.findUnique).mockResolvedValue({
+      id: "file-1",
+      itemId: "item-1",
+      driveFileId: null,
+      item: { userId: "user-1", driveConnection: null },
+    } as unknown as Awaited<ReturnType<typeof prisma.itemFile.findUnique>>);
+    vi.mocked(prisma.itemFile.delete).mockRejectedValue(new Error("DB error"));
+
+    const result = await deleteItemFile("file-1");
+
+    expect(result).toEqual({ success: false, error: "Failed to delete file" });
   });
 });

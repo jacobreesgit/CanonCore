@@ -21,31 +21,29 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Cloud,
   Trash2,
   AlertTriangle,
   Loader2,
   CheckCircle2,
   Link2,
+  ExternalLink,
+  RefreshCw,
 } from "lucide-react";
 import {
   initiateGoogleDriveOAuth,
   disconnectGoogleDrive,
+  syncFromGoogleDrive,
 } from "@/lib/google-drive-actions";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
-
-/**
- * Google Drive connection data structure.
- */
-interface GoogleDriveConnection {
-  email: string;
-  isActive: boolean;
-  needsReauth: boolean;
-  lastSyncAt: Date | null;
-  lastError: string | null;
-}
+import type { GoogleDriveConnection } from "@/lib/types";
 
 interface GoogleDriveSettingsSectionProps {
   /** The current Google Drive connection, or null if not connected */
@@ -67,6 +65,7 @@ export function GoogleDriveSettingsSection({
 }: GoogleDriveSettingsSectionProps) {
   const [isConnecting, startConnectTransition] = useTransition();
   const [isDisconnecting, startDisconnectTransition] = useTransition();
+  const [isSyncing, startSyncTransition] = useTransition();
 
   /**
    * Initiates the Google Drive OAuth flow.
@@ -99,6 +98,49 @@ export function GoogleDriveSettingsSection({
     });
   }
 
+  /**
+   * Triggers a sync from Google Drive.
+   */
+  function handleSync() {
+    startSyncTransition(async () => {
+      const result = await syncFromGoogleDrive();
+
+      if (result.success) {
+        const parts = [];
+        if (result.itemsCreated) parts.push(`${result.itemsCreated} created`);
+        if (result.itemsUpdated) parts.push(`${result.itemsUpdated} updated`);
+        if (result.itemsErrored) parts.push(`${result.itemsErrored} failed`);
+
+        const message =
+          parts.length > 0 ? parts.join(", ") : "Already up to date";
+        toast.success(`Sync complete: ${message}`);
+        onConnectionChange?.();
+      } else {
+        // User-friendly messages for root folder errors
+        if (result.error === "ROOT_FOLDER_TRASHED") {
+          toast.error(
+            "Sync paused: CanonCore folder is in Trash. Restore it in Google Drive."
+          );
+        } else if (result.error === "ROOT_FOLDER_DELETED") {
+          toast.error(
+            "Sync paused: CanonCore folder was deleted. Disconnect and reconnect."
+          );
+        } else {
+          toast.error(result.error || "Sync failed");
+        }
+        onConnectionChange?.();
+      }
+    });
+  }
+
+  // Determine if sync should be disabled
+  // Note: ROOT_FOLDER_TRASHED is NOT disabled - user can retry after restoring folder
+  // ROOT_FOLDER_DELETED requires disconnect/reconnect, so stays disabled
+  const syncDisabled =
+    isSyncing ||
+    connection?.needsReauth ||
+    connection?.lastError === "ROOT_FOLDER_DELETED";
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
@@ -115,9 +157,10 @@ export function GoogleDriveSettingsSection({
 
       {connection ? (
         <div className="space-y-3">
-          {/* Connection status with disconnect button */}
-          <div className="flex items-center justify-between rounded-lg border p-3">
-            <div className="space-y-1">
+          {/* Connection card */}
+          <div className="rounded-lg border">
+            {/* Info section */}
+            <div className="space-y-1.5 p-3">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">{connection.email}</span>
                 {connection.needsReauth ? (
@@ -140,47 +183,162 @@ export function GoogleDriveSettingsSection({
                   })}
                 </p>
               )}
-              {connection.lastError && (
-                <p className="text-destructive text-xs">
-                  {connection.lastError}
-                </p>
-              )}
+              {/* Show generic errors (not ROOT_FOLDER_* which have dedicated UI) */}
+              {connection.lastError &&
+                !connection.lastError.startsWith("ROOT_FOLDER_") && (
+                  <p className="text-destructive text-xs">
+                    {connection.lastError}
+                  </p>
+                )}
             </div>
 
-            {/* Disconnect button */}
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  disabled={isDisconnecting}
-                  className="size-8"
-                >
-                  {isDisconnecting ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="size-4" />
-                  )}
-                  <span className="sr-only">Disconnect</span>
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Disconnect Google Drive?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will remove access to your Google Drive and delete all
-                    synced items. Your files will remain in Google Drive.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDisconnect}>
-                    Disconnect
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            {/* Action buttons row */}
+            <div className="bg-muted/30 flex items-center gap-1 border-t px-2 py-1.5">
+              {/* Sync button */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSync}
+                    disabled={syncDisabled}
+                    className="h-7 gap-1.5 px-2 text-xs"
+                  >
+                    {isSyncing ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="size-3.5" />
+                    )}
+                    Sync
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>Sync with Google Drive</p>
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Open in Drive button - hide when folder is trashed/deleted */}
+              {connection.rootFolderId &&
+                connection.lastError !== "ROOT_FOLDER_TRASHED" &&
+                connection.lastError !== "ROOT_FOLDER_DELETED" && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        asChild
+                        className="h-7 gap-1.5 px-2 text-xs"
+                      >
+                        <a
+                          href={`https://drive.google.com/drive/folders/${connection.rootFolderId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <ExternalLink className="size-3.5" />
+                          Drive
+                        </a>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <p>Open in Google Drive</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
+              {/* Spacer */}
+              <div className="flex-1" />
+
+              {/* Disconnect button */}
+              <AlertDialog>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={isDisconnecting}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 gap-1.5 px-2 text-xs"
+                      >
+                        {isDisconnecting ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="size-3.5" />
+                        )}
+                        Disconnect
+                      </Button>
+                    </AlertDialogTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p>Disconnect Google Drive</p>
+                  </TooltipContent>
+                </Tooltip>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Disconnect Google Drive?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will remove access to your Google Drive and delete
+                      all synced items. Your files will remain in Google Drive.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDisconnect}>
+                      Disconnect
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
+
+          {/* Warning: Root folder is in Trash */}
+          {connection.lastError === "ROOT_FOLDER_TRASHED" && (
+            <div className="rounded-md border border-yellow-500/50 bg-yellow-500/10 p-3">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 size-4 text-yellow-600 dark:text-yellow-500" />
+                <div className="space-y-1.5">
+                  <p className="text-sm font-medium">
+                    CanonCore folder is in Trash
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    Your CanonCore folder was moved to Google Drive&apos;s
+                    Trash. Restore it, then click Sync to resume.
+                  </p>
+                  {connection.rootFolderId && (
+                    <a
+                      href={`https://drive.google.com/drive/folders/${connection.rootFolderId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:text-primary/80 inline-flex items-center gap-1.5 text-xs transition-colors"
+                    >
+                      <ExternalLink className="size-3" />
+                      Restore in Drive
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Warning: Root folder was permanently deleted */}
+          {connection.lastError === "ROOT_FOLDER_DELETED" && (
+            <div className="border-destructive/50 bg-destructive/10 rounded-md border p-3">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="text-destructive mt-0.5 size-4" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">
+                    CanonCore folder was deleted
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    Your CanonCore folder was permanently deleted from Google
+                    Drive. Disconnect and reconnect to create a new folder.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Reconnect button - only when reauth needed */}
           {connection.needsReauth && (

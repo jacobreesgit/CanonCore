@@ -52,9 +52,22 @@ export function OAuthToast() {
                 toast.success("Connected to Google Drive.", { id: toastId });
               }
             } else {
-              toast.error(`Connected, but sync failed: ${result.error}`, {
-                id: toastId,
-              });
+              // User-friendly messages for root folder errors
+              if (result.error === "ROOT_FOLDER_TRASHED") {
+                toast.error(
+                  "Connected, but CanonCore folder is in Trash. Check settings to restore.",
+                  { id: toastId }
+                );
+              } else if (result.error === "ROOT_FOLDER_DELETED") {
+                toast.error(
+                  "Connected, but CanonCore folder was deleted. Reconnect in settings.",
+                  { id: toastId }
+                );
+              } else {
+                toast.error(`Connected, but sync failed: ${result.error}`, {
+                  id: toastId,
+                });
+              }
             }
           })
           .catch(() => {

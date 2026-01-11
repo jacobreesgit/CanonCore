@@ -22,6 +22,8 @@ interface SortableGridItemProps extends Omit<GridItemProps, "handleProps"> {
   onDelete?(): Promise<void>;
   /** Artwork file ID for thumbnail display. */
   artworkId?: string | null;
+  /** Google Drive folder ID (if synced). */
+  driveFileId?: string | null;
   /** File counts by type for display. */
   fileCounts?: FileCounts;
   /** Number of child items (subfolders). */
@@ -37,6 +39,7 @@ interface SortableGridItemProps extends Omit<GridItemProps, "handleProps"> {
  * @param onSettings - Callback to open settings dialog
  * @param onDelete - Callback to delete the item
  * @param artworkId - Artwork file ID for thumbnail
+ * @param driveFileId - Google Drive folder ID (shows "Open in Drive" if set)
  * @param fileCounts - File counts by type
  * @param childCount - Number of child items
  */
@@ -46,6 +49,7 @@ export function SortableGridItem({
   onSettings,
   onDelete,
   artworkId,
+  driveFileId,
   fileCounts,
   childCount,
   ...props
@@ -67,6 +71,7 @@ export function SortableGridItem({
   return (
     <ItemContextMenu
       itemName={name}
+      driveFileId={driveFileId}
       showAddChild={false}
       onSettings={onSettings}
       onDelete={onDelete}

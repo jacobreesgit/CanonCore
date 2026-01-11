@@ -77,6 +77,7 @@ vi.mock("@/lib/google-drive-client", () => ({
       "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable"
   ),
   refreshAccessToken: vi.fn(() => "refreshed-access-token"),
+  checkRootFolderStatus: vi.fn(() => ({ exists: true, trashed: false })),
 }));
 
 // Mock crypto module
@@ -235,6 +236,117 @@ describe("google-drive-actions", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe("Please reconnect your Google Drive");
+    });
+
+    it("should return ROOT_FOLDER_TRASHED when root folder is in trash", async () => {
+      vi.mocked(auth).mockResolvedValue({
+        user: { id: "user-123" },
+        expires: new Date().toISOString(),
+      } as never);
+      vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue({
+        id: "conn-123",
+        userId: "user-123",
+        rootFolderId: "root-folder-id",
+        needsReauth: false,
+        lastError: null,
+      } as never);
+
+      const { getDriveClient, checkRootFolderStatus } =
+        await import("@/lib/google-drive-client");
+      vi.mocked(getDriveClient).mockResolvedValue({} as never);
+      vi.mocked(checkRootFolderStatus).mockResolvedValue({
+        exists: true,
+        trashed: true,
+      });
+
+      const { syncFromGoogleDrive } =
+        await import("@/lib/google-drive-actions");
+      const result = await syncFromGoogleDrive();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("ROOT_FOLDER_TRASHED");
+      expect(prisma.googleDriveConnection.update).toHaveBeenCalledWith({
+        where: { id: "conn-123" },
+        data: {
+          lastError: "ROOT_FOLDER_TRASHED",
+          lastSyncAt: expect.any(Date),
+        },
+      });
+    });
+
+    it("should return ROOT_FOLDER_DELETED when root folder is permanently deleted", async () => {
+      vi.mocked(auth).mockResolvedValue({
+        user: { id: "user-123" },
+        expires: new Date().toISOString(),
+      } as never);
+      vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue({
+        id: "conn-123",
+        userId: "user-123",
+        rootFolderId: "root-folder-id",
+        needsReauth: false,
+        lastError: null,
+      } as never);
+
+      const { getDriveClient, checkRootFolderStatus } =
+        await import("@/lib/google-drive-client");
+      vi.mocked(getDriveClient).mockResolvedValue({} as never);
+      vi.mocked(checkRootFolderStatus).mockResolvedValue({ exists: false });
+
+      const { syncFromGoogleDrive } =
+        await import("@/lib/google-drive-actions");
+      const result = await syncFromGoogleDrive();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("ROOT_FOLDER_DELETED");
+      expect(prisma.googleDriveConnection.update).toHaveBeenCalledWith({
+        where: { id: "conn-123" },
+        data: {
+          lastError: "ROOT_FOLDER_DELETED",
+          lastSyncAt: expect.any(Date),
+        },
+      });
+    });
+
+    it("should clear ROOT_FOLDER error when folder is restored", async () => {
+      vi.mocked(auth).mockResolvedValue({
+        user: { id: "user-123" },
+        expires: new Date().toISOString(),
+      } as never);
+      vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue({
+        id: "conn-123",
+        userId: "user-123",
+        rootFolderId: "root-folder-id",
+        needsReauth: false,
+        lastError: "ROOT_FOLDER_TRASHED", // Previously had error
+        changePageToken: null,
+      } as never);
+
+      const { getDriveClient, checkRootFolderStatus } =
+        await import("@/lib/google-drive-client");
+      vi.mocked(getDriveClient).mockResolvedValue({
+        files: {
+          list: vi.fn().mockResolvedValue({ data: { files: [] } }),
+        },
+        changes: {
+          getStartPageToken: vi
+            .fn()
+            .mockResolvedValue({ data: { startPageToken: "token-1" } }),
+        },
+      } as never);
+      vi.mocked(checkRootFolderStatus).mockResolvedValue({
+        exists: true,
+        trashed: false,
+      });
+
+      const { syncFromGoogleDrive } =
+        await import("@/lib/google-drive-actions");
+      await syncFromGoogleDrive();
+
+      // Should clear the error
+      expect(prisma.googleDriveConnection.update).toHaveBeenCalledWith({
+        where: { id: "conn-123" },
+        data: { lastError: null },
+      });
     });
   });
 
@@ -900,6 +1012,67 @@ describe("google-drive-actions", () => {
           }),
         })
       );
+    });
+  });
+
+  describe("deleteFileFromDrive", () => {
+    it("should throw error when not authenticated", async () => {
+      vi.mocked(auth).mockResolvedValue(null as never);
+
+      const { deleteFileFromDrive } =
+        await import("@/lib/google-drive-actions");
+
+      await expect(deleteFileFromDrive("drive-file-123")).rejects.toThrow(
+        "Unauthorized"
+      );
+    });
+
+    it("should silently return when no Drive connection exists", async () => {
+      vi.mocked(auth).mockResolvedValue({
+        user: { id: "user-123", email: "test@example.com" },
+        expires: new Date().toISOString(),
+      } as never);
+      vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue(
+        null
+      );
+
+      const { deleteFileFromDrive } =
+        await import("@/lib/google-drive-actions");
+
+      // Should not throw
+      await expect(
+        deleteFileFromDrive("drive-file-123")
+      ).resolves.toBeUndefined();
+    });
+
+    it("should call Drive API to delete file", async () => {
+      vi.mocked(auth).mockResolvedValue({
+        user: { id: "user-123", email: "test@example.com" },
+        expires: new Date().toISOString(),
+      } as never);
+      vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue({
+        id: "conn-1",
+        userId: "user-123",
+        accessToken: "encrypted:access-token",
+        refreshToken: "encrypted:refresh-token",
+        encryptedAccessToken: "encrypted:access-token",
+        accessTokenExpiry: new Date(Date.now() + 3600000),
+        needsReauth: false,
+      } as never);
+
+      const mockDelete = vi.fn().mockResolvedValue({});
+      const { getDriveClient } = await import("@/lib/google-drive-client");
+      vi.mocked(getDriveClient).mockResolvedValue({
+        files: { delete: mockDelete },
+      } as never);
+
+      const { deleteFileFromDrive } =
+        await import("@/lib/google-drive-actions");
+      await deleteFileFromDrive("drive-file-123");
+
+      expect(mockDelete).toHaveBeenCalledWith({
+        fileId: "drive-file-123",
+      });
     });
   });
 });
