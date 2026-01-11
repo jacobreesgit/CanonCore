@@ -208,3 +208,19 @@ export interface GoogleDriveConnection {
   lastSyncAt: Date | null;
   lastError: string | null;
 }
+
+/**
+ * Item data for spotlight search display.
+ * Includes breadcrumb path for nested items and artwork for thumbnails.
+ */
+export interface SearchableItem {
+  id: string;
+  name: string;
+  parentId: string | null;
+  depth: number;
+  description: string | null;
+  /** First artwork file ID for thumbnail display */
+  artworkId: string | null;
+  /** Breadcrumb path like "Movies / Star Wars" for nested items */
+  breadcrumb: string | null;
+}
