@@ -12,11 +12,21 @@ import { ItemsPage } from "../../pages/items.page";
 test.describe("Google Drive: Auto-Sync Operations", () => {
   let itemsPage: ItemsPage;
 
-  test.beforeEach(async ({ page, setupDriveConnection, testUser }) => {
-    await setupDriveConnection(testUser.id);
-    itemsPage = new ItemsPage(page);
-    await page.goto("/my-items");
-  });
+  test.beforeEach(
+    async ({
+      page,
+      setupDriveConnection,
+      testUser,
+      cleanupTestDriveFolders,
+    }) => {
+      // Clean up any leftover test folders from Google Drive
+      await cleanupTestDriveFolders();
+
+      await setupDriveConnection(testUser.id);
+      itemsPage = new ItemsPage(page);
+      await page.goto("/my-items");
+    }
+  );
 
   test("creates item with driveFileId on creation", async ({
     page,

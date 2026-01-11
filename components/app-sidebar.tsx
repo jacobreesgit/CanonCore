@@ -73,8 +73,8 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const pathname = usePathname();
 
-  // Logo links to my-items if authenticated, home if guest
-  const logoHref = user ? "/my-items" : "/";
+  // Logo always links to homepage
+  const logoHref = "/";
 
   // Active state for footer nav items
   // Pattern: exact match OR prefix with trailing slash (prevents false positives)
@@ -104,10 +104,8 @@ export function AppSidebar({
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Show my-items nav for my-items context, or for authenticated users on home */}
-        {(context === "my-items" || (context === "home" && user)) && (
-          <NavMain items={myItemsNavMain} />
-        )}
+        {/* Show my-items nav for authenticated users on any page */}
+        {user && <NavMain items={myItemsNavMain} />}
 
         {context === "docs" && docsTree && (
           <NavDocs tree={docsTree} isAuthenticated={!!user} />
@@ -115,8 +113,8 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter>
-        {/* Show footer nav for my-items context, or for authenticated users on home */}
-        {(context === "my-items" || (context === "home" && user)) && (
+        {/* Show footer nav for authenticated users on any page (except docs where it's redundant) */}
+        {user && context !== "docs" && (
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton

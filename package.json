@@ -1,6 +1,6 @@
 {
   "name": "canoncore",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "private": true,
   "scripts": {
     "build": "next build",
@@ -49,6 +49,7 @@
     "bottleneck": "^2.19.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
     "file-type": "^21.3.0",

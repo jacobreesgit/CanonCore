@@ -56,6 +56,11 @@ export const rateLimiters = {
     limiter: Ratelimit.slidingWindow(30, "1 m"),
     prefix: "ratelimit:item:delete",
   }),
+  itemSearch: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(60, "1 m"),
+    prefix: "ratelimit:item:search",
+  }),
 };
 
 /**

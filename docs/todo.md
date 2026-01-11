@@ -1,6 +1,3 @@
--search
-
-- shader
 - sorting for 'my items' dashboard, not for individual item pages
 
 - identify any gaps or limitations ... update p2-p3 roadmap

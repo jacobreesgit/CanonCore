@@ -5,6 +5,11 @@
 
 import { testUserFixture, testPrisma as prisma } from "./test-user.fixture";
 import { encryptCredential } from "@/lib/crypto";
+import {
+  getDriveClientFromRefreshToken,
+  permanentlyDeleteFile,
+  emptyTrash,
+} from "@/lib/google-drive-client";
 
 export interface GoogleDriveFixture {
   /**
@@ -17,6 +22,17 @@ export interface GoogleDriveFixture {
    * Clean up the Google Drive connection after test.
    */
   cleanupDriveConnection: (userId: string) => Promise<void>;
+
+  /**
+   * Clean up all items for a user (removes leftover test data).
+   */
+  cleanupUserItems: (userId: string) => Promise<void>;
+
+  /**
+   * Clean up test folders from Google Drive (permanently deletes).
+   * Keeps protected folders like "Breaking Bad".
+   */
+  cleanupTestDriveFolders: (protectedFolders?: string[]) => Promise<void>;
 
   /**
    * Get the root folder ID for the test Drive account.
@@ -104,6 +120,80 @@ export const googleDriveFixture = testUserFixture.extend<GoogleDriveFixture>({
   cleanupDriveConnection: async ({}, use) => {
     const cleanup = async (userId: string) => {
       await prisma.googleDriveConnection.deleteMany({ where: { userId } });
+    };
+    await use(cleanup);
+  },
+
+  cleanupUserItems: async ({}, use) => {
+    const cleanup = async (userId: string) => {
+      // Delete all item files first (foreign key constraint)
+      await prisma.itemFile.deleteMany({
+        where: { item: { userId } },
+      });
+      // Then delete all items for the user
+      await prisma.item.deleteMany({ where: { userId } });
+    };
+    await use(cleanup);
+  },
+
+  cleanupTestDriveFolders: async ({}, use) => {
+    const cleanup = async (protectedFolders: string[] = ["Breaking Bad"]) => {
+      const { refreshToken, rootFolderId } = getRequiredEnvVars();
+
+      try {
+        const drive = await getDriveClientFromRefreshToken(refreshToken);
+
+        // List all folders in root folder
+        const response = await drive.files.list({
+          q: `'${rootFolderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+          fields: "files(id, name)",
+          pageSize: 1000,
+        });
+
+        const folders = response.data.files || [];
+
+        // Delete all folders except protected ones
+        let deletedCount = 0;
+        for (const folder of folders) {
+          if (folder.name && protectedFolders.includes(folder.name)) {
+            continue; // Skip protected folders
+          }
+
+          if (folder.id) {
+            try {
+              await permanentlyDeleteFile(drive, folder.id);
+              deletedCount++;
+            } catch (err) {
+              console.warn(
+                `[E2E Cleanup] Failed to delete folder "${folder.name}":`,
+                err instanceof Error ? err.message : err
+              );
+            }
+          }
+        }
+
+        if (deletedCount > 0) {
+          console.log(
+            `[E2E Cleanup] Permanently deleted ${deletedCount} test folders`
+          );
+        }
+
+        // Empty trash to clean up any previously trashed items
+        try {
+          await emptyTrash(drive);
+        } catch (err) {
+          console.warn(
+            "[E2E Cleanup] Failed to empty trash:",
+            err instanceof Error ? err.message : err
+          );
+        }
+      } catch (err) {
+        // Log but don't fail tests on cleanup errors
+        console.warn(
+          "[E2E Cleanup] Failed to cleanup test Drive folders:",
+          err instanceof Error ? err.message : err
+        );
+      }
     };
     await use(cleanup);
   },
