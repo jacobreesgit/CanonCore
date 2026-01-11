@@ -1,10 +1,11 @@
 /**
  * E2E tests for Google Drive OAuth connection management.
- * Tests connect, disconnect, and error states.
+ * Tests connect, disconnect, error states, and Drive links.
  */
 
 import { test, expect, prisma } from "../../fixtures";
 import { SettingsPage } from "../../pages/settings.page";
+import { ItemsPage } from "../../pages/items.page";
 import { encryptCredential } from "@/lib/crypto";
 
 test.describe("Google Drive: OAuth Connection", () => {
@@ -126,5 +127,149 @@ test.describe("Google Drive: OAuth Connection", () => {
     // Should return error status or redirect to error
     const status = response.status();
     expect([400, 401, 302, 307]).toContain(status);
+  });
+
+  test("shows Drive folder link in settings after connection", async ({
+    page,
+    setupDriveConnection,
+    testUser,
+  }) => {
+    await setupDriveConnection(testUser.id);
+    await page.reload();
+
+    await settingsPage.openFromNavUser();
+
+    // Should see the Drive link in settings (rootFolderId set in setupDriveConnection)
+    const driveLink = page.getByRole("link", { name: /^drive$/i });
+    await expect(driveLink).toBeVisible();
+    await expect(driveLink).toHaveAttribute(
+      "href",
+      expect.stringContaining("drive.google.com/drive/folders/")
+    );
+    await expect(driveLink).toHaveAttribute("target", "_blank");
+  });
+
+  test("shows Open in Drive in context menu for synced items", async ({
+    page,
+    testUser,
+  }) => {
+    const itemsPage = new ItemsPage(page);
+    await itemsPage.goto();
+
+    // Create an item
+    await itemsPage.createItem("Drive Context Menu Test");
+    await itemsPage.waitForToastToDisappear();
+
+    // Manually set driveFileId on the item (simulating sync completion)
+    await prisma.item.updateMany({
+      where: { userId: testUser.id, name: "Drive Context Menu Test" },
+      data: { driveFileId: "test-drive-folder-id" },
+    });
+
+    // Refresh to pick up the change
+    await page.reload();
+
+    // Open context menu
+    await itemsPage.openContextMenu("Drive Context Menu Test");
+
+    // Should see Open in Drive option with correct link
+    const driveOption = page.getByRole("menuitem", { name: /open in drive/i });
+    await expect(driveOption).toBeVisible();
+    await expect(driveOption).toHaveAttribute(
+      "href",
+      "https://drive.google.com/drive/folders/test-drive-folder-id"
+    );
+  });
+
+  test("shows trashed folder warning when root folder is in Trash", async ({
+    page,
+    testUser,
+  }) => {
+    // Create connection with ROOT_FOLDER_TRASHED error
+    await prisma.googleDriveConnection.upsert({
+      where: { userId: testUser.id },
+      update: {
+        lastError: "ROOT_FOLDER_TRASHED",
+        isActive: true,
+        needsReauth: false,
+      },
+      create: {
+        userId: testUser.id,
+        name: "Test Google Drive",
+        email: "test@example.com",
+        encryptedAccessToken: encryptCredential("test-token"),
+        encryptedRefreshToken: encryptCredential("test-refresh"),
+        accessTokenExpiry: new Date(Date.now() + 3600000),
+        rootFolderId: "trashed-folder-id",
+        lastError: "ROOT_FOLDER_TRASHED",
+        isActive: true,
+        needsReauth: false,
+      },
+    });
+
+    await page.reload();
+    await settingsPage.openFromNavUser();
+
+    // Should show trashed folder warning
+    await expect(page.getByText("CanonCore folder is in Trash")).toBeVisible();
+
+    // Should show Restore in Drive link
+    const restoreLink = page.getByRole("link", { name: /restore in drive/i });
+    await expect(restoreLink).toBeVisible();
+    await expect(restoreLink).toHaveAttribute(
+      "href",
+      "https://drive.google.com/drive/folders/trashed-folder-id"
+    );
+
+    // Should NOT show the normal Drive link in action bar
+    await expect(
+      page.getByRole("link", { name: /^drive$/i })
+    ).not.toBeVisible();
+  });
+
+  test("shows deleted folder warning when root folder was permanently deleted", async ({
+    page,
+    testUser,
+  }) => {
+    // Create connection with ROOT_FOLDER_DELETED error
+    await prisma.googleDriveConnection.upsert({
+      where: { userId: testUser.id },
+      update: {
+        lastError: "ROOT_FOLDER_DELETED",
+        isActive: true,
+        needsReauth: false,
+      },
+      create: {
+        userId: testUser.id,
+        name: "Test Google Drive",
+        email: "test@example.com",
+        encryptedAccessToken: encryptCredential("test-token"),
+        encryptedRefreshToken: encryptCredential("test-refresh"),
+        accessTokenExpiry: new Date(Date.now() + 3600000),
+        rootFolderId: "deleted-folder-id",
+        lastError: "ROOT_FOLDER_DELETED",
+        isActive: true,
+        needsReauth: false,
+      },
+    });
+
+    await page.reload();
+    await settingsPage.openFromNavUser();
+
+    // Should show deleted folder warning
+    await expect(page.getByText("CanonCore folder was deleted")).toBeVisible();
+
+    // Should show instruction to disconnect and reconnect
+    await expect(page.getByText(/disconnect and reconnect/i)).toBeVisible();
+
+    // Should NOT show Restore link (folder is permanently deleted)
+    await expect(
+      page.getByRole("link", { name: /restore in drive/i })
+    ).not.toBeVisible();
+
+    // Should NOT show the normal Drive link in action bar
+    await expect(
+      page.getByRole("link", { name: /^drive$/i })
+    ).not.toBeVisible();
   });
 });

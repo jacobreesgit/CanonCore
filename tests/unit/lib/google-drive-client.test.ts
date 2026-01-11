@@ -295,4 +295,81 @@ describe("google-drive-client", () => {
       expect(mockDrive.files.create).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("checkRootFolderStatus", () => {
+    const mockDrive = {
+      files: {
+        get: vi.fn(),
+      },
+    } as unknown as drive_v3.Drive;
+
+    beforeEach(() => {
+      vi.mocked(mockDrive.files.get).mockReset();
+    });
+
+    it("should return exists: true, trashed: false for healthy folder", async () => {
+      vi.mocked(mockDrive.files.get).mockResolvedValue({
+        data: { id: "folder-123", trashed: false },
+      } as never);
+
+      const { checkRootFolderStatus } =
+        await import("@/lib/google-drive-client");
+      const result = await checkRootFolderStatus(mockDrive, "folder-123");
+
+      expect(result).toEqual({ exists: true, trashed: false });
+      expect(mockDrive.files.get).toHaveBeenCalledWith({
+        fileId: "folder-123",
+        fields: "id, trashed",
+      });
+    });
+
+    it("should return exists: true, trashed: true when folder is in trash", async () => {
+      vi.mocked(mockDrive.files.get).mockResolvedValue({
+        data: { id: "folder-123", trashed: true },
+      } as never);
+
+      const { checkRootFolderStatus } =
+        await import("@/lib/google-drive-client");
+      const result = await checkRootFolderStatus(mockDrive, "folder-123");
+
+      expect(result).toEqual({ exists: true, trashed: true });
+    });
+
+    it("should return exists: false when folder is permanently deleted (404)", async () => {
+      vi.mocked(mockDrive.files.get).mockRejectedValue(
+        Object.assign(new Error("Not Found"), { code: 404 })
+      );
+
+      const { checkRootFolderStatus } =
+        await import("@/lib/google-drive-client");
+      const result = await checkRootFolderStatus(mockDrive, "deleted-folder");
+
+      expect(result).toEqual({ exists: false });
+    });
+
+    it("should throw on other errors (not 404)", async () => {
+      vi.mocked(mockDrive.files.get).mockRejectedValue(
+        Object.assign(new Error("Service unavailable"), { code: 503 })
+      );
+
+      const { checkRootFolderStatus } =
+        await import("@/lib/google-drive-client");
+
+      await expect(
+        checkRootFolderStatus(mockDrive, "folder-123")
+      ).rejects.toThrow("Service unavailable");
+    });
+
+    it("should default trashed to false if not present in response", async () => {
+      vi.mocked(mockDrive.files.get).mockResolvedValue({
+        data: { id: "folder-123" }, // No trashed field
+      } as never);
+
+      const { checkRootFolderStatus } =
+        await import("@/lib/google-drive-client");
+      const result = await checkRootFolderStatus(mockDrive, "folder-123");
+
+      expect(result).toEqual({ exists: true, trashed: false });
+    });
+  });
 });

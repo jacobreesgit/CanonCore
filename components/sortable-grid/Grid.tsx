@@ -45,6 +45,7 @@ export function Grid({
         <ItemContextMenu
           key={item.id}
           itemName={item.name}
+          driveFileId={item.driveFileId}
           showAddChild={false}
           onSettings={
             onOpenSettings ? () => onOpenSettings(item.id) : undefined

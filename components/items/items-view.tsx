@@ -15,7 +15,6 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { Folder, Loader2, Plus, RefreshCw } from "lucide-react";
-import { useQuickCreateOptional } from "@/contexts/add-item-context";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { UniqueIdentifier } from "@dnd-kit/core";
 import { toast } from "sonner";
@@ -195,19 +194,21 @@ export function ItemsView({
         toast.success(`Sync complete: ${message}`);
         await refetchItems();
       } else {
-        toast.error(result.error || "Sync failed");
+        // Show user-friendly message for root folder errors (detailed UI in settings)
+        if (result.error === "ROOT_FOLDER_TRASHED") {
+          toast.error(
+            "Sync paused: CanonCore folder is in Trash. Check settings to restore."
+          );
+        } else if (result.error === "ROOT_FOLDER_DELETED") {
+          toast.error(
+            "Sync paused: CanonCore folder was deleted. Reconnect in settings."
+          );
+        } else {
+          toast.error(result.error || "Sync failed");
+        }
       }
     });
   }, [refetchItems]);
-
-  // Subscribe to Quick Create events for explicit refetch (only at root level)
-  const quickCreate = useQuickCreateOptional();
-  useEffect(() => {
-    if (!quickCreate || parentId) return; // Only subscribe at root level
-    return quickCreate.subscribeToCreation(() => {
-      startTransition(() => refetchItems());
-    });
-  }, [quickCreate, parentId, refetchItems]);
 
   /**
    * Opens the settings dialog for an item.

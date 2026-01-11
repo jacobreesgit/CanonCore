@@ -11,7 +11,10 @@ import { prisma } from "@/lib/prisma";
 import { serializeItemFile } from "@/lib/types";
 import { itemNameSchema, itemDescriptionSchema } from "@/lib/validations";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { renameItemInGoogleDrive } from "@/lib/google-drive-actions";
+import {
+  renameItemInGoogleDrive,
+  deleteFileFromDrive,
+} from "@/lib/google-drive-actions";
 import { logger } from "@/lib/logger";
 import type { SerializedItemFile } from "@/lib/types";
 
@@ -438,5 +441,78 @@ export async function updateItemSettings(
     return { success: true };
   } catch {
     return { success: false, error: "Failed to update item settings" };
+  }
+}
+
+/**
+ * Deletes an ItemFile from the database and optionally from Google Drive.
+ * If the file has a driveFileId and the item has a Drive connection,
+ * also deletes from Google Drive (async, non-blocking).
+ *
+ * @param fileId - The ID of the ItemFile to delete
+ * @returns Success or error result
+ *
+ * @example
+ * const result = await deleteItemFile("file-123");
+ * if (result.success) {
+ *   // File deleted
+ * }
+ */
+export async function deleteItemFile(fileId: string): Promise<ItemFileResult> {
+  // Rate limit check
+  const rateLimitResult = await checkRateLimit("itemDelete");
+  if (rateLimitResult) {
+    return { success: false, error: rateLimitResult.error };
+  }
+
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  try {
+    // Fetch file with item and connection info
+    const file = await prisma.itemFile.findUnique({
+      where: { id: fileId },
+      include: {
+        item: {
+          select: {
+            userId: true,
+            driveConnection: { select: { id: true } },
+          },
+        },
+      },
+    });
+
+    if (!file) {
+      return { success: false, error: "File not found" };
+    }
+
+    if (file.item.userId !== session.user.id) {
+      return { success: false, error: "Access denied" };
+    }
+
+    // Delete from database
+    await prisma.itemFile.delete({
+      where: { id: fileId },
+    });
+
+    // If file is synced to Drive and connection exists, delete from Drive (async)
+    if (file.driveFileId && file.item.driveConnection) {
+      deleteFileFromDrive(file.driveFileId).catch((err) => {
+        logger.error(
+          { err, fileId, driveFileId: file.driveFileId },
+          "[deleteItemFile] Failed to delete from Drive"
+        );
+      });
+    }
+
+    // Revalidate to reflect changes
+    revalidatePath("/my-items", "layout");
+
+    return { success: true };
+  } catch (err) {
+    logger.error({ err, fileId }, "[deleteItemFile] Database error");
+    return { success: false, error: "Failed to delete file" };
   }
 }
