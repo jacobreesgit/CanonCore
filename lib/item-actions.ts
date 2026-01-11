@@ -21,6 +21,7 @@ import type {
   ItemResult,
   BreadcrumbItem,
   ItemWithArtwork,
+  SearchableItem,
 } from "@/lib/types";
 import { buildDescendantCounter, getMediaIconType } from "@/lib/item-utils";
 
@@ -762,4 +763,97 @@ export async function reorderItems(
   }
 
   return { success: true };
+}
+
+/**
+ * Fetches all items for spotlight search.
+ * Returns item data with primary artwork and breadcrumb paths for client-side fuzzy filtering.
+ * Limited to 500 items for performance.
+ *
+ * Includes:
+ * - Primary artwork ID for thumbnail display
+ * - Breadcrumb path for nested items (e.g., "Movies / Star Wars")
+ *
+ * @returns SearchableItem array or error
+ */
+export async function getSearchableItems(): Promise<
+  ItemResult<SearchableItem[]>
+> {
+  // Rate limit check
+  const rateLimitResult = await checkRateLimit("itemSearch");
+  if (rateLimitResult) {
+    return { error: rateLimitResult.error };
+  }
+
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Not authenticated" };
+  }
+
+  try {
+    const items = await prisma.item.findMany({
+      where: { userId: session.user.id },
+      select: {
+        id: true,
+        name: true,
+        parentId: true,
+        depth: true,
+        description: true,
+        files: {
+          where: { fileType: "ARTWORK" },
+          select: { id: true, isPrimary: true },
+          orderBy: { isPrimary: "desc" }, // Primary first, then others
+        },
+      },
+      orderBy: { name: "asc" },
+      take: 500,
+    });
+
+    // Build a map for breadcrumb construction
+    const itemMap = new Map<
+      string,
+      { name: string; parentId: string | null }
+    >();
+    for (const item of items) {
+      itemMap.set(item.id, { name: item.name, parentId: item.parentId });
+    }
+
+    /**
+     * Builds breadcrumb path by walking up the parent chain.
+     * Returns path like "Movies / Star Wars" for nested items.
+     */
+    const buildBreadcrumb = (parentId: string | null): string | null => {
+      if (!parentId) return null;
+
+      const parts: string[] = [];
+      let currentId: string | null = parentId;
+
+      // Walk up parent chain (max 10 levels to prevent infinite loops)
+      for (let i = 0; i < 10 && currentId; i++) {
+        const parent = itemMap.get(currentId);
+        if (!parent) break;
+        parts.unshift(parent.name);
+        currentId = parent.parentId;
+      }
+
+      return parts.length > 0 ? parts.join(" / ") : null;
+    };
+
+    // Map items to searchable format
+    // Use first artwork file (primary is sorted first)
+    const searchableItems: SearchableItem[] = items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      parentId: item.parentId,
+      depth: item.depth,
+      description: item.description,
+      artworkId: item.files[0]?.id ?? null,
+      breadcrumb: buildBreadcrumb(item.parentId),
+    }));
+
+    return { success: true, data: searchableItems };
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch searchable items");
+    return { error: "Failed to fetch items" };
+  }
 }

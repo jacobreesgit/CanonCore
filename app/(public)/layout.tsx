@@ -1,16 +1,18 @@
 /**
  * Public layout with sidebar for unauthenticated pages.
- * Used by homepage and docs pages.
+ * Used by homepage. Includes spotlight search for authenticated users.
  */
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { auth, extractSidebarUser } from "@/lib/auth";
+import { MyItemsProviders } from "@/components/my-items-providers";
 
 /**
  * Wraps public pages with sidebar and header.
  * Shows guest navigation for unauthenticated users.
+ * Includes spotlight search for authenticated users.
  */
 export default async function PublicLayout({
   children,
@@ -20,7 +22,7 @@ export default async function PublicLayout({
   const session = await auth();
   const user = extractSidebarUser(session);
 
-  return (
+  const content = (
     <SidebarProvider
       className="h-svh overflow-hidden"
       style={
@@ -39,4 +41,7 @@ export default async function PublicLayout({
       </SidebarInset>
     </SidebarProvider>
   );
+
+  // Wrap with spotlight provider for authenticated users
+  return user ? <MyItemsProviders>{content}</MyItemsProviders> : content;
 }

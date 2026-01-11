@@ -56,12 +56,27 @@ test.describe("Google Drive: OAuth Connection", () => {
     ).not.toBeVisible();
   });
 
-  test("disconnect removes connection", async ({
-    page,
-    setupDriveConnection,
-    testUser,
-  }) => {
-    await setupDriveConnection(testUser.id);
+  test("disconnect removes connection", async ({ page, testUser }) => {
+    // Create a FAKE connection with a fake rootFolderId to avoid trashing the real test folder
+    // This test only validates the UI disconnect flow, not actual Drive API calls
+    await prisma.googleDriveConnection.upsert({
+      where: { userId: testUser.id },
+      update: {
+        isActive: true,
+        needsReauth: false,
+      },
+      create: {
+        userId: testUser.id,
+        name: "Test Google Drive",
+        email: "test@example.com",
+        encryptedAccessToken: encryptCredential("fake-token"),
+        encryptedRefreshToken: encryptCredential("fake-refresh"),
+        accessTokenExpiry: new Date(Date.now() + 3600000),
+        rootFolderId: "fake-disconnect-test-folder-id", // Fake ID - won't trash real folder
+        isActive: true,
+        needsReauth: false,
+      },
+    });
     await page.reload();
 
     await settingsPage.openFromNavUser();

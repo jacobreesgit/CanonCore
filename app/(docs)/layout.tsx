@@ -1,6 +1,7 @@
 /**
  * Documentation layout with docs-specific sidebar navigation.
  * Uses the Fumadocs page tree for navigation.
+ * Includes spotlight search for authenticated users.
  */
 
 import { source } from "@/lib/source";
@@ -8,10 +9,12 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { auth, extractSidebarUser } from "@/lib/auth";
+import { MyItemsProviders } from "@/components/my-items-providers";
 import type { ReactNode } from "react";
 
 /**
  * Wraps documentation pages with docs-specific sidebar navigation.
+ * Includes spotlight search for authenticated users.
  *
  * @param children - Page content to render
  */
@@ -23,7 +26,7 @@ export default async function DocsLayout({
   const session = await auth();
   const user = extractSidebarUser(session);
 
-  return (
+  const content = (
     <SidebarProvider
       className="h-svh overflow-hidden"
       style={
@@ -47,4 +50,7 @@ export default async function DocsLayout({
       </SidebarInset>
     </SidebarProvider>
   );
+
+  // Wrap with spotlight provider for authenticated users
+  return user ? <MyItemsProviders>{content}</MyItemsProviders> : content;
 }
