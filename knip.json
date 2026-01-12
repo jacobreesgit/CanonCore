@@ -5,10 +5,15 @@
     "e2e/**",
     "source.config.ts",
     ".source/**",
-    "scripts/**"
+    "scripts/**",
+    "prisma/seed-cleanup.ts"
   ],
   "ignoreBinaries": ["pkill", "lsof"],
-  "ignoreDependencies": ["pino-pretty", "baseline-browser-mapping"],
+  "ignoreDependencies": [
+    "pino-pretty",
+    "baseline-browser-mapping",
+    "@radix-ui/react-scroll-area"
+  ],
   "ignoreExportsUsedInFile": {
     "interface": true,
     "type": true

@@ -346,12 +346,17 @@ export class ItemsPage {
 
   async deleteItemViaContextMenu(name: string) {
     await this.openContextMenu(name);
-    await this.page.getByRole("menuitem", { name: /delete/i }).click();
+    // Wait for context menu to appear and click delete
+    const deleteMenuItem = this.page.getByRole("menuitem", { name: /delete/i });
+    await expect(deleteMenuItem).toBeVisible({ timeout: 5000 });
+    await deleteMenuItem.click({ force: true });
     await this.page.getByRole("button", { name: /^delete$/i }).click();
     // Wait for confirmation dialog to close
     await expect(
       this.page.getByRole("dialog", { name: /delete/i })
     ).not.toBeVisible({ timeout: 10000 });
+    // Wait for network to settle after deletion
+    await this.page.waitForLoadState("networkidle");
   }
 
   async expectBreadcrumb(name: string) {

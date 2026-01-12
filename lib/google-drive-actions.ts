@@ -20,6 +20,7 @@ import {
   moveFile,
   createResumableUploadUrl,
   checkRootFolderStatus,
+  uploadFile,
 } from "@/lib/google-drive-client";
 import { decryptCredential } from "@/lib/crypto";
 import crypto from "crypto";
@@ -1722,6 +1723,92 @@ export async function confirmUpload(
     const message =
       error instanceof Error ? error.message : "Failed to confirm upload";
     logger.error({ err: error }, "[GoogleDrive] Confirm upload error");
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Uploads a buffer directly to Google Drive for a given item.
+ * Used for server-side uploads (e.g., TMDB poster downloads).
+ *
+ * @param itemId - The item to attach the file to
+ * @param buffer - File content as Buffer
+ * @param filename - Name for the file
+ * @param mimeType - MIME type of the file
+ * @returns Upload result with driveFileId
+ */
+export async function uploadBuffer(
+  itemId: string,
+  buffer: Buffer,
+  filename: string,
+  mimeType: string
+): Promise<{
+  success: boolean;
+  data?: { driveFileId: string };
+  error?: string;
+}> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: "Not authenticated" };
+    }
+
+    // Get item and verify ownership
+    const item = await prisma.item.findFirst({
+      where: { id: itemId, userId: session.user.id },
+      select: { id: true, driveFileId: true, driveConnectionId: true },
+    });
+
+    if (!item) {
+      return { success: false, error: "Item not found" };
+    }
+
+    if (!item.driveConnectionId) {
+      return { success: false, error: "Item has no Drive connection" };
+    }
+
+    // Get connection
+    const connection = await prisma.googleDriveConnection.findUnique({
+      where: { id: item.driveConnectionId },
+    });
+
+    if (!connection) {
+      return { success: false, error: "No Google Drive connected" };
+    }
+
+    if (connection.needsReauth) {
+      return { success: false, error: "Please reconnect your Google Drive" };
+    }
+
+    // Determine parent folder
+    const parentDriveId = item.driveFileId || connection.rootFolderId;
+    if (!parentDriveId) {
+      return { success: false, error: "No Drive folder for this item" };
+    }
+
+    // Get Drive client and upload
+    const drive = await getDriveClient(connection);
+    const result = await uploadFile(
+      drive,
+      filename,
+      buffer,
+      mimeType,
+      parentDriveId
+    );
+
+    logger.info(
+      { itemId, filename, driveFileId: result.id },
+      "[GoogleDrive] Buffer uploaded successfully"
+    );
+
+    return { success: true, data: { driveFileId: result.id } };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to upload buffer";
+    logger.error(
+      { err: error, itemId, filename },
+      "[GoogleDrive] Buffer upload error"
+    );
     return { success: false, error: message };
   }
 }

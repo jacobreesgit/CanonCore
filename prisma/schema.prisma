@@ -96,7 +96,7 @@ model GoogleDriveConnection {
 model Item {
   id          String   @id @default(cuid())
   name        String
-  description String?  @db.VarChar(200)
+  description String?  @db.VarChar(1000)
   order       Int      @default(0)
   depth       Int      @default(0)
 

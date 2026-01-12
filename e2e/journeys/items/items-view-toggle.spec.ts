@@ -24,16 +24,16 @@ test.describe("Items View Toggle Journey", () => {
   test("can switch between tree and grid view", async ({ itemsPage }) => {
     await itemsPage.goto();
 
-    // Default is tree view
-    await expect(itemsPage.treeView).toBeVisible();
-
-    // Switch to grid
-    await itemsPage.switchToGridView();
+    // Default is grid view
     await expect(itemsPage.gridView).toBeVisible();
 
-    // Switch back to tree
+    // Switch to tree
     await itemsPage.switchToTreeView();
     await expect(itemsPage.treeView).toBeVisible();
+
+    // Switch back to grid
+    await itemsPage.switchToGridView();
+    await expect(itemsPage.gridView).toBeVisible();
   });
 
   test("view preference persists across navigation", async ({
@@ -56,12 +56,12 @@ test.describe("Items View Toggle Journey", () => {
   test("items visible in both views", async ({ itemsPage }) => {
     await itemsPage.goto();
 
-    // Check tree view
+    // Check grid view (default)
     await itemsPage.expectItemVisible("Folder A");
     await itemsPage.expectItemVisible("Folder B");
 
-    // Check grid view
-    await itemsPage.switchToGridView();
+    // Check tree view
+    await itemsPage.switchToTreeView();
     await itemsPage.expectItemVisible("Folder A");
     await itemsPage.expectItemVisible("Folder B");
   });

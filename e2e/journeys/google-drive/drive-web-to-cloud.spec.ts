@@ -39,6 +39,9 @@ test.describe("Google Drive: Web to Cloud Sync", () => {
   test("renames folder in Drive when item renamed", async ({ page }) => {
     // Create item first
     await itemsPage.createItem("Rename Test Item");
+    await itemsPage.waitForToastToDisappear();
+    // Switch to tree view for stable context menu
+    await itemsPage.switchToTreeView();
 
     // Open settings and rename
     await itemsPage.openSettingsViaContextMenu("Rename Test Item");
@@ -58,6 +61,9 @@ test.describe("Google Drive: Web to Cloud Sync", () => {
   test("deletes folder in Drive when item deleted", async ({ page }) => {
     // Create item first
     await itemsPage.createItem("Delete Test Item");
+    await itemsPage.waitForToastToDisappear();
+    // Switch to tree view for stable context menu
+    await itemsPage.switchToTreeView();
 
     // Delete via context menu
     await itemsPage.deleteItemViaContextMenu("Delete Test Item");
@@ -94,6 +100,8 @@ test.describe("Google Drive: Web to Cloud Sync", () => {
       select: { id: true, driveFileId: true },
     });
     const originalDriveId = itemBefore!.driveFileId;
+    // Switch to tree view for stable context menu
+    await itemsPage.switchToTreeView();
 
     // Rename the item
     await itemsPage.openSettingsViaContextMenu("Stable ID Test");
