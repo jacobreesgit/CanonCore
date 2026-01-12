@@ -73,7 +73,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── oauth-toast.tsx           # OAuth result notifications
 │   │   └── settings-section.tsx      # Drive connection UI in Settings
 │   ├── items/                        # Items feature components
-│   │   ├── add-item-dialog.tsx       # Modal dialog for item creation
+│   │   ├── add-item-dialog.tsx       # Modal dialog for item creation with TMDB search
 │   │   ├── edit-mode-toggle.tsx      # Edit/Done button for reordering mode
 │   │   ├── file-type-combobox.tsx    # Upload file type picker
 │   │   ├── item-context-menu.tsx     # Right-click actions menu
@@ -83,6 +83,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── item-stats.tsx            # Reusable child/file count stats display
 │   │   ├── items-toolbar.tsx         # Unified toolbar for root and detail pages
 │   │   ├── items-view.tsx            # Main view with tree/grid/edit toggle
+│   │   ├── media-search-combobox.tsx # TMDB search with poster thumbnails
 │   │   ├── sync-badge.tsx            # Google Drive sync status indicators
 │   │   └── view-toggle.tsx           # Tree/grid view switcher
 │   ├── media/                        # Media playback components
@@ -109,7 +110,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   └── utilities.ts              # Tree manipulation helpers
 │   ├── providers/
 │   │   └── theme-provider.tsx        # next-themes provider wrapper
-│   ├── ui/                           # shadcn/ui components + command.tsx, dropzone.tsx, kbd.tsx, password-input.tsx
+│   ├── ui/                           # shadcn/ui components + command.tsx, dropzone.tsx, kbd.tsx, password-input.tsx, scroll-area.tsx
 │   ├── app-sidebar.tsx               # Context-aware navigation sidebar
 │   ├── error-boundary.tsx            # React error boundary for graceful error handling
 │   ├── my-items-providers.tsx        # Client-side providers for protected routes
@@ -176,6 +177,8 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── prisma.ts                     # Prisma client singleton
 │   ├── rate-limit.ts                 # Upstash Redis rate limiting
 │   ├── source.ts                     # Fumadocs source configuration
+│   ├── tmdb-actions.ts               # TMDB metadata server actions
+│   ├── tmdb-client.ts                # TMDB API client for movie/TV metadata
 │   ├── types.ts                      # Shared TypeScript types (Item, ItemFile, SearchableItem, GoogleDriveConnection)
 │   ├── upload-utils.ts               # Browser-to-Drive upload utilities
 │   ├── user-actions.ts               # User profile server actions
@@ -183,14 +186,17 @@ pnpm run test:e2e:ui                        # UI mode
 │   └── validations.ts                # Zod schemas (auth, items, uploads)
 ├── prisma/
 │   ├── migrations/                   # Database migrations
-│   └── schema.prisma                 # User, PasswordReset, Item, ItemFile, GoogleDriveConnection
+│   ├── schema.prisma                 # User, PasswordReset, Item, ItemFile, GoogleDriveConnection
+│   ├── seed.ts                       # Database seeding with TMDB + Drive integration
+│   ├── seed-config.ts                # Seed configuration (movie/TV IDs, limits)
+│   └── seed-cleanup.ts               # Safe cleanup with protected folders
 ├── proxy.ts                          # Next.js proxy for request ID injection
 ├── skills/                           # Claude Code skills
 │   ├── code-review-excellence/       # Code review best practices
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 1.6.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 2.0.0)
     └── plans/                        # Design documents
 ```
 
@@ -213,7 +219,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Schema: User, PasswordReset, Item, ItemFile, GoogleDriveConnection models
 - User has optional `image`/`heroImage` blob fields for avatar and hero banner
 - Item has self-referential parent/child relationships for hierarchy
-- Item has optional `description` field (max 200 chars) for short notes
+- Item has optional `description` field (max 1000 chars) for TMDB overviews or notes
 - Item has Google Drive fields: `driveFileId`, `driveModifiedAt`, `syncStatus`, `driveConnectionId`
 - ItemFile stores files per item: `filename`, `driveFileId`, `fileType`, `mimeType`, `playbackPosition`, `isPrimary`, `isHero`
 - GoogleDriveConnection stores encrypted OAuth tokens with AES-256-GCM
@@ -230,17 +236,28 @@ pnpm run test:e2e:ui                        # UI mode
 - **Edit mode toggle**: Click "Edit" to enable drag-and-drop, "Done" to return to view mode
 - **View mode**: Full background artwork with dark overlay (Feature222 aesthetic)
 - **Edit mode**: Simplified icons with drag handles for reordering
-- **Add Item dialog**: Modal dialog with name and optional description fields
+- **Add Item dialog**: Modal with TMDB search combobox for auto-filling metadata
 - **Server actions**: `createItem`, `updateItem`, `deleteItem`, `reorderItems`, `getSearchableItems` in `lib/item-actions.ts`
 - **Breadcrumb navigation** for item drill-down
 - **Context menu**: Right-click for Settings, Delete, Add Child Item
 - **Settings dialog**: Rename items, add descriptions, select primary/hero files, upload files
-- **Item descriptions**: Optional 200-character notes, displayed in view mode
+- **Item descriptions**: Optional 1000-character notes (for TMDB overviews), displayed in view mode
 - **Primary file selection**: Choose which file plays/displays when multiple files attached
 - **Hero artwork selection**: Choose separate artwork for hero banner display (isHero field)
 - **Sync status badges**: Visual indicators showing sync state (synced, pending, error)
 - **Toast notifications**: Success/error feedback via Sonner
 - **Max depth**: 10 levels of nesting
+
+### TMDB Metadata Integration
+
+- **Search combobox**: MediaSearchCombobox shows poster thumbnails as you type
+- **Auto-fill metadata**: Select a result to apply title (with year), description, and poster
+- **Graceful degradation**: Falls back to manual input if TMDB_API_KEY not configured
+- **Circuit breaker**: Protects against TMDB API failures (5 failures, 60s recovery)
+- **Rate limiting**: tmdbSearch rate limit (20/min) prevents abuse
+- **Poster upload**: Downloads poster from TMDB and uploads to Google Drive as hero artwork
+- **Server actions**: `searchMediaAction`, `applyMetadataAction` in `lib/tmdb-actions.ts`
+- **Client**: `lib/tmdb-client.ts` handles API calls with timeout and error handling
 
 ### Spotlight Search
 
@@ -305,7 +322,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 668 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search
+- 801 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, seed system
 
 ### E2E Testing
 
@@ -373,6 +390,10 @@ Google Drive (required for Drive integration):
 
 - `GOOGLE_CLIENT_ID` - OAuth client ID from Google Cloud Console
 - `GOOGLE_CLIENT_SECRET` - OAuth client secret from Google Cloud Console
+
+TMDB (optional - for metadata lookup):
+
+- `TMDB_API_KEY` - TMDB v3 API key for movie/TV metadata lookup
 
 E2E Testing (optional - for Google Drive E2E tests):
 

@@ -522,12 +522,12 @@ describe("createItem", () => {
     });
   });
 
-  it("returns validation error for description over 200 chars", async () => {
+  it("returns validation error for description over 1000 chars", async () => {
     mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
 
-    const result = await createItem(null, "Folder", "a".repeat(201));
+    const result = await createItem(null, "Folder", "a".repeat(1001));
 
-    expect(result.error).toContain("200");
+    expect(result.error).toContain("1000");
   });
 });
 

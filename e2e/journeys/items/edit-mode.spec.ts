@@ -48,8 +48,8 @@ test.describe("Edit Mode", () => {
     await itemsPage.enterEditMode();
     expect(await itemsPage.isInEditMode()).toBe(true);
 
-    // Switch to grid view (different from current tree view)
-    await itemsPage.switchToGridView();
+    // Switch to tree view (different from current grid view - grid is default)
+    await itemsPage.switchToTreeView();
 
     // Should exit edit mode - wait for the button to appear
     await expect(
@@ -62,6 +62,9 @@ test.describe("Edit Mode", () => {
     itemsPage,
     page,
   }) => {
+    // Switch to tree view for more stable context menu
+    await itemsPage.switchToTreeView();
+
     // Delete all items
     await itemsPage.deleteItemViaContextMenu("Test Folder 1");
     await itemsPage.deleteItemViaContextMenu("Test Folder 2");

@@ -425,7 +425,13 @@ export function FileTypeCombobox({
           )}
 
           {/* File List */}
-          <div className="max-h-48 overflow-y-auto p-1">
+          <div
+            className="max-h-48 overflow-y-auto p-1"
+            onWheel={(e) => {
+              e.stopPropagation();
+              e.currentTarget.scrollTop += e.deltaY;
+            }}
+          >
             {filteredFiles.length === 0 && files.length > 0 && (
               <div className="text-muted-foreground py-4 text-center text-sm">
                 No files match &quot;{search}&quot;

@@ -30,9 +30,21 @@ vi.mock("@/lib/google-drive-actions", () => ({
     .mockResolvedValue({ success: false, error: "Not connected" }),
 }));
 
+vi.mock("@/lib/tmdb-actions", () => ({
+  searchMediaAction: vi.fn(),
+  applyMetadataAction: vi.fn(),
+  isTMDBAvailable: vi.fn(),
+}));
+
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
+
+import {
+  searchMediaAction,
+  applyMetadataAction,
+  isTMDBAvailable,
+} from "@/lib/tmdb-actions";
 
 describe("ItemSettingsDialog", () => {
   const defaultProps = {
@@ -45,6 +57,12 @@ describe("ItemSettingsDialog", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(isTMDBAvailable).mockResolvedValue(true);
+    vi.mocked(searchMediaAction).mockResolvedValue({
+      success: true,
+      data: [],
+    });
+    vi.mocked(applyMetadataAction).mockResolvedValue({ success: true });
   });
 
   // Helper to create complete mock file objects
@@ -472,6 +490,181 @@ describe("ItemSettingsDialog", () => {
       await user.click(confirmBtn);
 
       // onSettingsChange should be called to refresh
+      await waitFor(() => {
+        expect(onSettingsChange).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe("Lookup Metadata", () => {
+    // Helper to find the TMDB search combobox within Lookup Metadata section only
+    const findTMDBCombobox = async () => {
+      await waitFor(() => {
+        expect(screen.getByText("Lookup Metadata")).toBeInTheDocument();
+      });
+      // Find the space-y-3 section containing "Lookup Metadata" label
+      const lookupSection = screen.getByText("Lookup Metadata").closest("div");
+      return within(lookupSection!).getByRole("combobox");
+    };
+
+    it("should render lookup metadata section", async () => {
+      render(<ItemSettingsDialog {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Lookup Metadata")).toBeInTheDocument();
+      });
+
+      expect(screen.getByText(/Search TMDB to auto-fill/i)).toBeInTheDocument();
+    });
+
+    it("should render media search combobox", async () => {
+      render(<ItemSettingsDialog {...defaultProps} />);
+
+      const combobox = await findTMDBCombobox();
+      expect(combobox).toBeInTheDocument();
+    });
+
+    it("should call applyMetadataAction when TMDB result selected", async () => {
+      const user = userEvent.setup();
+      vi.mocked(searchMediaAction).mockResolvedValue({
+        success: true,
+        data: [
+          {
+            id: 278,
+            mediaType: "movie",
+            title: "The Shawshank Redemption",
+            overview: "Two imprisoned men bond.",
+            posterPath: "/poster.jpg",
+            year: "1994",
+          },
+        ],
+      });
+
+      render(<ItemSettingsDialog {...defaultProps} />);
+
+      const combobox = await findTMDBCombobox();
+      await user.type(combobox, "Shawshank");
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("The Shawshank Redemption")
+        ).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText("The Shawshank Redemption"));
+
+      await waitFor(() => {
+        expect(applyMetadataAction).toHaveBeenCalledWith(
+          "item-1",
+          278,
+          "movie"
+        );
+      });
+    });
+
+    it("should show success toast after metadata applied", async () => {
+      const user = userEvent.setup();
+      vi.mocked(searchMediaAction).mockResolvedValue({
+        success: true,
+        data: [
+          {
+            id: 1396,
+            mediaType: "tv",
+            title: "Breaking Bad",
+            overview: "A chemistry teacher.",
+            posterPath: null,
+            year: "2008",
+          },
+        ],
+      });
+
+      render(<ItemSettingsDialog {...defaultProps} />);
+
+      const combobox = await findTMDBCombobox();
+      await user.type(combobox, "Breaking");
+
+      await waitFor(() => {
+        expect(screen.getByText("Breaking Bad")).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText("Breaking Bad"));
+
+      await waitFor(() => {
+        expect(toast.success).toHaveBeenCalledWith(
+          "Metadata applied successfully"
+        );
+      });
+    });
+
+    it("should show error toast when metadata application fails", async () => {
+      const user = userEvent.setup();
+      vi.mocked(applyMetadataAction).mockResolvedValue({
+        success: false,
+        error: "Movie not found on TMDB",
+      });
+      vi.mocked(searchMediaAction).mockResolvedValue({
+        success: true,
+        data: [
+          {
+            id: 999,
+            mediaType: "movie",
+            title: "Unknown Movie",
+            overview: "Test",
+            posterPath: null,
+            year: "2023",
+          },
+        ],
+      });
+
+      render(<ItemSettingsDialog {...defaultProps} />);
+
+      const combobox = await findTMDBCombobox();
+      await user.type(combobox, "Unknown");
+
+      await waitFor(() => {
+        expect(screen.getByText("Unknown Movie")).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText("Unknown Movie"));
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith("Movie not found on TMDB");
+      });
+    });
+
+    it("should call onSettingsChange after metadata applied", async () => {
+      const onSettingsChange = vi.fn().mockResolvedValue(undefined);
+      const user = userEvent.setup();
+      vi.mocked(searchMediaAction).mockResolvedValue({
+        success: true,
+        data: [
+          {
+            id: 278,
+            mediaType: "movie",
+            title: "Test Movie",
+            overview: "Description",
+            posterPath: "/poster.jpg",
+            year: "2023",
+          },
+        ],
+      });
+
+      render(
+        <ItemSettingsDialog
+          {...defaultProps}
+          onSettingsChange={onSettingsChange}
+        />
+      );
+
+      const combobox = await findTMDBCombobox();
+      await user.type(combobox, "Test");
+
+      await waitFor(() => {
+        expect(screen.getByText("Test Movie")).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText("Test Movie"));
+
       await waitFor(() => {
         expect(onSettingsChange).toHaveBeenCalled();
       });

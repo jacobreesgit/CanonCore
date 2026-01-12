@@ -6,7 +6,13 @@
 
 "use client";
 
-import { useState, useCallback, useTransition, useEffect } from "react";
+import {
+  useState,
+  useCallback,
+  useTransition,
+  useEffect,
+  useMemo,
+} from "react";
 import { useRouter } from "next/navigation";
 import { ItemsToolbar } from "./items-toolbar";
 import { ItemsView } from "./items-view";
@@ -14,6 +20,7 @@ import { ItemHero } from "./item-hero";
 import { MediaOverlay } from "@/components/media/media-overlay";
 import { Spinner } from "@/components/ui/spinner";
 import { updatePlaybackPosition } from "@/lib/item-file-actions";
+import { preloadImages } from "@/lib/image-preload";
 import type { ItemWithArtwork, SerializedItemFile } from "@/lib/types";
 import { getItems } from "@/lib/item-actions";
 
@@ -59,9 +66,29 @@ export function ItemDetailClient({
     null
   );
 
+  // Resolve hero artwork using fallback chain: isHero -> isPrimary -> first
+  // Computed before state to allow proper initialization of heroPreloaded
+  const heroArtworkId = useMemo(() => {
+    if (!files) return artworkId ?? null;
+    const artwork = files.artwork;
+    if (artwork.length === 0) return null;
+    let heroFile: (typeof artwork)[0] | undefined;
+    let primaryFile: (typeof artwork)[0] | undefined;
+    for (const f of artwork) {
+      if (f.isHero) {
+        heroFile = f;
+        break;
+      }
+      if (f.isPrimary && !primaryFile) primaryFile = f;
+    }
+    return heroFile?.id ?? primaryFile?.id ?? artwork[0]?.id ?? null;
+  }, [files, artworkId]);
+
   // Hydration detection
   const [isHydrated, setIsHydrated] = useState(false);
   const [minDurationMet, setMinDurationMet] = useState(false);
+  // Initialize to true if no artwork to preload
+  const [heroPreloaded, setHeroPreloaded] = useState(!heroArtworkId);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: one-time hydration marker
   useEffect(() => setIsHydrated(true), []);
@@ -74,7 +101,13 @@ export function ItemDetailClient({
     return () => clearTimeout(timer);
   }, []);
 
-  const isLoading = !isHydrated || !minDurationMet;
+  // Preload hero artwork before showing content
+  useEffect(() => {
+    if (!heroArtworkId) return;
+    preloadImages([heroArtworkId]).then(() => setHeroPreloaded(true));
+  }, [heroArtworkId]);
+
+  const isLoading = !isHydrated || !minDurationMet || !heroPreloaded;
 
   const hasChildren = childItems.length > 0;
   const hasMedia = files && files.media.length > 0;
@@ -88,24 +121,6 @@ export function ItemDetailClient({
   const primaryMedia = hasMedia
     ? files.media.find((f) => f.isPrimary) || files.media[0]
     : null;
-
-  // Resolve hero artwork using fallback chain: isHero -> isPrimary -> first
-  // Single pass through artwork array for efficiency
-  const heroArtworkId = (() => {
-    if (!files) return artworkId ?? null;
-    const artwork = files.artwork;
-    if (artwork.length === 0) return null;
-    let heroFile: (typeof artwork)[0] | undefined;
-    let primaryFile: (typeof artwork)[0] | undefined;
-    for (const f of artwork) {
-      if (f.isHero) {
-        heroFile = f;
-        break; // isHero takes priority, stop searching
-      }
-      if (f.isPrimary && !primaryFile) primaryFile = f;
-    }
-    return heroFile?.id ?? primaryFile?.id ?? artwork[0]?.id ?? null;
-  })();
 
   /**
    * Refetches child items from server.

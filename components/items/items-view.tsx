@@ -407,11 +407,12 @@ export function ItemsView({
 
   // Stable key for artwork preloading - memoized to prevent re-render loops
   const artworkPreloadKey = useMemo(() => {
-    return `${parentId ?? "root"}:${currentLevelItems
+    const artworkIds = currentLevelItems
       .slice(0, 8)
       .map((item) => item.artworkId)
-      .filter(Boolean)
-      .join(",")}`;
+      .filter(Boolean);
+
+    return `${parentId ?? "root"}:${artworkIds.join(",")}`;
   }, [parentId, currentLevelItems]);
 
   // Hydration detection - standard React pattern to detect client-side hydration
