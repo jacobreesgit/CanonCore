@@ -128,7 +128,7 @@ describe("ItemsToolbar", () => {
       expect(getItemFiles).toHaveBeenCalledWith("item-1");
 
       // Verify dialog shows item name in input
-      expect(screen.getByLabelText("Name")).toHaveValue("Movies");
+      expect(screen.getByLabelText(/item name/i)).toHaveValue("Movies");
     });
 
     it("should handle null description in settings dialog", async () => {
@@ -148,7 +148,7 @@ describe("ItemsToolbar", () => {
       await user.click(settingsButton);
 
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
-      expect(screen.getByLabelText("Name")).toHaveValue("TV Shows");
+      expect(screen.getByLabelText(/item name/i)).toHaveValue("TV Shows");
     });
   });
 

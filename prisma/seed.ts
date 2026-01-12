@@ -287,8 +287,34 @@ Generated for testing purposes.
 }
 
 /**
- * Attaches 1-2 of each file type to an item.
- * - Artwork: Downloaded from TMDB (poster/backdrop/still)
+ * Downloads a backdrop image from TMDB.
+ * Uses w1280 size for high-quality hero images.
+ */
+async function downloadBackdrop(
+  backdropPath: string | null
+): Promise<Buffer | null> {
+  if (!backdropPath) return null;
+
+  const url = `${TMDB_IMAGE_BASE}/w1280${backdropPath}`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TMDB_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) return null;
+
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Attaches files to an item.
+ * - Artwork: Poster as primary, backdrop as hero image (movies/shows only)
  * - Subtitles: Generated placeholder SRT files
  * - Media: Placeholder entries with null driveFileId (episodes/movies only)
  */
@@ -301,49 +327,71 @@ async function attachRandomFiles(
   ctx: DriveContext,
   driveFolderId: string
 ): Promise<void> {
-  const artworkCount = getRandomCount(1, 2);
   const subtitleCount = getRandomCount(1, 2);
   const mediaCount =
     level === "episode" || level === "movie" ? getRandomCount(1, 2) : 0;
 
-  // --- ARTWORK ---
-  const artworkPaths: (string | null)[] = [
-    primaryImagePath,
-    backdropPath,
-  ].filter(Boolean);
+  // --- PRIMARY ARTWORK (poster) ---
+  if (primaryImagePath) {
+    const posterBuffer = await downloadPoster(primaryImagePath);
+    if (posterBuffer) {
+      try {
+        const uploaded = await uploadToDrive(
+          ctx,
+          "poster.jpg",
+          posterBuffer,
+          "image/jpeg",
+          driveFolderId
+        );
 
-  for (let i = 0; i < Math.min(artworkCount, artworkPaths.length); i++) {
-    const imagePath = artworkPaths[i];
-    if (!imagePath) continue;
+        await prisma.itemFile.create({
+          data: {
+            itemId,
+            filename: "poster.jpg",
+            driveFileId: uploaded.id,
+            fileType: FileType.ARTWORK,
+            mimeType: "image/jpeg",
+            size: BigInt(posterBuffer.length),
+            isPrimary: true,
+            isHero: false,
+            syncStatus: SyncStatus.SYNCED,
+          },
+        });
+      } catch {
+        // Continue even if upload fails
+      }
+    }
+  }
 
-    const posterBuffer = await downloadPoster(imagePath);
-    if (!posterBuffer) continue;
+  // --- HERO IMAGE (backdrop) - movies and shows only ---
+  if (backdropPath && (level === "movie" || level === "show")) {
+    const backdropBuffer = await downloadBackdrop(backdropPath);
+    if (backdropBuffer) {
+      try {
+        const uploaded = await uploadToDrive(
+          ctx,
+          "backdrop.jpg",
+          backdropBuffer,
+          "image/jpeg",
+          driveFolderId
+        );
 
-    const filename = i === 0 ? "poster.jpg" : `artwork-${i + 1}.jpg`;
-    try {
-      const uploaded = await uploadToDrive(
-        ctx,
-        filename,
-        posterBuffer,
-        "image/jpeg",
-        driveFolderId
-      );
-
-      await prisma.itemFile.create({
-        data: {
-          itemId,
-          filename,
-          driveFileId: uploaded.id,
-          fileType: FileType.ARTWORK,
-          mimeType: "image/jpeg",
-          size: BigInt(posterBuffer.length),
-          isPrimary: i === 0,
-          isHero: i === 0,
-          syncStatus: SyncStatus.SYNCED,
-        },
-      });
-    } catch {
-      // Continue even if upload fails
+        await prisma.itemFile.create({
+          data: {
+            itemId,
+            filename: "backdrop.jpg",
+            driveFileId: uploaded.id,
+            fileType: FileType.ARTWORK,
+            mimeType: "image/jpeg",
+            size: BigInt(backdropBuffer.length),
+            isPrimary: false,
+            isHero: true,
+            syncStatus: SyncStatus.SYNCED,
+          },
+        });
+      } catch {
+        // Continue even if upload fails
+      }
     }
   }
 

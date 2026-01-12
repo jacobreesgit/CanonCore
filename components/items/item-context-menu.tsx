@@ -32,6 +32,8 @@ interface ItemContextMenuProps {
   /** Google Drive folder ID for this item (if synced) */
   driveFileId?: string | null;
   showAddChild?: boolean;
+  /** Whether user has Google Drive connected (for file uploads in Add Child dialog) */
+  hasDriveConnection?: boolean;
   /** Opens the unified settings dialog */
   onSettings?(): void;
   onDelete?(): Promise<void>;
@@ -46,6 +48,7 @@ interface ItemContextMenuProps {
  * @param itemName - Name of the item for delete confirmation
  * @param driveFileId - Google Drive folder ID (shows "Open in Drive" if set)
  * @param showAddChild - Whether to show "Add Child Item" option
+ * @param hasDriveConnection - Whether Google Drive is connected (for file uploads)
  * @param onSettings - Callback to open settings dialog
  * @param onDelete - Callback to delete the item
  * @param onAddChild - Callback to create a child item
@@ -55,6 +58,7 @@ export function ItemContextMenu({
   itemName,
   driveFileId,
   showAddChild = true,
+  hasDriveConnection = false,
   onSettings,
   onDelete,
   onAddChild,
@@ -162,6 +166,7 @@ export function ItemContextMenu({
           return onAddChild(name, description);
         }}
         parentName={itemName}
+        hasDriveConnection={hasDriveConnection}
       />
     </>
   );

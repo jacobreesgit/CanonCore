@@ -23,6 +23,8 @@ interface SortableTreeItemProps extends Omit<TreeItemProps, "handleProps"> {
   onSettings?(): void;
   onDelete?(): Promise<void>;
   onAddChild?(name: string): Promise<string | undefined>;
+  /** Whether user has Google Drive connected (for Add Child dialog) */
+  hasDriveConnection?: boolean;
 }
 
 const animateLayoutChanges: AnimateLayoutChanges = ({
@@ -48,6 +50,7 @@ export function SortableTreeItem({
   onSettings,
   onDelete,
   onAddChild,
+  hasDriveConnection = false,
   ...props
 }: SortableTreeItemProps) {
   const {
@@ -76,6 +79,7 @@ export function SortableTreeItem({
       onSettings={onSettings}
       onDelete={onDelete}
       onAddChild={onAddChild}
+      hasDriveConnection={hasDriveConnection}
     >
       <TreeItem
         ref={setDraggableNodeRef}

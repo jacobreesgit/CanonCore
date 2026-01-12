@@ -119,10 +119,8 @@ export function MediaSearchCombobox({
    * Handles input focus.
    */
   const handleFocus = useCallback(() => {
-    if (query.length >= 2 && (results.length > 0 || hasSearched)) {
-      setOpen(true);
-    }
-  }, [query, results.length, hasSearched]);
+    setOpen(true);
+  }, []);
 
   // Fallback to simple input if TMDB not configured
   if (tmdbAvailable === false) {
@@ -173,6 +171,16 @@ export function MediaSearchCombobox({
         sideOffset={4}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
+        {/* Empty State - Type to search */}
+        {!isLoading && !hasSearched && query.length < 2 && (
+          <div className="flex flex-col items-center gap-2 py-8">
+            <Search className="text-muted-foreground/50 h-8 w-8" />
+            <p className="text-muted-foreground text-sm">
+              Type to search movies & TV shows
+            </p>
+          </div>
+        )}
+
         {/* Loading State */}
         {isLoading && (
           <div className="flex items-center justify-center gap-2 py-8">

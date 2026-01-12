@@ -9,11 +9,7 @@
     "prisma/seed-cleanup.ts"
   ],
   "ignoreBinaries": ["pkill", "lsof"],
-  "ignoreDependencies": [
-    "pino-pretty",
-    "baseline-browser-mapping",
-    "@radix-ui/react-scroll-area"
-  ],
+  "ignoreDependencies": ["pino-pretty", "baseline-browser-mapping"],
   "ignoreExportsUsedInFile": {
     "interface": true,
     "type": true

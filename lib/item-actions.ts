@@ -857,3 +857,78 @@ export async function getSearchableItems(): Promise<
     return { error: "Failed to fetch items" };
   }
 }
+
+/**
+ * Options for applying TMDB metadata to a new item.
+ */
+export interface CreateItemMetadataOptions {
+  /** TMDB ID of the movie or TV show */
+  tmdbId: number;
+  /** Whether this is a movie or TV show */
+  mediaType: "movie" | "tv";
+  /** Fields to update */
+  options: {
+    updateName: boolean;
+    updateDescription: boolean;
+    updatePoster: boolean;
+    updateBackdrop: boolean;
+  };
+}
+
+/**
+ * Creates a new item with optional TMDB metadata applied atomically.
+ * First creates the item, then applies TMDB metadata if provided.
+ * Handles poster and backdrop downloads with Google Drive upload.
+ *
+ * @param parentId - Parent item ID or null for root
+ * @param name - Initial item name (may be overwritten by TMDB)
+ * @param description - Optional initial description (may be overwritten by TMDB)
+ * @param metadata - Optional TMDB metadata to apply
+ * @returns Created item with metadata applied, or error
+ */
+export async function createItemWithMetadata(
+  parentId: string | null,
+  name: string,
+  description?: string,
+  metadata?: CreateItemMetadataOptions
+): Promise<ItemResult<Item>> {
+  // First create the item using existing createItem
+  const createResult = await createItem(parentId, name, description);
+
+  if (!createResult.success || !createResult.data) {
+    return createResult;
+  }
+
+  const item = createResult.data;
+
+  // If no metadata, return the created item immediately
+  if (!metadata) {
+    return { success: true, data: item };
+  }
+
+  // Import TMDB functions dynamically to avoid circular dependencies
+  const { applyMetadataAction } = await import("@/lib/tmdb-actions");
+
+  // Apply TMDB metadata with the specified options
+  const metadataResult = await applyMetadataAction(
+    item.id,
+    metadata.tmdbId,
+    metadata.mediaType,
+    metadata.options
+  );
+
+  if (!metadataResult.success) {
+    // Log the error but return the item since it was created successfully
+    logger.warn(
+      { itemId: item.id, error: metadataResult.error },
+      "Item created but metadata apply failed"
+    );
+  }
+
+  // Re-fetch the item to get updated metadata
+  const updatedItem = await prisma.item.findUnique({
+    where: { id: item.id },
+  });
+
+  return { success: true, data: (updatedItem ?? item) as Item };
+}
