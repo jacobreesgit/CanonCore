@@ -1,7 +1,8 @@
 /**
  * FileTypeCombobox - Combines file selection with inline upload capability.
- * Uses Radix Popover for proper portal handling inside dialogs.
- * Used in Item Settings dialog for primary file selection.
+ * Supports two modes via discriminated union:
+ * - Select mode: Dropdown to select from existing files with upload option
+ * - Upload-only mode: Dropzone for queueing files before item creation
  */
 
 "use client";
@@ -18,6 +19,7 @@ import {
   RefreshCw,
   Trash2,
   Loader2,
+  CloudOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +37,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Dropzone,
+  DropzoneEmptyState,
+  DropzoneContent,
+} from "@/components/ui/dropzone";
+import {
   createUploadSessions,
   confirmUpload,
 } from "@/lib/google-drive-actions";
@@ -46,17 +53,52 @@ import {
   getAcceptFilter,
   formatBytes,
 } from "@/lib/upload-utils";
-import type { SerializedItemFile } from "@/lib/types";
+import type { SerializedItemFile, QueuedFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
+import type { Accept } from "react-dropzone";
 
-interface FileTypeComboboxProps {
+/**
+ * Converts file type to react-dropzone Accept format.
+ *
+ * @param fileType - The file type category
+ * @returns Accept object for react-dropzone
+ */
+function getAcceptForDropzone(
+  fileType: "media" | "artwork" | "subtitle"
+): Accept {
+  switch (fileType) {
+    case "media":
+      return { "video/*": [], "audio/*": [] };
+    case "artwork":
+      return { "image/*": [] };
+    case "subtitle":
+      return { "text/plain": [".srt", ".vtt", ".sub", ".ass"] };
+  }
+}
+
+/**
+ * Base props shared by both select and upload-only modes.
+ */
+interface FileTypeComboboxBaseProps {
   /** Label displayed above the combobox */
   label: string;
   /** Description text below the label */
   description: string;
   /** Icon component to display */
   icon: LucideIcon;
+  /** File type category for filtering */
+  fileType: "media" | "artwork" | "subtitle";
+  /** Whether the component is disabled (no Drive connection) */
+  disabled?: boolean;
+}
+
+/**
+ * Props for select mode (existing file selection with dropdown).
+ */
+interface FileTypeComboboxSelectModeProps extends FileTypeComboboxBaseProps {
+  /** Whether to use upload-only mode (false or undefined for select mode) */
+  uploadOnly?: false;
   /** Available files to select from */
   files: SerializedItemFile[];
   /** Currently selected file ID */
@@ -69,29 +111,276 @@ interface FileTypeComboboxProps {
   onFileDeleted?: () => void;
   /** Item ID for uploads */
   itemId: string;
-  /** File type category for filtering */
-  fileType: "media" | "artwork" | "subtitle";
-  /** Whether uploads are disabled (no Drive connection) */
-  disabled?: boolean;
 }
 
 /**
- * Combobox component with file selection and upload capability.
- * Shows progress inline during uploads with retry functionality.
+ * Props for upload-only mode (queue files for deferred upload).
  */
-export function FileTypeCombobox({
+interface FileTypeComboboxUploadModeProps extends FileTypeComboboxBaseProps {
+  /** Enable upload-only mode */
+  uploadOnly: true;
+  /** Currently queued files */
+  queuedFiles: QueuedFile[];
+  /** Callback when queued files change */
+  onQueueFilesChange: (files: QueuedFile[]) => void;
+}
+
+/**
+ * Discriminated union type for FileTypeCombobox props.
+ * Enforces type safety at compile time and prevents incompatible prop combinations.
+ */
+export type FileTypeComboboxProps =
+  | FileTypeComboboxSelectModeProps
+  | FileTypeComboboxUploadModeProps;
+
+/**
+ * Generates a unique ID for queued files.
+ */
+function generateFileId(): string {
+  return `file-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+/**
+ * FileTypeCombobox component with file selection and upload capability.
+ * Supports two modes:
+ * - Select mode: Popover dropdown for selecting existing files with inline upload
+ * - Upload-only mode: Dropzone for queueing files before item creation
+ */
+export function FileTypeCombobox(props: FileTypeComboboxProps) {
+  const { label, description, icon: Icon, fileType, disabled = false } = props;
+
+  // Render upload-only mode if specified
+  if (props.uploadOnly) {
+    return (
+      <FileTypeComboboxUploadMode
+        label={label}
+        description={description}
+        icon={Icon}
+        fileType={fileType}
+        disabled={disabled}
+        queuedFiles={props.queuedFiles}
+        onQueueFilesChange={props.onQueueFilesChange}
+      />
+    );
+  }
+
+  // Render select mode (default)
+  return (
+    <FileTypeComboboxSelectMode
+      label={label}
+      description={description}
+      icon={Icon}
+      fileType={fileType}
+      disabled={disabled}
+      files={props.files}
+      selectedId={props.selectedId}
+      onSelect={props.onSelect}
+      onUploadComplete={props.onUploadComplete}
+      onFileDeleted={props.onFileDeleted}
+      itemId={props.itemId}
+    />
+  );
+}
+
+/**
+ * Upload-only mode component.
+ * Shows a dropzone for queueing files with inline file list.
+ */
+function FileTypeComboboxUploadMode({
   label,
   description,
   icon: Icon,
+  fileType,
+  disabled,
+  queuedFiles,
+  onQueueFilesChange,
+}: {
+  label: string;
+  description: string;
+  icon: LucideIcon;
+  fileType: "media" | "artwork" | "subtitle";
+  disabled?: boolean;
+  queuedFiles: QueuedFile[];
+  onQueueFilesChange: (files: QueuedFile[]) => void;
+}) {
+  /**
+   * Handles files dropped into the dropzone.
+   */
+  const handleFileDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      const newQueuedFiles: QueuedFile[] = acceptedFiles.map((file) => {
+        // Use the expected fileType for the category, not detection from extension
+        // This ensures files go into the correct category as intended
+        return {
+          id: generateFileId(),
+          file,
+          fileType: fileType.toUpperCase() as "MEDIA" | "ARTWORK" | "SUBTITLE",
+          size: file.size,
+          status: "pending" as const,
+        };
+      });
+
+      onQueueFilesChange([...queuedFiles, ...newQueuedFiles]);
+    },
+    [fileType, queuedFiles, onQueueFilesChange]
+  );
+
+  /**
+   * Removes a file from the queue.
+   */
+  const handleRemoveFile = useCallback(
+    (fileId: string) => {
+      onQueueFilesChange(queuedFiles.filter((f) => f.id !== fileId));
+    },
+    [queuedFiles, onQueueFilesChange]
+  );
+
+  // Calculate total size for display
+  const totalSize = useMemo(() => {
+    return queuedFiles.reduce((sum, f) => sum + f.size, 0);
+  }, [queuedFiles]);
+
+  return (
+    <div className="space-y-3">
+      {/* Label and Description */}
+      <div className="flex items-center gap-2">
+        <div
+          className={cn(
+            "flex size-7 items-center justify-center rounded-lg",
+            "bg-primary/10"
+          )}
+        >
+          <Icon className="text-primary size-3.5" />
+        </div>
+        <label className="text-sm font-medium">{label}</label>
+      </div>
+      <p className="text-muted-foreground text-xs">{description}</p>
+
+      {/* Disabled state - no Drive connection */}
+      {disabled ? (
+        <div className="bg-muted/50 rounded-lg border border-dashed p-4 text-center">
+          <CloudOff className="text-muted-foreground/50 mx-auto mb-2 size-8" />
+          <p className="text-muted-foreground text-sm">
+            Connect Google Drive in Settings to enable file uploads.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* Dropzone for queueing files */}
+          <Dropzone
+            onDrop={handleFileDrop}
+            maxFiles={10}
+            maxSize={10 * 1024 * 1024 * 1024} // 10GB
+            accept={getAcceptForDropzone(fileType)}
+            className="min-h-[80px]"
+          >
+            <DropzoneEmptyState>
+              <div className="flex flex-col items-center justify-center gap-1.5 py-2">
+                <Upload className="text-muted-foreground size-5" />
+                <p className="text-muted-foreground text-xs">
+                  Drop {fileType} files or click to browse
+                </p>
+              </div>
+            </DropzoneEmptyState>
+            <DropzoneContent>
+              <div className="flex flex-col items-center justify-center gap-1.5 py-2">
+                <Upload className="text-primary size-5" />
+                <p className="text-sm font-medium">Drop to add</p>
+              </div>
+            </DropzoneContent>
+          </Dropzone>
+
+          {/* Queued files list */}
+          <AnimatePresence mode="popLayout">
+            {queuedFiles.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-1.5"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-xs">
+                    {queuedFiles.length} file{queuedFiles.length !== 1 && "s"}{" "}
+                    queued
+                  </span>
+                  <span className="text-muted-foreground text-xs">
+                    {formatBytes(totalSize)}
+                  </span>
+                </div>
+                <div className="max-h-[120px] space-y-1 overflow-y-auto">
+                  {queuedFiles.map((qf, index) => (
+                    <motion.div
+                      key={qf.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      transition={{ duration: 0.15, delay: index * 0.03 }}
+                      className={cn(
+                        "flex items-center gap-2 rounded-md border px-2 py-1.5",
+                        "bg-muted/30"
+                      )}
+                    >
+                      <Icon className="text-muted-foreground size-3.5 shrink-0" />
+                      <span className="min-w-0 flex-1 truncate text-xs">
+                        {qf.file.name}
+                      </span>
+                      <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
+                        {formatBytes(qf.size)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFile(qf.id)}
+                        className={cn(
+                          "shrink-0 rounded p-0.5 transition-colors",
+                          "hover:bg-destructive/10 hover:text-destructive"
+                        )}
+                        aria-label={`Remove ${qf.file.name}`}
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Select mode component (original implementation).
+ * Shows a combobox dropdown for selecting existing files with upload option.
+ */
+function FileTypeComboboxSelectMode({
+  label,
+  description,
+  icon: Icon,
+  fileType,
+  disabled,
   files,
   selectedId,
   onSelect,
   onUploadComplete,
   onFileDeleted,
   itemId,
-  fileType,
-  disabled = false,
-}: FileTypeComboboxProps) {
+}: {
+  label: string;
+  description: string;
+  icon: LucideIcon;
+  fileType: "media" | "artwork" | "subtitle";
+  disabled?: boolean;
+  files: SerializedItemFile[];
+  selectedId?: string;
+  onSelect: (id: string) => void;
+  onUploadComplete: (successCount: number) => void;
+  onFileDeleted?: () => void;
+  itemId: string;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [uploadState, setUploadState] = useState<UploadState | null>(null);

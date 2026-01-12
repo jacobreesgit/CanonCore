@@ -26,6 +26,8 @@ interface TreeProps {
   onDeleteItem?(id: string): Promise<void>;
   /** Callback to add a child item. */
   onAddChild?(parentId: string, name: string): Promise<string | undefined>;
+  /** Whether user has Google Drive connected (for file uploads in Add Child dialog). */
+  hasDriveConnection?: boolean;
   /** Indentation width per depth level. Defaults to 20. */
   indentationWidth?: number;
 }
@@ -43,6 +45,7 @@ export function Tree({
   onOpenSettings,
   onDeleteItem,
   onAddChild,
+  hasDriveConnection = false,
   indentationWidth = 20,
 }: TreeProps) {
   const { isCollapsed, toggleCollapse } = useTreeCollapse(items);
@@ -77,6 +80,7 @@ export function Tree({
             key={id}
             itemName={name}
             driveFileId={driveFileId}
+            hasDriveConnection={hasDriveConnection}
             onSettings={
               onOpenSettings ? () => onOpenSettings(String(id)) : undefined
             }

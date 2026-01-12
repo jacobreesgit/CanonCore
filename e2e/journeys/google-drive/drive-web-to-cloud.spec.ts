@@ -45,7 +45,7 @@ test.describe("Google Drive: Web to Cloud Sync", () => {
 
     // Open settings and rename
     await itemsPage.openSettingsViaContextMenu("Rename Test Item");
-    await page.getByLabel(/^name$/i).fill("Renamed Item");
+    await page.getByLabel(/item name/i).fill("Renamed Item");
     await page.getByRole("button", { name: /save changes/i }).click();
 
     // Wait for dialog to close
@@ -105,7 +105,7 @@ test.describe("Google Drive: Web to Cloud Sync", () => {
 
     // Rename the item
     await itemsPage.openSettingsViaContextMenu("Stable ID Test");
-    await page.getByLabel(/^name$/i).fill("Renamed Stable ID");
+    await page.getByLabel(/item name/i).fill("Renamed Stable ID");
     await page.getByRole("button", { name: /save changes/i }).click();
 
     // Wait for dialog to close and rename to complete

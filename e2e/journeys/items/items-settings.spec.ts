@@ -40,7 +40,7 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.openSettingsViaContextMenu("Current Name");
 
     // Verify the input shows the current name
-    const nameInput = itemsPage.page.getByLabel(/^name$/i);
+    const nameInput = itemsPage.page.getByLabel(/item name/i);
     await expect(nameInput).toHaveValue("Current Name");
   });
 
@@ -90,11 +90,11 @@ test.describe("Item Settings Dialog", () => {
     await expect(saveButton).toBeDisabled();
 
     // Type something different
-    await itemsPage.page.getByLabel(/^name$/i).fill("Changed Name");
+    await itemsPage.page.getByLabel(/item name/i).fill("Changed Name");
     await expect(saveButton).toBeEnabled();
 
     // Change back to original
-    await itemsPage.page.getByLabel(/^name$/i).fill("Unchanged Name");
+    await itemsPage.page.getByLabel(/item name/i).fill("Unchanged Name");
     await expect(saveButton).toBeDisabled();
 
     await itemsPage.closeSettingsDialog();
@@ -128,8 +128,8 @@ test.describe("Item Settings Dialog", () => {
 
     await itemsPage.openSettingsViaContextMenu("Description Field Test");
 
-    // Verify description input is visible
-    const descriptionInput = itemsPage.page.getByLabel(/^description$/i);
+    // Verify description input is visible (label includes "(optional)" suffix)
+    const descriptionInput = itemsPage.page.getByLabel(/description/i);
     await expect(descriptionInput).toBeVisible();
     await expect(descriptionInput).toHaveValue("");
 
@@ -219,13 +219,13 @@ test.describe("Item Settings Dialog", () => {
 
     await itemsPage.openSettingsViaContextMenu("Char Count Test");
 
-    // Initially shows 0/200
+    // Initially shows 0/1000
     const dialog = itemsPage.getSettingsDialog();
-    await expect(dialog.getByText("0/200")).toBeVisible();
+    await expect(dialog.getByText("0/1000")).toBeVisible();
 
     // Type some text
-    await itemsPage.page.getByLabel(/^description$/i).fill("Hello");
-    await expect(dialog.getByText("5/200")).toBeVisible();
+    await itemsPage.page.getByLabel(/description/i).fill("Hello");
+    await expect(dialog.getByText("5/1000")).toBeVisible();
 
     await itemsPage.closeSettingsDialog();
   });
@@ -248,11 +248,11 @@ test.describe("Item Settings Dialog", () => {
     await expect(saveButton).toBeDisabled();
 
     // Type something to enable it
-    await itemsPage.page.getByLabel(/^description$/i).fill("New description");
+    await itemsPage.page.getByLabel(/description/i).fill("New description");
     await expect(saveButton).toBeEnabled();
 
     // Clear to original (empty) to disable again
-    await itemsPage.page.getByLabel(/^description$/i).fill("");
+    await itemsPage.page.getByLabel(/description/i).fill("");
     await expect(saveButton).toBeDisabled();
 
     await itemsPage.closeSettingsDialog();
@@ -329,7 +329,7 @@ test.describe("Item Page Settings", () => {
     await expect(settingsDialog).toBeVisible({ timeout: 5000 });
 
     // Verify the name input shows the item name
-    const nameInput = page.getByLabel(/^name$/i);
+    const nameInput = page.getByLabel(/item name/i);
     await expect(nameInput).toHaveValue("My Test Item");
   });
 
@@ -356,7 +356,7 @@ test.describe("Item Page Settings", () => {
     await expect(settingsDialog).toBeVisible({ timeout: 5000 });
 
     // Update the name
-    const nameInput = page.getByLabel(/^name$/i);
+    const nameInput = page.getByLabel(/item name/i);
     await nameInput.fill("Updated Name");
 
     // Click "Save Changes" button
@@ -390,8 +390,8 @@ test.describe("Item Page Settings", () => {
     const settingsDialog = page.getByRole("dialog", { name: /settings/i });
     await expect(settingsDialog).toBeVisible({ timeout: 5000 });
 
-    // Add description
-    const descriptionInput = page.getByLabel(/^description$/i);
+    // Add description (label includes "(optional)" suffix)
+    const descriptionInput = page.getByLabel(/description/i);
     await descriptionInput.fill("This is a test description");
 
     // Click "Save Changes" button
@@ -435,8 +435,11 @@ test.describe("File Deletion", () => {
     await itemsPage.clickItem("Delete Test");
     await page.getByRole("button", { name: /item settings/i }).click();
 
-    // Open media combobox
+    // Switch to Files tab first (tabbed interface)
     const dialog = page.getByRole("dialog");
+    await dialog.getByRole("tab", { name: /files/i }).click();
+
+    // Open media combobox
     const mediaCombobox = dialog.getByRole("combobox").first();
     await mediaCombobox.click();
 
@@ -466,6 +469,9 @@ test.describe("File Deletion", () => {
     // Wait for settings dialog
     const settingsDialog = page.getByRole("dialog", { name: /settings/i });
     await expect(settingsDialog).toBeVisible({ timeout: 5000 });
+
+    // Switch to Files tab first (tabbed interface)
+    await settingsDialog.getByRole("tab", { name: /files/i }).click();
 
     // The dialog should show "No files yet" for empty items
     // When there are files, clicking delete should show confirmation
@@ -497,6 +503,9 @@ test.describe("File Deletion", () => {
 
     const settingsDialog = page.getByRole("dialog", { name: /settings/i });
     await expect(settingsDialog).toBeVisible({ timeout: 5000 });
+
+    // Switch to Files tab first (tabbed interface)
+    await settingsDialog.getByRole("tab", { name: /files/i }).click();
 
     // Dialog should show file type sections
     await expect(settingsDialog.getByText("Primary Media")).toBeVisible();
@@ -533,6 +542,9 @@ test.describe("File Deletion", () => {
 
     const settingsDialog = page.getByRole("dialog", { name: /settings/i });
     await expect(settingsDialog).toBeVisible({ timeout: 5000 });
+
+    // Switch to Files tab first (tabbed interface)
+    await settingsDialog.getByRole("tab", { name: /files/i }).click();
 
     // Verify the file type sections are present
     await expect(settingsDialog.getByText("Primary Media")).toBeVisible();
