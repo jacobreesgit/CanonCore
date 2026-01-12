@@ -63,11 +63,11 @@ export const itemNameSchema = z
 
 /**
  * Item description validation schema.
- * Optional field, max 200 characters.
+ * Optional field, max 1000 characters (matches TMDB overview limit).
  * Trims whitespace before validation to prevent edge cases.
  * Allows any printable characters for flexibility.
  */
 export const itemDescriptionSchema = z
   .string()
   .transform((val) => val.trim())
-  .pipe(z.string().max(200, "Description must be 200 characters or less"));
+  .pipe(z.string().max(1000, "Description must be 1000 characters or less"));

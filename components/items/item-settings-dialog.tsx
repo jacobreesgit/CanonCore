@@ -29,7 +29,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { FileTypeCombobox } from "@/components/items/file-type-combobox";
+import { MediaSearchCombobox } from "@/components/items/media-search-combobox";
 import { updateItemSettings } from "@/lib/item-file-actions";
+import { applyMetadataAction } from "@/lib/tmdb-actions";
+import type { TMDBSearchResult } from "@/lib/tmdb-client";
 import { toast } from "sonner";
 import type { SerializedItemFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -108,6 +111,7 @@ export function ItemSettingsDialog({
   >(findPrimaryFile(files.subtitles)?.id);
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isApplyingMetadata, setIsApplyingMetadata] = useState(false);
 
   // Track successful uploads during this dialog session
   const [uploadCount, setUploadCount] = useState(0);
@@ -300,6 +304,41 @@ export function ItemSettingsDialog({
     });
   }, [onSettingsChange]);
 
+  /**
+   * Handles TMDB metadata lookup and application.
+   * Updates item name, description, and uploads poster if available.
+   */
+  const handleApplyMetadata = useCallback(
+    async (result: TMDBSearchResult) => {
+      setIsApplyingMetadata(true);
+      try {
+        const response = await applyMetadataAction(
+          item.id,
+          result.id,
+          result.mediaType
+        );
+
+        if (response.success) {
+          toast.success("Metadata applied successfully");
+          // Refresh to get updated name, description, and artwork
+          await onSettingsChange?.().catch((err) => {
+            console.warn(
+              "[ItemSettingsDialog] Refetch failed after metadata apply:",
+              err
+            );
+          });
+        } else {
+          toast.error(response.error || "Failed to apply metadata");
+        }
+      } catch {
+        toast.error("Failed to apply metadata");
+      } finally {
+        setIsApplyingMetadata(false);
+      }
+    },
+    [item.id, onSettingsChange]
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-lg">
@@ -346,12 +385,36 @@ export function ItemSettingsDialog({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Short description (optional)"
-              maxLength={200}
+              maxLength={1000}
               className="min-h-[80px] resize-none"
             />
             <p className="text-muted-foreground text-xs tabular-nums">
-              {description.length}/200 characters
+              {description.length}/1000 characters
             </p>
+          </div>
+
+          {/* Lookup Metadata Section */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Lookup Metadata</Label>
+            <p className="text-muted-foreground text-xs">
+              Search TMDB to auto-fill name, description, and poster artwork.
+            </p>
+            <div className="relative">
+              <MediaSearchCombobox
+                onSelect={handleApplyMetadata}
+                placeholder="Search movies & TV shows..."
+              />
+              {isApplyingMetadata && (
+                <div className="bg-background/80 absolute inset-0 flex items-center justify-center rounded-md">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="text-muted-foreground size-4 animate-spin" />
+                    <span className="text-muted-foreground text-sm">
+                      Applying metadata...
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <Separator />

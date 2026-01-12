@@ -83,6 +83,8 @@ test.describe("Google Drive: Auto-Sync Operations", () => {
       where: { userId: testUser.id, name: "Rename Sync Test" },
     });
     const originalDriveId = originalItem?.driveFileId;
+    // Switch to tree view for stable context menu
+    await itemsPage.switchToTreeView();
 
     // Rename the item
     await itemsPage.renameItemViaContextMenu(

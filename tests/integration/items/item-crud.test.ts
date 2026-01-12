@@ -198,9 +198,9 @@ describe("item CRUD integration", () => {
     expect(getResult.data?.item.description).toBeNull();
   });
 
-  it("rejects description over 200 characters", async () => {
-    const longDescription = "a".repeat(201);
+  it("rejects description over 1000 characters", async () => {
+    const longDescription = "a".repeat(1001);
     const result = await createItem(null, "Long Desc Test", longDescription);
-    expect(result.error).toContain("200");
+    expect(result.error).toContain("1000");
   });
 });

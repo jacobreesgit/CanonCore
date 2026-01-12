@@ -36,6 +36,8 @@ test.describe("Items CRUD Journey", () => {
     await itemsPage.goto();
     await itemsPage.createItem("Original Name");
     await itemsPage.waitForToastToDisappear();
+    // Switch to tree view for stable context menu
+    await itemsPage.switchToTreeView();
     await itemsPage.renameItemViaContextMenu("Original Name", "Renamed Folder");
     // Toast is verified in renameItemViaContextMenu, just verify UI state
     await itemsPage.expectItemVisible("Renamed Folder");
@@ -46,6 +48,8 @@ test.describe("Items CRUD Journey", () => {
     await itemsPage.goto();
     await itemsPage.createItem("To Delete");
     await itemsPage.waitForToastToDisappear();
+    // Switch to tree view for stable context menu
+    await itemsPage.switchToTreeView();
     await itemsPage.deleteItemViaContextMenu("To Delete");
     await itemsPage.expectItemNotVisible("To Delete");
     await itemsPage.expectSuccessToast("Deleted successfully");

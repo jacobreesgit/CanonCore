@@ -19,6 +19,8 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.goto();
     await itemsPage.createItem("Settings Test Folder");
     await itemsPage.waitForToastToDisappear();
+    // Switch to tree view for stable context menu
+    await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Settings Test Folder");
 
@@ -32,6 +34,8 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.goto();
     await itemsPage.createItem("Current Name");
     await itemsPage.waitForToastToDisappear();
+    // Switch to tree view for stable context menu
+    await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Current Name");
 
@@ -44,6 +48,8 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.goto();
     await itemsPage.createItem("Old Name");
     await itemsPage.waitForToastToDisappear();
+    // Switch to tree view for stable context menu
+    await itemsPage.switchToTreeView();
 
     await itemsPage.renameItemViaContextMenu("Old Name", "New Name");
 
@@ -58,6 +64,8 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.goto();
     await itemsPage.createItem("Close Test");
     await itemsPage.waitForToastToDisappear();
+    // Switch to tree view for stable context menu
+    await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Close Test");
     await itemsPage.closeSettingsDialog();
@@ -70,6 +78,8 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.goto();
     await itemsPage.createItem("Unchanged Name");
     await itemsPage.waitForToastToDisappear();
+    // Switch to tree view for stable context menu
+    await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Unchanged Name");
 
@@ -96,6 +106,8 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.goto();
     await itemsPage.createItem("Summary Test");
     await itemsPage.waitForToastToDisappear();
+    // Switch to tree view for stable context menu
+    await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Summary Test");
 
@@ -111,6 +123,8 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.goto();
     await itemsPage.createItem("Description Field Test");
     await itemsPage.waitForToastToDisappear();
+    // Switch to tree view for stable context menu
+    await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Description Field Test");
 
@@ -126,6 +140,8 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.goto();
     await itemsPage.createItem("Add Description Test");
     await itemsPage.waitForToastToDisappear();
+    // Switch to tree view for stable context menu
+    await itemsPage.switchToTreeView();
 
     await itemsPage.updateDescriptionViaContextMenu(
       "Add Description Test",
@@ -144,6 +160,8 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.goto();
     await itemsPage.createItem("Update Description Test");
     await itemsPage.waitForToastToDisappear();
+    // Switch to tree view for stable context menu
+    await itemsPage.switchToTreeView();
 
     // Add initial description
     await itemsPage.updateDescriptionViaContextMenu(
@@ -169,6 +187,8 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.goto();
     await itemsPage.createItem("Clear Description Test");
     await itemsPage.waitForToastToDisappear();
+    // Switch to tree view for stable context menu
+    await itemsPage.switchToTreeView();
 
     // Add description first
     await itemsPage.updateDescriptionViaContextMenu(
@@ -194,6 +214,8 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.goto();
     await itemsPage.createItem("Char Count Test");
     await itemsPage.waitForToastToDisappear();
+    // Switch to tree view for stable context menu
+    await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Char Count Test");
 
@@ -214,6 +236,8 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.goto();
     await itemsPage.createItem("Disabled Save Test");
     await itemsPage.waitForToastToDisappear();
+    // Switch to tree view for stable context menu
+    await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Disabled Save Test");
 

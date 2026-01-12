@@ -1,6 +1,6 @@
 /**
  * Modal dialog for creating new items.
- * Provides a clean, focused interface for item creation.
+ * Provides a clean, focused interface for item creation with optional TMDB search.
  */
 
 "use client";
@@ -16,10 +16,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { MediaSearchCombobox } from "./media-search-combobox";
+import type { TMDBSearchResult } from "@/lib/tmdb-client";
 
 interface AddItemDialogProps {
   /** Whether the dialog is open */
@@ -60,6 +61,17 @@ export function AddItemDialog({
     }
   }, [open]);
 
+  /**
+   * Handles TMDB media selection, auto-filling name and description.
+   */
+  function handleMediaSelect(result: TMDBSearchResult) {
+    const year = result.year;
+    const displayName = year ? `${result.title} (${year})` : result.title;
+    setName(displayName);
+    // Truncate overview to 1000 chars for description
+    setDescription(result.overview?.slice(0, 1000) || "");
+  }
+
   async function handleSubmit() {
     if (!name.trim() || isLoading) return;
 
@@ -75,13 +87,6 @@ export function AddItemDialog({
     }
   }
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && name.trim()) {
-      e.preventDefault();
-      handleSubmit();
-    }
-  }
-
   const descriptionId = "item-dialog-description";
   const dialogHint = parentName
     ? `Create a new item inside "${parentName}".`
@@ -94,7 +99,11 @@ export function AddItemDialog({
         aria-describedby={descriptionId}
         onOpenAutoFocus={(e) => {
           e.preventDefault();
-          document.getElementById("item-name")?.focus();
+          // Focus the combobox input inside MediaSearchCombobox
+          const combobox = document.querySelector('[role="combobox"]');
+          if (combobox instanceof HTMLElement) {
+            combobox.focus();
+          }
         }}
       >
         <DialogHeader>
@@ -119,14 +128,12 @@ export function AddItemDialog({
         <div className="space-y-4 py-2">
           <div className="space-y-2">
             <Label htmlFor="item-name">Item name</Label>
-            <Input
+            <MediaSearchCombobox
               id="item-name"
+              onSelect={handleMediaSelect}
+              onChange={setName}
               value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Enter item name..."
-              disabled={isLoading}
-              className="h-10"
+              placeholder="Search movies & TV shows..."
             />
           </div>
           <div className="space-y-2">
@@ -143,10 +150,10 @@ export function AddItemDialog({
               placeholder="Add a short description..."
               disabled={isLoading}
               className="min-h-[80px] resize-none"
-              maxLength={200}
+              maxLength={1000}
             />
             <p className="text-muted-foreground text-xs tabular-nums">
-              {description.length}/200 characters
+              {description.length}/1000 characters
             </p>
           </div>
         </div>

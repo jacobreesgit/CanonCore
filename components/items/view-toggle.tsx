@@ -34,10 +34,10 @@ export function useStoredViewMode(): [ViewMode, (mode: ViewMode) => void] {
 
   const getSnapshot = useCallback((): ViewMode => {
     const stored = localStorage.getItem(STORAGE_KEY);
-    return stored === "grid" ? "grid" : "tree";
+    return stored === "tree" ? "tree" : "grid";
   }, []);
 
-  const getServerSnapshot = useCallback((): ViewMode => "tree", []);
+  const getServerSnapshot = useCallback((): ViewMode => "grid", []);
 
   const storedValue = useSyncExternalStore(
     subscribe,
@@ -92,27 +92,9 @@ export function ViewToggle({
           "absolute inset-0.5 w-[calc(50%-2px)] rounded-sm",
           "bg-background border-border/40 border shadow-sm",
           "transition-transform duration-200 ease-out",
-          view === "grid" && "translate-x-full"
+          view === "tree" && "translate-x-full"
         )}
       />
-
-      <button
-        type="button"
-        aria-label="Tree view"
-        aria-pressed={view === "tree"}
-        onClick={() => handleChange("tree")}
-        disabled={disabled}
-        className={cn(
-          "relative z-10 inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-sm px-3",
-          "text-sm font-medium transition-colors duration-150",
-          view === "tree"
-            ? "text-foreground"
-            : "text-muted-foreground hover:text-foreground/80"
-        )}
-      >
-        <List className="size-4" strokeWidth={2} />
-        <span className="hidden sm:inline">Tree</span>
-      </button>
 
       <button
         type="button"
@@ -130,6 +112,24 @@ export function ViewToggle({
       >
         <LayoutGrid className="size-4" strokeWidth={2} />
         <span className="hidden sm:inline">Grid</span>
+      </button>
+
+      <button
+        type="button"
+        aria-label="Tree view"
+        aria-pressed={view === "tree"}
+        onClick={() => handleChange("tree")}
+        disabled={disabled}
+        className={cn(
+          "relative z-10 inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-sm px-3",
+          "text-sm font-medium transition-colors duration-150",
+          view === "tree"
+            ? "text-foreground"
+            : "text-muted-foreground hover:text-foreground/80"
+        )}
+      >
+        <List className="size-4" strokeWidth={2} />
+        <span className="hidden sm:inline">Tree</span>
       </button>
     </div>
   );
