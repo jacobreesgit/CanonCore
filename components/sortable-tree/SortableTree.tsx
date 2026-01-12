@@ -85,6 +85,8 @@ interface SortableTreeProps {
   indentationWidth?: number;
   indicator?: boolean;
   maxDepth?: number;
+  /** Whether user has Google Drive connected (for Add Child dialog) */
+  hasDriveConnection?: boolean;
 }
 
 /**
@@ -113,6 +115,7 @@ export function SortableTree({
   indentationWidth = 20,
   indicator = true,
   maxDepth = 10,
+  hasDriveConnection = false,
 }: SortableTreeProps) {
   const [items, setItems] = useState(() => defaultItems);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
@@ -258,6 +261,7 @@ export function SortableTree({
                 }
                 driveFileId={driveFileId}
                 showDescription={false}
+                hasDriveConnection={hasDriveConnection}
               />
             )
           )}

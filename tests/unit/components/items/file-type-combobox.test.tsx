@@ -1,14 +1,14 @@
 /**
- * Unit tests for FileTypeCombobox delete functionality.
- * Tests rendering, delete button visibility, confirmation dialog, and deletion flow.
+ * Unit tests for FileTypeCombobox component.
+ * Tests select mode (delete, drive links) and upload-only mode (queuing, removing).
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FileTypeCombobox } from "@/components/items/file-type-combobox";
-import { Film } from "lucide-react";
-import type { SerializedItemFile } from "@/lib/types";
+import { Film, ImageIcon, FileText } from "lucide-react";
+import type { SerializedItemFile, QueuedFile } from "@/lib/types";
 import { deleteItemFile } from "@/lib/item-file-actions";
 import { toast } from "sonner";
 
@@ -371,5 +371,185 @@ describe("FileTypeCombobox Drive Link", () => {
     const driveLink = screen.getByTestId("drive-link-m1");
     expect(driveLink).toHaveAttribute("target", "_blank");
     expect(driveLink).toHaveAttribute("rel", "noopener noreferrer");
+  });
+});
+
+/** Helper to create a mock QueuedFile */
+const createMockQueuedFile = (
+  overrides: Partial<QueuedFile> & { id: string; name: string }
+): QueuedFile => {
+  const { id, name, ...rest } = overrides;
+  return {
+    id,
+    file: new File(["content"], name, { type: "video/mp4" }),
+    fileType: "MEDIA" as const,
+    size: 1024,
+    status: "pending" as const,
+    ...rest,
+  };
+};
+
+describe("FileTypeCombobox Upload-Only Mode", () => {
+  const defaultProps = {
+    uploadOnly: true as const,
+    label: "Primary Media",
+    description: "The file that plays when clicking on this item.",
+    icon: Film,
+    fileType: "media" as const,
+    queuedFiles: [] as QueuedFile[],
+    onQueueFilesChange: vi.fn(),
+    disabled: false,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should render dropzone instead of combobox in uploadOnly mode", () => {
+    render(<FileTypeCombobox {...defaultProps} />);
+
+    // Should NOT have a combobox
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+
+    // Should have the label and description
+    expect(screen.getByText("Primary Media")).toBeInTheDocument();
+    expect(
+      screen.getByText("The file that plays when clicking on this item.")
+    ).toBeInTheDocument();
+
+    // Should have dropzone text
+    expect(
+      screen.getByText(/drop media files or click to browse/i)
+    ).toBeInTheDocument();
+  });
+
+  it("should show disabled state with Drive connection message", () => {
+    render(<FileTypeCombobox {...defaultProps} disabled={true} />);
+
+    expect(
+      screen.getByText(
+        /connect google drive in settings to enable file uploads/i
+      )
+    ).toBeInTheDocument();
+
+    // Should NOT have dropzone when disabled
+    expect(
+      screen.queryByText(/drop media files or click to browse/i)
+    ).not.toBeInTheDocument();
+  });
+
+  it("should display queued files with size and remove button", () => {
+    const queuedFiles = [
+      createMockQueuedFile({ id: "f1", name: "movie.mp4" }),
+      createMockQueuedFile({ id: "f2", name: "trailer.mp4" }),
+    ];
+
+    render(<FileTypeCombobox {...defaultProps} queuedFiles={queuedFiles} />);
+
+    // Should show file names
+    expect(screen.getByText("movie.mp4")).toBeInTheDocument();
+    expect(screen.getByText("trailer.mp4")).toBeInTheDocument();
+
+    // Should show queued count
+    expect(screen.getByText(/2 files queued/i)).toBeInTheDocument();
+
+    // Should have remove buttons for each file
+    const removeButtons = screen.getAllByRole("button", {
+      name: /remove/i,
+    });
+    expect(removeButtons).toHaveLength(2);
+  });
+
+  it("should call onQueueFilesChange with filtered array when removing file", async () => {
+    const user = userEvent.setup();
+    const queuedFiles = [
+      createMockQueuedFile({ id: "f1", name: "movie.mp4" }),
+      createMockQueuedFile({ id: "f2", name: "trailer.mp4" }),
+    ];
+    const onQueueFilesChange = vi.fn();
+
+    render(
+      <FileTypeCombobox
+        {...defaultProps}
+        queuedFiles={queuedFiles}
+        onQueueFilesChange={onQueueFilesChange}
+      />
+    );
+
+    // Click remove button for first file
+    const removeButton = screen.getByRole("button", {
+      name: /remove movie\.mp4/i,
+    });
+    await user.click(removeButton);
+
+    // Should be called with array excluding the removed file
+    expect(onQueueFilesChange).toHaveBeenCalledWith([queuedFiles[1]]);
+  });
+
+  it("should show singular 'file' when only one file queued", () => {
+    const queuedFiles = [createMockQueuedFile({ id: "f1", name: "movie.mp4" })];
+
+    render(<FileTypeCombobox {...defaultProps} queuedFiles={queuedFiles} />);
+
+    expect(screen.getByText(/1 file queued/i)).toBeInTheDocument();
+  });
+
+  it("should use correct file type for different categories", () => {
+    // Test artwork category
+    render(
+      <FileTypeCombobox
+        {...defaultProps}
+        label="Primary Artwork"
+        description="The image used as the thumbnail."
+        icon={ImageIcon}
+        fileType="artwork"
+      />
+    );
+
+    expect(screen.getByText("Primary Artwork")).toBeInTheDocument();
+    expect(
+      screen.getByText(/drop artwork files or click to browse/i)
+    ).toBeInTheDocument();
+  });
+
+  it("should show total file size when files are queued", () => {
+    const queuedFiles = [
+      createMockQueuedFile({ id: "f1", name: "movie.mp4" }),
+      {
+        ...createMockQueuedFile({ id: "f2", name: "trailer.mp4" }),
+        size: 2048,
+      },
+    ];
+
+    render(<FileTypeCombobox {...defaultProps} queuedFiles={queuedFiles} />);
+
+    // 1024 + 2048 = 3072 bytes = 3 KB (formatBytes only shows decimals for MB/GB)
+    expect(screen.getByText("3 KB")).toBeInTheDocument();
+  });
+});
+
+describe("FileTypeCombobox Upload-Only Mode - Subtitle Category", () => {
+  const subtitleProps = {
+    uploadOnly: true as const,
+    label: "Default Subtitle",
+    description: "The subtitle track that loads by default.",
+    icon: FileText,
+    fileType: "subtitle" as const,
+    queuedFiles: [] as QueuedFile[],
+    onQueueFilesChange: vi.fn(),
+    disabled: false,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should render subtitle dropzone with correct text", () => {
+    render(<FileTypeCombobox {...subtitleProps} />);
+
+    expect(screen.getByText("Default Subtitle")).toBeInTheDocument();
+    expect(
+      screen.getByText(/drop subtitle files or click to browse/i)
+    ).toBeInTheDocument();
   });
 });

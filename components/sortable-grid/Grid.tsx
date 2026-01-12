@@ -21,6 +21,8 @@ interface GridProps {
   onOpenSettings?(id: string): void;
   /** Callback to delete an item. */
   onDeleteItem?(id: string): Promise<void>;
+  /** Whether user has Google Drive connected. */
+  hasDriveConnection?: boolean;
 }
 
 /**
@@ -35,6 +37,7 @@ export function Grid({
   onItemClick,
   onOpenSettings,
   onDeleteItem,
+  hasDriveConnection = false,
 }: GridProps) {
   return (
     <div
@@ -51,6 +54,7 @@ export function Grid({
             onOpenSettings ? () => onOpenSettings(item.id) : undefined
           }
           onDelete={onDeleteItem ? () => onDeleteItem(item.id) : undefined}
+          hasDriveConnection={hasDriveConnection}
         >
           <GridItem
             id={item.id}

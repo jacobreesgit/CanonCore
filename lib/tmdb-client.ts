@@ -19,12 +19,16 @@ export type PosterSize =
   | "w780"
   | "original";
 
+/** Backdrop sizes available from TMDB. */
+export type BackdropSize = "w300" | "w780" | "w1280" | "original";
+
 /** TMDB movie details. */
 export interface TMDBMovie {
   id: number;
   title: string;
   overview: string;
   poster_path: string | null;
+  backdrop_path: string | null;
   release_date: string;
 }
 
@@ -34,6 +38,7 @@ export interface TMDBTVShow {
   name: string;
   overview: string;
   poster_path: string | null;
+  backdrop_path: string | null;
   first_air_date: string;
   number_of_seasons: number;
 }
@@ -64,6 +69,52 @@ export interface TMDBSeasonDetail {
   episodes: TMDBEpisode[];
 }
 
+/**
+ * Brief season info from TV show details endpoint.
+ * Used for displaying season list in episode picker.
+ */
+export interface TMDBSeasonSummary {
+  /** Season ID */
+  id: number;
+  /** Season number (1-based, 0 for specials) */
+  season_number: number;
+  /** Season name (e.g., "Season 1" or "Specials") */
+  name: string;
+  /** Season overview/description */
+  overview: string;
+  /** Poster path for season artwork */
+  poster_path: string | null;
+  /** Number of episodes in the season */
+  episode_count: number;
+  /** Air date of the season */
+  air_date: string | null;
+}
+
+/**
+ * Full episode details from TMDB episode endpoint.
+ * Used for applying episode-specific metadata.
+ */
+export interface TMDBEpisodeDetails {
+  /** Episode ID */
+  id: number;
+  /** Episode number (1-based) */
+  episode_number: number;
+  /** Season number this episode belongs to */
+  season_number: number;
+  /** Episode title */
+  name: string;
+  /** Episode overview/description */
+  overview: string;
+  /** Still image path (16:9 scene shot) */
+  still_path: string | null;
+  /** Air date of the episode */
+  air_date: string | null;
+  /** Runtime in minutes */
+  runtime: number | null;
+  /** Community vote average (0-10) */
+  vote_average: number;
+}
+
 /** Normalized search result for UI. */
 export interface TMDBSearchResult {
   id: number;
@@ -71,7 +122,35 @@ export interface TMDBSearchResult {
   title: string;
   overview: string;
   posterPath: string | null;
+  backdropPath: string | null;
   year: string;
+}
+
+/**
+ * TMDB image metadata from the images API.
+ * Used for poster and backdrop selection grids.
+ */
+export interface TMDBImage {
+  /** Image file path (e.g., "/abc123.jpg") */
+  file_path: string;
+  /** Community vote average (0-10) */
+  vote_average: number;
+  /** Language code or null for textless images */
+  iso_639_1: string | null;
+  /** Image width in pixels */
+  width: number;
+  /** Image height in pixels */
+  height: number;
+}
+
+/**
+ * Collection of images for a movie or TV show.
+ */
+export interface TMDBImages {
+  /** Backdrop images (16:9 landscape) */
+  backdrops: TMDBImage[];
+  /** Poster images (2:3 portrait) */
+  posters: TMDBImage[];
 }
 
 /**
@@ -158,6 +237,7 @@ export async function searchMedia(query: string): Promise<TMDBSearchResult[]> {
       name?: string;
       overview?: string;
       poster_path?: string | null;
+      backdrop_path?: string | null;
       release_date?: string;
       first_air_date?: string;
     }>;
@@ -175,6 +255,7 @@ export async function searchMedia(query: string): Promise<TMDBSearchResult[]> {
       title: r.title || r.name || "Unknown",
       overview: r.overview || "",
       posterPath: r.poster_path || null,
+      backdropPath: r.backdrop_path || null,
       year: extractYear(r.release_date || r.first_air_date),
     }));
 }
@@ -211,6 +292,81 @@ export async function getTVSeason(
   seasonNumber: number
 ): Promise<TMDBSeason | null> {
   return tmdbFetch<TMDBSeason>(`/tv/${tvId}/season/${seasonNumber}`);
+}
+
+/**
+ * Fetches all seasons for a TV show.
+ * Returns season summaries with episode counts for episode picker display.
+ *
+ * @param tvId - TMDB TV show ID
+ * @returns Array of season summaries or null on error
+ */
+export async function getTVSeasons(
+  tvId: number
+): Promise<TMDBSeasonSummary[] | null> {
+  // Fetch show details which includes seasons array
+  const data = await tmdbFetch<{
+    seasons?: TMDBSeasonSummary[];
+  }>(`/tv/${tvId}`);
+
+  if (!data?.seasons) return null;
+
+  // Sort by season number (specials first, then numbered seasons)
+  return data.seasons.sort((a, b) => a.season_number - b.season_number);
+}
+
+/**
+ * Fetches all episodes for a specific season.
+ * Wrapper around getTVSeason that returns just the episodes array.
+ *
+ * @param tvId - TMDB TV show ID
+ * @param seasonNumber - Season number (0 for specials, 1+ for numbered seasons)
+ * @returns Array of episodes or null on error
+ */
+export async function getTVEpisodes(
+  tvId: number,
+  seasonNumber: number
+): Promise<TMDBEpisode[] | null> {
+  const season = await getTVSeason(tvId, seasonNumber);
+  if (!season?.episodes) return null;
+
+  // Sort by episode number
+  return season.episodes.sort((a, b) => a.episode_number - b.episode_number);
+}
+
+/**
+ * Fetches full details for a specific episode.
+ * Returns episode metadata including still image path.
+ *
+ * @param tvId - TMDB TV show ID
+ * @param seasonNumber - Season number (0 for specials, 1+ for numbered seasons)
+ * @param episodeNumber - Episode number (1-based)
+ * @returns Episode details or null on error
+ */
+export async function getEpisodeDetails(
+  tvId: number,
+  seasonNumber: number,
+  episodeNumber: number
+): Promise<TMDBEpisodeDetails | null> {
+  return tmdbFetch<TMDBEpisodeDetails>(
+    `/tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}`
+  );
+}
+
+/**
+ * Constructs full still image URL from TMDB path.
+ * Stills are 16:9 scene shots used for episode thumbnails.
+ *
+ * @param stillPath - TMDB still path (e.g., "/abc123.jpg")
+ * @param size - Image size (default: w300 for thumbnails)
+ * @returns Full image URL or null if invalid path
+ */
+export function getStillUrl(
+  stillPath: string | null,
+  size: BackdropSize = "w300"
+): string | null {
+  if (!stillPath || !isValidImagePath(stillPath)) return null;
+  return `${TMDB_IMAGE_BASE}/${size}${stillPath}`;
 }
 
 /**
@@ -261,6 +417,69 @@ export async function downloadPoster(
   }
 }
 
+/** Pattern for valid TMDB image paths (e.g., /abc123XYZ.jpg) */
+const VALID_IMAGE_PATH_PATTERN = /^\/[a-zA-Z0-9]+\.(jpg|png)$/;
+
+/**
+ * Validates a TMDB image path for security.
+ * Prevents malicious path injection.
+ *
+ * @param imagePath - TMDB image path to validate
+ * @returns Whether the path is valid
+ */
+export function isValidImagePath(imagePath: string | null): boolean {
+  if (!imagePath) return false;
+  return VALID_IMAGE_PATH_PATTERN.test(imagePath);
+}
+
+/**
+ * Constructs full backdrop image URL from TMDB path.
+ *
+ * @param backdropPath - TMDB backdrop path (e.g., "/abc123.jpg")
+ * @param size - Image size (default: w1280 for hero images)
+ * @returns Full image URL or null if invalid path
+ */
+export function getBackdropUrl(
+  backdropPath: string | null,
+  size: BackdropSize = "w1280"
+): string | null {
+  if (!backdropPath || !isValidImagePath(backdropPath)) return null;
+  return `${TMDB_IMAGE_BASE}/${size}${backdropPath}`;
+}
+
+/**
+ * Downloads backdrop image as Buffer.
+ *
+ * @param backdropPath - TMDB backdrop path
+ * @returns Image buffer or null on error
+ */
+export async function downloadBackdrop(
+  backdropPath: string | null
+): Promise<Buffer | null> {
+  const url = getBackdropUrl(backdropPath);
+  if (!url) return null;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TMDB_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) return null;
+
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      logger.error({ backdropPath }, "Backdrop download timed out");
+    } else {
+      logger.error({ error, backdropPath }, "Failed to download backdrop");
+    }
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 /**
  * Extracts year from date string.
  *
@@ -283,4 +502,72 @@ export function extractYear(dateStr: string | null | undefined): string {
 export function truncateOverview(text: string, maxLength = 1000): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength - 3) + "...";
+}
+
+/**
+ * Fetches all available images for a movie.
+ * Returns posters and backdrops sorted by vote average.
+ *
+ * @param movieId - TMDB movie ID
+ * @returns Images collection or null on error
+ */
+export async function getMovieImages(
+  movieId: number
+): Promise<TMDBImages | null> {
+  const data = await tmdbFetch<TMDBImages>(`/movie/${movieId}/images`);
+  if (!data) return null;
+
+  // Sort by vote average (highest first) and validate paths
+  return {
+    backdrops: (data.backdrops || [])
+      .filter((img) => isValidImagePath(img.file_path))
+      .sort((a, b) => b.vote_average - a.vote_average),
+    posters: (data.posters || [])
+      .filter((img) => isValidImagePath(img.file_path))
+      .sort((a, b) => b.vote_average - a.vote_average),
+  };
+}
+
+/**
+ * Fetches all available images for a TV show.
+ * Returns posters and backdrops sorted by vote average.
+ *
+ * @param tvId - TMDB TV show ID
+ * @returns Images collection or null on error
+ */
+export async function getTVShowImages(
+  tvId: number
+): Promise<TMDBImages | null> {
+  const data = await tmdbFetch<TMDBImages>(`/tv/${tvId}/images`);
+  if (!data) return null;
+
+  // Sort by vote average (highest first) and validate paths
+  return {
+    backdrops: (data.backdrops || [])
+      .filter((img) => isValidImagePath(img.file_path))
+      .sort((a, b) => b.vote_average - a.vote_average),
+    posters: (data.posters || [])
+      .filter((img) => isValidImagePath(img.file_path))
+      .sort((a, b) => b.vote_average - a.vote_average),
+  };
+}
+
+/**
+ * Gets the best textless backdrop from an images collection.
+ * Prefers textless (iso_639_1: null) backdrops with highest vote average.
+ *
+ * @param images - TMDB images collection
+ * @returns Best backdrop path or null if none available
+ */
+export function getBestTextlessBackdrop(images: TMDBImages): string | null {
+  if (!images.backdrops?.length) return null;
+
+  // Filter to textless only (iso_639_1 is null)
+  const textless = images.backdrops.filter((img) => img.iso_639_1 === null);
+
+  // If no textless, fall back to any backdrop
+  const candidates = textless.length > 0 ? textless : images.backdrops;
+
+  // Already sorted by vote_average, so first is best
+  return candidates[0]?.file_path || null;
 }

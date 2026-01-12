@@ -224,3 +224,67 @@ export interface SearchableItem {
   /** Breadcrumb path like "Movies / Star Wars" for nested items */
   breadcrumb: string | null;
 }
+
+/**
+ * File queued for upload when creating an item.
+ * Holds File object and metadata until item is created.
+ * isPrimary and isHero are set during upload transformation, not when queuing.
+ */
+export interface QueuedFile {
+  /** Unique ID for tracking in the queue */
+  id: string;
+  /** The actual File object */
+  file: File;
+  /** File type category (MEDIA, ARTWORK, SUBTITLE) */
+  fileType: FileType;
+  /** File size in bytes */
+  size: number;
+  /** Upload status */
+  status: "pending" | "uploading" | "success" | "error";
+  /** Error message if upload failed */
+  error?: string;
+  /** Whether this is the primary file for its category (set during upload) */
+  isPrimary?: boolean;
+  /** Whether this is the hero image (set during upload) */
+  isHero?: boolean;
+}
+
+/**
+ * Categorized queued files by type for AddItemDialog.
+ * Allows users to queue files by category before item creation.
+ */
+export interface QueuedFilesByCategory {
+  /** Primary media files (first becomes primary playback) */
+  media: QueuedFile[];
+  /** Primary artwork files (first becomes thumbnail) */
+  artwork: QueuedFile[];
+  /** Hero image files (first becomes hero banner) */
+  hero: QueuedFile[];
+  /** Default subtitle files (first loads by default) */
+  subtitle: QueuedFile[];
+}
+
+/**
+ * TMDB metadata selection for applying to a new or existing item.
+ * Captures which fields to update and the source data.
+ */
+export interface TMDBMetadataSelection {
+  /** TMDB ID of the movie or TV show */
+  tmdbId: number;
+  /** Whether this is a movie or TV show */
+  mediaType: "movie" | "tv";
+  /** Fields to update */
+  options: {
+    updateName: boolean;
+    updateDescription: boolean;
+    updatePoster: boolean;
+    updateBackdrop: boolean;
+  };
+  /** Preview data from TMDB */
+  preview: {
+    name: string;
+    description: string;
+    posterPath: string | null;
+    backdropPath: string | null;
+  };
+}

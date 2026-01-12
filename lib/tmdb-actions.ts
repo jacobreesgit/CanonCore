@@ -15,13 +15,65 @@ import {
   searchMedia,
   getMovie,
   getTVShow,
+  getMovieImages,
+  getTVShowImages,
+  getTVSeasons,
+  getTVEpisodes,
+  getEpisodeDetails,
   downloadPoster,
+  downloadBackdrop,
   extractYear,
   truncateOverview,
   isTMDBConfigured,
+  getPosterUrl,
+  getBackdropUrl,
+  getStillUrl,
   type TMDBSearchResult,
+  type TMDBImages,
+  type TMDBSeasonSummary,
+  type TMDBEpisode,
 } from "@/lib/tmdb-client";
 import { uploadBuffer } from "@/lib/google-drive-actions";
+
+/**
+ * Options for selectively applying TMDB metadata fields.
+ */
+export interface ApplyMetadataOptions {
+  /** Whether to update the item name */
+  updateName?: boolean;
+  /** Whether to update the item description */
+  updateDescription?: boolean;
+  /** Whether to download and upload poster as primary artwork */
+  updatePoster?: boolean;
+  /** Whether to download and upload backdrop as hero image */
+  updateBackdrop?: boolean;
+}
+
+/** Default options - update all fields */
+const DEFAULT_METADATA_OPTIONS: Required<ApplyMetadataOptions> = {
+  updateName: true,
+  updateDescription: true,
+  updatePoster: true,
+  updateBackdrop: true,
+};
+
+/**
+ * Preview data for metadata confirmation dialog.
+ */
+export interface MetadataPreview {
+  /** Formatted name with year */
+  name: string;
+  /** Truncated overview/description */
+  description: string;
+  /** Full poster URL for preview thumbnail */
+  posterUrl: string | null;
+  /** Full backdrop URL for preview thumbnail */
+  backdropUrl: string | null;
+  /** Raw poster path for download */
+  posterPath: string | null;
+  /** Raw backdrop path for download */
+  backdropPath: string | null;
+}
 
 // Circuit breaker for TMDB API calls
 const tmdbCircuitBreaker = new CircuitBreaker({
@@ -81,32 +133,37 @@ export async function searchMediaAction(
 
 /**
  * Applies TMDB metadata to an existing item.
- * Updates name, description, and optionally uploads poster.
+ * Selectively updates name, description, poster, and/or backdrop based on options.
  *
  * @param itemId - Item to update
  * @param tmdbId - TMDB ID
  * @param mediaType - "movie" or "tv"
+ * @param options - Which fields to update (defaults to all)
  * @returns Success or error
  */
 export async function applyMetadataAction(
   itemId: string,
   tmdbId: number,
-  mediaType: "movie" | "tv"
+  mediaType: "movie" | "tv",
+  options: ApplyMetadataOptions = DEFAULT_METADATA_OPTIONS
 ): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user?.id) {
     return { success: false, error: "Not authenticated" };
   }
 
-  // Verify item ownership and get existing artwork
+  // Merge with defaults
+  const opts = { ...DEFAULT_METADATA_OPTIONS, ...options };
+
+  // Verify item ownership and get existing artwork files
   const item = await prisma.item.findUnique({
     where: { id: itemId },
     select: {
       userId: true,
       driveConnectionId: true,
       files: {
-        where: { fileType: "ARTWORK", isPrimary: true },
-        select: { id: true },
+        where: { fileType: "ARTWORK" },
+        select: { id: true, isPrimary: true, isHero: true },
       },
     },
   });
@@ -120,6 +177,7 @@ export async function applyMetadataAction(
     let name: string;
     let description: string;
     let posterPath: string | null;
+    let backdropPath: string | null;
 
     // Fetch metadata with circuit breaker protection
     if (mediaType === "movie") {
@@ -131,6 +189,7 @@ export async function applyMetadataAction(
       name = year ? `${movie.title} (${year})` : movie.title;
       description = truncateOverview(movie.overview);
       posterPath = movie.poster_path;
+      backdropPath = movie.backdrop_path;
     } else {
       const show = await tmdbCircuitBreaker.execute(() => getTVShow(tmdbId));
       if (!show) {
@@ -140,16 +199,32 @@ export async function applyMetadataAction(
       name = year ? `${show.name} (${year})` : show.name;
       description = truncateOverview(show.overview);
       posterPath = show.poster_path;
+      backdropPath = show.backdrop_path;
     }
 
-    // Update item metadata
-    await prisma.item.update({
-      where: { id: itemId },
-      data: { name, description: description || null },
-    });
+    // Build update data based on options
+    const updateData: { name?: string; description?: string | null } = {};
+    if (opts.updateName) {
+      updateData.name = name;
+    }
+    if (opts.updateDescription) {
+      updateData.description = description || null;
+    }
 
-    // Upload poster if item has Drive connection and poster exists
-    if (item.driveConnectionId && posterPath) {
+    // Update item metadata if any text fields selected
+    if (Object.keys(updateData).length > 0) {
+      await prisma.item.update({
+        where: { id: itemId },
+        data: updateData,
+      });
+    }
+
+    // Find existing artwork files
+    const existingPrimary = item.files?.find((f) => f.isPrimary);
+    const existingHero = item.files?.find((f) => f.isHero);
+
+    // Upload poster if option enabled and item has Drive connection
+    if (opts.updatePoster && item.driveConnectionId && posterPath) {
       const posterBuffer = await downloadPoster(posterPath);
 
       if (posterBuffer) {
@@ -161,13 +236,10 @@ export async function applyMetadataAction(
         );
 
         if (uploadResult.success && uploadResult.data?.driveFileId) {
-          // Check for existing primary artwork to avoid duplicates
-          const existingArtwork = item.files?.[0];
-
-          if (existingArtwork) {
-            // Update existing artwork file
+          if (existingPrimary) {
+            // Update existing primary artwork file
             await prisma.itemFile.update({
-              where: { id: existingArtwork.id },
+              where: { id: existingPrimary.id },
               data: {
                 filename: "poster.jpg",
                 driveFileId: uploadResult.data.driveFileId,
@@ -175,7 +247,7 @@ export async function applyMetadataAction(
               },
             });
           } else {
-            // Create new ItemFile record
+            // Create new ItemFile record for poster
             await prisma.itemFile.create({
               data: {
                 itemId,
@@ -192,6 +264,48 @@ export async function applyMetadataAction(
       }
     }
 
+    // Upload backdrop as hero image if option enabled
+    if (opts.updateBackdrop && item.driveConnectionId && backdropPath) {
+      const backdropBuffer = await downloadBackdrop(backdropPath);
+
+      if (backdropBuffer) {
+        const uploadResult = await uploadBuffer(
+          itemId,
+          backdropBuffer,
+          "backdrop.jpg",
+          "image/jpeg"
+        );
+
+        if (uploadResult.success && uploadResult.data?.driveFileId) {
+          if (existingHero) {
+            // Update existing hero artwork file
+            await prisma.itemFile.update({
+              where: { id: existingHero.id },
+              data: {
+                filename: "backdrop.jpg",
+                driveFileId: uploadResult.data.driveFileId,
+                size: BigInt(backdropBuffer.length),
+              },
+            });
+          } else {
+            // Create new ItemFile record for backdrop (hero image)
+            await prisma.itemFile.create({
+              data: {
+                itemId,
+                filename: "backdrop.jpg",
+                fileType: "ARTWORK",
+                mimeType: "image/jpeg",
+                size: BigInt(backdropBuffer.length),
+                driveFileId: uploadResult.data.driveFileId,
+                isPrimary: false,
+                isHero: true,
+              },
+            });
+          }
+        }
+      }
+    }
+
     revalidatePath("/my-items");
     revalidatePath(`/my-items/${itemId}`);
 
@@ -199,5 +313,279 @@ export async function applyMetadataAction(
   } catch (error) {
     logger.error({ error, itemId, tmdbId }, "Failed to apply TMDB metadata");
     return { success: false, error: "Failed to apply metadata" };
+  }
+}
+
+/**
+ * Fetches TMDB metadata preview for confirmation dialog.
+ * Returns formatted name, description, and image URLs without modifying any data.
+ *
+ * @param tmdbId - TMDB ID
+ * @param mediaType - "movie" or "tv"
+ * @returns Preview data or error
+ */
+export async function getMetadataPreviewAction(
+  tmdbId: number,
+  mediaType: "movie" | "tv"
+): Promise<ActionResult<MetadataPreview>> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  if (!isTMDBConfigured()) {
+    return { success: false, error: "TMDB integration not configured" };
+  }
+
+  const rateLimitResult = await checkRateLimit("tmdbPreview");
+  if (rateLimitResult) {
+    return { success: false, error: rateLimitResult.error };
+  }
+
+  try {
+    let name: string;
+    let description: string;
+    let posterPath: string | null;
+    let backdropPath: string | null;
+
+    if (mediaType === "movie") {
+      const movie = await tmdbCircuitBreaker.execute(() => getMovie(tmdbId));
+      if (!movie) {
+        return { success: false, error: "Movie not found on TMDB" };
+      }
+      const year = extractYear(movie.release_date);
+      name = year ? `${movie.title} (${year})` : movie.title;
+      description = truncateOverview(movie.overview);
+      posterPath = movie.poster_path;
+      backdropPath = movie.backdrop_path;
+    } else {
+      const show = await tmdbCircuitBreaker.execute(() => getTVShow(tmdbId));
+      if (!show) {
+        return { success: false, error: "TV show not found on TMDB" };
+      }
+      const year = extractYear(show.first_air_date);
+      name = year ? `${show.name} (${year})` : show.name;
+      description = truncateOverview(show.overview);
+      posterPath = show.poster_path;
+      backdropPath = show.backdrop_path;
+    }
+
+    return {
+      success: true,
+      data: {
+        name,
+        description,
+        posterUrl: getPosterUrl(posterPath, "w342"),
+        backdropUrl: getBackdropUrl(backdropPath, "w780"),
+        posterPath,
+        backdropPath,
+      },
+    };
+  } catch (error) {
+    logger.error({ error, tmdbId }, "Failed to fetch TMDB preview");
+    return { success: false, error: "Failed to fetch preview" };
+  }
+}
+
+/**
+ * Fetches all available images for a movie or TV show.
+ * Returns posters and backdrops sorted by vote average for selection grids.
+ *
+ * @param tmdbId - TMDB ID
+ * @param mediaType - "movie" or "tv"
+ * @returns Images collection or error
+ */
+export async function getImagesAction(
+  tmdbId: number,
+  mediaType: "movie" | "tv"
+): Promise<ActionResult<TMDBImages>> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  if (!isTMDBConfigured()) {
+    return { success: false, error: "TMDB integration not configured" };
+  }
+
+  const rateLimitResult = await checkRateLimit("tmdbImages");
+  if (rateLimitResult) {
+    return { success: false, error: rateLimitResult.error };
+  }
+
+  try {
+    const images = await tmdbCircuitBreaker.execute(() =>
+      mediaType === "movie" ? getMovieImages(tmdbId) : getTVShowImages(tmdbId)
+    );
+
+    if (!images) {
+      return { success: false, error: "Images not found" };
+    }
+
+    return { success: true, data: images };
+  } catch (error) {
+    logger.error({ error, tmdbId, mediaType }, "Failed to fetch TMDB images");
+    return { success: false, error: "Failed to fetch images" };
+  }
+}
+
+/**
+ * Fetches all seasons for a TV show.
+ * Used by EpisodePicker to display season list with episode counts.
+ *
+ * @param tvId - TMDB TV show ID
+ * @returns Array of season summaries or error
+ */
+export async function getSeasonsAction(
+  tvId: number
+): Promise<ActionResult<TMDBSeasonSummary[]>> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  if (!isTMDBConfigured()) {
+    return { success: false, error: "TMDB integration not configured" };
+  }
+
+  const rateLimitResult = await checkRateLimit("tmdbPreview");
+  if (rateLimitResult) {
+    return { success: false, error: rateLimitResult.error };
+  }
+
+  try {
+    const seasons = await tmdbCircuitBreaker.execute(() => getTVSeasons(tvId));
+
+    if (!seasons) {
+      return { success: false, error: "Seasons not found" };
+    }
+
+    return { success: true, data: seasons };
+  } catch (error) {
+    logger.error({ error, tvId }, "Failed to fetch TV seasons");
+    return { success: false, error: "Failed to fetch seasons" };
+  }
+}
+
+/**
+ * Fetches all episodes for a specific season.
+ * Used by EpisodePicker to display episode list.
+ *
+ * @param tvId - TMDB TV show ID
+ * @param seasonNumber - Season number (0 for specials, 1+ for numbered seasons)
+ * @returns Array of episodes or error
+ */
+export async function getEpisodesAction(
+  tvId: number,
+  seasonNumber: number
+): Promise<ActionResult<TMDBEpisode[]>> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  if (!isTMDBConfigured()) {
+    return { success: false, error: "TMDB integration not configured" };
+  }
+
+  const rateLimitResult = await checkRateLimit("tmdbPreview");
+  if (rateLimitResult) {
+    return { success: false, error: rateLimitResult.error };
+  }
+
+  try {
+    const episodes = await tmdbCircuitBreaker.execute(() =>
+      getTVEpisodes(tvId, seasonNumber)
+    );
+
+    if (!episodes) {
+      return { success: false, error: "Episodes not found" };
+    }
+
+    return { success: true, data: episodes };
+  } catch (error) {
+    logger.error({ error, tvId, seasonNumber }, "Failed to fetch TV episodes");
+    return { success: false, error: "Failed to fetch episodes" };
+  }
+}
+
+/**
+ * Preview data for episode metadata confirmation.
+ * Similar to MetadataPreview but for episode-specific data.
+ */
+export interface EpisodeMetadataPreview {
+  /** Formatted episode title (e.g., "S01E01 - Pilot") */
+  name: string;
+  /** Episode overview/description */
+  description: string;
+  /** Full still URL for preview thumbnail */
+  stillUrl: string | null;
+  /** Raw still path for download */
+  stillPath: string | null;
+  /** Season number */
+  seasonNumber: number;
+  /** Episode number */
+  episodeNumber: number;
+}
+
+/**
+ * Fetches episode metadata preview for confirmation dialog.
+ * Returns formatted episode name, description, and still image URL.
+ *
+ * @param tvId - TMDB TV show ID
+ * @param seasonNumber - Season number
+ * @param episodeNumber - Episode number
+ * @returns Episode preview data or error
+ */
+export async function getEpisodePreviewAction(
+  tvId: number,
+  seasonNumber: number,
+  episodeNumber: number
+): Promise<ActionResult<EpisodeMetadataPreview>> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  if (!isTMDBConfigured()) {
+    return { success: false, error: "TMDB integration not configured" };
+  }
+
+  const rateLimitResult = await checkRateLimit("tmdbPreview");
+  if (rateLimitResult) {
+    return { success: false, error: rateLimitResult.error };
+  }
+
+  try {
+    const episode = await tmdbCircuitBreaker.execute(() =>
+      getEpisodeDetails(tvId, seasonNumber, episodeNumber)
+    );
+
+    if (!episode) {
+      return { success: false, error: "Episode not found on TMDB" };
+    }
+
+    // Format episode title: "S01E01 - Episode Name"
+    const seasonStr = String(seasonNumber).padStart(2, "0");
+    const episodeStr = String(episodeNumber).padStart(2, "0");
+    const name = `S${seasonStr}E${episodeStr} - ${episode.name}`;
+
+    return {
+      success: true,
+      data: {
+        name,
+        description: truncateOverview(episode.overview || ""),
+        stillUrl: getStillUrl(episode.still_path, "w780"),
+        stillPath: episode.still_path,
+        seasonNumber,
+        episodeNumber,
+      },
+    };
+  } catch (error) {
+    logger.error(
+      { error, tvId, seasonNumber, episodeNumber },
+      "Failed to fetch episode preview"
+    );
+    return { success: false, error: "Failed to fetch episode preview" };
   }
 }

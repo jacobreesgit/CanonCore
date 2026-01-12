@@ -28,6 +28,8 @@ interface SortableGridItemProps extends Omit<GridItemProps, "handleProps"> {
   fileCounts?: FileCounts;
   /** Number of child items (subfolders). */
   childCount?: number;
+  /** Whether user has Google Drive connected. */
+  hasDriveConnection?: boolean;
 }
 
 /**
@@ -52,6 +54,7 @@ export function SortableGridItem({
   driveFileId,
   fileCounts,
   childCount,
+  hasDriveConnection = false,
   ...props
 }: SortableGridItemProps) {
   const {
@@ -75,6 +78,7 @@ export function SortableGridItem({
       showAddChild={false}
       onSettings={onSettings}
       onDelete={onDelete}
+      hasDriveConnection={hasDriveConnection}
     >
       <GridItem
         ref={setNodeRef}

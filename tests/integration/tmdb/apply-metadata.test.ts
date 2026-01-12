@@ -107,6 +107,7 @@ describe("TMDB apply metadata integration", () => {
       overview:
         "Framed in the 1940s for the double murder of his wife and her lover, upstanding banker Andy Dufresne begins a new life at the Shawshank prison.",
       poster_path: "/poster.jpg",
+      backdrop_path: "/backdrop.jpg",
       release_date: "1994-09-23",
     });
 
@@ -138,6 +139,7 @@ describe("TMDB apply metadata integration", () => {
       overview:
         "A high school chemistry teacher diagnosed with inoperable lung cancer turns to manufacturing and selling methamphetamine.",
       poster_path: "/bb-poster.jpg",
+      backdrop_path: "/bb-backdrop.jpg",
       first_air_date: "2008-01-20",
       number_of_seasons: 5,
     });
@@ -214,6 +216,7 @@ describe("TMDB apply metadata integration", () => {
       title: "The Shawshank Redemption",
       overview: "Test",
       poster_path: null,
+      backdrop_path: null,
       release_date: "1994-09-23",
     });
 
@@ -250,6 +253,7 @@ describe("TMDB apply metadata integration", () => {
       title: "The Shawshank Redemption",
       overview: "Test",
       poster_path: null,
+      backdrop_path: null,
       release_date: "1994-09-23",
     });
 
@@ -279,6 +283,7 @@ describe("TMDB apply metadata integration", () => {
       title: "Upcoming Film",
       overview: "A movie without a release date.",
       poster_path: null,
+      backdrop_path: null,
       release_date: "",
     });
 
@@ -311,6 +316,7 @@ describe("TMDB apply metadata integration", () => {
       title: "Verbose Film",
       overview: longOverview,
       poster_path: null,
+      backdrop_path: null,
       release_date: "2023-01-01",
     });
 

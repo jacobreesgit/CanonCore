@@ -36,6 +36,8 @@ interface SortableGridProps {
   /** Opens the settings dialog for an item */
   onOpenSettings?(id: string): void;
   onDeleteItem?(id: string): Promise<void>;
+  /** Whether user has Google Drive connected. */
+  hasDriveConnection?: boolean;
 }
 
 /**
@@ -54,6 +56,7 @@ export function SortableGrid({
   onItemClick,
   onOpenSettings,
   onDeleteItem,
+  hasDriveConnection = false,
 }: SortableGridProps) {
   const [items, setItems] = useState(defaultItems);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
@@ -130,6 +133,7 @@ export function SortableGrid({
               fileCounts={item.fileCounts}
               childCount={item.childCount}
               showDescription={false}
+              hasDriveConnection={hasDriveConnection}
             />
           ))}
         </div>
