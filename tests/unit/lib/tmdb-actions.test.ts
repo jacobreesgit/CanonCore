@@ -7,6 +7,9 @@ import {
   searchMediaAction,
   applyMetadataAction,
   isTMDBAvailable,
+  getSeasonsAction,
+  getEpisodesAction,
+  getEpisodePreviewAction,
 } from "@/lib/tmdb-actions";
 
 // Mock dependencies
@@ -21,7 +24,14 @@ vi.mock("@/lib/tmdb-client", () => ({
   searchMedia: vi.fn(),
   getMovie: vi.fn(),
   getTVShow: vi.fn(),
+  getTVSeasons: vi.fn(),
+  getTVEpisodes: vi.fn(),
+  getEpisodeDetails: vi.fn(),
+  getStillUrl: vi.fn((p: string | null) =>
+    p ? `https://image.tmdb.org/t/p/w300${p}` : null
+  ),
   downloadPoster: vi.fn(),
+  downloadBackdrop: vi.fn(),
   extractYear: vi.fn((d: string) => d?.split("-")[0] || ""),
   truncateOverview: vi.fn((t: string) => t?.slice(0, 200) || ""),
   isTMDBConfigured: vi.fn(() => true),
@@ -45,7 +55,11 @@ import {
   searchMedia,
   getMovie,
   getTVShow,
+  getTVSeasons,
+  getTVEpisodes,
+  getEpisodeDetails,
   downloadPoster,
+  downloadBackdrop,
   isTMDBConfigured,
 } from "@/lib/tmdb-client";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -89,6 +103,7 @@ describe("tmdb-actions", () => {
           title: "Breaking Bad",
           overview: "A chemistry teacher...",
           posterPath: "/poster.jpg",
+          backdropPath: "/backdrop.jpg",
           year: "2008",
         },
       ]);
@@ -165,9 +180,11 @@ describe("tmdb-actions", () => {
         title: "The Shawshank Redemption",
         overview: "A long description...",
         poster_path: "/poster.jpg",
+        backdrop_path: "/backdrop.jpg",
         release_date: "1994-09-23",
       });
       vi.mocked(downloadPoster).mockResolvedValue(Buffer.from([1, 2, 3]));
+      vi.mocked(downloadBackdrop).mockResolvedValue(Buffer.from([4, 5, 6]));
       vi.mocked(uploadBuffer).mockResolvedValue({
         success: true,
         data: { driveFileId: "drive-123" },
@@ -248,6 +265,7 @@ describe("tmdb-actions", () => {
         name: "Breaking Bad",
         overview: "A chemistry teacher...",
         poster_path: "/bb.jpg",
+        backdrop_path: "/bb-backdrop.jpg",
         first_air_date: "2008-01-20",
         number_of_seasons: 5,
       });
@@ -267,7 +285,7 @@ describe("tmdb-actions", () => {
     it("updates existing artwork instead of creating duplicate", async () => {
       vi.mocked(prisma.item.findUnique).mockResolvedValue({
         ...mockItem,
-        files: [{ id: "existing-artwork-id" }],
+        files: [{ id: "existing-artwork-id", isPrimary: true, isHero: false }],
       } as never);
 
       await applyMetadataAction("item-1", 278, "movie");
@@ -279,7 +297,7 @@ describe("tmdb-actions", () => {
           driveFileId: "drive-123",
         }),
       });
-      expect(prisma.itemFile.create).not.toHaveBeenCalled();
+      // Note: backdrop still creates new file since there's no existing hero
     });
 
     it("returns error when movie not found on TMDB", async () => {
@@ -337,6 +355,325 @@ describe("tmdb-actions", () => {
       // Should still succeed - poster is optional
       expect(result.success).toBe(true);
       expect(prisma.item.update).toHaveBeenCalled();
+    });
+  });
+
+  describe("getSeasonsAction", () => {
+    const mockSeasons = [
+      {
+        id: 1,
+        season_number: 1,
+        name: "Season 1",
+        overview: "First season",
+        poster_path: "/s1.jpg",
+        episode_count: 10,
+        air_date: "2020-01-01",
+      },
+      {
+        id: 2,
+        season_number: 2,
+        name: "Season 2",
+        overview: "Second season",
+        poster_path: null,
+        episode_count: 8,
+        air_date: "2021-01-01",
+      },
+    ];
+
+    it("returns seasons for authenticated user", async () => {
+      vi.mocked(getTVSeasons).mockResolvedValue(mockSeasons);
+
+      const result = await getSeasonsAction(1396);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toHaveLength(2);
+        expect(result.data?.[0].name).toBe("Season 1");
+      }
+    });
+
+    it("requires authentication", async () => {
+      vi.mocked(auth).mockResolvedValue(null as never);
+
+      const result = await getSeasonsAction(1396);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Not authenticated");
+      }
+    });
+
+    it("checks rate limit", async () => {
+      vi.mocked(checkRateLimit).mockResolvedValue({
+        error: "Too many attempts. Please try again later.",
+      });
+
+      const result = await getSeasonsAction(1396);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toContain("Too many attempts");
+      }
+    });
+
+    it("returns error when TMDB not configured", async () => {
+      vi.mocked(isTMDBConfigured).mockReturnValue(false);
+
+      const result = await getSeasonsAction(1396);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("TMDB integration not configured");
+      }
+    });
+
+    it("returns error when seasons not found", async () => {
+      vi.mocked(getTVSeasons).mockResolvedValue(null);
+
+      const result = await getSeasonsAction(999999);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Seasons not found");
+      }
+    });
+
+    it("handles fetch errors", async () => {
+      vi.mocked(getTVSeasons).mockRejectedValue(new Error("Network error"));
+
+      const result = await getSeasonsAction(1396);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Failed to fetch seasons");
+      }
+    });
+  });
+
+  describe("getEpisodesAction", () => {
+    const mockEpisodes = [
+      {
+        id: 101,
+        episode_number: 1,
+        name: "Pilot",
+        overview: "First episode",
+        still_path: "/ep1.jpg",
+      },
+      {
+        id: 102,
+        episode_number: 2,
+        name: "Second Episode",
+        overview: "Second episode",
+        still_path: null,
+      },
+    ];
+
+    it("returns episodes for authenticated user", async () => {
+      vi.mocked(getTVEpisodes).mockResolvedValue(mockEpisodes);
+
+      const result = await getEpisodesAction(1396, 1);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toHaveLength(2);
+        expect(result.data?.[0].name).toBe("Pilot");
+      }
+    });
+
+    it("passes correct tvId and season number", async () => {
+      vi.mocked(getTVEpisodes).mockResolvedValue(mockEpisodes);
+
+      await getEpisodesAction(1396, 3);
+
+      expect(getTVEpisodes).toHaveBeenCalledWith(1396, 3);
+    });
+
+    it("requires authentication", async () => {
+      vi.mocked(auth).mockResolvedValue(null as never);
+
+      const result = await getEpisodesAction(1396, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Not authenticated");
+      }
+    });
+
+    it("checks rate limit", async () => {
+      vi.mocked(checkRateLimit).mockResolvedValue({
+        error: "Too many attempts. Please try again later.",
+      });
+
+      const result = await getEpisodesAction(1396, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toContain("Too many attempts");
+      }
+    });
+
+    it("returns error when TMDB not configured", async () => {
+      vi.mocked(isTMDBConfigured).mockReturnValue(false);
+
+      const result = await getEpisodesAction(1396, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("TMDB integration not configured");
+      }
+    });
+
+    it("returns error when episodes not found", async () => {
+      vi.mocked(getTVEpisodes).mockResolvedValue(null);
+
+      const result = await getEpisodesAction(1396, 99);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Episodes not found");
+      }
+    });
+
+    it("handles fetch errors", async () => {
+      vi.mocked(getTVEpisodes).mockRejectedValue(new Error("Network error"));
+
+      const result = await getEpisodesAction(1396, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Failed to fetch episodes");
+      }
+    });
+  });
+
+  describe("getEpisodePreviewAction", () => {
+    const mockEpisode = {
+      id: 62085,
+      episode_number: 1,
+      season_number: 1,
+      name: "Pilot",
+      overview: "A chemistry teacher diagnosed with cancer...",
+      still_path: "/pilot.jpg",
+      air_date: "2008-01-20",
+      runtime: 58,
+      vote_average: 8.2,
+    };
+
+    it("returns episode preview for authenticated user", async () => {
+      vi.mocked(getEpisodeDetails).mockResolvedValue(mockEpisode);
+
+      const result = await getEpisodePreviewAction(1396, 1, 1);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data?.name).toBe("S01E01 - Pilot");
+        expect(result.data?.seasonNumber).toBe(1);
+        expect(result.data?.episodeNumber).toBe(1);
+      }
+    });
+
+    it("formats episode name with padded numbers", async () => {
+      vi.mocked(getEpisodeDetails).mockResolvedValue({
+        ...mockEpisode,
+        season_number: 5,
+        episode_number: 16,
+        name: "Felina",
+      });
+
+      const result = await getEpisodePreviewAction(1396, 5, 16);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data?.name).toBe("S05E16 - Felina");
+      }
+    });
+
+    it("includes still URL when available", async () => {
+      vi.mocked(getEpisodeDetails).mockResolvedValue(mockEpisode);
+
+      const result = await getEpisodePreviewAction(1396, 1, 1);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data?.stillUrl).toBe(
+          "https://image.tmdb.org/t/p/w300/pilot.jpg"
+        );
+        expect(result.data?.stillPath).toBe("/pilot.jpg");
+      }
+    });
+
+    it("handles null still path", async () => {
+      vi.mocked(getEpisodeDetails).mockResolvedValue({
+        ...mockEpisode,
+        still_path: null,
+      });
+
+      const result = await getEpisodePreviewAction(1396, 1, 1);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data?.stillUrl).toBeNull();
+        expect(result.data?.stillPath).toBeNull();
+      }
+    });
+
+    it("requires authentication", async () => {
+      vi.mocked(auth).mockResolvedValue(null as never);
+
+      const result = await getEpisodePreviewAction(1396, 1, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Not authenticated");
+      }
+    });
+
+    it("checks rate limit", async () => {
+      vi.mocked(checkRateLimit).mockResolvedValue({
+        error: "Too many attempts. Please try again later.",
+      });
+
+      const result = await getEpisodePreviewAction(1396, 1, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toContain("Too many attempts");
+      }
+    });
+
+    it("returns error when TMDB not configured", async () => {
+      vi.mocked(isTMDBConfigured).mockReturnValue(false);
+
+      const result = await getEpisodePreviewAction(1396, 1, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("TMDB integration not configured");
+      }
+    });
+
+    it("returns error when episode not found", async () => {
+      vi.mocked(getEpisodeDetails).mockResolvedValue(null);
+
+      const result = await getEpisodePreviewAction(1396, 1, 99);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Episode not found on TMDB");
+      }
+    });
+
+    it("handles fetch errors", async () => {
+      vi.mocked(getEpisodeDetails).mockRejectedValue(
+        new Error("Network error")
+      );
+
+      const result = await getEpisodePreviewAction(1396, 1, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Failed to fetch episode preview");
+      }
     });
   });
 });

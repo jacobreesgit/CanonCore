@@ -565,6 +565,7 @@ export function ItemsView({
             onItemClick={handleItemClick}
             onOpenSettings={handleOpenSettings}
             onDeleteItem={handleDeleteItem}
+            hasDriveConnection={hasDriveConnection}
           />
         ) : (
           <Grid
@@ -572,6 +573,7 @@ export function ItemsView({
             onItemClick={handleItemClick}
             onOpenSettings={handleOpenSettings}
             onDeleteItem={handleDeleteItem}
+            hasDriveConnection={hasDriveConnection}
           />
         )
       ) : isEditing ? (
@@ -582,6 +584,7 @@ export function ItemsView({
           onOpenSettings={handleOpenSettings}
           onDeleteItem={handleDeleteItem}
           onAddChild={handleAddChild}
+          hasDriveConnection={hasDriveConnection}
         />
       ) : (
         <Tree
@@ -590,6 +593,7 @@ export function ItemsView({
           onOpenSettings={handleOpenSettings}
           onDeleteItem={handleDeleteItem}
           onAddChild={handleAddChild}
+          hasDriveConnection={hasDriveConnection}
         />
       )}
 
@@ -633,6 +637,7 @@ export function ItemsView({
         open={addItemOpen}
         onOpenChange={setAddItemOpen}
         onAdd={handleCreateItem}
+        hasDriveConnection={hasDriveConnection}
       />
     </div>
   );

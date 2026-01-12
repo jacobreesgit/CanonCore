@@ -12,19 +12,89 @@ import { AddItemDialog } from "@/components/items/add-item-dialog";
 vi.mock("@/lib/tmdb-actions", () => ({
   searchMediaAction: vi.fn(),
   isTMDBAvailable: vi.fn(),
+  getMetadataPreviewAction: vi.fn(),
+  getImagesAction: vi.fn(),
+  getEpisodePreviewAction: vi.fn(),
 }));
 
-import { searchMediaAction, isTMDBAvailable } from "@/lib/tmdb-actions";
+import {
+  searchMediaAction,
+  isTMDBAvailable,
+  getMetadataPreviewAction,
+  getImagesAction,
+  getEpisodePreviewAction,
+} from "@/lib/tmdb-actions";
 
 describe("AddItemDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Clear localStorage to reset tab persistence between tests
+    localStorage.clear();
     vi.mocked(isTMDBAvailable).mockResolvedValue(true);
     vi.mocked(searchMediaAction).mockResolvedValue({
       success: true,
       data: [],
     });
+    vi.mocked(getMetadataPreviewAction).mockResolvedValue({
+      success: true,
+      data: {
+        name: "Test Movie (2023)",
+        description: "Test description",
+        posterUrl: "https://image.tmdb.org/t/p/w185/poster.jpg",
+        backdropUrl: "https://image.tmdb.org/t/p/w780/backdrop.jpg",
+        posterPath: "/poster.jpg",
+        backdropPath: "/backdrop.jpg",
+      },
+    });
+    vi.mocked(getImagesAction).mockResolvedValue({
+      success: true,
+      data: {
+        posters: [
+          {
+            file_path: "/poster.jpg",
+            vote_average: 8.5,
+            iso_639_1: "en",
+            width: 500,
+            height: 750,
+          },
+        ],
+        backdrops: [
+          {
+            file_path: "/backdrop.jpg",
+            vote_average: 9.0,
+            iso_639_1: null,
+            width: 1920,
+            height: 1080,
+          },
+        ],
+      },
+    });
+    vi.mocked(getEpisodePreviewAction).mockResolvedValue({
+      success: true,
+      data: {
+        name: "Episode 1 - Pilot",
+        description: "The first episode of the series.",
+        stillUrl: null,
+        stillPath: null,
+        seasonNumber: 1,
+        episodeNumber: 1,
+      },
+    });
   });
+
+  /** Helper to complete wizard: Next (step 1) → Next (step 2) → Apply (step 3) */
+  const completeWizard = async (user: ReturnType<typeof userEvent.setup>) => {
+    // Wait for wizard to appear
+    await waitFor(() => {
+      expect(screen.getByText("Apply Metadata")).toBeInTheDocument();
+    });
+    // Step 1 → Step 2
+    await user.click(screen.getByRole("button", { name: /next/i }));
+    // Step 2 → Step 3
+    await user.click(screen.getByRole("button", { name: /next/i }));
+    // Step 3 → Complete
+    await user.click(screen.getByRole("button", { name: /apply/i }));
+  };
 
   it("renders dialog when open", async () => {
     render(
@@ -105,7 +175,12 @@ describe("AddItemDialog", () => {
     await user.click(screen.getByRole("button", { name: /^create$/i }));
 
     await waitFor(() => {
-      expect(onAdd).toHaveBeenCalledWith("New Item", undefined);
+      expect(onAdd).toHaveBeenCalledWith(
+        "New Item",
+        undefined,
+        undefined,
+        undefined
+      );
     });
   });
 
@@ -166,7 +241,12 @@ describe("AddItemDialog", () => {
     await user.click(screen.getByRole("button", { name: /^create$/i }));
 
     await waitFor(() => {
-      expect(onAdd).toHaveBeenCalledWith("Custom Item Name", undefined);
+      expect(onAdd).toHaveBeenCalledWith(
+        "Custom Item Name",
+        undefined,
+        undefined,
+        undefined
+      );
     });
   });
 
@@ -316,7 +396,12 @@ describe("AddItemDialog", () => {
     await user.click(screen.getByRole("button", { name: /^create$/i }));
 
     await waitFor(() => {
-      expect(onAdd).toHaveBeenCalledWith("New Item", "My item description");
+      expect(onAdd).toHaveBeenCalledWith(
+        "New Item",
+        "My item description",
+        undefined,
+        undefined
+      );
     });
   });
 
@@ -338,7 +423,12 @@ describe("AddItemDialog", () => {
     await user.click(screen.getByRole("button", { name: /^create$/i }));
 
     await waitFor(() => {
-      expect(onAdd).toHaveBeenCalledWith("New Item", "Trimmed description");
+      expect(onAdd).toHaveBeenCalledWith(
+        "New Item",
+        "Trimmed description",
+        undefined,
+        undefined
+      );
     });
   });
 
@@ -367,18 +457,33 @@ describe("AddItemDialog", () => {
 
   it("auto-fills form when TMDB result is selected", async () => {
     const user = userEvent.setup();
+    // Use a movie to test wizard flow directly (TV shows go through EpisodePicker first)
     vi.mocked(searchMediaAction).mockResolvedValue({
       success: true,
       data: [
         {
-          id: 1396,
-          mediaType: "tv",
-          title: "Breaking Bad",
-          overview: "A chemistry teacher turns to crime.",
+          id: 550,
+          mediaType: "movie",
+          title: "Fight Club",
+          overview:
+            "An insomniac office worker forms an underground fight club.",
           posterPath: "/poster.jpg",
-          year: "2008",
+          backdropPath: "/backdrop.jpg",
+          year: "1999",
         },
       ],
+    });
+    vi.mocked(getMetadataPreviewAction).mockResolvedValue({
+      success: true,
+      data: {
+        name: "Fight Club (1999)",
+        description:
+          "An insomniac office worker forms an underground fight club.",
+        posterUrl: "https://image.tmdb.org/t/p/w185/poster.jpg",
+        backdropUrl: "https://image.tmdb.org/t/p/w780/backdrop.jpg",
+        posterPath: "/poster.jpg",
+        backdropPath: "/backdrop.jpg",
+      },
     });
 
     render(
@@ -394,18 +499,23 @@ describe("AddItemDialog", () => {
     });
 
     const input = screen.getByRole("combobox");
-    await user.type(input, "Breaking");
+    await user.type(input, "Fight");
 
     await waitFor(() => {
-      expect(screen.getByText("Breaking Bad")).toBeInTheDocument();
+      expect(screen.getByText("Fight Club")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("Breaking Bad"));
+    await user.click(screen.getByText("Fight Club"));
+
+    // Complete the 3-step wizard
+    await completeWizard(user);
 
     // Verify form fields were auto-filled
-    expect(input).toHaveValue("Breaking Bad (2008)");
+    await waitFor(() => {
+      expect(input).toHaveValue("Fight Club (1999)");
+    });
     expect(screen.getByPlaceholderText(/add a short description/i)).toHaveValue(
-      "A chemistry teacher turns to crime."
+      "An insomniac office worker forms an underground fight club."
     );
   });
 
@@ -421,9 +531,21 @@ describe("AddItemDialog", () => {
           title: "The Shawshank Redemption",
           overview: "Two imprisoned men bond over a number of years.",
           posterPath: "/poster.jpg",
+          backdropPath: "/backdrop.jpg",
           year: "1994",
         },
       ],
+    });
+    vi.mocked(getMetadataPreviewAction).mockResolvedValue({
+      success: true,
+      data: {
+        name: "The Shawshank Redemption (1994)",
+        description: "Two imprisoned men bond over a number of years.",
+        posterUrl: "https://image.tmdb.org/t/p/w185/poster.jpg",
+        backdropUrl: "https://image.tmdb.org/t/p/w780/backdrop.jpg",
+        posterPath: "/poster.jpg",
+        backdropPath: "/backdrop.jpg",
+      },
     });
 
     render(<AddItemDialog open={true} onOpenChange={() => {}} onAdd={onAdd} />);
@@ -439,12 +561,27 @@ describe("AddItemDialog", () => {
     });
 
     await user.click(screen.getByText("The Shawshank Redemption"));
+
+    // Complete the 3-step wizard
+    await completeWizard(user);
+
+    // Now click Create
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /^create$/i })
+      ).not.toBeDisabled();
+    });
     await user.click(screen.getByRole("button", { name: /^create$/i }));
 
     await waitFor(() => {
       expect(onAdd).toHaveBeenCalledWith(
         "The Shawshank Redemption (1994)",
-        "Two imprisoned men bond over a number of years."
+        "Two imprisoned men bond over a number of years.",
+        undefined,
+        expect.objectContaining({
+          tmdbId: 278,
+          mediaType: "movie",
+        })
       );
     });
   });
@@ -460,9 +597,21 @@ describe("AddItemDialog", () => {
           title: "Unknown Movie",
           overview: "No year available.",
           posterPath: null,
+          backdropPath: null,
           year: "",
         },
       ],
+    });
+    vi.mocked(getMetadataPreviewAction).mockResolvedValue({
+      success: true,
+      data: {
+        name: "Unknown Movie",
+        description: "No year available.",
+        posterUrl: null,
+        backdropUrl: null,
+        posterPath: null,
+        backdropPath: null,
+      },
     });
 
     render(
@@ -485,7 +634,12 @@ describe("AddItemDialog", () => {
 
     await user.click(screen.getByText("Unknown Movie"));
 
-    expect(screen.getByRole("combobox")).toHaveValue("Unknown Movie");
+    // Complete the 3-step wizard
+    await completeWizard(user);
+
+    await waitFor(() => {
+      expect(screen.getByRole("combobox")).toHaveValue("Unknown Movie");
+    });
   });
 
   it("falls back to manual input when TMDB not configured", async () => {
@@ -504,5 +658,259 @@ describe("AddItemDialog", () => {
         screen.getByPlaceholderText(/enter name manually/i)
       ).toBeInTheDocument();
     });
+  });
+});
+
+describe("AddItemDialog - Categorized File Uploads", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Clear localStorage to reset tab persistence between tests
+    localStorage.clear();
+    vi.mocked(isTMDBAvailable).mockResolvedValue(true);
+    vi.mocked(searchMediaAction).mockResolvedValue({
+      success: true,
+      data: [],
+    });
+    vi.mocked(getMetadataPreviewAction).mockResolvedValue({
+      success: true,
+      data: {
+        name: "Test Movie (2023)",
+        description: "Test description",
+        posterUrl: "https://image.tmdb.org/t/p/w185/poster.jpg",
+        backdropUrl: "https://image.tmdb.org/t/p/w780/backdrop.jpg",
+        posterPath: "/poster.jpg",
+        backdropPath: "/backdrop.jpg",
+      },
+    });
+    vi.mocked(getImagesAction).mockResolvedValue({
+      success: true,
+      data: { posters: [], backdrops: [] },
+    });
+    vi.mocked(getEpisodePreviewAction).mockResolvedValue({
+      success: true,
+      data: {
+        name: "Episode 1 - Pilot",
+        description: "The first episode of the series.",
+        stillUrl: null,
+        stillPath: null,
+        seasonNumber: 1,
+        episodeNumber: 1,
+      },
+    });
+  });
+
+  it("renders Files tab with categorized dropzones when Drive connected", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <AddItemDialog
+        open={true}
+        onOpenChange={() => {}}
+        onAdd={async () => undefined}
+        hasDriveConnection={true}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("combobox")).toBeInTheDocument();
+    });
+
+    // Click the Files tab
+    await user.click(screen.getByRole("tab", { name: /files/i }));
+
+    // Verify all 4 file type sections are rendered
+    expect(screen.getByText("Primary Media")).toBeInTheDocument();
+    expect(screen.getByText("Primary Artwork")).toBeInTheDocument();
+    expect(screen.getByText("Hero Image")).toBeInTheDocument();
+    expect(screen.getByText("Default Subtitle")).toBeInTheDocument();
+
+    // Verify descriptions are shown
+    expect(
+      screen.getByText("The file that plays when clicking on this item.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("The image used as the thumbnail.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("The image used as the banner background.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("The subtitle track that loads by default.")
+    ).toBeInTheDocument();
+  });
+
+  it("shows disabled state for all categories when Drive not connected", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <AddItemDialog
+        open={true}
+        onOpenChange={() => {}}
+        onAdd={async () => undefined}
+        hasDriveConnection={false}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("combobox")).toBeInTheDocument();
+    });
+
+    // Click the Files tab
+    await user.click(screen.getByRole("tab", { name: /files/i }));
+
+    // Should show 4 disabled messages (one for each category)
+    const disabledMessages = screen.getAllByText(
+      /connect google drive in settings to enable file uploads/i
+    );
+    expect(disabledMessages).toHaveLength(4);
+  });
+
+  it("clears all queued files when dialog reopens", async () => {
+    const { rerender } = render(
+      <AddItemDialog
+        open={false}
+        onOpenChange={() => {}}
+        onAdd={async () => undefined}
+        hasDriveConnection={true}
+      />
+    );
+
+    // Open dialog
+    rerender(
+      <AddItemDialog
+        open={true}
+        onOpenChange={() => {}}
+        onAdd={async () => undefined}
+        hasDriveConnection={true}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("combobox")).toBeInTheDocument();
+    });
+
+    // Close and reopen
+    rerender(
+      <AddItemDialog
+        open={false}
+        onOpenChange={() => {}}
+        onAdd={async () => undefined}
+        hasDriveConnection={true}
+      />
+    );
+    rerender(
+      <AddItemDialog
+        open={true}
+        onOpenChange={() => {}}
+        onAdd={async () => undefined}
+        hasDriveConnection={true}
+      />
+    );
+
+    // Queued files should be cleared (no "files queued" text visible)
+    expect(screen.queryByText(/files queued/i)).not.toBeInTheDocument();
+  });
+
+  it("creates item with no files when queues are empty", async () => {
+    const user = userEvent.setup();
+    const onAdd = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <AddItemDialog
+        open={true}
+        onOpenChange={() => {}}
+        onAdd={onAdd}
+        hasDriveConnection={true}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("combobox")).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByRole("combobox"), "Test Item");
+    await user.click(screen.getByRole("button", { name: /^create$/i }));
+
+    await waitFor(() => {
+      expect(onAdd).toHaveBeenCalledWith(
+        "Test Item",
+        undefined,
+        undefined, // No files when queues are empty
+        undefined
+      );
+    });
+  });
+});
+
+describe("AddItemDialog - File Tab Layout", () => {
+  // These tests verify the Files tab layout
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Clear localStorage to reset tab persistence between tests
+    localStorage.clear();
+    vi.mocked(isTMDBAvailable).mockResolvedValue(true);
+    vi.mocked(searchMediaAction).mockResolvedValue({
+      success: true,
+      data: [],
+    });
+    vi.mocked(getMetadataPreviewAction).mockResolvedValue({
+      success: true,
+      data: {
+        name: "Test Movie (2023)",
+        description: "Test description",
+        posterUrl: "https://image.tmdb.org/t/p/w185/poster.jpg",
+        backdropUrl: "https://image.tmdb.org/t/p/w780/backdrop.jpg",
+        posterPath: "/poster.jpg",
+        backdropPath: "/backdrop.jpg",
+      },
+    });
+    vi.mocked(getImagesAction).mockResolvedValue({
+      success: true,
+      data: { posters: [], backdrops: [] },
+    });
+    vi.mocked(getEpisodePreviewAction).mockResolvedValue({
+      success: true,
+      data: {
+        name: "Episode 1 - Pilot",
+        description: "The first episode of the series.",
+        stillUrl: null,
+        stillPath: null,
+        seasonNumber: 1,
+        episodeNumber: 1,
+      },
+    });
+  });
+
+  it("should render all 4 file type dropzones in Files tab", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <AddItemDialog
+        open={true}
+        onOpenChange={() => {}}
+        onAdd={async () => undefined}
+        hasDriveConnection={true}
+      />
+    );
+
+    // Wait for dialog to be ready
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    // Switch to Files tab
+    await user.click(screen.getByRole("tab", { name: /files/i }));
+
+    // Check that all dropzone prompts are visible
+    expect(
+      screen.getByText(/drop media files or click to browse/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/drop artwork files or click to browse/i)
+    ).toHaveLength(2);
+    expect(
+      screen.getByText(/drop subtitle files or click to browse/i)
+    ).toBeInTheDocument();
   });
 });

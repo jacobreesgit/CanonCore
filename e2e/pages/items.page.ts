@@ -235,7 +235,7 @@ export class ItemsPage {
   async renameItemViaContextMenu(oldName: string, newName: string) {
     await this.openSettingsViaContextMenu(oldName);
     // Find the name input in the settings dialog (label is "Name")
-    await this.page.getByLabel(/^name$/i).fill(newName);
+    await this.page.getByLabel(/item name/i).fill(newName);
     // Click "Save Changes" button (single save for all settings)
     await this.page.getByRole("button", { name: /save changes/i }).click();
     // Wait for success toast
@@ -268,7 +268,7 @@ export class ItemsPage {
     description: string
   ): Promise<void> {
     await this.openSettingsViaContextMenu(itemName);
-    await this.page.getByLabel(/^description$/i).fill(description);
+    await this.page.getByLabel(/description/i).fill(description);
     // Click "Save Changes" button (single save for all settings)
     await this.page.getByRole("button", { name: /save changes/i }).click();
     // Wait for success toast
@@ -283,7 +283,7 @@ export class ItemsPage {
    * Gets the description input value from the settings dialog.
    */
   async getDescriptionFromSettingsDialog(): Promise<string> {
-    return this.page.getByLabel(/^description$/i).inputValue();
+    return this.page.getByLabel(/description/i).inputValue();
   }
 
   /**

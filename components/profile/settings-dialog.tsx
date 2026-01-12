@@ -27,8 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Dropzone, DropzoneEmptyState } from "@/components/ui/dropzone";
+import { Dropzone } from "@/components/ui/dropzone";
 import {
   updateProfile,
   uploadProfileImage,
@@ -337,48 +336,48 @@ export function SettingsDialog({
               <Label className="text-sm font-medium">Profile Picture</Label>
             </div>
 
-            <div className="flex items-center gap-4">
-              <Dropzone
-                accept={{
-                  "image/jpeg": [],
-                  "image/png": [],
-                  "image/webp": [],
-                }}
-                maxSize={1024 * 1024}
-                maxFiles={1}
-                onDrop={handleProfileImageDrop}
-                onError={(error) => toast.error(error.message)}
-                src={profileImage ? [profileImage] : undefined}
-                className="size-16 rounded-full p-0"
-                data-testid="profile-dropzone"
-              >
-                {profileImageSrc ? (
-                  <Avatar className="size-full">
-                    <AvatarImage
-                      src={profileImageSrc}
-                      className="object-cover"
-                    />
-                    <AvatarFallback className="bg-muted text-muted-foreground">
-                      {name?.[0]?.toUpperCase() ?? user.email[0].toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                ) : (
-                  <DropzoneEmptyState className="scale-75" />
-                )}
-              </Dropzone>
-
-              {(user.hasImage || profileImage) && !removeProfile && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRemoveProfileImage}
-                >
-                  <Trash2 className="mr-1.5 size-3.5" />
-                  Remove
-                </Button>
+            <Dropzone
+              accept={{
+                "image/jpeg": [],
+                "image/png": [],
+                "image/webp": [],
+              }}
+              maxSize={1024 * 1024}
+              maxFiles={1}
+              onDrop={handleProfileImageDrop}
+              onError={(error) => toast.error(error.message)}
+              src={profileImage ? [profileImage] : undefined}
+              className="h-24 w-full rounded-lg p-0"
+              data-testid="profile-dropzone"
+            >
+              {profileImageSrc ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={profileImageSrc}
+                  alt="Profile preview"
+                  className="size-full rounded-lg object-cover"
+                />
+              ) : (
+                <div className="flex size-full flex-col items-center justify-center gap-1">
+                  <ImageIcon className="text-muted-foreground/50 size-6" />
+                  <p className="text-muted-foreground text-xs">
+                    Drag and drop or click to upload
+                  </p>
+                </div>
               )}
-            </div>
+            </Dropzone>
+
+            {(user.hasImage || profileImage) && !removeProfile && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleRemoveProfileImage}
+              >
+                <Trash2 className="mr-1.5 size-3.5" />
+                Remove
+              </Button>
+            )}
             <p className="text-muted-foreground text-xs">
               Drag and drop or click to upload. JPEG, PNG, or WebP. Max 1MB.
             </p>

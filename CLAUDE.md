@@ -75,16 +75,23 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── items/                        # Items feature components
 │   │   ├── add-item-dialog.tsx       # Modal dialog for item creation with TMDB search
 │   │   ├── edit-mode-toggle.tsx      # Edit/Done button for reordering mode
-│   │   ├── file-type-combobox.tsx    # Upload file type picker
+│   │   ├── episode-picker.tsx        # TV season/episode selection for TMDB
+│   │   ├── file-type-combobox.tsx    # File type picker with uploadOnly mode for Add dialog
+│   │   ├── hero-selection-step.tsx   # Wizard step for backdrop/hero selection
+│   │   ├── image-selection-grid.tsx  # Grid for selecting TMDB/existing artwork
 │   │   ├── item-context-menu.tsx     # Right-click actions menu
 │   │   ├── item-detail-client.tsx    # Client wrapper with hero and media player
+│   │   ├── item-dialog-tabs.tsx      # Tabbed interface for Add/Edit dialogs
 │   │   ├── item-hero.tsx             # Hero banner with artwork, title, play button
 │   │   ├── item-settings-dialog.tsx  # Settings with file selection and upload
 │   │   ├── item-stats.tsx            # Reusable child/file count stats display
 │   │   ├── items-toolbar.tsx         # Unified toolbar for root and detail pages
 │   │   ├── items-view.tsx            # Main view with tree/grid/edit toggle
 │   │   ├── media-search-combobox.tsx # TMDB search with poster thumbnails
+│   │   ├── metadata-wizard-modal.tsx # 3-step wizard for TMDB metadata application
+│   │   ├── poster-selection-step.tsx # Wizard step for poster selection
 │   │   ├── sync-badge.tsx            # Google Drive sync status indicators
+│   │   ├── title-description-step.tsx # Wizard step for name/description options
 │   │   └── view-toggle.tsx           # Tree/grid view switcher
 │   ├── media/                        # Media playback components
 │   │   ├── media-overlay.tsx         # Full-screen media viewer
@@ -110,7 +117,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   └── utilities.ts              # Tree manipulation helpers
 │   ├── providers/
 │   │   └── theme-provider.tsx        # next-themes provider wrapper
-│   ├── ui/                           # shadcn/ui components + command.tsx, dropzone.tsx, kbd.tsx, password-input.tsx, scroll-area.tsx
+│   ├── ui/                           # shadcn/ui components + checkbox.tsx, command.tsx, dropzone.tsx, kbd.tsx, password-input.tsx, scroll-area.tsx, tabs.tsx
 │   ├── app-sidebar.tsx               # Context-aware navigation sidebar
 │   ├── error-boundary.tsx            # React error boundary for graceful error handling
 │   ├── my-items-providers.tsx        # Client-side providers for protected routes
@@ -179,7 +186,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── source.ts                     # Fumadocs source configuration
 │   ├── tmdb-actions.ts               # TMDB metadata server actions
 │   ├── tmdb-client.ts                # TMDB API client for movie/TV metadata
-│   ├── types.ts                      # Shared TypeScript types (Item, ItemFile, SearchableItem, GoogleDriveConnection)
+│   ├── types.ts                      # Shared TypeScript types (Item, ItemFile, SearchableItem, GoogleDriveConnection, QueuedFile, TMDBMetadataSelection)
 │   ├── upload-utils.ts               # Browser-to-Drive upload utilities
 │   ├── user-actions.ts               # User profile server actions
 │   ├── utils.ts                      # cn() helper
@@ -196,7 +203,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 2.0.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 2.1.0)
     └── plans/                        # Design documents
 ```
 
@@ -251,13 +258,17 @@ pnpm run test:e2e:ui                        # UI mode
 ### TMDB Metadata Integration
 
 - **Search combobox**: MediaSearchCombobox shows poster thumbnails as you type
-- **Auto-fill metadata**: Select a result to apply title (with year), description, and poster
+- **Metadata wizard**: 3-step wizard for selective metadata application (text, poster, hero)
+- **Unified dialogs**: Both Add Item and Item Settings use MediaSearchCombobox for name field
+- **TV episode support**: Season/episode fetching for TV show metadata
+- **Image galleries**: Fetch all posters and backdrops from TMDB for selection
+- **Selective updates**: Choose which fields to update (name, description, poster, backdrop)
 - **Graceful degradation**: Falls back to manual input if TMDB_API_KEY not configured
 - **Circuit breaker**: Protects against TMDB API failures (5 failures, 60s recovery)
-- **Rate limiting**: tmdbSearch rate limit (20/min) prevents abuse
-- **Poster upload**: Downloads poster from TMDB and uploads to Google Drive as hero artwork
-- **Server actions**: `searchMediaAction`, `applyMetadataAction` in `lib/tmdb-actions.ts`
-- **Client**: `lib/tmdb-client.ts` handles API calls with timeout and error handling
+- **Rate limiting**: tmdbSearch, tmdbPreview, tmdbImages rate limits prevent abuse
+- **Artwork uploads**: Downloads posters and backdrops, uploads to Google Drive
+- **Server actions**: `searchMediaAction`, `applyMetadataAction`, `getMetadataPreviewAction`, `getImagesAction`, `getSeasonsAction`, `getEpisodesAction` in `lib/tmdb-actions.ts`
+- **Client**: `lib/tmdb-client.ts` handles API calls with timeout, validation, and error handling
 
 ### Spotlight Search
 
@@ -322,7 +333,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 801 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, seed system
+- 964 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, seed system
 
 ### E2E Testing
 
@@ -332,6 +343,15 @@ pnpm run test:e2e:ui                        # UI mode
 - Fixtures in `e2e/fixtures/` for auth, database, and Google Drive setup
 - Google Drive E2E tests use real test account with refresh token
 - Runs on desktop Chrome and mobile Chrome (iPhone 14)
+
+**Intentionally Skipped Tests:**
+
+| Test                             | File                         | Reason                                                                      |
+| -------------------------------- | ---------------------------- | --------------------------------------------------------------------------- |
+| Google Drive media tests (all 4) | `drive-media.spec.ts:23`     | Skipped on mobile - sync and media playback unreliable in mobile emulation  |
+| Video playback test              | `drive-media.spec.ts:118`    | Dynamic skip if no video file in `GOOGLE_TEST_ROOT_FOLDER_ID/Breaking Bad/` |
+| Video seeking test               | `drive-media.spec.ts:169`    | Dynamic skip if no video file in test folder                                |
+| File Deletion tests (5)          | `items-settings.spec.ts:409` | Skipped if `GOOGLE_TEST_REFRESH_TOKEN` not set                              |
 
 ### Security
 

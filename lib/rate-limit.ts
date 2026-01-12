@@ -68,6 +68,21 @@ export const rateLimiters = {
     limiter: Ratelimit.slidingWindow(30, "1 m"),
     prefix: "ratelimit:tmdb:search",
   }),
+  tmdbPreview: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(20, "1 m"),
+    prefix: "ratelimit:tmdb:preview",
+  }),
+  tmdbBackdrop: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(20, "1 m"),
+    prefix: "ratelimit:tmdb:backdrop",
+  }),
+  tmdbImages: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(15, "1 m"),
+    prefix: "ratelimit:tmdb:images",
+  }),
 };
 
 /**

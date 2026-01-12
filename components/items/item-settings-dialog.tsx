@@ -1,7 +1,7 @@
 /**
- * Unified item settings dialog with single atomic save.
- * Consolidates name, description, and file selections into one save action.
- * Features FileTypeCombobox for file selection with inline upload capability.
+ * Unified item settings dialog with tabbed interface and single atomic save.
+ * Consolidates name, description (Details tab) and file selections (Files tab).
+ * Integrates TMDB metadata confirmation dialog for selective field updates.
  */
 
 "use client";
@@ -24,15 +24,32 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
 import { FileTypeCombobox } from "@/components/items/file-type-combobox";
 import { MediaSearchCombobox } from "@/components/items/media-search-combobox";
+import { ItemDialogTabs } from "@/components/items/item-dialog-tabs";
+import {
+  MetadataWizardModal,
+  type MetadataWizardResult,
+} from "@/components/items/metadata-wizard-modal";
+import {
+  EpisodePicker,
+  type EpisodePickerSelection,
+} from "@/components/items/episode-picker";
+import type {
+  CurrentTextValues,
+  TextPreviewData,
+} from "@/components/items/title-description-step";
+import type { ExistingArtworkFile } from "@/components/items/image-selection-grid";
 import { updateItemSettings } from "@/lib/item-file-actions";
-import { applyMetadataAction } from "@/lib/tmdb-actions";
-import type { TMDBSearchResult } from "@/lib/tmdb-client";
+import {
+  applyMetadataAction,
+  getMetadataPreviewAction,
+  getImagesAction,
+  getEpisodePreviewAction,
+} from "@/lib/tmdb-actions";
+import type { TMDBSearchResult, TMDBImages } from "@/lib/tmdb-client";
 import { toast } from "sonner";
 import type { SerializedItemFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -75,9 +92,9 @@ function findHeroFile(
 }
 
 /**
- * Item settings dialog with single atomic save.
- * Always shows file type comboboxes with upload capability.
- * Tracks dirty state and saves all changes in one transaction.
+ * Item settings dialog with tabbed interface and single atomic save.
+ * Details tab: Name, description, TMDB metadata search.
+ * Files tab: File type comboboxes with upload capability.
  *
  * @param open - Whether dialog is visible
  * @param onOpenChange - Callback for visibility changes
@@ -116,6 +133,18 @@ export function ItemSettingsDialog({
   // Track successful uploads during this dialog session
   const [uploadCount, setUploadCount] = useState(0);
 
+  // TMDB wizard state
+  const [pendingTmdbResult, setPendingTmdbResult] =
+    useState<TMDBSearchResult | null>(null);
+  const [tmdbPreview, setTmdbPreview] = useState<TextPreviewData | null>(null);
+  const [tmdbImages, setTmdbImages] = useState<TMDBImages | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [isLoadingImages, setIsLoadingImages] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
+
+  // Episode picker state (for TV shows)
+  const [showEpisodePicker, setShowEpisodePicker] = useState(false);
+
   // Original values for dirty checking - captured once when dialog opens
   // Uses open state to reset when dialog reopens, but NOT when files change after upload
   const [originalValues, setOriginalValues] = useState(() => ({
@@ -141,6 +170,12 @@ export function ItemSettingsDialog({
           findHeroFile(files.artwork)?.id ?? findPrimaryFile(files.artwork)?.id,
         primarySubtitleId: findPrimaryFile(files.subtitles)?.id,
       });
+      // Reset TMDB state
+      setPendingTmdbResult(null);
+      setTmdbPreview(null);
+      setTmdbImages(null);
+      setShowWizard(false);
+      setShowEpisodePicker(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -161,9 +196,6 @@ export function ItemSettingsDialog({
     setPrimarySubtitleId(findPrimaryFile(files.subtitles)?.id);
   }, [files]);
 
-  // Computed flags
-  const hasMultipleArtwork = files.artwork.length > 1;
-
   // Dirty state detection
   const isDirty = useMemo(() => {
     return (
@@ -183,6 +215,26 @@ export function ItemSettingsDialog({
     primarySubtitleId,
     originalValues,
   ]);
+
+  // Current values for wizard
+  const currentValues: CurrentTextValues = useMemo(
+    () => ({
+      name: item.name,
+      description: item.description,
+    }),
+    [item.name, item.description]
+  );
+
+  // Convert artwork files to ExistingArtworkFile format for wizard
+  const existingArtwork: ExistingArtworkFile[] = useMemo(
+    () =>
+      files.artwork.map((f) => ({
+        id: f.id,
+        filename: f.filename,
+        driveFileId: f.driveFileId,
+      })),
+    [files.artwork]
+  );
 
   /**
    * Resets form to original values.
@@ -305,17 +357,153 @@ export function ItemSettingsDialog({
   }, [onSettingsChange]);
 
   /**
-   * Handles TMDB metadata lookup and application.
-   * Updates item name, description, and uploads poster if available.
+   * Fetches preview data and opens the wizard.
+   * Used for movies directly and for TV shows after episode picker selection.
    */
-  const handleApplyMetadata = useCallback(
-    async (result: TMDBSearchResult) => {
-      setIsApplyingMetadata(true);
+  const fetchPreviewAndOpenWizard = useCallback(
+    async (
+      tmdbId: number,
+      mediaType: "movie" | "tv",
+      episodeSel?: EpisodePickerSelection
+    ) => {
+      setIsLoadingPreview(true);
+      setTmdbImages(null);
+
       try {
+        // For episode selection, fetch episode-specific preview
+        if (episodeSel?.type === "episode") {
+          const response = await getEpisodePreviewAction(
+            tmdbId,
+            episodeSel.seasonNumber,
+            episodeSel.episodeNumber
+          );
+
+          if (response.success && response.data) {
+            setTmdbPreview({
+              name: response.data.name,
+              description: response.data.description,
+            });
+            setShowWizard(true);
+
+            // Episodes don't have poster/backdrop selection
+            setTmdbImages({ posters: [], backdrops: [] });
+          } else if (!response.success) {
+            toast.error(response.error);
+          } else {
+            toast.error("Could not fetch episode preview");
+          }
+        } else {
+          // For show/season/movie, use standard preview
+          const response = await getMetadataPreviewAction(tmdbId, mediaType);
+
+          if (response.success && response.data) {
+            setTmdbPreview({
+              name: response.data.name,
+              description: response.data.description,
+            });
+            setShowWizard(true);
+
+            // Fetch images in the background for the wizard
+            setIsLoadingImages(true);
+            getImagesAction(tmdbId, mediaType)
+              .then((imagesResponse) => {
+                if (imagesResponse.success && imagesResponse.data) {
+                  setTmdbImages(imagesResponse.data);
+                }
+              })
+              .finally(() => {
+                setIsLoadingImages(false);
+              });
+          } else if (!response.success) {
+            toast.error(response.error);
+          } else {
+            toast.error("Could not fetch preview");
+          }
+        }
+      } catch {
+        toast.error("Failed to fetch metadata preview");
+      } finally {
+        setIsLoadingPreview(false);
+      }
+    },
+    []
+  );
+
+  /**
+   * Handles TMDB media selection.
+   * For movies: fetches preview and opens wizard directly.
+   * For TV shows: opens episode picker for drill-down selection.
+   */
+  const handleMediaSelect = useCallback(
+    async (result: TMDBSearchResult) => {
+      setPendingTmdbResult(result);
+
+      // For TV shows, show episode picker first
+      if (result.mediaType === "tv") {
+        setShowEpisodePicker(true);
+        return;
+      }
+
+      // For movies, proceed directly to wizard
+      await fetchPreviewAndOpenWizard(result.id, result.mediaType);
+    },
+    [fetchPreviewAndOpenWizard]
+  );
+
+  /**
+   * Handles episode picker selection.
+   * Fetches appropriate preview based on selection type.
+   */
+  const handleEpisodePickerSelect = useCallback(
+    async (selection: EpisodePickerSelection) => {
+      if (!pendingTmdbResult) return;
+
+      setShowEpisodePicker(false);
+      await fetchPreviewAndOpenWizard(
+        pendingTmdbResult.id,
+        pendingTmdbResult.mediaType,
+        selection
+      );
+    },
+    [pendingTmdbResult, fetchPreviewAndOpenWizard]
+  );
+
+  /**
+   * Handles episode picker cancellation.
+   */
+  const handleEpisodePickerCancel = useCallback(() => {
+    setPendingTmdbResult(null);
+    setShowEpisodePicker(false);
+  }, []);
+
+  /**
+   * Handles wizard completion.
+   * Applies selected metadata via server action.
+   */
+  const handleWizardComplete = useCallback(
+    async (result: MetadataWizardResult) => {
+      if (!pendingTmdbResult) return;
+
+      setIsApplyingMetadata(true);
+      setShowWizard(false);
+
+      try {
+        // Determine poster and backdrop paths from wizard result
+        const posterPath = result.posterSkipped ? null : result.posterPath;
+        const backdropPath = result.backdropSkipped
+          ? null
+          : result.backdropPath;
+
         const response = await applyMetadataAction(
           item.id,
-          result.id,
-          result.mediaType
+          pendingTmdbResult.id,
+          pendingTmdbResult.mediaType,
+          {
+            updateName: result.textOptions.updateName,
+            updateDescription: result.textOptions.updateDescription,
+            updatePoster: !result.posterSkipped && !!posterPath,
+            updateBackdrop: !result.backdropSkipped && !!backdropPath,
+          }
         );
 
         if (response.success) {
@@ -334,170 +522,217 @@ export function ItemSettingsDialog({
         toast.error("Failed to apply metadata");
       } finally {
         setIsApplyingMetadata(false);
+        setPendingTmdbResult(null);
+        setTmdbPreview(null);
+        setTmdbImages(null);
       }
     },
-    [item.id, onSettingsChange]
+    [pendingTmdbResult, item.id, onSettingsChange]
+  );
+
+  /**
+   * Handles cancellation of wizard.
+   */
+  const handleWizardCancel = useCallback(() => {
+    setPendingTmdbResult(null);
+    setTmdbPreview(null);
+    setTmdbImages(null);
+    setShowWizard(false);
+  }, []);
+
+  // Details tab content
+  const detailsContent = (
+    <div className="space-y-4">
+      {/* Name Section with TMDB Search */}
+      <div className="space-y-2">
+        <Label htmlFor="item-name">Item name</Label>
+        <div className="relative">
+          <MediaSearchCombobox
+            id="item-name"
+            onSelect={handleMediaSelect}
+            onChange={setName}
+            value={name}
+            placeholder="Search movies & TV shows..."
+          />
+          {(isLoadingPreview || isApplyingMetadata) && (
+            <div className="bg-background/80 absolute inset-0 flex items-center justify-center rounded-md">
+              <div className="flex items-center gap-2">
+                <Loader2 className="text-muted-foreground size-4 animate-spin" />
+                <span className="text-muted-foreground text-sm">
+                  {isLoadingPreview ? "Loading preview..." : "Applying..."}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Description Section */}
+      <div className="space-y-2">
+        <Label htmlFor="item-description">
+          Description{" "}
+          <span className="text-muted-foreground font-normal">(optional)</span>
+        </Label>
+        <Textarea
+          id="item-description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Add a short description..."
+          maxLength={1000}
+          className="min-h-[80px] resize-none"
+        />
+        <p className="text-muted-foreground text-xs tabular-nums">
+          {description.length}/1000 characters
+        </p>
+      </div>
+    </div>
+  );
+
+  // Files tab content
+  const filesContent = (
+    <div className="space-y-4">
+      {/* Primary Media */}
+      <FileTypeCombobox
+        label="Primary Media"
+        description="The file that plays when clicking on this item."
+        icon={Film}
+        files={files.media}
+        selectedId={primaryMediaId}
+        onSelect={setPrimaryMediaId}
+        onUploadComplete={handleUploadComplete}
+        onFileDeleted={handleFileDeleted}
+        itemId={item.id}
+        fileType="media"
+        disabled={!hasDriveConnection}
+      />
+
+      {/* Primary Artwork */}
+      <FileTypeCombobox
+        label="Primary Artwork"
+        description="The image used as the thumbnail."
+        icon={ImageIcon}
+        files={files.artwork}
+        selectedId={primaryArtworkId}
+        onSelect={setPrimaryArtworkId}
+        onUploadComplete={handleUploadComplete}
+        onFileDeleted={handleFileDeleted}
+        itemId={item.id}
+        fileType="artwork"
+        disabled={!hasDriveConnection}
+      />
+
+      {/* Hero Image */}
+      <FileTypeCombobox
+        label="Hero Image"
+        description="The image used as the banner background."
+        icon={Sparkles}
+        files={files.artwork}
+        selectedId={heroArtworkId}
+        onSelect={setHeroArtworkId}
+        onUploadComplete={handleUploadComplete}
+        onFileDeleted={handleFileDeleted}
+        itemId={item.id}
+        fileType="artwork"
+        disabled={!hasDriveConnection}
+      />
+
+      {/* Default Subtitle */}
+      <FileTypeCombobox
+        label="Default Subtitle"
+        description="The subtitle track that loads by default."
+        icon={FileText}
+        files={files.subtitles}
+        selectedId={primarySubtitleId}
+        onSelect={setPrimarySubtitleId}
+        onUploadComplete={handleUploadComplete}
+        onFileDeleted={handleFileDeleted}
+        itemId={item.id}
+        fileType="subtitle"
+        disabled={!hasDriveConnection}
+      />
+    </div>
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <div className="flex items-center gap-3">
-            <div
-              className={cn(
-                "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                "bg-primary/10 ring-primary/20 ring-1"
-              )}
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-h-[90vh] max-w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                  "bg-primary/10 ring-primary/20 ring-1"
+                )}
+              >
+                <Settings2 className="text-primary size-5" />
+              </div>
+              <div className="min-w-0">
+                <DialogTitle className="text-lg">Item Settings</DialogTitle>
+                <DialogDescription className="text-sm">
+                  Configure display preferences and upload files
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="min-w-0 py-2">
+            <ItemDialogTabs
+              detailsContent={detailsContent}
+              filesContent={filesContent}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isSaving}
             >
-              <Settings2 className="text-primary size-5" />
-            </div>
-            <div className="min-w-0">
-              <DialogTitle className="text-lg">Item Settings</DialogTitle>
-              <DialogDescription className="text-sm">
-                Configure display preferences and upload files
-              </DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
-
-        <div className="min-w-0 space-y-6 py-2">
-          {/* Name Section */}
-          <div className="space-y-3">
-            <Label htmlFor="item-name" className="text-sm font-medium">
-              Name
-            </Label>
-            <Input
-              id="item-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="h-10"
-            />
-          </div>
-
-          {/* Description Section */}
-          <div className="space-y-3">
-            <Label htmlFor="item-description" className="text-sm font-medium">
-              Description
-            </Label>
-            <Textarea
-              id="item-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Short description (optional)"
-              maxLength={1000}
-              className="min-h-[80px] resize-none"
-            />
-            <p className="text-muted-foreground text-xs tabular-nums">
-              {description.length}/1000 characters
-            </p>
-          </div>
-
-          {/* Lookup Metadata Section */}
-          <div className="space-y-3">
-            <Label className="text-sm font-medium">Lookup Metadata</Label>
-            <p className="text-muted-foreground text-xs">
-              Search TMDB to auto-fill name, description, and poster artwork.
-            </p>
-            <div className="relative">
-              <MediaSearchCombobox
-                onSelect={handleApplyMetadata}
-                placeholder="Search movies & TV shows..."
-              />
-              {isApplyingMetadata && (
-                <div className="bg-background/80 absolute inset-0 flex items-center justify-center rounded-md">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="text-muted-foreground size-4 animate-spin" />
-                    <span className="text-muted-foreground text-sm">
-                      Applying metadata...
-                    </span>
-                  </div>
-                </div>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={!isDirty || isSaving}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
               )}
-            </div>
-          </div>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-          <Separator />
+      {/* Episode Picker for TV shows */}
+      {pendingTmdbResult && pendingTmdbResult.mediaType === "tv" && (
+        <EpisodePicker
+          open={showEpisodePicker}
+          onOpenChange={setShowEpisodePicker}
+          tvId={pendingTmdbResult.id}
+          showTitle={pendingTmdbResult.title}
+          showYear={pendingTmdbResult.year}
+          onSelect={handleEpisodePickerSelect}
+          onCancel={handleEpisodePickerCancel}
+        />
+      )}
 
-          {/* Primary Media */}
-          <FileTypeCombobox
-            label="Primary Media"
-            description="The file that plays when clicking on this item."
-            icon={Film}
-            files={files.media}
-            selectedId={primaryMediaId}
-            onSelect={setPrimaryMediaId}
-            onUploadComplete={handleUploadComplete}
-            onFileDeleted={handleFileDeleted}
-            itemId={item.id}
-            fileType="media"
-            disabled={!hasDriveConnection}
-          />
-
-          {/* Primary Artwork */}
-          <FileTypeCombobox
-            label="Primary Artwork"
-            description="The image used as the thumbnail."
-            icon={ImageIcon}
-            files={files.artwork}
-            selectedId={primaryArtworkId}
-            onSelect={setPrimaryArtworkId}
-            onUploadComplete={handleUploadComplete}
-            onFileDeleted={handleFileDeleted}
-            itemId={item.id}
-            fileType="artwork"
-            disabled={!hasDriveConnection}
-          />
-
-          {/* Hero Image (only when 2+ artwork) */}
-          {hasMultipleArtwork && (
-            <FileTypeCombobox
-              label="Hero Image"
-              description="The image used as the banner background."
-              icon={Sparkles}
-              files={files.artwork}
-              selectedId={heroArtworkId}
-              onSelect={setHeroArtworkId}
-              onUploadComplete={handleUploadComplete}
-              onFileDeleted={handleFileDeleted}
-              itemId={item.id}
-              fileType="artwork"
-              disabled={!hasDriveConnection}
-            />
-          )}
-
-          {/* Default Subtitle */}
-          <FileTypeCombobox
-            label="Default Subtitle"
-            description="The subtitle track that loads by default."
-            icon={FileText}
-            files={files.subtitles}
-            selectedId={primarySubtitleId}
-            onSelect={setPrimarySubtitleId}
-            onUploadComplete={handleUploadComplete}
-            onFileDeleted={handleFileDeleted}
-            itemId={item.id}
-            fileType="subtitle"
-            disabled={!hasDriveConnection}
-          />
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={!isDirty || isSaving}>
-            {isSaving ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Changes"
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      {/* TMDB Metadata Wizard */}
+      {tmdbPreview && (
+        <MetadataWizardModal
+          open={showWizard}
+          onOpenChange={setShowWizard}
+          currentValues={currentValues}
+          textPreview={tmdbPreview}
+          images={tmdbImages}
+          isLoadingImages={isLoadingImages}
+          existingArtwork={existingArtwork}
+          isApplying={isApplyingMetadata}
+          onComplete={handleWizardComplete}
+          onCancel={handleWizardCancel}
+        />
+      )}
+    </>
   );
 }
