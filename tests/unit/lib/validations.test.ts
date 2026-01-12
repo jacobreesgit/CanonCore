@@ -101,15 +101,15 @@ describe("itemDescriptionSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("accepts max length description (200 chars)", () => {
-    const result = itemDescriptionSchema.safeParse("a".repeat(200));
+  it("accepts max length description (1000 chars)", () => {
+    const result = itemDescriptionSchema.safeParse("a".repeat(1000));
     expect(result.success).toBe(true);
   });
 
-  it("rejects description over 200 characters", () => {
-    const result = itemDescriptionSchema.safeParse("a".repeat(201));
+  it("rejects description over 1000 characters", () => {
+    const result = itemDescriptionSchema.safeParse("a".repeat(1001));
     expect(result.success).toBe(false);
-    expect(result.error?.issues[0].message).toContain("200");
+    expect(result.error?.issues[0].message).toContain("1000");
   });
 
   it("trims whitespace", () => {
@@ -120,19 +120,19 @@ describe("itemDescriptionSchema", () => {
     }
   });
 
-  it("trims then validates length (whitespace-padded 201 chars trims to valid)", () => {
-    // 198 chars + 3 spaces = 201 total, but trims to 198
-    const result = itemDescriptionSchema.safeParse("a".repeat(198) + "   ");
+  it("trims then validates length (whitespace-padded 1001 chars trims to valid)", () => {
+    // 998 chars + 3 spaces = 1001 total, but trims to 998
+    const result = itemDescriptionSchema.safeParse("a".repeat(998) + "   ");
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data).toBe("a".repeat(198));
+      expect(result.data).toBe("a".repeat(998));
     }
   });
 
-  it("rejects when trimmed result still exceeds 200 chars", () => {
-    // 201 chars with surrounding whitespace
+  it("rejects when trimmed result still exceeds 1000 chars", () => {
+    // 1001 chars with surrounding whitespace
     const result = itemDescriptionSchema.safeParse(
-      "  " + "a".repeat(201) + "  "
+      "  " + "a".repeat(1001) + "  "
     );
     expect(result.success).toBe(false);
   });

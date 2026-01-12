@@ -14,7 +14,9 @@ export function preloadImages(
   artworkIds: string[],
   timeout = 3000
 ): Promise<void> {
-  if (artworkIds.length === 0) return Promise.resolve();
+  if (artworkIds.length === 0) {
+    return Promise.resolve();
+  }
 
   return new Promise((resolve) => {
     let loaded = 0;

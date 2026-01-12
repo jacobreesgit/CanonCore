@@ -3,20 +3,33 @@
  * CTA16-style full-bleed artwork with centered content overlay.
  * Supports both item artwork (via artworkId) and direct URLs (via backgroundUrl).
  * Falls back to animated shader when no image available.
+ * Long descriptions expand with motion animation via "Read More" button.
  */
 
 "use client";
 
 import { useState } from "react";
-import { Play, Film, ImageIcon, FileText, Folder, Music } from "lucide-react";
+import { motion } from "motion/react";
+import {
+  Play,
+  Film,
+  ImageIcon,
+  FileText,
+  Folder,
+  Music,
+  ChevronDown,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Shader1 } from "@/components/shader1";
 import { cn } from "@/lib/utils";
 
+/** Truncate length for description before showing "Read More". */
+const DESCRIPTION_TRUNCATE_LENGTH = 150;
+
 interface ItemHeroProps {
   /** Item name displayed as heading. */
   name: string;
-  /** Optional description (max 200 chars). */
+  /** Optional description (max 1000 chars). Long descriptions show "Read More" button. */
   description?: string | null;
   /** Artwork file ID for background image (via /api/artwork/{id}). */
   artworkId?: string | null;
@@ -68,6 +81,11 @@ export function ItemHero({
   className,
 }: ItemHeroProps) {
   const [imageError, setImageError] = useState(false);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+
+  // Determine if description needs truncation
+  const shouldTruncate =
+    description && description.length > DESCRIPTION_TRUNCATE_LENGTH;
 
   // Determine if primary media is audio (show Music icon) or video (show Film icon)
   const isAudio = primaryMediaMimeType?.startsWith("audio/") ?? false;
@@ -127,11 +145,45 @@ export function ItemHero({
           {name}
         </h1>
 
-        {/* Description */}
+        {/* Description with expand/collapse for long text */}
         {description && (
-          <p className="line-clamp-3 max-w-xl text-lg text-white/80 drop-shadow-md">
-            {description}
-          </p>
+          <div className="flex max-w-xl flex-col items-center">
+            <motion.div
+              initial={false}
+              animate={{
+                height:
+                  descriptionExpanded || !shouldTruncate ? "auto" : "4.5rem",
+              }}
+              transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+              className="overflow-hidden"
+              data-testid="hero-description"
+            >
+              <p className="text-lg text-white/80 drop-shadow-md">
+                {descriptionExpanded || !shouldTruncate
+                  ? description
+                  : `${description.slice(0, DESCRIPTION_TRUNCATE_LENGTH)}...`}
+              </p>
+            </motion.div>
+
+            {shouldTruncate && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setDescriptionExpanded(!descriptionExpanded)}
+                className="group mt-2 text-white/70 hover:bg-white/10 hover:text-white"
+                data-testid="hero-read-more"
+              >
+                {descriptionExpanded ? "Show Less" : "Read More"}
+                <motion.span
+                  animate={{ rotate: descriptionExpanded ? 180 : 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="ml-1"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </motion.span>
+              </Button>
+            )}
+          </div>
         )}
 
         {/* Stats row */}

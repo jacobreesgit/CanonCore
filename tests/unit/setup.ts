@@ -81,6 +81,27 @@ vi.mock("@/lib/rate-limit", () => ({
   rateLimiters: {},
 }));
 
+// Mock next-auth (prevents module resolution issues in tests)
+vi.mock("next-auth", () => ({
+  default: vi.fn(),
+  getServerSession: vi.fn(),
+}));
+
+vi.mock("next-auth/react", () => ({
+  signIn: vi.fn(),
+  signOut: vi.fn(),
+  useSession: vi.fn(() => ({ data: null, status: "unauthenticated" })),
+  SessionProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+// Mock @/lib/auth
+vi.mock("@/lib/auth", () => ({
+  auth: vi.fn().mockResolvedValue(null),
+  signIn: vi.fn(),
+  signOut: vi.fn(),
+  handlers: { GET: vi.fn(), POST: vi.fn() },
+}));
+
 // Mock logger for unit tests
 vi.mock("@/lib/logger", () => ({
   logger: {
