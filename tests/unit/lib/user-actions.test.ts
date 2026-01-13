@@ -117,6 +117,8 @@ function createMockUser(overrides = {}) {
     imageMime: null,
     heroImage: null,
     heroImageMime: null,
+    defaultViewMode: null,
+    defaultSortBy: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

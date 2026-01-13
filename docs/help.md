@@ -10,14 +10,14 @@
 
 - use /Users/jacobrees/canoncore-v2/skills/docs-write/SKILL.md to update end-user/user-facing documentation fumodocs for users. think about adding or changing an article. if you dont think any changes, thats fine. use sequential thinking and take your time.
 
-- use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md, context7 and sequential thinking to ensure best practices on this current commit. really take your time and look at everything.
+- use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md NOT SUPERPOWERS, context7 and sequential thinking to ensure best practices on this current commit. really take your time and look at everything.
 
-- use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md, context7 and sequential thinking to ensure best practices on this current commit's unstaged changes. really take your time and look at everything.
+- use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md NOT SUPERPOWERS, context7 and sequential thinking to ensure best practices on this current commit's unstaged changes. really take your time and look at everything.
 
-- use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md, context7 and sequential thinking to validate the document.
+- use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md NOT SUPERPOWERS, context7 and sequential thinking to validate the document.
 
 - for each of the new fumodocs, for each line tripple check its claim via code. tripple check. and also do last commits ones.
 
 - use context7 and sequential thinking to do so
 
-- use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md, context7 and sequential thinking to ensure best practices on this project. really take your time and look at everything.
+- use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md NOT SUPERPOWERS, context7 and sequential thinking to ensure best practices on this project. really take your time and look at everything.

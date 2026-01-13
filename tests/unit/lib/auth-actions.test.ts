@@ -41,6 +41,8 @@ function createMockUser(
     imageMime: string | null;
     heroImage: Uint8Array<ArrayBuffer> | null;
     heroImageMime: string | null;
+    defaultViewMode: string | null;
+    defaultSortBy: string | null;
     createdAt: Date;
     updatedAt: Date;
   }> = {}
@@ -55,6 +57,8 @@ function createMockUser(
     imageMime: null,
     heroImage: null,
     heroImageMime: null,
+    defaultViewMode: null,
+    defaultSortBy: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
