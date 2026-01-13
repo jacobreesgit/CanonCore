@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useMemo } from "react";
 import Image from "next/image";
-import { Check, ImageOff, SkipForward, Globe } from "lucide-react";
+import { Check, ImageOff, ImageIcon, SkipForward, Globe } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -85,6 +85,18 @@ export function ImageSelectionGrid({
     return tmdbImages.slice(0, displayCount);
   }, [tmdbImages, displayCount]);
 
+  /**
+   * Gets the thumbnail URL for a TMDB image.
+   */
+  const getThumbnailUrl = useCallback(
+    (filePath: string) => {
+      return type === "poster"
+        ? getPosterUrl(filePath, "w185")
+        : getBackdropUrl(filePath, "w300");
+    },
+    [type]
+  );
+
   const hasMoreImages = tmdbImages.length > displayCount;
   const remainingCount = tmdbImages.length - displayCount;
   const hasExistingFiles = existingFiles.length > 0;
@@ -103,18 +115,6 @@ export function ImageSelectionGrid({
       }
     },
     [disabled, isSkipped, selectedValue, onSelect]
-  );
-
-  /**
-   * Gets the thumbnail URL for a TMDB image.
-   */
-  const getThumbnailUrl = useCallback(
-    (filePath: string) => {
-      return type === "poster"
-        ? getPosterUrl(filePath, "w185")
-        : getBackdropUrl(filePath, "w300");
-    },
-    [type]
   );
 
   // Aspect ratio classes based on type
@@ -266,6 +266,7 @@ interface ImageThumbnailProps {
 
 /**
  * Individual TMDB image thumbnail with selection state.
+ * Tracks load state for smooth fade-in transition.
  */
 function ImageThumbnail({
   src,
@@ -279,6 +280,7 @@ function ImageThumbnail({
   isTextless,
 }: ImageThumbnailProps) {
   const [hasError, setHasError] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   if (!src || hasError) {
     return (
@@ -299,7 +301,7 @@ function ImageThumbnail({
       onClick={onClick}
       disabled={disabled || isSkipped}
       className={cn(
-        "group relative overflow-hidden rounded-lg transition-all duration-200",
+        "bg-muted group relative overflow-hidden rounded-lg transition-all duration-200",
         "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
         aspectClass,
         // Selection states
@@ -318,12 +320,22 @@ function ImageThumbnail({
         disabled && "cursor-not-allowed opacity-50"
       )}
     >
+      {/* Image icon placeholder while loading */}
+      {!isLoaded && (
+        <div className="absolute inset-0 z-0 flex items-center justify-center">
+          <ImageIcon className="text-muted-foreground/50 size-8" />
+        </div>
+      )}
       <Image
         src={src}
         alt={alt}
         fill
-        className="object-cover"
+        className={cn(
+          "z-10 object-cover transition-opacity duration-150",
+          isLoaded ? "opacity-100" : "opacity-0"
+        )}
         sizes={aspectClass.includes("2/3") ? "150px" : "200px"}
+        onLoad={() => setIsLoaded(true)}
         onError={() => setHasError(true)}
       />
 
@@ -372,6 +384,7 @@ interface ExistingFileThumbnailProps {
 
 /**
  * Thumbnail for user's existing uploaded artwork file.
+ * Tracks load state for smooth fade-in transition.
  */
 function ExistingFileThumbnail({
   file,
@@ -382,6 +395,7 @@ function ExistingFileThumbnail({
   onClick,
 }: ExistingFileThumbnailProps) {
   const [hasError, setHasError] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // Stream from our artwork API
   const src = file.driveFileId ? `/api/artwork/${file.driveFileId}` : null;
@@ -408,7 +422,7 @@ function ExistingFileThumbnail({
       onClick={onClick}
       disabled={disabled || isSkipped}
       className={cn(
-        "group relative overflow-hidden rounded-lg transition-all duration-200",
+        "bg-muted group relative overflow-hidden rounded-lg transition-all duration-200",
         "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
         aspectClass,
         isSelected &&
@@ -426,18 +440,28 @@ function ExistingFileThumbnail({
         disabled && "cursor-not-allowed opacity-50"
       )}
     >
+      {/* Image icon placeholder while loading */}
+      {!isLoaded && (
+        <div className="absolute inset-0 z-0 flex items-center justify-center">
+          <ImageIcon className="text-muted-foreground/50 size-8" />
+        </div>
+      )}
       <Image
         src={src}
         alt={file.filename}
         fill
-        className="object-cover"
+        className={cn(
+          "z-10 object-cover transition-opacity duration-150",
+          isLoaded ? "opacity-100" : "opacity-0"
+        )}
         sizes="150px"
+        onLoad={() => setIsLoaded(true)}
         onError={() => setHasError(true)}
       />
 
       {/* Selection checkmark overlay */}
       {isSelected && !isSkipped && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/30">
           <div className="flex size-8 items-center justify-center rounded-full bg-amber-500 shadow-lg">
             <Check className="size-5 text-white" />
           </div>

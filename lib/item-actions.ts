@@ -628,6 +628,12 @@ export async function updateItem(
  * @returns Success or error
  */
 export async function deleteItem(id: string): Promise<ItemResult> {
+  // Rate limit check
+  const rateLimitResult = await checkRateLimit("itemDelete");
+  if (rateLimitResult) {
+    return { error: rateLimitResult.error };
+  }
+
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "Unauthorized" };

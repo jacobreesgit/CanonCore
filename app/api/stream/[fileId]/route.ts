@@ -191,6 +191,7 @@ export async function GET(
             "Content-Range": `bytes ${start}-${end}/${fileSize}`,
             "Accept-Ranges": "bytes",
             "Content-Length": String(end - start + 1),
+            "Cache-Control": "private, max-age=3600",
           },
         });
       }
@@ -210,6 +211,7 @@ export async function GET(
       const headers: Record<string, string> = {
         "Content-Type": mimeType,
         "Accept-Ranges": "bytes",
+        "Cache-Control": "private, max-age=3600",
       };
       if (fileSize > 0) {
         headers["Content-Length"] = String(fileSize);

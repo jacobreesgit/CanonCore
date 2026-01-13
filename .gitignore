@@ -40,3 +40,6 @@ e2e/.auth/
 
 # Fumadocs generated
 .source/
+
+# Seed media files (large video files for seeding)
+seed-media/

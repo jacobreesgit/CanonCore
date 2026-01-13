@@ -37,7 +37,7 @@ vi.mock("@/lib/tmdb-client", () => ({
   isTMDBConfigured: vi.fn(() => true),
 }));
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: vi.fn() }));
-vi.mock("@/lib/google-drive-actions", () => ({
+vi.mock("@/lib/google-drive-upload", () => ({
   uploadBuffer: vi.fn(),
 }));
 vi.mock("@/lib/circuit-breaker", () => ({
@@ -63,7 +63,7 @@ import {
   isTMDBConfigured,
 } from "@/lib/tmdb-client";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { uploadBuffer } from "@/lib/google-drive-actions";
+import { uploadBuffer } from "@/lib/google-drive-upload";
 
 describe("tmdb-actions", () => {
   beforeEach(() => {

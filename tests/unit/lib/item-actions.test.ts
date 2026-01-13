@@ -670,6 +670,39 @@ describe("deleteItem", () => {
       where: { id: "item-1" },
     });
   });
+
+  it("should check rate limit before processing", async () => {
+    const { checkRateLimit } = await import("@/lib/rate-limit");
+    vi.mocked(checkRateLimit).mockResolvedValueOnce({
+      error: "Too many attempts. Please try again later.",
+    });
+
+    const result = await deleteItem("item-123");
+
+    expect(checkRateLimit).toHaveBeenCalledWith("itemDelete");
+    expect(result).toEqual({
+      error: "Too many attempts. Please try again later.",
+    });
+  });
+
+  it("should proceed when rate limit passes", async () => {
+    const { checkRateLimit } = await import("@/lib/rate-limit");
+    vi.mocked(checkRateLimit).mockResolvedValueOnce(null);
+
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "item-123",
+      userId: "user-1",
+      driveFileId: null,
+      driveConnectionId: null,
+    } as never);
+    vi.mocked(prisma.item.delete).mockResolvedValue({} as never);
+
+    const result = await deleteItem("item-123");
+
+    expect(checkRateLimit).toHaveBeenCalledWith("itemDelete");
+    expect(result).toEqual({ success: true });
+  });
 });
 
 describe("reorderItems", () => {

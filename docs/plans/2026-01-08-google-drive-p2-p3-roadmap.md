@@ -134,128 +134,88 @@ interface PendingOperation {
 
 ---
 
-### 2.4 Upload Cancellation
+### 2.4 Quota Check Script
 
 **Current Limitation:**
-No way to cancel in-progress upload.
-
-**Problem:**
-
-- User starts uploading wrong 2GB file
-- Can't stop it - must wait or refresh page
-- Refreshing may leave partial file on Drive
-
-**Solution:**
-
-- Pass `AbortController` signal to upload function
-- Add "Cancel" button to upload progress UI
-- Clean up partial file on Drive if cancelled
-- Handle `AbortError` gracefully
-
-**Files to Modify:**
-
-- `lib/google-drive-client.ts` - Add `signal` parameter to `uploadFile()`
-- `components/items/file-upload-button.tsx` - Add cancel button and AbortController
-
-**Implementation:**
-
-```typescript
-export async function uploadFile(
-  drive: drive_v3.Drive,
-  name: string,
-  content: Buffer | Readable,
-  mimeType: string,
-  parentId: string,
-  onProgress?: UploadProgressCallback,
-  signal?: AbortSignal // NEW
-): Promise<{ id: string; name: string }>;
-```
-
-**Effort:** ~1 day
-
----
-
-### 2.5 Structured Logging Integration
-
-**Current Limitation:**
-Uses `console.log` / `console.error` throughout Google Drive code.
-
-**Problem:**
-
-- No visibility in production
-- Can't debug user issues
-- No metrics or alerting
-- Inconsistent with rest of codebase (which uses Pino)
-
-**Solution:**
-
-- Replace all `console.*` with existing `logger.ts` (Pino)
-- Add request IDs for distributed tracing
-- Log: sync duration, file counts, error rates, API latency
-- Add structured context (userId, connectionId, operation)
-
-**Files to Modify:**
-
-- `lib/google-drive-client.ts` - Import and use logger
-- `lib/google-drive-actions.ts` - Import and use logger
-- `app/api/auth/google-drive/callback/route.ts` - Import and use logger
-
-**Example:**
-
-```typescript
-// Before:
-console.error("Sync failed:", error);
-
-// After:
-import { createUserLogger } from "@/lib/logger";
-const logger = createUserLogger(userId);
-logger.error({ err: error, operation: "sync", connectionId }, "Sync failed");
-```
-
-**Effort:** ~1 day
-
----
-
-### 2.6 Google API Quota Monitoring
-
-**Current Limitation:**
-Rate limiting exists but no visibility into quota usage.
+No visibility into API quota usage or user storage consumption.
 
 **Problem:**
 
 - Google Drive API has quotas (queries per day, per user, etc.)
 - If quota exceeded, all sync operations fail
 - No warning before hitting limits
+- Can't identify users running low on Drive storage
 - Can't identify abuse patterns
 
 **Solution:**
 
-- Track API calls per user per day in database
-- Dashboard showing quota usage percentage
-- Alert at 80% threshold
-- Graceful degradation: "Sync paused until tomorrow"
+Create a CLI script to check quotas for all connected users:
 
-**Schema Addition:**
-
-```prisma
-model ApiUsage {
-  id        String   @id @default(cuid())
-  userId    String
-  date      DateTime @db.Date
-  calls     Int      @default(0)
-
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, date])
-}
-```
+- Query Google Drive API for each user's storage quota
+- Report users approaching storage limits (>80%, >90%)
+- Track API call patterns from logs
+- Output summary report for admin review
 
 **Files to Create:**
 
-- `lib/api-quota.ts` - Quota tracking and checking
-- `components/settings/quota-usage.tsx` - Usage display
+- `scripts/check-quotas.ts` - CLI script for quota checking
 
-**Effort:** ~2 days
+**Script Output Example:**
+
+```
+$ pnpm run check-quotas
+
+Google Drive Quota Report
+=========================
+Generated: 2026-01-13 10:30:00
+
+Storage Warnings:
+-----------------
+user@example.com    14.2 GB / 15 GB (95%) ⚠️  CRITICAL
+other@example.com   12.1 GB / 15 GB (81%) ⚠️  WARNING
+
+Healthy Users: 23
+Total Connected: 25
+
+API Usage (last 24h):
+---------------------
+Total calls: 1,247
+Peak user: user@example.com (342 calls)
+```
+
+**Implementation:**
+
+```typescript
+// scripts/check-quotas.ts
+import { prisma } from "@/lib/prisma";
+import { createDriveClient } from "@/lib/google-drive-client";
+
+async function checkQuotas() {
+  const connections = await prisma.googleDriveConnection.findMany({
+    include: { user: true },
+  });
+
+  for (const conn of connections) {
+    const drive = await createDriveClient(conn);
+    const about = await drive.about.get({ fields: "storageQuota" });
+    // Report quota usage...
+  }
+}
+
+checkQuotas();
+```
+
+**Usage:**
+
+```bash
+# Run manually
+pnpm run check-quotas
+
+# Or add to cron for daily reports
+0 9 * * * cd /app && pnpm run check-quotas >> /var/log/quota-check.log
+```
+
+**Effort:** ~1 day
 
 ---
 
@@ -274,19 +234,29 @@ model ApiUsage {
 
 **Solution:**
 
-- Show "Drive Storage: 14.9 GB / 15 GB" in Settings dialog
+- Show storage usage in sidebar Google Drive card
+- Show storage in profile Settings dialog (Drive section)
 - Warning badge when >90% full
-- "Upgrade storage" link to Google One
+- "Manage Storage" link to Google One
 - Update quota on each sync
 
 **Files to Modify:**
 
-- `components/profile/settings-dialog.tsx` - Add storage display section
+- `components/app-sidebar.tsx` - Add storage display to Drive card
+- `components/google-drive/settings-section.tsx` - Add storage bar to settings
 
-**UI Mockup:**
+**UI Mockup (Sidebar):**
 
 ```
-Google Drive Storage
+Google Drive
+Connected as user@gmail.com
+[============----] 14.2 GB / 15 GB
+```
+
+**UI Mockup (Settings):**
+
+```
+Storage
 [============----] 14.2 GB / 15 GB (95%)
 ⚠️ Storage almost full
 [Manage Storage ↗]
@@ -296,44 +266,7 @@ Google Drive Storage
 
 ---
 
-### 3.2 Upload Progress UI Component
-
-**Current Limitation:**
-`onProgress` callback exists in `uploadFile()` but nothing uses it.
-
-**Problem:**
-
-- Large upload shows no feedback
-- User thinks app is frozen
-- No indication of upload speed or time remaining
-
-**Solution:**
-
-- Progress bar component with percentage and bytes
-- "Uploading video.mp4... 45% (234 MB / 520 MB)"
-- Estimated time remaining based on speed
-- Cancel button (see 2.4)
-
-**Files to Create:**
-
-- `components/items/upload-progress.tsx` - Progress bar component
-
-**UI Mockup:**
-
-```
-┌─────────────────────────────────────────┐
-│ Uploading video.mp4                     │
-│ [████████████░░░░░░░░] 62%              │
-│ 324 MB / 520 MB • ~2 min remaining      │
-│                              [Cancel]   │
-└─────────────────────────────────────────┘
-```
-
-**Effort:** ~1 day
-
----
-
-### 3.3 Batch Operations
+### 3.2 Batch Operations
 
 **Current Limitation:**
 Delete 50 items = 50 sequential API calls.
@@ -369,43 +302,7 @@ export async function batchDelete(
 
 ---
 
-### 3.4 Selective Sync
-
-**Current Limitation:**
-All items sync to Google Drive automatically.
-
-**Problem:**
-
-- User may want some folders local-only
-- Drafts, private notes, temporary files
-- No granular control over what syncs
-
-**Solution:**
-
-- "Don't sync this folder" toggle per item
-- `syncEnabled: boolean` field on Item model
-- Skip items with `syncEnabled: false` in sync operations
-- Visual indicator for non-synced items
-
-**Schema Addition:**
-
-```prisma
-model Item {
-  // ... existing fields
-  syncEnabled    Boolean   @default(true)
-}
-```
-
-**Files to Modify:**
-
-- `lib/google-drive-actions.ts` - Filter by syncEnabled
-- `components/items/item-settings-dialog.tsx` - Add toggle
-
-**Effort:** ~2 days
-
----
-
-### 3.5 Sync History / Activity Log
+### 3.3 Sync History / Activity Log
 
 **Current Limitation:**
 No record of what synced when.
@@ -459,16 +356,12 @@ model SyncLog {
 | **P2**   | 2.1 Large File Streaming | 2 days   |              |
 |          | 2.2 Conflict Resolution  | 3 days   |              |
 |          | 2.3 Offline Queue        | 5 days   |              |
-|          | 2.4 Upload Cancellation  | 1 day    |              |
-|          | 2.5 Structured Logging   | 1 day    |              |
-|          | 2.6 API Quota Monitoring | 2 days   | **14 days**  |
+|          | 2.4 Quota Check Script   | 1 day    | **11 days**  |
 | **P3**   | 3.1 Storage Quota UI     | 0.5 days |              |
-|          | 3.2 Upload Progress UI   | 1 day    |              |
-|          | 3.3 Batch Operations     | 2 days   |              |
-|          | 3.4 Selective Sync       | 2 days   |              |
-|          | 3.5 Sync History         | 2 days   | **7.5 days** |
+|          | 3.2 Batch Operations     | 2 days   |              |
+|          | 3.3 Sync History         | 2 days   | **4.5 days** |
 
-**Total P2+P3:** ~21.5 days
+**Total P2+P3:** ~15.5 days
 
 ---
 
@@ -476,17 +369,13 @@ model SyncLog {
 
 **P2 (in order):**
 
-1. Structured Logging (1 day) - Enables debugging for everything else
-2. Upload Cancellation (1 day) - Quick win, improves UX
-3. Large File Streaming (2 days) - Unblocks video uploads
-4. API Quota Monitoring (2 days) - Prevents production outages
-5. Conflict Resolution (3 days) - Data integrity
-6. Offline Queue (5 days) - Most complex, do last
+1. Large File Streaming (2 days) - Unblocks video uploads
+2. Quota Check Script (1 day) - Quick admin visibility
+3. Conflict Resolution (3 days) - Data integrity
+4. Offline Queue (5 days) - Most complex, do last
 
 **P3 (in order):**
 
-1. Upload Progress UI (1 day) - Pairs with large file streaming
-2. Storage Quota UI (0.5 days) - Quick win
-3. Sync History (2 days) - Debugging aid
-4. Batch Operations (2 days) - Performance
-5. Selective Sync (2 days) - Feature request dependent
+1. Storage Quota UI (0.5 days) - Quick win, user visibility
+2. Sync History (2 days) - Debugging aid
+3. Batch Operations (2 days) - Performance
