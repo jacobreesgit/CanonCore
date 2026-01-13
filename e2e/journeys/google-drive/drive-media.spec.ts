@@ -3,11 +3,11 @@
  * Tests artwork display, video streaming, and seeking.
  *
  * SETUP REQUIRED:
- * 1. Ensure GOOGLE_TEST_ROOT_FOLDER_ID points to a valid folder in the test Drive account
- *    - Open Google Drive as the test account
- *    - Create a folder (e.g., "E2E Test Root")
+ * 1. Ensure E2E_GOOGLE_ROOT_FOLDER_ID points to a valid folder in the test Drive account
+ *    - Open Google Drive as the E2E test account (jacobreesmedia@gmail.com)
+ *    - Create a folder (e.g., "CanonCore-E2E-Tests")
  *    - Get the folder ID from the URL: drive.google.com/drive/folders/[FOLDER_ID]
- *    - Set GOOGLE_TEST_ROOT_FOLDER_ID=[FOLDER_ID] in .env.local
+ *    - Set E2E_GOOGLE_ROOT_FOLDER_ID=[FOLDER_ID] in .env.local
  *
  * 2. Create a subfolder named "Breaking Bad" inside that folder
  *
@@ -27,7 +27,7 @@ test.describe("Google Drive: Media Playback", () => {
   test.describe.configure({ mode: "serial" });
 
   let itemsPage: ItemsPage;
-  // This folder must exist in GOOGLE_TEST_ROOT_FOLDER_ID with a video file
+  // This folder must exist in E2E_GOOGLE_ROOT_FOLDER_ID with a video file
   const TEST_ITEM_NAME = "Breaking Bad";
 
   test.beforeEach(

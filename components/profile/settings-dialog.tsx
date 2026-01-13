@@ -1,6 +1,7 @@
 /**
  * Settings dialog with profile and Google Drive settings.
  * Handles name, email, password changes, image uploads, and Drive connection.
+ * Uses step-based navigation for password/email changes instead of stacked modals.
  */
 
 "use client";
@@ -14,10 +15,11 @@ import {
   ImageIcon,
   Sparkles,
   Trash2,
+  ChevronLeft,
 } from "lucide-react";
+import { Dialog } from "@/components/ui/dialog";
+import { AnimatedDialogContent } from "@/components/ui/animated-dialog-content";
 import {
-  Dialog,
-  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -28,19 +30,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Dropzone } from "@/components/ui/dropzone";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
   updateProfile,
   uploadProfileImage,
   uploadHeroImage,
   removeProfileImage,
   removeHeroImage,
+  changePassword,
 } from "@/lib/user-actions";
+import { passwordSchema, emailSchema } from "@/lib/validations";
 import { GoogleDriveSettingsSection } from "@/components/google-drive";
-import { ChangePasswordDialog } from "./change-password-dialog";
-import { ChangeEmailDialog } from "./change-email-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { GoogleDriveConnection } from "@/lib/types";
+
+/** Steps for settings dialog navigation. */
+type SettingsStep = "main" | "password" | "email";
 
 interface SettingsDialogProps {
   /** Whether the dialog is open */
@@ -60,29 +66,340 @@ interface SettingsDialogProps {
   onProfileChange?: () => Promise<void>;
 }
 
+// ============================================================================
+// Password Change Step Content
+// ============================================================================
+
+interface PasswordChangeContentProps {
+  onBack: () => void;
+  onSuccess: () => void;
+}
+
 /**
- * Settings dialog with profile and Google Drive sections.
- *
- * @param open - Whether dialog is visible
- * @param onOpenChange - Callback for visibility changes
- * @param user - Current user profile data
- * @param googleDriveConnection - Drive connection or null
- * @param onProfileChange - Callback when settings are saved
+ * Inline content for password change step.
  */
-export function SettingsDialog({
-  open,
-  onOpenChange,
+function PasswordChangeContent({
+  onBack,
+  onSuccess,
+}: PasswordChangeContentProps) {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSubmit = useCallback(async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error("All fields are required");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error("New passwords do not match");
+      return;
+    }
+
+    const validation = passwordSchema.safeParse(newPassword);
+    if (!validation.success) {
+      toast.error(validation.error.issues[0].message);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const result = await changePassword({ currentPassword, newPassword });
+
+      if (result.success) {
+        toast.success("Password changed successfully");
+        onSuccess();
+      } else {
+        toast.error(result.error);
+      }
+    } catch {
+      toast.error("Failed to change password");
+    } finally {
+      setIsSaving(false);
+    }
+  }, [currentPassword, newPassword, confirmPassword, onSuccess]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" && !isSaving) {
+        e.preventDefault();
+        handleSubmit();
+      }
+    },
+    [handleSubmit, isSaving]
+  );
+
+  return (
+    <>
+      <DialogHeader>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onBack}
+            disabled={isSaving}
+            className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+            aria-label="Back"
+          >
+            <ChevronLeft className="size-5" />
+          </Button>
+          <div
+            className={cn(
+              "flex size-10 shrink-0 items-center justify-center rounded-xl",
+              "bg-primary/10 ring-primary/20 ring-1"
+            )}
+          >
+            <Lock className="text-primary size-5" />
+          </div>
+          <div className="min-w-0">
+            <DialogTitle className="text-lg">Change Password</DialogTitle>
+            <DialogDescription className="text-sm">
+              Enter your current password and choose a new one
+            </DialogDescription>
+          </div>
+        </div>
+      </DialogHeader>
+
+      <div className="space-y-4 py-4" onKeyDown={handleKeyDown}>
+        <div className="space-y-2">
+          <Label htmlFor="change-current-password">Current Password</Label>
+          <PasswordInput
+            id="change-current-password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            placeholder="Enter current password"
+            className="h-10"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="change-new-password">New Password</Label>
+          <PasswordInput
+            id="change-new-password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="Enter new password"
+            className="h-10"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="change-confirm-password">Confirm New Password</Label>
+          <PasswordInput
+            id="change-confirm-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Repeat new password"
+            className="h-10"
+          />
+        </div>
+
+        <p className="text-muted-foreground text-xs">
+          8+ characters with uppercase, lowercase, and number.
+        </p>
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" onClick={onBack} disabled={isSaving}>
+          Cancel
+        </Button>
+        <Button onClick={handleSubmit} disabled={isSaving}>
+          {isSaving ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Changing...
+            </>
+          ) : (
+            "Change Password"
+          )}
+        </Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+// ============================================================================
+// Email Change Step Content
+// ============================================================================
+
+interface EmailChangeContentProps {
+  currentEmail: string;
+  onBack: () => void;
+  onSuccess: () => void;
+}
+
+/**
+ * Inline content for email change step.
+ */
+function EmailChangeContent({
+  currentEmail,
+  onBack,
+  onSuccess,
+}: EmailChangeContentProps) {
+  const [newEmail, setNewEmail] = useState(currentEmail);
+  const [password, setPassword] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Reset form when currentEmail changes
+  useEffect(() => {
+    setNewEmail(currentEmail);
+    setPassword("");
+  }, [currentEmail]);
+
+  const handleSubmit = useCallback(async () => {
+    if (!newEmail || !password) {
+      toast.error("All fields are required");
+      return;
+    }
+
+    const validation = emailSchema.safeParse(newEmail);
+    if (!validation.success) {
+      toast.error("Invalid email format");
+      return;
+    }
+
+    if (newEmail === currentEmail) {
+      toast.error("New email must be different from current email");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const result = await updateProfile({
+        email: newEmail,
+        currentPassword: password,
+      });
+
+      if (result.success) {
+        toast.success("Email changed successfully");
+        onSuccess();
+      } else {
+        toast.error(result.error);
+      }
+    } catch {
+      toast.error("Failed to change email");
+    } finally {
+      setIsSaving(false);
+    }
+  }, [newEmail, password, currentEmail, onSuccess]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" && !isSaving) {
+        e.preventDefault();
+        handleSubmit();
+      }
+    },
+    [handleSubmit, isSaving]
+  );
+
+  return (
+    <>
+      <DialogHeader>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onBack}
+            disabled={isSaving}
+            className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+            aria-label="Back"
+          >
+            <ChevronLeft className="size-5" />
+          </Button>
+          <div
+            className={cn(
+              "flex size-10 shrink-0 items-center justify-center rounded-xl",
+              "bg-primary/10 ring-primary/20 ring-1"
+            )}
+          >
+            <Mail className="text-primary size-5" />
+          </div>
+          <div className="min-w-0">
+            <DialogTitle className="text-lg">Change Email</DialogTitle>
+            <DialogDescription className="text-sm">
+              Enter your new email and verify with your password
+            </DialogDescription>
+          </div>
+        </div>
+      </DialogHeader>
+
+      <div className="space-y-4 py-4" onKeyDown={handleKeyDown}>
+        <div className="space-y-2">
+          <Label htmlFor="change-new-email">New Email</Label>
+          <Input
+            id="change-new-email"
+            type="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            placeholder="Enter new email address"
+            className="h-10"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="change-email-password">Current Password</Label>
+          <PasswordInput
+            id="change-email-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Verify with your password"
+            className="h-10"
+          />
+          <p className="text-muted-foreground text-xs">
+            Password required to confirm this change.
+          </p>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" onClick={onBack} disabled={isSaving}>
+          Cancel
+        </Button>
+        <Button onClick={handleSubmit} disabled={isSaving}>
+          {isSaving ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Changing...
+            </>
+          ) : (
+            "Change Email"
+          )}
+        </Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+// ============================================================================
+// Main Settings Content
+// ============================================================================
+
+interface MainSettingsContentProps {
+  user: SettingsDialogProps["user"];
+  googleDriveConnection: GoogleDriveConnection | null;
+  onProfileChange?: () => Promise<void>;
+  onOpenChange: (open: boolean) => void;
+  onPasswordClick: () => void;
+  onEmailClick: () => void;
+}
+
+/**
+ * Main settings view with profile options.
+ */
+function MainSettingsContent({
   user,
   googleDriveConnection,
   onProfileChange,
-}: SettingsDialogProps) {
+  onOpenChange,
+  onPasswordClick,
+  onEmailClick,
+}: MainSettingsContentProps) {
   // Form state
   const [name, setName] = useState(user.name ?? "");
-  const [email, setEmail] = useState(user.email);
-
-  // Modal state
-  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
-  const [changeEmailOpen, setChangeEmailOpen] = useState(false);
+  const [email] = useState(user.email);
 
   // Image state
   const [profileImage, setProfileImage] = useState<File | null>(null);
@@ -108,7 +425,6 @@ export function SettingsDialog({
   // Reset form when user changes
   useEffect(() => {
     setName(user.name ?? "");
-    setEmail(user.email);
     setProfileImage(null);
     setHeroImage(null);
     setProfileImagePreview(null);
@@ -133,9 +449,6 @@ export function SettingsDialog({
     originalValues,
   ]);
 
-  /**
-   * Handle profile image drop from dropzone.
-   */
   const handleProfileImageDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (file) {
@@ -145,9 +458,6 @@ export function SettingsDialog({
     }
   }, []);
 
-  /**
-   * Handle hero image drop from dropzone.
-   */
   const handleHeroImageDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (file) {
@@ -157,30 +467,20 @@ export function SettingsDialog({
     }
   }, []);
 
-  /**
-   * Remove profile image.
-   */
   const handleRemoveProfileImage = useCallback(() => {
     setProfileImage(null);
     setProfileImagePreview(null);
     setRemoveProfile(true);
   }, []);
 
-  /**
-   * Remove hero image.
-   */
   const handleRemoveHeroImage = useCallback(() => {
     setHeroImage(null);
     setHeroImagePreview(null);
     setRemoveHero(true);
   }, []);
 
-  /**
-   * Resets form to original values.
-   */
   const handleCancel = useCallback(() => {
     setName(originalValues.name);
-    setEmail(originalValues.email);
     setProfileImage(null);
     setHeroImage(null);
     setProfileImagePreview(null);
@@ -190,21 +490,15 @@ export function SettingsDialog({
     onOpenChange(false);
   }, [originalValues, onOpenChange]);
 
-  /**
-   * Saves all changes.
-   */
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
       let hasError = false;
 
-      // Update profile (name only - email handled by modal)
       const nameChanged = name !== originalValues.name;
 
       if (nameChanged) {
-        const result = await updateProfile({
-          name: name,
-        });
+        const result = await updateProfile({ name });
 
         if (!result.success) {
           toast.error(result.error);
@@ -212,7 +506,6 @@ export function SettingsDialog({
         }
       }
 
-      // Upload profile image
       if (profileImage && !hasError) {
         const formData = new FormData();
         formData.append("file", profileImage);
@@ -230,7 +523,6 @@ export function SettingsDialog({
         }
       }
 
-      // Upload hero image
       if (heroImage && !hasError) {
         const formData = new FormData();
         formData.append("file", heroImage);
@@ -277,14 +569,12 @@ export function SettingsDialog({
     };
   }, [profileImagePreview, heroImagePreview]);
 
-  // Determine profile image source
   const profileImageSrc = profileImagePreview
     ? profileImagePreview
     : !removeProfile && user.hasImage
       ? "/api/user/avatar"
       : null;
 
-  // Determine hero image source
   const heroImageSrc = heroImagePreview
     ? heroImagePreview
     : !removeHero && user.hasHeroImage
@@ -292,268 +582,326 @@ export function SettingsDialog({
       : null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <div className="flex items-center gap-3">
+    <>
+      <DialogHeader>
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "flex size-10 shrink-0 items-center justify-center rounded-xl",
+              "bg-primary/10 ring-primary/20 ring-1"
+            )}
+          >
+            <Settings className="text-primary size-5" />
+          </div>
+          <div className="min-w-0">
+            <DialogTitle className="text-lg">Settings</DialogTitle>
+            <DialogDescription className="text-sm">
+              Manage your account and connections
+            </DialogDescription>
+          </div>
+        </div>
+      </DialogHeader>
+
+      <div className="min-w-0 space-y-6 py-2">
+        {/* Google Drive Section */}
+        <GoogleDriveSettingsSection
+          connection={googleDriveConnection}
+          onConnectionChange={onProfileChange}
+        />
+
+        <Separator />
+
+        {/* Profile Picture Section */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
             <div
               className={cn(
-                "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                "bg-primary/10 ring-primary/20 ring-1"
+                "flex size-7 items-center justify-center rounded-lg",
+                "bg-primary/10"
               )}
             >
-              <Settings className="text-primary size-5" />
+              <ImageIcon className="text-primary size-3.5" />
             </div>
-            <div className="min-w-0">
-              <DialogTitle className="text-lg">Settings</DialogTitle>
-              <DialogDescription className="text-sm">
-                Manage your account and connections
-              </DialogDescription>
-            </div>
+            <Label className="text-sm font-medium">Profile Picture</Label>
           </div>
-        </DialogHeader>
 
-        <div className="min-w-0 space-y-6 py-2">
-          {/* Google Drive Section */}
-          <GoogleDriveSettingsSection
-            connection={googleDriveConnection}
-            onConnectionChange={onProfileChange}
-          />
-
-          <Separator />
-
-          {/* Profile Picture Section */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div
-                className={cn(
-                  "flex size-7 items-center justify-center rounded-lg",
-                  "bg-primary/10"
-                )}
-              >
-                <ImageIcon className="text-primary size-3.5" />
+          <Dropzone
+            accept={{
+              "image/jpeg": [],
+              "image/png": [],
+              "image/webp": [],
+            }}
+            maxSize={1024 * 1024}
+            maxFiles={1}
+            onDrop={handleProfileImageDrop}
+            onError={(error) => toast.error(error.message)}
+            src={profileImage ? [profileImage] : undefined}
+            className="h-24 w-full rounded-lg p-0"
+            data-testid="profile-dropzone"
+          >
+            {profileImageSrc ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={profileImageSrc}
+                alt="Profile preview"
+                className="size-full rounded-lg object-cover"
+              />
+            ) : (
+              <div className="flex size-full flex-col items-center justify-center gap-1">
+                <ImageIcon className="text-muted-foreground/50 size-6" />
+                <p className="text-muted-foreground text-xs">
+                  Drag and drop or click to upload
+                </p>
               </div>
-              <Label className="text-sm font-medium">Profile Picture</Label>
-            </div>
-
-            <Dropzone
-              accept={{
-                "image/jpeg": [],
-                "image/png": [],
-                "image/webp": [],
-              }}
-              maxSize={1024 * 1024}
-              maxFiles={1}
-              onDrop={handleProfileImageDrop}
-              onError={(error) => toast.error(error.message)}
-              src={profileImage ? [profileImage] : undefined}
-              className="h-24 w-full rounded-lg p-0"
-              data-testid="profile-dropzone"
-            >
-              {profileImageSrc ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={profileImageSrc}
-                  alt="Profile preview"
-                  className="size-full rounded-lg object-cover"
-                />
-              ) : (
-                <div className="flex size-full flex-col items-center justify-center gap-1">
-                  <ImageIcon className="text-muted-foreground/50 size-6" />
-                  <p className="text-muted-foreground text-xs">
-                    Drag and drop or click to upload
-                  </p>
-                </div>
-              )}
-            </Dropzone>
-
-            {(user.hasImage || profileImage) && !removeProfile && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleRemoveProfileImage}
-              >
-                <Trash2 className="mr-1.5 size-3.5" />
-                Remove
-              </Button>
             )}
-            <p className="text-muted-foreground text-xs">
-              Drag and drop or click to upload. JPEG, PNG, or WebP. Max 1MB.
-            </p>
-          </div>
+          </Dropzone>
 
-          {/* Name Section */}
-          <div className="space-y-3">
-            <Label htmlFor="settings-name" className="text-sm font-medium">
-              Display Name
-            </Label>
-            <Input
-              id="settings-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Your name"
-              className="h-10"
-            />
-          </div>
-
-          {/* Email Section */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div
-                className={cn(
-                  "flex size-7 items-center justify-center rounded-lg",
-                  "bg-primary/10"
-                )}
-              >
-                <Mail className="text-primary size-3.5" />
-              </div>
-              <Label className="text-sm font-medium">Email</Label>
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-muted-foreground truncate text-sm">
-                {email}
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setChangeEmailOpen(true)}
-              >
-                Change Email
-              </Button>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Hero Banner Section */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div
-                className={cn(
-                  "flex size-7 items-center justify-center rounded-lg",
-                  "bg-primary/10"
-                )}
-              >
-                <Sparkles className="text-primary size-3.5" />
-              </div>
-              <Label className="text-sm font-medium">Hero Banner</Label>
-            </div>
-            <p className="text-muted-foreground text-xs">
-              Displayed at the top of your My Items page.
-            </p>
-
-            {/* Hero Dropzone */}
-            <Dropzone
-              accept={{
-                "image/jpeg": [],
-                "image/png": [],
-                "image/webp": [],
-              }}
-              maxSize={2 * 1024 * 1024}
-              maxFiles={1}
-              onDrop={handleHeroImageDrop}
-              onError={(error) => toast.error(error.message)}
-              src={heroImage ? [heroImage] : undefined}
-              className="h-24 w-full rounded-lg p-0"
-              data-testid="hero-dropzone"
-            >
-              {heroImageSrc ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={heroImageSrc}
-                  alt="Hero preview"
-                  className="size-full rounded-lg object-cover"
-                />
-              ) : (
-                <div className="flex size-full flex-col items-center justify-center gap-1">
-                  <Sparkles className="text-muted-foreground/50 size-6" />
-                  <p className="text-muted-foreground text-xs">
-                    Drag and drop or click to upload
-                  </p>
-                </div>
-              )}
-            </Dropzone>
-
-            {(user.hasHeroImage || heroImage) && !removeHero && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleRemoveHeroImage}
-              >
-                <Trash2 className="mr-1.5 size-3.5" />
-                Remove Banner
-              </Button>
-            )}
-            <p className="text-muted-foreground text-xs">
-              Wide format recommended. Max 2MB.
-            </p>
-          </div>
-
-          <Separator />
-
-          {/* Password Section */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div
-                className={cn(
-                  "flex size-7 items-center justify-center rounded-lg",
-                  "bg-primary/10"
-                )}
-              >
-                <Lock className="text-primary size-3.5" />
-              </div>
-              <Label className="text-sm font-medium">Password</Label>
-            </div>
+          {(user.hasImage || profileImage) && !removeProfile && (
             <Button
               type="button"
               variant="outline"
-              onClick={() => setChangePasswordOpen(true)}
-              className="w-full"
+              size="sm"
+              onClick={handleRemoveProfileImage}
             >
-              <Lock className="mr-2 size-4" />
-              Change Password
+              <Trash2 className="mr-1.5 size-3.5" />
+              Remove
             </Button>
-            <p className="text-muted-foreground text-xs">
-              Update your password to keep your account secure.
-            </p>
+          )}
+          <p className="text-muted-foreground text-xs">
+            Drag and drop or click to upload. JPEG, PNG, or WebP. Max 1MB.
+          </p>
+        </div>
+
+        {/* Name Section */}
+        <div className="space-y-3">
+          <Label htmlFor="settings-name" className="text-sm font-medium">
+            Display Name
+          </Label>
+          <Input
+            id="settings-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name"
+            className="h-10"
+          />
+        </div>
+
+        {/* Email Section */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <div
+              className={cn(
+                "flex size-7 items-center justify-center rounded-lg",
+                "bg-primary/10"
+              )}
+            >
+              <Mail className="text-primary size-3.5" />
+            </div>
+            <Label className="text-sm font-medium">Email</Label>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-muted-foreground truncate text-sm">
+              {email}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onEmailClick}
+            >
+              Change Email
+            </Button>
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={!isDirty || isSaving}>
-            {isSaving ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Saving...
-              </>
+        <Separator />
+
+        {/* Hero Banner Section */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <div
+              className={cn(
+                "flex size-7 items-center justify-center rounded-lg",
+                "bg-primary/10"
+              )}
+            >
+              <Sparkles className="text-primary size-3.5" />
+            </div>
+            <Label className="text-sm font-medium">Hero Banner</Label>
+          </div>
+          <p className="text-muted-foreground text-xs">
+            Displayed at the top of your My Items page.
+          </p>
+
+          <Dropzone
+            accept={{
+              "image/jpeg": [],
+              "image/png": [],
+              "image/webp": [],
+            }}
+            maxSize={2 * 1024 * 1024}
+            maxFiles={1}
+            onDrop={handleHeroImageDrop}
+            onError={(error) => toast.error(error.message)}
+            src={heroImage ? [heroImage] : undefined}
+            className="h-24 w-full rounded-lg p-0"
+            data-testid="hero-dropzone"
+          >
+            {heroImageSrc ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={heroImageSrc}
+                alt="Hero preview"
+                className="size-full rounded-lg object-cover"
+              />
             ) : (
-              "Save Changes"
+              <div className="flex size-full flex-col items-center justify-center gap-1">
+                <Sparkles className="text-muted-foreground/50 size-6" />
+                <p className="text-muted-foreground text-xs">
+                  Drag and drop or click to upload
+                </p>
+              </div>
             )}
+          </Dropzone>
+
+          {(user.hasHeroImage || heroImage) && !removeHero && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleRemoveHeroImage}
+            >
+              <Trash2 className="mr-1.5 size-3.5" />
+              Remove Banner
+            </Button>
+          )}
+          <p className="text-muted-foreground text-xs">
+            Wide format recommended. Max 2MB.
+          </p>
+        </div>
+
+        <Separator />
+
+        {/* Password Section */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <div
+              className={cn(
+                "flex size-7 items-center justify-center rounded-lg",
+                "bg-primary/10"
+              )}
+            >
+              <Lock className="text-primary size-3.5" />
+            </div>
+            <Label className="text-sm font-medium">Password</Label>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onPasswordClick}
+            className="w-full"
+          >
+            <Lock className="mr-2 size-4" />
+            Change Password
           </Button>
-        </DialogFooter>
-      </DialogContent>
+          <p className="text-muted-foreground text-xs">
+            Update your password to keep your account secure.
+          </p>
+        </div>
+      </div>
 
-      {/* Change Password Modal */}
-      <ChangePasswordDialog
-        open={changePasswordOpen}
-        onOpenChange={setChangePasswordOpen}
-      />
+      <DialogFooter>
+        <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
+          Cancel
+        </Button>
+        <Button onClick={handleSave} disabled={!isDirty || isSaving}>
+          {isSaving ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Save Changes"
+          )}
+        </Button>
+      </DialogFooter>
+    </>
+  );
+}
 
-      {/* Change Email Modal */}
-      <ChangeEmailDialog
-        open={changeEmailOpen}
-        onOpenChange={setChangeEmailOpen}
-        currentEmail={email}
-        onEmailChange={async () => {
-          await onProfileChange?.();
-        }}
-      />
+// ============================================================================
+// Settings Dialog Component
+// ============================================================================
+
+/**
+ * Settings dialog with profile and Google Drive sections.
+ * Uses step-based navigation for password/email changes.
+ *
+ * @param open - Whether dialog is visible
+ * @param onOpenChange - Callback for visibility changes
+ * @param user - Current user profile data
+ * @param googleDriveConnection - Drive connection or null
+ * @param onProfileChange - Callback when settings are saved
+ */
+export function SettingsDialog({
+  open,
+  onOpenChange,
+  user,
+  googleDriveConnection,
+  onProfileChange,
+}: SettingsDialogProps) {
+  const [currentStep, setCurrentStep] = useState<SettingsStep>("main");
+
+  // Reset step when dialog opens to ensure fresh state
+  useEffect(() => {
+    if (open) {
+      setCurrentStep("main"); // eslint-disable-line react-hooks/set-state-in-effect -- legitimate prop sync on dialog open
+    }
+  }, [open]);
+
+  const handlePasswordSuccess = useCallback(() => {
+    setCurrentStep("main");
+  }, []);
+
+  const handleEmailSuccess = useCallback(async () => {
+    await onProfileChange?.();
+    setCurrentStep("main");
+  }, [onProfileChange]);
+
+  const handleBack = useCallback(() => {
+    setCurrentStep("main");
+  }, []);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <AnimatedDialogContent
+        stepKey={currentStep}
+        className="max-h-[90vh] overflow-y-auto"
+      >
+        {currentStep === "main" && (
+          <MainSettingsContent
+            user={user}
+            googleDriveConnection={googleDriveConnection}
+            onProfileChange={onProfileChange}
+            onOpenChange={onOpenChange}
+            onPasswordClick={() => setCurrentStep("password")}
+            onEmailClick={() => setCurrentStep("email")}
+          />
+        )}
+        {currentStep === "password" && (
+          <PasswordChangeContent
+            onBack={handleBack}
+            onSuccess={handlePasswordSuccess}
+          />
+        )}
+        {currentStep === "email" && (
+          <EmailChangeContent
+            currentEmail={user.email}
+            onBack={handleBack}
+            onSuccess={handleEmailSuccess}
+          />
+        )}
+      </AnimatedDialogContent>
     </Dialog>
   );
 }

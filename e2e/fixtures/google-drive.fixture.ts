@@ -1,6 +1,6 @@
 /**
  * Google Drive connection fixture for E2E tests.
- * Requires GOOGLE_TEST_REFRESH_TOKEN for real API testing.
+ * Uses E2E_GOOGLE_* env vars (jacobreesmedia@gmail.com), separate from seed account.
  */
 
 import { testUserFixture, testPrisma as prisma } from "./test-user.fixture";
@@ -14,7 +14,7 @@ import {
 export interface GoogleDriveFixture {
   /**
    * Set up a real Google Drive connection for the test user.
-   * Requires GOOGLE_TEST_REFRESH_TOKEN environment variable.
+   * Requires E2E_GOOGLE_REFRESH_TOKEN environment variable.
    */
   setupDriveConnection: (userId: string) => Promise<string>;
 
@@ -43,21 +43,22 @@ export interface GoogleDriveFixture {
 /**
  * Gets and validates required environment variables.
  * Called lazily when fixtures are used, not at module load.
+ * Uses E2E_GOOGLE_* vars (jacobreesmedia@gmail.com), separate from seed account.
  */
 function getRequiredEnvVars(): { refreshToken: string; rootFolderId: string } {
-  const refreshToken = process.env.GOOGLE_TEST_REFRESH_TOKEN;
-  const rootFolderId = process.env.GOOGLE_TEST_ROOT_FOLDER_ID;
+  const refreshToken = process.env.E2E_GOOGLE_REFRESH_TOKEN;
+  const rootFolderId = process.env.E2E_GOOGLE_ROOT_FOLDER_ID;
 
   if (!refreshToken) {
     throw new Error(
-      "GOOGLE_TEST_REFRESH_TOKEN is required for Google Drive E2E tests.\n" +
-        "See Appendix A in docs/plans/2026-01-08-google-drive-implementation.md for setup instructions."
+      "E2E_GOOGLE_REFRESH_TOKEN is required for Google Drive E2E tests.\n" +
+        "Run: npx tsx scripts/generate-refresh-token.ts"
     );
   }
 
   if (!rootFolderId) {
     throw new Error(
-      "GOOGLE_TEST_ROOT_FOLDER_ID is required for Google Drive E2E tests.\n" +
+      "E2E_GOOGLE_ROOT_FOLDER_ID is required for Google Drive E2E tests.\n" +
         "Create a test folder in Google Drive and set its ID in .env.local"
     );
   }
@@ -81,7 +82,7 @@ export const googleDriveFixture = testUserFixture.extend<GoogleDriveFixture>({
         where: { userId },
         update: {
           name: "E2E Test Google Drive",
-          email: process.env.GOOGLE_TEST_EMAIL || "e2e-test@example.com",
+          email: process.env.E2E_GOOGLE_EMAIL || "e2e-test@example.com",
           encryptedAccessToken: encryptCredential("pending-refresh"),
           encryptedRefreshToken: encryptCredential(refreshToken),
           accessTokenExpiry: new Date(0), // Force refresh on first use
@@ -93,7 +94,7 @@ export const googleDriveFixture = testUserFixture.extend<GoogleDriveFixture>({
         create: {
           userId,
           name: "E2E Test Google Drive",
-          email: process.env.GOOGLE_TEST_EMAIL || "e2e-test@example.com",
+          email: process.env.E2E_GOOGLE_EMAIL || "e2e-test@example.com",
           encryptedAccessToken: encryptCredential("pending-refresh"),
           encryptedRefreshToken: encryptCredential(refreshToken),
           accessTokenExpiry: new Date(0), // Force refresh on first use

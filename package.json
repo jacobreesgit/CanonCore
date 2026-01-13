@@ -1,6 +1,6 @@
 {
   "name": "canoncore",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "private": true,
   "scripts": {
     "build": "next build",
@@ -61,7 +61,7 @@
     "fumadocs-ui": "^16.4.1",
     "googleapis": "^170.0.0",
     "lucide-react": "^0.454.0",
-    "motion": "^12.25.0",
+    "motion": "^12.23.12",
     "next": "16.1.1",
     "next-auth": "5.0.0-beta.30",
     "next-themes": "^0.4.6",

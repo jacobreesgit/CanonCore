@@ -1,5 +1,6 @@
 export { AddItemDialog } from "./add-item-dialog";
 export { EditModeToggle } from "./edit-mode-toggle";
+export { FilesSection } from "./files-section";
 export { FileTypeCombobox } from "./file-type-combobox";
 export { ItemContextMenu } from "./item-context-menu";
 export { ItemDetailClient } from "./item-detail-client";

@@ -590,19 +590,40 @@ describe("ItemSettingsDialog", () => {
     };
 
     // Helper to complete wizard: Next (step 1) → Next (step 2) → Apply (step 3)
+    // Note: AnimatedDialogContent uses AnimatePresence mode="sync" for crossfade,
+    // so we must wait for old step to fully exit before querying Next button
     const confirmMetadata = async (
       user: ReturnType<typeof userEvent.setup>
     ) => {
-      // Wait for wizard to appear
+      // Wait for wizard step 1 (Title & Description)
       await waitFor(() => {
         expect(screen.getByText("Apply Metadata")).toBeInTheDocument();
+        expect(screen.getByText(/Step 1 of 3/i)).toBeInTheDocument();
       });
-      // Step 1 → Step 2
-      await user.click(screen.getByRole("button", { name: /next/i }));
-      // Step 2 → Step 3
-      await user.click(screen.getByRole("button", { name: /next/i }));
+
+      // Step 1 → Step 2 (Poster Selection)
+      const nextButton1 = screen.getByRole("button", { name: /next/i });
+      await user.click(nextButton1);
+
+      // Wait for step 2 AND ensure step 1 is fully gone (animation complete)
+      await waitFor(() => {
+        expect(screen.getByText(/Step 2 of 3/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Step 1 of 3/i)).not.toBeInTheDocument();
+      });
+
+      // Step 2 → Step 3 (Hero Selection)
+      const nextButton2 = screen.getByRole("button", { name: /next/i });
+      await user.click(nextButton2);
+
+      // Wait for step 3 AND ensure step 2 is fully gone
+      await waitFor(() => {
+        expect(screen.getByText(/Step 3 of 3/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Step 2 of 3/i)).not.toBeInTheDocument();
+      });
+
       // Step 3 → Complete
-      await user.click(screen.getByRole("button", { name: /apply/i }));
+      const applyButton = screen.getByRole("button", { name: /^apply$/i });
+      await user.click(applyButton);
     };
 
     it("should render item name field with TMDB search", async () => {
