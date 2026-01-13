@@ -37,8 +37,8 @@ vi.mock("@/lib/tmdb-client", () => ({
   isTMDBConfigured: vi.fn(() => true),
 }));
 
-// Mock Google Drive actions (poster upload)
-vi.mock("@/lib/google-drive-actions", () => ({
+// Mock Google Drive upload (poster upload)
+vi.mock("@/lib/google-drive-upload", () => ({
   uploadBuffer: vi.fn(),
 }));
 

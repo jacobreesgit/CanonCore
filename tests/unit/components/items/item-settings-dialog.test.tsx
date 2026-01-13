@@ -21,7 +21,7 @@ vi.mock("@/lib/item-file-actions", () => ({
   }),
 }));
 
-vi.mock("@/lib/google-drive-actions", () => ({
+vi.mock("@/lib/google-drive-upload", () => ({
   createUploadSessions: vi
     .fn()
     .mockResolvedValue({ success: false, error: "Not connected" }),

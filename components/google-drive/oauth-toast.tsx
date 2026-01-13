@@ -8,7 +8,7 @@
 import { useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { syncFromGoogleDrive } from "@/lib/google-drive-actions";
+import { syncFromGoogleDrive } from "@/lib/google-drive-sync";
 
 /**
  * Shows toast for OAuth callback results and triggers auto-sync for existing folders.

@@ -15,7 +15,7 @@ import type { SerializedItemFile } from "@/lib/types";
 import { useState, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { getItemFiles } from "@/lib/item-file-actions";
-import { syncFromGoogleDrive } from "@/lib/google-drive-actions";
+import { syncFromGoogleDrive } from "@/lib/google-drive-sync";
 import { toast } from "sonner";
 
 /** Empty files state for initial dialog load */

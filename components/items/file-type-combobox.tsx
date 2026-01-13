@@ -20,6 +20,7 @@ import {
   Trash2,
   Loader2,
   CloudOff,
+  ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,10 +42,7 @@ import {
   DropzoneEmptyState,
   DropzoneContent,
 } from "@/components/ui/dropzone";
-import {
-  createUploadSessions,
-  confirmUpload,
-} from "@/lib/google-drive-actions";
+import { createUploadSessions, confirmUpload } from "@/lib/google-drive-upload";
 import { deleteItemFile } from "@/lib/item-file-actions";
 import { toast } from "sonner";
 import {
@@ -57,6 +55,48 @@ import type { SerializedItemFile, QueuedFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import type { Accept } from "react-dropzone";
+
+/**
+ * Artwork thumbnail with load state tracking for smooth fade-in.
+ * Shows image icon placeholder while loading.
+ */
+function ArtworkThumbnail({
+  fileId,
+  size = "md",
+}: {
+  fileId: string;
+  size?: "sm" | "md";
+}) {
+  const [loaded, setLoaded] = useState(false);
+  const sizeClass = size === "sm" ? "size-5" : "size-6";
+  const iconSize = size === "sm" ? "size-3" : "size-3.5";
+
+  return (
+    <div
+      className={cn(
+        sizeClass,
+        "bg-muted relative shrink-0 overflow-hidden rounded"
+      )}
+    >
+      {/* Image icon placeholder while loading */}
+      {!loaded && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <ImageIcon className={cn(iconSize, "text-muted-foreground/50")} />
+        </div>
+      )}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`/api/artwork/${fileId}`}
+        alt=""
+        className={cn(
+          "absolute inset-0 h-full w-full object-cover transition-opacity duration-150",
+          loaded ? "opacity-100" : "opacity-0"
+        )}
+        onLoad={() => setLoaded(true)}
+      />
+    </div>
+  );
+}
 
 /**
  * Converts file type to react-dropzone Accept format.
@@ -672,15 +712,7 @@ function FileTypeComboboxSelectMode({
             {selectedFile ? (
               <span className="flex min-w-0 items-center gap-2">
                 {fileType === "artwork" && (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={`/api/artwork/${selectedFile.id}`}
-                    alt=""
-                    className="size-5 shrink-0 rounded object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
-                  />
+                  <ArtworkThumbnail fileId={selectedFile.id} size="sm" />
                 )}
                 <span className="truncate">{selectedFile.filename}</span>
               </span>
@@ -748,15 +780,7 @@ function FileTypeComboboxSelectMode({
                   )}
                 >
                   {fileType === "artwork" && (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={`/api/artwork/${file.id}`}
-                      alt=""
-                      className="size-6 shrink-0 rounded object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
+                    <ArtworkThumbnail fileId={file.id} size="md" />
                   )}
                   <span className="min-w-0 flex-1 truncate">
                     {file.filename}
