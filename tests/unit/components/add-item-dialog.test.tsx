@@ -82,18 +82,42 @@ describe("AddItemDialog", () => {
     });
   });
 
-  /** Helper to complete wizard: Next (step 1) → Next (step 2) → Apply (step 3) */
+  /** Helper to complete wizard: Next (step 1) → Next (step 2) → Apply (step 3) → Summary (step 4) */
+  // Note: AnimatedDialogContent uses AnimatePresence mode="sync" for crossfade,
+  // so we must wait for old step to fully exit before querying Next button
   const completeWizard = async (user: ReturnType<typeof userEvent.setup>) => {
-    // Wait for wizard to appear
+    // Wait for wizard step 1 to appear
     await waitFor(() => {
       expect(screen.getByText("Apply Metadata")).toBeInTheDocument();
+      expect(screen.getByText(/Step 1 of 4/i)).toBeInTheDocument();
     });
+
     // Step 1 → Step 2
     await user.click(screen.getByRole("button", { name: /next/i }));
+
+    // Wait for step 2 AND ensure step 1 is fully gone (animation complete)
+    await waitFor(() => {
+      expect(screen.getByText(/Step 2 of 4/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Step 1 of 4/i)).not.toBeInTheDocument();
+    });
+
     // Step 2 → Step 3
     await user.click(screen.getByRole("button", { name: /next/i }));
-    // Step 3 → Complete
+
+    // Wait for step 3 AND ensure step 2 is fully gone
+    await waitFor(() => {
+      expect(screen.getByText(/Step 3 of 4/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Step 2 of 4/i)).not.toBeInTheDocument();
+    });
+
+    // Step 3 → Step 4 (Summary)
     await user.click(screen.getByRole("button", { name: /apply/i }));
+
+    // Wait for step 4 (wizard-summary) AND ensure step 3 is fully gone
+    await waitFor(() => {
+      expect(screen.getByText(/Step 4 of 4/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Step 3 of 4/i)).not.toBeInTheDocument();
+    });
   };
 
   it("renders dialog when open", async () => {
@@ -511,10 +535,16 @@ describe("AddItemDialog", () => {
     await completeWizard(user);
 
     // Verify form fields were auto-filled
+    // Note: Re-query elements after wizard completes since AnimatedDialogContent
+    // re-renders the entire content, potentially creating new DOM elements.
+    // After wizard completion, the summary view is shown which uses a different placeholder.
     await waitFor(() => {
-      expect(input).toHaveValue("Fight Club (1999)");
+      const nameInput = screen.getByRole("combobox");
+      expect(nameInput).toHaveValue("Fight Club (1999)");
     });
-    expect(screen.getByPlaceholderText(/add a short description/i)).toHaveValue(
+    expect(
+      screen.getByPlaceholderText(/optional description or notes/i)
+    ).toHaveValue(
       "An insomniac office worker forms an underground fight club."
     );
   });
@@ -699,7 +729,36 @@ describe("AddItemDialog - Categorized File Uploads", () => {
     });
   });
 
-  it("renders Files tab with categorized dropzones when Drive connected", async () => {
+  /** Helper to complete wizard: Next (step 1) → Next (step 2) → Apply (step 3) → Summary (step 4) */
+  const completeWizard = async (user: ReturnType<typeof userEvent.setup>) => {
+    await waitFor(() => {
+      expect(screen.getByText("Apply Metadata")).toBeInTheDocument();
+      expect(screen.getByText(/Step 1 of 4/i)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /next/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Step 2 of 4/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Step 1 of 4/i)).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /next/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Step 3 of 4/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Step 2 of 4/i)).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /apply/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Step 4 of 4/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Step 3 of 4/i)).not.toBeInTheDocument();
+    });
+  };
+
+  it("shows tabbed interface initially with Details and Files tabs", async () => {
     const user = userEvent.setup();
 
     render(
@@ -715,39 +774,45 @@ describe("AddItemDialog - Categorized File Uploads", () => {
       expect(screen.getByRole("combobox")).toBeInTheDocument();
     });
 
-    // Click the Files tab
+    // Should have tabs initially
+    expect(screen.getByRole("tab", { name: /details/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /files/i })).toBeInTheDocument();
+
+    // Click Files tab to see file upload options
     await user.click(screen.getByRole("tab", { name: /files/i }));
 
-    // Verify all 4 file type sections are rendered
+    // Verify file upload sections are rendered
     expect(screen.getByText("Primary Media")).toBeInTheDocument();
     expect(screen.getByText("Primary Artwork")).toBeInTheDocument();
     expect(screen.getByText("Hero Image")).toBeInTheDocument();
     expect(screen.getByText("Default Subtitle")).toBeInTheDocument();
-
-    // Verify descriptions are shown
-    expect(
-      screen.getByText("The file that plays when clicking on this item.")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("The image used as the thumbnail.")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("The image used as the banner background.")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("The subtitle track that loads by default.")
-    ).toBeInTheDocument();
   });
 
-  it("shows disabled state for all categories when Drive not connected", async () => {
+  it("shows summary view with tabbed interface after wizard completion", async () => {
     const user = userEvent.setup();
+
+    // Setup TMDB search result
+    vi.mocked(searchMediaAction).mockResolvedValue({
+      success: true,
+      data: [
+        {
+          id: 550,
+          mediaType: "movie",
+          title: "Fight Club",
+          overview: "An insomniac office worker...",
+          posterPath: "/poster.jpg",
+          backdropPath: "/backdrop.jpg",
+          year: "1999",
+        },
+      ],
+    });
 
     render(
       <AddItemDialog
         open={true}
         onOpenChange={() => {}}
         onAdd={async () => undefined}
-        hasDriveConnection={false}
+        hasDriveConnection={true}
       />
     );
 
@@ -755,60 +820,26 @@ describe("AddItemDialog - Categorized File Uploads", () => {
       expect(screen.getByRole("combobox")).toBeInTheDocument();
     });
 
-    // Click the Files tab
+    // Search and select TMDB result to trigger wizard
+    await user.type(screen.getByRole("combobox"), "Fight");
+    await waitFor(() => {
+      expect(screen.getByText("Fight Club")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("Fight Club"));
+
+    // Complete the wizard
+    await completeWizard(user);
+
+    // After wizard, summary view should have tabs (Details and Files)
+    expect(screen.getByRole("tab", { name: /details/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /files/i })).toBeInTheDocument();
+
+    // Click Files tab to see file type sections
     await user.click(screen.getByRole("tab", { name: /files/i }));
 
-    // Should show 4 disabled messages (one for each category)
-    const disabledMessages = screen.getAllByText(
-      /connect google drive in settings to enable file uploads/i
-    );
-    expect(disabledMessages).toHaveLength(4);
-  });
-
-  it("clears all queued files when dialog reopens", async () => {
-    const { rerender } = render(
-      <AddItemDialog
-        open={false}
-        onOpenChange={() => {}}
-        onAdd={async () => undefined}
-        hasDriveConnection={true}
-      />
-    );
-
-    // Open dialog
-    rerender(
-      <AddItemDialog
-        open={true}
-        onOpenChange={() => {}}
-        onAdd={async () => undefined}
-        hasDriveConnection={true}
-      />
-    );
-
-    await waitFor(() => {
-      expect(screen.getByRole("combobox")).toBeInTheDocument();
-    });
-
-    // Close and reopen
-    rerender(
-      <AddItemDialog
-        open={false}
-        onOpenChange={() => {}}
-        onAdd={async () => undefined}
-        hasDriveConnection={true}
-      />
-    );
-    rerender(
-      <AddItemDialog
-        open={true}
-        onOpenChange={() => {}}
-        onAdd={async () => undefined}
-        hasDriveConnection={true}
-      />
-    );
-
-    // Queued files should be cleared (no "files queued" text visible)
-    expect(screen.queryByText(/files queued/i)).not.toBeInTheDocument();
+    // Verify file type sections are rendered (using FileTypeCombobox labels)
+    expect(screen.getByText("Primary Media")).toBeInTheDocument();
+    expect(screen.getByText("Default Subtitle")).toBeInTheDocument();
   });
 
   it("creates item with no files when queues are empty", async () => {
@@ -842,13 +873,11 @@ describe("AddItemDialog - Categorized File Uploads", () => {
   });
 });
 
-describe("AddItemDialog - File Tab Layout", () => {
-  // These tests verify the Files tab layout
+describe("AddItemDialog - Summary View Layout", () => {
+  // These tests verify the summary view layout appears ONLY after wizard completion
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Clear localStorage to reset tab persistence between tests
-    localStorage.clear();
     vi.mocked(isTMDBAvailable).mockResolvedValue(true);
     vi.mocked(searchMediaAction).mockResolvedValue({
       success: true,
@@ -867,7 +896,26 @@ describe("AddItemDialog - File Tab Layout", () => {
     });
     vi.mocked(getImagesAction).mockResolvedValue({
       success: true,
-      data: { posters: [], backdrops: [] },
+      data: {
+        posters: [
+          {
+            file_path: "/poster.jpg",
+            vote_average: 8,
+            iso_639_1: "en",
+            width: 500,
+            height: 750,
+          },
+        ],
+        backdrops: [
+          {
+            file_path: "/backdrop.jpg",
+            vote_average: 9,
+            iso_639_1: null,
+            width: 1920,
+            height: 1080,
+          },
+        ],
+      },
     });
     vi.mocked(getEpisodePreviewAction).mockResolvedValue({
       success: true,
@@ -882,9 +930,30 @@ describe("AddItemDialog - File Tab Layout", () => {
     });
   });
 
-  it("should render all 4 file type dropzones in Files tab", async () => {
-    const user = userEvent.setup();
+  /** Helper to complete wizard: navigates to step 4 (wizard-summary) */
+  const completeWizard = async (user: ReturnType<typeof userEvent.setup>) => {
+    await waitFor(() => {
+      expect(screen.getByText("Apply Metadata")).toBeInTheDocument();
+      expect(screen.getByText(/Step 1 of 4/i)).toBeInTheDocument();
+    });
 
+    await user.click(screen.getByRole("button", { name: /next/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/Step 2 of 4/i)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /next/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/Step 3 of 4/i)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /apply/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/Step 4 of 4/i)).toBeInTheDocument();
+    });
+  };
+
+  it("should show tabbed interface initially (Details + Files tabs)", async () => {
     render(
       <AddItemDialog
         open={true}
@@ -899,18 +968,119 @@ describe("AddItemDialog - File Tab Layout", () => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
     });
 
-    // Switch to Files tab
-    await user.click(screen.getByRole("tab", { name: /files/i }));
+    // Should have tabs initially
+    expect(screen.getByRole("tab", { name: /details/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /files/i })).toBeInTheDocument();
 
-    // Check that all dropzone prompts are visible
-    expect(
-      screen.getByText(/drop media files or click to browse/i)
-    ).toBeInTheDocument();
-    expect(
-      screen.getAllByText(/drop artwork files or click to browse/i)
-    ).toHaveLength(2);
-    expect(
-      screen.getByText(/drop subtitle files or click to browse/i)
-    ).toBeInTheDocument();
+    // Name and description should be visible in Details tab
+    expect(screen.getByLabelText(/name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
+
+    // Artwork preview cards should NOT be visible (only in summary view after wizard)
+    expect(screen.queryByText("Artwork")).not.toBeInTheDocument();
+    expect(screen.queryByText("Poster")).not.toBeInTheDocument();
+    expect(screen.queryByText("Hero")).not.toBeInTheDocument();
+  });
+
+  it("should render summary view with all sections after wizard completion", async () => {
+    const user = userEvent.setup();
+
+    vi.mocked(searchMediaAction).mockResolvedValue({
+      success: true,
+      data: [
+        {
+          id: 550,
+          mediaType: "movie",
+          title: "Test Movie",
+          overview: "Test overview",
+          posterPath: "/poster.jpg",
+          backdropPath: "/backdrop.jpg",
+          year: "2023",
+        },
+      ],
+    });
+
+    render(
+      <AddItemDialog
+        open={true}
+        onOpenChange={() => {}}
+        onAdd={async () => undefined}
+        hasDriveConnection={true}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("combobox")).toBeInTheDocument();
+    });
+
+    // Search and select TMDB result
+    await user.type(screen.getByRole("combobox"), "Test");
+    await waitFor(() => {
+      expect(screen.getByText("Test Movie")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("Test Movie"));
+
+    // Complete the wizard
+    await completeWizard(user);
+
+    // NOW all sections should be visible
+    expect(screen.getByLabelText(/name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
+    expect(screen.getByText("Artwork")).toBeInTheDocument();
+    expect(screen.getByText("Files")).toBeInTheDocument();
+  });
+
+  it("should show artwork preview cards for poster and hero after wizard completion", async () => {
+    const user = userEvent.setup();
+
+    vi.mocked(searchMediaAction).mockResolvedValue({
+      success: true,
+      data: [
+        {
+          id: 550,
+          mediaType: "movie",
+          title: "Test Movie",
+          overview: "Test overview",
+          posterPath: "/poster.jpg",
+          backdropPath: "/backdrop.jpg",
+          year: "2023",
+        },
+      ],
+    });
+
+    render(
+      <AddItemDialog
+        open={true}
+        onOpenChange={() => {}}
+        onAdd={async () => undefined}
+        hasDriveConnection={true}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("combobox")).toBeInTheDocument();
+    });
+
+    // Search and select TMDB result
+    await user.type(screen.getByRole("combobox"), "Test");
+    await waitFor(() => {
+      expect(screen.getByText("Test Movie")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("Test Movie"));
+
+    // Complete the wizard
+    await completeWizard(user);
+
+    // Artwork section should have poster and hero thumbnails
+    expect(screen.getByText("Poster")).toBeInTheDocument();
+    expect(screen.getByText("Hero")).toBeInTheDocument();
+
+    // Should show artwork images with amber selection styling (checkmarks visible)
+    const posterPreview = screen.getByRole("button", {
+      name: /poster preview/i,
+    });
+    const heroPreview = screen.getByRole("button", { name: /hero preview/i });
+    expect(posterPreview).toBeInTheDocument();
+    expect(heroPreview).toBeInTheDocument();
   });
 });

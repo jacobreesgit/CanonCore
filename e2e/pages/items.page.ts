@@ -661,4 +661,25 @@ export class ItemsPage {
     await this.gotoItem(itemId);
     await this.waitForLoadingComplete();
   }
+
+  /**
+   * Collapses the hero section.
+   */
+  async collapseHero(): Promise<void> {
+    await this.page.getByRole("button", { name: /collapse hero/i }).click();
+  }
+
+  /**
+   * Expands the hero section.
+   */
+  async expandHero(): Promise<void> {
+    await this.page.getByRole("button", { name: /expand hero/i }).click();
+  }
+
+  /**
+   * Checks if the hero is currently collapsed.
+   */
+  async isHeroCollapsed(): Promise<boolean> {
+    return this.page.getByRole("button", { name: /expand hero/i }).isVisible();
+  }
 }

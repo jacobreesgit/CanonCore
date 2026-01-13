@@ -1,6 +1,7 @@
 /**
  * Shared tabbed interface for item dialogs.
  * Provides consistent Details/Files tab structure for Add Item and Item Settings dialogs.
+ * Always resets to first tab when dialog opens (no persistence by default).
  */
 
 "use client";
@@ -23,7 +24,7 @@ interface ItemDialogTabsProps {
   filesContent: ReactNode;
   /** Default tab to show (defaults to "details") */
   defaultTab?: ItemDialogTab;
-  /** Whether to persist tab selection to localStorage */
+  /** Whether to persist tab selection to localStorage (default: false) */
   persistSelection?: boolean;
   /** Optional callback when tab changes */
   onTabChange?: (tab: ItemDialogTab) => void;
@@ -46,7 +47,7 @@ export function ItemDialogTabs({
   detailsContent,
   filesContent,
   defaultTab = "details",
-  persistSelection = true,
+  persistSelection = false,
   onTabChange,
   className,
 }: ItemDialogTabsProps) {

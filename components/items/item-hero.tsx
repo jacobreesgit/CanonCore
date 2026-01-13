@@ -18,6 +18,8 @@ import {
   Folder,
   Music,
   ChevronDown,
+  ChevronUp,
+  Maximize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Shader1 } from "@/components/shader1";
@@ -53,6 +55,10 @@ interface ItemHeroProps {
   primaryMediaMimeType?: string | null;
   /** Callback when play button clicked. */
   onPlay?: () => void;
+  /** Whether hero is in collapsed state. */
+  isCollapsed?: boolean;
+  /** Callback to toggle collapsed state. */
+  onCollapse?: () => void;
   /** Additional CSS classes. */
   className?: string;
 }
@@ -78,6 +84,8 @@ export function ItemHero({
   primaryMediaName,
   primaryMediaMimeType,
   onPlay,
+  isCollapsed = false,
+  onCollapse,
   className,
 }: ItemHeroProps) {
   const [imageError, setImageError] = useState(false);
@@ -95,145 +103,218 @@ export function ItemHero({
   const backgroundSrc =
     backgroundUrl ?? (artworkId ? `/api/artwork/${artworkId}` : null);
   const shouldShowBackground = backgroundSrc && !imageError;
+  const isCollapsedState = isCollapsed && onCollapse;
 
+  // Single animated container - height animates, content fades via AnimatePresence
   return (
-    <section
+    <motion.section
       data-testid="item-hero"
+      layout
+      initial={false}
+      transition={{ type: "spring", stiffness: 400, damping: 35 }}
       className={cn(
-        // CTA16-inspired height and centering - hybrid approach: never smaller than 240px, scales to 30% of dynamic viewport
-        "relative flex min-h-[max(240px,30dvh)] items-center justify-center overflow-hidden rounded-xl",
-        // Background image styles (only when showing image, not shader)
+        "relative overflow-hidden rounded-xl",
         shouldShowBackground &&
           "bg-black/80 bg-cover bg-center bg-no-repeat before:absolute before:inset-0 before:z-10 before:bg-black/50",
         className
       )}
       style={{
+        borderRadius: 12,
         backgroundImage: shouldShowBackground
           ? `url(${backgroundSrc})`
           : undefined,
       }}
     >
-      {/* Hidden img for error detection */}
-      {backgroundSrc && !imageError && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={backgroundSrc}
-          alt=""
-          className="hidden"
-          onError={() => setImageError(true)}
-        />
-      )}
+      {isCollapsedState ? (
+        // Collapsed content - horizontal bar
+        <motion.div
+          key="collapsed"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.15 }}
+          className="relative z-20 flex h-14 items-center justify-between rounded-xl border border-white/10 bg-black/40 px-4 backdrop-blur-md"
+        >
+          <h1 className="truncate text-lg font-semibold text-white/90">
+            {name}
+          </h1>
+          <div className="flex items-center gap-2">
+            {hasMedia && onPlay && (
+              <Button
+                size="sm"
+                variant="glass"
+                onClick={onPlay}
+                className="max-w-[200px] gap-2"
+                data-testid="item-hero-play"
+              >
+                <Play className="size-4 shrink-0" />
+                <span className="truncate">
+                  {hasProgress ? "Resume" : "Play"}
+                  {primaryMediaName && ` ${primaryMediaName}`}
+                </span>
+              </Button>
+            )}
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={onCollapse}
+              aria-label="Expand hero"
+              className="size-8 text-white/60 hover:bg-white/10 hover:text-white"
+            >
+              <Maximize2 className="size-4" />
+            </Button>
+          </div>
+        </motion.div>
+      ) : (
+        // Expanded content - full cinematic hero
+        <motion.div
+          key="expanded"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.15 }}
+          className="flex min-h-[max(240px,30dvh)] items-center justify-center"
+        >
+          {/* Collapse button - top right */}
+          {onCollapse && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={onCollapse}
+              aria-label="Collapse hero"
+              className="absolute top-3 right-3 z-30 size-8 border border-white/20 text-white/60 backdrop-blur-sm hover:border-white/40 hover:bg-white/10 hover:text-white"
+            >
+              <ChevronUp className="size-4" />
+            </Button>
+          )}
 
-      {/* Shader fallback when no background image */}
-      {/* navigator.webdriver is true when running in Playwright/Selenium automated tests.
+          {/* Hidden img for error detection */}
+          {backgroundSrc && !imageError && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={backgroundSrc}
+              alt=""
+              className="hidden"
+              onError={() => setImageError(true)}
+            />
+          )}
+
+          {/* Shader fallback when no background image */}
+          {/* navigator.webdriver is true when running in Playwright/Selenium automated tests.
           We use a simple CSS gradient instead of the WebGL Shader1 component to avoid
           GPU load and rendering inconsistencies in headless browser environments. */}
-      {!shouldShowBackground && (
-        <div data-testid="hero-fallback" className="absolute inset-0 z-0">
-          {typeof window !== "undefined" && navigator.webdriver ? (
-            <div className="h-full w-full bg-gradient-to-br from-blue-900 via-purple-900 to-slate-900" />
-          ) : (
-            <Shader1 className="h-full" />
-          )}
-        </div>
-      )}
-
-      {/* Content overlay - centered */}
-      <div className="relative z-20 flex flex-col items-center gap-6 p-8 text-center text-white">
-        {/* Title */}
-        <h1 className="line-clamp-2 max-w-2xl text-4xl font-bold tracking-tight drop-shadow-lg md:text-5xl">
-          {name}
-        </h1>
-
-        {/* Description with expand/collapse for long text */}
-        {description && (
-          <div className="flex max-w-xl flex-col items-center">
-            <motion.div
-              initial={false}
-              animate={{
-                height:
-                  descriptionExpanded || !shouldTruncate ? "auto" : "4.5rem",
-              }}
-              transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-              className="overflow-hidden"
-              data-testid="hero-description"
+          {!shouldShowBackground && (
+            <div
+              data-testid="hero-fallback"
+              className="absolute inset-0 z-0 overflow-hidden rounded-xl"
             >
-              <p className="text-lg text-white/80 drop-shadow-md">
-                {descriptionExpanded || !shouldTruncate
-                  ? description
-                  : `${description.slice(0, DESCRIPTION_TRUNCATE_LENGTH)}...`}
-              </p>
-            </motion.div>
+              {typeof window !== "undefined" && navigator.webdriver ? (
+                <div className="h-full w-full bg-gradient-to-br from-blue-900 via-purple-900 to-slate-900" />
+              ) : (
+                <Shader1 className="h-full" />
+              )}
+            </div>
+          )}
 
-            {shouldTruncate && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setDescriptionExpanded(!descriptionExpanded)}
-                className="group mt-2 text-white/70 hover:bg-white/10 hover:text-white"
-                data-testid="hero-read-more"
-              >
-                {descriptionExpanded ? "Show Less" : "Read More"}
-                <motion.span
-                  animate={{ rotate: descriptionExpanded ? 180 : 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="ml-1"
+          {/* Content overlay - centered */}
+          <div className="relative z-20 flex flex-col items-center gap-6 p-8 text-center text-white">
+            {/* Title */}
+            <h1 className="line-clamp-2 max-w-2xl text-4xl font-bold tracking-tight drop-shadow-lg md:text-5xl">
+              {name}
+            </h1>
+
+            {/* Description with expand/collapse for long text */}
+            {description && (
+              <div className="flex w-[85%] flex-col items-center">
+                <motion.div
+                  initial={false}
+                  animate={{
+                    height:
+                      descriptionExpanded || !shouldTruncate
+                        ? "auto"
+                        : "3.5rem",
+                  }}
+                  transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                  className="overflow-hidden"
+                  data-testid="hero-description"
                 >
-                  <ChevronDown className="h-4 w-4" />
-                </motion.span>
+                  <p className="text-lg leading-7 text-white/80 drop-shadow-md">
+                    {description}
+                  </p>
+                </motion.div>
+
+                {shouldTruncate && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setDescriptionExpanded(!descriptionExpanded)}
+                    className="mt-3 gap-1 border border-white/20 text-white/80 backdrop-blur-sm hover:border-white/40 hover:bg-white/10 hover:text-white"
+                    data-testid="hero-read-more"
+                  >
+                    {descriptionExpanded ? "Show Less" : "Read More"}
+                    <motion.span
+                      animate={{ rotate: descriptionExpanded ? 180 : 0 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 400,
+                        damping: 25,
+                      }}
+                    >
+                      <ChevronDown className="size-4" />
+                    </motion.span>
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Stats row */}
+            <div
+              data-testid="item-hero-stats"
+              className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/70"
+            >
+              {mediaCount > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <MediaIcon className="size-4" />
+                  {mediaCount} media file{mediaCount !== 1 ? "s" : ""}
+                </span>
+              )}
+              {artworkCount > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <ImageIcon className="size-4" />
+                  {artworkCount} artwork
+                </span>
+              )}
+              {subtitleCount > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <FileText className="size-4" />
+                  {subtitleCount} subtitle{subtitleCount !== 1 ? "s" : ""}
+                </span>
+              )}
+              {childCount > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <Folder className="size-4" />
+                  {childCount} item{childCount !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+
+            {/* Play button with primary media name in label */}
+            {hasMedia && onPlay && (
+              <Button
+                size="lg"
+                variant="glass"
+                onClick={onPlay}
+                className="max-w-xs gap-2"
+                data-testid="item-hero-play"
+              >
+                <Play className="size-5 shrink-0" />
+                <span className="truncate">
+                  {hasProgress ? "Resume" : "Play"}
+                  {primaryMediaName && ` ${primaryMediaName}`}
+                </span>
               </Button>
             )}
           </div>
-        )}
-
-        {/* Stats row */}
-        <div
-          data-testid="item-hero-stats"
-          className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/70"
-        >
-          {mediaCount > 0 && (
-            <span className="flex items-center gap-1.5">
-              <MediaIcon className="size-4" />
-              {mediaCount} media file{mediaCount !== 1 ? "s" : ""}
-            </span>
-          )}
-          {artworkCount > 0 && (
-            <span className="flex items-center gap-1.5">
-              <ImageIcon className="size-4" />
-              {artworkCount} artwork
-            </span>
-          )}
-          {subtitleCount > 0 && (
-            <span className="flex items-center gap-1.5">
-              <FileText className="size-4" />
-              {subtitleCount} subtitle{subtitleCount !== 1 ? "s" : ""}
-            </span>
-          )}
-          {childCount > 0 && (
-            <span className="flex items-center gap-1.5">
-              <Folder className="size-4" />
-              {childCount} item{childCount !== 1 ? "s" : ""}
-            </span>
-          )}
-        </div>
-
-        {/* Play button with primary media name in label */}
-        {hasMedia && onPlay && (
-          <Button
-            size="lg"
-            variant="glass"
-            onClick={onPlay}
-            className="max-w-xs gap-2"
-            data-testid="item-hero-play"
-          >
-            <Play className="size-5 shrink-0" />
-            <span className="truncate">
-              {hasProgress ? "Resume" : "Play"}
-              {primaryMediaName && ` ${primaryMediaName}`}
-            </span>
-          </Button>
-        )}
-      </div>
-    </section>
+        </motion.div>
+      )}
+    </motion.section>
   );
 }

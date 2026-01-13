@@ -1,15 +1,15 @@
-- item hero fixes
-- same modals with width thougth of all , but chanigng motion heihgt. audit things to do this with
-
-- search does not have same loading artwork logic as the my items and itm detail pages. surely the search for tmdb had some loading thing we could get into
-
+- MVP:
+- artwork ticket
 - do full project scan
-- identify any gaps or limitations ... update p2-p3 roadmap
-
-- plex like nav items, e.g. one for tv shows. best way is for items in root/my items to appear as nav items, we could do a "pinned item" system?
-
+- talk about completing mvp identify any gaps or limitations ... update p2-p3 roadmap
+- plex like nav items, e.g. one for tv shows. best way is for items in root/my items to appear as nav items, we could do a "pinned item" system? and do flags for seeding, e.g. tv shows, movies
 - sorting for 'my items' dashboard, not for individual item pages
-
 - public and explore "item templates" make a copy/fork, you can "add" and it adds all the stuff to your sftp apart from subtitles and media files
-
 - see about trakt and/or v1 for - up next and progressx
+
+- None:
+- tmdb makes children
+- always see dialog footer. check if this is good ux.
+- ask what else plex and jellyfin does
+- tags?
+- refactor wizard state in add-item-dialog and item-settings-dialog to use useReducer for cleaner state management

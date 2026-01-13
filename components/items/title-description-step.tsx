@@ -56,19 +56,6 @@ interface TitleDescriptionStepProps {
 }
 
 /**
- * Truncates text to a maximum length with ellipsis.
- *
- * @param text - Text to truncate
- * @param maxLength - Maximum character length
- * @returns Truncated text with ellipsis if needed
- */
-function truncateText(text: string | null, maxLength: number): string {
-  if (!text) return "(empty)";
-  if (text.length <= maxLength) return text;
-  return `${text.slice(0, maxLength)}...`;
-}
-
-/**
  * Title and description selection step for the metadata wizard.
  * Shows checkboxes with before/after text preview.
  *
@@ -101,13 +88,6 @@ export function TitleDescriptionStep({
 
   return (
     <div className="space-y-4">
-      <div className="mb-4">
-        <h3 className="text-base font-semibold">Title & Description</h3>
-        <p className="text-muted-foreground text-sm">
-          Choose which text fields to update from TMDB
-        </p>
-      </div>
-
       {/* Name Field */}
       <TextFieldOption
         id="wizard-update-name"
@@ -115,8 +95,8 @@ export function TitleDescriptionStep({
         checked={options.updateName}
         onCheckedChange={(checked) => setOption("updateName", checked)}
         disabled={disabled}
-        currentValue={truncateText(currentValues.name, 50)}
-        newValue={truncateText(preview.name, 50)}
+        currentValue={currentValues.name || "(empty)"}
+        newValue={preview.name || "(empty)"}
         hasChange={nameHasChange}
       />
 
@@ -129,8 +109,8 @@ export function TitleDescriptionStep({
         checked={options.updateDescription}
         onCheckedChange={(checked) => setOption("updateDescription", checked)}
         disabled={disabled}
-        currentValue={truncateText(currentValues.description, 80)}
-        newValue={truncateText(preview.description, 80)}
+        currentValue={currentValues.description || "(empty)"}
+        newValue={preview.description || "(empty)"}
         hasChange={descriptionHasChange}
       />
     </div>
