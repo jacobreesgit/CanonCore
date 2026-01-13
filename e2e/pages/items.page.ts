@@ -33,6 +33,9 @@ export class ItemsPage {
   readonly breadcrumbHome: Locator;
   readonly heroSection: Locator;
   readonly loadingSpinner: Locator;
+  readonly sortDropdown: Locator;
+  readonly filterDropdown: Locator;
+  readonly editModeButton: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -56,6 +59,19 @@ export class ItemsPage {
       .getByRole("link", { name: /my items/i });
     this.heroSection = page.getByTestId("item-hero");
     this.loadingSpinner = page.getByTestId("items-loading");
+    // Sort dropdown shows current sort option (Custom Order, Name A-Z, etc.)
+    this.sortDropdown = page
+      .getByRole("button", {
+        name: /custom order|name a-z|name z-a|newest first|oldest first|recently updated/i,
+      })
+      .first();
+    // Filter dropdown shows current filter option (All Items, Has Files, etc.)
+    this.filterDropdown = page
+      .getByRole("button", {
+        name: /all items|has files|no files|synced|pending sync|sync error/i,
+      })
+      .first();
+    this.editModeButton = page.getByRole("button", { name: /edit mode/i });
   }
 
   async goto() {
@@ -681,5 +697,49 @@ export class ItemsPage {
    */
   async isHeroCollapsed(): Promise<boolean> {
     return this.page.getByRole("button", { name: /expand hero/i }).isVisible();
+  }
+
+  /**
+   * Opens the sort dropdown and selects a sort option.
+   *
+   * @param option - The sort option label to select (e.g., "Name A-Z", "Created (Newest)")
+   */
+  async selectSortOption(option: string): Promise<void> {
+    await this.sortDropdown.click();
+    await this.page.getByRole("menuitemradio", { name: option }).click();
+  }
+
+  /**
+   * Opens the filter dropdown and selects a filter option.
+   *
+   * @param option - The filter option label to select (e.g., "All Items", "Has Files")
+   */
+  async selectFilterOption(option: string): Promise<void> {
+    await this.filterDropdown.click();
+    await this.page.getByRole("menuitemradio", { name: option }).click();
+  }
+
+  /**
+   * Gets the current sort option displayed in the dropdown.
+   */
+  async getCurrentSortOption(): Promise<string> {
+    return (await this.sortDropdown.textContent()) ?? "";
+  }
+
+  /**
+   * Gets the current filter option displayed in the dropdown.
+   */
+  async getCurrentFilterOption(): Promise<string> {
+    return (await this.filterDropdown.textContent()) ?? "";
+  }
+
+  /**
+   * Checks if edit mode button is disabled.
+   */
+  async isEditModeDisabled(): Promise<boolean> {
+    const editButton = this.page.getByRole("button", {
+      name: /enter edit mode/i,
+    });
+    return await editButton.isDisabled();
   }
 }

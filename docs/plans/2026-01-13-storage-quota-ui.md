@@ -695,9 +695,9 @@ test("displays storage quota in settings when connected", async ({
   await page.getByRole("button", { name: /sync/i }).click();
 
   // Wait for sync to complete via toast notification
-  await expect(
-    page.getByText(/sync complete|synced/i)
-  ).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText(/sync complete|synced/i)).toBeVisible({
+    timeout: 15000,
+  });
 
   // Re-open settings to see updated quota
   await page.keyboard.press("Escape");
@@ -775,12 +775,12 @@ EOF
 
 ### New Tests
 
-| Type | File                                                             | Tests                              |
-| ---- | ---------------------------------------------------------------- | ---------------------------------- |
-| Unit | `tests/unit/lib/google-drive-sync.test.ts`                       | Quota update during sync (3 tests) |
-| Unit | `tests/unit/components/google-drive/storage-bar.test.tsx`        | StorageBar component (8 tests)     |
-| Unit | `tests/unit/components/google-drive/settings-section.test.tsx`   | Settings storage display (4 tests) |
-| E2E  | `e2e/journeys/google-drive/drive-connection.spec.ts`             | Storage quota in settings (2 tests)|
+| Type | File                                                           | Tests                               |
+| ---- | -------------------------------------------------------------- | ----------------------------------- |
+| Unit | `tests/unit/lib/google-drive-sync.test.ts`                     | Quota update during sync (3 tests)  |
+| Unit | `tests/unit/components/google-drive/storage-bar.test.tsx`      | StorageBar component (8 tests)      |
+| Unit | `tests/unit/components/google-drive/settings-section.test.tsx` | Settings storage display (4 tests)  |
+| E2E  | `e2e/journeys/google-drive/drive-connection.spec.ts`           | Storage quota in settings (2 tests) |
 
 ### Existing Tests - No Changes Needed
 

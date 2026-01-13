@@ -86,7 +86,10 @@ export async function disconnectGoogleDrive(): Promise<{
     });
   } catch (err) {
     // Token might be invalid, proceed with local deletion
-    logger.warn({ err }, "[GoogleDrive] Could not trash folder, proceeding with disconnect");
+    logger.warn(
+      { err },
+      "[GoogleDrive] Could not trash folder, proceeding with disconnect"
+    );
   }
 
   // Delete connection (cascades to items via onDelete: SetNull)

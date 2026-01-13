@@ -41,6 +41,8 @@ import {
 } from "@/lib/user-actions";
 import { passwordSchema, emailSchema } from "@/lib/validations";
 import { GoogleDriveSettingsSection } from "@/components/google-drive";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PreferencesTab } from "@/components/profile/preferences-tab";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { GoogleDriveConnection } from "@/lib/types";
@@ -602,213 +604,226 @@ function MainSettingsContent({
         </div>
       </DialogHeader>
 
-      <div className="min-w-0 space-y-6 py-2">
-        {/* Google Drive Section */}
-        <GoogleDriveSettingsSection
-          connection={googleDriveConnection}
-          onConnectionChange={onProfileChange}
-        />
+      <Tabs defaultValue="profile" className="w-full">
+        <TabsList className="mb-4 grid w-full grid-cols-2">
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="preferences">Preferences</TabsTrigger>
+        </TabsList>
 
-        <Separator />
+        <TabsContent value="profile" className="mt-0">
+          <div className="min-w-0 space-y-6">
+            {/* Google Drive Section */}
+            <GoogleDriveSettingsSection
+              connection={googleDriveConnection}
+              onConnectionChange={onProfileChange}
+            />
 
-        {/* Profile Picture Section */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <div
-              className={cn(
-                "flex size-7 items-center justify-center rounded-lg",
-                "bg-primary/10"
-              )}
-            >
-              <ImageIcon className="text-primary size-3.5" />
-            </div>
-            <Label className="text-sm font-medium">Profile Picture</Label>
-          </div>
+            <Separator />
 
-          <Dropzone
-            accept={{
-              "image/jpeg": [],
-              "image/png": [],
-              "image/webp": [],
-            }}
-            maxSize={1024 * 1024}
-            maxFiles={1}
-            onDrop={handleProfileImageDrop}
-            onError={(error) => toast.error(error.message)}
-            src={profileImage ? [profileImage] : undefined}
-            className="h-24 w-full rounded-lg p-0"
-            data-testid="profile-dropzone"
-          >
-            {profileImageSrc ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={profileImageSrc}
-                alt="Profile preview"
-                className="size-full rounded-lg object-cover"
-              />
-            ) : (
-              <div className="flex size-full flex-col items-center justify-center gap-1">
-                <ImageIcon className="text-muted-foreground/50 size-6" />
-                <p className="text-muted-foreground text-xs">
-                  Drag and drop or click to upload
-                </p>
+            {/* Profile Picture Section */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div
+                  className={cn(
+                    "flex size-7 items-center justify-center rounded-lg",
+                    "bg-primary/10"
+                  )}
+                >
+                  <ImageIcon className="text-primary size-3.5" />
+                </div>
+                <Label className="text-sm font-medium">Profile Picture</Label>
               </div>
-            )}
-          </Dropzone>
 
-          {(user.hasImage || profileImage) && !removeProfile && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleRemoveProfileImage}
-            >
-              <Trash2 className="mr-1.5 size-3.5" />
-              Remove
-            </Button>
-          )}
-          <p className="text-muted-foreground text-xs">
-            Drag and drop or click to upload. JPEG, PNG, or WebP. Max 1MB.
-          </p>
-        </div>
+              <Dropzone
+                accept={{
+                  "image/jpeg": [],
+                  "image/png": [],
+                  "image/webp": [],
+                }}
+                maxSize={1024 * 1024}
+                maxFiles={1}
+                onDrop={handleProfileImageDrop}
+                onError={(error) => toast.error(error.message)}
+                src={profileImage ? [profileImage] : undefined}
+                className="h-24 w-full rounded-lg p-0"
+                data-testid="profile-dropzone"
+              >
+                {profileImageSrc ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={profileImageSrc}
+                    alt="Profile preview"
+                    className="size-full rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="flex size-full flex-col items-center justify-center gap-1">
+                    <ImageIcon className="text-muted-foreground/50 size-6" />
+                    <p className="text-muted-foreground text-xs">
+                      Drag and drop or click to upload
+                    </p>
+                  </div>
+                )}
+              </Dropzone>
 
-        {/* Name Section */}
-        <div className="space-y-3">
-          <Label htmlFor="settings-name" className="text-sm font-medium">
-            Display Name
-          </Label>
-          <Input
-            id="settings-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Your name"
-            className="h-10"
-          />
-        </div>
-
-        {/* Email Section */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <div
-              className={cn(
-                "flex size-7 items-center justify-center rounded-lg",
-                "bg-primary/10"
+              {(user.hasImage || profileImage) && !removeProfile && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRemoveProfileImage}
+                >
+                  <Trash2 className="mr-1.5 size-3.5" />
+                  Remove
+                </Button>
               )}
-            >
-              <Mail className="text-primary size-3.5" />
+              <p className="text-muted-foreground text-xs">
+                Drag and drop or click to upload. JPEG, PNG, or WebP. Max 1MB.
+              </p>
             </div>
-            <Label className="text-sm font-medium">Email</Label>
-          </div>
-          <div className="flex items-center justify-between gap-4">
-            <span className="text-muted-foreground truncate text-sm">
-              {email}
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onEmailClick}
-            >
-              Change Email
-            </Button>
-          </div>
-        </div>
 
-        <Separator />
-
-        {/* Hero Banner Section */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <div
-              className={cn(
-                "flex size-7 items-center justify-center rounded-lg",
-                "bg-primary/10"
-              )}
-            >
-              <Sparkles className="text-primary size-3.5" />
-            </div>
-            <Label className="text-sm font-medium">Hero Banner</Label>
-          </div>
-          <p className="text-muted-foreground text-xs">
-            Displayed at the top of your My Items page.
-          </p>
-
-          <Dropzone
-            accept={{
-              "image/jpeg": [],
-              "image/png": [],
-              "image/webp": [],
-            }}
-            maxSize={2 * 1024 * 1024}
-            maxFiles={1}
-            onDrop={handleHeroImageDrop}
-            onError={(error) => toast.error(error.message)}
-            src={heroImage ? [heroImage] : undefined}
-            className="h-24 w-full rounded-lg p-0"
-            data-testid="hero-dropzone"
-          >
-            {heroImageSrc ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={heroImageSrc}
-                alt="Hero preview"
-                className="size-full rounded-lg object-cover"
+            {/* Name Section */}
+            <div className="space-y-3">
+              <Label htmlFor="settings-name" className="text-sm font-medium">
+                Display Name
+              </Label>
+              <Input
+                id="settings-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your name"
+                className="h-10"
               />
-            ) : (
-              <div className="flex size-full flex-col items-center justify-center gap-1">
-                <Sparkles className="text-muted-foreground/50 size-6" />
-                <p className="text-muted-foreground text-xs">
-                  Drag and drop or click to upload
-                </p>
-              </div>
-            )}
-          </Dropzone>
-
-          {(user.hasHeroImage || heroImage) && !removeHero && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleRemoveHeroImage}
-            >
-              <Trash2 className="mr-1.5 size-3.5" />
-              Remove Banner
-            </Button>
-          )}
-          <p className="text-muted-foreground text-xs">
-            Wide format recommended. Max 2MB.
-          </p>
-        </div>
-
-        <Separator />
-
-        {/* Password Section */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <div
-              className={cn(
-                "flex size-7 items-center justify-center rounded-lg",
-                "bg-primary/10"
-              )}
-            >
-              <Lock className="text-primary size-3.5" />
             </div>
-            <Label className="text-sm font-medium">Password</Label>
+
+            {/* Email Section */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div
+                  className={cn(
+                    "flex size-7 items-center justify-center rounded-lg",
+                    "bg-primary/10"
+                  )}
+                >
+                  <Mail className="text-primary size-3.5" />
+                </div>
+                <Label className="text-sm font-medium">Email</Label>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-muted-foreground truncate text-sm">
+                  {email}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onEmailClick}
+                >
+                  Change Email
+                </Button>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Hero Banner Section */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div
+                  className={cn(
+                    "flex size-7 items-center justify-center rounded-lg",
+                    "bg-primary/10"
+                  )}
+                >
+                  <Sparkles className="text-primary size-3.5" />
+                </div>
+                <Label className="text-sm font-medium">Hero Banner</Label>
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Displayed at the top of your My Items page.
+              </p>
+
+              <Dropzone
+                accept={{
+                  "image/jpeg": [],
+                  "image/png": [],
+                  "image/webp": [],
+                }}
+                maxSize={2 * 1024 * 1024}
+                maxFiles={1}
+                onDrop={handleHeroImageDrop}
+                onError={(error) => toast.error(error.message)}
+                src={heroImage ? [heroImage] : undefined}
+                className="h-24 w-full rounded-lg p-0"
+                data-testid="hero-dropzone"
+              >
+                {heroImageSrc ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={heroImageSrc}
+                    alt="Hero preview"
+                    className="size-full rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="flex size-full flex-col items-center justify-center gap-1">
+                    <Sparkles className="text-muted-foreground/50 size-6" />
+                    <p className="text-muted-foreground text-xs">
+                      Drag and drop or click to upload
+                    </p>
+                  </div>
+                )}
+              </Dropzone>
+
+              {(user.hasHeroImage || heroImage) && !removeHero && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRemoveHeroImage}
+                >
+                  <Trash2 className="mr-1.5 size-3.5" />
+                  Remove Banner
+                </Button>
+              )}
+              <p className="text-muted-foreground text-xs">
+                Wide format recommended. Max 2MB.
+              </p>
+            </div>
+
+            <Separator />
+
+            {/* Password Section */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div
+                  className={cn(
+                    "flex size-7 items-center justify-center rounded-lg",
+                    "bg-primary/10"
+                  )}
+                >
+                  <Lock className="text-primary size-3.5" />
+                </div>
+                <Label className="text-sm font-medium">Password</Label>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onPasswordClick}
+                className="w-full"
+              >
+                <Lock className="mr-2 size-4" />
+                Change Password
+              </Button>
+              <p className="text-muted-foreground text-xs">
+                Update your password to keep your account secure.
+              </p>
+            </div>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onPasswordClick}
-            className="w-full"
-          >
-            <Lock className="mr-2 size-4" />
-            Change Password
-          </Button>
-          <p className="text-muted-foreground text-xs">
-            Update your password to keep your account secure.
-          </p>
-        </div>
-      </div>
+        </TabsContent>
+
+        <TabsContent value="preferences" className="mt-0">
+          <PreferencesTab />
+        </TabsContent>
+      </Tabs>
 
       <DialogFooter>
         <Button variant="outline" onClick={handleCancel} disabled={isSaving}>

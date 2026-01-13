@@ -1,20 +1,20 @@
 - MVP:
-- sortering filteing - validated 
+- storage quota - validated
+- sync operation - validated
+- batch operation - validated
 
-- storage quota - validated 
-- sync operation - validated 
-- batch operation
-
+- in one and validated:
 - empty states - Somse edge cases show blank screens
+- seeding flags
 - bulk operations - Deleting 10 items = 10 context menu clicks - in edit mode
 
-- plex like nav items, e.g. one for tv shows. best way is for items in root/my items to appear as nav items, we could do a "pinned item" system? and do flags for seeding, e.g. tv shows, movies
+- plex like nav items, e.g. one for tv shows. best way is for items in root/my items to appear as nav items, we could do a "pinned item" system? what do you think
 
 - continue watching - Playback position is tracked but never surfaced. look at what trakt does for progress across your entire library, then speicfic items and all descendnts. The Progress feature tracks completion across items, (with INCOMPLETE/COMPLETED/SKIPPED states), while Up Next shows the first incomplete item in DFS order to help users quickly find their next task.
 
 - public and explore "item templates" make a copy/fork, you can "add" and it adds all the stuff to your sftp apart from subtitles and media files
 
-- one last look
+- one last look - repeat until 10/10
 
 - None:
 - preloading

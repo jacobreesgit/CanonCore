@@ -3,7 +3,13 @@
  * Used for converting database items to tree structure and vice versa.
  */
 
-import type { Item, ItemWithArtwork, TreeItem } from "./types";
+import type {
+  Item,
+  ItemWithArtwork,
+  TreeItem,
+  SortOption,
+  FilterOption,
+} from "./types";
 
 /**
  * Determines the media icon type based on all media files' MIME types.
@@ -183,4 +189,128 @@ export function treeToItemUpdates(items: TreeItem[]): Array<{
 
   traverse(items, null, 0);
   return updates;
+}
+
+// =============================================================================
+// Sorting and Filtering
+// =============================================================================
+
+/** Sort options with display labels. */
+export const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: "custom", label: "Custom Order" },
+  { value: "name-asc", label: "Name A-Z" },
+  { value: "name-desc", label: "Name Z-A" },
+  { value: "created-desc", label: "Newest First" },
+  { value: "created-asc", label: "Oldest First" },
+  { value: "updated-desc", label: "Recently Updated" },
+];
+
+/** Filter options with display labels. */
+export const FILTER_OPTIONS: { value: FilterOption; label: string }[] = [
+  { value: "all", label: "All Items" },
+  { value: "has-files", label: "Has Files" },
+  { value: "no-files", label: "No Files" },
+  { value: "synced", label: "Synced" },
+  { value: "pending", label: "Pending Sync" },
+  { value: "error", label: "Sync Error" },
+];
+
+/**
+ * Sorts items by the specified sort option.
+ * Returns a new array without mutating the original.
+ *
+ * @param items - Array of items to sort
+ * @param sortBy - Sort option to apply
+ * @returns Sorted array of items
+ *
+ * @example
+ * const sorted = sortItems(items, "name-asc");
+ * // Returns items sorted alphabetically by name
+ *
+ * @example
+ * const sorted = sortItems(items, "created-desc");
+ * // Returns items sorted by creation date, newest first
+ */
+export function sortItems(
+  items: ItemWithArtwork[],
+  sortBy: SortOption
+): ItemWithArtwork[] {
+  if (items.length === 0) return [];
+
+  const sorted = [...items];
+
+  switch (sortBy) {
+    case "custom":
+      return sorted.sort((a, b) => a.order - b.order);
+    case "name-asc":
+      return sorted.sort((a, b) => a.name.localeCompare(b.name));
+    case "name-desc":
+      return sorted.sort((a, b) => b.name.localeCompare(a.name));
+    case "created-desc":
+      return sorted.sort(
+        (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+      );
+    case "created-asc":
+      return sorted.sort(
+        (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+      );
+    case "updated-desc":
+      return sorted.sort(
+        (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
+      );
+    default:
+      return sorted;
+  }
+}
+
+/**
+ * Filters items by the specified filter option.
+ * Returns a new array without mutating the original.
+ *
+ * @param items - Array of items to filter
+ * @param filterBy - Filter option to apply
+ * @returns Filtered array of items
+ *
+ * @example
+ * const withFiles = filterItems(items, "has-files");
+ * // Returns only items that have at least one file attached
+ *
+ * @example
+ * const synced = filterItems(items, "synced");
+ * // Returns only items with SYNCED status
+ */
+export function filterItems(
+  items: ItemWithArtwork[],
+  filterBy: FilterOption
+): ItemWithArtwork[] {
+  if (items.length === 0) return [];
+
+  switch (filterBy) {
+    case "all":
+      return [...items];
+    case "has-files":
+      return items.filter(
+        (item) =>
+          item.fileCounts.media +
+            item.fileCounts.artwork +
+            item.fileCounts.subtitles >
+          0
+      );
+    case "no-files":
+      return items.filter(
+        (item) =>
+          item.fileCounts.media +
+            item.fileCounts.artwork +
+            item.fileCounts.subtitles ===
+          0
+      );
+    case "synced":
+      return items.filter((item) => item.syncStatus === "SYNCED");
+    case "pending":
+      return items.filter((item) => item.syncStatus === "PENDING");
+    case "error":
+      return items.filter((item) => item.syncStatus === "ERROR");
+    default:
+      return [...items];
+  }
 }
