@@ -15,7 +15,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { searchMediaAction, isTMDBAvailable } from "@/lib/tmdb-actions";
-import type { TMDBSearchResult } from "@/lib/tmdb-client";
+import { getPosterUrl, type TMDBSearchResult } from "@/lib/tmdb-client";
 import { cn } from "@/lib/utils";
 
 interface MediaSearchComboboxProps {
@@ -116,11 +116,13 @@ export function MediaSearchCombobox({
   );
 
   /**
-   * Handles input focus.
+   * Handles input focus - only open if there's existing query to search.
    */
   const handleFocus = useCallback(() => {
-    setOpen(true);
-  }, []);
+    if (query.length >= 2) {
+      setOpen(true);
+    }
+  }, [query]);
 
   // Fallback to simple input if TMDB not configured
   if (tmdbAvailable === false) {
@@ -133,6 +135,7 @@ export function MediaSearchCombobox({
           setQuery(e.target.value);
           onChange?.(e.target.value);
         }}
+        autoComplete="off"
         className={className}
       />
     );
@@ -160,6 +163,7 @@ export function MediaSearchCombobox({
             value={query}
             onChange={handleInputChange}
             onFocus={handleFocus}
+            autoComplete="off"
             className="pl-10"
           />
         </div>
@@ -227,7 +231,7 @@ export function MediaSearchCombobox({
                   <div className="bg-muted relative h-14 w-10 shrink-0 overflow-hidden rounded">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={`https://image.tmdb.org/t/p/w92${result.posterPath}`}
+                      src={getPosterUrl(result.posterPath, "w92") ?? undefined}
                       alt=""
                       className="h-full w-full object-cover"
                     />

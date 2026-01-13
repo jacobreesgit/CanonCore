@@ -51,7 +51,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { useHeroCollapse } from "@/hooks/use-hero-collapse";
 
 // Mock localStorage
@@ -76,8 +76,9 @@ describe("useHeroCollapse", () => {
     vi.clearAllMocks();
   });
 
-  it("should default to expanded (false)", () => {
+  it("should default to expanded (false) for SSR safety", () => {
     const { result } = renderHook(() => useHeroCollapse());
+    // Initial render is always false to prevent hydration mismatch
     expect(result.current.isCollapsed).toBe(false);
   });
 
@@ -110,12 +111,15 @@ describe("useHeroCollapse", () => {
     );
   });
 
-  it("should read initial state from localStorage", () => {
-    localStorageMock.getItem.mockReturnValueOnce("true");
+  it("should read initial state from localStorage on mount", async () => {
+    localStorageMock.getItem.mockReturnValue("true");
 
     const { result } = renderHook(() => useHeroCollapse());
 
-    expect(result.current.isCollapsed).toBe(true);
+    // useEffect reads localStorage after initial render
+    await waitFor(() => {
+      expect(result.current.isCollapsed).toBe(true);
+    });
   });
 
   it("should provide setCollapsed for direct control", () => {
@@ -126,6 +130,16 @@ describe("useHeroCollapse", () => {
     });
 
     expect(result.current.isCollapsed).toBe(true);
+  });
+
+  it("should be SSR-safe (initial render always false)", () => {
+    // Even with localStorage set, first render must be false to match server
+    localStorageMock.getItem.mockReturnValue("true");
+    const { result } = renderHook(() => useHeroCollapse());
+
+    // Synchronous check - before useEffect runs
+    // This ensures server and client initial render match
+    expect(result.current.isCollapsed).toBe(false);
   });
 });
 ```
@@ -153,16 +167,24 @@ const STORAGE_KEY = "canon-hero-collapsed";
  * Manages hero collapse state with localStorage persistence.
  * Defaults to expanded (false) on first visit.
  *
+ * Uses useEffect for localStorage read to prevent SSR hydration mismatch.
+ * Server always renders with isCollapsed=false, then client updates from localStorage.
+ *
  * @returns Collapse state and control functions
  */
 export function useHeroCollapse() {
-  // Initialize from localStorage (SSR-safe with false default)
-  const [isCollapsed, setIsCollapsed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem(STORAGE_KEY) === "true";
-  });
+  // Always start with false to prevent hydration mismatch
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Sync to localStorage when state changes
+  // Read from localStorage on mount (client-side only)
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored === "true") {
+      setIsCollapsed(true);
+    }
+  }, []);
+
+  // Sync to localStorage when state changes (skip initial false)
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, String(isCollapsed));
   }, [isCollapsed]);
@@ -210,8 +232,9 @@ EOF
 **Files:**
 
 - Modify: `components/items/item-hero.tsx:155`
+- Modify: `components/items/item-hero.tsx:161` (add explicit line-height)
 
-**Step 1: Update motion.div height**
+**Step 1: Update motion.div height and add explicit line-height**
 
 Change line 155 from:
 
@@ -227,7 +250,13 @@ height:
   descriptionExpanded || !shouldTruncate ? "auto" : "3.5rem",
 ```
 
-**Rationale:** `text-lg` = 18px font, 28px line-height. Two lines = 56px = 3.5rem.
+Also update line 161 to add explicit line-height for predictable 2-line height:
+
+```tsx
+<p className="text-lg leading-7 text-white/80 drop-shadow-md">
+```
+
+**Rationale:** Tailwind's default `text-lg` has line-height of 1.75 (31.5px), which would make 2 lines ~63px. By adding `leading-7` (28px line-height), two lines = 56px = 3.5rem exactly. This ensures consistent height across different Tailwind configurations.
 
 **Step 2: Verify tests pass**
 
@@ -241,8 +270,8 @@ git add components/items/item-hero.tsx
 git commit -m "$(cat <<'EOF'
 fix(item-hero): correct collapsed description to exactly 2 lines
 
-Changed from 4.5rem (72px) to 3.5rem (56px) to match text-lg
-line-height (28px × 2 = 56px).
+Changed from 4.5rem (72px) to 3.5rem (56px) and added explicit
+leading-7 (28px line-height) for predictable 2-line height.
 
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 EOF
@@ -424,7 +453,7 @@ if (isCollapsed && onCollapse) {
     <motion.section
       data-testid="item-hero"
       initial={{ height: "auto" }}
-      animate={{ height: 56 }}
+      animate={{ height: "56px" }}
       transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
       className={cn(
         "relative flex h-14 items-center justify-between overflow-hidden rounded-xl border border-white/10 bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-900/95 px-4 backdrop-blur-md",
@@ -537,7 +566,7 @@ return (
             className="overflow-hidden"
             data-testid="hero-description"
           >
-            <p className="text-lg text-white/80 drop-shadow-md">
+            <p className="text-lg leading-7 text-white/80 drop-shadow-md">
               {descriptionExpanded || !shouldTruncate
                 ? description
                 : `${description.slice(0, DESCRIPTION_TRUNCATE_LENGTH)}...`}
@@ -843,6 +872,11 @@ EOF
 
 - Create: `e2e/journeys/items/item-hero.spec.ts`
 
+**Prerequisites:**
+
+- The My Items root page must pass `heroTitle` prop to ItemsView for the hero to render
+- Verify in `app/(my-items)/my-items/page.tsx` that ItemsView receives `heroTitle="My Items"`
+
 **Step 1: Create E2E test file**
 
 ```typescript
@@ -860,6 +894,13 @@ test.describe("Item Hero", () => {
   test.beforeEach(async ({ page }) => {
     await loginAndCleanup(page);
     itemsPage = new ItemsPage(page);
+  });
+
+  // Cleanup localStorage after each test to reset collapse state
+  test.afterEach(async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.removeItem("canon-hero-collapsed");
+    });
   });
 
   test.describe("collapse/expand", () => {
@@ -914,10 +955,30 @@ test.describe("Item Hero", () => {
       "This is a very long description that exceeds 150 characters to trigger the Read More button. " +
       "It contains enough text to demonstrate the expand and collapse functionality properly.";
 
+    // Track test item for cleanup
+    let testItemCreated = false;
+
+    test.afterEach(async ({ page }) => {
+      // Cleanup test item if created and test failed mid-way
+      if (testItemCreated) {
+        try {
+          await itemsPage.goto();
+          const item = page.getByText("Hero Test");
+          if (await item.isVisible({ timeout: 1000 })) {
+            await itemsPage.deleteItemViaContextMenu("Hero Test");
+          }
+        } catch {
+          // Item already deleted or doesn't exist
+        }
+        testItemCreated = false;
+      }
+    });
+
     test("should expand and collapse long description", async ({ page }) => {
       // Create item with long description
       await itemsPage.goto();
       await itemsPage.createItem("Hero Test", longDescription);
+      testItemCreated = true;
       await itemsPage.clickItem("Hero Test");
 
       // Should see Read More button
@@ -936,6 +997,7 @@ test.describe("Item Hero", () => {
       // Cleanup
       await itemsPage.breadcrumbHome.click();
       await itemsPage.deleteItemViaContextMenu("Hero Test");
+      testItemCreated = false;
     });
   });
 });
@@ -1039,7 +1101,7 @@ Expected: All checks pass
 
 | File                                             | Tests Added |
 | ------------------------------------------------ | ----------- |
-| `tests/unit/hooks/use-hero-collapse.test.ts`     | 5 new       |
+| `tests/unit/hooks/use-hero-collapse.test.ts`     | 6 new       |
 | `tests/unit/components/items/item-hero.test.tsx` | 11 new      |
 
 ### E2E Tests
@@ -1075,3 +1137,11 @@ All existing tests continue to pass as the changes are additive.
 - Animation of content sliding up when hero collapses
 - Different collapse states for different pages (all share same state)
 - Toolbar "Focus" button (collapse button in hero is sufficient)
+
+**Design Decision - Global Collapse State:**
+
+The collapse state is intentionally shared globally via localStorage. This means:
+
+- Collapsing on item detail page also collapses on root My Items page
+- This provides consistent "focus mode" UX across the app
+- If per-page state is needed later, extend the hook to accept an optional `key` param

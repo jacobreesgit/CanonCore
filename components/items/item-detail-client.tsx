@@ -23,6 +23,7 @@ import { updatePlaybackPosition } from "@/lib/item-file-actions";
 import { preloadImages } from "@/lib/image-preload";
 import type { ItemWithArtwork, SerializedItemFile } from "@/lib/types";
 import { getItems } from "@/lib/item-actions";
+import { useHeroCollapse } from "@/hooks/use-hero-collapse";
 
 interface ItemDetailClientProps {
   /** Current item being viewed. */
@@ -65,6 +66,9 @@ export function ItemDetailClient({
   const [playingFile, setPlayingFile] = useState<SerializedItemFile | null>(
     null
   );
+
+  // Hero collapse state with localStorage persistence
+  const { isCollapsed, toggleCollapse } = useHeroCollapse();
 
   // Resolve hero artwork using fallback chain: isHero -> isPrimary -> first
   // Computed before state to allow proper initialization of heroPreloaded
@@ -208,6 +212,8 @@ export function ItemDetailClient({
         primaryMediaName={primaryMedia?.filename ?? null}
         primaryMediaMimeType={primaryMedia?.mimeType ?? null}
         onPlay={handlePlay}
+        isCollapsed={isCollapsed}
+        onCollapse={toggleCollapse}
       />
 
       {/* Toolbar - below hero */}

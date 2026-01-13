@@ -131,11 +131,18 @@ describe("FileTypeCombobox Delete", () => {
     const deleteButton = screen.getByTestId("delete-file-m2");
     await user.click(deleteButton);
 
-    // Confirmation dialog should appear
+    // Confirmation dialog should appear with Delete File title
+    // Note: combobox popover uses data-slot="popover-content",
+    // while Dialog uses data-slot="dialog-content"
     await waitFor(() => {
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      const deleteDialog = document.querySelector(
+        '[data-slot="dialog-content"]'
+      );
+      expect(deleteDialog).toBeInTheDocument();
       expect(screen.getByText("Delete File")).toBeInTheDocument();
-      expect(screen.getByText(/movie-hd\.mkv/)).toBeInTheDocument();
+      // Check the description mentions the filename (use queryAllByText to handle multiple matches)
+      const descriptions = screen.getAllByText(/movie-hd\.mkv/);
+      expect(descriptions.length).toBeGreaterThanOrEqual(1);
     });
   });
 

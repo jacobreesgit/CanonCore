@@ -189,4 +189,110 @@ describe("ItemHero", () => {
       expect(screen.getByText("1 item")).toBeInTheDocument();
     });
   });
+
+  describe("collapse/expand", () => {
+    it("should render collapse button when onCollapse provided", () => {
+      render(
+        <ItemHero name="Test" isCollapsed={false} onCollapse={() => {}} />
+      );
+      expect(
+        screen.getByRole("button", { name: /collapse hero/i })
+      ).toBeInTheDocument();
+    });
+
+    it("should not render collapse button when onCollapse not provided", () => {
+      render(<ItemHero name="Test" />);
+      expect(
+        screen.queryByRole("button", { name: /collapse hero/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it("should render collapsed state with expand button", () => {
+      render(<ItemHero name="Test" isCollapsed={true} onCollapse={() => {}} />);
+      expect(
+        screen.getByRole("button", { name: /expand hero/i })
+      ).toBeInTheDocument();
+    });
+
+    it("should call onCollapse when collapse button clicked", async () => {
+      const user = userEvent.setup();
+      const onCollapse = vi.fn();
+      render(
+        <ItemHero name="Test" isCollapsed={false} onCollapse={onCollapse} />
+      );
+
+      await user.click(screen.getByRole("button", { name: /collapse hero/i }));
+      expect(onCollapse).toHaveBeenCalledTimes(1);
+    });
+
+    it("should show title in collapsed state", () => {
+      render(
+        <ItemHero
+          name="Breaking Bad"
+          isCollapsed={true}
+          onCollapse={() => {}}
+        />
+      );
+      expect(screen.getByText("Breaking Bad")).toBeInTheDocument();
+    });
+
+    it("should show play button in collapsed state when hasMedia", () => {
+      render(
+        <ItemHero
+          name="Test"
+          isCollapsed={true}
+          onCollapse={() => {}}
+          hasMedia
+          onPlay={() => {}}
+        />
+      );
+      expect(screen.getByRole("button", { name: /play/i })).toBeInTheDocument();
+    });
+  });
+
+  describe("description expand/collapse", () => {
+    const longDescription = "A".repeat(200);
+
+    it("should show Read More button for long descriptions", () => {
+      render(<ItemHero name="Test" description={longDescription} />);
+      expect(
+        screen.getByRole("button", { name: /read more/i })
+      ).toBeInTheDocument();
+    });
+
+    it("should not show Read More button for short descriptions", () => {
+      render(<ItemHero name="Test" description="Short text" />);
+      expect(
+        screen.queryByRole("button", { name: /read more/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it("should toggle to Show Less when expanded", async () => {
+      const user = userEvent.setup();
+      render(<ItemHero name="Test" description={longDescription} />);
+
+      await user.click(screen.getByRole("button", { name: /read more/i }));
+
+      expect(
+        screen.getByRole("button", { name: /show less/i })
+      ).toBeInTheDocument();
+    });
+
+    it("should toggle back to Read More when collapsed", async () => {
+      const user = userEvent.setup();
+      render(<ItemHero name="Test" description={longDescription} />);
+
+      await user.click(screen.getByRole("button", { name: /read more/i }));
+      await user.click(screen.getByRole("button", { name: /show less/i }));
+
+      expect(
+        screen.getByRole("button", { name: /read more/i })
+      ).toBeInTheDocument();
+    });
+
+    it("should have data-testid for E2E targeting", () => {
+      render(<ItemHero name="Test" description={longDescription} />);
+      expect(screen.getByTestId("hero-read-more")).toBeInTheDocument();
+    });
+  });
 });

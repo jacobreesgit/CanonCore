@@ -75,8 +75,9 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── items/                        # Items feature components
 │   │   ├── add-item-dialog.tsx       # Modal dialog for item creation with TMDB search
 │   │   ├── edit-mode-toggle.tsx      # Edit/Done button for reordering mode
-│   │   ├── episode-picker.tsx        # TV season/episode selection for TMDB
+│   │   ├── episode-picker-helpers.tsx # Shared season/episode picker components
 │   │   ├── file-type-combobox.tsx    # File type picker with uploadOnly mode for Add dialog
+│   │   ├── files-section.tsx         # File display section for settings dialog
 │   │   ├── hero-selection-step.tsx   # Wizard step for backdrop/hero selection
 │   │   ├── image-selection-grid.tsx  # Grid for selecting TMDB/existing artwork
 │   │   ├── item-context-menu.tsx     # Right-click actions menu
@@ -88,8 +89,8 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── items-toolbar.tsx         # Unified toolbar for root and detail pages
 │   │   ├── items-view.tsx            # Main view with tree/grid/edit toggle
 │   │   ├── media-search-combobox.tsx # TMDB search with poster thumbnails
-│   │   ├── metadata-wizard-modal.tsx # 3-step wizard for TMDB metadata application
 │   │   ├── poster-selection-step.tsx # Wizard step for poster selection
+│   │   ├── queued-file-thumbnail.tsx # Thumbnail preview for queued uploads
 │   │   ├── sync-badge.tsx            # Google Drive sync status indicators
 │   │   ├── title-description-step.tsx # Wizard step for name/description options
 │   │   └── view-toggle.tsx           # Tree/grid view switcher
@@ -97,10 +98,8 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── media-overlay.tsx         # Full-screen media viewer
 │   │   └── media-player.tsx          # Vidstack video player wrapper
 │   ├── profile/                      # User profile components
-│   │   ├── change-email-dialog.tsx   # Modal for email changes with password verification
-│   │   ├── change-password-dialog.tsx # Modal for password changes with validation
 │   │   ├── index.ts                  # Barrel export for profile components
-│   │   └── settings-dialog.tsx       # Settings dialog with profile and Google Drive
+│   │   └── settings-dialog.tsx       # Settings with step-based password/email changes
 │   ├── search/                       # Spotlight search components
 │   │   ├── global-spotlight.tsx      # Wrapper that renders SpotlightSearch
 │   │   └── spotlight-search.tsx      # Main search dialog with fuzzy filtering
@@ -117,7 +116,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   └── utilities.ts              # Tree manipulation helpers
 │   ├── providers/
 │   │   └── theme-provider.tsx        # next-themes provider wrapper
-│   ├── ui/                           # shadcn/ui components + checkbox.tsx, command.tsx, dropzone.tsx, kbd.tsx, password-input.tsx, scroll-area.tsx, tabs.tsx
+│   ├── ui/                           # shadcn/ui + animated-dialog-content.tsx, checkbox.tsx, command.tsx, dropzone.tsx, kbd.tsx, password-input.tsx, scroll-area.tsx, tabs.tsx
 │   ├── app-sidebar.tsx               # Context-aware navigation sidebar
 │   ├── error-boundary.tsx            # React error boundary for graceful error handling
 │   ├── my-items-providers.tsx        # Client-side providers for protected routes
@@ -161,7 +160,9 @@ pnpm run test:e2e:ui                        # UI mode
 ├── contexts/
 │   └── spotlight-context.tsx         # Spotlight search state and "/" keyboard shortcut
 ├── hooks/
+│   ├── use-artwork-upload.ts         # Artwork upload flow with progress
 │   ├── use-controllable-state.ts     # Controlled/uncontrolled component state
+│   ├── use-hero-collapse.ts          # Hero section scroll-triggered collapse
 │   ├── use-mobile.ts                 # Mobile breakpoint hook
 │   └── use-tree-collapse.ts          # Shared tree collapse/expand state
 ├── content/
@@ -186,7 +187,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── source.ts                     # Fumadocs source configuration
 │   ├── tmdb-actions.ts               # TMDB metadata server actions
 │   ├── tmdb-client.ts                # TMDB API client for movie/TV metadata
-│   ├── types.ts                      # Shared TypeScript types (Item, ItemFile, SearchableItem, GoogleDriveConnection, QueuedFile, TMDBMetadataSelection)
+│   ├── types.ts                      # Shared types (Item, ItemFile, QueuedFile, TMDBMetadataSelection, ArtworkSelectionSource)
 │   ├── upload-utils.ts               # Browser-to-Drive upload utilities
 │   ├── user-actions.ts               # User profile server actions
 │   ├── utils.ts                      # cn() helper
@@ -202,8 +203,10 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── code-review-excellence/       # Code review best practices
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
+├── scripts/
+│   └── generate-refresh-token.ts     # Google Drive token generator for E2E tests
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 2.1.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 2.2.0)
     └── plans/                        # Design documents
 ```
 
@@ -346,12 +349,12 @@ pnpm run test:e2e:ui                        # UI mode
 
 **Intentionally Skipped Tests:**
 
-| Test                             | File                         | Reason                                                                      |
-| -------------------------------- | ---------------------------- | --------------------------------------------------------------------------- |
-| Google Drive media tests (all 4) | `drive-media.spec.ts:23`     | Skipped on mobile - sync and media playback unreliable in mobile emulation  |
-| Video playback test              | `drive-media.spec.ts:118`    | Dynamic skip if no video file in `GOOGLE_TEST_ROOT_FOLDER_ID/Breaking Bad/` |
-| Video seeking test               | `drive-media.spec.ts:169`    | Dynamic skip if no video file in test folder                                |
-| File Deletion tests (5)          | `items-settings.spec.ts:409` | Skipped if `GOOGLE_TEST_REFRESH_TOKEN` not set                              |
+| Test                             | File                         | Reason                                                                     |
+| -------------------------------- | ---------------------------- | -------------------------------------------------------------------------- |
+| Google Drive media tests (all 4) | `drive-media.spec.ts:23`     | Skipped on mobile - sync and media playback unreliable in mobile emulation |
+| Video playback test              | `drive-media.spec.ts:118`    | Dynamic skip if no video file in `E2E_GOOGLE_ROOT_FOLDER_ID/Breaking Bad/` |
+| Video seeking test               | `drive-media.spec.ts:169`    | Dynamic skip if no video file in test folder                               |
+| File Deletion tests (5)          | `items-settings.spec.ts:409` | Skipped if `E2E_GOOGLE_REFRESH_TOKEN` not set                              |
 
 ### Security
 
@@ -415,11 +418,17 @@ TMDB (optional - for metadata lookup):
 
 - `TMDB_API_KEY` - TMDB v3 API key for movie/TV metadata lookup
 
+Seed (required for database seeding with Drive integration):
+
+- `GOOGLE_TEST_REFRESH_TOKEN` - Refresh token for seed Drive account (seed@canoncore.com)
+- `GOOGLE_TEST_ROOT_FOLDER_ID` - Folder ID where seed creates content
+- `GOOGLE_TEST_EMAIL` - Email of seed account (optional, for display)
+
 E2E Testing (optional - for Google Drive E2E tests):
 
-- `GOOGLE_TEST_REFRESH_TOKEN` - Refresh token for E2E test Drive account
-- `GOOGLE_TEST_ROOT_FOLDER_ID` - Folder ID where E2E tests create/delete items
-- `GOOGLE_TEST_EMAIL` - Email of test account (optional, for display)
+- `E2E_GOOGLE_REFRESH_TOKEN` - Refresh token for E2E test Drive account (jacobreesmedia@gmail.com)
+- `E2E_GOOGLE_ROOT_FOLDER_ID` - Folder ID where E2E tests create/delete items
+- `E2E_GOOGLE_EMAIL` - Email of E2E test account (optional, for display)
 
 ## Documentation Standards
 

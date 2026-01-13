@@ -13,6 +13,7 @@ Enhance the TMDB metadata experience with a confirmation dialog, tabbed settings
 ## Current State (v2.0.0)
 
 Already implemented:
+
 - MediaSearchCombobox for TMDB search
 - Immediate metadata apply (name, description, poster)
 - Poster upload to Google Drive
@@ -39,11 +40,13 @@ Already implemented:
 Reorganize the growing settings dialog into two tabs:
 
 **Details Tab:**
+
 - Name input
 - Description textarea
 - Metadata Lookup (MediaSearchCombobox)
 
 **Files Tab:**
+
 - Primary Media (FileTypeCombobox)
 - Primary Artwork (FileTypeCombobox)
 - Hero Image (FileTypeCombobox) - always visible, not just when 2+ artwork
@@ -107,10 +110,10 @@ When user selects a TMDB result, show confirmation dialog:
 
 TMDB provides two image types:
 
-| Field | Aspect | Content |
-|-------|--------|---------|
-| `poster_path` | 2:3 portrait | Movie poster with title |
-| `backdrop_path` | 16:9 landscape | Scene shots, textless |
+| Field           | Aspect         | Content                 |
+| --------------- | -------------- | ----------------------- |
+| `poster_path`   | 2:3 portrait   | Movie poster with title |
+| `backdrop_path` | 16:9 landscape | Scene shots, textless   |
 
 Add to `lib/tmdb-client.ts`:
 
@@ -163,21 +166,25 @@ Add preview action for confirmation dialog:
 export async function getMetadataPreviewAction(
   tmdbId: number,
   mediaType: "movie" | "tv"
-): Promise<ActionResult<{
-  name: string;
-  description: string;
-  posterUrl: string | null;
-  backdropUrl: string | null;
-}>>;
+): Promise<
+  ActionResult<{
+    name: string;
+    description: string;
+    posterUrl: string | null;
+    backdropUrl: string | null;
+  }>
+>;
 ```
 
 ### A5. Update Seed for Backdrops
 
 For movies and TV show parents:
+
 - Download poster (w1280) → Primary Artwork
 - Download backdrop (w1280) → Hero Image (isHero: true)
 
 For episodes:
+
 - Download poster only (no backdrop needed)
 
 ---
@@ -262,6 +269,7 @@ Replace confirmation dialog with 3-step wizard:
 ```
 
 **Files:**
+
 - `components/items/metadata-wizard-modal.tsx`
 - `components/items/title-description-step.tsx`
 - `components/items/poster-selection-step.tsx`
@@ -301,6 +309,7 @@ When user selects a TV show, enable drill-down:
 ```
 
 Escape hatches at each level:
+
 - "Use Show Metadata Instead"
 - "Use Season Metadata Instead"
 
@@ -310,8 +319,15 @@ Add functions:
 
 ```typescript
 export async function getTVSeasons(showId: number): Promise<TMDBSeason[]>;
-export async function getTVEpisodes(showId: number, seasonNumber: number): Promise<TMDBEpisode[]>;
-export async function getEpisodeDetails(showId: number, seasonNumber: number, episodeNumber: number): Promise<TMDBEpisodeDetails>;
+export async function getTVEpisodes(
+  showId: number,
+  seasonNumber: number
+): Promise<TMDBEpisode[]>;
+export async function getEpisodeDetails(
+  showId: number,
+  seasonNumber: number,
+  episodeNumber: number
+): Promise<TMDBEpisodeDetails>;
 ```
 
 **Files:** `components/items/episode-picker.tsx`
@@ -324,34 +340,34 @@ Validated using code-review-excellence, Context7 (codebase analysis), and sequen
 
 ### Blocking Issues (Must Address in Phase A)
 
-| # | Issue | Resolution |
-|---|-------|------------|
-| 1 | `components/ui/tabs.tsx` doesn't exist | Run `npx shadcn@latest add tabs` before A1 |
-| 2 | `backdrop_path` missing from TMDBMovie/TMDBTVShow interfaces in tmdb-client.ts | Add to interfaces (lines 23-29, 32-39) |
-| 3 | `getBackdropUrl()` and `downloadBackdrop()` don't exist | Add functions as specified in A3 |
-| 4 | `applyMetadataAction` has no options parameter (lines 91-95) | Update signature to accept ApplyMetadataOptions |
-| 5 | `getMetadataPreviewAction` doesn't exist | Create new action as specified in A4 |
-| 6 | Hero Image picker conditional on hasMultipleArtwork (line 453) | Remove condition - always show per A1 spec |
+| #   | Issue                                                                          | Resolution                                      |
+| --- | ------------------------------------------------------------------------------ | ----------------------------------------------- |
+| 1   | `components/ui/tabs.tsx` doesn't exist                                         | Run `npx shadcn@latest add tabs` before A1      |
+| 2   | `backdrop_path` missing from TMDBMovie/TMDBTVShow interfaces in tmdb-client.ts | Add to interfaces (lines 23-29, 32-39)          |
+| 3   | `getBackdropUrl()` and `downloadBackdrop()` don't exist                        | Add functions as specified in A3                |
+| 4   | `applyMetadataAction` has no options parameter (lines 91-95)                   | Update signature to accept ApplyMetadataOptions |
+| 5   | `getMetadataPreviewAction` doesn't exist                                       | Create new action as specified in A4            |
+| 6   | Hero Image picker conditional on hasMultipleArtwork (line 453)                 | Remove condition - always show per A1 spec      |
 
 ### Important Issues (Addressed in Plan)
 
-| # | Issue | Resolution |
-|---|-------|------------|
-| 7 | Confirmation dialog needs current item values | A2 shows before/after preview - fetch in handleApplyMetadata |
-| 8 | Backdrop aspect ratio differs from poster | Use w1280 for backdrops (16:9), w500 for posters (2:3) |
-| 9 | TMDB images API adds more requests | Use existing circuit breaker, add 100ms delay |
-| 10 | No rate limit key for backdrop/images endpoints | Extend rate-limit.ts with `tmdbImages` key |
-| 11 | Image grid could be slow with many images | Lazy load, limit initial display to 12 (Phase B) |
+| #   | Issue                                           | Resolution                                                   |
+| --- | ----------------------------------------------- | ------------------------------------------------------------ |
+| 7   | Confirmation dialog needs current item values   | A2 shows before/after preview - fetch in handleApplyMetadata |
+| 8   | Backdrop aspect ratio differs from poster       | Use w1280 for backdrops (16:9), w500 for posters (2:3)       |
+| 9   | TMDB images API adds more requests              | Use existing circuit breaker, add 100ms delay                |
+| 10  | No rate limit key for backdrop/images endpoints | Extend rate-limit.ts with `tmdbImages` key                   |
+| 11  | Image grid could be slow with many images       | Lazy load, limit initial display to 12 (Phase B)             |
 
 ### Suggestions (Incorporated)
 
-| # | Suggestion | Resolution |
-|---|------------|------------|
-| 12 | Remember last selected tab | Use localStorage for tab persistence |
-| 13 | Show image dimensions in grid | Add small badge with resolution (Phase B) |
-| 14 | Add "textless only" filter for backdrops | Filter by `iso_639_1: null` (Phase B) |
-| 15 | Cancel confirmation if unsaved changes | Add dirty state tracking (already exists in dialog) |
-| 16 | Preload next step images | Prefetch during current step (Phase B) |
+| #   | Suggestion                               | Resolution                                          |
+| --- | ---------------------------------------- | --------------------------------------------------- |
+| 12  | Remember last selected tab               | Use localStorage for tab persistence                |
+| 13  | Show image dimensions in grid            | Add small badge with resolution (Phase B)           |
+| 14  | Add "textless only" filter for backdrops | Filter by `iso_639_1: null` (Phase B)               |
+| 15  | Cancel confirmation if unsaved changes   | Add dirty state tracking (already exists in dialog) |
+| 16  | Preload next step images                 | Prefetch during current step (Phase B)              |
 
 ---
 
@@ -360,6 +376,7 @@ Validated using code-review-excellence, Context7 (codebase analysis), and sequen
 ### Phase A Tests
 
 **Unit Tests (New):**
+
 - `tests/unit/components/items/metadata-confirm-dialog.test.tsx`
   - Renders checkbox list with current/new values
   - Checkboxes default to checked
@@ -372,6 +389,7 @@ Validated using code-review-excellence, Context7 (codebase analysis), and sequen
   - Add tests for `getBackdropUrl()`
 
 **Unit Tests (Update):**
+
 - `tests/unit/components/items/item-settings-dialog.test.tsx`
   - Test tabbed interface
   - Test tab switching
@@ -384,6 +402,7 @@ Validated using code-review-excellence, Context7 (codebase analysis), and sequen
 ### Phase B Tests
 
 **Unit Tests (New):**
+
 - `tests/unit/components/items/image-selection-grid.test.tsx`
 - `tests/unit/components/items/metadata-wizard-modal.test.tsx`
 - `tests/unit/lib/tmdb-client.test.ts` (getMovieImages, getTVShowImages)
@@ -391,6 +410,7 @@ Validated using code-review-excellence, Context7 (codebase analysis), and sequen
 ### Phase C Tests
 
 **Unit Tests (New):**
+
 - `tests/unit/components/items/episode-picker.test.tsx`
 - `tests/unit/lib/tmdb-client.test.ts` (getTVSeasons, getTVEpisodes)
 
@@ -425,6 +445,7 @@ Validated using code-review-excellence, Context7 (codebase analysis), and sequen
 ## Implementation Order
 
 ### Phase A
+
 0. Install Tabs component: `npx shadcn@latest add tabs`
 1. Add backdrop_path to TMDBMovie/TMDBTVShow interfaces
 2. Add getBackdropUrl and downloadBackdrop to tmdb-client.ts
@@ -438,6 +459,7 @@ Validated using code-review-excellence, Context7 (codebase analysis), and sequen
 10. Add/update tests
 
 ### Phase B
+
 1. Add getMovieImages/getTVShowImages to tmdb-client.ts
 2. Create ImageSelectionGrid component
 3. Create wizard modal with 3 steps
@@ -445,6 +467,7 @@ Validated using code-review-excellence, Context7 (codebase analysis), and sequen
 5. Add/update tests
 
 ### Phase C
+
 1. Add episode API functions
 2. Create EpisodePicker component
 3. Integrate with wizard
