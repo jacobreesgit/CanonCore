@@ -46,6 +46,8 @@ interface ImageSelectionGridProps {
   disabled?: boolean;
   /** Maximum images to display initially */
   initialLimit?: number;
+  /** Whether to show tabs (default true). Set false when embedded in parent tabs. */
+  showTabs?: boolean;
 }
 
 /**
@@ -60,7 +62,8 @@ interface ImageSelectionGridProps {
  * @param isSkipped - Whether selection is skipped
  * @param onSkipChange - Skip state change callback
  * @param disabled - Whether grid is disabled
- * @param initialLimit - Max images to show initially (default 12)
+ * @param initialLimit - Max images to show initially (default 8)
+ * @param showTabs - Whether to show tabs (default true)
  */
 export function ImageSelectionGrid({
   type,
@@ -71,18 +74,19 @@ export function ImageSelectionGrid({
   isSkipped = false,
   onSkipChange,
   disabled = false,
-  initialLimit = 12,
+  initialLimit = 8,
+  showTabs = true,
 }: ImageSelectionGridProps) {
-  const [showAll, setShowAll] = useState(false);
+  const [displayCount, setDisplayCount] = useState(initialLimit);
   const [activeTab, setActiveTab] = useState<"tmdb" | "existing">("tmdb");
 
-  // Limit displayed TMDB images
+  // Limit displayed TMDB images with incremental loading
   const displayedTmdbImages = useMemo(() => {
-    if (showAll) return tmdbImages;
-    return tmdbImages.slice(0, initialLimit);
-  }, [tmdbImages, showAll, initialLimit]);
+    return tmdbImages.slice(0, displayCount);
+  }, [tmdbImages, displayCount]);
 
-  const hasMoreImages = tmdbImages.length > initialLimit && !showAll;
+  const hasMoreImages = tmdbImages.length > displayCount;
+  const remainingCount = tmdbImages.length - displayCount;
   const hasExistingFiles = existingFiles.length > 0;
 
   /**
@@ -120,6 +124,50 @@ export function ImageSelectionGrid({
       ? "grid-cols-3 sm:grid-cols-4"
       : "grid-cols-2 sm:grid-cols-3";
 
+  // TMDB images grid content (shared between tabs and no-tabs mode)
+  const tmdbGridContent =
+    tmdbImages.length === 0 ? (
+      <EmptyState message="No images available from TMDB" />
+    ) : (
+      <>
+        <div className={cn("grid gap-2", gridCols)}>
+          {displayedTmdbImages.map((image, index) => (
+            <ImageThumbnail
+              key={image.file_path}
+              src={getThumbnailUrl(image.file_path)}
+              alt={`Option ${index + 1}`}
+              aspectClass={aspectClass}
+              isSelected={selectedValue === image.file_path}
+              isSkipped={isSkipped}
+              disabled={disabled}
+              onClick={() => handleSelect(image.file_path, "tmdb")}
+              badge={`${image.width}x${image.height}`}
+              isTextless={image.iso_639_1 === null}
+            />
+          ))}
+        </div>
+
+        {hasMoreImages && (
+          <button
+            type="button"
+            onClick={() => setDisplayCount((prev) => prev + initialLimit)}
+            disabled={disabled}
+            className={cn(
+              "text-muted-foreground hover:text-foreground mt-3 w-full text-center text-sm transition-colors",
+              "disabled:pointer-events-none disabled:opacity-50"
+            )}
+          >
+            Show {Math.min(initialLimit, remainingCount)} more images
+          </button>
+        )}
+      </>
+    );
+
+  // When showTabs is false, render just the TMDB grid (used when embedded in parent tabs)
+  if (!showTabs) {
+    return <div className="space-y-4">{tmdbGridContent}</div>;
+  }
+
   return (
     <div className="space-y-4">
       <Tabs
@@ -151,42 +199,7 @@ export function ImageSelectionGrid({
 
         {/* TMDB Images Tab */}
         <TabsContent value="tmdb" className="mt-4">
-          {tmdbImages.length === 0 ? (
-            <EmptyState message="No images available from TMDB" />
-          ) : (
-            <>
-              <div className={cn("grid gap-2", gridCols)}>
-                {displayedTmdbImages.map((image, index) => (
-                  <ImageThumbnail
-                    key={image.file_path}
-                    src={getThumbnailUrl(image.file_path)}
-                    alt={`Option ${index + 1}`}
-                    aspectClass={aspectClass}
-                    isSelected={selectedValue === image.file_path}
-                    isSkipped={isSkipped}
-                    disabled={disabled}
-                    onClick={() => handleSelect(image.file_path, "tmdb")}
-                    badge={`${image.width}x${image.height}`}
-                    isTextless={image.iso_639_1 === null}
-                  />
-                ))}
-              </div>
-
-              {hasMoreImages && (
-                <button
-                  type="button"
-                  onClick={() => setShowAll(true)}
-                  disabled={disabled}
-                  className={cn(
-                    "text-muted-foreground hover:text-foreground mt-3 w-full text-center text-sm transition-colors",
-                    "disabled:pointer-events-none disabled:opacity-50"
-                  )}
-                >
-                  Show {tmdbImages.length - initialLimit} more images
-                </button>
-              )}
-            </>
-          )}
+          {tmdbGridContent}
         </TabsContent>
 
         {/* Existing Files Tab */}

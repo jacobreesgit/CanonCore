@@ -79,6 +79,11 @@ const nextConfig = {
         hostname: "deifkwefumgah.cloudfront.net",
         pathname: "/shadcnblocks/**",
       },
+      {
+        protocol: "https",
+        hostname: "image.tmdb.org",
+        pathname: "/t/p/**",
+      },
     ],
   },
   async headers() {

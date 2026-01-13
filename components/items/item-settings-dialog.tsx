@@ -1,7 +1,7 @@
 /**
  * Unified item settings dialog with tabbed interface and single atomic save.
+ * Uses step-based navigation for TV episode picker and TMDB metadata wizard.
  * Consolidates name, description (Details tab) and file selections (Files tab).
- * Integrates TMDB metadata confirmation dialog for selective field updates.
  */
 
 "use client";
@@ -14,10 +14,13 @@ import {
   Film,
   Settings2,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  Tv,
 } from "lucide-react";
+import { Dialog } from "@/components/ui/dialog";
+import { AnimatedDialogContent } from "@/components/ui/animated-dialog-content";
 import {
-  Dialog,
-  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -26,33 +29,57 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileTypeCombobox } from "@/components/items/file-type-combobox";
 import { MediaSearchCombobox } from "@/components/items/media-search-combobox";
 import { ItemDialogTabs } from "@/components/items/item-dialog-tabs";
 import {
-  MetadataWizardModal,
-  type MetadataWizardResult,
-} from "@/components/items/metadata-wizard-modal";
-import {
-  EpisodePicker,
-  type EpisodePickerSelection,
-} from "@/components/items/episode-picker";
-import type {
-  CurrentTextValues,
-  TextPreviewData,
+  TitleDescriptionStep,
+  type CurrentTextValues,
+  type TextPreviewData,
+  type TitleDescriptionOptions,
 } from "@/components/items/title-description-step";
+import { PosterSelectionStep } from "@/components/items/poster-selection-step";
+import { HeroSelectionStep } from "@/components/items/hero-selection-step";
 import type { ExistingArtworkFile } from "@/components/items/image-selection-grid";
+import {
+  SeasonItem,
+  EpisodeItem,
+  LoadingState,
+  ErrorState,
+} from "@/components/items/episode-picker-helpers";
 import { updateItemSettings } from "@/lib/item-file-actions";
 import {
   applyMetadataAction,
   getMetadataPreviewAction,
   getImagesAction,
   getEpisodePreviewAction,
+  getSeasonsAction,
+  getEpisodesAction,
 } from "@/lib/tmdb-actions";
-import type { TMDBSearchResult, TMDBImages } from "@/lib/tmdb-client";
+import type {
+  TMDBSearchResult,
+  TMDBImages,
+  TMDBSeasonSummary,
+  TMDBEpisode,
+} from "@/lib/tmdb-client";
 import { toast } from "sonner";
-import type { SerializedItemFile } from "@/lib/types";
+import type { SerializedItemFile, ArtworkSelectionSource } from "@/lib/types";
 import { cn } from "@/lib/utils";
+
+/** Steps for item settings dialog navigation. */
+type ItemSettingsStep =
+  | "main"
+  | "episode-picker"
+  | "wizard-text"
+  | "wizard-poster"
+  | "wizard-hero";
+
+/** Episode picker selection type. */
+type EpisodePickerSelection =
+  | { type: "show" }
+  | { type: "season"; seasonNumber: number }
+  | { type: "episode"; seasonNumber: number; episodeNumber: number };
 
 interface ItemSettingsDialogProps {
   /** Whether the dialog is open */
@@ -93,8 +120,7 @@ function findHeroFile(
 
 /**
  * Item settings dialog with tabbed interface and single atomic save.
- * Details tab: Name, description, TMDB metadata search.
- * Files tab: File type comboboxes with upload capability.
+ * Uses step-based navigation for TV shows and TMDB metadata wizard.
  *
  * @param open - Whether dialog is visible
  * @param onOpenChange - Callback for visibility changes
@@ -111,6 +137,9 @@ export function ItemSettingsDialog({
   hasDriveConnection = false,
   onSettingsChange,
 }: ItemSettingsDialogProps) {
+  // Current step
+  const [currentStep, setCurrentStep] = useState<ItemSettingsStep>("main");
+
   // Form state
   const [name, setName] = useState(item.name);
   const [description, setDescription] = useState(item.description ?? "");
@@ -133,20 +162,38 @@ export function ItemSettingsDialog({
   // Track successful uploads during this dialog session
   const [uploadCount, setUploadCount] = useState(0);
 
-  // TMDB wizard state
+  // TMDB state
   const [pendingTmdbResult, setPendingTmdbResult] =
     useState<TMDBSearchResult | null>(null);
   const [tmdbPreview, setTmdbPreview] = useState<TextPreviewData | null>(null);
   const [tmdbImages, setTmdbImages] = useState<TMDBImages | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isLoadingImages, setIsLoadingImages] = useState(false);
-  const [showWizard, setShowWizard] = useState(false);
 
-  // Episode picker state (for TV shows)
-  const [showEpisodePicker, setShowEpisodePicker] = useState(false);
+  // Episode picker state
+  const [seasons, setSeasons] = useState<TMDBSeasonSummary[]>([]);
+  const [episodes, setEpisodes] = useState<TMDBEpisode[]>([]);
+  const [selectedSeason, setSelectedSeason] =
+    useState<TMDBSeasonSummary | null>(null);
+  const [isLoadingSeasons, setIsLoadingSeasons] = useState(false);
+  const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(false);
+  const [episodeError, setEpisodeError] = useState<string | null>(null);
 
-  // Original values for dirty checking - captured once when dialog opens
-  // Uses open state to reset when dialog reopens, but NOT when files change after upload
+  // Wizard state
+  const [textOptions, setTextOptions] = useState<TitleDescriptionOptions>({
+    updateName: true,
+    updateDescription: true,
+  });
+  const [posterValue, setPosterValue] = useState<string | null>(null);
+  const [posterSource, setPosterSource] =
+    useState<ArtworkSelectionSource | null>(null);
+  const [posterSkipped, setPosterSkipped] = useState(false);
+  const [backdropValue, setBackdropValue] = useState<string | null>(null);
+  const [backdropSource, setBackdropSource] =
+    useState<ArtworkSelectionSource | null>(null);
+  const [backdropSkipped, setBackdropSkipped] = useState(false);
+
+  // Original values for dirty checking
   const [originalValues, setOriginalValues] = useState(() => ({
     name: item.name,
     description: item.description ?? "",
@@ -157,9 +204,10 @@ export function ItemSettingsDialog({
     primarySubtitleId: findPrimaryFile(files.subtitles)?.id,
   }));
 
-  // Reset original values and upload count when dialog opens
+  // Reset state when dialog opens
   useEffect(() => {
     if (open) {
+      setCurrentStep("main");
       setUploadCount(0);
       setOriginalValues({
         name: item.name,
@@ -174,13 +222,45 @@ export function ItemSettingsDialog({
       setPendingTmdbResult(null);
       setTmdbPreview(null);
       setTmdbImages(null);
-      setShowWizard(false);
-      setShowEpisodePicker(false);
+      setSeasons([]);
+      setEpisodes([]);
+      setSelectedSeason(null);
+      setEpisodeError(null);
+      resetWizardState();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Sync name/description when item changes (separate from files to prevent race condition)
+  /**
+   * Resets wizard-specific state.
+   */
+  const resetWizardState = useCallback(() => {
+    setTextOptions({ updateName: true, updateDescription: true });
+    setPosterValue(null);
+    setPosterSource(null);
+    setPosterSkipped(false);
+    setBackdropValue(null);
+    setBackdropSource(null);
+    setBackdropSkipped(false);
+  }, []);
+
+  // Pre-select first poster and backdrop when images load
+  useEffect(() => {
+    if (tmdbImages?.posters?.[0] && posterValue === null && !posterSkipped) {
+      setPosterValue(tmdbImages.posters[0].file_path);
+      setPosterSource("tmdb");
+    }
+    if (
+      tmdbImages?.backdrops?.[0] &&
+      backdropValue === null &&
+      !backdropSkipped
+    ) {
+      setBackdropValue(tmdbImages.backdrops[0].file_path);
+      setBackdropSource("tmdb");
+    }
+  }, [tmdbImages, posterValue, backdropValue, posterSkipped, backdropSkipped]);
+
+  // Sync name/description when item changes
   useEffect(() => {
     setName(item.name);
     setDescription(item.description ?? "");
@@ -260,7 +340,6 @@ export function ItemSettingsDialog({
 
     setIsSaving(true);
     try {
-      // Build changes object - only include changed values
       const changes: {
         name?: string;
         description?: string;
@@ -298,14 +377,12 @@ export function ItemSettingsDialog({
       const result = await updateItemSettings(item.id, changes);
 
       if (result.success) {
-        // Include upload count in success message if files were uploaded
         if (uploadCount > 0) {
           const fileWord = uploadCount === 1 ? "file" : "files";
           toast.success(`Settings saved. ${uploadCount} ${fileWord} uploaded.`);
         } else {
           toast.success("Settings saved");
         }
-        // Refetch is best-effort - save already succeeded, log errors for debugging
         await onSettingsChange?.().catch((err) => {
           console.warn("[ItemSettingsDialog] Refetch failed after save:", err);
         });
@@ -333,9 +410,7 @@ export function ItemSettingsDialog({
   ]);
 
   /**
-   * Handles upload completion - accumulates success count and refreshes file list.
-   *
-   * @param successCount - Number of files successfully uploaded
+   * Handles upload completion.
    */
   const handleUploadComplete = useCallback(
     async (successCount: number) => {
@@ -348,7 +423,7 @@ export function ItemSettingsDialog({
   );
 
   /**
-   * Handles file deletion - refreshes file list.
+   * Handles file deletion.
    */
   const handleFileDeleted = useCallback(async () => {
     await onSettingsChange?.().catch((err) => {
@@ -357,8 +432,7 @@ export function ItemSettingsDialog({
   }, [onSettingsChange]);
 
   /**
-   * Fetches preview data and opens the wizard.
-   * Used for movies directly and for TV shows after episode picker selection.
+   * Fetches preview data and navigates to wizard.
    */
   const fetchPreviewAndOpenWizard = useCallback(
     async (
@@ -368,9 +442,9 @@ export function ItemSettingsDialog({
     ) => {
       setIsLoadingPreview(true);
       setTmdbImages(null);
+      resetWizardState();
 
       try {
-        // For episode selection, fetch episode-specific preview
         if (episodeSel?.type === "episode") {
           const response = await getEpisodePreviewAction(
             tmdbId,
@@ -383,17 +457,16 @@ export function ItemSettingsDialog({
               name: response.data.name,
               description: response.data.description,
             });
-            setShowWizard(true);
-
-            // Episodes don't have poster/backdrop selection
             setTmdbImages({ posters: [], backdrops: [] });
+            setCurrentStep("wizard-text");
           } else if (!response.success) {
             toast.error(response.error);
+            setCurrentStep("main");
           } else {
             toast.error("Could not fetch episode preview");
+            setCurrentStep("main");
           }
         } else {
-          // For show/season/movie, use standard preview
           const response = await getMetadataPreviewAction(tmdbId, mediaType);
 
           if (response.success && response.data) {
@@ -401,9 +474,9 @@ export function ItemSettingsDialog({
               name: response.data.name,
               description: response.data.description,
             });
-            setShowWizard(true);
+            setCurrentStep("wizard-text");
 
-            // Fetch images in the background for the wizard
+            // Fetch images in the background
             setIsLoadingImages(true);
             getImagesAction(tmdbId, mediaType)
               .then((imagesResponse) => {
@@ -416,31 +489,53 @@ export function ItemSettingsDialog({
               });
           } else if (!response.success) {
             toast.error(response.error);
+            setCurrentStep("main");
           } else {
             toast.error("Could not fetch preview");
+            setCurrentStep("main");
           }
         }
       } catch {
         toast.error("Failed to fetch metadata preview");
+        setCurrentStep("main");
       } finally {
         setIsLoadingPreview(false);
       }
     },
-    []
+    [resetWizardState]
   );
 
   /**
    * Handles TMDB media selection.
-   * For movies: fetches preview and opens wizard directly.
-   * For TV shows: opens episode picker for drill-down selection.
    */
   const handleMediaSelect = useCallback(
     async (result: TMDBSearchResult) => {
       setPendingTmdbResult(result);
 
-      // For TV shows, show episode picker first
       if (result.mediaType === "tv") {
-        setShowEpisodePicker(true);
+        // For TV shows, navigate to episode picker
+        setSeasons([]);
+        setEpisodes([]);
+        setSelectedSeason(null);
+        setEpisodeError(null);
+        setCurrentStep("episode-picker");
+
+        // Fetch seasons
+        setIsLoadingSeasons(true);
+        try {
+          const seasonsResult = await getSeasonsAction(result.id);
+          if (seasonsResult.success && seasonsResult.data) {
+            setSeasons(seasonsResult.data);
+          } else if (!seasonsResult.success) {
+            setEpisodeError(seasonsResult.error);
+          } else {
+            setEpisodeError("Failed to load seasons");
+          }
+        } catch {
+          setEpisodeError("Failed to load seasons");
+        } finally {
+          setIsLoadingSeasons(false);
+        }
         return;
       }
 
@@ -451,14 +546,58 @@ export function ItemSettingsDialog({
   );
 
   /**
+   * Handles season selection in episode picker.
+   */
+  const handleSeasonSelect = useCallback(
+    async (season: TMDBSeasonSummary) => {
+      if (!pendingTmdbResult) return;
+
+      setSelectedSeason(season);
+      setIsLoadingEpisodes(true);
+      setEpisodeError(null);
+      setEpisodes([]);
+
+      try {
+        const result = await getEpisodesAction(
+          pendingTmdbResult.id,
+          season.season_number
+        );
+        if (result.success && result.data) {
+          setEpisodes(result.data);
+        } else if (!result.success) {
+          setEpisodeError(result.error);
+        } else {
+          setEpisodeError("Failed to load episodes");
+        }
+      } catch {
+        setEpisodeError("Failed to load episodes");
+      } finally {
+        setIsLoadingEpisodes(false);
+      }
+    },
+    [pendingTmdbResult]
+  );
+
+  /**
+   * Handles episode picker back navigation.
+   */
+  const handleEpisodePickerBack = useCallback(() => {
+    if (selectedSeason) {
+      setSelectedSeason(null);
+      setEpisodes([]);
+      setEpisodeError(null);
+    } else {
+      setPendingTmdbResult(null);
+      setCurrentStep("main");
+    }
+  }, [selectedSeason]);
+
+  /**
    * Handles episode picker selection.
-   * Fetches appropriate preview based on selection type.
    */
   const handleEpisodePickerSelect = useCallback(
     async (selection: EpisodePickerSelection) => {
       if (!pendingTmdbResult) return;
-
-      setShowEpisodePicker(false);
       await fetchPreviewAndOpenWizard(
         pendingTmdbResult.id,
         pendingTmdbResult.mediaType,
@@ -469,81 +608,144 @@ export function ItemSettingsDialog({
   );
 
   /**
-   * Handles episode picker cancellation.
+   * Handles wizard completion - applies metadata immediately.
    */
-  const handleEpisodePickerCancel = useCallback(() => {
-    setPendingTmdbResult(null);
-    setShowEpisodePicker(false);
-  }, []);
+  const handleWizardComplete = useCallback(async () => {
+    if (!pendingTmdbResult) return;
+
+    setIsApplyingMetadata(true);
+
+    try {
+      const posterPath = posterSkipped ? null : posterValue;
+      const backdropPath = backdropSkipped ? null : backdropValue;
+
+      const response = await applyMetadataAction(
+        item.id,
+        pendingTmdbResult.id,
+        pendingTmdbResult.mediaType,
+        {
+          updateName: textOptions.updateName,
+          updateDescription: textOptions.updateDescription,
+          updatePoster:
+            !posterSkipped && posterSource === "tmdb" && !!posterPath,
+          updateBackdrop:
+            !backdropSkipped && backdropSource === "tmdb" && !!backdropPath,
+        }
+      );
+
+      if (response.success) {
+        toast.success("Metadata applied successfully");
+        await onSettingsChange?.().catch((err) => {
+          console.warn(
+            "[ItemSettingsDialog] Refetch failed after metadata apply:",
+            err
+          );
+        });
+      } else {
+        toast.error(response.error || "Failed to apply metadata");
+      }
+    } catch {
+      toast.error("Failed to apply metadata");
+    } finally {
+      setIsApplyingMetadata(false);
+      setPendingTmdbResult(null);
+      setTmdbPreview(null);
+      setTmdbImages(null);
+      setCurrentStep("main");
+    }
+  }, [
+    pendingTmdbResult,
+    item.id,
+    textOptions,
+    posterValue,
+    posterSource,
+    posterSkipped,
+    backdropValue,
+    backdropSource,
+    backdropSkipped,
+    onSettingsChange,
+  ]);
 
   /**
-   * Handles wizard completion.
-   * Applies selected metadata via server action.
+   * Handles wizard back navigation.
    */
-  const handleWizardComplete = useCallback(
-    async (result: MetadataWizardResult) => {
-      if (!pendingTmdbResult) return;
-
-      setIsApplyingMetadata(true);
-      setShowWizard(false);
-
-      try {
-        // Determine poster and backdrop paths from wizard result
-        const posterPath = result.posterSkipped ? null : result.posterPath;
-        const backdropPath = result.backdropSkipped
-          ? null
-          : result.backdropPath;
-
-        const response = await applyMetadataAction(
-          item.id,
-          pendingTmdbResult.id,
-          pendingTmdbResult.mediaType,
-          {
-            updateName: result.textOptions.updateName,
-            updateDescription: result.textOptions.updateDescription,
-            updatePoster: !result.posterSkipped && !!posterPath,
-            updateBackdrop: !result.backdropSkipped && !!backdropPath,
-          }
-        );
-
-        if (response.success) {
-          toast.success("Metadata applied successfully");
-          // Refresh to get updated name, description, and artwork
-          await onSettingsChange?.().catch((err) => {
-            console.warn(
-              "[ItemSettingsDialog] Refetch failed after metadata apply:",
-              err
-            );
-          });
-        } else {
-          toast.error(response.error || "Failed to apply metadata");
-        }
-      } catch {
-        toast.error("Failed to apply metadata");
-      } finally {
-        setIsApplyingMetadata(false);
+  const handleWizardBack = useCallback(() => {
+    if (currentStep === "wizard-text") {
+      if (pendingTmdbResult?.mediaType === "tv") {
+        setCurrentStep("episode-picker");
+      } else {
         setPendingTmdbResult(null);
         setTmdbPreview(null);
-        setTmdbImages(null);
+        setCurrentStep("main");
       }
-    },
-    [pendingTmdbResult, item.id, onSettingsChange]
-  );
+    } else if (currentStep === "wizard-poster") {
+      setCurrentStep("wizard-text");
+    } else if (currentStep === "wizard-hero") {
+      setCurrentStep("wizard-poster");
+    }
+  }, [currentStep, pendingTmdbResult]);
 
   /**
-   * Handles cancellation of wizard.
+   * Handles wizard next navigation.
+   */
+  const handleWizardNext = useCallback(() => {
+    if (currentStep === "wizard-text") {
+      setCurrentStep("wizard-poster");
+    } else if (currentStep === "wizard-poster") {
+      setCurrentStep("wizard-hero");
+    } else if (currentStep === "wizard-hero") {
+      handleWizardComplete();
+    }
+  }, [currentStep, handleWizardComplete]);
+
+  /**
+   * Handles wizard skip all.
+   */
+  const handleWizardSkipAll = useCallback(() => {
+    if (currentStep === "wizard-text") {
+      setPosterSkipped(true);
+      setBackdropSkipped(true);
+    } else if (currentStep === "wizard-poster") {
+      setBackdropSkipped(true);
+    }
+    handleWizardComplete();
+  }, [currentStep, handleWizardComplete]);
+
+  /**
+   * Handles wizard cancel.
    */
   const handleWizardCancel = useCallback(() => {
     setPendingTmdbResult(null);
     setTmdbPreview(null);
     setTmdbImages(null);
-    setShowWizard(false);
+    setCurrentStep("main");
   }, []);
+
+  /**
+   * Handles poster selection.
+   */
+  const handlePosterSelect = useCallback(
+    (value: string | null, source: ArtworkSelectionSource) => {
+      setPosterValue(value);
+      setPosterSource(value ? source : null);
+    },
+    []
+  );
+
+  /**
+   * Handles backdrop selection.
+   */
+  const handleBackdropSelect = useCallback(
+    (value: string | null, source: ArtworkSelectionSource) => {
+      setBackdropValue(value);
+      setBackdropSource(value ? source : null);
+    },
+    []
+  );
 
   // Details tab content
   const detailsContent = (
     <div className="space-y-4">
-      {/* Name Section with TMDB Search */}
       <div className="space-y-2">
         <Label htmlFor="item-name">Item name</Label>
         <div className="relative">
@@ -567,7 +769,6 @@ export function ItemSettingsDialog({
         </div>
       </div>
 
-      {/* Description Section */}
       <div className="space-y-2">
         <Label htmlFor="item-description">
           Description{" "}
@@ -591,7 +792,6 @@ export function ItemSettingsDialog({
   // Files tab content
   const filesContent = (
     <div className="space-y-4">
-      {/* Primary Media */}
       <FileTypeCombobox
         label="Primary Media"
         description="The file that plays when clicking on this item."
@@ -606,7 +806,6 @@ export function ItemSettingsDialog({
         disabled={!hasDriveConnection}
       />
 
-      {/* Primary Artwork */}
       <FileTypeCombobox
         label="Primary Artwork"
         description="The image used as the thumbnail."
@@ -621,7 +820,6 @@ export function ItemSettingsDialog({
         disabled={!hasDriveConnection}
       />
 
-      {/* Hero Image */}
       <FileTypeCombobox
         label="Hero Image"
         description="The image used as the banner background."
@@ -636,7 +834,6 @@ export function ItemSettingsDialog({
         disabled={!hasDriveConnection}
       />
 
-      {/* Default Subtitle */}
       <FileTypeCombobox
         label="Default Subtitle"
         description="The subtitle track that loads by default."
@@ -653,86 +850,443 @@ export function ItemSettingsDialog({
     </div>
   );
 
+  // Wizard step number for display
+  const wizardStepNumber =
+    currentStep === "wizard-text" ? 1 : currentStep === "wizard-poster" ? 2 : 3;
+
+  // Episode picker display
+  const displayTitle = pendingTmdbResult
+    ? pendingTmdbResult.year
+      ? `${pendingTmdbResult.title} (${pendingTmdbResult.year})`
+      : pendingTmdbResult.title
+    : "";
+
   return (
-    <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[90vh] max-w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-lg">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div
-                className={cn(
-                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                  "bg-primary/10 ring-primary/20 ring-1"
-                )}
-              >
-                <Settings2 className="text-primary size-5" />
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <AnimatedDialogContent
+        stepKey={currentStep}
+        className="max-h-[90vh] overflow-y-auto"
+      >
+        {/* Main Step */}
+        {currentStep === "main" && (
+          <>
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <div
+                  className={cn(
+                    "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                    "bg-primary/10 ring-primary/20 ring-1"
+                  )}
+                >
+                  <Settings2 className="text-primary size-5" />
+                </div>
+                <div className="min-w-0">
+                  <DialogTitle className="text-lg">Item Settings</DialogTitle>
+                  <DialogDescription className="text-sm">
+                    Configure display preferences and upload files
+                  </DialogDescription>
+                </div>
               </div>
-              <div className="min-w-0">
-                <DialogTitle className="text-lg">Item Settings</DialogTitle>
-                <DialogDescription className="text-sm">
-                  Configure display preferences and upload files
-                </DialogDescription>
-              </div>
+            </DialogHeader>
+
+            <div className="min-w-0 py-2">
+              <ItemDialogTabs
+                detailsContent={detailsContent}
+                filesContent={filesContent}
+              />
             </div>
-          </DialogHeader>
 
-          <div className="min-w-0 py-2">
-            <ItemDialogTabs
-              detailsContent={detailsContent}
-              filesContent={filesContent}
-            />
-          </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={handleCancel}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={!isDirty || isSaving}>
+                {isSaving ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={!isDirty || isSaving}>
-              {isSaving ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Saving...
-                </>
+        {/* Episode Picker Step */}
+        {currentStep === "episode-picker" && (
+          <>
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleEpisodePickerBack}
+                  className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                  aria-label="Back"
+                >
+                  <ChevronLeft className="size-5" />
+                </Button>
+                <div
+                  className={cn(
+                    "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                    "bg-blue-500/10 ring-1 ring-blue-500/20"
+                  )}
+                >
+                  {selectedSeason ? (
+                    <Film className="size-5 text-blue-500" />
+                  ) : (
+                    <Tv className="size-5 text-blue-500" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <DialogTitle className="text-lg">
+                    {selectedSeason ? "Select Episode" : "Select Season"}
+                  </DialogTitle>
+                  <DialogDescription className="truncate text-sm">
+                    {selectedSeason ? selectedSeason.name : displayTitle}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            {selectedSeason && (
+              <div className="flex items-center gap-1 text-sm">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedSeason(null);
+                    setEpisodes([]);
+                  }}
+                  className="text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                >
+                  <ChevronLeft className="size-4" />
+                  <span className="max-w-[150px] truncate">{displayTitle}</span>
+                </button>
+                <ChevronRight className="text-muted-foreground/50 size-4" />
+                <span className="text-foreground font-medium">
+                  {selectedSeason.name}
+                </span>
+              </div>
+            )}
+
+            <div className="min-h-[280px]">
+              {!selectedSeason ? (
+                isLoadingSeasons ? (
+                  <LoadingState message="Loading seasons..." />
+                ) : episodeError ? (
+                  <ErrorState message={episodeError} />
+                ) : (
+                  <ScrollArea className="h-[280px] pr-3">
+                    <div className="space-y-1">
+                      {seasons.map((season) => (
+                        <SeasonItem
+                          key={season.id}
+                          season={season}
+                          onClick={() => handleSeasonSelect(season)}
+                        />
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )
+              ) : isLoadingEpisodes ? (
+                <LoadingState message="Loading episodes..." />
+              ) : episodeError ? (
+                <ErrorState message={episodeError} />
               ) : (
-                "Save Changes"
+                <ScrollArea className="h-[280px] pr-3">
+                  <div className="space-y-1">
+                    {episodes.map((episode) => (
+                      <EpisodeItem
+                        key={episode.id}
+                        episode={episode}
+                        onClick={() =>
+                          handleEpisodePickerSelect({
+                            type: "episode",
+                            seasonNumber: selectedSeason.season_number,
+                            episodeNumber: episode.episode_number,
+                          })
+                        }
+                      />
+                    ))}
+                  </div>
+                </ScrollArea>
               )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </div>
 
-      {/* Episode Picker for TV shows */}
-      {pendingTmdbResult && pendingTmdbResult.mediaType === "tv" && (
-        <EpisodePicker
-          open={showEpisodePicker}
-          onOpenChange={setShowEpisodePicker}
-          tvId={pendingTmdbResult.id}
-          showTitle={pendingTmdbResult.title}
-          showYear={pendingTmdbResult.year}
-          onSelect={handleEpisodePickerSelect}
-          onCancel={handleEpisodePickerCancel}
-        />
-      )}
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setPendingTmdbResult(null);
+                  setCurrentStep("main");
+                }}
+              >
+                Cancel
+              </Button>
+              {selectedSeason && (
+                <Button
+                  variant="ghost"
+                  onClick={() =>
+                    handleEpisodePickerSelect({
+                      type: "season",
+                      seasonNumber: selectedSeason.season_number,
+                    })
+                  }
+                >
+                  Use Season
+                </Button>
+              )}
+              <Button
+                onClick={() => handleEpisodePickerSelect({ type: "show" })}
+              >
+                Use Show
+              </Button>
+            </DialogFooter>
+          </>
+        )}
 
-      {/* TMDB Metadata Wizard */}
-      {tmdbPreview && (
-        <MetadataWizardModal
-          open={showWizard}
-          onOpenChange={setShowWizard}
-          currentValues={currentValues}
-          textPreview={tmdbPreview}
-          images={tmdbImages}
-          isLoadingImages={isLoadingImages}
-          existingArtwork={existingArtwork}
-          isApplying={isApplyingMetadata}
-          onComplete={handleWizardComplete}
-          onCancel={handleWizardCancel}
-        />
-      )}
-    </>
+        {/* Wizard Text Step */}
+        {currentStep === "wizard-text" && tmdbPreview && (
+          <>
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleWizardBack}
+                  disabled={isApplyingMetadata}
+                  className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                  aria-label="Back"
+                >
+                  <ChevronLeft className="size-5" />
+                </Button>
+                <div
+                  className={cn(
+                    "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                    "bg-amber-500/10 ring-1 ring-amber-500/20"
+                  )}
+                >
+                  <Sparkles className="size-5 text-amber-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
+                  <DialogDescription className="text-sm">
+                    Step {wizardStepNumber} of 3: Title & Description
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="flex gap-1.5 py-2">
+              {[1, 2, 3].map((step) => (
+                <div
+                  key={step}
+                  className={cn(
+                    "h-1 flex-1 rounded-full transition-colors",
+                    step <= wizardStepNumber ? "bg-amber-500" : "bg-muted"
+                  )}
+                />
+              ))}
+            </div>
+
+            <TitleDescriptionStep
+              currentValues={currentValues}
+              preview={tmdbPreview}
+              options={textOptions}
+              onOptionsChange={setTextOptions}
+              disabled={isApplyingMetadata}
+            />
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={handleWizardCancel}
+                disabled={isApplyingMetadata}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleWizardSkipAll}
+                disabled={isApplyingMetadata}
+              >
+                Skip All
+              </Button>
+              <Button onClick={handleWizardNext} disabled={isApplyingMetadata}>
+                Next
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+
+        {/* Wizard Poster Step */}
+        {currentStep === "wizard-poster" && (
+          <>
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleWizardBack}
+                  disabled={isApplyingMetadata}
+                  className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                  aria-label="Back"
+                >
+                  <ChevronLeft className="size-5" />
+                </Button>
+                <div
+                  className={cn(
+                    "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                    "bg-amber-500/10 ring-1 ring-amber-500/20"
+                  )}
+                >
+                  <Sparkles className="size-5 text-amber-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
+                  <DialogDescription className="text-sm">
+                    Step {wizardStepNumber} of 3: Select Poster
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="flex gap-1.5 py-2">
+              {[1, 2, 3].map((step) => (
+                <div
+                  key={step}
+                  className={cn(
+                    "h-1 flex-1 rounded-full transition-colors",
+                    step <= wizardStepNumber ? "bg-amber-500" : "bg-muted"
+                  )}
+                />
+              ))}
+            </div>
+
+            {isLoadingImages ? (
+              <LoadingState message="Loading poster options..." />
+            ) : (
+              <PosterSelectionStep
+                posters={tmdbImages?.posters || []}
+                existingFiles={existingArtwork}
+                selectedValue={posterValue}
+                selectedSource={posterSource}
+                onSelect={handlePosterSelect}
+                isSkipped={posterSkipped}
+                onSkipChange={setPosterSkipped}
+                disabled={isApplyingMetadata}
+              />
+            )}
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={handleWizardCancel}
+                disabled={isApplyingMetadata}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleWizardSkipAll}
+                disabled={isApplyingMetadata}
+              >
+                Skip All
+              </Button>
+              <Button onClick={handleWizardNext} disabled={isApplyingMetadata}>
+                Next
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+
+        {/* Wizard Hero Step */}
+        {currentStep === "wizard-hero" && (
+          <>
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleWizardBack}
+                  disabled={isApplyingMetadata}
+                  className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                  aria-label="Back"
+                >
+                  <ChevronLeft className="size-5" />
+                </Button>
+                <div
+                  className={cn(
+                    "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                    "bg-amber-500/10 ring-1 ring-amber-500/20"
+                  )}
+                >
+                  <Sparkles className="size-5 text-amber-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
+                  <DialogDescription className="text-sm">
+                    Step {wizardStepNumber} of 3: Select Hero
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="flex gap-1.5 py-2">
+              {[1, 2, 3].map((step) => (
+                <div
+                  key={step}
+                  className={cn(
+                    "h-1 flex-1 rounded-full transition-colors",
+                    step <= wizardStepNumber ? "bg-amber-500" : "bg-muted"
+                  )}
+                />
+              ))}
+            </div>
+
+            {isLoadingImages ? (
+              <LoadingState message="Loading backdrop options..." />
+            ) : (
+              <HeroSelectionStep
+                backdrops={tmdbImages?.backdrops || []}
+                existingFiles={existingArtwork}
+                selectedValue={backdropValue}
+                selectedSource={backdropSource}
+                onSelect={handleBackdropSelect}
+                isSkipped={backdropSkipped}
+                onSkipChange={setBackdropSkipped}
+                disabled={isApplyingMetadata}
+              />
+            )}
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={handleWizardCancel}
+                disabled={isApplyingMetadata}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleWizardNext} disabled={isApplyingMetadata}>
+                {isApplyingMetadata ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Applying...
+                  </>
+                ) : (
+                  "Apply"
+                )}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+      </AnimatedDialogContent>
+    </Dialog>
   );
 }

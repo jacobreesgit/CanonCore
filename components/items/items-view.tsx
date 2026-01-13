@@ -44,6 +44,7 @@ import { getItemFiles } from "@/lib/item-file-actions";
 import { syncFromGoogleDrive } from "@/lib/google-drive-actions";
 import { cn } from "@/lib/utils";
 import { preloadImages } from "@/lib/image-preload";
+import { useHeroCollapse } from "@/hooks/use-hero-collapse";
 
 /** State for the settings dialog */
 interface SettingsDialogState {
@@ -113,6 +114,9 @@ export function ItemsView({
   const [items, setItemsState] = useState<ItemWithArtwork[]>(initialItems);
   // Ref to always access latest items (avoids stale closure in callbacks)
   const itemsRef = useRef(items);
+
+  // Hero collapse state with localStorage persistence
+  const { isCollapsed, toggleCollapse } = useHeroCollapse();
 
   /**
    * Wrapper around setItems that also updates the ref synchronously.
@@ -509,6 +513,8 @@ export function ItemsView({
           name={heroTitle}
           childCount={heroItemCount ?? items.length}
           backgroundUrl={heroBackgroundUrl}
+          isCollapsed={isCollapsed}
+          onCollapse={toggleCollapse}
         />
       )}
 

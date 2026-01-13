@@ -10,10 +10,6 @@ import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 const getProfileDialog = (page: import("@playwright/test").Page) =>
   page.locator('[data-slot="dialog-content"]').first();
 
-// Helper to get nested modal (change password/email dialogs)
-const getNestedDialog = (page: import("@playwright/test").Page) =>
-  page.locator('[data-slot="dialog-content"]').nth(1);
-
 test.describe("Profile Settings Journey", () => {
   test.beforeEach(async ({ page, signUpPage }) => {
     // Create a fresh user for each test
@@ -135,7 +131,7 @@ test.describe("Profile Settings Journey", () => {
   });
 });
 
-test.describe("Change Password Modal", () => {
+test.describe("Change Password Step", () => {
   test.beforeEach(async ({ page, signUpPage }) => {
     const email = generateUniqueEmail("password");
     await signUpPage.goto();
@@ -143,17 +139,17 @@ test.describe("Change Password Modal", () => {
     await expect(page).toHaveURL("/my-items", { timeout: 10000 });
   });
 
-  test("opens change password modal from settings", async ({
+  test("opens change password step from settings", async ({
     page,
     myItemsPage,
   }) => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
 
-    // Click Change Password button
+    // Click Change Password button in main settings
     await page.getByRole("button", { name: /change password/i }).click();
 
-    // Modal should open
+    // Step should show with password fields
     await expect(
       page.getByRole("heading", { name: /change password/i })
     ).toBeVisible();
@@ -166,7 +162,7 @@ test.describe("Change Password Modal", () => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
 
-    // Open change password modal
+    // Navigate to change password step
     await page.getByRole("button", { name: /change password/i }).click();
     await expect(
       page.getByRole("heading", { name: /change password/i })
@@ -177,8 +173,11 @@ test.describe("Change Password Modal", () => {
     await page.getByLabel(/^new password$/i).fill("NewPassword1");
     await page.getByLabel(/confirm new password/i).fill("DifferentPassword1");
 
-    // Try to submit
-    await page.getByRole("button", { name: /^change password$/i }).click();
+    // Try to submit - use the submit button in footer (not the nav button)
+    await getProfileDialog(page)
+      .locator('[data-slot="dialog-footer"]')
+      .getByRole("button", { name: /change password/i })
+      .click();
 
     // Should show mismatch error
     await expect(page.getByText("New passwords do not match")).toBeVisible();
@@ -191,7 +190,7 @@ test.describe("Change Password Modal", () => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
 
-    // Open change password modal
+    // Navigate to change password step
     await page.getByRole("button", { name: /change password/i }).click();
     await expect(
       page.getByRole("heading", { name: /change password/i })
@@ -202,8 +201,11 @@ test.describe("Change Password Modal", () => {
     await page.getByLabel(/^new password$/i).fill("NewPassword1");
     await page.getByLabel(/confirm new password/i).fill("NewPassword1");
 
-    // Submit
-    await page.getByRole("button", { name: /^change password$/i }).click();
+    // Submit using footer button
+    await getProfileDialog(page)
+      .locator('[data-slot="dialog-footer"]')
+      .getByRole("button", { name: /change password/i })
+      .click();
 
     // Should show error
     await expect(page.getByText("Incorrect current password")).toBeVisible();
@@ -213,7 +215,7 @@ test.describe("Change Password Modal", () => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
 
-    // Open change password modal
+    // Navigate to change password step
     await page.getByRole("button", { name: /change password/i }).click();
     await expect(
       page.getByRole("heading", { name: /change password/i })
@@ -224,30 +226,35 @@ test.describe("Change Password Modal", () => {
     await page.getByLabel(/^new password$/i).fill("NewPassword1");
     await page.getByLabel(/confirm new password/i).fill("NewPassword1");
 
-    // Submit
-    await page.getByRole("button", { name: /^change password$/i }).click();
+    // Submit using footer button
+    await getProfileDialog(page)
+      .locator('[data-slot="dialog-footer"]')
+      .getByRole("button", { name: /change password/i })
+      .click();
 
-    // Should show success toast and close modal
+    // Should show success toast and return to main settings
     await expect(page.getByText("Password changed successfully")).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: /change password/i })
-    ).not.toBeVisible();
+    await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   });
 
-  test("cancel closes change password modal", async ({ page, myItemsPage }) => {
+  test("cancel returns to main settings", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
 
-    // Open change password modal
+    // Navigate to change password step
     await page.getByRole("button", { name: /change password/i }).click();
     await expect(
       page.getByRole("heading", { name: /change password/i })
     ).toBeVisible();
 
-    // Click cancel
-    await page.getByRole("button", { name: /cancel/i }).click();
+    // Click cancel in footer (use last() to handle animated transitions)
+    await getProfileDialog(page)
+      .locator('[data-slot="dialog-footer"]')
+      .last()
+      .getByRole("button", { name: /cancel/i })
+      .click();
 
-    // Modal should close, settings should still be open
+    // Should return to main settings view
     await expect(
       page.getByRole("heading", { name: /change password/i })
     ).not.toBeVisible();
@@ -255,7 +262,7 @@ test.describe("Change Password Modal", () => {
   });
 });
 
-test.describe("Change Email Modal", () => {
+test.describe("Change Email Step", () => {
   let testEmail: string;
 
   test.beforeEach(async ({ page, signUpPage }) => {
@@ -265,17 +272,17 @@ test.describe("Change Email Modal", () => {
     await expect(page).toHaveURL("/my-items", { timeout: 10000 });
   });
 
-  test("opens change email modal from settings", async ({
+  test("opens change email step from settings", async ({
     page,
     myItemsPage,
   }) => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
 
-    // Click Change Email button
+    // Click Change Email button in main settings
     await page.getByRole("button", { name: /change email/i }).click();
 
-    // Modal should open with current email pre-filled
+    // Step should show with current email pre-filled
     await expect(
       page.getByRole("heading", { name: /change email/i })
     ).toBeVisible();
@@ -287,7 +294,7 @@ test.describe("Change Email Modal", () => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
 
-    // Open change email modal
+    // Navigate to change email step
     await page.getByRole("button", { name: /change email/i }).click();
     await expect(
       page.getByRole("heading", { name: /change email/i })
@@ -296,8 +303,11 @@ test.describe("Change Email Modal", () => {
     // Don't change email, just enter password
     await page.getByLabel("Current Password").fill(TEST_PASSWORD);
 
-    // Submit
-    await page.getByRole("button", { name: /^change email$/i }).click();
+    // Submit using footer button
+    await getProfileDialog(page)
+      .locator('[data-slot="dialog-footer"]')
+      .getByRole("button", { name: /change email/i })
+      .click();
 
     // Should show error
     await expect(
@@ -309,7 +319,7 @@ test.describe("Change Email Modal", () => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
 
-    // Open change email modal
+    // Navigate to change email step
     await page.getByRole("button", { name: /change email/i }).click();
     await expect(
       page.getByRole("heading", { name: /change email/i })
@@ -320,8 +330,11 @@ test.describe("Change Email Modal", () => {
     await page.getByLabel(/new email/i).fill("newemail@example.com");
     await page.getByLabel("Current Password").fill("WrongPassword1");
 
-    // Submit
-    await page.getByRole("button", { name: /^change email$/i }).click();
+    // Submit using footer button
+    await getProfileDialog(page)
+      .locator('[data-slot="dialog-footer"]')
+      .getByRole("button", { name: /change email/i })
+      .click();
 
     // Should show error
     await expect(page.getByText("Incorrect password")).toBeVisible();
@@ -331,7 +344,7 @@ test.describe("Change Email Modal", () => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
 
-    // Open change email modal
+    // Navigate to change email step
     await page.getByRole("button", { name: /change email/i }).click();
     await expect(
       page.getByRole("heading", { name: /change email/i })
@@ -344,30 +357,35 @@ test.describe("Change Email Modal", () => {
     await page.getByLabel(/new email/i).fill(newEmail);
     await page.getByLabel("Current Password").fill(TEST_PASSWORD);
 
-    // Submit
-    await page.getByRole("button", { name: /^change email$/i }).click();
+    // Submit using footer button
+    await getProfileDialog(page)
+      .locator('[data-slot="dialog-footer"]')
+      .getByRole("button", { name: /change email/i })
+      .click();
 
-    // Should show success toast and close modal
+    // Should show success toast and return to main settings
     await expect(page.getByText("Email changed successfully")).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: /change email/i })
-    ).not.toBeVisible();
+    await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   });
 
-  test("cancel closes change email modal", async ({ page, myItemsPage }) => {
+  test("cancel returns to main settings", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
 
-    // Open change email modal
+    // Navigate to change email step
     await page.getByRole("button", { name: /change email/i }).click();
     await expect(
       page.getByRole("heading", { name: /change email/i })
     ).toBeVisible();
 
-    // Click cancel
-    await page.getByRole("button", { name: /cancel/i }).click();
+    // Click cancel in footer (use last() to handle animated transitions)
+    await getProfileDialog(page)
+      .locator('[data-slot="dialog-footer"]')
+      .last()
+      .getByRole("button", { name: /cancel/i })
+      .click();
 
-    // Modal should close, settings should still be open
+    // Should return to main settings view
     await expect(
       page.getByRole("heading", { name: /change email/i })
     ).not.toBeVisible();

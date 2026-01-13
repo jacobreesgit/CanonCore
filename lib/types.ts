@@ -265,6 +265,14 @@ export interface QueuedFilesByCategory {
 }
 
 /**
+ * Source of artwork selection in wizard steps.
+ * - "tmdb": Selected from TMDB images gallery
+ * - "existing": Selected from existing uploaded files
+ * - "queued": Selected from newly queued files (upload mode)
+ */
+export type ArtworkSelectionSource = "tmdb" | "existing" | "queued";
+
+/**
  * TMDB metadata selection for applying to a new or existing item.
  * Captures which fields to update and the source data.
  */
