@@ -78,6 +78,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── episode-picker-helpers.tsx # Shared season/episode picker components
 │   │   ├── file-type-combobox.tsx    # File type picker with uploadOnly mode for Add dialog
 │   │   ├── files-section.tsx         # File display section for settings dialog
+│   │   ├── filter-dropdown.tsx       # Filter option dropdown (all, has-files, synced, etc.)
 │   │   ├── hero-selection-step.tsx   # Wizard step for backdrop/hero selection
 │   │   ├── image-selection-grid.tsx  # Grid for selecting TMDB/existing artwork
 │   │   ├── item-context-menu.tsx     # Right-click actions menu
@@ -87,10 +88,11 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── item-settings-dialog.tsx  # Settings with file selection and upload
 │   │   ├── item-stats.tsx            # Reusable child/file count stats display
 │   │   ├── items-toolbar.tsx         # Unified toolbar for root and detail pages
-│   │   ├── items-view.tsx            # Main view with tree/grid/edit toggle
+│   │   ├── items-view.tsx            # Main view with tree/grid/edit/sort/filter
 │   │   ├── media-search-combobox.tsx # TMDB search with poster thumbnails
 │   │   ├── poster-selection-step.tsx # Wizard step for poster selection
 │   │   ├── queued-file-thumbnail.tsx # Thumbnail preview for queued uploads
+│   │   ├── sort-dropdown.tsx         # Sort option dropdown (name, date, custom)
 │   │   ├── sync-badge.tsx            # Google Drive sync status indicators
 │   │   ├── title-description-step.tsx # Wizard step for name/description options
 │   │   └── view-toggle.tsx           # Tree/grid view switcher
@@ -99,7 +101,8 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   └── media-player.tsx          # Vidstack video player wrapper
 │   ├── profile/                      # User profile components
 │   │   ├── index.ts                  # Barrel export for profile components
-│   │   └── settings-dialog.tsx       # Settings with step-based password/email changes
+│   │   ├── preferences-tab.tsx       # Preferences tab (default view mode, sort)
+│   │   └── settings-dialog.tsx       # Tabbed settings with profile and preferences
 │   ├── search/                       # Spotlight search components
 │   │   ├── global-spotlight.tsx      # Wrapper that renders SpotlightSearch
 │   │   └── spotlight-search.tsx      # Main search dialog with fuzzy filtering
@@ -116,7 +119,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   └── utilities.ts              # Tree manipulation helpers
 │   ├── providers/
 │   │   └── theme-provider.tsx        # next-themes provider wrapper
-│   ├── ui/                           # shadcn/ui + animated-dialog-content.tsx, checkbox.tsx, command.tsx, dropzone.tsx, kbd.tsx, password-input.tsx, scroll-area.tsx, tabs.tsx
+│   ├── ui/                           # shadcn/ui + animated-dialog-content.tsx, checkbox.tsx, command.tsx, dropzone.tsx, kbd.tsx, password-input.tsx, radio-group.tsx, scroll-area.tsx, select.tsx, tabs.tsx
 │   ├── app-sidebar.tsx               # Context-aware navigation sidebar
 │   ├── error-boundary.tsx            # React error boundary for graceful error handling
 │   ├── my-items-providers.tsx        # Client-side providers for protected routes
@@ -164,10 +167,11 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── use-artwork-upload.ts         # Artwork upload flow with progress
 │   ├── use-controllable-state.ts     # Controlled/uncontrolled component state
 │   ├── use-hero-collapse.ts          # Hero section scroll-triggered collapse
+│   ├── use-items-sort-filter.ts      # Sort/filter state with localStorage persistence
 │   ├── use-mobile.ts                 # Mobile breakpoint hook
 │   └── use-tree-collapse.ts          # Shared tree collapse/expand state
 ├── content/
-│   └── docs/                         # MDX documentation pages (20 files)
+│   └── docs/                         # MDX documentation pages (22 files)
 ├── lib/
 │   ├── auth.ts                       # NextAuth config, extractSidebarUser helper
 │   ├── auth-actions.ts               # Auth server actions
@@ -182,14 +186,14 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── google-drive-upload.ts        # Browser-to-Drive upload operations
 │   ├── item-actions.ts               # Item CRUD server actions
 │   ├── item-file-actions.ts          # ItemFile operations, playback progress
-│   ├── item-utils.ts                 # Tree/flat conversion, descendant counter utilities
+│   ├── item-utils.ts                 # Tree/flat conversion, sortItems(), filterItems(), descendant counter
 │   ├── logger.ts                     # Pino structured logging with request context
 │   ├── prisma.ts                     # Prisma client singleton
 │   ├── rate-limit.ts                 # Upstash Redis rate limiting
 │   ├── source.ts                     # Fumadocs source configuration
 │   ├── tmdb-actions.ts               # TMDB metadata server actions
 │   ├── tmdb-client.ts                # TMDB API client for movie/TV metadata
-│   ├── types.ts                      # Shared types (Item, ItemFile, QueuedFile, TMDBMetadataSelection, ArtworkSelectionSource)
+│   ├── types.ts                      # Shared types (Item, ItemFile, SortOption, FilterOption, ViewMode, QueuedFile, TMDBMetadataSelection)
 │   ├── upload-utils.ts               # Browser-to-Drive upload utilities
 │   ├── user-actions.ts               # User profile server actions
 │   ├── utils.ts                      # cn() helper
@@ -209,7 +213,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── generate-refresh-token.ts     # Google Drive token generator for E2E tests
 │   └── setup-e2e-drive.ts            # E2E Drive environment setup
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 2.3.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 2.4.0)
     └── plans/                        # Design documents
 ```
 
@@ -231,6 +235,7 @@ pnpm run test:e2e:ui                        # UI mode
 - **Prisma 7** with PostgreSQL (Neon)
 - Schema: User, PasswordReset, Item, ItemFile, GoogleDriveConnection models
 - User has optional `image`/`heroImage` blob fields for avatar and hero banner
+- User has optional `defaultViewMode`/`defaultSortBy` for preferences (String?, not enum for flexibility)
 - Item has self-referential parent/child relationships for hierarchy
 - Item has optional `description` field (max 1000 chars) for TMDB overviews or notes
 - Item has Google Drive fields: `driveFileId`, `driveModifiedAt`, `syncStatus`, `driveConnectionId`
@@ -245,7 +250,9 @@ pnpm run test:e2e:ui                        # UI mode
 - **Hierarchical items** with drag-and-drop reordering via dnd-kit
 - **Hero banners**: Item detail pages show cinematic hero with artwork, title, and play button
 - **Dual view modes**: Tree (hierarchical) and Grid (movie poster cards)
-- **Edit mode toggle**: Click "Edit" to enable drag-and-drop, "Done" to return to view mode
+- **Sort options**: Custom Order, Name A-Z/Z-A, Newest/Oldest, Recently Updated
+- **Filter options**: All Items, Has Files, No Files, Synced, Pending
+- **Edit mode toggle**: Click "Edit" to enable drag-and-drop, "Done" to return to view mode (disabled when not custom sort)
 - **View mode**: Full background artwork with dark overlay (Feature222 aesthetic)
 - **Edit mode**: Simplified icons with drag handles for reordering
 - **Add Item dialog**: Modal with TMDB search combobox for auto-filling metadata
@@ -319,7 +326,7 @@ pnpm run test:e2e:ui                        # UI mode
 ### User Documentation
 
 - **Fumadocs** for MDX-based documentation at `/docs`
-- **20 pages** covering getting started, account, files/folders, google-drive, views, and preferences
+- **22 pages** covering getting started, account, files/folders, google-drive, views, and preferences
 - **Unified layout** with context-aware sidebar navigation using app sidebar shell
 - **NavDocs component** renders Fumadocs page tree with collapsible folders
 - Content in `content/docs/` with `meta.json` for structure
@@ -338,7 +345,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 964 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, seed system
+- 1086 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system
 
 ### E2E Testing
 

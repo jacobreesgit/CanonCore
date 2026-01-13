@@ -16,6 +16,8 @@ import { SortableTree, Tree } from "@/components/sortable-tree";
 import { SortableGrid, Grid } from "@/components/sortable-grid";
 import { EditModeToggle } from "./edit-mode-toggle";
 import { ViewToggle, useStoredViewMode } from "./view-toggle";
+import { SortDropdown } from "./sort-dropdown";
+import { FilterDropdown } from "./filter-dropdown";
 import { AddItemDialog } from "./add-item-dialog";
 import { ItemSettingsDialog } from "./item-settings-dialog";
 import { ItemHero } from "./item-hero";
@@ -25,7 +27,13 @@ import type {
   TreeItems,
   SerializedItemFile,
 } from "@/lib/types";
-import { itemsToTree, treeToItemUpdates } from "@/lib/item-utils";
+import {
+  itemsToTree,
+  treeToItemUpdates,
+  sortItems,
+  filterItems,
+} from "@/lib/item-utils";
+import { useItemsSortFilter } from "@/hooks/use-items-sort-filter";
 import {
   createItem,
   deleteItem,
@@ -129,6 +137,11 @@ export function ItemsView({
   );
   // Single source of truth for view mode - hydration-safe via useSyncExternalStore
   const [viewMode] = useStoredViewMode();
+
+  // Sort/filter state from hook (persisted to localStorage)
+  const { sortBy, setSortBy, filterBy, setFilterBy, isCustomSort } =
+    useItemsSortFilter();
+
   // Edit mode state - supports external control or internal state via useControllableState
   const [isEditing, setIsEditing] = useControllableState({
     value: externalIsEditing,
@@ -156,9 +169,6 @@ export function ItemsView({
   useEffect(() => {
     setItems(initialItems);
   }, [initialItems, setItems]);
-
-  // Convert flat items to tree structure for SortableTree
-  const treeItems = itemsToTree(items);
 
   /**
    * Refetch items from server and update local state.
@@ -389,8 +399,17 @@ export function ItemsView({
     [setItems]
   );
 
+  // Apply sort and filter to items (sort first, then filter)
+  const sortedItems = sortItems(items, sortBy);
+  const processedItems = filterItems(sortedItems, filterBy);
+
+  // Convert flat items to tree structure for SortableTree (uses processed items)
+  const treeItemsProcessed = itemsToTree(processedItems);
+
   // Filter items for current level (grid view shows only current level)
-  const currentLevelItems = items.filter((item) => item.parentId === parentId);
+  const currentLevelItems = processedItems.filter(
+    (item) => item.parentId === parentId
+  );
 
   return (
     <div
@@ -414,7 +433,7 @@ export function ItemsView({
       {/* Toolbar - always visible, buttons disabled when not applicable */}
       {!hideToolbar && (
         <div className="flex items-center justify-between gap-3">
-          {/* Left side: Sync button */}
+          {/* Left side: Sync button + Sort/Filter */}
           <div className="flex items-center gap-3">
             <Button
               variant="outline"
@@ -430,6 +449,16 @@ export function ItemsView({
               )}
               <span>{isSyncing ? "Syncing..." : "Sync"}</span>
             </Button>
+            <SortDropdown
+              value={sortBy}
+              onChange={setSortBy}
+              disabled={items.length === 0}
+            />
+            <FilterDropdown
+              value={filterBy}
+              onChange={setFilterBy}
+              disabled={items.length === 0}
+            />
           </div>
 
           {/* Right side: Add Item + Edit + View toggle */}
@@ -446,7 +475,7 @@ export function ItemsView({
             <EditModeToggle
               isEditing={isEditing}
               onToggle={() => setIsEditing((prev) => !prev)}
-              disabled={items.length === 0}
+              disabled={items.length === 0 || !isCustomSort}
             />
             <ViewToggle disabled={items.length === 0} />
           </div>
@@ -477,7 +506,7 @@ export function ItemsView({
         )
       ) : isEditing ? (
         <SortableTree
-          items={treeItems}
+          items={treeItemsProcessed}
           onItemsChange={handleTreeItemsChange}
           onItemClick={handleItemClick}
           onOpenSettings={handleOpenSettings}
@@ -487,7 +516,7 @@ export function ItemsView({
         />
       ) : (
         <Tree
-          items={treeItems}
+          items={treeItemsProcessed}
           onItemClick={handleItemClick}
           onOpenSettings={handleOpenSettings}
           onDeleteItem={handleDeleteItem}

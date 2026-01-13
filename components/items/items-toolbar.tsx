@@ -10,8 +10,10 @@ import { Loader2, Plus, RefreshCw, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EditModeToggle } from "./edit-mode-toggle";
 import { ViewToggle } from "./view-toggle";
+import { SortDropdown } from "./sort-dropdown";
+import { FilterDropdown } from "./filter-dropdown";
 import { ItemSettingsDialog } from "./item-settings-dialog";
-import type { SerializedItemFile } from "@/lib/types";
+import type { SerializedItemFile, SortOption, FilterOption } from "@/lib/types";
 import { useState, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { getItemFiles } from "@/lib/item-file-actions";
@@ -34,6 +36,16 @@ interface ItemsToolbarProps {
   onEditToggle?: () => void;
   /** Callback to open add item dialog (only needed when hasItems=true). */
   onAddItem?: () => void;
+
+  // --- Sort/Filter props ---
+  /** Current sort option. */
+  sortBy?: SortOption;
+  /** Callback when sort option changes. */
+  onSortChange?: (sort: SortOption) => void;
+  /** Current filter option. */
+  filterBy?: FilterOption;
+  /** Callback when filter option changes. */
+  onFilterChange?: (filter: FilterOption) => void;
 
   // --- Sync props ---
   /** Callback after any sync completes. */
@@ -62,10 +74,18 @@ export function ItemsToolbar({
   isEditing = false,
   onEditToggle,
   onAddItem,
+  sortBy,
+  onSortChange,
+  filterBy,
+  onFilterChange,
   onSyncComplete,
   item,
   hasDriveConnection = false,
 }: ItemsToolbarProps) {
+  // Sort/filter are provided
+  const hasSortFilter = sortBy !== undefined && onSortChange !== undefined;
+  // Disable edit mode when not using custom sort (can't reorder non-custom sort)
+  const isCustomSort = sortBy === "custom" || sortBy === undefined;
   const router = useRouter();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [files, setFiles] = useState(emptyFiles);
@@ -136,7 +156,7 @@ export function ItemsToolbar({
   return (
     <>
       <div className="flex items-center justify-between gap-3">
-        {/* Left side: Sync button */}
+        {/* Left side: Sync button + Sort/Filter */}
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
@@ -152,6 +172,24 @@ export function ItemsToolbar({
             )}
             <span>{isSyncing ? "Syncing..." : "Sync"}</span>
           </Button>
+
+          {/* Sort/Filter dropdowns */}
+          {hasSortFilter && (
+            <>
+              <SortDropdown
+                value={sortBy}
+                onChange={onSortChange}
+                disabled={!hasItems}
+              />
+              {filterBy !== undefined && onFilterChange && (
+                <FilterDropdown
+                  value={filterBy}
+                  onChange={onFilterChange}
+                  disabled={!hasItems}
+                />
+              )}
+            </>
+          )}
         </div>
 
         {/* Right side: Add Item + Edit + View toggle + Upload + Settings */}
@@ -169,7 +207,7 @@ export function ItemsToolbar({
           <EditModeToggle
             isEditing={isEditing}
             onToggle={onEditToggle ?? (() => {})}
-            disabled={!hasItems}
+            disabled={!hasItems || !isCustomSort}
           />
           <ViewToggle disabled={!hasItems} />
 

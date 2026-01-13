@@ -14,18 +14,21 @@ Google Drive operations are now split into focused modules for better maintainab
 The monolithic Google Drive server actions file is now three focused modules:
 
 **lib/google-drive-sync.ts** (893 lines):
+
 - `syncFromGoogleDrive` - Full bidirectional sync
 - `SyncContext` interface for tracking sync state
 - Batch processing with configurable page sizes
 - Error collection and reporting
 
 **lib/google-drive-upload.ts** (443 lines):
+
 - `createUploadSessions` - Generate resumable upload URLs
 - `confirmUpload` - Verify and record completed uploads
 - Session token signing for security
 - File type categorization
 
 **lib/google-drive-actions.ts** (reduced):
+
 - Connection management (connect, disconnect)
 - OAuth token handling
 - Root folder status checks
@@ -34,7 +37,10 @@ The monolithic Google Drive server actions file is now three focused modules:
 
 ```typescript
 // Before
-import { syncFromGoogleDrive, createUploadSessions } from "@/lib/google-drive-actions";
+import {
+  syncFromGoogleDrive,
+  createUploadSessions,
+} from "@/lib/google-drive-actions";
 
 // After
 import { syncFromGoogleDrive } from "@/lib/google-drive-sync";
@@ -60,6 +66,7 @@ export async function deleteItem(id: string): Promise<ItemResult> {
 Removed ~100 lines of complex image preloading logic from `items-view.tsx`. The previous implementation tracked hydration state, preload completion, and minimum spinner duration. The new approach trusts browser caching and Next.js image optimization.
 
 **Removed:**
+
 - `lib/image-preload.ts` - Preloading utility deleted
 - Hydration detection state
 - Artwork preload key memoization
@@ -128,14 +135,20 @@ If you import Google Drive functions directly:
 
 ```typescript
 // Old (no longer works for sync/upload)
-import { syncFromGoogleDrive, createUploadSessions } from "@/lib/google-drive-actions";
+import {
+  syncFromGoogleDrive,
+  createUploadSessions,
+} from "@/lib/google-drive-actions";
 
 // New
 import { syncFromGoogleDrive } from "@/lib/google-drive-sync";
 import { createUploadSessions, confirmUpload } from "@/lib/google-drive-upload";
 
 // Connection management stays the same
-import { connectGoogleDrive, disconnectGoogleDrive } from "@/lib/google-drive-actions";
+import {
+  connectGoogleDrive,
+  disconnectGoogleDrive,
+} from "@/lib/google-drive-actions";
 ```
 
 ### Rate limit key

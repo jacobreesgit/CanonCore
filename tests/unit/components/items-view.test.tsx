@@ -1,12 +1,42 @@
 /**
  * Unit tests for ItemsView component.
- * Tests rendering, toolbar, empty state, and external control.
+ * Tests rendering, toolbar, empty state, external control, and sort/filter.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ItemsView } from "@/components/items/items-view";
-import type { ItemWithArtwork } from "@/lib/types";
+import type { ItemWithArtwork, SortOption, FilterOption } from "@/lib/types";
+import { sortItems, filterItems } from "@/lib/item-utils";
+
+// Sort/filter state module - must be separate to avoid hoisting issues
+const sortFilterState = {
+  sortBy: "custom" as SortOption,
+  filterBy: "all" as FilterOption,
+};
+
+// Mock useItemsSortFilter hook
+vi.mock("@/hooks/use-items-sort-filter", () => ({
+  useItemsSortFilter: () => ({
+    sortBy: sortFilterState.sortBy,
+    filterBy: sortFilterState.filterBy,
+    setSortBy: vi.fn(),
+    setFilterBy: vi.fn(),
+    isCustomSort: sortFilterState.sortBy === "custom",
+    hasActiveFilter: sortFilterState.filterBy !== "all",
+    reset: vi.fn(),
+  }),
+}));
+
+// Track sortItems/filterItems calls via spied functions
+vi.mock("@/lib/item-utils", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/item-utils")>();
+  return {
+    ...original,
+    sortItems: vi.fn((items) => items),
+    filterItems: vi.fn((items) => items),
+  };
+});
 
 // Mock server actions
 vi.mock("@/lib/item-actions", () => ({
@@ -105,6 +135,9 @@ describe("ItemsView", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset sort/filter state to defaults
+    sortFilterState.sortBy = "custom";
+    sortFilterState.filterBy = "all";
   });
 
   describe("rendering", () => {
@@ -181,6 +214,44 @@ describe("ItemsView", () => {
     it("uses external addItemOpen state when provided", () => {
       render(<ItemsView items={mockItems} addItemOpen={true} />);
       expect(screen.getByTestId("add-dialog")).toBeInTheDocument();
+    });
+  });
+
+  describe("sort/filter integration", () => {
+    it("applies sortItems to items", () => {
+      render(<ItemsView items={mockItems} />);
+      expect(sortItems).toHaveBeenCalledWith(mockItems, "custom");
+    });
+
+    it("applies filterItems to items", () => {
+      render(<ItemsView items={mockItems} />);
+      expect(filterItems).toHaveBeenCalled();
+    });
+
+    it("applies sort then filter in correct order", () => {
+      render(<ItemsView items={mockItems} />);
+      // sortItems should be called first, then filterItems
+      expect(sortItems).toHaveBeenCalled();
+      expect(filterItems).toHaveBeenCalled();
+      // Filter should receive the sorted result
+      const sortResult = vi.mocked(sortItems).mock.results[0]?.value;
+      expect(filterItems).toHaveBeenCalledWith(sortResult, "all");
+    });
+
+    it("disables edit mode when sort is not custom", () => {
+      sortFilterState.sortBy = "name-asc";
+      render(<ItemsView items={mockItems} />);
+      // Edit button should be disabled when not using custom sort
+      const editButton = screen.getByRole("button", { name: /edit/i });
+      expect(editButton).toBeDisabled();
+    });
+
+    it("enables edit mode when sort is custom", () => {
+      sortFilterState.sortBy = "custom";
+      render(<ItemsView items={mockItems} />);
+      // Edit button should be enabled with custom sort
+      const editButton = screen.getByRole("button", { name: /edit/i });
+      expect(editButton).toBeEnabled();
     });
   });
 });
