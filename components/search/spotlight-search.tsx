@@ -21,7 +21,39 @@ import {
 import { Kbd } from "@/components/ui/kbd";
 import { useSpotlight } from "@/contexts/spotlight-context";
 import { getSearchableItems } from "@/lib/item-actions";
+import { cn } from "@/lib/utils";
 import type { SearchableItem } from "@/lib/types";
+
+/**
+ * Artwork thumbnail with load state tracking.
+ * Shows folder icon until image loads, then fades in.
+ *
+ * @param artworkId - ID of the artwork to display
+ */
+function ArtworkThumbnail({ artworkId }: { artworkId: string }) {
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <div className="bg-muted relative h-8 w-8 shrink-0 overflow-hidden rounded-md">
+      {/* Folder icon placeholder while loading */}
+      {!loaded && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Folder className="text-muted-foreground/50 h-4 w-4" />
+        </div>
+      )}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`/api/artwork/${artworkId}`}
+        alt=""
+        className={cn(
+          "absolute inset-0 h-full w-full object-cover transition-opacity duration-150",
+          loaded ? "opacity-100" : "opacity-0"
+        )}
+        onLoad={() => setLoaded(true)}
+      />
+    </div>
+  );
+}
 
 interface SpotlightSearchProps {
   /** For testing - force dialog open state */
@@ -161,14 +193,7 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
                   >
                     {/* Artwork thumbnail or folder icon */}
                     {item.artworkId ? (
-                      <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-md">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={`/api/artwork/${item.artworkId}`}
-                          alt=""
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
+                      <ArtworkThumbnail artworkId={item.artworkId} />
                     ) : (
                       <div className="bg-muted/50 text-muted-foreground group-aria-selected:bg-primary/10 group-aria-selected:text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors">
                         <Folder className="h-4 w-4" />

@@ -18,6 +18,38 @@ import { searchMediaAction, isTMDBAvailable } from "@/lib/tmdb-actions";
 import { getPosterUrl, type TMDBSearchResult } from "@/lib/tmdb-client";
 import { cn } from "@/lib/utils";
 
+/**
+ * Poster thumbnail with load state tracking for smooth fade-in.
+ * Shows film icon placeholder while loading.
+ *
+ * @param posterPath - TMDB poster path
+ */
+function PosterThumbnail({ posterPath }: { posterPath: string }) {
+  const [loaded, setLoaded] = useState(false);
+  const posterUrl = getPosterUrl(posterPath, "w92");
+
+  return (
+    <div className="bg-muted relative h-14 w-10 shrink-0 overflow-hidden rounded">
+      {/* Film icon placeholder while loading */}
+      {!loaded && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Film className="text-muted-foreground/50 size-5" />
+        </div>
+      )}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={posterUrl ?? undefined}
+        alt=""
+        className={cn(
+          "absolute inset-0 h-full w-full object-cover transition-opacity duration-150",
+          loaded ? "opacity-100" : "opacity-0"
+        )}
+        onLoad={() => setLoaded(true)}
+      />
+    </div>
+  );
+}
+
 interface MediaSearchComboboxProps {
   /** Called when user selects a result */
   onSelect: (result: TMDBSearchResult) => void;
@@ -228,14 +260,7 @@ export function MediaSearchCombobox({
               >
                 {/* Poster Thumbnail */}
                 {result.posterPath ? (
-                  <div className="bg-muted relative h-14 w-10 shrink-0 overflow-hidden rounded">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={getPosterUrl(result.posterPath, "w92") ?? undefined}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
+                  <PosterThumbnail posterPath={result.posterPath} />
                 ) : (
                   <div className="bg-muted flex h-14 w-10 shrink-0 items-center justify-center rounded">
                     {result.mediaType === "movie" ? (

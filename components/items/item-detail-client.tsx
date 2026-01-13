@@ -6,21 +6,13 @@
 
 "use client";
 
-import {
-  useState,
-  useCallback,
-  useTransition,
-  useEffect,
-  useMemo,
-} from "react";
+import { useState, useCallback, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ItemsToolbar } from "./items-toolbar";
 import { ItemsView } from "./items-view";
 import { ItemHero } from "./item-hero";
 import { MediaOverlay } from "@/components/media/media-overlay";
-import { Spinner } from "@/components/ui/spinner";
 import { updatePlaybackPosition } from "@/lib/item-file-actions";
-import { preloadImages } from "@/lib/image-preload";
 import type { ItemWithArtwork, SerializedItemFile } from "@/lib/types";
 import { getItems } from "@/lib/item-actions";
 import { useHeroCollapse } from "@/hooks/use-hero-collapse";
@@ -71,7 +63,6 @@ export function ItemDetailClient({
   const { isCollapsed, toggleCollapse } = useHeroCollapse();
 
   // Resolve hero artwork using fallback chain: isHero -> isPrimary -> first
-  // Computed before state to allow proper initialization of heroPreloaded
   const heroArtworkId = useMemo(() => {
     if (!files) return artworkId ?? null;
     const artwork = files.artwork;
@@ -87,31 +78,6 @@ export function ItemDetailClient({
     }
     return heroFile?.id ?? primaryFile?.id ?? artwork[0]?.id ?? null;
   }, [files, artworkId]);
-
-  // Hydration detection
-  const [isHydrated, setIsHydrated] = useState(false);
-  const [minDurationMet, setMinDurationMet] = useState(false);
-  // Initialize to true if no artwork to preload
-  const [heroPreloaded, setHeroPreloaded] = useState(!heroArtworkId);
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: one-time hydration marker
-  useEffect(() => setIsHydrated(true), []);
-
-  // Minimum spinner duration (300ms) - prevents flicker for fast loads
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setMinDurationMet(true);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Preload hero artwork before showing content
-  useEffect(() => {
-    if (!heroArtworkId) return;
-    preloadImages([heroArtworkId]).then(() => setHeroPreloaded(true));
-  }, [heroArtworkId]);
-
-  const isLoading = !isHydrated || !minDurationMet || !heroPreloaded;
 
   const hasChildren = childItems.length > 0;
   const hasMedia = files && files.media.length > 0;
@@ -181,18 +147,6 @@ export function ItemDetailClient({
     childCount: childItems.length,
     hasDriveConnection,
   };
-
-  // Show full-page spinner until hydrated
-  if (isLoading) {
-    return (
-      <div
-        className="flex flex-1 items-center justify-center"
-        data-testid="items-loading"
-      >
-        <Spinner className="text-muted-foreground size-8" />
-      </div>
-    );
-  }
 
   return (
     <div
