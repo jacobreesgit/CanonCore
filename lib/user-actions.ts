@@ -16,6 +16,13 @@ import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { emailSchema, passwordSchema } from "@/lib/validations";
 import { logger } from "@/lib/logger";
+import type { ViewMode, SortOption } from "@/lib/types";
+import {
+  VALID_VIEW_MODES,
+  VALID_SORT_OPTIONS,
+  isValidViewMode,
+  isValidSortOption,
+} from "@/lib/types";
 
 /** Result type for user actions. */
 type ActionResult<T = void> =
@@ -445,5 +452,125 @@ export async function getProfile(): Promise<
   } catch (error) {
     logger.error({ err: error }, "Get profile error");
     return { success: false, error: "Failed to get profile" };
+  }
+}
+
+// =============================================================================
+// User Preferences
+// =============================================================================
+
+/** User preferences data. */
+export interface UserPreferences {
+  viewMode: ViewMode;
+  sortBy: SortOption;
+}
+
+/**
+ * Get current user's preferences.
+ * Returns defaults if no preferences are set.
+ *
+ * @returns User preferences or error
+ *
+ * @example
+ * const result = await getPreferences();
+ * if (result.success) {
+ *   console.log(result.data.viewMode); // "grid" | "tree"
+ *   console.log(result.data.sortBy);   // "custom" | "name-asc" | ...
+ * }
+ */
+export async function getPreferences(): Promise<ActionResult<UserPreferences>> {
+  const userId = await getAuthUserId();
+  if (!userId) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        defaultViewMode: true,
+        defaultSortBy: true,
+      },
+    });
+
+    if (!user) {
+      return { success: false, error: "User not found" };
+    }
+
+    // Validate stored values, fall back to defaults if invalid
+    const viewMode =
+      user.defaultViewMode && isValidViewMode(user.defaultViewMode)
+        ? user.defaultViewMode
+        : "grid";
+    const sortBy =
+      user.defaultSortBy && isValidSortOption(user.defaultSortBy)
+        ? user.defaultSortBy
+        : "custom";
+
+    return {
+      success: true,
+      data: { viewMode, sortBy },
+    };
+  } catch (error) {
+    logger.error({ err: error }, "Get preferences error");
+    return { success: false, error: "Failed to get preferences" };
+  }
+}
+
+/**
+ * Update user preferences.
+ * Only updates provided fields.
+ *
+ * @param data - Preferences to update
+ * @returns Success or error result
+ *
+ * @example
+ * // Update view mode only
+ * await updatePreferences({ viewMode: "tree" });
+ *
+ * @example
+ * // Update multiple preferences
+ * await updatePreferences({ viewMode: "grid", sortBy: "name-asc" });
+ */
+export async function updatePreferences(data: {
+  viewMode?: ViewMode;
+  sortBy?: SortOption;
+}): Promise<ActionResult<void>> {
+  const userId = await getAuthUserId();
+  if (!userId) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  // Validate inputs
+  if (
+    data.viewMode !== undefined &&
+    !VALID_VIEW_MODES.includes(data.viewMode)
+  ) {
+    return { success: false, error: "Invalid view mode" };
+  }
+
+  if (data.sortBy !== undefined && !VALID_SORT_OPTIONS.includes(data.sortBy)) {
+    return { success: false, error: "Invalid sort option" };
+  }
+
+  try {
+    const updateData: Record<string, string> = {};
+
+    if (data.viewMode !== undefined) {
+      updateData.defaultViewMode = data.viewMode;
+    }
+    if (data.sortBy !== undefined) {
+      updateData.defaultSortBy = data.sortBy;
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
+
+    return { success: true };
+  } catch (error) {
+    logger.error({ err: error }, "Update preferences error");
+    return { success: false, error: "Failed to update preferences" };
   }
 }

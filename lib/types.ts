@@ -296,3 +296,81 @@ export interface TMDBMetadataSelection {
     backdropPath: string | null;
   };
 }
+
+// =============================================================================
+// User Preferences Types
+// =============================================================================
+
+/** View mode for items display. */
+export type ViewMode = "grid" | "tree";
+
+/** Sort option for items list. */
+export type SortOption =
+  | "custom"
+  | "name-asc"
+  | "name-desc"
+  | "created-desc"
+  | "created-asc"
+  | "updated-desc";
+
+/** Filter option for items list. */
+export type FilterOption =
+  | "all"
+  | "has-files"
+  | "no-files"
+  | "synced"
+  | "pending"
+  | "error";
+
+/** Valid view modes for validation. */
+export const VALID_VIEW_MODES: ViewMode[] = ["grid", "tree"];
+
+/** Valid sort options for validation. */
+export const VALID_SORT_OPTIONS: SortOption[] = [
+  "custom",
+  "name-asc",
+  "name-desc",
+  "created-desc",
+  "created-asc",
+  "updated-desc",
+];
+
+/** Valid filter options for validation. */
+export const VALID_FILTER_OPTIONS: FilterOption[] = [
+  "all",
+  "has-files",
+  "no-files",
+  "synced",
+  "pending",
+  "error",
+];
+
+/**
+ * Type guard for validating sort options.
+ *
+ * @param value - String value to validate
+ * @returns True if value is a valid SortOption
+ */
+export function isValidSortOption(value: string): value is SortOption {
+  return VALID_SORT_OPTIONS.includes(value as SortOption);
+}
+
+/**
+ * Type guard for validating filter options.
+ *
+ * @param value - String value to validate
+ * @returns True if value is a valid FilterOption
+ */
+export function isValidFilterOption(value: string): value is FilterOption {
+  return VALID_FILTER_OPTIONS.includes(value as FilterOption);
+}
+
+/**
+ * Type guard for validating view modes.
+ *
+ * @param value - String value to validate
+ * @returns True if value is a valid ViewMode
+ */
+export function isValidViewMode(value: string): value is ViewMode {
+  return VALID_VIEW_MODES.includes(value as ViewMode);
+}

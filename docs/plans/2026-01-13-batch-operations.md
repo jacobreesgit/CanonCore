@@ -29,6 +29,12 @@ Google Drive Batch API allows up to 100 operations per request:
 - Returns individual results for each sub-request
 - 50 items in ~200-500ms total
 
+### Important Implementation Notes
+
+> **Response Ordering:** Google Batch API responses may not return in request order. The implementation uses `content-id` headers for request/response correlation to ensure correct result mapping. This is critical for accurate success/failure attribution.
+
+> **Token Refresh:** Batch operations should integrate with the existing token refresh logic in `google-drive-client.ts`. If a batch spans a long duration, tokens may expire mid-operation.
+
 ---
 
 ## Task 1: Create Batch Request Builder
@@ -70,6 +76,9 @@ describe("google-drive-batch", () => {
       expect(body).toContain("PATCH /drive/v3/files/file-1");
       expect(body).toContain("PATCH /drive/v3/files/file-2");
       expect(body).toContain('"trashed":true');
+      // Verify content-id headers for response correlation
+      expect(body).toContain("Content-ID: <item-0>");
+      expect(body).toContain("Content-ID: <item-1>");
     });
 
     it("creates multipart request for move operations", () => {
@@ -101,13 +110,21 @@ describe("google-drive-batch", () => {
         "Batch limit exceeded: max 100 operations"
       );
     });
+
+    it("returns early for empty operations array", () => {
+      const { body, boundary } = buildBatchRequest([]);
+
+      expect(body).toBe("");
+      expect(boundary).toBe("");
+    });
   });
 
   describe("parseBatchResponse", () => {
-    it("parses successful batch response", () => {
+    it("parses successful batch response using content-id", () => {
       const boundary = "batch_abc123";
       const responseBody = `--batch_abc123
 Content-Type: application/http
+Content-ID: <response-item-0>
 
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -115,6 +132,7 @@ Content-Type: application/json
 {"id":"file-1"}
 --batch_abc123
 Content-Type: application/http
+Content-ID: <response-item-1>
 
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -122,7 +140,8 @@ Content-Type: application/json
 {"id":"file-2"}
 --batch_abc123--`;
 
-      const results = parseBatchResponse(responseBody, boundary);
+      const fileIds = ["file-1", "file-2"];
+      const results = parseBatchResponse(responseBody, boundary, fileIds);
 
       expect(results).toHaveLength(2);
       expect(results[0]).toEqual({
@@ -141,6 +160,7 @@ Content-Type: application/json
       const boundary = "batch_xyz";
       const responseBody = `--batch_xyz
 Content-Type: application/http
+Content-ID: <response-item-0>
 
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -148,6 +168,7 @@ Content-Type: application/json
 {"id":"file-1"}
 --batch_xyz
 Content-Type: application/http
+Content-ID: <response-item-1>
 
 HTTP/1.1 404 Not Found
 Content-Type: application/json
@@ -155,11 +176,43 @@ Content-Type: application/json
 {"error":{"message":"File not found"}}
 --batch_xyz--`;
 
-      const results = parseBatchResponse(responseBody, boundary);
+      const fileIds = ["file-1", "file-2"];
+      const results = parseBatchResponse(responseBody, boundary, fileIds);
 
       expect(results[0].success).toBe(true);
       expect(results[1].success).toBe(false);
       expect(results[1].error).toBe("File not found");
+    });
+
+    it("handles out-of-order responses correctly", () => {
+      const boundary = "batch_ooo";
+      // Response comes back in reverse order
+      const responseBody = `--batch_ooo
+Content-Type: application/http
+Content-ID: <response-item-1>
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{"id":"file-2"}
+--batch_ooo
+Content-Type: application/http
+Content-ID: <response-item-0>
+
+HTTP/1.1 404 Not Found
+Content-Type: application/json
+
+{"error":{"message":"File not found"}}
+--batch_ooo--`;
+
+      const fileIds = ["file-1", "file-2"];
+      const results = parseBatchResponse(responseBody, boundary, fileIds);
+
+      // Results should be correctly mapped despite out-of-order response
+      expect(results[0].fileId).toBe("file-1");
+      expect(results[0].success).toBe(false);
+      expect(results[1].fileId).toBe("file-2");
+      expect(results[1].success).toBe(true);
     });
   });
 });
@@ -184,8 +237,11 @@ Create `lib/google-drive-batch.ts`:
 
 import { logger } from "@/lib/logger";
 
-/** Maximum operations per batch request */
+/** Maximum operations per batch request (Google API limit) */
 const MAX_BATCH_SIZE = 100;
+
+/** Default timeout for batch requests in milliseconds */
+const BATCH_TIMEOUT_MS = 30000;
 
 /** HTTP method for batch operations */
 export type BatchMethod = "PATCH" | "DELETE";
@@ -208,15 +264,21 @@ export interface BatchResult {
 
 /**
  * Builds a multipart/mixed batch request body.
+ * Includes content-id headers for request/response correlation.
  *
  * @param operations - Array of operations to batch
- * @returns Object with body string and boundary
+ * @returns Object with body string and boundary (empty strings if no operations)
  * @throws Error if operations exceed MAX_BATCH_SIZE
  */
 export function buildBatchRequest(operations: BatchOperation[]): {
   body: string;
   boundary: string;
 } {
+  // Handle empty array - return early
+  if (operations.length === 0) {
+    return { body: "", boundary: "" };
+  }
+
   if (operations.length > MAX_BATCH_SIZE) {
     throw new Error(`Batch limit exceeded: max ${MAX_BATCH_SIZE} operations`);
   }
@@ -224,7 +286,9 @@ export function buildBatchRequest(operations: BatchOperation[]): {
   const boundary = `batch_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
   const parts: string[] = [];
 
-  for (const op of operations) {
+  for (let i = 0; i < operations.length; i++) {
+    const op = operations[i];
+
     // Build query string if params exist
     const queryString = op.params
       ? "?" + new URLSearchParams(op.params).toString()
@@ -233,7 +297,10 @@ export function buildBatchRequest(operations: BatchOperation[]): {
     const path = `/drive/v3/files/${op.fileId}${queryString}`;
 
     let part = `--${boundary}\r\n`;
-    part += `Content-Type: application/http\r\n\r\n`;
+    part += `Content-Type: application/http\r\n`;
+    // Content-ID for request/response correlation (critical for out-of-order responses)
+    part += `Content-ID: <item-${i}>\r\n`;
+    part += `Content-Transfer-Encoding: binary\r\n\r\n`;
     part += `${op.method} ${path} HTTP/1.1\r\n`;
 
     if (op.body) {
@@ -253,21 +320,36 @@ export function buildBatchRequest(operations: BatchOperation[]): {
 
 /**
  * Parses a multipart/mixed batch response.
+ * Uses Content-ID headers to correctly correlate responses with requests,
+ * handling cases where Google returns responses out of order.
  *
  * @param responseBody - Raw response body
  * @param boundary - Boundary string from Content-Type header
- * @returns Array of results for each operation
+ * @param fileIds - Original file IDs in request order for correlation
+ * @returns Array of results for each operation, in original request order
  */
 export function parseBatchResponse(
   responseBody: string,
-  boundary: string
+  boundary: string,
+  fileIds: string[]
 ): BatchResult[] {
-  const results: BatchResult[] = [];
+  // Initialize results array with placeholders
+  const results: BatchResult[] = fileIds.map((fileId) => ({
+    success: false,
+    fileId,
+    status: 0,
+    error: "No response received",
+  }));
+
   const parts = responseBody.split(`--${boundary}`);
 
   for (const part of parts) {
     // Skip empty parts and closing boundary
     if (!part.trim() || part.trim() === "--") continue;
+
+    // Extract Content-ID to determine which request this response is for
+    const contentIdMatch = part.match(/Content-ID:\s*<response-item-(\d+)>/i);
+    const requestIndex = contentIdMatch ? parseInt(contentIdMatch[1], 10) : -1;
 
     // Extract HTTP status line
     const statusMatch = part.match(/HTTP\/1\.1 (\d+)/);
@@ -275,30 +357,48 @@ export function parseBatchResponse(
 
     // Extract JSON body
     const jsonMatch = part.match(/\{[\s\S]*\}/);
-    let fileId = "";
     let error: string | undefined;
 
     if (jsonMatch) {
       try {
         const json = JSON.parse(jsonMatch[0]);
-        fileId = json.id || "";
         if (json.error?.message) {
           error = json.error.message;
         }
       } catch {
-        logger.warn({ part }, "[Batch] Failed to parse response part");
+        logger.warn(
+          { part: part.slice(0, 200) },
+          "[Batch] Failed to parse response part"
+        );
       }
     }
 
-    results.push({
-      success: status >= 200 && status < 300,
-      fileId,
-      status,
-      error,
-    });
+    // Map result to correct position using Content-ID
+    if (requestIndex >= 0 && requestIndex < results.length) {
+      results[requestIndex] = {
+        success: status >= 200 && status < 300,
+        fileId: fileIds[requestIndex],
+        status,
+        error,
+      };
+    } else {
+      // Fallback: try to find by fileId in response (less reliable)
+      logger.warn(
+        { contentIdMatch, requestIndex },
+        "[Batch] Could not correlate response by Content-ID"
+      );
+    }
   }
 
   return results;
+}
+
+/**
+ * Returns the batch timeout in milliseconds.
+ * Exposed for testing and configuration.
+ */
+export function getBatchTimeout(): number {
+  return BATCH_TIMEOUT_MS;
 }
 ```
 
@@ -316,6 +416,7 @@ feat(google-drive): add batch request builder and parser
 
 Utilities for Google Drive Batch API multipart/mixed format.
 Supports up to 100 operations per batch request.
+Uses Content-ID headers for request/response correlation.
 
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 EOF
@@ -331,7 +432,46 @@ EOF
 - Modify: `lib/google-drive-client.ts`
 - Test: `tests/unit/lib/google-drive-client.test.ts`
 
-**Step 1: Write the failing test**
+**Step 1: Add test helper**
+
+Add to top of `tests/unit/lib/google-drive-client.test.ts`:
+
+```typescript
+/**
+ * Creates a mock batch response for testing.
+ *
+ * @param count - Number of successful responses to include
+ * @param includeFileIds - Whether to include file IDs in responses
+ * @returns Mock Response object
+ */
+function createMockBatchResponse(
+  count: number,
+  includeFileIds = true
+): Response {
+  const boundary = "batch_mock123";
+  let body = "";
+
+  for (let i = 0; i < count; i++) {
+    body += `--${boundary}\r\n`;
+    body += `Content-Type: application/http\r\n`;
+    body += `Content-ID: <response-item-${i}>\r\n\r\n`;
+    body += `HTTP/1.1 200 OK\r\n`;
+    body += `Content-Type: application/json\r\n\r\n`;
+    body += includeFileIds ? `{"id":"file-${i}"}\r\n` : `{}\r\n`;
+  }
+  body += `--${boundary}--`;
+
+  return {
+    ok: true,
+    headers: new Headers({
+      "content-type": `multipart/mixed; boundary=${boundary}`,
+    }),
+    text: async () => body,
+  } as Response;
+}
+```
+
+**Step 2: Write the failing test**
 
 Add to `tests/unit/lib/google-drive-client.test.ts`:
 
@@ -346,6 +486,7 @@ describe("batchDelete", () => {
       }),
       text: async () => `--batch_abc123
 Content-Type: application/http
+Content-ID: <response-item-0>
 
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -353,6 +494,7 @@ Content-Type: application/json
 {"id":"file-1"}
 --batch_abc123
 Content-Type: application/http
+Content-ID: <response-item-1>
 
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -367,6 +509,14 @@ Content-Type: application/json
     expect(result.failed).toEqual([]);
   });
 
+  it("returns empty result for empty file array", async () => {
+    const result = await batchDelete("token", []);
+
+    expect(result.succeeded).toEqual([]);
+    expect(result.failed).toEqual([]);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
   it("reports partial failures", async () => {
     vi.mocked(global.fetch).mockResolvedValue({
       ok: true,
@@ -375,6 +525,7 @@ Content-Type: application/json
       }),
       text: async () => `--batch_xyz
 Content-Type: application/http
+Content-ID: <response-item-0>
 
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -382,6 +533,7 @@ Content-Type: application/json
 {"id":"file-1"}
 --batch_xyz
 Content-Type: application/http
+Content-ID: <response-item-1>
 
 HTTP/1.1 404 Not Found
 Content-Type: application/json
@@ -410,15 +562,25 @@ Content-Type: application/json
     expect(global.fetch).toHaveBeenCalledTimes(2);
     expect(result.succeeded).toHaveLength(150);
   });
+
+  it("aborts on timeout", async () => {
+    vi.mocked(global.fetch).mockImplementation(
+      () => new Promise((resolve) => setTimeout(resolve, 60000))
+    );
+
+    await expect(batchDelete("token", ["file-1"])).rejects.toThrow(
+      /aborted|timeout/i
+    );
+  });
 });
 ```
 
-**Step 2: Run test to verify it fails**
+**Step 3: Run test to verify it fails**
 
 Run: `pnpm test tests/unit/lib/google-drive-client.test.ts -t "batchDelete"`
 Expected: FAIL - function doesn't exist
 
-**Step 3: Write minimal implementation**
+**Step 4: Write minimal implementation**
 
 Add to `lib/google-drive-client.ts`:
 
@@ -427,6 +589,7 @@ import {
   buildBatchRequest,
   parseBatchResponse,
   BatchOperation,
+  getBatchTimeout,
 } from "@/lib/google-drive-batch";
 
 /** Result of a batch delete operation */
@@ -449,6 +612,13 @@ export async function batchDelete(
 ): Promise<BatchDeleteResult> {
   const result: BatchDeleteResult = { succeeded: [], failed: [] };
 
+  // Handle empty array - return early
+  if (fileIds.length === 0) {
+    return result;
+  }
+
+  const startTime = Date.now();
+
   // Chunk into batches of 100
   const chunks: string[][] = [];
   for (let i = 0; i < fileIds.length; i += 100) {
@@ -464,60 +634,101 @@ export async function batchDelete(
 
     const { body, boundary } = buildBatchRequest(operations);
 
-    const response = await fetch("https://www.googleapis.com/batch/drive/v3", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": `multipart/mixed; boundary=${boundary}`,
-      },
-      body,
-    });
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), getBatchTimeout());
 
-    if (!response.ok) {
-      // Entire batch failed
+    try {
+      const response = await fetch(
+        "https://www.googleapis.com/batch/drive/v3",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": `multipart/mixed; boundary=${boundary}`,
+          },
+          body,
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        // Entire batch failed
+        for (const fileId of chunk) {
+          result.failed.push({
+            fileId,
+            error: `Batch request failed: ${response.status}`,
+          });
+        }
+        continue;
+      }
+
+      // Extract boundary from response Content-Type
+      const contentType = response.headers.get("content-type") || "";
+      const responseBoundary =
+        contentType.match(/boundary=([^\s;]+)/)?.[1] || boundary;
+
+      const responseBody = await response.text();
+      const batchResults = parseBatchResponse(
+        responseBody,
+        responseBoundary,
+        chunk
+      );
+
+      // Collect results
+      for (const batchResult of batchResults) {
+        if (batchResult.success) {
+          result.succeeded.push(batchResult.fileId);
+        } else {
+          result.failed.push({
+            fileId: batchResult.fileId,
+            error: batchResult.error || "Unknown error",
+          });
+        }
+      }
+    } catch (error) {
+      clearTimeout(timeoutId);
+
+      // Handle abort/timeout
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error(`Batch delete timeout after ${getBatchTimeout()}ms`);
+      }
+
+      // Log and fail all items in this chunk
+      logger.error({ err: error, chunk }, "[Batch] Request failed");
       for (const fileId of chunk) {
         result.failed.push({
           fileId,
-          error: `Batch request failed: ${response.status}`,
-        });
-      }
-      continue;
-    }
-
-    // Extract boundary from response Content-Type
-    const contentType = response.headers.get("content-type") || "";
-    const responseBoundary =
-      contentType.match(/boundary=([^\s;]+)/)?.[1] || boundary;
-
-    const responseBody = await response.text();
-    const batchResults = parseBatchResponse(responseBody, responseBoundary);
-
-    // Map results back to file IDs
-    for (let i = 0; i < chunk.length; i++) {
-      const fileId = chunk[i];
-      const batchResult = batchResults[i];
-
-      if (batchResult?.success) {
-        result.succeeded.push(fileId);
-      } else {
-        result.failed.push({
-          fileId,
-          error: batchResult?.error || "Unknown error",
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
   }
 
+  // Log performance metrics
+  const duration = Date.now() - startTime;
+  logger.info(
+    {
+      duration,
+      total: fileIds.length,
+      succeeded: result.succeeded.length,
+      failed: result.failed.length,
+    },
+    "[Batch] Delete completed"
+  );
+
   return result;
 }
 ```
 
-**Step 4: Run test to verify it passes**
+**Step 5: Run test to verify it passes**
 
 Run: `pnpm test tests/unit/lib/google-drive-client.test.ts -t "batchDelete"`
 Expected: PASS
 
-**Step 5: Commit**
+**Step 6: Commit**
 
 ```bash
 git add lib/google-drive-client.ts tests/unit/lib/google-drive-client.test.ts
@@ -526,6 +737,7 @@ feat(google-drive): implement batch delete operation
 
 Deletes up to 100 files per batch request, automatically chunking
 larger sets. Returns succeeded/failed arrays for error handling.
+Includes timeout handling and performance logging.
 
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 EOF
@@ -566,6 +778,14 @@ describe("batchMove", () => {
         body: expect.stringContaining("addParents=new-parent"),
       })
     );
+  });
+
+  it("returns empty result for empty file array", async () => {
+    const result = await batchMove("token", [], "new-parent", "old-parent");
+
+    expect(result.succeeded).toEqual([]);
+    expect(result.failed).toEqual([]);
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it("handles files from different parents", async () => {
@@ -616,6 +836,13 @@ export async function batchMove(
 ): Promise<BatchMoveResult> {
   const result: BatchMoveResult = { succeeded: [], failed: [] };
 
+  // Handle empty array - return early
+  if (fileIds.length === 0) {
+    return result;
+  }
+
+  const startTime = Date.now();
+
   const chunks: string[][] = [];
   for (let i = 0; i < fileIds.length; i += 100) {
     chunks.push(fileIds.slice(i, i + 100));
@@ -633,45 +860,84 @@ export async function batchMove(
 
     const { body, boundary } = buildBatchRequest(operations);
 
-    const response = await fetch("https://www.googleapis.com/batch/drive/v3", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": `multipart/mixed; boundary=${boundary}`,
-      },
-      body,
-    });
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), getBatchTimeout());
 
-    if (!response.ok) {
+    try {
+      const response = await fetch(
+        "https://www.googleapis.com/batch/drive/v3",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": `multipart/mixed; boundary=${boundary}`,
+          },
+          body,
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        for (const fileId of chunk) {
+          result.failed.push({
+            fileId,
+            error: `Batch request failed: ${response.status}`,
+          });
+        }
+        continue;
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+      const responseBoundary =
+        contentType.match(/boundary=([^\s;]+)/)?.[1] || boundary;
+      const responseBody = await response.text();
+      const batchResults = parseBatchResponse(
+        responseBody,
+        responseBoundary,
+        chunk
+      );
+
+      for (const batchResult of batchResults) {
+        if (batchResult.success) {
+          result.succeeded.push(batchResult.fileId);
+        } else {
+          result.failed.push({
+            fileId: batchResult.fileId,
+            error: batchResult.error || "Unknown error",
+          });
+        }
+      }
+    } catch (error) {
+      clearTimeout(timeoutId);
+
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error(`Batch move timeout after ${getBatchTimeout()}ms`);
+      }
+
+      logger.error({ err: error, chunk }, "[Batch] Move request failed");
       for (const fileId of chunk) {
         result.failed.push({
           fileId,
-          error: `Batch request failed: ${response.status}`,
-        });
-      }
-      continue;
-    }
-
-    const contentType = response.headers.get("content-type") || "";
-    const responseBoundary =
-      contentType.match(/boundary=([^\s;]+)/)?.[1] || boundary;
-    const responseBody = await response.text();
-    const batchResults = parseBatchResponse(responseBody, responseBoundary);
-
-    for (let i = 0; i < chunk.length; i++) {
-      const fileId = chunk[i];
-      const batchResult = batchResults[i];
-
-      if (batchResult?.success) {
-        result.succeeded.push(fileId);
-      } else {
-        result.failed.push({
-          fileId,
-          error: batchResult?.error || "Unknown error",
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
   }
+
+  // Log performance metrics
+  const duration = Date.now() - startTime;
+  logger.info(
+    {
+      duration,
+      total: fileIds.length,
+      succeeded: result.succeeded.length,
+      failed: result.failed.length,
+    },
+    "[Batch] Move completed"
+  );
 
   return result;
 }
@@ -697,6 +963,13 @@ export async function batchMoveFromDifferentParents(
 ): Promise<BatchMoveResult> {
   const result: BatchMoveResult = { succeeded: [], failed: [] };
 
+  // Handle empty array - return early
+  if (files.length === 0) {
+    return result;
+  }
+
+  const startTime = Date.now();
+
   const chunks: MoveFromDifferentParent[][] = [];
   for (let i = 0; i < files.length; i += 100) {
     chunks.push(files.slice(i, i + 100));
@@ -714,45 +987,85 @@ export async function batchMoveFromDifferentParents(
 
     const { body, boundary } = buildBatchRequest(operations);
 
-    const response = await fetch("https://www.googleapis.com/batch/drive/v3", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": `multipart/mixed; boundary=${boundary}`,
-      },
-      body,
-    });
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), getBatchTimeout());
 
-    if (!response.ok) {
+    try {
+      const response = await fetch(
+        "https://www.googleapis.com/batch/drive/v3",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": `multipart/mixed; boundary=${boundary}`,
+          },
+          body,
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        for (const file of chunk) {
+          result.failed.push({
+            fileId: file.fileId,
+            error: `Batch failed: ${response.status}`,
+          });
+        }
+        continue;
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+      const responseBoundary =
+        contentType.match(/boundary=([^\s;]+)/)?.[1] || boundary;
+      const responseBody = await response.text();
+      const fileIds = chunk.map((f) => f.fileId);
+      const batchResults = parseBatchResponse(
+        responseBody,
+        responseBoundary,
+        fileIds
+      );
+
+      for (const batchResult of batchResults) {
+        if (batchResult.success) {
+          result.succeeded.push(batchResult.fileId);
+        } else {
+          result.failed.push({
+            fileId: batchResult.fileId,
+            error: batchResult.error || "Unknown error",
+          });
+        }
+      }
+    } catch (error) {
+      clearTimeout(timeoutId);
+
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error(`Batch move timeout after ${getBatchTimeout()}ms`);
+      }
+
+      logger.error({ err: error, chunk }, "[Batch] Move request failed");
       for (const file of chunk) {
         result.failed.push({
           fileId: file.fileId,
-          error: `Batch failed: ${response.status}`,
-        });
-      }
-      continue;
-    }
-
-    const contentType = response.headers.get("content-type") || "";
-    const responseBoundary =
-      contentType.match(/boundary=([^\s;]+)/)?.[1] || boundary;
-    const responseBody = await response.text();
-    const batchResults = parseBatchResponse(responseBody, responseBoundary);
-
-    for (let i = 0; i < chunk.length; i++) {
-      const file = chunk[i];
-      const batchResult = batchResults[i];
-
-      if (batchResult?.success) {
-        result.succeeded.push(file.fileId);
-      } else {
-        result.failed.push({
-          fileId: file.fileId,
-          error: batchResult?.error || "Unknown error",
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
   }
+
+  // Log performance metrics
+  const duration = Date.now() - startTime;
+  logger.info(
+    {
+      duration,
+      total: files.length,
+      succeeded: result.succeeded.length,
+      failed: result.failed.length,
+    },
+    "[Batch] Move from different parents completed"
+  );
 
   return result;
 }
@@ -769,6 +1082,7 @@ feat(google-drive): implement batch move operations
 
 Adds batchMove() for files in same parent and
 batchMoveFromDifferentParents() for mixed-parent moves.
+Includes timeout handling and performance logging.
 
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 EOF
@@ -790,12 +1104,25 @@ EOF
 Add to `tests/unit/lib/item-actions.test.ts`:
 
 ```typescript
+import { batchDelete, deleteFile } from "@/lib/google-drive-client";
+
+// Add mock at top of file
+vi.mock("@/lib/google-drive-client", () => ({
+  batchDelete: vi.fn(),
+  deleteFile: vi.fn(),
+}));
+
 describe("deleteItem - batch operations", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("uses batch delete for items with children", async () => {
     // Setup: item with 10 children, each with driveFileId
     vi.mocked(prisma.item.findUnique).mockResolvedValue({
       id: "parent-1",
       driveFileId: "drive-parent",
+      driveConnection: { id: "conn-1", accessToken: "encrypted-token" },
       children: Array.from({ length: 10 }, (_, i) => ({
         id: `child-${i}`,
         driveFileId: `drive-child-${i}`,
@@ -819,13 +1146,37 @@ describe("deleteItem - batch operations", () => {
     );
   });
 
-  it("falls back to sequential delete on batch failure", async () => {
-    vi.mocked(batchDelete).mockRejectedValue(new Error("Batch API error"));
+  it("uses single delete for items without children", async () => {
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "single-1",
+      driveFileId: "drive-single",
+      driveConnection: { id: "conn-1" },
+      children: [],
+    } as any);
 
-    // Should still succeed using sequential deletes
-    await deleteItem("item-1");
+    await deleteItem("single-1");
 
+    // Should use single delete, not batch
+    expect(batchDelete).not.toHaveBeenCalled();
     expect(deleteFile).toHaveBeenCalled();
+  });
+
+  it("continues with DB delete even if batch fails", async () => {
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "parent-1",
+      driveFileId: "drive-parent",
+      driveConnection: { id: "conn-1" },
+      children: [{ id: "child-1", driveFileId: "drive-child", children: [] }],
+    } as any);
+
+    vi.mocked(batchDelete).mockRejectedValue(new Error("Batch API error"));
+    vi.mocked(prisma.item.delete).mockResolvedValue({} as any);
+
+    const result = await deleteItem("parent-1");
+
+    // Should still succeed - DB deletion should happen
+    expect(result.success).toBe(true);
+    expect(prisma.item.delete).toHaveBeenCalled();
   });
 });
 ```
@@ -838,7 +1189,8 @@ Update `lib/item-actions.ts` `deleteItem` function:
 
 ```typescript
 import { batchDelete, deleteFile } from "@/lib/google-drive-client";
-import { decryptCredential } from "@/lib/crypto";
+import { getAccessToken } from "@/lib/google-drive-actions";
+import { logger } from "@/lib/logger";
 
 export async function deleteItem(itemId: string) {
   // ... existing auth check ...
@@ -848,7 +1200,15 @@ export async function deleteItem(itemId: string) {
     include: {
       children: {
         include: {
-          children: { include: { children: true } }, // 3 levels deep
+          children: {
+            include: {
+              children: {
+                include: {
+                  children: true, // 4 levels deep to handle max depth
+                },
+              },
+            },
+          },
         },
       },
       driveConnection: true,
@@ -866,7 +1226,7 @@ export async function deleteItem(itemId: string) {
       driveFileIds.push(node.driveFileId);
     }
     for (const child of node.children || []) {
-      collectDriveIds(child);
+      collectDriveIds(child as typeof item);
     }
   }
   collectDriveIds(item);
@@ -879,13 +1239,20 @@ export async function deleteItem(itemId: string) {
 
       if (batchResult.failed.length > 0) {
         logger.warn(
-          { failed: batchResult.failed },
+          {
+            failed: batchResult.failed,
+            succeeded: batchResult.succeeded.length,
+          },
           "[Delete] Some Drive files failed to delete"
         );
       }
     } catch (error) {
       // Log but continue - we'll still delete from DB
-      logger.error({ err: error }, "[Delete] Batch delete failed, continuing");
+      // Drive files become orphaned but user can clean up via Drive UI
+      logger.error(
+        { err: error },
+        "[Delete] Batch delete failed, continuing with DB delete"
+      );
     }
   } else if (item.driveConnection && driveFileIds.length === 1) {
     // Single file - use standard delete
@@ -893,13 +1260,17 @@ export async function deleteItem(itemId: string) {
       const drive = await getDriveClient(item.driveConnection);
       await deleteFile(drive, driveFileIds[0]);
     } catch (error) {
-      logger.error({ err: error }, "[Delete] Drive delete failed");
+      logger.error(
+        { err: error },
+        "[Delete] Drive delete failed, continuing with DB delete"
+      );
     }
   }
 
-  // Delete from database (cascades to children)
+  // Delete from database (cascades to children via Prisma)
   await prisma.item.delete({ where: { id: itemId } });
 
+  revalidatePath("/my-items");
   return { success: true };
 }
 ```
@@ -914,7 +1285,8 @@ git commit -m "$(cat <<'EOF'
 feat(items): use batch delete for items with children
 
 Significantly improves delete performance for folders with
-many children by batching Drive API calls.
+many children by batching Drive API calls. Falls back gracefully
+if batch fails - DB deletion always proceeds.
 
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 EOF
@@ -934,26 +1306,109 @@ EOF
 ```typescript
 /**
  * Integration tests for batch operations.
- * Tests real batch API behavior with mocked auth.
+ * Tests real batch API behavior with test Drive account.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { batchDelete, batchMove } from "@/lib/google-drive-client";
 
 // These tests require GOOGLE_TEST_REFRESH_TOKEN for real API calls
 const SKIP_INTEGRATION = !process.env.GOOGLE_TEST_REFRESH_TOKEN;
 
+/**
+ * Gets a fresh access token for testing.
+ * Uses the test account refresh token from env vars.
+ */
+async function getTestAccessToken(): Promise<string> {
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID!,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+      refresh_token: process.env.GOOGLE_TEST_REFRESH_TOKEN!,
+      grant_type: "refresh_token",
+    }),
+  });
+  const data = await response.json();
+  return data.access_token;
+}
+
+/**
+ * Creates test files in the test folder.
+ *
+ * @param count - Number of files to create
+ * @returns Array of created file IDs
+ */
+async function createTestFiles(
+  accessToken: string,
+  count: number
+): Promise<string[]> {
+  const fileIds: string[] = [];
+  const parentId = process.env.GOOGLE_TEST_ROOT_FOLDER_ID;
+
+  for (let i = 0; i < count; i++) {
+    const response = await fetch("https://www.googleapis.com/drive/v3/files", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: `batch-test-${Date.now()}-${i}`,
+        parents: parentId ? [parentId] : undefined,
+      }),
+    });
+    const file = await response.json();
+    fileIds.push(file.id);
+  }
+
+  return fileIds;
+}
+
+/**
+ * Gets file metadata to verify state.
+ */
+async function getFile(
+  accessToken: string,
+  fileId: string
+): Promise<{ id: string; trashed: boolean }> {
+  const response = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,trashed`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+  return response.json();
+}
+
 describe.skipIf(SKIP_INTEGRATION)("batch operations integration", () => {
   let accessToken: string;
+  let createdFileIds: string[] = [];
 
   beforeEach(async () => {
-    // Get fresh access token
     accessToken = await getTestAccessToken();
+    createdFileIds = [];
+  });
+
+  afterEach(async () => {
+    // Cleanup: permanently delete test files
+    for (const fileId of createdFileIds) {
+      try {
+        await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
   });
 
   it("batch deletes multiple test files", async () => {
     // Create test files
-    const fileIds = await createTestFiles(3);
+    const fileIds = await createTestFiles(accessToken, 3);
+    createdFileIds = fileIds;
 
     const result = await batchDelete(accessToken, fileIds);
 
@@ -973,7 +1428,20 @@ describe.skipIf(SKIP_INTEGRATION)("batch operations integration", () => {
     ]);
 
     expect(result.failed).toHaveLength(1);
-    expect(result.failed[0].error).toContain("not found");
+    expect(result.failed[0].error).toMatch(/not found|File not found/i);
+  });
+
+  it("handles mixed existing and non-existing files", async () => {
+    const fileIds = await createTestFiles(accessToken, 2);
+    createdFileIds = fileIds;
+
+    const result = await batchDelete(accessToken, [
+      ...fileIds,
+      "nonexistent-file-id-12345",
+    ]);
+
+    expect(result.succeeded).toHaveLength(2);
+    expect(result.failed).toHaveLength(1);
   });
 });
 ```
@@ -991,6 +1459,7 @@ test(integration): add batch operations integration tests
 
 Tests real batch API behavior with test Drive account.
 Skipped when GOOGLE_TEST_REFRESH_TOKEN not available.
+Includes cleanup to permanently delete test files after tests.
 
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 EOF
@@ -1004,8 +1473,21 @@ EOF
 **Files:**
 
 - Modify: `e2e/journeys/google-drive/drive-sync.spec.ts`
+- Verify: `e2e/pages/items.page.ts` has required methods
+
+**Pre-requisite:** Verify items page object has these methods:
+
+```typescript
+// In e2e/pages/items.page.ts - verify these exist:
+async addItem(name: string) { ... }
+async openItem(name: string) { ... }
+async deleteItem(name: string) { ... }
+getItemCard(name: string) { ... }
+```
 
 **Step 1: Add E2E test**
+
+Add to `e2e/journeys/google-drive/drive-sync.spec.ts`:
 
 ```typescript
 test("deletes folder with children efficiently", async ({
@@ -1017,14 +1499,17 @@ test("deletes folder with children efficiently", async ({
   await cleanupTestDriveFolders();
   await setupDriveConnection(testUser.id);
 
-  // Create folder with children
-  await itemsPage.createItem("Batch Delete Test");
-  await itemsPage.openItem("Batch Delete Test");
-  await itemsPage.createItem("Child 1");
-  await itemsPage.createItem("Child 2");
-  await itemsPage.createItem("Child 3");
+  const itemsPage = new ItemsPage(page);
+  await itemsPage.goto();
 
-  // Wait for all items to sync
+  // Create folder with children
+  await itemsPage.addItem("Batch Delete Test");
+  await itemsPage.openItem("Batch Delete Test");
+  await itemsPage.addItem("Child 1");
+  await itemsPage.addItem("Child 2");
+  await itemsPage.addItem("Child 3");
+
+  // Wait for all items to sync to Drive
   await expect(async () => {
     const items = await prisma.item.findMany({
       where: { userId: testUser.id },
@@ -1032,14 +1517,14 @@ test("deletes folder with children efficiently", async ({
     expect(items.every((i) => i.driveFileId)).toBe(true);
   }).toPass({ timeout: 30000 });
 
-  // Go back and delete parent
+  // Go back and delete parent - this should use batch delete
   await page.goBack();
   await itemsPage.deleteItem("Batch Delete Test");
 
-  // Verify all items deleted
+  // Verify parent item is gone from UI
   await expect(itemsPage.getItemCard("Batch Delete Test")).not.toBeVisible();
 
-  // Verify children also deleted from DB
+  // Verify all items (parent + children) deleted from DB
   const remaining = await prisma.item.count({
     where: { userId: testUser.id },
   });
@@ -1065,13 +1550,13 @@ EOF
 
 ### New Tests
 
-| Type        | File                                                      | Tests                                  |
-| ----------- | --------------------------------------------------------- | -------------------------------------- |
-| Unit        | `tests/unit/lib/google-drive-batch.test.ts`               | Batch request builder/parser (5 tests) |
-| Unit        | `tests/unit/lib/google-drive-client.test.ts`              | batchDelete, batchMove (5 tests)       |
-| Unit        | `tests/unit/lib/item-actions.test.ts`                     | Batch delete integration (2 tests)     |
-| Integration | `tests/integration/google-drive/batch-operations.test.ts` | Real API batch tests (2 tests)         |
-| E2E         | `e2e/journeys/google-drive/drive-sync.spec.ts`            | Batch delete folder (1 test)           |
+| Type        | File                                                      | Tests                                      |
+| ----------- | --------------------------------------------------------- | ------------------------------------------ |
+| Unit        | `tests/unit/lib/google-drive-batch.test.ts`               | Batch builder/parser with Content-ID (6)   |
+| Unit        | `tests/unit/lib/google-drive-client.test.ts`              | batchDelete, batchMove with edge cases (7) |
+| Unit        | `tests/unit/lib/item-actions.test.ts`                     | Batch delete integration (3)               |
+| Integration | `tests/integration/google-drive/batch-operations.test.ts` | Real API batch tests (3)                   |
+| E2E         | `e2e/journeys/google-drive/drive-sync.spec.ts`            | Batch delete folder (1)                    |
 
 ### Existing Tests - Updates Needed
 
@@ -1094,12 +1579,29 @@ EOF
 
 ## Final Checklist
 
-- [ ] Batch request builder and parser utilities
-- [ ] batchDelete function with chunking
-- [ ] batchMove function with chunking
+- [ ] Batch request builder with Content-ID headers for correlation
+- [ ] Response parser handling out-of-order responses
+- [ ] batchDelete function with chunking and timeout
+- [ ] batchMove function with chunking and timeout
 - [ ] batchMoveFromDifferentParents for mixed-parent moves
+- [ ] Empty array handling (return early, no API call)
 - [ ] Integration with deleteItem action
-- [ ] Unit tests for all batch functions
-- [ ] Integration tests with real API
+- [ ] Graceful fallback when batch fails (continue with DB delete)
+- [ ] Unit tests for all batch functions including edge cases
+- [ ] Integration tests with real API and cleanup
 - [ ] E2E test for folder deletion
-- [ ] Performance logging for comparison
+- [ ] Performance logging with duration metrics
+
+---
+
+## Future Considerations
+
+These items are out of scope for this implementation but may be valuable later:
+
+1. **Circuit Breaker Integration:** Consider wrapping batch operations with `lib/circuit-breaker.ts` for consistency with other external API calls.
+
+2. **Progress Callbacks:** For very large deletions (200+ items spanning multiple batches), consider adding progress callback support for UI feedback.
+
+3. **Retry Logic:** Currently no automatic retry on 5xx errors or rate limits (429). Consider adding exponential backoff for transient failures.
+
+4. **Parallel Chunk Processing:** Currently chunks process sequentially. For very large operations, parallel chunk processing with concurrency limit could improve throughput.

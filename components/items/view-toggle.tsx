@@ -9,8 +9,7 @@
 import { useSyncExternalStore, useCallback } from "react";
 import { LayoutGrid, List } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-export type ViewMode = "tree" | "grid";
+import type { ViewMode } from "@/lib/types";
 
 interface ViewToggleProps {
   value?: ViewMode;

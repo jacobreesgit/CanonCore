@@ -185,18 +185,23 @@ describe("sync-log", () => {
 
   describe("sanitizeErrorMessage", () => {
     it("removes bearer tokens", () => {
-      const message = "Auth failed: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9";
+      const message =
+        "Auth failed: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9";
       expect(sanitizeErrorMessage(message)).toBe("Auth failed: [REDACTED]");
     });
 
     it("removes API keys", () => {
       const message = 'Request failed with api_key="sk-1234567890"';
-      expect(sanitizeErrorMessage(message)).toBe("Request failed with [REDACTED]");
+      expect(sanitizeErrorMessage(message)).toBe(
+        "Request failed with [REDACTED]"
+      );
     });
 
     it("removes local paths", () => {
       const message = "File not found at /Users/john/secret/file.txt";
-      expect(sanitizeErrorMessage(message)).toBe("File not found at [REDACTED]/secret/file.txt");
+      expect(sanitizeErrorMessage(message)).toBe(
+        "File not found at [REDACTED]/secret/file.txt"
+      );
     });
 
     it("truncates long messages", () => {
@@ -241,7 +246,9 @@ describe("sync-log", () => {
     });
 
     it("sanitizes error messages before storing", async () => {
-      vi.mocked(prisma.syncLog.create).mockResolvedValue({ id: "log-1" } as any);
+      vi.mocked(prisma.syncLog.create).mockResolvedValue({
+        id: "log-1",
+      } as any);
 
       await logSyncOperation({
         userId: "user-1",
@@ -278,8 +285,16 @@ describe("sync-log", () => {
       ] as any);
 
       const result = await logSyncOperationsBatch([
-        { userId: "user-1", action: SyncLogAction.CREATE, status: SyncLogStatus.SUCCESS },
-        { userId: "user-1", action: SyncLogAction.UPLOAD, status: SyncLogStatus.SUCCESS },
+        {
+          userId: "user-1",
+          action: SyncLogAction.CREATE,
+          status: SyncLogStatus.SUCCESS,
+        },
+        {
+          userId: "user-1",
+          action: SyncLogAction.UPLOAD,
+          status: SyncLogStatus.SUCCESS,
+        },
       ]);
 
       expect(result).toEqual(["log-1", "log-2"]);
@@ -296,8 +311,16 @@ describe("sync-log", () => {
   describe("getSyncHistory", () => {
     it("returns recent sync logs for user", async () => {
       const mockLogs = [
-        { id: "log-1", action: SyncLogAction.CREATE, status: SyncLogStatus.SUCCESS },
-        { id: "log-2", action: SyncLogAction.RENAME, status: SyncLogStatus.SUCCESS },
+        {
+          id: "log-1",
+          action: SyncLogAction.CREATE,
+          status: SyncLogStatus.SUCCESS,
+        },
+        {
+          id: "log-2",
+          action: SyncLogAction.RENAME,
+          status: SyncLogStatus.SUCCESS,
+        },
       ];
       vi.mocked(prisma.syncLog.findMany).mockResolvedValue(mockLogs as any);
 
@@ -1800,8 +1823,12 @@ describe("sync-queue-processor", () => {
     });
 
     it("processes multiple operations sequentially", async () => {
-      vi.mocked(driveActions.createItemInDrive).mockResolvedValue({ success: true });
-      vi.mocked(driveActions.renameItemInDrive).mockResolvedValue({ success: true });
+      vi.mocked(driveActions.createItemInDrive).mockResolvedValue({
+        success: true,
+      });
+      vi.mocked(driveActions.renameItemInDrive).mockResolvedValue({
+        success: true,
+      });
 
       await queueOperation({
         type: "create",
@@ -1827,7 +1854,9 @@ describe("sync-queue-processor", () => {
 
   describe("startQueueProcessor", () => {
     it("starts processing on online event", async () => {
-      vi.mocked(driveActions.createItemInDrive).mockResolvedValue({ success: true });
+      vi.mocked(driveActions.createItemInDrive).mockResolvedValue({
+        success: true,
+      });
 
       await queueOperation({
         type: "create",
@@ -1847,7 +1876,9 @@ describe("sync-queue-processor", () => {
     });
 
     it("processes on interval when online", async () => {
-      vi.mocked(driveActions.createItemInDrive).mockResolvedValue({ success: true });
+      vi.mocked(driveActions.createItemInDrive).mockResolvedValue({
+        success: true,
+      });
       vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
 
       startQueueProcessor();
@@ -1981,8 +2012,7 @@ function isReadyForRetry(operation: PendingOperation): boolean {
   if (!operation.lastAttempt) return true;
 
   const backoffMs = calculateBackoff(operation.attempts);
-  const nextAttemptTime =
-    new Date(operation.lastAttempt).getTime() + backoffMs;
+  const nextAttemptTime = new Date(operation.lastAttempt).getTime() + backoffMs;
 
   return Date.now() >= nextAttemptTime;
 }
@@ -2323,22 +2353,23 @@ test("shows sync history after operations", async ({ page, testUser }) => {
 
 ### New Tests
 
-| Type | File                                               | Tests                                        |
-| ---- | -------------------------------------------------- | -------------------------------------------- |
-| Unit | `tests/unit/lib/sync-log.test.ts`                  | Sync logging utilities (10 tests)            |
-| Unit | `tests/unit/lib/sync-queue.test.ts`                | IndexedDB queue (10 tests)                   |
-| Unit | `tests/unit/lib/sync-queue-processor.test.ts`      | Queue processor (8 tests)                    |
-| Unit | `tests/unit/components/sync-history.test.tsx`      | Sync history UI (3 tests)                    |
-| Unit | `tests/unit/components/pending-indicator.test.tsx` | Pending indicator (2 tests)                  |
-| Unit | `tests/unit/hooks/use-online-status.test.ts`       | Online status hook (2 tests)                 |
-| Unit | `tests/unit/lib/google-drive-actions.test.ts`      | Sync logging integration (3 tests)           |
-| E2E  | `e2e/journeys/google-drive/drive-sync.spec.ts`     | Sync history display (1 test)                |
+| Type | File                                               | Tests                              |
+| ---- | -------------------------------------------------- | ---------------------------------- |
+| Unit | `tests/unit/lib/sync-log.test.ts`                  | Sync logging utilities (10 tests)  |
+| Unit | `tests/unit/lib/sync-queue.test.ts`                | IndexedDB queue (10 tests)         |
+| Unit | `tests/unit/lib/sync-queue-processor.test.ts`      | Queue processor (8 tests)          |
+| Unit | `tests/unit/components/sync-history.test.tsx`      | Sync history UI (3 tests)          |
+| Unit | `tests/unit/components/pending-indicator.test.tsx` | Pending indicator (2 tests)        |
+| Unit | `tests/unit/hooks/use-online-status.test.ts`       | Online status hook (2 tests)       |
+| Unit | `tests/unit/lib/google-drive-actions.test.ts`      | Sync logging integration (3 tests) |
+| E2E  | `e2e/journeys/google-drive/drive-sync.spec.ts`     | Sync history display (1 test)      |
 
 **Total new tests: ~39**
 
 ### Test Coverage Details
 
 **sync-log.test.ts (10 tests):**
+
 - sanitizeErrorMessage: removes bearer tokens, API keys, paths, truncates
 - logSyncOperation: creates entry with ID, sanitizes errors, returns null on failure
 - logSyncOperationsBatch: creates in transaction, handles empty input
@@ -2346,6 +2377,7 @@ test("shows sync history after operations", async ({ page, testUser }) => {
 - cleanupOldSyncLogs: deletes old entries
 
 **sync-queue.test.ts (10 tests):**
+
 - queueOperation: adds with ID, enforces max size
 - getQueuedOperations: sorted by createdAt
 - removeFromQueue: removes by ID
@@ -2356,14 +2388,15 @@ test("shows sync history after operations", async ({ page, testUser }) => {
 - graceful degradation: returns null when IndexedDB unavailable
 
 **sync-queue-processor.test.ts (8 tests):**
+
 - calculateBackoff: exponential, caps at max
 - processQueue: processes successfully, increments on failure, removes after max retries, respects backoff, processes sequentially
 - startQueueProcessor: online event, interval processing
 
 ### Existing Tests - Updates Needed
 
-| File                                          | Change                                          |
-| --------------------------------------------- | ----------------------------------------------- |
+| File                                          | Change                                                             |
+| --------------------------------------------- | ------------------------------------------------------------------ |
 | `tests/unit/lib/google-drive-actions.test.ts` | Add mocks for `logSyncOperation`, `SyncLogAction`, `SyncLogStatus` |
 
 ### Test Dependencies
