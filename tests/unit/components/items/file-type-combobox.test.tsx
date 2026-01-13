@@ -30,7 +30,7 @@ vi.mock("@/lib/item-file-actions", () => ({
   deleteItemFile: vi.fn().mockResolvedValue({ success: true }),
 }));
 
-vi.mock("@/lib/google-drive-actions", () => ({
+vi.mock("@/lib/google-drive-upload", () => ({
   createUploadSessions: vi.fn().mockResolvedValue({ success: false }),
   confirmUpload: vi.fn().mockResolvedValue({ success: false }),
 }));

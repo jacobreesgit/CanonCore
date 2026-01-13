@@ -38,8 +38,8 @@ import {
 import {
   initiateGoogleDriveOAuth,
   disconnectGoogleDrive,
-  syncFromGoogleDrive,
 } from "@/lib/google-drive-actions";
+import { syncFromGoogleDrive } from "@/lib/google-drive-sync";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";

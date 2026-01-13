@@ -133,7 +133,8 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── auth/                     # Auth E2E tests
 │   │   ├── docs/                     # Documentation E2E tests
 │   │   ├── google-drive/             # Google Drive integration tests
-│   │   ├── items/                    # Items E2E tests (CRUD, drag, views)
+│   │   ├── items/                    # Items E2E tests (CRUD, drag, views, rate-limit)
+│   │   ├── media/                    # Media playback tests (video seeking)
 │   │   ├── navigation/               # Sidebar navigation active state tests
 │   │   ├── profile/                  # Profile settings tests
 │   │   ├── security/                 # Security header tests (HSTS, CSP)
@@ -175,9 +176,10 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── email.ts                      # Resend email helper
 │   ├── env.ts                        # Zod environment variable validation
 │   ├── file-type-utils.ts            # Media/artwork/subtitle categorization
-│   ├── google-drive-actions.ts       # Google Drive sync server actions
+│   ├── google-drive-actions.ts       # Google Drive connection management
 │   ├── google-drive-client.ts        # Google Drive API client with OAuth
-│   ├── image-preload.ts              # Artwork image preloading utility
+│   ├── google-drive-sync.ts          # Bidirectional sync operations
+│   ├── google-drive-upload.ts        # Browser-to-Drive upload operations
 │   ├── item-actions.ts               # Item CRUD server actions
 │   ├── item-file-actions.ts          # ItemFile operations, playback progress
 │   ├── item-utils.ts                 # Tree/flat conversion, descendant counter utilities
@@ -204,9 +206,10 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── docs-write/                   # Documentation writing style
 │   └── frontend-design/              # Frontend interface design
 ├── scripts/
-│   └── generate-refresh-token.ts     # Google Drive token generator for E2E tests
+│   ├── generate-refresh-token.ts     # Google Drive token generator for E2E tests
+│   └── setup-e2e-drive.ts            # E2E Drive environment setup
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 2.2.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 2.3.0)
     └── plans/                        # Design documents
 ```
 
@@ -219,7 +222,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Protected routes use `await auth()` + redirect in server components
 - Password hashing with bcryptjs
 - Password reset emails via Resend (30 min expiry)
-- **Rate limiting**: Upstash Redis for auth (sign-in: 5/min, sign-up: 3/min, forgot: 2/min) and items (create: 30/min, update: 60/min)
+- **Rate limiting**: Upstash Redis for auth (sign-in: 5/min, sign-up: 3/min, forgot: 2/min) and items (create: 30/min, update: 60/min, delete: 30/min)
 - **Validation**: Zod schemas for email/password (8+ chars, uppercase, lowercase, number)
 - **Security logging**: All auth events logged with IP and timestamp
 
@@ -242,7 +245,6 @@ pnpm run test:e2e:ui                        # UI mode
 - **Hierarchical items** with drag-and-drop reordering via dnd-kit
 - **Hero banners**: Item detail pages show cinematic hero with artwork, title, and play button
 - **Dual view modes**: Tree (hierarchical) and Grid (movie poster cards)
-- **Loading spinner**: Full-page spinner during hydration + artwork preload (300ms min duration)
 - **Edit mode toggle**: Click "Edit" to enable drag-and-drop, "Done" to return to view mode
 - **View mode**: Full background artwork with dark overlay (Feature222 aesthetic)
 - **Edit mode**: Simplified icons with drag handles for reordering
@@ -299,7 +301,7 @@ pnpm run test:e2e:ui                        # UI mode
 - **Rate limiting**: Bottleneck library (10 concurrent, 100ms min interval) + exponential backoff
 - **Artwork API**: `/api/artwork/[fileId]` streams artwork from Google Drive
 - **Media streaming**: `/api/stream/[fileId]` with HTTP Range header support
-- **Server actions**: `lib/google-drive-actions.ts` for all Drive operations
+- **Modular server actions**: `google-drive-actions.ts` (connection), `google-drive-sync.ts` (sync), `google-drive-upload.ts` (uploads)
 - **Circuit breaker**: Protects against cascade failures (5 failures, 60s recovery)
 - **Trashed folder detection**: Detects when CanonCore folder is in Trash and shows recovery guidance
 

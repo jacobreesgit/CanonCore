@@ -10,6 +10,8 @@ import { GoogleDriveSettingsSection } from "@/components/google-drive/settings-s
 vi.mock("@/lib/google-drive-actions", () => ({
   initiateGoogleDriveOAuth: vi.fn(),
   disconnectGoogleDrive: vi.fn(),
+}));
+vi.mock("@/lib/google-drive-sync", () => ({
   syncFromGoogleDrive: vi.fn(),
 }));
 

@@ -74,6 +74,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
     },
     ref
   ) {
+    const [imageLoaded, setImageLoaded] = useState(false);
     const [imageError, setImageError] = useState(false);
     const shouldShowArtwork = showArtwork && artworkId && !imageError;
     const shouldShowDescription = showDescription && description;
@@ -98,8 +99,8 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
           // Base styles - Feature222 sizing
           "group relative w-full cursor-pointer overflow-hidden rounded-lg",
           "aspect-[2/3] sm:aspect-square md:aspect-[2/3]",
-          // Background and overlay
-          "bg-black/80 bg-cover bg-center bg-no-repeat",
+          // Background color (shown until image loads)
+          "bg-muted",
           // Overlay pseudo-element
           "before:absolute before:inset-0 before:z-10 before:bg-black/50",
           "before:transition-all before:duration-300",
@@ -114,14 +115,25 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
           ],
           className
         )}
-        style={{
-          ...style,
-          backgroundImage: shouldShowArtwork
-            ? `url(/api/artwork/${artworkId})`
-            : undefined,
-        }}
+        style={style}
         {...props}
       >
+        {/* Artwork image - uses img element for reliable load tracking */}
+        {shouldShowArtwork && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`/api/artwork/${artworkId}`}
+            alt=""
+            className={cn(
+              "absolute inset-0 z-0 h-full w-full object-cover",
+              "transition-opacity duration-200",
+              imageLoaded ? "opacity-100" : "opacity-0"
+            )}
+            onLoad={() => setImageLoaded(true)}
+            onError={() => setImageError(true)}
+          />
+        )}
+
         {/* Drag Handle - top right, only in edit mode */}
         {handleProps && (
           <button
@@ -143,19 +155,8 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
           </button>
         )}
 
-        {/* Hidden img for error detection - browser caches so minimal overhead */}
-        {showArtwork && artworkId && !imageError && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={`/api/artwork/${artworkId}`}
-            alt=""
-            className="hidden"
-            onError={() => setImageError(true)}
-          />
-        )}
-
         {/* Bottom gradient for text legibility over artwork */}
-        {shouldShowArtwork && (
+        {shouldShowArtwork && imageLoaded && (
           <div
             className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-2/3 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
             aria-hidden="true"

@@ -33,7 +33,7 @@ import {
   type TMDBSeasonSummary,
   type TMDBEpisode,
 } from "@/lib/tmdb-client";
-import { uploadBuffer } from "@/lib/google-drive-actions";
+import { uploadBuffer } from "@/lib/google-drive-upload";
 
 /**
  * Options for selectively applying TMDB metadata fields.

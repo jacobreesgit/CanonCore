@@ -361,4 +361,189 @@ describe("GET /api/stream/[fileId]", () => {
     expect(response.status).toBe(500);
     expect(await response.text()).toBe("Failed to stream file");
   });
+
+  describe("Cache-Control headers", () => {
+    it("should include Cache-Control header for full file response", async () => {
+      mockAuth.mockResolvedValue({ user: { id: "user-1" } } as never);
+      mockFindUnique.mockResolvedValue({
+        id: "file-1",
+        driveFileId: "drive-123",
+        size: BigInt(1000),
+        filename: "video.mp4",
+        mimeType: "video/mp4",
+        item: {
+          userId: "user-1",
+          driveConnection: { id: "conn-1", needsReauth: false },
+        },
+      } as never);
+
+      const mockStream = createMockNodeStream();
+      mockGetDriveClient.mockResolvedValue({
+        files: {
+          get: vi.fn().mockResolvedValue({ data: mockStream }),
+        },
+      } as never);
+
+      const response = await GET(createRequest("file-1"), {
+        params: Promise.resolve({ fileId: "file-1" }),
+      });
+
+      expect(response.headers.get("Cache-Control")).toBe(
+        "private, max-age=3600"
+      );
+    });
+
+    it("should include Cache-Control header for partial content response", async () => {
+      mockAuth.mockResolvedValue({ user: { id: "user-1" } } as never);
+      mockFindUnique.mockResolvedValue({
+        id: "file-1",
+        driveFileId: "drive-123",
+        size: BigInt(10000000),
+        filename: "video.mp4",
+        mimeType: "video/mp4",
+        item: {
+          userId: "user-1",
+          driveConnection: { id: "conn-1", needsReauth: false },
+        },
+      } as never);
+
+      const mockStream = createMockNodeStream();
+      mockGetDriveClient.mockResolvedValue({
+        files: {
+          get: vi.fn().mockResolvedValue({ data: mockStream }),
+        },
+      } as never);
+
+      const response = await GET(
+        createRequest("file-1", { range: "bytes=0-1023" }),
+        { params: Promise.resolve({ fileId: "file-1" }) }
+      );
+
+      expect(response.status).toBe(206);
+      expect(response.headers.get("Cache-Control")).toBe(
+        "private, max-age=3600"
+      );
+    });
+  });
+
+  describe("Range header handling", () => {
+    const setupStreamMocks = (fileSize: number) => {
+      mockAuth.mockResolvedValue({ user: { id: "user-1" } } as never);
+      mockFindUnique.mockResolvedValue({
+        id: "file-1",
+        driveFileId: "drive-123",
+        size: BigInt(fileSize),
+        filename: "video.mp4",
+        mimeType: "video/mp4",
+        item: {
+          userId: "user-1",
+          driveConnection: { id: "conn-1", needsReauth: false },
+        },
+      } as never);
+
+      const mockStream = createMockNodeStream();
+      mockGetDriveClient.mockResolvedValue({
+        files: {
+          get: vi.fn().mockResolvedValue({ data: mockStream }),
+        },
+      } as never);
+    };
+
+    it("should return 206 with Content-Range for valid Range header", async () => {
+      setupStreamMocks(10000000);
+
+      const response = await GET(
+        createRequest("file-1", { range: "bytes=0-1023" }),
+        { params: Promise.resolve({ fileId: "file-1" }) }
+      );
+
+      expect(response.status).toBe(206);
+      expect(response.headers.get("Content-Range")).toBe(
+        "bytes 0-1023/10000000"
+      );
+      expect(response.headers.get("Content-Length")).toBe("1024");
+    });
+
+    it("should return 206 with default chunk size when end not specified", async () => {
+      const fileSize = 20000000; // 20MB
+      setupStreamMocks(fileSize);
+
+      const response = await GET(
+        createRequest("file-1", { range: "bytes=0-" }),
+        { params: Promise.resolve({ fileId: "file-1" }) }
+      );
+
+      expect(response.status).toBe(206);
+      // Default chunk is 10MB
+      expect(response.headers.get("Content-Range")).toBe(
+        `bytes 0-10485759/${fileSize}`
+      );
+    });
+
+    it("should return 416 for invalid Range header format", async () => {
+      setupStreamMocks(10000000);
+
+      const response = await GET(
+        createRequest("file-1", { range: "invalid-range" }),
+        { params: Promise.resolve({ fileId: "file-1" }) }
+      );
+
+      expect(response.status).toBe(416);
+      expect(response.headers.get("Content-Range")).toBe("bytes */10000000");
+    });
+
+    it("should return 416 for Range start beyond file size", async () => {
+      setupStreamMocks(1000);
+
+      const response = await GET(
+        createRequest("file-1", { range: "bytes=2000-3000" }),
+        { params: Promise.resolve({ fileId: "file-1" }) }
+      );
+
+      expect(response.status).toBe(416);
+    });
+
+    it("should clamp end to file size - 1", async () => {
+      setupStreamMocks(1000);
+
+      const response = await GET(
+        createRequest("file-1", { range: "bytes=500-5000" }),
+        { params: Promise.resolve({ fileId: "file-1" }) }
+      );
+
+      expect(response.status).toBe(206);
+      expect(response.headers.get("Content-Range")).toBe("bytes 500-999/1000");
+      expect(response.headers.get("Content-Length")).toBe("500");
+    });
+
+    it("should stream full file when fileSize is unknown (0)", async () => {
+      mockAuth.mockResolvedValue({ user: { id: "user-1" } } as never);
+      mockFindUnique.mockResolvedValue({
+        id: "file-1",
+        driveFileId: "drive-123",
+        size: BigInt(0), // Unknown size
+        filename: "video.mp4",
+        mimeType: "video/mp4",
+        item: {
+          userId: "user-1",
+          driveConnection: { id: "conn-1", needsReauth: false },
+        },
+      } as never);
+
+      const mockStream = createMockNodeStream();
+      mockGetDriveClient.mockResolvedValue({
+        files: {
+          get: vi.fn().mockResolvedValue({ data: mockStream }),
+        },
+      } as never);
+
+      const response = await GET(
+        createRequest("file-1", { range: "bytes=0-1023" }),
+        { params: Promise.resolve({ fileId: "file-1" }) }
+      );
+
+      // Should return 200 (full file) when size unknown, not 206
+      expect(response.status).toBe(200);
+    });
+  });
 });

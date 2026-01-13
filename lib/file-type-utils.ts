@@ -105,3 +105,28 @@ export function getMimeTypeByExtension(filename: string): string | null {
   const ext = getExtension(filename);
   return MIME_TYPES[ext] ?? null;
 }
+
+/**
+ * Categorizes a file type based on MIME type and filename.
+ * Used for Google Drive sync operations.
+ *
+ * @param mimeType - The MIME type
+ * @param filename - The filename
+ * @returns The categorized file type (defaults to MEDIA if unknown)
+ */
+export function categorizeFileType(
+  mimeType: string,
+  filename: string
+): FileType {
+  if (mimeType.startsWith("video/") || mimeType.startsWith("audio/")) {
+    return "MEDIA";
+  }
+  if (mimeType.startsWith("image/")) {
+    return "ARTWORK";
+  }
+  const ext = filename.split(".").pop()?.toLowerCase();
+  if (["srt", "vtt", "sub", "ass"].includes(ext || "")) {
+    return "SUBTITLE";
+  }
+  return "MEDIA";
+}
