@@ -38,6 +38,10 @@ interface SortableGridProps {
   onDeleteItem?(id: string): Promise<void>;
   /** Whether user has Google Drive connected. */
   hasDriveConnection?: boolean;
+  /** Check if an item is selected (for bulk operations). */
+  isItemSelected?: (id: string) => boolean;
+  /** Callback when an item's selection state changes. */
+  onItemSelectChange?: (id: string, selected: boolean) => void;
 }
 
 /**
@@ -57,6 +61,8 @@ export function SortableGrid({
   onOpenSettings,
   onDeleteItem,
   hasDriveConnection = false,
+  isItemSelected,
+  onItemSelectChange,
 }: SortableGridProps) {
   const [items, setItems] = useState(defaultItems);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
@@ -134,6 +140,12 @@ export function SortableGrid({
               childCount={item.childCount}
               showDescription={false}
               hasDriveConnection={hasDriveConnection}
+              isSelected={isItemSelected?.(item.id)}
+              onSelectChange={
+                onItemSelectChange
+                  ? (selected) => onItemSelectChange(item.id, selected)
+                  : undefined
+              }
             />
           ))}
         </div>

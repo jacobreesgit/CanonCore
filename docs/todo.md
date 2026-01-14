@@ -1,7 +1,10 @@
+- select all
+
 - plex like nav items in sidebar, e.g. one for tv shows. best way is for items in root/my items to appear as nav items, we could do a "pinned item" system? what do you think
 
 - continue watching - Playback position is tracked but never surfaced. look at what trakt does for progress across your entire library, then speicfic items and all descendnts. The Progress feature tracks completion across items, (with INCOMPLETE/COMPLETED/SKIPPED states), while Up Next shows the first incomplete item in DFS order to help users quickly find their next task.
 
+- public user profiles and your user profile... what should show
 - public and explore "item templates" make a copy/fork, you can "add" and it adds all the stuff to your sftp apart from subtitles and media files
 
 - one last look - repeat until 10/10

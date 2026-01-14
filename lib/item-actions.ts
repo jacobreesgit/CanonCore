@@ -909,6 +909,148 @@ export async function getSearchableItems(): Promise<
 }
 
 /**
+ * Deletes multiple items in bulk.
+ * Only deletes items owned by the authenticated user.
+ * Children are automatically deleted via Prisma cascade.
+ *
+ * @param itemIds - Array of item IDs to delete
+ * @returns Result with deletion count
+ *
+ * @example
+ * const result = await deleteItems(["item-1", "item-2", "item-3"]);
+ * if (result.success) {
+ *   console.log(`Deleted ${result.data.deleted} items`);
+ * }
+ */
+export async function deleteItems(
+  itemIds: string[]
+): Promise<ItemResult<{ deleted: number; skipped: number }>> {
+  // Rate limit check
+  const rateLimitResult = await checkRateLimit("itemDelete");
+  if (rateLimitResult) {
+    return { error: rateLimitResult.error };
+  }
+
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Not authenticated" };
+  }
+
+  if (itemIds.length === 0) {
+    return { error: "No items to delete" };
+  }
+
+  try {
+    // Find items that belong to this user
+    const items = await prisma.item.findMany({
+      where: {
+        id: { in: itemIds },
+        userId: session.user.id,
+      },
+      select: {
+        id: true,
+        driveFileId: true,
+        driveConnectionId: true,
+      },
+    });
+
+    const ownedIds = items.map((item) => item.id);
+    const skipped = itemIds.length - ownedIds.length;
+
+    if (ownedIds.length === 0) {
+      return { error: "No items found to delete" };
+    }
+
+    // Check if any items have Drive connections
+    const itemsWithDrive = items.filter(
+      (item) => item.driveFileId && item.driveConnectionId
+    );
+
+    // Batch delete from Drive if any items are connected (moves to trash, recoverable)
+    if (itemsWithDrive.length > 0) {
+      try {
+        // Get connection for access token
+        const connection = await prisma.googleDriveConnection.findUnique({
+          where: { userId: session.user.id },
+        });
+
+        if (connection?.encryptedAccessToken) {
+          // Collect parent driveFileIds
+          const parentDriveFileIds = itemsWithDrive
+            .map((item) => item.driveFileId)
+            .filter((id): id is string => id !== null);
+
+          // Get all root item IDs for descendant query
+          const rootItemIds = itemsWithDrive.map((item) => item.id);
+
+          // Single CTE query to get all descendants of all selected items
+          const descendants = await prisma.$queryRaw<
+            { driveFileId: string | null }[]
+          >`
+            WITH RECURSIVE descendants AS (
+              SELECT id, "driveFileId"
+              FROM "Item"
+              WHERE "parentId" = ANY(${rootItemIds}) AND "userId" = ${session.user.id}
+              UNION ALL
+              SELECT i.id, i."driveFileId"
+              FROM "Item" i
+              INNER JOIN descendants d ON i."parentId" = d.id
+              WHERE i."userId" = ${session.user.id}
+            )
+            SELECT "driveFileId" FROM descendants
+          `;
+
+          // Combine parent + descendant driveFileIds
+          const descendantDriveFileIds = descendants
+            .map((d) => d.driveFileId)
+            .filter((id): id is string => id !== null);
+
+          // Dedupe and batch delete from Drive
+          const allDriveFileIds = [
+            ...parentDriveFileIds,
+            ...descendantDriveFileIds,
+          ];
+          const uniqueDriveFileIds = [...new Set(allDriveFileIds)];
+          if (uniqueDriveFileIds.length > 0) {
+            const accessToken = decryptCredential(
+              connection.encryptedAccessToken
+            );
+            const result = await batchDelete(accessToken, uniqueDriveFileIds);
+
+            // Log any failures but continue with local delete
+            if (result.failed.length > 0) {
+              logger.warn(
+                { itemIds: ownedIds, failed: result.failed },
+                "[BulkDelete] Some Drive files failed to delete"
+              );
+            }
+          }
+        }
+      } catch (error) {
+        // Log but continue with local delete - Drive delete is recoverable
+        logger.error(
+          { error, itemIds: ownedIds },
+          "[BulkDelete] Failed to batch delete from Drive"
+        );
+      }
+    }
+
+    // Delete from database (cascade handles children and files)
+    const { count } = await prisma.item.deleteMany({
+      where: { id: { in: ownedIds } },
+    });
+
+    return {
+      success: true,
+      data: { deleted: count, skipped },
+    };
+  } catch (error) {
+    logger.error({ err: error }, "[BulkDelete] Delete failed");
+    return { error: "Failed to delete items" };
+  }
+}
+
+/**
  * Options for applying TMDB metadata to a new item.
  */
 export interface CreateItemMetadataOptions {
