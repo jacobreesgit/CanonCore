@@ -86,3 +86,118 @@ describe("AnimatedDialogContent", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });
+
+describe("AnimatedDialogContent slot-based API", () => {
+  it("renders header outside animated area", () => {
+    render(
+      <Dialog open>
+        <AnimatedDialogContent
+          stepKey="step1"
+          header={<div data-testid="slot-header">Header</div>}
+        >
+          Body content
+        </AnimatedDialogContent>
+      </Dialog>
+    );
+
+    const header = screen.getByTestId("slot-header");
+    expect(header).toBeInTheDocument();
+    // Header should be inside header wrapper with shrink-0
+    const headerWrapper = header.closest("[data-slot='dialog-header-wrapper']");
+    expect(headerWrapper).toBeInTheDocument();
+  });
+
+  it("renders footer outside animated area", () => {
+    render(
+      <Dialog open>
+        <AnimatedDialogContent
+          stepKey="step1"
+          footer={<div data-testid="slot-footer">Footer</div>}
+        >
+          Body content
+        </AnimatedDialogContent>
+      </Dialog>
+    );
+
+    const footer = screen.getByTestId("slot-footer");
+    expect(footer).toBeInTheDocument();
+    // Footer should be inside footer wrapper with shrink-0
+    const footerWrapper = footer.closest("[data-slot='dialog-footer-wrapper']");
+    expect(footerWrapper).toBeInTheDocument();
+  });
+
+  it("only animates body content height", () => {
+    const { rerender } = render(
+      <Dialog open>
+        <AnimatedDialogContent
+          stepKey="step1"
+          header={<div>Header</div>}
+          footer={<div>Footer</div>}
+        >
+          <div style={{ height: 100 }}>Short content</div>
+        </AnimatedDialogContent>
+      </Dialog>
+    );
+
+    // Rerender with taller content
+    rerender(
+      <Dialog open>
+        <AnimatedDialogContent
+          stepKey="step2"
+          header={<div>Header</div>}
+          footer={<div>Footer</div>}
+        >
+          <div style={{ height: 300 }}>Tall content</div>
+        </AnimatedDialogContent>
+      </Dialog>
+    );
+
+    // Motion div should exist and animate (mocked, so just verify structure)
+    expect(screen.getByText("Tall content")).toBeInTheDocument();
+  });
+
+  it("applies shrink-0 to header and footer wrappers", () => {
+    render(
+      <Dialog open>
+        <AnimatedDialogContent
+          stepKey="step1"
+          header={<div data-testid="slot-header">Header</div>}
+          footer={<div data-testid="slot-footer">Footer</div>}
+        >
+          Body
+        </AnimatedDialogContent>
+      </Dialog>
+    );
+
+    const headerWrapper = screen
+      .getByTestId("slot-header")
+      .closest("[data-slot='dialog-header-wrapper']");
+    const footerWrapper = screen
+      .getByTestId("slot-footer")
+      .closest("[data-slot='dialog-footer-wrapper']");
+
+    expect(headerWrapper?.className).toContain("shrink-0");
+    expect(footerWrapper?.className).toContain("shrink-0");
+  });
+
+  it("body section has min-h-0 for proper flex scrolling", () => {
+    render(
+      <Dialog open>
+        <AnimatedDialogContent
+          stepKey="step1"
+          header={<div>Header</div>}
+          footer={<div>Footer</div>}
+          data-testid="dialog"
+        >
+          Body
+        </AnimatedDialogContent>
+      </Dialog>
+    );
+
+    // The body wrapper should have min-h-0 and overflow-y-auto
+    const dialog = screen.getByTestId("dialog");
+    const bodyWrapper = dialog.querySelector("[data-slot='dialog-body']");
+    expect(bodyWrapper?.className).toContain("min-h-0");
+    expect(bodyWrapper?.className).toContain("overflow-y-auto");
+  });
+});

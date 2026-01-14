@@ -331,14 +331,7 @@ describe("GridItem", () => {
     });
 
     it("should show sync icon when status is ERROR", () => {
-      render(
-        <GridItem
-          id="1"
-          name="Test"
-          syncStatus="ERROR"
-          syncError="Sync failed"
-        />
-      );
+      render(<GridItem id="1" name="Test" syncStatus="ERROR" />);
       // SyncIcon renders with destructive color for ERROR
       const errorIcon = document.querySelector('[class*="text-destructive"]');
       expect(errorIcon).toBeInTheDocument();

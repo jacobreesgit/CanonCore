@@ -861,100 +861,258 @@ export function ItemSettingsDialog({
       : pendingTmdbResult.title
     : "";
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <AnimatedDialogContent
-        stepKey={currentStep}
-        className="max-h-[90vh] overflow-y-auto"
-      >
-        {/* Main Step */}
-        {currentStep === "main" && (
-          <>
-            <DialogHeader>
-              <div className="flex items-center gap-3">
-                <div
-                  className={cn(
-                    "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                    "bg-primary/10 ring-primary/20 ring-1"
-                  )}
-                >
-                  <Settings2 className="text-primary size-5" />
-                </div>
-                <div className="min-w-0">
-                  <DialogTitle className="text-lg">Item Settings</DialogTitle>
-                  <DialogDescription className="text-sm">
-                    Configure display preferences and upload files
-                  </DialogDescription>
-                </div>
-              </div>
-            </DialogHeader>
-
-            <div className="min-w-0 py-2">
-              <ItemDialogTabs
-                detailsContent={detailsContent}
-                filesContent={filesContent}
-              />
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={handleCancel}
-                disabled={isSaving}
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleSave} disabled={!isDirty || isSaving}>
-                {isSaving ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Changes"
+  /**
+   * Gets the header content for the current step.
+   * Headers are rendered outside the animated area via slot-based API.
+   */
+  const getStepHeader = () => {
+    switch (currentStep) {
+      case "main":
+        return (
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                  "bg-primary/10 ring-primary/20 ring-1"
                 )}
-              </Button>
-            </DialogFooter>
-          </>
-        )}
-
-        {/* Episode Picker Step */}
-        {currentStep === "episode-picker" && (
-          <>
-            <DialogHeader>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleEpisodePickerBack}
-                  className="hover:bg-muted/50 size-10 transition-all active:scale-95"
-                  aria-label="Back"
-                >
-                  <ChevronLeft className="size-5" />
-                </Button>
-                <div
-                  className={cn(
-                    "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                    "bg-blue-500/10 ring-1 ring-blue-500/20"
-                  )}
-                >
-                  {selectedSeason ? (
-                    <Film className="size-5 text-blue-500" />
-                  ) : (
-                    <Tv className="size-5 text-blue-500" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <DialogTitle className="text-lg">
-                    {selectedSeason ? "Select Episode" : "Select Season"}
-                  </DialogTitle>
-                  <DialogDescription className="truncate text-sm">
-                    {selectedSeason ? selectedSeason.name : displayTitle}
-                  </DialogDescription>
-                </div>
+              >
+                <Settings2 className="text-primary size-5" />
               </div>
-            </DialogHeader>
+              <div className="min-w-0">
+                <DialogTitle className="text-lg">Item Settings</DialogTitle>
+                <DialogDescription className="text-sm">
+                  Configure display preferences and upload files
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        );
+      case "episode-picker":
+        return (
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleEpisodePickerBack}
+                className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                aria-label="Back"
+              >
+                <ChevronLeft className="size-5" />
+              </Button>
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                  "bg-blue-500/10 ring-1 ring-blue-500/20"
+                )}
+              >
+                {selectedSeason ? (
+                  <Film className="size-5 text-blue-500" />
+                ) : (
+                  <Tv className="size-5 text-blue-500" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-lg">
+                  {selectedSeason ? "Select Episode" : "Select Season"}
+                </DialogTitle>
+                <DialogDescription className="truncate text-sm">
+                  {selectedSeason ? selectedSeason.name : displayTitle}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        );
+      case "wizard-text":
+      case "wizard-poster":
+      case "wizard-hero":
+        return (
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleWizardBack}
+                className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                aria-label="Back"
+              >
+                <ChevronLeft className="size-5" />
+              </Button>
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                  "bg-amber-500/10 ring-1 ring-amber-500/20"
+                )}
+              >
+                <Sparkles className="size-5 text-amber-500" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
+                <DialogDescription className="text-sm">
+                  Step {wizardStepNumber} of 3:{" "}
+                  {currentStep === "wizard-text"
+                    ? "Title & Description"
+                    : currentStep === "wizard-poster"
+                      ? "Select Poster"
+                      : "Select Hero"}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        );
+      default:
+        return null;
+    }
+  };
 
+  /**
+   * Gets the footer content for the current step.
+   * Footers are rendered outside the animated area via slot-based API.
+   */
+  const getStepFooter = () => {
+    switch (currentStep) {
+      case "main":
+        return (
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={!isDirty || isSaving}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </DialogFooter>
+        );
+      case "episode-picker":
+        return (
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPendingTmdbResult(null);
+                setCurrentStep("main");
+              }}
+            >
+              Cancel
+            </Button>
+            {selectedSeason && (
+              <Button
+                variant="ghost"
+                onClick={() =>
+                  handleEpisodePickerSelect({
+                    type: "season",
+                    seasonNumber: selectedSeason.season_number,
+                  })
+                }
+              >
+                Use Season
+              </Button>
+            )}
+            <Button onClick={() => handleEpisodePickerSelect({ type: "show" })}>
+              Use Show
+            </Button>
+          </DialogFooter>
+        );
+      case "wizard-text":
+        return (
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleWizardCancel}
+              disabled={isApplyingMetadata}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleWizardSkipAll}
+              disabled={isApplyingMetadata}
+            >
+              Skip All
+            </Button>
+            <Button onClick={handleWizardNext} disabled={isApplyingMetadata}>
+              Next
+            </Button>
+          </DialogFooter>
+        );
+      case "wizard-poster":
+        return (
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleWizardCancel}
+              disabled={isApplyingMetadata}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleWizardSkipAll}
+              disabled={isApplyingMetadata}
+            >
+              Skip All
+            </Button>
+            <Button onClick={handleWizardNext} disabled={isApplyingMetadata}>
+              Next
+            </Button>
+          </DialogFooter>
+        );
+      case "wizard-hero":
+        return (
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleWizardCancel}
+              disabled={isApplyingMetadata}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleWizardNext} disabled={isApplyingMetadata}>
+              {isApplyingMetadata ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Applying...
+                </>
+              ) : (
+                "Apply"
+              )}
+            </Button>
+          </DialogFooter>
+        );
+      default:
+        return null;
+    }
+  };
+
+  /**
+   * Gets the body content for the current step.
+   * Bodies are rendered inside the animated area.
+   */
+  const getStepBody = () => {
+    switch (currentStep) {
+      case "main":
+        return (
+          <div className="min-w-0 py-2">
+            <ItemDialogTabs
+              detailsContent={detailsContent}
+              filesContent={filesContent}
+            />
+          </div>
+        );
+      case "episode-picker":
+        return (
+          <>
             {selectedSeason && (
               <div className="flex items-center gap-1 text-sm">
                 <button
@@ -1018,71 +1176,12 @@ export function ItemSettingsDialog({
                 </ScrollArea>
               )}
             </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setPendingTmdbResult(null);
-                  setCurrentStep("main");
-                }}
-              >
-                Cancel
-              </Button>
-              {selectedSeason && (
-                <Button
-                  variant="ghost"
-                  onClick={() =>
-                    handleEpisodePickerSelect({
-                      type: "season",
-                      seasonNumber: selectedSeason.season_number,
-                    })
-                  }
-                >
-                  Use Season
-                </Button>
-              )}
-              <Button
-                onClick={() => handleEpisodePickerSelect({ type: "show" })}
-              >
-                Use Show
-              </Button>
-            </DialogFooter>
           </>
-        )}
-
-        {/* Wizard Text Step */}
-        {currentStep === "wizard-text" && tmdbPreview && (
+        );
+      case "wizard-text":
+        if (!tmdbPreview) return null;
+        return (
           <>
-            <DialogHeader>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleWizardBack}
-                  disabled={isApplyingMetadata}
-                  className="hover:bg-muted/50 size-10 transition-all active:scale-95"
-                  aria-label="Back"
-                >
-                  <ChevronLeft className="size-5" />
-                </Button>
-                <div
-                  className={cn(
-                    "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                    "bg-amber-500/10 ring-1 ring-amber-500/20"
-                  )}
-                >
-                  <Sparkles className="size-5 text-amber-500" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
-                  <DialogDescription className="text-sm">
-                    Step {wizardStepNumber} of 3: Title & Description
-                  </DialogDescription>
-                </div>
-              </div>
-            </DialogHeader>
-
             <div className="flex gap-1.5 py-2">
               {[1, 2, 3].map((step) => (
                 <div
@@ -1100,63 +1199,13 @@ export function ItemSettingsDialog({
               preview={tmdbPreview}
               options={textOptions}
               onOptionsChange={setTextOptions}
-              disabled={isApplyingMetadata}
+              disabled={false}
             />
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={handleWizardCancel}
-                disabled={isApplyingMetadata}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleWizardSkipAll}
-                disabled={isApplyingMetadata}
-              >
-                Skip All
-              </Button>
-              <Button onClick={handleWizardNext} disabled={isApplyingMetadata}>
-                Next
-              </Button>
-            </DialogFooter>
           </>
-        )}
-
-        {/* Wizard Poster Step */}
-        {currentStep === "wizard-poster" && (
+        );
+      case "wizard-poster":
+        return (
           <>
-            <DialogHeader>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleWizardBack}
-                  disabled={isApplyingMetadata}
-                  className="hover:bg-muted/50 size-10 transition-all active:scale-95"
-                  aria-label="Back"
-                >
-                  <ChevronLeft className="size-5" />
-                </Button>
-                <div
-                  className={cn(
-                    "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                    "bg-amber-500/10 ring-1 ring-amber-500/20"
-                  )}
-                >
-                  <Sparkles className="size-5 text-amber-500" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
-                  <DialogDescription className="text-sm">
-                    Step {wizardStepNumber} of 3: Select Poster
-                  </DialogDescription>
-                </div>
-              </div>
-            </DialogHeader>
-
             <div className="flex gap-1.5 py-2">
               {[1, 2, 3].map((step) => (
                 <div
@@ -1175,69 +1224,21 @@ export function ItemSettingsDialog({
               <PosterSelectionStep
                 posters={tmdbImages?.posters || []}
                 existingFiles={existingArtwork}
+                uploadMode={false}
+                hasDriveConnection={hasDriveConnection}
                 selectedValue={posterValue}
                 selectedSource={posterSource}
                 onSelect={handlePosterSelect}
                 isSkipped={posterSkipped}
                 onSkipChange={setPosterSkipped}
-                disabled={isApplyingMetadata}
+                disabled={false}
               />
             )}
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={handleWizardCancel}
-                disabled={isApplyingMetadata}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleWizardSkipAll}
-                disabled={isApplyingMetadata}
-              >
-                Skip All
-              </Button>
-              <Button onClick={handleWizardNext} disabled={isApplyingMetadata}>
-                Next
-              </Button>
-            </DialogFooter>
           </>
-        )}
-
-        {/* Wizard Hero Step */}
-        {currentStep === "wizard-hero" && (
+        );
+      case "wizard-hero":
+        return (
           <>
-            <DialogHeader>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleWizardBack}
-                  disabled={isApplyingMetadata}
-                  className="hover:bg-muted/50 size-10 transition-all active:scale-95"
-                  aria-label="Back"
-                >
-                  <ChevronLeft className="size-5" />
-                </Button>
-                <div
-                  className={cn(
-                    "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                    "bg-amber-500/10 ring-1 ring-amber-500/20"
-                  )}
-                >
-                  <Sparkles className="size-5 text-amber-500" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
-                  <DialogDescription className="text-sm">
-                    Step {wizardStepNumber} of 3: Select Hero
-                  </DialogDescription>
-                </div>
-              </div>
-            </DialogHeader>
-
             <div className="flex gap-1.5 py-2">
               {[1, 2, 3].map((step) => (
                 <div
@@ -1256,36 +1257,32 @@ export function ItemSettingsDialog({
               <HeroSelectionStep
                 backdrops={tmdbImages?.backdrops || []}
                 existingFiles={existingArtwork}
+                uploadMode={false}
+                hasDriveConnection={hasDriveConnection}
                 selectedValue={backdropValue}
                 selectedSource={backdropSource}
                 onSelect={handleBackdropSelect}
                 isSkipped={backdropSkipped}
                 onSkipChange={setBackdropSkipped}
-                disabled={isApplyingMetadata}
+                disabled={false}
               />
             )}
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={handleWizardCancel}
-                disabled={isApplyingMetadata}
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleWizardNext} disabled={isApplyingMetadata}>
-                {isApplyingMetadata ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Applying...
-                  </>
-                ) : (
-                  "Apply"
-                )}
-              </Button>
-            </DialogFooter>
           </>
-        )}
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <AnimatedDialogContent
+        stepKey={currentStep}
+        className="max-h-[90vh]"
+        header={getStepHeader()}
+        footer={getStepFooter()}
+      >
+        {getStepBody()}
       </AnimatedDialogContent>
     </Dialog>
   );

@@ -8,7 +8,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 import { motion } from "motion/react";
 import {
   Play,
@@ -25,8 +25,8 @@ import { Button } from "@/components/ui/button";
 import { Shader1 } from "@/components/shader1";
 import { cn } from "@/lib/utils";
 
-/** Truncate length for description before showing "Read More". */
-const DESCRIPTION_TRUNCATE_LENGTH = 150;
+/** Collapsed height for description container in pixels (matches 3.5rem at 16px base). */
+const COLLAPSED_HEIGHT_PX = 56;
 
 interface ItemHeroProps {
   /** Item name displayed as heading. */
@@ -90,10 +90,23 @@ export function ItemHero({
 }: ItemHeroProps) {
   const [imageError, setImageError] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const descriptionRef = useRef<HTMLParagraphElement>(null);
 
-  // Determine if description needs truncation
-  const shouldTruncate =
-    description && description.length > DESCRIPTION_TRUNCATE_LENGTH;
+  // Detect actual text overflow by comparing scroll height to collapsed height
+  useLayoutEffect(() => {
+    const checkOverflow = () => {
+      if (descriptionRef.current) {
+        const hasOverflow =
+          descriptionRef.current.scrollHeight > COLLAPSED_HEIGHT_PX;
+        setIsOverflowing(hasOverflow);
+      }
+    };
+
+    checkOverflow();
+    window.addEventListener("resize", checkOverflow);
+    return () => window.removeEventListener("resize", checkOverflow);
+  }, [description]);
 
   // Determine if primary media is audio (show Music icon) or video (show Film icon)
   const isAudio = primaryMediaMimeType?.startsWith("audio/") ?? false;
@@ -228,20 +241,21 @@ export function ItemHero({
                   initial={false}
                   animate={{
                     height:
-                      descriptionExpanded || !shouldTruncate
-                        ? "auto"
-                        : "3.5rem",
+                      descriptionExpanded || !isOverflowing ? "auto" : "3.5rem",
                   }}
                   transition={{ type: "spring", stiffness: 400, damping: 35 }}
                   className="overflow-hidden"
                   data-testid="hero-description"
                 >
-                  <p className="text-lg leading-7 text-white/80 drop-shadow-md">
+                  <p
+                    ref={descriptionRef}
+                    className="text-lg leading-7 text-white/80 drop-shadow-md"
+                  >
                     {description}
                   </p>
                 </motion.div>
 
-                {shouldTruncate && (
+                {isOverflowing && (
                   <Button
                     variant="ghost"
                     size="sm"
