@@ -1,20 +1,37 @@
 /**
- * Database seed script for populating demo content with Google Drive integration.
- * Fetches TMDB metadata, downloads posters, and uploads to Google Drive.
+ * Database seed script for populating demo content with optional Google Drive integration.
+ * Fetches TMDB metadata, downloads posters, and optionally uploads to Google Drive.
  *
  * Usage:
  *   ALLOW_SEEDING=true npx prisma db seed
+ *   ALLOW_SEEDING=true SEED_SKIP_DRIVE=true npx prisma db seed  # Skip Drive
+ *   ALLOW_SEEDING=true SEED_ONLY_MOVIES=true SEED_MOVIE_COUNT=3 npx prisma db seed
  *
- * Environment Variables:
+ * Required Environment Variables:
  *   - ALLOW_SEEDING: Must be "true" to run (prevents accidental seeding)
  *   - TMDB_API_KEY: Required for fetching metadata (v3 API key)
- *   - GOOGLE_TEST_REFRESH_TOKEN: Required for Drive integration
+ *   - DATABASE_URL: Database connection string (must not be production)
+ *
+ * Google Drive Variables (required unless SEED_SKIP_DRIVE=true):
+ *   - GOOGLE_TEST_REFRESH_TOKEN: Refresh token for Drive integration
  *   - GOOGLE_TEST_ROOT_FOLDER_ID: Root folder for Drive storage
  *   - GOOGLE_CLIENT_ID: OAuth client ID
  *   - GOOGLE_CLIENT_SECRET: OAuth client secret
  *   - ENCRYPTION_KEY: For encrypting Drive tokens
- *   - SEED_PASSWORD: Optional password for seed users (default: SeedPassword123!)
- *   - DATABASE_URL: Database connection string (must not be production)
+ *
+ * Optional Environment Variables:
+ *   - SEED_PASSWORD: Password for seed users (default: SeedPassword123!)
+ *   - SEED_ONLY_MOVIES: Skip TV shows, seed only movies (default: false)
+ *   - SEED_ONLY_SHOWS: Skip movies, seed only TV shows (default: false)
+ *   - SEED_SKIP_DRIVE: Skip Google Drive uploads (default: false)
+ *   - SEED_SKIP_ARTWORK: Skip downloading/uploading artwork (default: false)
+ *   - SEED_QUIET: Suppress progress output (default: false)
+ *   - SEED_MOVIE_COUNT: Limit number of movies (0 = all, default: 0)
+ *   - SEED_SHOW_COUNT: Limit number of TV shows (0 = all, default: 0)
+ *   - SEED_USER_EMAIL: Override to seed single user only (default: null)
+ *   - SEED_MAX_SEASONS: Max seasons per show (0 = unlimited, default: 2)
+ *   - SEED_MAX_EPISODES: Max episodes per season (0 = unlimited, default: 10)
+ *   - SEED_RANDOM_SEED: Seed for reproducible random file counts (default: random)
  */
 
 // Load environment variables before any other imports
@@ -25,14 +42,17 @@ dotenv.config({ path: path.resolve(__dirname, "../.env.local") });
 import { FileType, SyncStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import {
-  MOVIE_IDS,
-  TV_SHOW_IDS,
-  SEED_USERS,
   DEFAULT_SEED_PASSWORD,
   MAX_SEASONS,
   MAX_EPISODES,
   RANDOM_SEED,
   TMDB_API_DELAY_MS,
+  SEED_SKIP_DRIVE,
+  SEED_SKIP_ARTWORK,
+  SEED_QUIET,
+  getEffectiveMovieIds,
+  getEffectiveTVShowIds,
+  getEffectiveSeedUsers,
 } from "./seed-config";
 
 // Prisma will be dynamically imported after env vars are loaded
@@ -230,6 +250,15 @@ function getRandomCount(min: number, max: number): number {
 /** Available subtitle languages for random selection. */
 const SUBTITLE_LANGUAGES = ["english", "spanish", "french", "german"];
 
+/**
+ * Logs message if not in quiet mode.
+ */
+function log(message: string): void {
+  if (!SEED_QUIET) {
+    console.log(message);
+  }
+}
+
 /** Progress tracking for seed operation. */
 interface SeedProgress {
   startTime: number;
@@ -248,7 +277,7 @@ function logProgress(progress: SeedProgress, currentItem: string): void {
   const completedItems = progress.completedShows + progress.completedMovies;
 
   if (completedItems === 0) {
-    console.log(`🎬 Seeding: ${currentItem}`);
+    log(`🎬 Seeding: ${currentItem}`);
     return;
   }
 
@@ -257,7 +286,7 @@ function logProgress(progress: SeedProgress, currentItem: string): void {
   const etaMs = avgTimePerItem * remainingItems;
   const etaMinutes = Math.ceil(etaMs / 60000);
 
-  console.log(
+  log(
     `🎬 Seeding: ${currentItem} (${completedItems}/${totalItems}, ~${etaMinutes}min remaining)`
   );
 }
@@ -317,6 +346,8 @@ async function downloadBackdrop(
  * - Artwork: Poster as primary, backdrop as hero image (movies/shows only)
  * - Subtitles: Generated placeholder SRT files
  * - Media: Placeholder entries with null driveFileId (episodes/movies only)
+ *
+ * Respects SEED_SKIP_ARTWORK and SEED_SKIP_DRIVE flags.
  */
 async function attachRandomFiles(
   itemId: string,
@@ -324,15 +355,15 @@ async function attachRandomFiles(
   level: ItemLevel,
   primaryImagePath: string | null,
   backdropPath: string | null,
-  ctx: DriveContext,
-  driveFolderId: string
+  ctx: DriveContext | null,
+  driveFolderId: string | null
 ): Promise<void> {
   const subtitleCount = getRandomCount(1, 2);
   const mediaCount =
     level === "episode" || level === "movie" ? getRandomCount(1, 2) : 0;
 
   // --- PRIMARY ARTWORK (poster) ---
-  if (primaryImagePath) {
+  if (!SEED_SKIP_ARTWORK && primaryImagePath && ctx && driveFolderId) {
     const posterBuffer = await downloadPoster(primaryImagePath);
     if (posterBuffer) {
       try {
@@ -364,7 +395,13 @@ async function attachRandomFiles(
   }
 
   // --- HERO IMAGE (backdrop) - movies and shows only ---
-  if (backdropPath && (level === "movie" || level === "show")) {
+  if (
+    !SEED_SKIP_ARTWORK &&
+    backdropPath &&
+    (level === "movie" || level === "show") &&
+    ctx &&
+    driveFolderId
+  ) {
     const backdropBuffer = await downloadBackdrop(backdropPath);
     if (backdropBuffer) {
       try {
@@ -395,41 +432,45 @@ async function attachRandomFiles(
     }
   }
 
-  // --- SUBTITLES ---
-  // Shuffle using seeded random for reproducibility
-  const shuffledLanguages = [...SUBTITLE_LANGUAGES].sort(() => random() - 0.5);
-  const selectedLanguages = shuffledLanguages.slice(0, subtitleCount);
+  // --- SUBTITLES (skip if no Drive) ---
+  if (!SEED_SKIP_DRIVE && ctx && driveFolderId) {
+    // Shuffle using seeded random for reproducibility
+    const shuffledLanguages = [...SUBTITLE_LANGUAGES].sort(
+      () => random() - 0.5
+    );
+    const selectedLanguages = shuffledLanguages.slice(0, subtitleCount);
 
-  for (let i = 0; i < selectedLanguages.length; i++) {
-    const language = selectedLanguages[i];
-    const filename = `${language}.srt`;
-    const content = generatePlaceholderSubtitle(language, itemName);
-    const buffer = Buffer.from(content, "utf-8");
+    for (let i = 0; i < selectedLanguages.length; i++) {
+      const language = selectedLanguages[i];
+      const filename = `${language}.srt`;
+      const content = generatePlaceholderSubtitle(language, itemName);
+      const buffer = Buffer.from(content, "utf-8");
 
-    try {
-      const uploaded = await uploadToDrive(
-        ctx,
-        filename,
-        buffer,
-        "application/x-subrip",
-        driveFolderId
-      );
-
-      await prisma.itemFile.create({
-        data: {
-          itemId,
+      try {
+        const uploaded = await uploadToDrive(
+          ctx,
           filename,
-          driveFileId: uploaded.id,
-          fileType: FileType.SUBTITLE,
-          mimeType: "application/x-subrip",
-          size: BigInt(buffer.length),
-          isPrimary: i === 0,
-          isHero: false,
-          syncStatus: SyncStatus.SYNCED,
-        },
-      });
-    } catch {
-      // Continue even if upload fails
+          buffer,
+          "application/x-subrip",
+          driveFolderId
+        );
+
+        await prisma.itemFile.create({
+          data: {
+            itemId,
+            filename,
+            driveFileId: uploaded.id,
+            fileType: FileType.SUBTITLE,
+            mimeType: "application/x-subrip",
+            size: BigInt(buffer.length),
+            isPrimary: i === 0,
+            isHero: false,
+            syncStatus: SyncStatus.SYNCED,
+          },
+        });
+      } catch {
+        // Continue even if upload fails
+      }
     }
   }
 
@@ -479,29 +520,39 @@ function validateEnvironment(): void {
     process.exit(1);
   }
 
-  // Check Google Drive credentials
-  if (!process.env.GOOGLE_TEST_REFRESH_TOKEN) {
-    console.error(
-      "❌ GOOGLE_TEST_REFRESH_TOKEN is required for Drive integration"
-    );
-    process.exit(1);
-  }
+  // Check Google Drive credentials (skip if SEED_SKIP_DRIVE is set)
+  if (!SEED_SKIP_DRIVE) {
+    if (!process.env.GOOGLE_TEST_REFRESH_TOKEN) {
+      console.error(
+        "❌ GOOGLE_TEST_REFRESH_TOKEN is required for Drive integration"
+      );
+      console.error("   Set SEED_SKIP_DRIVE=true to skip Drive operations");
+      process.exit(1);
+    }
 
-  if (!process.env.GOOGLE_TEST_ROOT_FOLDER_ID) {
-    console.error(
-      "❌ GOOGLE_TEST_ROOT_FOLDER_ID is required for Drive integration"
-    );
-    process.exit(1);
-  }
+    if (!process.env.GOOGLE_TEST_ROOT_FOLDER_ID) {
+      console.error(
+        "❌ GOOGLE_TEST_ROOT_FOLDER_ID is required for Drive integration"
+      );
+      console.error("   Set SEED_SKIP_DRIVE=true to skip Drive operations");
+      process.exit(1);
+    }
 
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    console.error("❌ GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are required");
-    process.exit(1);
-  }
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      console.error(
+        "❌ GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are required"
+      );
+      console.error("   Set SEED_SKIP_DRIVE=true to skip Drive operations");
+      process.exit(1);
+    }
 
-  if (!process.env.ENCRYPTION_KEY) {
-    console.error("❌ ENCRYPTION_KEY is required for token encryption");
-    process.exit(1);
+    if (!process.env.ENCRYPTION_KEY) {
+      console.error("❌ ENCRYPTION_KEY is required for token encryption");
+      console.error("   Set SEED_SKIP_DRIVE=true to skip Drive operations");
+      process.exit(1);
+    }
+  } else {
+    log("⏭️  SEED_SKIP_DRIVE=true: Skipping Google Drive operations");
   }
 
   // Block production database - check against known production Neon endpoint
@@ -548,7 +599,7 @@ function validateEnvironment(): void {
  * Cleans up existing seed users.
  */
 async function cleanupSeedUsers(): Promise<void> {
-  const seedEmails = SEED_USERS.map((u) => u.email);
+  const seedEmails = getEffectiveSeedUsers().map((u) => u.email);
 
   // Delete ItemFiles first
   await prisma.itemFile.deleteMany({
@@ -597,10 +648,11 @@ async function cleanupSeedUsers(): Promise<void> {
 async function createSeedUsers(): Promise<string[]> {
   const password = process.env.SEED_PASSWORD || DEFAULT_SEED_PASSWORD;
   const passwordHash = await bcrypt.hash(password, 10);
+  const seedUsers = getEffectiveSeedUsers();
 
   const userIds: string[] = [];
 
-  for (const userData of SEED_USERS) {
+  for (const userData of seedUsers) {
     const user = await prisma.user.create({
       data: {
         email: userData.email,
@@ -609,7 +661,7 @@ async function createSeedUsers(): Promise<string[]> {
       },
     });
     userIds.push(user.id);
-    console.log(`👤 Created user: ${userData.email}`);
+    log(`👤 Created user: ${userData.email}`);
   }
 
   return userIds;
@@ -679,17 +731,19 @@ async function uploadToDrive(
 /**
  * Seeds movies for a user with Drive integration.
  * Creates items directly at root level (flat structure).
+ * Respects SEED_SKIP_DRIVE flag.
  */
 async function seedMovies(
   userId: string,
-  ctx: DriveContext,
+  ctx: DriveContext | null,
   startOrder: number,
   progress: SeedProgress
 ): Promise<number> {
   let count = 0;
+  const movieIds = getEffectiveMovieIds();
 
-  for (let i = 0; i < MOVIE_IDS.length; i++) {
-    const movieId = MOVIE_IDS[i];
+  for (let i = 0; i < movieIds.length; i++) {
+    const movieId = movieIds[i];
 
     // Rate limiting
     await sleep(TMDB_API_DELAY_MS);
@@ -707,13 +761,19 @@ async function seedMovies(
     );
     const description = truncateOverview(movie.overview);
 
-    // Create folder for this movie in Drive (directly under root)
-    let movieDriveFolderId: string;
-    try {
-      movieDriveFolderId = await createDriveFolder(ctx, name, ctx.rootFolderId);
-    } catch (error) {
-      console.error(`❌ Failed to create Drive folder for ${name}:`, error);
-      continue;
+    // Create folder for this movie in Drive (skip if SEED_SKIP_DRIVE)
+    let movieDriveFolderId: string | null = null;
+    if (!SEED_SKIP_DRIVE && ctx) {
+      try {
+        movieDriveFolderId = await createDriveFolder(
+          ctx,
+          name,
+          ctx.rootFolderId
+        );
+      } catch (error) {
+        console.error(`❌ Failed to create Drive folder for ${name}:`, error);
+        continue;
+      }
     }
 
     // Create Item record at root level
@@ -725,9 +785,9 @@ async function seedMovies(
         parentId: null,
         order: startOrder + i,
         depth: 0,
-        driveConnectionId: ctx.connectionId,
+        driveConnectionId: ctx?.connectionId || null,
         driveFileId: movieDriveFolderId,
-        syncStatus: SyncStatus.SYNCED,
+        syncStatus: movieDriveFolderId ? SyncStatus.SYNCED : SyncStatus.PENDING,
       },
     });
 
@@ -752,13 +812,14 @@ async function seedMovies(
 
 /**
  * Seeds all episodes for a season.
+ * Respects SEED_SKIP_DRIVE flag.
  */
 async function seedEpisodes(
   episodes: TMDBEpisode[],
   seasonItemId: string,
-  seasonDriveFolderId: string,
+  seasonDriveFolderId: string | null,
   userId: string,
-  ctx: DriveContext
+  ctx: DriveContext | null
 ): Promise<number> {
   let count = 0;
 
@@ -775,20 +836,22 @@ async function seedEpisodes(
       `E${String(episode.episode_number).padStart(2, "0")} - ${episode.name}`
     );
 
-    // Create Drive folder for episode (with error handling)
-    let episodeDriveFolderId: string;
-    try {
-      episodeDriveFolderId = await createDriveFolder(
-        ctx,
-        episodeName,
-        seasonDriveFolderId
-      );
-    } catch (error) {
-      console.error(
-        `      ❌ Failed to create Drive folder for ${episodeName}:`,
-        error
-      );
-      continue; // Skip this episode but continue with others
+    // Create Drive folder for episode (skip if SEED_SKIP_DRIVE)
+    let episodeDriveFolderId: string | null = null;
+    if (!SEED_SKIP_DRIVE && ctx && seasonDriveFolderId) {
+      try {
+        episodeDriveFolderId = await createDriveFolder(
+          ctx,
+          episodeName,
+          seasonDriveFolderId
+        );
+      } catch (error) {
+        console.error(
+          `      ❌ Failed to create Drive folder for ${episodeName}:`,
+          error
+        );
+        continue; // Skip this episode but continue with others
+      }
     }
 
     // Create episode Item
@@ -801,9 +864,11 @@ async function seedEpisodes(
         parentId: seasonItemId,
         order: i, // Array index, not episode_number
         depth: 2,
-        driveConnectionId: ctx.connectionId,
+        driveConnectionId: ctx?.connectionId || null,
         driveFileId: episodeDriveFolderId,
-        syncStatus: SyncStatus.SYNCED,
+        syncStatus: episodeDriveFolderId
+          ? SyncStatus.SYNCED
+          : SyncStatus.PENDING,
       },
     });
 
@@ -826,6 +891,7 @@ async function seedEpisodes(
 
 /**
  * Seeds all seasons for a TV show.
+ * Respects SEED_SKIP_DRIVE flag.
  *
  * Note: Season 0 (specials) is intentionally skipped.
  * TMDB stores specials in Season 0, but they're often incomplete
@@ -834,11 +900,11 @@ async function seedEpisodes(
 async function seedSeasons(
   tvId: number,
   showItemId: string,
-  showDriveFolderId: string,
+  showDriveFolderId: string | null,
   showName: string,
   numberOfSeasons: number,
   userId: string,
-  ctx: DriveContext
+  ctx: DriveContext | null
 ): Promise<number> {
   let totalItems = 0;
 
@@ -851,7 +917,7 @@ async function seedSeasons(
   // Start at 1 to skip Season 0 (specials)
   for (let seasonNum = 1; seasonNum <= maxSeasons; seasonNum++) {
     // Progress logging
-    console.log(`    ⏳ Fetching season ${seasonNum}/${maxSeasons}...`);
+    log(`    ⏳ Fetching season ${seasonNum}/${maxSeasons}...`);
 
     // Rate limiting
     await sleep(TMDB_API_DELAY_MS);
@@ -875,20 +941,22 @@ async function seedSeasons(
 
     const seasonName = sanitizeFolderName(season.name || `Season ${seasonNum}`);
 
-    // Create Drive folder for season (with error handling)
-    let seasonDriveFolderId: string;
-    try {
-      seasonDriveFolderId = await createDriveFolder(
-        ctx,
-        seasonName,
-        showDriveFolderId
-      );
-    } catch (error) {
-      console.error(
-        `    ❌ Failed to create Drive folder for ${seasonName}:`,
-        error
-      );
-      continue; // Skip this season but continue with others
+    // Create Drive folder for season (skip if SEED_SKIP_DRIVE)
+    let seasonDriveFolderId: string | null = null;
+    if (!SEED_SKIP_DRIVE && ctx && showDriveFolderId) {
+      try {
+        seasonDriveFolderId = await createDriveFolder(
+          ctx,
+          seasonName,
+          showDriveFolderId
+        );
+      } catch (error) {
+        console.error(
+          `    ❌ Failed to create Drive folder for ${seasonName}:`,
+          error
+        );
+        continue; // Skip this season but continue with others
+      }
     }
 
     // Create season Item
@@ -900,9 +968,11 @@ async function seedSeasons(
         parentId: showItemId,
         order: seasonNum - 1, // 0-indexed order
         depth: 1,
-        driveConnectionId: ctx.connectionId,
+        driveConnectionId: ctx?.connectionId || null,
         driveFileId: seasonDriveFolderId,
-        syncStatus: SyncStatus.SYNCED,
+        syncStatus: seasonDriveFolderId
+          ? SyncStatus.SYNCED
+          : SyncStatus.PENDING,
       },
     });
 
@@ -927,7 +997,7 @@ async function seedSeasons(
     );
 
     totalItems += 1 + episodeCount;
-    console.log(`    📁 ${seasonName} (${episodeCount} episodes)`);
+    log(`    📁 ${seasonName} (${episodeCount} episodes)`);
   }
 
   return totalItems;
@@ -936,17 +1006,19 @@ async function seedSeasons(
 /**
  * Seeds TV shows for a user with Drive integration.
  * Creates hierarchical structure: Show → Seasons → Episodes.
+ * Respects SEED_SKIP_DRIVE flag.
  */
 async function seedTVShows(
   userId: string,
-  ctx: DriveContext,
+  ctx: DriveContext | null,
   startOrder: number,
   progress: SeedProgress
 ): Promise<number> {
   let count = 0;
+  const tvShowIds = getEffectiveTVShowIds();
 
-  for (let i = 0; i < TV_SHOW_IDS.length; i++) {
-    const showId = TV_SHOW_IDS[i];
+  for (let i = 0; i < tvShowIds.length; i++) {
+    const showId = tvShowIds[i];
 
     // Rate limiting
     await sleep(TMDB_API_DELAY_MS);
@@ -964,13 +1036,19 @@ async function seedTVShows(
     );
     const description = truncateOverview(show.overview);
 
-    // Create folder for this show in Drive (directly under root)
-    let showDriveFolderId: string;
-    try {
-      showDriveFolderId = await createDriveFolder(ctx, name, ctx.rootFolderId);
-    } catch (error) {
-      console.error(`❌ Failed to create Drive folder for ${name}:`, error);
-      continue;
+    // Create folder for this show in Drive (skip if SEED_SKIP_DRIVE)
+    let showDriveFolderId: string | null = null;
+    if (!SEED_SKIP_DRIVE && ctx) {
+      try {
+        showDriveFolderId = await createDriveFolder(
+          ctx,
+          name,
+          ctx.rootFolderId
+        );
+      } catch (error) {
+        console.error(`❌ Failed to create Drive folder for ${name}:`, error);
+        continue;
+      }
     }
 
     // Create Item record at root level
@@ -982,9 +1060,9 @@ async function seedTVShows(
         parentId: null,
         order: startOrder + i,
         depth: 0,
-        driveConnectionId: ctx.connectionId,
+        driveConnectionId: ctx?.connectionId || null,
         driveFileId: showDriveFolderId,
-        syncStatus: SyncStatus.SYNCED,
+        syncStatus: showDriveFolderId ? SyncStatus.SYNCED : SyncStatus.PENDING,
       },
     });
 
@@ -1062,9 +1140,13 @@ async function cleanupOnFailure(userId: string): Promise<void> {
 
 /**
  * Main seed function.
+ * Respects SEED_SKIP_DRIVE to optionally skip Google Drive integration.
  */
 async function main(): Promise<void> {
-  console.log("\n🌱 Starting database seed with Google Drive integration...\n");
+  const driveLabel = SEED_SKIP_DRIVE ? "without" : "with";
+  log(
+    `\n🌱 Starting database seed ${driveLabel} Google Drive integration...\n`
+  );
 
   // Validate environment
   validateEnvironment();
@@ -1082,18 +1164,23 @@ async function main(): Promise<void> {
   // Seed content for first user only (demo user)
   const demoUserId = userIds[0];
   if (demoUserId) {
-    console.log("\n📚 Seeding content for demo user...\n");
+    log("\n📚 Seeding content for demo user...\n");
 
     try {
-      // Create Drive connection
-      const ctx = await createDriveConnection(demoUserId);
+      // Create Drive connection only if not skipping Drive
+      let ctx: DriveContext | null = null;
+      if (!SEED_SKIP_DRIVE) {
+        ctx = await createDriveConnection(demoUserId);
+      }
 
-      // Initialize progress tracking
+      // Initialize progress tracking with effective IDs
+      const effectiveMovieIds = getEffectiveMovieIds();
+      const effectiveTVShowIds = getEffectiveTVShowIds();
       const progress: SeedProgress = {
         startTime: Date.now(),
-        totalShows: TV_SHOW_IDS.length,
+        totalShows: effectiveTVShowIds.length,
         completedShows: 0,
-        totalMovies: MOVIE_IDS.length,
+        totalMovies: effectiveMovieIds.length,
         completedMovies: 0,
       };
 
@@ -1101,10 +1188,12 @@ async function main(): Promise<void> {
       const tvCount = await seedTVShows(demoUserId, ctx, movieCount, progress);
 
       const totalTime = Math.round((Date.now() - progress.startTime) / 1000);
-      console.log(
+      log(
         `\n✅ Seeded ${movieCount} movies and ${tvCount} TV show items in ${totalTime}s`
       );
-      console.log(`   📁 Content synced to Google Drive`);
+      if (!SEED_SKIP_DRIVE) {
+        log(`   📁 Content synced to Google Drive`);
+      }
     } catch (error) {
       console.error("\n❌ Seed failed:", error);
       await cleanupOnFailure(demoUserId);
@@ -1112,12 +1201,11 @@ async function main(): Promise<void> {
     }
   }
 
-  console.log("\n🎉 Seeding complete!\n");
-  console.log("Login credentials:");
-  console.log(`  Email: demo@canoncore.com`);
-  console.log(
-    `  Password: ${process.env.SEED_PASSWORD || DEFAULT_SEED_PASSWORD}\n`
-  );
+  log("\n🎉 Seeding complete!\n");
+  const seedUsers = getEffectiveSeedUsers();
+  log("Login credentials:");
+  log(`  Email: ${seedUsers[0]?.email || "demo@canoncore.com"}`);
+  log(`  Password: ${process.env.SEED_PASSWORD || DEFAULT_SEED_PASSWORD}\n`);
 }
 
 main()
