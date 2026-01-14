@@ -171,7 +171,9 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── use-artwork-upload.ts         # Artwork upload flow with progress
 │   ├── use-controllable-state.ts     # Controlled/uncontrolled component state
 │   ├── use-hero-collapse.ts          # Hero section scroll-triggered collapse
+│   ├── use-image-loaded.ts           # Cached image detection for reliable loading
 │   ├── use-items-sort-filter.ts      # Sort/filter state with localStorage persistence
+│   ├── use-lazy-image.ts             # Intersection Observer lazy loading with priority
 │   ├── use-mobile.ts                 # Mobile breakpoint hook
 │   ├── use-online-status.ts          # Browser online/offline status hook
 │   └── use-tree-collapse.ts          # Shared tree collapse/expand state
@@ -224,7 +226,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── generate-refresh-token.ts     # Google Drive token generator for E2E tests
 │   └── setup-e2e-drive.ts            # E2E Drive environment setup
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 2.5.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 2.6.0)
     └── plans/                        # Design documents
 ```
 
@@ -362,7 +364,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 1192 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system, sync queue, sync history
+- 1225 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system, sync queue, sync history, image loading hooks
 
 ### E2E Testing
 

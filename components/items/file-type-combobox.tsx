@@ -22,6 +22,7 @@ import {
   CloudOff,
   ImageIcon,
 } from "lucide-react";
+import { useImageLoaded } from "@/hooks/use-image-loaded";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -58,7 +59,7 @@ import type { Accept } from "react-dropzone";
 
 /**
  * Artwork thumbnail with load state tracking for smooth fade-in.
- * Shows image icon placeholder while loading.
+ * Uses useImageLoaded hook for cached image detection.
  */
 function ArtworkThumbnail({
   fileId,
@@ -67,7 +68,8 @@ function ArtworkThumbnail({
   fileId: string;
   size?: "sm" | "md";
 }) {
-  const [loaded, setLoaded] = useState(false);
+  const artworkSrc = `/api/artwork/${fileId}`;
+  const { ref, loaded, onLoad, onError } = useImageLoaded(artworkSrc);
   const sizeClass = size === "sm" ? "size-5" : "size-6";
   const iconSize = size === "sm" ? "size-3" : "size-3.5";
 
@@ -86,13 +88,15 @@ function ArtworkThumbnail({
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={`/api/artwork/${fileId}`}
+        ref={ref}
+        src={artworkSrc}
         alt=""
         className={cn(
           "absolute inset-0 h-full w-full object-cover transition-opacity duration-150",
           loaded ? "opacity-100" : "opacity-0"
         )}
-        onLoad={() => setLoaded(true)}
+        onLoad={onLoad}
+        onError={onError}
       />
     </div>
   );

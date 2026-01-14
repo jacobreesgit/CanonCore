@@ -6,10 +6,12 @@
 
 "use client";
 
-import React, { forwardRef, HTMLAttributes, useState } from "react";
+import React, { forwardRef, useCallback, HTMLAttributes } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { Folder, GripVertical, Play } from "lucide-react";
+import { useImageLoaded } from "@/hooks/use-image-loaded";
+import { useLazyImage } from "@/hooks/use-lazy-image";
 import { ItemStats } from "@/components/items/item-stats";
 import { SyncIcon } from "@/components/items/sync-badge";
 import type { FileCounts, SyncStatus } from "@/lib/types";
@@ -40,12 +42,12 @@ export interface GridItemProps extends Omit<
   childCount?: number;
   /** Sync status for displaying indicator. */
   syncStatus?: SyncStatus;
-  /** Sync error message if status is ERROR. */
-  syncError?: string | null;
   /** Primary media filename for "now playing" display. */
   primaryMediaName?: string | null;
   /** Media icon type: film (all video), music (all audio), mixed (both). */
   mediaIconType?: "film" | "music" | "mixed" | null;
+  /** Load image immediately without waiting for viewport. */
+  priority?: boolean;
 }
 
 export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
@@ -67,15 +69,41 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       fileCounts,
       childCount,
       syncStatus,
-      syncError: _syncError, // eslint-disable-line @typescript-eslint/no-unused-vars
       primaryMediaName,
       mediaIconType,
+      priority = false,
       ...props
     },
     ref
   ) {
-    const [imageLoaded, setImageLoaded] = useState(false);
-    const [imageError, setImageError] = useState(false);
+    const artworkSrc = artworkId ? `/api/artwork/${artworkId}` : undefined;
+
+    // Lazy loading - priority items load immediately, others wait for viewport
+    const { ref: lazyRef, shouldLoad } = useLazyImage({
+      priority,
+      rootMargin: "200px",
+    });
+
+    // Combine forwarded ref with lazy loading ref
+    const combinedRef = useCallback(
+      (node: HTMLDivElement | null) => {
+        if (typeof ref === "function") {
+          ref(node);
+        } else if (ref) {
+          ref.current = node;
+        }
+        lazyRef(node);
+      },
+      [ref, lazyRef]
+    );
+
+    const {
+      ref: imgRef,
+      loaded: imageLoaded,
+      error: imageError,
+      onLoad,
+      onError,
+    } = useImageLoaded(artworkSrc);
     const shouldShowArtwork = showArtwork && artworkId && !imageError;
     const shouldShowDescription = showDescription && description;
     const shouldShowCounts = showCounts;
@@ -83,7 +111,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
 
     return (
       <div
-        ref={ref}
+        ref={combinedRef}
         data-id={String(id)}
         onClick={onClick}
         role="button"
@@ -118,19 +146,20 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
         style={style}
         {...props}
       >
-        {/* Artwork image - uses img element for reliable load tracking */}
-        {shouldShowArtwork && (
+        {/* Artwork image - lazy loaded, uses img element for reliable load tracking */}
+        {shouldShowArtwork && shouldLoad && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={`/api/artwork/${artworkId}`}
+            ref={imgRef}
+            src={artworkSrc}
             alt=""
             className={cn(
               "absolute inset-0 z-0 h-full w-full object-cover",
               "transition-opacity duration-200",
               imageLoaded ? "opacity-100" : "opacity-0"
             )}
-            onLoad={() => setImageLoaded(true)}
-            onError={() => setImageError(true)}
+            onLoad={onLoad}
+            onError={onError}
           />
         )}
 

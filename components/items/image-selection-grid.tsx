@@ -6,8 +6,8 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import Image from "next/image";
 import { Check, ImageOff, ImageIcon, SkipForward, Globe } from "lucide-react";
+import { useImageLoaded } from "@/hooks/use-image-loaded";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -266,7 +266,7 @@ interface ImageThumbnailProps {
 
 /**
  * Individual TMDB image thumbnail with selection state.
- * Tracks load state for smooth fade-in transition.
+ * Uses useImageLoaded hook for cached image detection.
  */
 function ImageThumbnail({
   src,
@@ -279,8 +279,13 @@ function ImageThumbnail({
   badge,
   isTextless,
 }: ImageThumbnailProps) {
-  const [hasError, setHasError] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const {
+    ref,
+    loaded: isLoaded,
+    error: hasError,
+    onLoad,
+    onError,
+  } = useImageLoaded(src ?? undefined);
 
   if (!src || hasError) {
     return (
@@ -326,17 +331,17 @@ function ImageThumbnail({
           <ImageIcon className="text-muted-foreground/50 size-8" />
         </div>
       )}
-      <Image
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        ref={ref}
         src={src}
         alt={alt}
-        fill
         className={cn(
-          "z-10 object-cover transition-opacity duration-150",
+          "absolute inset-0 z-10 h-full w-full object-cover transition-opacity duration-150",
           isLoaded ? "opacity-100" : "opacity-0"
         )}
-        sizes={aspectClass.includes("2/3") ? "150px" : "200px"}
-        onLoad={() => setIsLoaded(true)}
-        onError={() => setHasError(true)}
+        onLoad={onLoad}
+        onError={onError}
       />
 
       {/* Selection checkmark overlay */}
@@ -384,7 +389,7 @@ interface ExistingFileThumbnailProps {
 
 /**
  * Thumbnail for user's existing uploaded artwork file.
- * Tracks load state for smooth fade-in transition.
+ * Uses useImageLoaded hook for cached image detection.
  */
 function ExistingFileThumbnail({
   file,
@@ -394,11 +399,15 @@ function ExistingFileThumbnail({
   disabled,
   onClick,
 }: ExistingFileThumbnailProps) {
-  const [hasError, setHasError] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
-
   // Stream from our artwork API
   const src = file.driveFileId ? `/api/artwork/${file.driveFileId}` : null;
+  const {
+    ref,
+    loaded: isLoaded,
+    error: hasError,
+    onLoad,
+    onError,
+  } = useImageLoaded(src ?? undefined);
 
   if (!src || hasError) {
     return (
@@ -446,17 +455,18 @@ function ExistingFileThumbnail({
           <ImageIcon className="text-muted-foreground/50 size-8" />
         </div>
       )}
-      <Image
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        ref={ref}
         src={src}
         alt={file.filename}
-        fill
+        data-testid="image"
         className={cn(
-          "z-10 object-cover transition-opacity duration-150",
+          "absolute inset-0 z-10 h-full w-full object-cover transition-opacity duration-150",
           isLoaded ? "opacity-100" : "opacity-0"
         )}
-        sizes="150px"
-        onLoad={() => setIsLoaded(true)}
-        onError={() => setHasError(true)}
+        onLoad={onLoad}
+        onError={onError}
       />
 
       {/* Selection checkmark overlay */}
