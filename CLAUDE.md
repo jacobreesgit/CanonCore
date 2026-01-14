@@ -71,7 +71,10 @@ pnpm run test:e2e:ui                        # UI mode
 ├── components/
 │   ├── google-drive/                 # Google Drive integration
 │   │   ├── oauth-toast.tsx           # OAuth result notifications
-│   │   └── settings-section.tsx      # Drive connection UI in Settings
+│   │   ├── pending-indicator.tsx     # Pending sync operations badge
+│   │   ├── settings-section.tsx      # Drive connection UI in Settings
+│   │   ├── storage-bar.tsx           # Storage quota progress bar
+│   │   └── sync-history.tsx          # Sync activity history panel
 │   ├── items/                        # Items feature components
 │   │   ├── add-item-dialog.tsx       # Modal dialog for item creation with TMDB search
 │   │   ├── edit-mode-toggle.tsx      # Edit/Done button for reordering mode
@@ -119,7 +122,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   └── utilities.ts              # Tree manipulation helpers
 │   ├── providers/
 │   │   └── theme-provider.tsx        # next-themes provider wrapper
-│   ├── ui/                           # shadcn/ui + animated-dialog-content.tsx, checkbox.tsx, command.tsx, dropzone.tsx, kbd.tsx, password-input.tsx, radio-group.tsx, scroll-area.tsx, select.tsx, tabs.tsx
+│   ├── ui/                           # shadcn/ui + animated-dialog-content.tsx, checkbox.tsx, command.tsx, dropzone.tsx, kbd.tsx, password-input.tsx, progress.tsx, radio-group.tsx, scroll-area.tsx, select.tsx, tabs.tsx
 │   ├── app-sidebar.tsx               # Context-aware navigation sidebar
 │   ├── error-boundary.tsx            # React error boundary for graceful error handling
 │   ├── my-items-providers.tsx        # Client-side providers for protected routes
@@ -156,6 +159,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   └── vitest.config.ts
 │   ├── integration/
 │   │   ├── auth/                     # Auth integration tests
+│   │   ├── google-drive/             # Google Drive integration tests (batch operations)
 │   │   ├── items/                    # Items integration tests (CRUD, hierarchy)
 │   │   ├── user/                     # User profile integration tests
 │   │   ├── setup.ts                  # DB cleanup, env loading, rate-limit bypass
@@ -169,6 +173,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── use-hero-collapse.ts          # Hero section scroll-triggered collapse
 │   ├── use-items-sort-filter.ts      # Sort/filter state with localStorage persistence
 │   ├── use-mobile.ts                 # Mobile breakpoint hook
+│   ├── use-online-status.ts          # Browser online/offline status hook
 │   └── use-tree-collapse.ts          # Shared tree collapse/expand state
 ├── content/
 │   └── docs/                         # MDX documentation pages (22 files)
@@ -181,6 +186,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── env.ts                        # Zod environment variable validation
 │   ├── file-type-utils.ts            # Media/artwork/subtitle categorization
 │   ├── google-drive-actions.ts       # Google Drive connection management
+│   ├── google-drive-batch.ts         # Batch API request/response handling
 │   ├── google-drive-client.ts        # Google Drive API client with OAuth
 │   ├── google-drive-sync.ts          # Bidirectional sync operations
 │   ├── google-drive-upload.ts        # Browser-to-Drive upload operations
@@ -189,18 +195,23 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── item-utils.ts                 # Tree/flat conversion, sortItems(), filterItems(), descendant counter
 │   ├── logger.ts                     # Pino structured logging with request context
 │   ├── prisma.ts                     # Prisma client singleton
+│   ├── queue-aware-actions.ts        # Actions that queue when offline
 │   ├── rate-limit.ts                 # Upstash Redis rate limiting
 │   ├── source.ts                     # Fumadocs source configuration
+│   ├── sync-log.ts                   # Sync history server actions
+│   ├── sync-queue.ts                 # IndexedDB queue for offline operations
+│   ├── sync-queue-processor.ts       # Queue retry with exponential backoff
+│   ├── sync-utils.ts                 # Shared sync types and utilities
 │   ├── tmdb-actions.ts               # TMDB metadata server actions
 │   ├── tmdb-client.ts                # TMDB API client for movie/TV metadata
-│   ├── types.ts                      # Shared types (Item, ItemFile, SortOption, FilterOption, ViewMode, QueuedFile, TMDBMetadataSelection)
+│   ├── types.ts                      # Shared types (Item, ItemFile, SortOption, FilterOption, ViewMode, QueuedFile, TMDBMetadataSelection, SyncLogEntry)
 │   ├── upload-utils.ts               # Browser-to-Drive upload utilities
 │   ├── user-actions.ts               # User profile server actions
 │   ├── utils.ts                      # cn() helper
 │   └── validations.ts                # Zod schemas (auth, items, uploads)
 ├── prisma/
 │   ├── migrations/                   # Database migrations
-│   ├── schema.prisma                 # User, PasswordReset, Item, ItemFile, GoogleDriveConnection
+│   ├── schema.prisma                 # User, PasswordReset, Item, ItemFile, GoogleDriveConnection, SyncLog
 │   ├── seed.ts                       # Database seeding with TMDB + Drive integration
 │   ├── seed-config.ts                # Seed configuration (movie/TV IDs, limits)
 │   └── seed-cleanup.ts               # Safe cleanup with protected folders
@@ -213,7 +224,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── generate-refresh-token.ts     # Google Drive token generator for E2E tests
 │   └── setup-e2e-drive.ts            # E2E Drive environment setup
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 2.4.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 2.5.0)
     └── plans/                        # Design documents
 ```
 
@@ -241,7 +252,8 @@ pnpm run test:e2e:ui                        # UI mode
 - Item has Google Drive fields: `driveFileId`, `driveModifiedAt`, `syncStatus`, `driveConnectionId`
 - ItemFile stores files per item: `filename`, `driveFileId`, `fileType`, `mimeType`, `playbackPosition`, `isPrimary`, `isHero`
 - GoogleDriveConnection stores encrypted OAuth tokens with AES-256-GCM
-- Enums: `FileType` (MEDIA, ARTWORK, SUBTITLE), `SyncStatus` (SYNCED, PENDING, SYNCING, ERROR)
+- SyncLog tracks sync operations with action type, status, and duration
+- Enums: `FileType` (MEDIA, ARTWORK, SUBTITLE), `SyncStatus` (SYNCED, PENDING, SYNCING, ERROR), `SyncLogAction` (CREATE, RENAME, DELETE, MOVE, UPLOAD, DOWNLOAD, SYNC), `SyncLogStatus` (SUCCESS, FAILED, PENDING)
 - Config in `prisma.config.ts` (loads DATABASE_URL from .env.local)
 - Run migrations: `npx prisma migrate dev`
 
@@ -311,6 +323,11 @@ pnpm run test:e2e:ui                        # UI mode
 - **Modular server actions**: `google-drive-actions.ts` (connection), `google-drive-sync.ts` (sync), `google-drive-upload.ts` (uploads)
 - **Circuit breaker**: Protects against cascade failures (5 failures, 60s recovery)
 - **Trashed folder detection**: Detects when CanonCore folder is in Trash and shows recovery guidance
+- **Offline sync queue**: IndexedDB-based queue for operations when offline (max 100 ops, 5 retries, exponential backoff)
+- **Sync history**: Server-side audit log of sync operations with success/failure status
+- **Storage quota display**: Visual progress bar with warning (80%) and critical (95%) states
+- **Batch API**: Combines multiple operations into single HTTP requests (max 100 per batch)
+- **Pending indicator component**: PendingIndicator component available for showing queued operation count
 
 ### Media Playback
 
@@ -345,7 +362,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 1086 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system
+- 1192 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system, sync queue, sync history
 
 ### E2E Testing
 

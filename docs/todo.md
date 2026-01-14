@@ -1,7 +1,7 @@
 - MVP:
-- storage quota - validated
-- sync operation - validated
-- batch operation - validated
+- need to fix images
+- Large File Streaming Upload (2.1)
+- always see dialog footer. check if this is good ux.
 
 - in one and validated:
 - empty states - Somse edge cases show blank screens
@@ -19,10 +19,8 @@
 - None:
 - preloading
 - Quota Check Script (2.4 admin script)
-- Large File Streaming Upload (2.1)
 - Conflict Resolution (2.2)
 - tmdb makes children
-- always see dialog footer. check if this is good ux.
 - ask what else plex and jellyfin does
 - tags?
 - refactor wizard state in add-item-dialog and item-settings-dialog to use useReducer for cleaner state management

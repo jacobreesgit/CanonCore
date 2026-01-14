@@ -8,7 +8,13 @@
 "use client";
 
 import * as React from "react";
-import { useState, useRef, useLayoutEffect, useCallback } from "react";
+import {
+  useState,
+  useRef,
+  useLayoutEffect,
+  useCallback,
+  useEffect,
+} from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { XIcon } from "lucide-react";
@@ -117,11 +123,17 @@ function AnimatedDialogContent({
   ...props
 }: AnimatedDialogContentProps) {
   const shouldReduceMotion = useReducedMotion() ?? false;
+  const contentRef = useRef<HTMLDivElement>(null);
   // Track if this is the first render (no motion) vs step changes (with motion)
   const [state, setState] = useState({
     height: 0,
     isFirstRender: true,
   });
+
+  // Reset scroll position when step changes
+  useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0 });
+  }, [stepKey]);
 
   // Stable callback for height updates
   const handleHeightReady = useCallback((newHeight: number) => {
@@ -141,6 +153,7 @@ function AnimatedDialogContent({
           className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
         />
         <DialogPrimitive.Content
+          ref={contentRef}
           data-slot="dialog-content"
           onOpenAutoFocus={(e) => e.preventDefault()}
           className={cn(
@@ -181,6 +194,7 @@ function AnimatedDialogContent({
         className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
       />
       <DialogPrimitive.Content
+        ref={contentRef}
         data-slot="dialog-content"
         onOpenAutoFocus={(e) => e.preventDefault()}
         className={cn(

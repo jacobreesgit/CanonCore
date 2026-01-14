@@ -11,10 +11,11 @@ import { itemNameSchema, itemDescriptionSchema } from "@/lib/validations";
 import { checkRateLimit } from "@/lib/rate-limit";
 import {
   createDriveFolderOnly,
-  deleteItemFromGoogleDrive,
   renameItemInGoogleDrive,
   moveItemInGoogleDrive,
 } from "@/lib/google-drive-actions";
+import { batchDelete } from "@/lib/google-drive-client";
+import { decryptCredential } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
 import type {
   Item,
@@ -622,7 +623,7 @@ export async function updateItem(
 /**
  * Deletes an item and all descendants.
  * Verifies ownership before delete.
- * Deletes from Google Drive first if item is connected.
+ * Uses batch delete for Google Drive when item has descendants.
  *
  * @param id - Item ID
  * @returns Success or error
@@ -652,15 +653,58 @@ export async function deleteItem(id: string): Promise<ItemResult> {
     return { error: "Unauthorized" };
   }
 
-  // Delete from Drive first if connected (moves to trash, recoverable)
+  // Batch delete from Drive if connected (moves to trash, recoverable)
   if (item.driveFileId && item.driveConnectionId) {
-    const driveResult = await deleteItemFromGoogleDrive(id);
-    if (!driveResult.success) {
+    try {
+      // Get connection for access token
+      const connection = await prisma.googleDriveConnection.findUnique({
+        where: { userId: session.user.id },
+      });
+
+      if (connection) {
+        // Get all descendant driveFileIds using recursive CTE
+        const descendants = await prisma.$queryRaw<
+          { driveFileId: string | null }[]
+        >`
+          WITH RECURSIVE descendants AS (
+            SELECT id, "driveFileId"
+            FROM "Item"
+            WHERE "parentId" = ${id} AND "userId" = ${session.user.id}
+            UNION ALL
+            SELECT i.id, i."driveFileId"
+            FROM "Item" i
+            INNER JOIN descendants d ON i."parentId" = d.id
+            WHERE i."userId" = ${session.user.id}
+          )
+          SELECT "driveFileId" FROM descendants
+        `;
+
+        // Collect all driveFileIds (parent + descendants), filtering nulls
+        const driveFileIds = [
+          item.driveFileId,
+          ...descendants
+            .map((d) => d.driveFileId)
+            .filter((id): id is string => id !== null),
+        ];
+
+        // Decrypt access token and batch delete
+        if (!connection.encryptedAccessToken) {
+          throw new Error("No access token available");
+        }
+        const accessToken = decryptCredential(connection.encryptedAccessToken);
+        const result = await batchDelete(accessToken, driveFileIds);
+
+        // Log any failures but continue with local delete
+        if (result.failed.length > 0) {
+          logger.warn(
+            { itemId: id, failed: result.failed },
+            "Some Drive files failed to delete"
+          );
+        }
+      }
+    } catch (error) {
       // Log but continue with local delete
-      logger.error(
-        { error: driveResult.error, itemId: id },
-        "Failed to delete from Drive"
-      );
+      logger.error({ error, itemId: id }, "Failed to batch delete from Drive");
     }
   }
 

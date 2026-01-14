@@ -33,6 +33,9 @@ model User {
 
   // Single Google Drive connection (optional)
   googleDriveConnection GoogleDriveConnection?
+
+  // Sync history
+  syncLogs              SyncLog[]
 }
 
 model PasswordReset {
@@ -50,6 +53,24 @@ enum FileType {
   MEDIA
   ARTWORK
   SUBTITLE
+}
+
+/// Actions that can be tracked in sync history
+enum SyncLogAction {
+  CREATE
+  RENAME
+  DELETE
+  MOVE
+  UPLOAD
+  DOWNLOAD
+  SYNC
+}
+
+/// Status of a sync log entry (distinct from Item SyncStatus)
+enum SyncLogStatus {
+  SUCCESS
+  FAILED
+  PENDING
 }
 
 enum SyncStatus {
@@ -179,4 +200,32 @@ model ItemFile {
   @@index([fileType])
   @@index([itemId, fileType, isPrimary])
   @@index([itemId, driveFileId])
+}
+
+model SyncLog {
+  id          String         @id @default(cuid())
+  userId      String
+
+  // What happened
+  action      SyncLogAction  // Type-safe enum for action type
+  itemId      String?        // Related item (if applicable)
+  itemName    String?        // Snapshot of item name at time of action
+  fileId      String?        // Related file (if applicable)
+  fileName    String?        // Snapshot of file name at time of action
+
+  // Result
+  status      SyncLogStatus  // Type-safe enum for status
+  error       String?        // Sanitized error message if failed
+  duration    Int?           // Milliseconds
+
+  // Timestamps
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Indexes optimized for common query patterns
+  @@index([userId, createdAt(sort: Desc)])  // Recent activity by user
+  @@index([userId, status])                  // Filter by status per user
+  @@index([createdAt])                       // For cleanup job
 }

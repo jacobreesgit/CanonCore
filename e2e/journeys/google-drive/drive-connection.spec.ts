@@ -287,4 +287,88 @@ test.describe("Google Drive: OAuth Connection", () => {
       page.getByRole("link", { name: /^drive$/i })
     ).not.toBeVisible();
   });
+
+  test("displays storage quota in settings when quota data exists", async ({
+    page,
+    testUser,
+  }) => {
+    // Create connection with quota data
+    await prisma.googleDriveConnection.upsert({
+      where: { userId: testUser.id },
+      update: {
+        quotaBytesUsed: BigInt("8053063680"), // 7.5 GB
+        quotaBytesTotal: BigInt("16106127360"), // 15 GB
+        isActive: true,
+        needsReauth: false,
+        lastError: null,
+      },
+      create: {
+        userId: testUser.id,
+        name: "Test Google Drive",
+        email: "test@example.com",
+        encryptedAccessToken: encryptCredential("test-token"),
+        encryptedRefreshToken: encryptCredential("test-refresh"),
+        accessTokenExpiry: new Date(Date.now() + 3600000),
+        rootFolderId: "test-folder-id",
+        quotaBytesUsed: BigInt("8053063680"), // 7.5 GB
+        quotaBytesTotal: BigInt("16106127360"), // 15 GB
+        isActive: true,
+        needsReauth: false,
+      },
+    });
+
+    await page.reload();
+    await settingsPage.openFromNavUser();
+
+    // Verify storage bar is visible
+    await expect(page.getByRole("progressbar")).toBeVisible();
+    await expect(page.getByText(/GB/)).toBeVisible();
+
+    // Verify Manage Storage link points to Google One storage
+    const manageLink = page.getByRole("link", { name: /manage storage/i });
+    await expect(manageLink).toBeVisible();
+    await expect(manageLink).toHaveAttribute(
+      "href",
+      "https://one.google.com/storage"
+    );
+  });
+
+  test("does not show storage section when quota data is null", async ({
+    page,
+    testUser,
+  }) => {
+    // Create connection WITHOUT quota data
+    await prisma.googleDriveConnection.upsert({
+      where: { userId: testUser.id },
+      update: {
+        quotaBytesUsed: null,
+        quotaBytesTotal: null,
+        isActive: true,
+        needsReauth: false,
+        lastError: null,
+      },
+      create: {
+        userId: testUser.id,
+        name: "Test Google Drive",
+        email: "test@example.com",
+        encryptedAccessToken: encryptCredential("test-token"),
+        encryptedRefreshToken: encryptCredential("test-refresh"),
+        accessTokenExpiry: new Date(Date.now() + 3600000),
+        rootFolderId: "test-folder-id",
+        quotaBytesUsed: null,
+        quotaBytesTotal: null,
+        isActive: true,
+        needsReauth: false,
+      },
+    });
+
+    await page.reload();
+    await settingsPage.openFromNavUser();
+
+    // Should NOT show progress bar or Manage Storage link
+    await expect(page.getByRole("progressbar")).not.toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /manage storage/i })
+    ).not.toBeVisible();
+  });
 });
