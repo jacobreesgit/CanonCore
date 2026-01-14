@@ -1084,3 +1084,52 @@ describe("AddItemDialog - Summary View Layout", () => {
     expect(heroPreview).toBeInTheDocument();
   });
 });
+
+describe("AddItemDialog slot-based layout", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(isTMDBAvailable).mockResolvedValue(true);
+    vi.mocked(searchMediaAction).mockResolvedValue({
+      success: true,
+      data: [],
+    });
+  });
+
+  it("passes header prop to AnimatedDialogContent", async () => {
+    render(
+      <AddItemDialog
+        open
+        onOpenChange={() => {}}
+        onAdd={async () => undefined}
+      />
+    );
+
+    // Header should contain the dialog title
+    const header = await screen.findByRole("heading", { name: /create item/i });
+    expect(header).toBeInTheDocument();
+
+    // Header wrapper should have shrink-0
+    const headerWrapper = header.closest("[data-slot='dialog-header-wrapper']");
+    expect(headerWrapper).toBeInTheDocument();
+  });
+
+  it("passes footer prop to AnimatedDialogContent", async () => {
+    render(
+      <AddItemDialog
+        open
+        onOpenChange={() => {}}
+        onAdd={async () => undefined}
+      />
+    );
+
+    // Footer should contain action buttons
+    const createButton = await screen.findByRole("button", { name: /create/i });
+    expect(createButton).toBeInTheDocument();
+
+    // Footer wrapper should have shrink-0
+    const footerWrapper = createButton.closest(
+      "[data-slot='dialog-footer-wrapper']"
+    );
+    expect(footerWrapper).toBeInTheDocument();
+  });
+});

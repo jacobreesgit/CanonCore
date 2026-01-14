@@ -752,6 +752,310 @@ export function AddItemDialog({
   // Hide for episodes (no poster/backdrop) and when no TMDB selection in manual mode
   const showArtworkSection = !isEpisodeMode;
 
+  /**
+   * Gets the header content for the current step.
+   * Headers are rendered outside the animated area via slot-based API.
+   */
+  const getStepHeader = () => {
+    switch (currentStep) {
+      case "main":
+        return (
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                  "bg-primary/10 ring-primary/20 ring-1"
+                )}
+              >
+                <Plus className="text-primary size-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg">Create Item</DialogTitle>
+                <DialogDescription id={descriptionId} className="text-sm">
+                  {dialogHint}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        );
+      case "episode-picker":
+        return (
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleEpisodePickerBack}
+                className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                aria-label="Back"
+              >
+                <ChevronLeft className="size-5" />
+              </Button>
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                  "bg-blue-500/10 ring-1 ring-blue-500/20"
+                )}
+              >
+                {selectedSeason ? (
+                  <Film className="size-5 text-blue-500" />
+                ) : (
+                  <Tv className="size-5 text-blue-500" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-lg">
+                  {selectedSeason ? "Select Episode" : "Select Season"}
+                </DialogTitle>
+                <DialogDescription className="truncate text-sm">
+                  {selectedSeason ? selectedSeason.name : displayTitle}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        );
+      case "wizard-text":
+      case "wizard-poster":
+      case "wizard-hero":
+      case "wizard-summary":
+        return (
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleWizardBack}
+                className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                aria-label="Back"
+              >
+                <ChevronLeft className="size-5" />
+              </Button>
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                  "bg-amber-500/10 ring-1 ring-amber-500/20"
+                )}
+              >
+                <Sparkles className="size-5 text-amber-500" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
+                <DialogDescription className="text-sm">
+                  Step {wizardStepNumber} of 4:{" "}
+                  {currentStep === "wizard-text"
+                    ? "Title & Description"
+                    : currentStep === "wizard-poster"
+                      ? "Select Poster"
+                      : currentStep === "wizard-hero"
+                        ? "Select Hero"
+                        : "Review & Create"}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        );
+      case "change-poster":
+        return (
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleCancelArtworkChange}
+                className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                aria-label="Back"
+              >
+                <ChevronLeft className="size-5" />
+              </Button>
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                  "bg-violet-500/10 ring-1 ring-violet-500/20"
+                )}
+              >
+                <ImageIcon className="size-5 text-violet-500" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-lg">Change Poster</DialogTitle>
+                <DialogDescription className="text-sm">
+                  Select a different poster image
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        );
+      case "change-hero":
+        return (
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleCancelArtworkChange}
+                className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                aria-label="Back"
+              >
+                <ChevronLeft className="size-5" />
+              </Button>
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                  "bg-violet-500/10 ring-1 ring-violet-500/20"
+                )}
+              >
+                <ImageIcon className="size-5 text-violet-500" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-lg">Change Hero</DialogTitle>
+                <DialogDescription className="text-sm">
+                  Select a different hero/backdrop image
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        );
+      default:
+        return null;
+    }
+  };
+
+  /**
+   * Gets the footer content for the current step.
+   * Footers are rendered outside the animated area via slot-based API.
+   */
+  const getStepFooter = () => {
+    switch (currentStep) {
+      case "main":
+        return (
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={!name.trim() || isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create"
+              )}
+            </Button>
+          </DialogFooter>
+        );
+      case "episode-picker":
+        return (
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPendingTmdbResult(null);
+                setCurrentStep("main");
+              }}
+            >
+              Cancel
+            </Button>
+            {selectedSeason && (
+              <Button
+                variant="ghost"
+                onClick={() =>
+                  handleEpisodePickerSelect({
+                    type: "season",
+                    seasonNumber: selectedSeason.season_number,
+                  })
+                }
+              >
+                Use Season
+              </Button>
+            )}
+            <Button onClick={() => handleEpisodePickerSelect({ type: "show" })}>
+              Use Show
+            </Button>
+          </DialogFooter>
+        );
+      case "wizard-text":
+        return (
+          <DialogFooter>
+            <Button variant="outline" onClick={handleWizardCancel}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleWizardSkipAll}>
+              Skip All
+            </Button>
+            <Button onClick={handleWizardNext}>Next</Button>
+          </DialogFooter>
+        );
+      case "wizard-poster":
+        return (
+          <DialogFooter>
+            <Button variant="outline" onClick={handleWizardCancel}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleWizardSkipAll}>
+              Skip All
+            </Button>
+            <Button onClick={handleWizardNext}>Next</Button>
+          </DialogFooter>
+        );
+      case "wizard-hero":
+        return (
+          <DialogFooter>
+            <Button variant="outline" onClick={handleWizardCancel}>
+              Cancel
+            </Button>
+            <Button onClick={handleWizardNext}>Apply</Button>
+          </DialogFooter>
+        );
+      case "wizard-summary":
+        return (
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleWizardCancel}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={!name.trim() || isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create"
+              )}
+            </Button>
+          </DialogFooter>
+        );
+      case "change-poster":
+        return (
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelArtworkChange}>
+              Cancel
+            </Button>
+            <Button onClick={handleSavePosterChange}>Save</Button>
+          </DialogFooter>
+        );
+      case "change-hero":
+        return (
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelArtworkChange}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveHeroChange}>Save</Button>
+          </DialogFooter>
+        );
+      default:
+        return null;
+    }
+  };
+
   // Details tab content (shown before wizard completion)
   const detailsContent = (
     <div className="space-y-4">
@@ -867,112 +1171,24 @@ export function AddItemDialog({
       : pendingTmdbResult.title
     : "";
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <AnimatedDialogContent
-        stepKey={currentStep}
-        className="max-h-[90vh] overflow-y-auto"
-        aria-describedby={descriptionId}
-        onOpenAutoFocus={(e) => {
-          e.preventDefault();
-          const combobox = document.querySelector('[role="combobox"]');
-          if (combobox instanceof HTMLElement) {
-            combobox.focus();
-          }
-        }}
-      >
-        {/* Main Step */}
-        {currentStep === "main" && (
+  /**
+   * Gets the body content for the current step.
+   * Bodies are rendered inside the animated area.
+   */
+  const getStepBody = () => {
+    switch (currentStep) {
+      case "main":
+        return (
+          <div className="py-2">
+            <ItemDialogTabs
+              detailsContent={detailsContent}
+              filesContent={filesContent}
+            />
+          </div>
+        );
+      case "episode-picker":
+        return (
           <>
-            <DialogHeader>
-              <div className="flex items-center gap-3">
-                <div
-                  className={cn(
-                    "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                    "bg-primary/10 ring-primary/20 ring-1"
-                  )}
-                >
-                  <Plus className="text-primary size-5" />
-                </div>
-                <div>
-                  <DialogTitle className="text-lg">Create Item</DialogTitle>
-                  <DialogDescription id={descriptionId} className="text-sm">
-                    {dialogHint}
-                  </DialogDescription>
-                </div>
-              </div>
-            </DialogHeader>
-
-            {/* Tabbed interface for creating items without TMDB wizard */}
-            <div className="py-2">
-              <ItemDialogTabs
-                detailsContent={detailsContent}
-                filesContent={filesContent}
-              />
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isLoading}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={!name.trim() || isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  "Create"
-                )}
-              </Button>
-            </DialogFooter>
-          </>
-        )}
-
-        {/* Episode Picker Step */}
-        {currentStep === "episode-picker" && (
-          <>
-            <DialogHeader>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleEpisodePickerBack}
-                  className="hover:bg-muted/50 size-10 transition-all active:scale-95"
-                  aria-label="Back"
-                >
-                  <ChevronLeft className="size-5" />
-                </Button>
-                <div
-                  className={cn(
-                    "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                    "bg-blue-500/10 ring-1 ring-blue-500/20"
-                  )}
-                >
-                  {selectedSeason ? (
-                    <Film className="size-5 text-blue-500" />
-                  ) : (
-                    <Tv className="size-5 text-blue-500" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <DialogTitle className="text-lg">
-                    {selectedSeason ? "Select Episode" : "Select Season"}
-                  </DialogTitle>
-                  <DialogDescription className="truncate text-sm">
-                    {selectedSeason ? selectedSeason.name : displayTitle}
-                  </DialogDescription>
-                </div>
-              </div>
-            </DialogHeader>
-
             {/* Breadcrumb for episodes view */}
             {selectedSeason && (
               <div className="flex items-center gap-1 text-sm">
@@ -1040,70 +1256,12 @@ export function AddItemDialog({
                 </ScrollArea>
               )}
             </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setPendingTmdbResult(null);
-                  setCurrentStep("main");
-                }}
-              >
-                Cancel
-              </Button>
-              {selectedSeason && (
-                <Button
-                  variant="ghost"
-                  onClick={() =>
-                    handleEpisodePickerSelect({
-                      type: "season",
-                      seasonNumber: selectedSeason.season_number,
-                    })
-                  }
-                >
-                  Use Season
-                </Button>
-              )}
-              <Button
-                onClick={() => handleEpisodePickerSelect({ type: "show" })}
-              >
-                Use Show
-              </Button>
-            </DialogFooter>
           </>
-        )}
-
-        {/* Wizard Text Step */}
-        {currentStep === "wizard-text" && tmdbPreview && (
+        );
+      case "wizard-text":
+        if (!tmdbPreview) return null;
+        return (
           <>
-            <DialogHeader>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleWizardBack}
-                  className="hover:bg-muted/50 size-10 transition-all active:scale-95"
-                  aria-label="Back"
-                >
-                  <ChevronLeft className="size-5" />
-                </Button>
-                <div
-                  className={cn(
-                    "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                    "bg-amber-500/10 ring-1 ring-amber-500/20"
-                  )}
-                >
-                  <Sparkles className="size-5 text-amber-500" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
-                  <DialogDescription className="text-sm">
-                    Step {wizardStepNumber} of 4: Title & Description
-                  </DialogDescription>
-                </div>
-              </div>
-            </DialogHeader>
-
             {/* Step indicator */}
             <div className="flex gap-1.5 py-2">
               {[1, 2, 3, 4].map((step) => (
@@ -1124,50 +1282,11 @@ export function AddItemDialog({
               onOptionsChange={setTextOptions}
               disabled={false}
             />
-
-            <DialogFooter>
-              <Button variant="outline" onClick={handleWizardCancel}>
-                Cancel
-              </Button>
-              <Button variant="destructive" onClick={handleWizardSkipAll}>
-                Skip All
-              </Button>
-              <Button onClick={handleWizardNext}>Next</Button>
-            </DialogFooter>
           </>
-        )}
-
-        {/* Wizard Poster Step */}
-        {currentStep === "wizard-poster" && (
+        );
+      case "wizard-poster":
+        return (
           <>
-            <DialogHeader>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleWizardBack}
-                  className="hover:bg-muted/50 size-10 transition-all active:scale-95"
-                  aria-label="Back"
-                >
-                  <ChevronLeft className="size-5" />
-                </Button>
-                <div
-                  className={cn(
-                    "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                    "bg-amber-500/10 ring-1 ring-amber-500/20"
-                  )}
-                >
-                  <Sparkles className="size-5 text-amber-500" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
-                  <DialogDescription className="text-sm">
-                    Step {wizardStepNumber} of 4: Select Poster
-                  </DialogDescription>
-                </div>
-              </div>
-            </DialogHeader>
-
             {/* Step indicator */}
             <div className="flex gap-1.5 py-2">
               {[1, 2, 3, 4].map((step) => (
@@ -1198,50 +1317,11 @@ export function AddItemDialog({
                 disabled={false}
               />
             )}
-
-            <DialogFooter>
-              <Button variant="outline" onClick={handleWizardCancel}>
-                Cancel
-              </Button>
-              <Button variant="destructive" onClick={handleWizardSkipAll}>
-                Skip All
-              </Button>
-              <Button onClick={handleWizardNext}>Next</Button>
-            </DialogFooter>
           </>
-        )}
-
-        {/* Wizard Hero Step */}
-        {currentStep === "wizard-hero" && (
+        );
+      case "wizard-hero":
+        return (
           <>
-            <DialogHeader>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleWizardBack}
-                  className="hover:bg-muted/50 size-10 transition-all active:scale-95"
-                  aria-label="Back"
-                >
-                  <ChevronLeft className="size-5" />
-                </Button>
-                <div
-                  className={cn(
-                    "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                    "bg-amber-500/10 ring-1 ring-amber-500/20"
-                  )}
-                >
-                  <Sparkles className="size-5 text-amber-500" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
-                  <DialogDescription className="text-sm">
-                    Step {wizardStepNumber} of 4: Select Hero
-                  </DialogDescription>
-                </div>
-              </div>
-            </DialogHeader>
-
             {/* Step indicator */}
             <div className="flex gap-1.5 py-2">
               {[1, 2, 3, 4].map((step) => (
@@ -1272,47 +1352,11 @@ export function AddItemDialog({
                 disabled={false}
               />
             )}
-
-            <DialogFooter>
-              <Button variant="outline" onClick={handleWizardCancel}>
-                Cancel
-              </Button>
-              <Button onClick={handleWizardNext}>Apply</Button>
-            </DialogFooter>
           </>
-        )}
-
-        {/* Wizard Summary Step */}
-        {currentStep === "wizard-summary" && (
+        );
+      case "wizard-summary":
+        return (
           <>
-            <DialogHeader>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleWizardBack}
-                  className="hover:bg-muted/50 size-10 transition-all active:scale-95"
-                  aria-label="Back"
-                >
-                  <ChevronLeft className="size-5" />
-                </Button>
-                <div
-                  className={cn(
-                    "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                    "bg-amber-500/10 ring-1 ring-amber-500/20"
-                  )}
-                >
-                  <Sparkles className="size-5 text-amber-500" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
-                  <DialogDescription className="text-sm">
-                    Step {wizardStepNumber} of 4: Review & Create
-                  </DialogDescription>
-                </div>
-              </div>
-            </DialogHeader>
-
             {/* Step indicator */}
             <div className="flex gap-1.5 py-2">
               {[1, 2, 3, 4].map((step) => (
@@ -1397,139 +1441,62 @@ export function AddItemDialog({
                 filesContent={filesContent}
               />
             </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={handleWizardCancel}
-                disabled={isLoading}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={!name.trim() || isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  "Create"
-                )}
-              </Button>
-            </DialogFooter>
           </>
-        )}
+        );
+      case "change-poster":
+        return (
+          <PosterSelectionStep
+            posters={tmdbImages?.posters || []}
+            uploadMode={true}
+            queuedArtwork={queuedFiles.artwork}
+            onQueueArtworkChange={updateCategory("artwork")}
+            hasDriveConnection={hasDriveConnection}
+            selectedValue={tempPosterValue}
+            selectedSource={tempPosterSource}
+            onSelect={handleTempPosterSelect}
+            isSkipped={tempPosterSkipped}
+            onSkipChange={setTempPosterSkipped}
+            disabled={false}
+          />
+        );
+      case "change-hero":
+        return (
+          <HeroSelectionStep
+            backdrops={tmdbImages?.backdrops || []}
+            uploadMode={true}
+            queuedHero={queuedFiles.hero}
+            onQueueHeroChange={updateCategory("hero")}
+            hasDriveConnection={hasDriveConnection}
+            selectedValue={tempBackdropValue}
+            selectedSource={tempBackdropSource}
+            onSelect={handleTempBackdropSelect}
+            isSkipped={tempBackdropSkipped}
+            onSkipChange={setTempBackdropSkipped}
+            disabled={false}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
-        {/* Change Poster Step */}
-        {currentStep === "change-poster" && (
-          <>
-            <DialogHeader>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleCancelArtworkChange}
-                  className="hover:bg-muted/50 size-10 transition-all active:scale-95"
-                  aria-label="Back"
-                >
-                  <ChevronLeft className="size-5" />
-                </Button>
-                <div
-                  className={cn(
-                    "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                    "bg-violet-500/10 ring-1 ring-violet-500/20"
-                  )}
-                >
-                  <ImageIcon className="size-5 text-violet-500" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <DialogTitle className="text-lg">Change Poster</DialogTitle>
-                  <DialogDescription className="text-sm">
-                    Select a different poster image
-                  </DialogDescription>
-                </div>
-              </div>
-            </DialogHeader>
-
-            <PosterSelectionStep
-              posters={tmdbImages?.posters || []}
-              uploadMode={true}
-              queuedArtwork={queuedFiles.artwork}
-              onQueueArtworkChange={updateCategory("artwork")}
-              hasDriveConnection={hasDriveConnection}
-              selectedValue={tempPosterValue}
-              selectedSource={tempPosterSource}
-              onSelect={handleTempPosterSelect}
-              isSkipped={tempPosterSkipped}
-              onSkipChange={setTempPosterSkipped}
-              disabled={false}
-            />
-
-            <DialogFooter>
-              <Button variant="outline" onClick={handleCancelArtworkChange}>
-                Cancel
-              </Button>
-              <Button onClick={handleSavePosterChange}>Save</Button>
-            </DialogFooter>
-          </>
-        )}
-
-        {/* Change Hero Step */}
-        {currentStep === "change-hero" && (
-          <>
-            <DialogHeader>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleCancelArtworkChange}
-                  className="hover:bg-muted/50 size-10 transition-all active:scale-95"
-                  aria-label="Back"
-                >
-                  <ChevronLeft className="size-5" />
-                </Button>
-                <div
-                  className={cn(
-                    "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                    "bg-violet-500/10 ring-1 ring-violet-500/20"
-                  )}
-                >
-                  <ImageIcon className="size-5 text-violet-500" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <DialogTitle className="text-lg">Change Hero</DialogTitle>
-                  <DialogDescription className="text-sm">
-                    Select a different hero/backdrop image
-                  </DialogDescription>
-                </div>
-              </div>
-            </DialogHeader>
-
-            <HeroSelectionStep
-              backdrops={tmdbImages?.backdrops || []}
-              uploadMode={true}
-              queuedHero={queuedFiles.hero}
-              onQueueHeroChange={updateCategory("hero")}
-              hasDriveConnection={hasDriveConnection}
-              selectedValue={tempBackdropValue}
-              selectedSource={tempBackdropSource}
-              onSelect={handleTempBackdropSelect}
-              isSkipped={tempBackdropSkipped}
-              onSkipChange={setTempBackdropSkipped}
-              disabled={false}
-            />
-
-            <DialogFooter>
-              <Button variant="outline" onClick={handleCancelArtworkChange}>
-                Cancel
-              </Button>
-              <Button onClick={handleSaveHeroChange}>Save</Button>
-            </DialogFooter>
-          </>
-        )}
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <AnimatedDialogContent
+        stepKey={currentStep}
+        className="max-h-[90vh]"
+        aria-describedby={descriptionId}
+        header={getStepHeader()}
+        footer={getStepFooter()}
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          const combobox = document.querySelector('[role="combobox"]');
+          if (combobox instanceof HTMLElement) {
+            combobox.focus();
+          }
+        }}
+      >
+        {getStepBody()}
       </AnimatedDialogContent>
     </Dialog>
   );

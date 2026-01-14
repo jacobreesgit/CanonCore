@@ -25,6 +25,9 @@ interface GridProps {
   hasDriveConnection?: boolean;
 }
 
+/** Number of items to load with priority (above the fold). */
+const PRIORITY_COUNT = 8;
+
 /**
  * View-only grid component for browsing items.
  * Shows artwork thumbnails and sync badges.
@@ -44,7 +47,7 @@ export function Grid({
       data-testid="items-grid-view"
       className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
     >
-      {items.map((item) => (
+      {items.map((item, index) => (
         <ItemContextMenu
           key={item.id}
           itemName={item.name}
@@ -68,6 +71,7 @@ export function Grid({
             mediaIconType={item.mediaIconType}
             showArtwork={true}
             showDescription={true}
+            priority={index < PRIORITY_COUNT}
           />
         </ItemContextMenu>
       ))}

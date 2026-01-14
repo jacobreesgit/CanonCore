@@ -320,9 +320,12 @@ test.describe("Google Drive: OAuth Connection", () => {
     await page.reload();
     await settingsPage.openFromNavUser();
 
-    // Verify storage bar is visible
+    // Wait for storage label to be visible (AnimatedDialogContent needs time to render)
+    await expect(page.getByText("Storage", { exact: true })).toBeVisible();
+
+    // Verify storage bar shows usage data
     await expect(page.getByRole("progressbar")).toBeVisible();
-    await expect(page.getByText(/GB/)).toBeVisible();
+    await expect(page.getByText(/\d+\.?\d* GB \/ \d+\.?\d* GB/)).toBeVisible();
 
     // Verify Manage Storage link points to Google One storage
     const manageLink = page.getByRole("link", { name: /manage storage/i });
@@ -333,7 +336,7 @@ test.describe("Google Drive: OAuth Connection", () => {
     );
   });
 
-  test("does not show storage section when quota data is null", async ({
+  test("shows disabled storage section when quota data is null", async ({
     page,
     testUser,
   }) => {
@@ -365,10 +368,18 @@ test.describe("Google Drive: OAuth Connection", () => {
     await page.reload();
     await settingsPage.openFromNavUser();
 
-    // Should NOT show progress bar or Manage Storage link
-    await expect(page.getByRole("progressbar")).not.toBeVisible();
+    // Wait for storage label to be visible (AnimatedDialogContent needs time to render)
+    await expect(page.getByText("Storage", { exact: true })).toBeVisible();
+
+    // Storage section is always shown, but displays "Sync to see storage usage" when no data
+    await expect(page.getByText("Sync to see storage usage")).toBeVisible();
+
+    // Progress bar is rendered but with reduced opacity (still visible to Playwright)
+    await expect(page.getByRole("progressbar")).toBeVisible();
+
+    // Manage Storage link is always visible
     await expect(
       page.getByRole("link", { name: /manage storage/i })
-    ).not.toBeVisible();
+    ).toBeVisible();
   });
 });
