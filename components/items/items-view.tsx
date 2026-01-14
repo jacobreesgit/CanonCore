@@ -7,7 +7,7 @@
 
 import { useState, useTransition, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Folder, Loader2, Plus, RefreshCw } from "lucide-react";
+import { Loader2, Plus, RefreshCw } from "lucide-react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { UniqueIdentifier } from "@dnd-kit/core";
 import { toast } from "sonner";
@@ -21,7 +21,18 @@ import { FilterDropdown } from "./filter-dropdown";
 import { AddItemDialog } from "./add-item-dialog";
 import { ItemSettingsDialog } from "./item-settings-dialog";
 import { ItemHero } from "./item-hero";
+import { EmptyState, type EmptyStateVariant } from "./empty-state";
+import { BulkActionsToolbar } from "./bulk-actions-toolbar";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useBulkSelection } from "@/hooks/use-bulk-selection";
 import type {
   ItemWithArtwork,
   TreeItems,
@@ -37,6 +48,7 @@ import { useItemsSortFilter } from "@/hooks/use-items-sort-filter";
 import {
   createItem,
   deleteItem,
+  deleteItems,
   reorderItems,
   getItems,
 } from "@/lib/item-actions";
@@ -139,8 +151,14 @@ export function ItemsView({
   const [viewMode] = useStoredViewMode();
 
   // Sort/filter state from hook (persisted to localStorage)
-  const { sortBy, setSortBy, filterBy, setFilterBy, isCustomSort } =
-    useItemsSortFilter();
+  const {
+    sortBy,
+    setSortBy,
+    filterBy,
+    setFilterBy,
+    isCustomSort,
+    hasActiveFilter,
+  } = useItemsSortFilter();
 
   // Edit mode state - supports external control or internal state via useControllableState
   const [isEditing, setIsEditing] = useControllableState({
@@ -159,6 +177,9 @@ export function ItemsView({
   });
   // Sync state
   const [isSyncing, startSyncTransition] = useTransition();
+  // Bulk delete state
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
 
   // Exit edit mode when view mode changes - intentional minimal cascade
   useEffect(() => {
@@ -411,6 +432,70 @@ export function ItemsView({
     (item) => item.parentId === parentId
   );
 
+  // Bulk selection for edit mode operations
+  const bulkSelection = useBulkSelection(currentLevelItems);
+
+  // Clear selection when exiting edit mode
+  useEffect(() => {
+    if (!isEditing) {
+      bulkSelection.deselectAll();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Only trigger on edit mode change
+  }, [isEditing]);
+
+  /**
+   * Handles bulk deletion of selected items.
+   * Called after user confirms in the dialog.
+   */
+  const handleBulkDelete = useCallback(async () => {
+    const ids = Array.from(bulkSelection.selectedIds);
+    if (ids.length === 0) return;
+
+    setIsBulkDeleting(true);
+    try {
+      const result = await deleteItems(ids);
+      if (result.success && result.data) {
+        const { deleted, skipped } = result.data;
+        setItems((prev) => prev.filter((item) => !ids.includes(item.id)));
+        bulkSelection.deselectAll();
+        setBulkDeleteDialogOpen(false);
+        startTransition(() => refetchItems());
+
+        if (skipped > 0) {
+          toast.success(`Deleted ${deleted} items (${skipped} skipped)`);
+        } else {
+          toast.success(`Deleted ${deleted} items`);
+        }
+      } else {
+        toast.error(result.error || "Failed to delete items");
+      }
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  }, [bulkSelection, setItems, refetchItems]);
+
+  /**
+   * Determines empty state variant based on context.
+   * Priority: filter-empty > no-children > first-time
+   */
+  const getEmptyStateVariant = (): EmptyStateVariant => {
+    if (hasActiveFilter) return "filter-empty";
+    if (parentId) return "no-children";
+    return "first-time";
+  };
+
+  /**
+   * Handles empty state action based on variant.
+   */
+  const handleEmptyStateAction = () => {
+    const variant = getEmptyStateVariant();
+    if (variant === "filter-empty") {
+      setFilterBy("all");
+    } else {
+      setAddItemOpen(true);
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -482,9 +567,24 @@ export function ItemsView({
         </div>
       )}
 
+      {/* Bulk actions toolbar - shown in edit mode when items exist */}
+      {isEditing && currentLevelItems.length > 0 && (
+        <BulkActionsToolbar
+          selectionCount={bulkSelection.selectionCount}
+          isAllSelected={bulkSelection.isAllSelected}
+          isPartiallySelected={bulkSelection.isPartiallySelected}
+          onToggleAll={bulkSelection.toggleAll}
+          onDelete={() => setBulkDeleteDialogOpen(true)}
+          isDeleting={isBulkDeleting}
+        />
+      )}
+
       {/* Items display */}
-      {items.length === 0 ? (
-        <EmptyState onOpenAddItem={() => setAddItemOpen(true)} />
+      {currentLevelItems.length === 0 ? (
+        <EmptyState
+          variant={getEmptyStateVariant()}
+          onAction={handleEmptyStateAction}
+        />
       ) : viewMode === "grid" ? (
         isEditing ? (
           <SortableGrid
@@ -494,6 +594,11 @@ export function ItemsView({
             onOpenSettings={handleOpenSettings}
             onDeleteItem={handleDeleteItem}
             hasDriveConnection={hasDriveConnection}
+            isItemSelected={bulkSelection.isSelected}
+            onItemSelectChange={(id, selected) =>
+              selected !== bulkSelection.isSelected(id) &&
+              bulkSelection.toggleItem(id)
+            }
           />
         ) : (
           <Grid
@@ -513,6 +618,11 @@ export function ItemsView({
           onDeleteItem={handleDeleteItem}
           onAddChild={handleAddChild}
           hasDriveConnection={hasDriveConnection}
+          isItemSelected={bulkSelection.isSelected}
+          onItemSelectChange={(id, selected) =>
+            selected !== bulkSelection.isSelected(id) &&
+            bulkSelection.toggleItem(id)
+          }
         />
       ) : (
         <Tree
@@ -567,43 +677,39 @@ export function ItemsView({
         onAdd={handleCreateItem}
         hasDriveConnection={hasDriveConnection}
       />
-    </div>
-  );
-}
 
-/** Empty state with call-to-action for item creation. */
-function EmptyState({ onOpenAddItem }: { onOpenAddItem: () => void }) {
-  return (
-    <div
-      className={cn(
-        "flex flex-1 flex-col items-center justify-center gap-4",
-        "border-border/60 rounded-xl border-2 border-dashed",
-        "bg-muted/20"
-      )}
-    >
-      <div
-        className={cn(
-          "flex size-16 items-center justify-center rounded-full",
-          "bg-muted/60 text-muted-foreground"
-        )}
+      {/* Bulk Delete Confirmation Dialog */}
+      <Dialog
+        open={bulkDeleteDialogOpen}
+        onOpenChange={setBulkDeleteDialogOpen}
       >
-        <Folder className="size-8" strokeWidth={1.5} />
-      </div>
-      <div className="text-center">
-        <h3 className="text-foreground text-lg font-medium">No items yet</h3>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Create your first item to get started
-        </p>
-      </div>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onOpenAddItem}
-        className="gap-1.5"
-      >
-        <Plus className="size-4" strokeWidth={2} />
-        <span>Add Item</span>
-      </Button>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Items</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {bulkSelection.selectionCount}{" "}
+              {bulkSelection.selectionCount === 1 ? "item" : "items"}? This will
+              also delete all child items. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBulkDeleteDialogOpen(false)}
+              disabled={isBulkDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkDelete}
+              disabled={isBulkDeleting}
+            >
+              {isBulkDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

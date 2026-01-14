@@ -10,6 +10,7 @@ import React, { forwardRef, useCallback, HTMLAttributes } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { Folder, GripVertical, Play } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useImageLoaded } from "@/hooks/use-image-loaded";
 import { useLazyImage } from "@/hooks/use-lazy-image";
 import { ItemStats } from "@/components/items/item-stats";
@@ -48,6 +49,10 @@ export interface GridItemProps extends Omit<
   mediaIconType?: "film" | "music" | "mixed" | null;
   /** Load image immediately without waiting for viewport. */
   priority?: boolean;
+  /** Whether the item is selected (for bulk operations). */
+  isSelected?: boolean;
+  /** Callback when selection state changes. */
+  onSelectChange?: (selected: boolean) => void;
 }
 
 export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
@@ -72,11 +77,14 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       primaryMediaName,
       mediaIconType,
       priority = false,
+      isSelected,
+      onSelectChange,
       ...props
     },
     ref
   ) {
     const artworkSrc = artworkId ? `/api/artwork/${artworkId}` : undefined;
+    const shouldShowCheckbox = handleProps && onSelectChange;
 
     // Lazy loading - priority items load immediately, others wait for viewport
     const { ref: lazyRef, shouldLoad } = useLazyImage({
@@ -161,6 +169,33 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
             onLoad={onLoad}
             onError={onError}
           />
+        )}
+
+        {/* Selection Checkbox - top left, only in edit mode */}
+        {shouldShowCheckbox && (
+          <div
+            className={cn(
+              "absolute top-3 left-3 z-30",
+              "flex size-8 items-center justify-center",
+              "rounded-md",
+              "bg-black/40 backdrop-blur-sm",
+              "transition-all duration-150",
+              "hover:bg-black/60"
+            )}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={(checked) => {
+                onSelectChange?.(checked === true);
+              }}
+              aria-label={`Select ${name}`}
+              className={cn(
+                "data-[state=checked]:bg-primary data-[state=checked]:border-primary border-white/60",
+                "data-[state=unchecked]:bg-transparent"
+              )}
+            />
+          </div>
         )}
 
         {/* Drag Handle - top right, only in edit mode */}

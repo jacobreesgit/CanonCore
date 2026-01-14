@@ -87,6 +87,10 @@ interface SortableTreeProps {
   maxDepth?: number;
   /** Whether user has Google Drive connected (for Add Child dialog) */
   hasDriveConnection?: boolean;
+  /** Check if an item is selected (for bulk operations). */
+  isItemSelected?: (id: string) => boolean;
+  /** Callback when an item's selection state changes. */
+  onItemSelectChange?: (id: string, selected: boolean) => void;
 }
 
 /**
@@ -116,6 +120,8 @@ export function SortableTree({
   indicator = true,
   maxDepth = 10,
   hasDriveConnection = false,
+  isItemSelected,
+  onItemSelectChange,
 }: SortableTreeProps) {
   const [items, setItems] = useState(() => defaultItems);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
@@ -262,6 +268,12 @@ export function SortableTree({
                 driveFileId={driveFileId}
                 showDescription={false}
                 hasDriveConnection={hasDriveConnection}
+                isSelected={isItemSelected?.(String(id))}
+                onSelectChange={
+                  onItemSelectChange
+                    ? (selected) => onItemSelectChange(String(id), selected)
+                    : undefined
+                }
               />
             )
           )}

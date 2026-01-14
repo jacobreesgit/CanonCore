@@ -77,7 +77,9 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   └── sync-history.tsx          # Sync activity history panel
 │   ├── items/                        # Items feature components
 │   │   ├── add-item-dialog.tsx       # Modal dialog for item creation with TMDB search
+│   │   ├── bulk-actions-toolbar.tsx  # Select-all checkbox and bulk delete button
 │   │   ├── edit-mode-toggle.tsx      # Edit/Done button for reordering mode
+│   │   ├── empty-state.tsx           # Context-aware empty state (first-time, no-children, filter-empty)
 │   │   ├── episode-picker-helpers.tsx # Shared season/episode picker components
 │   │   ├── file-type-combobox.tsx    # File type picker with uploadOnly mode for Add dialog
 │   │   ├── files-section.tsx         # File display section for settings dialog
@@ -169,6 +171,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   └── spotlight-context.tsx         # Spotlight search state and "/" keyboard shortcut
 ├── hooks/
 │   ├── use-artwork-upload.ts         # Artwork upload flow with progress
+│   ├── use-bulk-selection.ts         # Bulk item selection with select-all/toggle
 │   ├── use-controllable-state.ts     # Controlled/uncontrolled component state
 │   ├── use-hero-collapse.ts          # Hero section scroll-triggered collapse
 │   ├── use-image-loaded.ts           # Cached image detection for reliable loading
@@ -226,7 +229,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── generate-refresh-token.ts     # Google Drive token generator for E2E tests
 │   └── setup-e2e-drive.ts            # E2E Drive environment setup
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 2.6.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 2.7.0)
     └── plans/                        # Design documents
 ```
 
@@ -270,7 +273,9 @@ pnpm run test:e2e:ui                        # UI mode
 - **View mode**: Full background artwork with dark overlay (Feature222 aesthetic)
 - **Edit mode**: Simplified icons with drag handles for reordering
 - **Add Item dialog**: Modal with TMDB search combobox for auto-filling metadata
-- **Server actions**: `createItem`, `updateItem`, `deleteItem`, `reorderItems`, `getSearchableItems` in `lib/item-actions.ts`
+- **Server actions**: `createItem`, `updateItem`, `deleteItem`, `deleteItems`, `reorderItems`, `getSearchableItems` in `lib/item-actions.ts`
+- **Bulk delete**: Edit mode shows checkboxes for multi-select; select-all in toolbar; confirmation dialog before deletion
+- **Contextual empty states**: Different messages for first-time users, empty folders, and filter results with actionable buttons
 - **Breadcrumb navigation** for item drill-down
 - **Context menu**: Right-click for Settings, Delete, Add Child Item
 - **Settings dialog**: Rename items, add descriptions, select primary/hero files, upload files
@@ -364,7 +369,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 1225 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system, sync queue, sync history, image loading hooks
+- 1283 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system, sync queue, sync history, image loading hooks, bulk selection, empty states
 
 ### E2E Testing
 

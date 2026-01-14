@@ -1164,3 +1164,256 @@ describe("getSearchableItems", () => {
     expect(prisma.item.findMany).not.toHaveBeenCalled();
   });
 });
+
+describe("deleteItems (bulk)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns error when not authenticated", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const { deleteItems } = await import("@/lib/item-actions");
+    const result = await deleteItems(["item-1", "item-2"]);
+
+    expect(result.error).toBe("Not authenticated");
+  });
+
+  it("returns error for empty array", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+
+    const { deleteItems } = await import("@/lib/item-actions");
+    const result = await deleteItems([]);
+
+    expect(result.error).toBe("No items to delete");
+  });
+
+  it("deletes multiple items successfully", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findMany).mockResolvedValue([
+      { id: "1", userId: "user-1", driveFileId: null, driveConnectionId: null },
+      { id: "2", userId: "user-1", driveFileId: null, driveConnectionId: null },
+      { id: "3", userId: "user-1", driveFileId: null, driveConnectionId: null },
+    ] as never);
+    vi.mocked(prisma.item.deleteMany).mockResolvedValue({ count: 3 });
+
+    const { deleteItems } = await import("@/lib/item-actions");
+    const result = await deleteItems(["1", "2", "3"]);
+
+    expect(result.success).toBe(true);
+    expect("data" in result && result.data?.deleted).toBe(3);
+  });
+
+  it("only deletes items owned by user", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    // Only item 1 belongs to user, item 2 would not be returned
+    vi.mocked(prisma.item.findMany).mockResolvedValue([
+      { id: "1", userId: "user-1", driveFileId: null, driveConnectionId: null },
+    ] as never);
+    vi.mocked(prisma.item.deleteMany).mockResolvedValue({ count: 1 });
+
+    const { deleteItems } = await import("@/lib/item-actions");
+    const result = await deleteItems(["1", "2"]);
+
+    expect(result.success).toBe(true);
+    expect("data" in result && result.data?.deleted).toBe(1);
+    expect("data" in result && result.data?.skipped).toBe(1);
+  });
+
+  it("returns error when no owned items found", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    // No items returned - none owned by user
+    vi.mocked(prisma.item.findMany).mockResolvedValue([]);
+
+    const { deleteItems } = await import("@/lib/item-actions");
+    const result = await deleteItems(["1", "2"]);
+
+    expect(result.error).toBe("No items found to delete");
+  });
+
+  it("handles items with Drive files", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findMany).mockResolvedValue([
+      {
+        id: "1",
+        userId: "user-1",
+        driveFileId: "drive-1",
+        driveConnectionId: "conn-1",
+      },
+    ] as never);
+    vi.mocked(prisma.item.deleteMany).mockResolvedValue({ count: 1 });
+
+    const { deleteItems } = await import("@/lib/item-actions");
+    const result = await deleteItems(["1"]);
+
+    expect(result.success).toBe(true);
+    expect("data" in result && result.data?.deleted).toBe(1);
+  });
+
+  it("should check rate limit before processing", async () => {
+    const { checkRateLimit } = await import("@/lib/rate-limit");
+    vi.mocked(checkRateLimit).mockResolvedValueOnce({
+      error: "Too many attempts. Please try again later.",
+    });
+
+    const { deleteItems } = await import("@/lib/item-actions");
+    const result = await deleteItems(["item-1", "item-2"]);
+
+    expect(checkRateLimit).toHaveBeenCalledWith("itemDelete");
+    expect(result).toEqual({
+      error: "Too many attempts. Please try again later.",
+    });
+  });
+
+  it("should proceed when rate limit passes", async () => {
+    const { checkRateLimit } = await import("@/lib/rate-limit");
+    vi.mocked(checkRateLimit).mockResolvedValueOnce(null);
+
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findMany).mockResolvedValue([
+      { id: "1", userId: "user-1", driveFileId: null, driveConnectionId: null },
+      { id: "2", userId: "user-1", driveFileId: null, driveConnectionId: null },
+    ] as never);
+    vi.mocked(prisma.item.deleteMany).mockResolvedValue({ count: 2 });
+
+    const { deleteItems } = await import("@/lib/item-actions");
+    const result = await deleteItems(["1", "2"]);
+
+    expect(checkRateLimit).toHaveBeenCalledWith("itemDelete");
+    expect(result.success).toBe(true);
+    expect("data" in result && result.data?.deleted).toBe(2);
+  });
+
+  it("uses batch delete for items with Drive files", async () => {
+    const { batchDelete } = await import("@/lib/google-drive-client");
+    vi.mocked(batchDelete).mockResolvedValue({
+      succeeded: ["drive-1", "drive-2"],
+      failed: [],
+    });
+
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findMany).mockResolvedValue([
+      {
+        id: "item-1",
+        userId: "user-1",
+        driveFileId: "drive-1",
+        driveConnectionId: "conn-1",
+      },
+      {
+        id: "item-2",
+        userId: "user-1",
+        driveFileId: "drive-2",
+        driveConnectionId: "conn-1",
+      },
+    ] as never);
+    vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue({
+      id: "conn-1",
+      userId: "user-1",
+      encryptedAccessToken: "encrypted-token",
+      encryptedRefreshToken: "encrypted-refresh",
+      accessTokenExpiry: new Date(Date.now() + 3600000),
+    } as never);
+    // No descendants
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+    vi.mocked(prisma.item.deleteMany).mockResolvedValue({ count: 2 });
+
+    const { deleteItems } = await import("@/lib/item-actions");
+    const result = await deleteItems(["item-1", "item-2"]);
+
+    expect(result.success).toBe(true);
+    expect(batchDelete).toHaveBeenCalledWith(expect.any(String), [
+      "drive-1",
+      "drive-2",
+    ]);
+  });
+
+  it("batch deletes Drive files including descendants", async () => {
+    const { batchDelete } = await import("@/lib/google-drive-client");
+    vi.mocked(batchDelete).mockResolvedValue({
+      succeeded: ["drive-1", "drive-child-1", "drive-child-2"],
+      failed: [],
+    });
+
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findMany).mockResolvedValue([
+      {
+        id: "parent-item",
+        userId: "user-1",
+        driveFileId: "drive-1",
+        driveConnectionId: "conn-1",
+      },
+    ] as never);
+    vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue({
+      id: "conn-1",
+      userId: "user-1",
+      encryptedAccessToken: "encrypted-token",
+      encryptedRefreshToken: "encrypted-refresh",
+      accessTokenExpiry: new Date(Date.now() + 3600000),
+    } as never);
+    // Descendants with Drive files
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      { driveFileId: "drive-child-1" },
+      { driveFileId: "drive-child-2" },
+      { driveFileId: null }, // Descendant without Drive file
+    ]);
+    vi.mocked(prisma.item.deleteMany).mockResolvedValue({ count: 1 });
+
+    const { deleteItems } = await import("@/lib/item-actions");
+    const result = await deleteItems(["parent-item"]);
+
+    expect(result.success).toBe(true);
+    // Should include parent + non-null descendants
+    expect(batchDelete).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.arrayContaining(["drive-1", "drive-child-1", "drive-child-2"])
+    );
+  });
+
+  it("continues with local delete when Drive batch delete fails", async () => {
+    const { batchDelete } = await import("@/lib/google-drive-client");
+    vi.mocked(batchDelete).mockRejectedValue(new Error("Drive API error"));
+
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findMany).mockResolvedValue([
+      {
+        id: "item-1",
+        userId: "user-1",
+        driveFileId: "drive-1",
+        driveConnectionId: "conn-1",
+      },
+    ] as never);
+    vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue({
+      id: "conn-1",
+      userId: "user-1",
+      encryptedAccessToken: "encrypted-token",
+      encryptedRefreshToken: "encrypted-refresh",
+      accessTokenExpiry: new Date(Date.now() + 3600000),
+    } as never);
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+    vi.mocked(prisma.item.deleteMany).mockResolvedValue({ count: 1 });
+
+    const { deleteItems } = await import("@/lib/item-actions");
+    const result = await deleteItems(["item-1"]);
+
+    // Should still succeed - Drive delete is soft failure
+    expect(result.success).toBe(true);
+    expect(prisma.item.deleteMany).toHaveBeenCalled();
+  });
+
+  it("does not call batch delete when items have no Drive connection", async () => {
+    const { batchDelete } = await import("@/lib/google-drive-client");
+
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findMany).mockResolvedValue([
+      { id: "1", userId: "user-1", driveFileId: null, driveConnectionId: null },
+      { id: "2", userId: "user-1", driveFileId: null, driveConnectionId: null },
+    ] as never);
+    vi.mocked(prisma.item.deleteMany).mockResolvedValue({ count: 2 });
+
+    const { deleteItems } = await import("@/lib/item-actions");
+    const result = await deleteItems(["1", "2"]);
+
+    expect(result.success).toBe(true);
+    expect(batchDelete).not.toHaveBeenCalled();
+  });
+});

@@ -8,6 +8,13 @@
 
 **Tech Stack:** Prisma schema, Server Actions, React components, Vitest, Playwright
 
+**Prerequisites:**
+
+1. ~~`docs/plans/2026-01-13-empty-states-seeding-bulk-ops.md` must be implemented first (provides seed flags like `SEED_SKIP_DRIVE`, `SEED_SKIP_ARTWORK`, and helper functions)~~ ✅ Done
+2. ~~**Database and Google Drive reset required** before seeding with grouped structure~~ ✅ Done (2026-01-14)
+   - ✅ Database reset via `npx prisma migrate reset`
+   - ✅ CanonCore folder emptied in Google Drive (canoncore.seed@gmail.com)
+
 ---
 
 ## Overview
@@ -38,6 +45,7 @@ This feature allows users to "pin" any item (not just root-level) to the sidebar
 ## Task 1: Database Schema Migration
 
 **Files:**
+
 - Modify: `prisma/schema.prisma:122-161` (Item model)
 - Create: `prisma/migrations/[timestamp]_add_pinned_order/migration.sql`
 
@@ -86,6 +94,7 @@ git commit -m "feat: add pinnedOrder field to Item model for sidebar pinning"
 ## Task 2: Type Definitions Update
 
 **Files:**
+
 - Modify: `lib/types.ts:16-33` (Item interface)
 
 **Step 1: Add pinnedOrder to Item type**
@@ -143,6 +152,7 @@ git commit -m "feat: add pinnedOrder to Item type and PinnedItem interface"
 ## Task 3: Server Actions for Pinning
 
 **Files:**
+
 - Modify: `lib/item-actions.ts`
 - Modify: `lib/rate-limit.ts` (add pin/unpin limits)
 
@@ -171,6 +181,22 @@ import { pinItem, unpinItem, getPinnedItems } from "@/lib/item-actions";
 
 const mockAuth = auth as ReturnType<typeof vi.fn>;
 
+// Helper to create mock transaction
+const createMockTransaction = () => {
+  const mockTx = {
+    item: {
+      findUnique: vi.fn(),
+      count: vi.fn(),
+      aggregate: vi.fn(),
+      update: vi.fn(),
+    },
+  };
+  vi.mocked(prisma.$transaction).mockImplementation(async (fn: any) =>
+    fn(mockTx)
+  );
+  return mockTx;
+};
+
 describe("pinItem", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -186,47 +212,78 @@ describe("pinItem", () => {
 
   it("returns error when item not found", async () => {
     mockAuth.mockResolvedValue({ user: { id: "user-1" } });
-    vi.mocked(prisma.item.findUnique).mockResolvedValue(null);
+    const mockTx = createMockTransaction();
+    mockTx.item.findUnique.mockResolvedValue(null);
 
     const result = await pinItem("nonexistent");
 
     expect(result).toEqual({ error: "Item not found" });
+    // Verify correct query parameters
+    expect(mockTx.item.findUnique).toHaveBeenCalledWith({
+      where: { id: "nonexistent" },
+      select: { userId: true, pinnedOrder: true },
+    });
   });
 
   it("returns error when max pinned items reached", async () => {
     mockAuth.mockResolvedValue({ user: { id: "user-1" } });
-    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+    const mockTx = createMockTransaction();
+    mockTx.item.findUnique.mockResolvedValue({
       id: "item-1",
       userId: "user-1",
       pinnedOrder: null,
-    } as any);
-    vi.mocked(prisma.item.count).mockResolvedValue(10);
+    });
+    mockTx.item.count.mockResolvedValue(10);
 
     const result = await pinItem("item-1");
 
     expect(result).toEqual({ error: "Maximum of 10 pinned items reached" });
+    // Verify count query filters by userId and pinnedOrder
+    expect(mockTx.item.count).toHaveBeenCalledWith({
+      where: {
+        userId: "user-1",
+        pinnedOrder: { not: null },
+      },
+    });
   });
 
   it("pins item with next order value", async () => {
     mockAuth.mockResolvedValue({ user: { id: "user-1" } });
-    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+    const mockTx = createMockTransaction();
+    mockTx.item.findUnique.mockResolvedValue({
       id: "item-1",
       userId: "user-1",
       pinnedOrder: null,
-    } as any);
-    vi.mocked(prisma.item.count).mockResolvedValue(2);
-    vi.mocked(prisma.item.aggregate).mockResolvedValue({
+    });
+    mockTx.item.count.mockResolvedValue(2);
+    mockTx.item.aggregate.mockResolvedValue({
       _max: { pinnedOrder: 1 },
-    } as any);
-    vi.mocked(prisma.item.update).mockResolvedValue({} as any);
+    });
+    mockTx.item.update.mockResolvedValue({});
 
     const result = await pinItem("item-1");
 
     expect(result).toEqual({ success: true });
-    expect(prisma.item.update).toHaveBeenCalledWith({
+    expect(mockTx.item.update).toHaveBeenCalledWith({
       where: { id: "item-1" },
       data: { pinnedOrder: 2 },
     });
+  });
+
+  it("returns success without update if already pinned", async () => {
+    mockAuth.mockResolvedValue({ user: { id: "user-1" } });
+    const mockTx = createMockTransaction();
+    mockTx.item.findUnique.mockResolvedValue({
+      id: "item-1",
+      userId: "user-1",
+      pinnedOrder: 5, // Already pinned
+    });
+
+    const result = await pinItem("item-1");
+
+    expect(result).toEqual({ success: true });
+    expect(mockTx.item.count).not.toHaveBeenCalled();
+    expect(mockTx.item.update).not.toHaveBeenCalled();
   });
 });
 
@@ -255,7 +312,12 @@ describe("getPinnedItems", () => {
     mockAuth.mockResolvedValue({ user: { id: "user-1" } });
     vi.mocked(prisma.item.findMany).mockResolvedValue([
       { id: "item-1", name: "Movies", pinnedOrder: 0, files: [] },
-      { id: "item-2", name: "TV Shows", pinnedOrder: 1, files: [{ id: "art-1", fileType: "ARTWORK" }] },
+      {
+        id: "item-2",
+        name: "TV Shows",
+        pinnedOrder: 1,
+        files: [{ id: "art-1", fileType: "ARTWORK" }],
+      },
     ] as any);
 
     const result = await getPinnedItems();
@@ -296,6 +358,7 @@ const MAX_PINNED_ITEMS = 10;
 /**
  * Pins an item to the sidebar.
  * Limited to 10 pinned items per user.
+ * Uses a transaction to prevent race conditions when checking the limit.
  *
  * @param id - Item ID to pin
  * @returns Success or error
@@ -311,53 +374,65 @@ export async function pinItem(id: string): Promise<ItemResult> {
     return { error: "Unauthorized" };
   }
 
-  const item = await prisma.item.findUnique({
-    where: { id },
-    select: { userId: true, pinnedOrder: true },
-  });
+  const userId = session.user.id;
 
-  if (!item) {
-    return { error: "Item not found" };
-  }
+  // Use transaction to prevent TOCTOU race condition
+  // Without this, concurrent requests could exceed the 10-item limit
+  try {
+    await prisma.$transaction(async (tx) => {
+      const item = await tx.item.findUnique({
+        where: { id },
+        select: { userId: true, pinnedOrder: true },
+      });
 
-  if (item.userId !== session.user.id) {
-    return { error: "Unauthorized" };
-  }
+      if (!item) {
+        throw new Error("Item not found");
+      }
 
-  // Already pinned
-  if (item.pinnedOrder !== null) {
+      if (item.userId !== userId) {
+        throw new Error("Unauthorized");
+      }
+
+      // Already pinned - no-op
+      if (item.pinnedOrder !== null) {
+        return;
+      }
+
+      // Check max limit (within transaction for atomicity)
+      const pinnedCount = await tx.item.count({
+        where: {
+          userId,
+          pinnedOrder: { not: null },
+        },
+      });
+
+      if (pinnedCount >= MAX_PINNED_ITEMS) {
+        throw new Error("Maximum of 10 pinned items reached");
+      }
+
+      // Get next order value
+      const maxOrder = await tx.item.aggregate({
+        where: {
+          userId,
+          pinnedOrder: { not: null },
+        },
+        _max: { pinnedOrder: true },
+      });
+
+      const nextOrder = (maxOrder._max.pinnedOrder ?? -1) + 1;
+
+      await tx.item.update({
+        where: { id },
+        data: { pinnedOrder: nextOrder },
+      });
+    });
+
     return { success: true };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to pin item";
+    return { error: message };
   }
-
-  // Check max limit
-  const pinnedCount = await prisma.item.count({
-    where: {
-      userId: session.user.id,
-      pinnedOrder: { not: null },
-    },
-  });
-
-  if (pinnedCount >= MAX_PINNED_ITEMS) {
-    return { error: "Maximum of 10 pinned items reached" };
-  }
-
-  // Get next order value
-  const maxOrder = await prisma.item.aggregate({
-    where: {
-      userId: session.user.id,
-      pinnedOrder: { not: null },
-    },
-    _max: { pinnedOrder: true },
-  });
-
-  const nextOrder = (maxOrder._max.pinnedOrder ?? -1) + 1;
-
-  await prisma.item.update({
-    where: { id },
-    data: { pinnedOrder: nextOrder },
-  });
-
-  return { success: true };
 }
 
 /**
@@ -462,6 +537,7 @@ git commit -m "feat: add pinItem, unpinItem, getPinnedItems server actions"
 ## Task 4: Integration Tests for Pinning
 
 **Files:**
+
 - Create: `tests/integration/items/item-pinning.test.ts`
 
 **Step 1: Write integration tests**
@@ -560,13 +636,31 @@ describe("Item Pinning Integration", () => {
     // Create 3 pinned items
     const items = await Promise.all([
       prisma.item.create({
-        data: { name: "A", userId: TEST_USER.id, order: 0, depth: 0, pinnedOrder: 0 },
+        data: {
+          name: "A",
+          userId: TEST_USER.id,
+          order: 0,
+          depth: 0,
+          pinnedOrder: 0,
+        },
       }),
       prisma.item.create({
-        data: { name: "B", userId: TEST_USER.id, order: 1, depth: 0, pinnedOrder: 1 },
+        data: {
+          name: "B",
+          userId: TEST_USER.id,
+          order: 1,
+          depth: 0,
+          pinnedOrder: 1,
+        },
       }),
       prisma.item.create({
-        data: { name: "C", userId: TEST_USER.id, order: 2, depth: 0, pinnedOrder: 2 },
+        data: {
+          name: "C",
+          userId: TEST_USER.id,
+          order: 2,
+          depth: 0,
+          pinnedOrder: 2,
+        },
       }),
     ]);
 
@@ -603,6 +697,7 @@ git commit -m "test: add integration tests for item pinning"
 ## Task 5: NavPinnedItems Component
 
 **Files:**
+
 - Create: `components/nav-pinned-items.tsx`
 
 **Step 1: Write failing component test**
@@ -614,17 +709,34 @@ Create `tests/unit/components/nav-pinned-items.test.tsx`:
  * Unit tests for NavPinnedItems component.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { usePathname } from "next/navigation";
 import { NavPinnedItems } from "@/components/nav-pinned-items";
 import type { PinnedItem } from "@/lib/types";
 
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/my-items",
+  usePathname: vi.fn(() => "/my-items"),
+}));
+
+// Mock sidebar components to simplify testing
+vi.mock("@/components/ui/sidebar", () => ({
+  SidebarGroup: ({ children }: { children: React.ReactNode }) => <div data-testid="sidebar-group">{children}</div>,
+  SidebarGroupLabel: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+  SidebarGroupContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  SidebarMenu: ({ children }: { children: React.ReactNode }) => <ul role="menu">{children}</ul>,
+  SidebarMenuButton: ({ children, isActive, asChild, ...props }: any) => (
+    <div data-active={isActive} {...props}>{children}</div>
+  ),
+  SidebarMenuItem: ({ children }: { children: React.ReactNode }) => <li role="menuitem">{children}</li>,
 }));
 
 describe("NavPinnedItems", () => {
+  beforeEach(() => {
+    vi.mocked(usePathname).mockReturnValue("/my-items");
+  });
+
   it("renders nothing when no pinned items", () => {
     const { container } = render(<NavPinnedItems items={[]} />);
     expect(container.firstChild).toBeNull();
@@ -655,6 +767,19 @@ describe("NavPinnedItems", () => {
 
   it("shows active state for current item", () => {
     vi.mocked(usePathname).mockReturnValue("/my-items/item-123");
+
+    const items: PinnedItem[] = [
+      { id: "item-123", name: "Movies", pinnedOrder: 0, artworkId: null },
+    ];
+
+    render(<NavPinnedItems items={items} />);
+
+    const button = screen.getByRole("link", { name: /movies/i });
+    expect(button).toHaveAttribute("data-active", "true");
+  });
+
+  it("shows active state for nested paths under pinned item", () => {
+    vi.mocked(usePathname).mockReturnValue("/my-items/item-123/child-456");
 
     const items: PinnedItem[] = [
       { id: "item-123", name: "Movies", pinnedOrder: 0, artworkId: null },
@@ -767,6 +892,13 @@ export function NavPinnedItems({ items }: NavPinnedItemsProps) {
 Run: `pnpm run test tests/unit/components/nav-pinned-items.test.tsx`
 Expected: PASS
 
+**Accessibility Notes:**
+
+- Images use `alt=""` (empty alt) since they are decorative - screen readers will announce the item name from the text span instead
+- SidebarMenu provides `role="menu"` and SidebarMenuItem provides `role="menuitem"` for proper ARIA semantics
+- Link receives focus and is keyboard navigable via Tab key
+- Active state (`isActive`) provides visual indication of current location
+
 **Step 5: Commit**
 
 ```bash
@@ -779,6 +911,7 @@ git commit -m "feat: add NavPinnedItems component for sidebar display"
 ## Task 6: Integrate NavPinnedItems into Sidebar
 
 **Files:**
+
 - Modify: `components/app-sidebar.tsx`
 - Modify: `app/(my-items)/layout.tsx` (fetch pinned items)
 
@@ -855,11 +988,22 @@ git add components/app-sidebar.tsx app/\(my-items\)/layout.tsx
 git commit -m "feat: integrate pinned items into sidebar"
 ```
 
+**Note on Refresh Strategy:** Pin/unpin actions use `revalidatePath()` from `next/cache` in the Server Action itself for efficient cache invalidation. This is more performant than client-side `router.refresh()` as it only invalidates the specific path's cache.
+
+**Alternative approaches (for future optimization):**
+
+- `revalidatePath('/my-items')` - Server-side, invalidates layout cache (recommended)
+- `router.refresh()` - Client-side, refreshes entire page (simpler but less efficient)
+- React Query/SWR - Client-side state management with optimistic updates (most performant for frequent updates)
+
+For the initial implementation, we use `revalidatePath()` in the Server Action combined with `router.refresh()` on the client for immediate UI feedback.
+
 ---
 
 ## Task 7: Add Pin/Unpin to Context Menu
 
 **Files:**
+
 - Modify: `components/items/item-context-menu.tsx`
 
 **Step 1: Update ItemContextMenuProps**
@@ -888,29 +1032,43 @@ Add after the "Add Child Item" menu item:
 
 ```typescript
 import { Pin, PinOff } from "lucide-react";
+import { toast } from "sonner";
 
 // Inside ContextMenuContent, after Add Child Item:
 {onTogglePin && (
   <ContextMenuItem
     onClick={async () => {
-      await onTogglePin();
+      try {
+        await onTogglePin();
+      } catch (error) {
+        // Error handling for unexpected failures
+        // Note: Expected errors are handled in onTogglePin via toast
+        console.error("Pin toggle failed:", error);
+        toast.error("An unexpected error occurred");
+      }
     }}
     className="gap-2"
+    aria-label={isPinned ? `Unpin ${itemName} from sidebar` : `Pin ${itemName} to sidebar`}
   >
     {isPinned ? (
       <>
-        <PinOff className="size-4" strokeWidth={2} />
+        <PinOff className="size-4" strokeWidth={2} aria-hidden="true" />
         <span>Unpin from Sidebar</span>
       </>
     ) : (
       <>
-        <Pin className="size-4" strokeWidth={2} />
+        <Pin className="size-4" strokeWidth={2} aria-hidden="true" />
         <span>Pin to Sidebar</span>
       </>
     )}
   </ContextMenuItem>
 )}
 ```
+
+**Accessibility Notes:**
+
+- Added `aria-label` with item name for screen reader context
+- Added `aria-hidden="true"` to decorative icons
 
 **Step 3: Commit**
 
@@ -924,6 +1082,7 @@ git commit -m "feat: add pin/unpin option to item context menu"
 ## Task 8: Wire Up Pin Actions in Views
 
 **Files:**
+
 - Modify: `components/sortable-grid/GridItem.tsx`
 - Modify: `components/sortable-tree/components/TreeItem/TreeItem.tsx`
 - Modify: `components/items/items-view.tsx`
@@ -977,29 +1136,58 @@ In `components/items/items-view.tsx`:
 
 ```typescript
 import { pinItem, unpinItem } from "@/lib/item-actions";
+import { useTransition } from "react";
+
+// Add pending state for pin operations
+const [isPinPending, startPinTransition] = useTransition();
+
+// Track which item is being pinned/unpinned
+const [pinningItemId, setPinningItemId] = useState<string | null>(null);
 
 // In the item rendering:
 const handleTogglePin = async (item: ItemWithArtwork) => {
-  if (item.pinnedOrder !== null) {
-    const result = await unpinItem(item.id);
-    if (!result.success) {
-      toast.error(result.error ?? "Failed to unpin");
-    } else {
-      toast.success(`"${item.name}" unpinned from sidebar`);
-      // Trigger refresh
-      router.refresh();
+  // Prevent double-clicks while operation is pending
+  if (isPinPending) return;
+
+  setPinningItemId(item.id);
+
+  startPinTransition(async () => {
+    try {
+      if (item.pinnedOrder !== null) {
+        const result = await unpinItem(item.id);
+        if (!result.success) {
+          toast.error(result.error ?? "Failed to unpin");
+        } else {
+          toast.success(`"${item.name}" unpinned from sidebar`);
+          router.refresh();
+        }
+      } else {
+        const result = await pinItem(item.id);
+        if (!result.success) {
+          toast.error(result.error ?? "Failed to pin");
+        } else {
+          toast.success(`"${item.name}" pinned to sidebar`);
+          router.refresh();
+        }
+      }
+    } finally {
+      setPinningItemId(null);
     }
-  } else {
-    const result = await pinItem(item.id);
-    if (!result.success) {
-      toast.error(result.error ?? "Failed to pin");
-    } else {
-      toast.success(`"${item.name}" pinned to sidebar`);
-      router.refresh();
-    }
-  }
+  });
 };
+
+// Pass pending state to GridItem/TreeItem for visual feedback
+// isPinning={pinningItemId === item.id}
 ```
+
+**Note:** The `useTransition` hook provides automatic pending state management. The `isPinning` prop can be used to show a loading spinner or disable interactions on the item being pinned.
+
+**Accessibility Notes for Loading State:**
+
+- Add `aria-busy={isPinning}` to items during pin operations for screen reader feedback
+- Disable click handlers during pending state to prevent double submissions
+- Consider adding `aria-live="polite"` to toast container for announcing success/error messages
+- Example: `<div aria-busy={pinningItemId === item.id} role="button" ...>`
 
 **Step 5: Commit**
 
@@ -1013,6 +1201,7 @@ git commit -m "feat: wire up pin/unpin actions in grid and tree views"
 ## Task 9: Update getItems to Include pinnedOrder
 
 **Files:**
+
 - Modify: `lib/item-actions.ts`
 
 **Step 1: Ensure pinnedOrder is included in ItemWithArtwork**
@@ -1031,7 +1220,18 @@ git commit -m "fix: ensure pinnedOrder included in item queries"
 ## Task 10: E2E Tests for Pinned Items
 
 **Files:**
+
 - Create: `e2e/journeys/items/pinned-items.spec.ts`
+- Modify: `e2e/pages/my-items-page.ts` (add `rightClickItem` method if not present)
+
+**Prerequisite:** Ensure `MyItemsPage` POM has a `rightClickItem(name: string)` method. If not present, add it:
+
+```typescript
+async rightClickItem(name: string): Promise<void> {
+  const item = this.page.getByRole("button", { name }).first();
+  await item.click({ button: "right" });
+}
+```
 
 **Step 1: Write E2E tests**
 
@@ -1088,7 +1288,9 @@ test.describe("Pinned Items", () => {
 
     // Verify item removed from sidebar
     const sidebar = p.getByRole("complementary");
-    await expect(sidebar.getByRole("link", { name: "TV Shows" })).not.toBeVisible();
+    await expect(
+      sidebar.getByRole("link", { name: "TV Shows" })
+    ).not.toBeVisible();
   });
 
   test("clicking pinned item navigates to detail page", async ({ page: p }) => {
@@ -1110,12 +1312,19 @@ test.describe("Pinned Items", () => {
   });
 
   test("shows error when max pinned items reached", async ({ page: p }) => {
+    const sidebar = p.getByRole("complementary");
+
     // Create and pin 10 items
     for (let i = 1; i <= 10; i++) {
       await myItems.createItem(`Item ${i}`);
       await myItems.rightClickItem(`Item ${i}`);
       await p.getByRole("menuitem", { name: /pin to sidebar/i }).click();
-      await p.waitForTimeout(200); // Small delay for DB
+
+      // Wait for the item to appear in sidebar instead of using arbitrary timeout
+      // This ensures the pin operation completed before continuing
+      await expect(
+        sidebar.getByRole("link", { name: `Item ${i}` })
+      ).toBeVisible();
     }
 
     // Try to pin 11th
@@ -1123,11 +1332,22 @@ test.describe("Pinned Items", () => {
     await myItems.rightClickItem("Item 11");
     await p.getByRole("menuitem", { name: /pin to sidebar/i }).click();
 
-    // Verify error
+    // Verify error toast appears
     await expect(p.getByText(/maximum of 10 pinned items/i)).toBeVisible();
+
+    // Verify item was NOT added to sidebar
+    await expect(
+      sidebar.getByRole("link", { name: "Item 11" })
+    ).not.toBeVisible();
   });
 });
 ```
+
+**Note on E2E Test Best Practices:**
+
+- Avoid `waitForTimeout()` - it's flaky and slows down tests
+- Wait for specific UI elements or state changes instead
+- Use `toBeVisible()` assertions to confirm operations completed
 
 **Step 2: Run E2E tests**
 
@@ -1146,6 +1366,7 @@ git commit -m "test: add E2E tests for pinned sidebar items"
 ## Task 11: Update Existing Tests
 
 **Files:**
+
 - Modify: `tests/unit/lib/item-actions.test.ts` (add pinnedOrder to mocks)
 - Modify: `tests/unit/components/grid-item.test.tsx` (add pinnedOrder to mocks)
 
@@ -1190,6 +1411,7 @@ pnpm run test
 pnpm run test:integration
 pnpm run test:e2e
 ```
+
 Expected: All tests pass
 
 **Step 3: Manual testing**
@@ -1211,32 +1433,914 @@ git commit -m "feat: pinned sidebar items complete with tests"
 
 ---
 
+## Task 13: Update Seed Configuration for Grouped Structure
+
+**Files:**
+
+- Modify: `prisma/seed-config.ts`
+
+**Goal:** Configure seed to create "Movies" and "TV Shows" parent folders that are automatically pinned, plus Doctor Who with Classic and Modern era grouping.
+
+**Step 1: Add seed constants**
+
+In `prisma/seed-config.ts`, add:
+
+```typescript
+// =============================================================================
+// Grouped Structure Configuration
+// =============================================================================
+
+/** Enable grouped folder structure (Movies/, TV Shows/) instead of flat */
+export const SEED_GROUPED_STRUCTURE = envBool("SEED_GROUPED_STRUCTURE", true);
+
+/** Doctor Who TMDB IDs for era grouping */
+export const CLASSIC_DOCTOR_WHO_ID = 121; // Doctor Who (1963-1989)
+export const MODERN_DOCTOR_WHO_ID = 57243; // Doctor Who (2005+)
+
+/** Check if a TV show ID is Classic Doctor Who (for special grouping) */
+export function isClassicDoctorWho(id: number): boolean {
+  return id === CLASSIC_DOCTOR_WHO_ID;
+}
+
+/** Check if a TV show ID is Modern Doctor Who (for special grouping) */
+export function isModernDoctorWho(id: number): boolean {
+  return id === MODERN_DOCTOR_WHO_ID;
+}
+
+/** Check if a TV show ID is any Doctor Who (for special grouping) */
+export function isDoctorWho(id: number): boolean {
+  return isClassicDoctorWho(id) || isModernDoctorWho(id);
+}
+```
+
+**Step 2: Update TV_SHOW_IDS to include Classic Doctor Who**
+
+Ensure `TV_SHOW_IDS` includes both Doctor Who IDs:
+
+```typescript
+export const TV_SHOW_IDS: number[] = [
+  // ... existing shows ...
+  121, // Doctor Who (1963-1989) - Classic Era
+  57243, // Doctor Who (2005+) - Modern Era
+];
+```
+
+**Step 3: Commit**
+
+```bash
+git add prisma/seed-config.ts
+git commit -m "feat: add grouped structure seed configuration"
+```
+
+---
+
+## Task 14: Implement Grouped Seed Structure with Pinned Folders
+
+**Files:**
+
+- Modify: `prisma/seed.ts`
+
+**Goal:** Create grouped structure where movies are under "Movies" folder and TV shows are under "TV Shows" folder. Both folders are pinned. Doctor Who gets special treatment with "Classic Era" and "Modern Era" subfolders.
+
+**Important:** This task requires updating the existing `seedMovies` and `seedTVShows` functions to accept an optional `parentId` parameter. The current signatures are:
+
+```typescript
+// Current signatures (prisma/seed.ts:683, 940):
+async function seedMovies(
+  userId: string,
+  ctx: DriveContext,
+  startOrder: number,
+  progress: SeedProgress
+): Promise<number>;
+async function seedTVShows(
+  userId: string,
+  ctx: DriveContext,
+  startOrder: number,
+  progress: SeedProgress
+): Promise<number>;
+```
+
+**Step 1: Update seedMovies signature to accept parentId**
+
+Modify `seedMovies` in `prisma/seed.ts`:
+
+```typescript
+/**
+ * Seeds movies from TMDB under the specified parent folder.
+ *
+ * @param userId - User ID to associate items with
+ * @param ctx - Google Drive context for folder creation
+ * @param startOrder - Starting order index for items
+ * @param progress - Progress tracking object
+ * @param parentId - Optional parent folder ID (null = root level)
+ */
+async function seedMovies(
+  userId: string,
+  ctx: DriveContext,
+  startOrder: number,
+  progress: SeedProgress,
+  parentId: string | null = null
+): Promise<number> {
+  // ... existing implementation ...
+
+  // Update the prisma.item.create call to include parentId:
+  const item = await prisma.item.create({
+    data: {
+      name,
+      description,
+      userId,
+      driveConnectionId: ctx.driveConnectionId,
+      driveFileId: movieDriveFolderId,
+      parentId, // Add this line
+      order: startOrder + count,
+      depth: parentId ? 1 : 0, // Adjust depth based on parent
+      syncStatus: "SYNCED",
+    },
+  });
+
+  // ... rest of implementation ...
+}
+```
+
+**Step 2: Update seedTVShows signature to accept parentId and custom IDs**
+
+Modify `seedTVShows` in `prisma/seed.ts`:
+
+```typescript
+/**
+ * Seeds TV shows from TMDB under the specified parent folder.
+ *
+ * @param userId - User ID to associate items with
+ * @param ctx - Google Drive context for folder creation
+ * @param startOrder - Starting order index for items
+ * @param progress - Progress tracking object
+ * @param parentId - Optional parent folder ID (null = root level)
+ * @param tvShowIds - Optional custom list of TMDB IDs (defaults to TV_SHOW_IDS)
+ */
+async function seedTVShows(
+  userId: string,
+  ctx: DriveContext,
+  startOrder: number,
+  progress: SeedProgress,
+  parentId: string | null = null,
+  tvShowIds: number[] = TV_SHOW_IDS
+): Promise<number> {
+  // ... existing implementation, iterate over tvShowIds instead of TV_SHOW_IDS ...
+
+  for (let i = 0; i < tvShowIds.length; i++) {
+    const showId = tvShowIds[i];
+    // ... rest of loop ...
+
+    // Update the prisma.item.create call to include parentId:
+    const item = await prisma.item.create({
+      data: {
+        name,
+        description,
+        userId,
+        driveConnectionId: ctx.driveConnectionId,
+        driveFileId: showDriveFolderId,
+        parentId, // Add this line
+        order: startOrder + count,
+        depth: parentId ? 1 : 0, // Adjust depth based on parent
+        syncStatus: "SYNCED",
+      },
+    });
+  }
+
+  // ... rest of implementation ...
+}
+```
+
+**Step 3: Add createGroupedStructure function**
+
+Add function to create grouped structure in `prisma/seed.ts`:
+
+```typescript
+import {
+  SEED_GROUPED_STRUCTURE,
+  isDoctorWho,
+  isClassicDoctorWho,
+  isModernDoctorWho,
+  CLASSIC_DOCTOR_WHO_ID,
+  MODERN_DOCTOR_WHO_ID,
+} from "./seed-config";
+
+interface GroupedStructure {
+  moviesFolder: { id: string; driveFolderId: string | null };
+  tvShowsFolder: { id: string; driveFolderId: string | null };
+  doctorWhoFolder: {
+    id: string;
+    classicEraId: string | null;
+    modernEraId: string | null;
+  } | null;
+}
+
+/**
+ * Creates the grouped folder structure with pinned parent folders.
+ * Structure:
+ *   root/
+ *   ├── Movies (pinnedOrder: 0)
+ *   │   └── [movie items...]
+ *   └── TV Shows (pinnedOrder: 1)
+ *       ├── Doctor Who
+ *       │   ├── Classic Era
+ *       │   │   └── [classic episodes...]
+ *       │   └── Modern Era
+ *       │       └── [modern episodes...]
+ *       └── [other TV shows...]
+ *
+ * @param userId - User ID
+ * @param ctx - Drive context for folder creation
+ * @param tvShowIds - List of TV show IDs to check for Doctor Who
+ */
+async function createGroupedStructure(
+  userId: string,
+  ctx: DriveContext,
+  tvShowIds: number[]
+): Promise<GroupedStructure> {
+  // Create Movies folder in Drive (if Drive is enabled)
+  let moviesDriveFolderId: string | null = null;
+  if (ctx.drive && ctx.rootFolderId) {
+    moviesDriveFolderId = await createDriveFolder(
+      ctx.drive,
+      "Movies",
+      ctx.rootFolderId
+    );
+  }
+
+  // Create Movies folder (pinned at position 0)
+  const moviesFolder = await prisma.item.create({
+    data: {
+      name: "Movies",
+      userId,
+      driveConnectionId: ctx.driveConnectionId,
+      driveFileId: moviesDriveFolderId,
+      order: 0,
+      depth: 0,
+      pinnedOrder: 0,
+      syncStatus: moviesDriveFolderId ? "SYNCED" : "PENDING",
+    },
+  });
+  log(`📁 Created Movies folder (pinned)`);
+
+  // Create TV Shows folder in Drive
+  let tvShowsDriveFolderId: string | null = null;
+  if (ctx.drive && ctx.rootFolderId) {
+    tvShowsDriveFolderId = await createDriveFolder(
+      ctx.drive,
+      "TV Shows",
+      ctx.rootFolderId
+    );
+  }
+
+  // Create TV Shows folder (pinned at position 1)
+  const tvShowsFolder = await prisma.item.create({
+    data: {
+      name: "TV Shows",
+      userId,
+      driveConnectionId: ctx.driveConnectionId,
+      driveFileId: tvShowsDriveFolderId,
+      order: 1,
+      depth: 0,
+      pinnedOrder: 1,
+      syncStatus: tvShowsDriveFolderId ? "SYNCED" : "PENDING",
+    },
+  });
+  log(`📁 Created TV Shows folder (pinned)`);
+
+  // Create Doctor Who container if we have any Doctor Who shows
+  const hasDoctorWho = tvShowIds.some(isDoctorWho);
+  let doctorWhoResult: GroupedStructure["doctorWhoFolder"] = null;
+
+  if (hasDoctorWho) {
+    // Create Doctor Who folder in Drive
+    let doctorWhoDriveFolderId: string | null = null;
+    if (ctx.drive && tvShowsDriveFolderId) {
+      doctorWhoDriveFolderId = await createDriveFolder(
+        ctx.drive,
+        "Doctor Who",
+        tvShowsDriveFolderId
+      );
+    }
+
+    const doctorWho = await prisma.item.create({
+      data: {
+        name: "Doctor Who",
+        userId,
+        driveConnectionId: ctx.driveConnectionId,
+        driveFileId: doctorWhoDriveFolderId,
+        parentId: tvShowsFolder.id,
+        order: 0,
+        depth: 1,
+        syncStatus: doctorWhoDriveFolderId ? "SYNCED" : "PENDING",
+      },
+    });
+    log(`📁 Created Doctor Who container`);
+
+    let classicEraId: string | null = null;
+    let modernEraId: string | null = null;
+
+    // Create Classic Era subfolder
+    if (tvShowIds.includes(CLASSIC_DOCTOR_WHO_ID)) {
+      let classicDriveFolderId: string | null = null;
+      if (ctx.drive && doctorWhoDriveFolderId) {
+        classicDriveFolderId = await createDriveFolder(
+          ctx.drive,
+          "Classic Era (1963-1989)",
+          doctorWhoDriveFolderId
+        );
+      }
+
+      const classicEra = await prisma.item.create({
+        data: {
+          name: "Classic Era (1963-1989)",
+          userId,
+          driveConnectionId: ctx.driveConnectionId,
+          driveFileId: classicDriveFolderId,
+          parentId: doctorWho.id,
+          order: 0,
+          depth: 2,
+          syncStatus: classicDriveFolderId ? "SYNCED" : "PENDING",
+        },
+      });
+      classicEraId = classicEra.id;
+      log(`  📁 Created Classic Era subfolder`);
+    }
+
+    // Create Modern Era subfolder
+    if (tvShowIds.includes(MODERN_DOCTOR_WHO_ID)) {
+      let modernDriveFolderId: string | null = null;
+      if (ctx.drive && doctorWhoDriveFolderId) {
+        modernDriveFolderId = await createDriveFolder(
+          ctx.drive,
+          "Modern Era (2005+)",
+          doctorWhoDriveFolderId
+        );
+      }
+
+      const modernEra = await prisma.item.create({
+        data: {
+          name: "Modern Era (2005+)",
+          userId,
+          driveConnectionId: ctx.driveConnectionId,
+          driveFileId: modernDriveFolderId,
+          parentId: doctorWho.id,
+          order: 1,
+          depth: 2,
+          syncStatus: modernDriveFolderId ? "SYNCED" : "PENDING",
+        },
+      });
+      modernEraId = modernEra.id;
+      log(`  📁 Created Modern Era subfolder`);
+    }
+
+    doctorWhoResult = { id: doctorWho.id, classicEraId, modernEraId };
+  }
+
+  return {
+    moviesFolder: { id: moviesFolder.id, driveFolderId: moviesDriveFolderId },
+    tvShowsFolder: {
+      id: tvShowsFolder.id,
+      driveFolderId: tvShowsDriveFolderId,
+    },
+    doctorWhoFolder: doctorWhoResult,
+  };
+}
+```
+
+**Step 4: Update main seed function to use grouped structure**
+
+Modify the main seed function to conditionally use grouped structure:
+
+```typescript
+async function main() {
+  // ... existing setup code (user creation, DriveContext setup) ...
+
+  const effectiveTVShowIds = getEffectiveTVShowIds();
+
+  if (SEED_GROUPED_STRUCTURE) {
+    log("📂 Creating grouped folder structure...");
+
+    const grouped = await createGroupedStructure(
+      user.id,
+      ctx,
+      effectiveTVShowIds
+    );
+
+    // Seed movies under Movies folder
+    log("🎬 Seeding movies under Movies folder...");
+    await seedMovies(user.id, ctx, 0, progress, grouped.moviesFolder.id);
+
+    // Seed TV shows under TV Shows folder (excluding Doctor Who for special handling)
+    const nonDoctorWhoIds = effectiveTVShowIds.filter((id) => !isDoctorWho(id));
+    log("📺 Seeding TV shows under TV Shows folder...");
+    // Start order at 1 to account for Doctor Who container at order 0
+    const tvStartOrder = grouped.doctorWhoFolder ? 1 : 0;
+    await seedTVShows(
+      user.id,
+      ctx,
+      tvStartOrder,
+      progress,
+      grouped.tvShowsFolder.id,
+      nonDoctorWhoIds
+    );
+
+    // Seed Doctor Who eras if we have the container
+    if (grouped.doctorWhoFolder) {
+      await seedDoctorWhoEras(user.id, ctx, progress, grouped.doctorWhoFolder);
+    }
+  } else {
+    // Flat structure (original behavior)
+    await seedMovies(user.id, ctx, 0, progress);
+    await seedTVShows(user.id, ctx, progress.movies.successful, progress);
+  }
+
+  // ... rest of seed (summary output) ...
+}
+```
+
+**Step 5: Add Doctor Who era seeding function**
+
+```typescript
+/**
+ * Seeds Doctor Who shows into their respective era folders.
+ * Fetches seasons/episodes from TMDB for each era.
+ *
+ * @param userId - User ID
+ * @param ctx - Drive context
+ * @param progress - Progress tracking
+ * @param doctorWhoFolder - IDs for Doctor Who and era subfolders
+ */
+async function seedDoctorWhoEras(
+  userId: string,
+  ctx: DriveContext,
+  progress: SeedProgress,
+  doctorWhoFolder: {
+    id: string;
+    classicEraId: string | null;
+    modernEraId: string | null;
+  }
+): Promise<void> {
+  // Seed Classic Doctor Who if we have the era folder
+  if (doctorWhoFolder.classicEraId) {
+    log(`🎬 Seeding Classic Doctor Who (ID: ${CLASSIC_DOCTOR_WHO_ID})...`);
+    await seedSingleTVShow(
+      userId,
+      ctx,
+      CLASSIC_DOCTOR_WHO_ID,
+      0,
+      progress,
+      doctorWhoFolder.classicEraId
+    );
+  }
+
+  // Seed Modern Doctor Who if we have the era folder
+  if (doctorWhoFolder.modernEraId) {
+    log(`🎬 Seeding Modern Doctor Who (ID: ${MODERN_DOCTOR_WHO_ID})...`);
+    await seedSingleTVShow(
+      userId,
+      ctx,
+      MODERN_DOCTOR_WHO_ID,
+      0,
+      progress,
+      doctorWhoFolder.modernEraId
+    );
+  }
+}
+
+/**
+ * Seeds a single TV show with its seasons under the specified parent.
+ * This is extracted from seedTVShows to handle individual shows.
+ *
+ * @param userId - User ID
+ * @param ctx - Drive context
+ * @param showId - TMDB show ID
+ * @param startOrder - Starting order index
+ * @param progress - Progress tracking
+ * @param parentId - Parent folder ID
+ */
+async function seedSingleTVShow(
+  userId: string,
+  ctx: DriveContext,
+  showId: number,
+  startOrder: number,
+  progress: SeedProgress,
+  parentId: string
+): Promise<void> {
+  // Rate limiting
+  await sleep(TMDB_API_DELAY_MS);
+
+  const show = await tmdbFetch<TMDBTVShow>(`/tv/${showId}`);
+  if (!show) {
+    console.warn(`⚠️  Failed to fetch TV show ${showId}`);
+    progress.tvShows.failed++;
+    return;
+  }
+
+  // The show's seasons will be created directly under the parentId
+  // (which is the era folder for Doctor Who)
+  // ... implement season seeding logic similar to existing seedTVShows ...
+
+  progress.tvShows.successful++;
+}
+```
+
+**Step 4: Run seed to verify**
+
+```bash
+# Test with grouped structure
+SEED_GROUPED_STRUCTURE=true npx prisma db seed
+
+# Verify structure in my-items view
+```
+
+**Step 5: Commit**
+
+```bash
+git add prisma/seed.ts
+git commit -m "feat: implement grouped seed structure with pinned Movies/TV Shows folders"
+```
+
+---
+
+## Task 15: Comprehensive Seed Flag Testing
+
+**Goal:** Verify all seed flag combinations work correctly with the new grouped structure. This consolidates testing from both this plan and the prerequisite `2026-01-13-empty-states-seeding-bulk-ops.md`.
+
+**Prerequisites:**
+
+1. Database reset: `npx prisma migrate reset` (clears all data)
+2. Google Drive folder cleared for seed account (if testing with Drive)
+
+### Available Flags Reference
+
+| Flag                    | Type    | Default | Description                                 |
+| ----------------------- | ------- | ------- | ------------------------------------------- |
+| `SEED_GROUPED_STRUCTURE`| boolean | true    | Create Movies/TV Shows parent folders       |
+| `SEED_ONLY_MOVIES`      | boolean | false   | Skip TV shows, seed only movies             |
+| `SEED_ONLY_SHOWS`       | boolean | false   | Skip movies, seed only TV shows             |
+| `SEED_SKIP_DRIVE`       | boolean | false   | Skip Google Drive uploads                   |
+| `SEED_SKIP_ARTWORK`     | boolean | false   | Skip downloading/uploading posters          |
+| `SEED_QUIET`            | boolean | false   | Suppress progress output                    |
+| `SEED_MOVIE_COUNT`      | number  | 0 (all) | Limit number of movies to seed              |
+| `SEED_SHOW_COUNT`       | number  | 0 (all) | Limit number of TV shows to seed            |
+| `SEED_USER_EMAIL`       | string  | null    | Override to seed single user only           |
+| `SEED_MAX_SEASONS`      | number  | 2       | Max seasons per TV show                     |
+| `SEED_MAX_EPISODES`     | number  | 10      | Max episodes per season                     |
+
+### Test Scenarios
+
+Run each scenario after a database reset (`npx prisma migrate reset --skip-seed`).
+
+#### Scenario 1: Quick Local Test (No Drive, Minimal Content)
+
+**Purpose:** Fast iteration during development - no network calls, minimal database writes.
+
+```bash
+SEED_SKIP_DRIVE=true \
+SEED_SKIP_ARTWORK=true \
+SEED_MOVIE_COUNT=2 \
+SEED_SHOW_COUNT=1 \
+SEED_MAX_SEASONS=1 \
+SEED_MAX_EPISODES=3 \
+npx prisma db seed
+```
+
+**Expected Structure:**
+
+```
+root/
+├── Movies (pinnedOrder: 0)
+│   ├── The Shawshank Redemption
+│   └── The Godfather
+└── TV Shows (pinnedOrder: 1)
+    └── Doctor Who (2005)
+        └── Season 1
+            ├── Episode 1
+            ├── Episode 2
+            └── Episode 3
+```
+
+**Verify:**
+
+- [ ] Movies and TV Shows folders are pinned (appear in sidebar)
+- [ ] Only 2 movies created under Movies
+- [ ] Only 1 TV show created under TV Shows
+- [ ] No artwork files (items have no thumbnails)
+- [ ] No Google Drive folders created
+
+---
+
+#### Scenario 2: Movies Only with Full Artwork
+
+**Purpose:** Test grouped structure with only movies, including artwork download.
+
+```bash
+SEED_SKIP_DRIVE=true \
+SEED_ONLY_MOVIES=true \
+SEED_MOVIE_COUNT=5 \
+npx prisma db seed
+```
+
+**Expected Structure:**
+
+```
+root/
+└── Movies (pinnedOrder: 0)
+    ├── The Shawshank Redemption (with poster/backdrop)
+    ├── The Godfather (with poster/backdrop)
+    ├── The Godfather Part II (with poster/backdrop)
+    ├── Schindler's List (with poster/backdrop)
+    └── 12 Angry Men (with poster/backdrop)
+```
+
+**Verify:**
+
+- [ ] Movies folder is pinned
+- [ ] **No TV Shows folder** created (SEED_ONLY_MOVIES=true)
+- [ ] 5 movies with TMDB metadata
+- [ ] Artwork files attached to items (poster, backdrop)
+- [ ] No Google Drive folders
+
+---
+
+#### Scenario 3: TV Shows Only with Doctor Who Era Grouping
+
+**Purpose:** Test Doctor Who era special handling in grouped structure.
+
+```bash
+SEED_SKIP_DRIVE=true \
+SEED_ONLY_SHOWS=true \
+SEED_MAX_SEASONS=1 \
+SEED_MAX_EPISODES=2 \
+npx prisma db seed
+```
+
+**Expected Structure:**
+
+```
+root/
+└── TV Shows (pinnedOrder: 0)
+    ├── Doctor Who
+    │   ├── Classic Era (1963-1989)
+    │   │   └── Season 1
+    │   │       ├── Episode 1
+    │   │       └── Episode 2
+    │   └── Modern Era (2005+)
+    │       └── Season 1
+    │           ├── Episode 1
+    │           └── Episode 2
+    ├── Breaking Bad
+    │   └── Season 1
+    │       ├── Episode 1
+    │       └── Episode 2
+    └── ... (other shows)
+```
+
+**Verify:**
+
+- [ ] TV Shows folder is pinned at order 0 (since no Movies folder)
+- [ ] **No Movies folder** created (SEED_ONLY_SHOWS=true)
+- [ ] Doctor Who has Classic Era and Modern Era subfolders
+- [ ] Seasons/episodes limited by MAX flags
+- [ ] Other TV shows seeded normally
+
+---
+
+#### Scenario 4: Flat Structure (Disabled Grouping)
+
+**Purpose:** Test backward compatibility with flat structure.
+
+```bash
+SEED_SKIP_DRIVE=true \
+SEED_GROUPED_STRUCTURE=false \
+SEED_MOVIE_COUNT=2 \
+SEED_SHOW_COUNT=2 \
+npx prisma db seed
+```
+
+**Expected Structure:**
+
+```
+root/
+├── The Shawshank Redemption (order: 0)
+├── The Godfather (order: 1)
+├── Doctor Who (2005) (order: 2)
+│   └── Season 1/...
+└── Breaking Bad (order: 3)
+    └── Season 1/...
+```
+
+**Verify:**
+
+- [ ] **No Movies/TV Shows parent folders** created
+- [ ] **No pinnedOrder** set on any items
+- [ ] All items at root level
+- [ ] Classic Doctor Who NOT treated specially (just "Doctor Who" folder)
+
+---
+
+#### Scenario 5: Single User Seed
+
+**Purpose:** Test seeding for specific user only.
+
+```bash
+SEED_SKIP_DRIVE=true \
+SEED_USER_EMAIL=demo@canoncore.com \
+SEED_MOVIE_COUNT=1 \
+SEED_SHOW_COUNT=1 \
+npx prisma db seed
+```
+
+**Verify:**
+
+- [ ] Only `demo@canoncore.com` user seeded
+- [ ] `test@canoncore.com` has no items
+- [ ] Grouped structure created for single user
+
+---
+
+#### Scenario 6: Full Production Seed with Google Drive
+
+**Purpose:** Complete seed with all features enabled.
+
+```bash
+# Requires GOOGLE_TEST_REFRESH_TOKEN and GOOGLE_TEST_ROOT_FOLDER_ID set
+SEED_GROUPED_STRUCTURE=true \
+npx prisma db seed
+```
+
+**Expected Structure (in app and Google Drive):**
+
+```
+CanonCore/ (in Google Drive)
+├── Movies/
+│   ├── The Shawshank Redemption/
+│   │   ├── poster.jpg
+│   │   └── backdrop.jpg
+│   └── ... (all 10 movies)
+└── TV Shows/
+    ├── Doctor Who/
+    │   ├── Classic Era (1963-1989)/
+    │   │   └── Season 1/...
+    │   └── Modern Era (2005+)/
+    │       └── Season 1/...
+    └── ... (all other TV shows)
+```
+
+**Verify:**
+
+- [ ] Movies and TV Shows folders pinned in sidebar
+- [ ] All 10 movies seeded with artwork
+- [ ] All TV shows seeded with Doctor Who era grouping
+- [ ] Google Drive folder structure mirrors app hierarchy
+- [ ] SyncStatus = SYNCED for all items with Drive
+- [ ] Artwork thumbnails load from Drive API
+
+---
+
+#### Scenario 7: Quiet Mode Verification
+
+**Purpose:** Test that SEED_QUIET suppresses output.
+
+```bash
+SEED_SKIP_DRIVE=true \
+SEED_MOVIE_COUNT=1 \
+SEED_QUIET=true \
+npx prisma db seed 2>&1 | wc -l
+```
+
+**Verify:**
+
+- [ ] Output line count minimal (only errors/warnings, no progress)
+- [ ] Compare with same command without SEED_QUIET
+
+---
+
+#### Scenario 8: Conflicting Flags Handling
+
+**Purpose:** Verify behavior with conflicting flags.
+
+```bash
+# SEED_ONLY_MOVIES + SEED_ONLY_SHOWS = empty seed
+SEED_SKIP_DRIVE=true \
+SEED_ONLY_MOVIES=true \
+SEED_ONLY_SHOWS=true \
+npx prisma db seed
+```
+
+**Verify:**
+
+- [ ] Seed completes without error
+- [ ] **No movies or TV shows created** (both filters active)
+- [ ] User accounts still created
+- [ ] Warning logged about conflicting flags (optional enhancement)
+
+---
+
+### Step 1: Run each scenario
+
+Execute each scenario in order, resetting database between runs:
+
+```bash
+# Reset before each scenario
+npx prisma migrate reset --skip-seed
+
+# Run scenario
+<scenario commands>
+
+# Verify in app
+pnpm run dev
+# Navigate to http://localhost:3000/my-items
+```
+
+### Step 2: Document results
+
+Create a test results log at `docs/plans/seed-flag-testing-results.md`:
+
+```markdown
+# Seed Flag Testing Results
+
+Date: YYYY-MM-DD
+Tester: [name]
+
+## Scenario 1: Quick Local Test
+- [x] Movies and TV Shows folders pinned
+- [x] 2 movies created
+- [x] 1 TV show created
+- [x] No artwork
+- [x] No Drive folders
+
+## Scenario 2: Movies Only
+...
+```
+
+### Step 3: Commit test documentation
+
+```bash
+git add docs/plans/seed-flag-testing-results.md
+git commit -m "docs: add seed flag testing results"
+```
+
+---
+
 ## Summary of Changes
 
 ### Database
+
 - Added `pinnedOrder: Int?` field to Item model
 - Added `@@index([userId, pinnedOrder])` for efficient queries
 
 ### Server Actions (`lib/item-actions.ts`)
+
 - `pinItem(id)` - Pin item to sidebar (max 10)
 - `unpinItem(id)` - Unpin item from sidebar
 - `getPinnedItems()` - Get all pinned items for sidebar
 
 ### Components
+
 - `NavPinnedItems` - New sidebar component for pinned items
 - `ItemContextMenu` - Added Pin/Unpin menu option
 - `AppSidebar` - Integrated pinned items display
 - `GridItem` / `TreeItem` - Added onTogglePin handler
 
 ### Types (`lib/types.ts`)
+
 - Added `pinnedOrder` to `Item` interface
 - Added `PinnedItem` interface for sidebar display
 
 ### Tests
+
 - Unit tests: `tests/unit/lib/item-actions-pinning.test.ts`, `tests/unit/components/nav-pinned-items.test.tsx`
 - Integration tests: `tests/integration/items/item-pinning.test.ts`
 - E2E tests: `e2e/journeys/items/pinned-items.spec.ts`
 - Updated existing tests to include `pinnedOrder` in mocks
+- Comprehensive seed flag testing (Task 15): 8 scenarios covering all flag combinations
 
 ### Rate Limiting
+
 - Added `itemPin` limit (30/min) in `lib/rate-limit.ts`
+
+### Seed System
+
+- Added `SEED_GROUPED_STRUCTURE` flag (default: true) in `prisma/seed-config.ts`
+- Added `CLASSIC_DOCTOR_WHO_ID` (121) and `MODERN_DOCTOR_WHO_ID` (57243) constants
+- Added `isDoctorWho()`, `isClassicDoctorWho()`, `isModernDoctorWho()` helper functions
+- Updated `seed.ts` to create grouped folder structure:
+  - "Movies" folder (pinnedOrder: 0)
+  - "TV Shows" folder (pinnedOrder: 1)
+  - "Doctor Who" container with "Classic Era" and "Modern Era" subfolders
+- Seed user will see pinned "Movies" and "TV Shows" in sidebar by default
+
+### Seed Flag Testing (Task 15)
+
+| Scenario | Flags Used | Purpose |
+| -------- | ---------- | ------- |
+| 1 | SKIP_DRIVE, SKIP_ARTWORK, counts | Quick local test |
+| 2 | ONLY_MOVIES, MOVIE_COUNT | Movies only with artwork |
+| 3 | ONLY_SHOWS | Doctor Who era grouping |
+| 4 | GROUPED_STRUCTURE=false | Flat structure backward compat |
+| 5 | USER_EMAIL | Single user seed |
+| 6 | (none) | Full production seed |
+| 7 | QUIET | Output suppression |
+| 8 | ONLY_MOVIES + ONLY_SHOWS | Conflicting flags handling |

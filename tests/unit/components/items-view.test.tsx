@@ -4,7 +4,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { ItemsView } from "@/components/items/items-view";
 import type { ItemWithArtwork, SortOption, FilterOption } from "@/lib/types";
 import { sortItems, filterItems } from "@/lib/item-utils";
@@ -44,6 +45,9 @@ vi.mock("@/lib/item-actions", () => ({
     .fn()
     .mockResolvedValue({ success: true, data: { id: "new-1", name: "New" } }),
   deleteItem: vi.fn().mockResolvedValue({ success: true }),
+  deleteItems: vi
+    .fn()
+    .mockResolvedValue({ success: true, data: { deleted: 2, skipped: 0 } }),
   reorderItems: vi.fn().mockResolvedValue({ success: true }),
   getItems: vi.fn().mockResolvedValue({ success: true, data: [] }),
 }));
@@ -149,9 +153,7 @@ describe("ItemsView", () => {
     it("renders empty state when no items", () => {
       render(<ItemsView items={[]} />);
       expect(screen.getByText("No items yet")).toBeInTheDocument();
-      expect(
-        screen.getByText("Create your first item to get started")
-      ).toBeInTheDocument();
+      expect(screen.getByText(/create your first item/i)).toBeInTheDocument();
     });
 
     it("renders Add Item button in empty state", () => {
@@ -252,6 +254,119 @@ describe("ItemsView", () => {
       // Edit button should be enabled with custom sort
       const editButton = screen.getByRole("button", { name: /edit/i });
       expect(editButton).toBeEnabled();
+    });
+  });
+
+  describe("empty states", () => {
+    it("shows first-time empty state when no items and no filter", () => {
+      sortFilterState.filterBy = "all";
+      render(
+        <ItemsView items={[]} parentId={null} hasDriveConnection={false} />
+      );
+
+      expect(screen.getByText("No items yet")).toBeInTheDocument();
+      expect(screen.getByText(/create your first item/i)).toBeInTheDocument();
+    });
+
+    it("shows no-children empty state on detail page with no children", () => {
+      sortFilterState.filterBy = "all";
+      render(
+        <ItemsView
+          items={[]}
+          parentId="parent-123"
+          hasDriveConnection={false}
+        />
+      );
+
+      expect(screen.getByText("No child items")).toBeInTheDocument();
+    });
+
+    it("shows filter-empty state when filter active and no results", () => {
+      sortFilterState.filterBy = "has-files";
+      render(
+        <ItemsView items={[]} parentId={null} hasDriveConnection={false} />
+      );
+
+      expect(screen.getByText("No matching items")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /clear filter/i })
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("bulk delete", () => {
+    it("shows bulk actions toolbar in edit mode", () => {
+      render(<ItemsView items={mockItems} isEditing={true} />);
+
+      // Toolbar should be visible
+      expect(screen.getByRole("checkbox")).toBeInTheDocument();
+    });
+
+    it("shows confirmation dialog when delete button clicked", async () => {
+      const user = userEvent.setup();
+      render(<ItemsView items={mockItems} isEditing={true} />);
+
+      // Select all items via checkbox
+      const checkbox = screen.getByRole("checkbox");
+      await user.click(checkbox);
+
+      // Click delete button
+      const deleteButton = screen.getByRole("button", { name: /delete 2/i });
+      await user.click(deleteButton);
+
+      // Confirmation dialog should appear
+      await waitFor(() => {
+        expect(screen.getByText("Delete Items")).toBeInTheDocument();
+        expect(
+          screen.getByText(/are you sure you want to delete 2 items/i)
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("closes confirmation dialog when cancel clicked", async () => {
+      const user = userEvent.setup();
+      render(<ItemsView items={mockItems} isEditing={true} />);
+
+      // Select all and click delete
+      await user.click(screen.getByRole("checkbox"));
+      await user.click(screen.getByRole("button", { name: /delete 2/i }));
+
+      // Wait for dialog
+      await waitFor(() => {
+        expect(screen.getByText("Delete Items")).toBeInTheDocument();
+      });
+
+      // Click cancel
+      await user.click(screen.getByRole("button", { name: /cancel/i }));
+
+      // Dialog should close
+      await waitFor(() => {
+        expect(screen.queryByText("Delete Items")).not.toBeInTheDocument();
+      });
+    });
+
+    it("executes delete when confirmed in dialog", async () => {
+      const { deleteItems } = await import("@/lib/item-actions");
+      const user = userEvent.setup();
+      render(<ItemsView items={mockItems} isEditing={true} />);
+
+      // Select all and click delete
+      await user.click(screen.getByRole("checkbox"));
+      await user.click(screen.getByRole("button", { name: /delete 2/i }));
+
+      // Wait for dialog and confirm
+      await waitFor(() => {
+        expect(screen.getByText("Delete Items")).toBeInTheDocument();
+      });
+
+      // Click the confirm Delete button in the dialog
+      const dialogDeleteButton = screen.getByRole("button", { name: "Delete" });
+      await user.click(dialogDeleteButton);
+
+      // deleteItems should be called
+      await waitFor(() => {
+        expect(deleteItems).toHaveBeenCalledWith(["item-1", "item-2"]);
+      });
     });
   });
 });
