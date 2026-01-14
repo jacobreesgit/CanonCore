@@ -9,6 +9,7 @@ import React, { forwardRef, HTMLAttributes } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { ChevronRight, GripVertical, Leaf, Play } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ItemStats } from "@/components/items/item-stats";
 import { SyncIcon } from "@/components/items/sync-badge";
 import type { FileCounts, SyncStatus } from "@/lib/types";
@@ -48,6 +49,10 @@ export interface TreeItemProps extends Omit<
   primaryMediaName?: string | null;
   /** Media icon type: film (all video), music (all audio), mixed (both). */
   mediaIconType?: "film" | "music" | "mixed" | null;
+  /** Whether the item is selected (for bulk operations). */
+  isSelected?: boolean;
+  /** Callback when selection state changes. */
+  onSelectChange?: (selected: boolean) => void;
 }
 
 export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
@@ -78,11 +83,14 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       syncStatus,
       primaryMediaName,
       mediaIconType,
+      isSelected,
+      onSelectChange,
       ...props
     },
     ref
   ) {
     const shouldShowDescription = showDescription && description;
+    const shouldShowCheckbox = showDragHandle && onSelectChange;
     const shouldShowStats = showStats && !showDragHandle;
     const shouldShowPrimaryMedia = primaryMediaName && !showDragHandle; // Hide in edit mode
 
@@ -126,6 +134,19 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
             onClick && "cursor-pointer"
           )}
         >
+          {/* Selection Checkbox - shown in edit mode */}
+          {!ghost && shouldShowCheckbox && (
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={(checked) => {
+                onSelectChange?.(checked === true);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              aria-label={`Select ${value}`}
+              className="data-[state=checked]:bg-primary data-[state=checked]:border-primary flex-shrink-0"
+            />
+          )}
+
           {/* Drag Handle */}
           {!ghost && showDragHandle && (
             <button

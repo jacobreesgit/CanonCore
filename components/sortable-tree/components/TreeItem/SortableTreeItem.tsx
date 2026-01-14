@@ -25,6 +25,10 @@ interface SortableTreeItemProps extends Omit<TreeItemProps, "handleProps"> {
   onAddChild?(name: string): Promise<string | undefined>;
   /** Whether user has Google Drive connected (for Add Child dialog) */
   hasDriveConnection?: boolean;
+  /** Whether the item is selected (for bulk operations). */
+  isSelected?: boolean;
+  /** Callback when selection state changes. */
+  onSelectChange?: (selected: boolean) => void;
 }
 
 const animateLayoutChanges: AnimateLayoutChanges = ({
@@ -51,6 +55,8 @@ export function SortableTreeItem({
   onDelete,
   onAddChild,
   hasDriveConnection = false,
+  isSelected,
+  onSelectChange,
   ...props
 }: SortableTreeItemProps) {
   const {
@@ -95,6 +101,8 @@ export function SortableTreeItem({
           ...listeners,
         }}
         showDragHandle={true}
+        isSelected={isSelected}
+        onSelectChange={onSelectChange}
         {...props}
       />
     </ItemContextMenu>

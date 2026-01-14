@@ -30,6 +30,10 @@ interface SortableGridItemProps extends Omit<GridItemProps, "handleProps"> {
   childCount?: number;
   /** Whether user has Google Drive connected. */
   hasDriveConnection?: boolean;
+  /** Whether the item is selected (for bulk operations). */
+  isSelected?: boolean;
+  /** Callback when selection state changes. */
+  onSelectChange?: (selected: boolean) => void;
 }
 
 /**
@@ -55,6 +59,8 @@ export function SortableGridItem({
   fileCounts,
   childCount,
   hasDriveConnection = false,
+  isSelected,
+  onSelectChange,
   ...props
 }: SortableGridItemProps) {
   const {
@@ -95,6 +101,8 @@ export function SortableGridItem({
         childCount={childCount}
         showArtwork={false}
         showCounts={false}
+        isSelected={isSelected}
+        onSelectChange={onSelectChange}
         {...props}
       />
     </ItemContextMenu>

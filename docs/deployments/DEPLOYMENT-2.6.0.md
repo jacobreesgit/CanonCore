@@ -155,8 +155,8 @@ export function useImageLoaded(src?: string): UseImageLoadedReturn;
 
 // hooks/use-lazy-image.ts
 interface UseLazyImageOptions {
-  priority?: boolean;      // Load immediately (default: false)
-  rootMargin?: string;     // Preload distance (default: "200px")
+  priority?: boolean; // Load immediately (default: false)
+  rootMargin?: string; // Preload distance (default: "200px")
 }
 
 interface UseLazyImageReturn {
@@ -174,9 +174,9 @@ export function useLazyImage(options?: UseLazyImageOptions): UseLazyImageReturn;
 interface AnimatedDialogContentProps {
   stepKey: string;
   showClose?: boolean;
-  header?: React.ReactNode;   // NEW: Fixed header content
-  footer?: React.ReactNode;   // NEW: Fixed footer content
-  children: React.ReactNode;  // Body content (animates)
+  header?: React.ReactNode; // NEW: Fixed header content
+  footer?: React.ReactNode; // NEW: Fixed footer content
+  children: React.ReactNode; // Body content (animates)
 }
 ```
 

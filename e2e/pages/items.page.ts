@@ -396,11 +396,11 @@ export class ItemsPage {
 
   /**
    * Gets a tree item's drag handle locator by item name.
-   * Uses data-id attribute for reliable selection in dnd-kit components.
+   * Uses aria-label to specifically target the drag handle button.
    */
   getTreeItemDragHandle(name: string): Locator {
     const item = this.page.locator(`li`).filter({ hasText: name }).first();
-    return item.locator("button").first();
+    return item.getByRole("button", { name: "Drag handle" });
   }
 
   /**
@@ -741,5 +741,116 @@ export class ItemsPage {
       name: /enter edit mode/i,
     });
     return await editButton.isDisabled();
+  }
+
+  // ==================== Bulk Selection Methods ====================
+
+  /**
+   * Gets the bulk actions toolbar locator.
+   */
+  getBulkActionsToolbar(): Locator {
+    return this.page
+      .locator('[class*="bulk"]')
+      .filter({ hasText: /selected|select items/i });
+  }
+
+  /**
+   * Gets the select-all checkbox in the bulk actions toolbar.
+   */
+  getSelectAllCheckbox(): Locator {
+    return this.page.getByRole("checkbox", { name: /select all items/i });
+  }
+
+  /**
+   * Gets the bulk delete button.
+   */
+  getBulkDeleteButton(): Locator {
+    return this.page.getByRole("button", { name: /delete \d+/i });
+  }
+
+  /**
+   * Selects an item by clicking its checkbox in edit mode.
+   *
+   * @param name - Name of the item to select
+   */
+  async selectItem(name: string): Promise<void> {
+    const item = this.page
+      .locator("[data-id]")
+      .filter({ hasText: name })
+      .first();
+    const checkbox = item.getByRole("checkbox", {
+      name: new RegExp(`select ${name}`, "i"),
+    });
+    await checkbox.click();
+  }
+
+  /**
+   * Toggles the select-all checkbox in the bulk actions toolbar.
+   */
+  async toggleSelectAll(): Promise<void> {
+    await this.getSelectAllCheckbox().click();
+  }
+
+  /**
+   * Gets the selection count from the bulk actions toolbar.
+   */
+  async getSelectionCount(): Promise<number> {
+    const text = await this.page
+      .locator('[class*="bulk"]')
+      .filter({ hasText: /selected/i })
+      .textContent();
+    const match = text?.match(/(\d+)\s*selected/i);
+    return match ? parseInt(match[1], 10) : 0;
+  }
+
+  /**
+   * Clicks the bulk delete button and confirms deletion in the dialog.
+   * Handles the full flow: click delete button → wait for dialog → confirm.
+   */
+  async clickBulkDelete(): Promise<void> {
+    await this.getBulkDeleteButton().click();
+    // Wait for confirmation dialog
+    await expect(
+      this.page.getByRole("dialog", { name: /delete items/i })
+    ).toBeVisible({ timeout: 5000 });
+    // Click the confirm Delete button in the dialog
+    await this.page.getByRole("button", { name: "Delete" }).click();
+    // Wait for dialog to close
+    await expect(
+      this.page.getByRole("dialog", { name: /delete items/i })
+    ).not.toBeVisible({ timeout: 10000 });
+  }
+
+  /**
+   * Expects the bulk actions toolbar to show a specific selection count.
+   *
+   * @param count - Expected number of selected items
+   */
+  async expectSelectionCount(count: number): Promise<void> {
+    if (count === 0) {
+      await expect(this.page.getByText(/select items/i)).toBeVisible();
+    } else {
+      await expect(this.page.getByText(`${count} selected`)).toBeVisible();
+    }
+  }
+
+  /**
+   * Expects the bulk delete button to be visible with the specified count.
+   *
+   * @param count - Number of items to be deleted
+   */
+  async expectBulkDeleteButton(count: number): Promise<void> {
+    await expect(
+      this.page.getByRole("button", { name: `Delete ${count}` })
+    ).toBeVisible();
+  }
+
+  /**
+   * Expects the bulk delete button to not be visible (no items selected).
+   */
+  async expectNoBulkDeleteButton(): Promise<void> {
+    await expect(
+      this.page.getByRole("button", { name: /delete \d+/i })
+    ).not.toBeVisible();
   }
 }
