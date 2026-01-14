@@ -79,6 +79,26 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
+// Mock sync-log module
+vi.mock("@/lib/sync-log", () => ({
+  logSyncOperation: vi.fn(),
+  startSyncTimer: vi.fn(() => () => 100),
+  SyncLogAction: {
+    CREATE: "CREATE",
+    RENAME: "RENAME",
+    DELETE: "DELETE",
+    MOVE: "MOVE",
+    UPLOAD: "UPLOAD",
+    DOWNLOAD: "DOWNLOAD",
+    SYNC: "SYNC",
+  },
+  SyncLogStatus: {
+    SUCCESS: "SUCCESS",
+    FAILED: "FAILED",
+    PENDING: "PENDING",
+  },
+}));
+
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -241,6 +261,163 @@ describe("google-drive-sync", () => {
       expect(prisma.googleDriveConnection.update).toHaveBeenCalledWith({
         where: { id: "conn-123" },
         data: { lastError: null },
+      });
+    });
+
+    describe("quota update", () => {
+      it("should update quota bytes after successful sync", async () => {
+        vi.mocked(auth).mockResolvedValue({
+          user: { id: "user-123" },
+          expires: new Date().toISOString(),
+        } as never);
+
+        vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue({
+          id: "conn-123",
+          userId: "user-123",
+          rootFolderId: "root-folder-id",
+          needsReauth: false,
+          lastError: null,
+          changePageToken: null,
+          quotaBytesUsed: null,
+          quotaBytesTotal: null,
+        } as never);
+
+        const { getDriveClient, checkRootFolderStatus } =
+          await import("@/lib/google-drive-client");
+        vi.mocked(getDriveClient).mockResolvedValue({
+          files: {
+            list: vi.fn().mockResolvedValue({ data: { files: [] } }),
+          },
+          changes: {
+            getStartPageToken: vi
+              .fn()
+              .mockResolvedValue({ data: { startPageToken: "token-1" } }),
+          },
+          about: {
+            get: vi.fn().mockResolvedValue({
+              data: {
+                storageQuota: {
+                  usage: "1073741824", // 1 GB
+                  limit: "16106127360", // 15 GB
+                },
+              },
+            }),
+          },
+        } as never);
+        vi.mocked(checkRootFolderStatus).mockResolvedValue({
+          exists: true,
+          trashed: false,
+        });
+
+        vi.mocked(prisma.item.aggregate).mockResolvedValue({
+          _max: { order: null },
+        } as never);
+
+        const { syncFromGoogleDrive } = await import("@/lib/google-drive-sync");
+        await syncFromGoogleDrive();
+
+        expect(prisma.googleDriveConnection.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { userId: "user-123" },
+            data: expect.objectContaining({
+              quotaBytesUsed: BigInt("1073741824"),
+              quotaBytesTotal: BigInt("16106127360"),
+            }),
+          })
+        );
+      });
+
+      it("should handle missing quota gracefully", async () => {
+        vi.mocked(auth).mockResolvedValue({
+          user: { id: "user-123" },
+          expires: new Date().toISOString(),
+        } as never);
+
+        vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue({
+          id: "conn-123",
+          userId: "user-123",
+          rootFolderId: "root-folder-id",
+          needsReauth: false,
+          lastError: null,
+          changePageToken: null,
+        } as never);
+
+        const { getDriveClient, checkRootFolderStatus } =
+          await import("@/lib/google-drive-client");
+        vi.mocked(getDriveClient).mockResolvedValue({
+          files: {
+            list: vi.fn().mockResolvedValue({ data: { files: [] } }),
+          },
+          changes: {
+            getStartPageToken: vi
+              .fn()
+              .mockResolvedValue({ data: { startPageToken: "token-1" } }),
+          },
+          about: {
+            get: vi.fn().mockResolvedValue({
+              data: { storageQuota: {} },
+            }),
+          },
+        } as never);
+        vi.mocked(checkRootFolderStatus).mockResolvedValue({
+          exists: true,
+          trashed: false,
+        });
+
+        vi.mocked(prisma.item.aggregate).mockResolvedValue({
+          _max: { order: null },
+        } as never);
+
+        const { syncFromGoogleDrive } = await import("@/lib/google-drive-sync");
+        const result = await syncFromGoogleDrive();
+
+        expect(result.success).toBe(true);
+      });
+
+      it("should continue sync if quota fetch fails", async () => {
+        vi.mocked(auth).mockResolvedValue({
+          user: { id: "user-123" },
+          expires: new Date().toISOString(),
+        } as never);
+
+        vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue({
+          id: "conn-123",
+          userId: "user-123",
+          rootFolderId: "root-folder-id",
+          needsReauth: false,
+          lastError: null,
+          changePageToken: null,
+        } as never);
+
+        const { getDriveClient, checkRootFolderStatus } =
+          await import("@/lib/google-drive-client");
+        vi.mocked(getDriveClient).mockResolvedValue({
+          files: {
+            list: vi.fn().mockResolvedValue({ data: { files: [] } }),
+          },
+          changes: {
+            getStartPageToken: vi
+              .fn()
+              .mockResolvedValue({ data: { startPageToken: "token-1" } }),
+          },
+          about: {
+            get: vi.fn().mockRejectedValue(new Error("API error")),
+          },
+        } as never);
+        vi.mocked(checkRootFolderStatus).mockResolvedValue({
+          exists: true,
+          trashed: false,
+        });
+
+        vi.mocked(prisma.item.aggregate).mockResolvedValue({
+          _max: { order: null },
+        } as never);
+
+        const { syncFromGoogleDrive } = await import("@/lib/google-drive-sync");
+        const result = await syncFromGoogleDrive();
+
+        // Sync should still succeed even if quota fetch fails
+        expect(result.success).toBe(true);
       });
     });
   });

@@ -11,6 +11,7 @@ import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { StorageBar, formatBytes } from "@/components/google-drive/storage-bar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -115,6 +116,22 @@ export function NavUser({ user, driveConnection }: NavUserProps) {
                 </div>
               </div>
             </DropdownMenuLabel>
+            {driveConnection && (
+              <div className="px-2 py-1.5">
+                <StorageBar
+                  bytesUsed={driveConnection.quotaBytesUsed}
+                  bytesTotal={driveConnection.quotaBytesTotal}
+                  variant="compact"
+                  className="mb-1"
+                />
+                <div className="text-muted-foreground text-[10px]">
+                  {driveConnection.quotaBytesUsed !== null &&
+                  driveConnection.quotaBytesTotal !== null
+                    ? `${formatBytes(driveConnection.quotaBytesUsed)} of ${formatBytes(driveConnection.quotaBytesTotal)} used`
+                    : "Google Drive"}
+                </div>
+              </div>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => setProfileDialogOpen(true)}

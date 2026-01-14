@@ -16,6 +16,7 @@ import {
   Sparkles,
   Trash2,
   ChevronLeft,
+  Cloud,
 } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { AnimatedDialogContent } from "@/components/ui/animated-dialog-content";
@@ -40,7 +41,10 @@ import {
   changePassword,
 } from "@/lib/user-actions";
 import { passwordSchema, emailSchema } from "@/lib/validations";
-import { GoogleDriveSettingsSection } from "@/components/google-drive";
+import {
+  GoogleDriveSettingsSection,
+  SyncHistory,
+} from "@/components/google-drive";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PreferencesTab } from "@/components/profile/preferences-tab";
 import { toast } from "sonner";
@@ -605,9 +609,10 @@ function MainSettingsContent({
       </DialogHeader>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="mb-4 grid w-full grid-cols-2">
+        <TabsList className="mb-4 grid w-full grid-cols-3">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
+          <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="mt-0">
@@ -822,6 +827,26 @@ function MainSettingsContent({
 
         <TabsContent value="preferences" className="mt-0">
           <PreferencesTab />
+        </TabsContent>
+
+        <TabsContent value="activity" className="mt-0">
+          {googleDriveConnection ? (
+            <div className="max-h-80 overflow-y-auto">
+              <SyncHistory />
+            </div>
+          ) : (
+            <div className="space-y-4 py-8 text-center">
+              <div className="bg-muted/50 mx-auto flex size-12 items-center justify-center rounded-full">
+                <Cloud className="text-muted-foreground size-6" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium">No sync activity</p>
+                <p className="text-muted-foreground text-sm">
+                  Connect Google Drive to track sync history
+                </p>
+              </div>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 

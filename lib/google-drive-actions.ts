@@ -23,6 +23,8 @@ import {
 } from "@/lib/google-drive-client";
 import { SyncStatus } from "@prisma/client";
 import { logger } from "@/lib/logger";
+import { logSyncOperation } from "@/lib/sync-log";
+import { startSyncTimer, SyncLogAction, SyncLogStatus } from "@/lib/sync-utils";
 
 /** Result type for Google Drive actions. */
 type ActionResult<T = void> =
@@ -125,6 +127,8 @@ export async function getGoogleDriveConnection() {
       needsReauth: true,
       lastSyncAt: true,
       lastError: true,
+      quotaBytesUsed: true,
+      quotaBytesTotal: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -203,6 +207,8 @@ export async function createFolderInGoogleDrive(
   parentItemId: string | null,
   name: string
 ): Promise<ActionResult<{ itemId: string; driveFileId: string }>> {
+  const timer = startSyncTimer();
+
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -264,12 +270,36 @@ export async function createFolderInGoogleDrive(
       },
     });
 
+    // Log successful create
+    await logSyncOperation({
+      userId: session.user.id,
+      action: SyncLogAction.CREATE,
+      itemId: item.id,
+      itemName: name,
+      status: SyncLogStatus.SUCCESS,
+      duration: timer(),
+    });
+
     revalidatePath("/my-items");
     return { success: true, data: { itemId: item.id, driveFileId } };
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to create folder";
     logger.error({ err: error }, "[GoogleDrive] Create folder error");
+
+    // Log failed create (get user ID from auth if available)
+    const session = await auth();
+    if (session?.user?.id) {
+      await logSyncOperation({
+        userId: session.user.id,
+        action: SyncLogAction.CREATE,
+        itemName: name,
+        status: SyncLogStatus.FAILED,
+        error: message,
+        duration: timer(),
+      });
+    }
+
     return { success: false, error: message };
   }
 }
@@ -284,6 +314,9 @@ export async function createFolderInGoogleDrive(
 export async function deleteItemFromGoogleDrive(
   itemId: string
 ): Promise<ActionResult> {
+  const timer = startSyncTimer();
+  let itemName: string | undefined;
+
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -292,12 +325,14 @@ export async function deleteItemFromGoogleDrive(
 
     const item = await prisma.item.findFirst({
       where: { id: itemId, userId: session.user.id },
-      select: { driveFileId: true, driveConnectionId: true },
+      select: { name: true, driveFileId: true, driveConnectionId: true },
     });
 
     if (!item) {
       return { success: false, error: "Item not found" };
     }
+
+    itemName = item.name;
 
     if (!item.driveFileId || !item.driveConnectionId) {
       // Local-only item, nothing to delete from Drive
@@ -317,6 +352,16 @@ export async function deleteItemFromGoogleDrive(
     // Delete from Drive (moves to trash)
     await deleteFile(drive, item.driveFileId);
 
+    // Log successful delete
+    await logSyncOperation({
+      userId: session.user.id,
+      action: SyncLogAction.DELETE,
+      itemId,
+      itemName: item.name,
+      status: SyncLogStatus.SUCCESS,
+      duration: timer(),
+    });
+
     // Note: DB deletion is handled by item-actions.ts
     // This function only handles the Drive side
 
@@ -324,6 +369,21 @@ export async function deleteItemFromGoogleDrive(
   } catch (error) {
     const message = error instanceof Error ? error.message : "Delete failed";
     logger.error({ err: error }, "[GoogleDrive] Delete item error");
+
+    // Log failed delete
+    const session = await auth();
+    if (session?.user?.id) {
+      await logSyncOperation({
+        userId: session.user.id,
+        action: SyncLogAction.DELETE,
+        itemId,
+        itemName,
+        status: SyncLogStatus.FAILED,
+        error: message,
+        duration: timer(),
+      });
+    }
+
     return { success: false, error: message };
   }
 }
@@ -377,6 +437,8 @@ export async function renameItemInGoogleDrive(
   itemId: string,
   newName: string
 ): Promise<ActionResult> {
+  const timer = startSyncTimer();
+
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -408,10 +470,35 @@ export async function renameItemInGoogleDrive(
     const drive = await getDriveClient(connection);
     await renameFile(drive, item.driveFileId, newName);
 
+    // Log successful rename
+    await logSyncOperation({
+      userId: session.user.id,
+      action: SyncLogAction.RENAME,
+      itemId,
+      itemName: newName,
+      status: SyncLogStatus.SUCCESS,
+      duration: timer(),
+    });
+
     return { success: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Rename failed";
     logger.error({ err: error }, "[GoogleDrive] Rename error");
+
+    // Log failed rename
+    const session = await auth();
+    if (session?.user?.id) {
+      await logSyncOperation({
+        userId: session.user.id,
+        action: SyncLogAction.RENAME,
+        itemId,
+        itemName: newName,
+        status: SyncLogStatus.FAILED,
+        error: message,
+        duration: timer(),
+      });
+    }
+
     return { success: false, error: message };
   }
 }
@@ -429,6 +516,9 @@ export async function moveItemInGoogleDrive(
   newParentId: string | null,
   oldParentId: string | null
 ): Promise<ActionResult> {
+  const timer = startSyncTimer();
+  let itemName: string | undefined;
+
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -437,12 +527,14 @@ export async function moveItemInGoogleDrive(
 
     const item = await prisma.item.findFirst({
       where: { id: itemId, userId: session.user.id },
-      select: { driveFileId: true },
+      select: { name: true, driveFileId: true },
     });
 
     if (!item) {
       return { success: false, error: "Item not found" };
     }
+
+    itemName = item.name;
 
     // If not linked to Drive, nothing to move there
     if (!item.driveFileId) {
@@ -497,10 +589,35 @@ export async function moveItemInGoogleDrive(
       );
     }
 
+    // Log successful move
+    await logSyncOperation({
+      userId: session.user.id,
+      action: SyncLogAction.MOVE,
+      itemId,
+      itemName: item.name,
+      status: SyncLogStatus.SUCCESS,
+      duration: timer(),
+    });
+
     return { success: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Move failed";
     logger.error({ err: error }, "[GoogleDrive] Move error");
+
+    // Log failed move
+    const session = await auth();
+    if (session?.user?.id) {
+      await logSyncOperation({
+        userId: session.user.id,
+        action: SyncLogAction.MOVE,
+        itemId,
+        itemName,
+        status: SyncLogStatus.FAILED,
+        error: message,
+        duration: timer(),
+      });
+    }
+
     return { success: false, error: message };
   }
 }
