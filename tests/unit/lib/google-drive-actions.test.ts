@@ -83,6 +83,26 @@ vi.mock("@/lib/crypto", () => ({
   decryptCredential: vi.fn((value) => value.replace("encrypted:", "")),
 }));
 
+// Mock sync-log module
+vi.mock("@/lib/sync-log", () => ({
+  logSyncOperation: vi.fn(),
+  startSyncTimer: vi.fn(() => () => 100),
+  SyncLogAction: {
+    CREATE: "CREATE",
+    RENAME: "RENAME",
+    DELETE: "DELETE",
+    MOVE: "MOVE",
+    UPLOAD: "UPLOAD",
+    DOWNLOAD: "DOWNLOAD",
+    SYNC: "SYNC",
+  },
+  SyncLogStatus: {
+    SUCCESS: "SUCCESS",
+    FAILED: "FAILED",
+    PENDING: "PENDING",
+  },
+}));
+
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 

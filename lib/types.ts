@@ -207,6 +207,8 @@ export interface GoogleDriveConnection {
   needsReauth: boolean;
   lastSyncAt: Date | null;
   lastError: string | null;
+  quotaBytesUsed: bigint | null;
+  quotaBytesTotal: bigint | null;
 }
 
 /**

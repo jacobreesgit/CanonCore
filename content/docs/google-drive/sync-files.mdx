@@ -49,6 +49,26 @@ Click the **Sync** button in the toolbar to trigger an immediate sync. This sync
 
 If you add content directly to Google Drive, use the Sync button to see it immediately, or wait for the next automatic sync.
 
+## Working offline
+
+CanonCore keeps working even without an internet connection. When you're offline:
+
+- **Operations queue locally** - Creating, renaming, or deleting items queues in your browser
+- **Auto-retry on reconnect** - When you come back online, queued operations retry automatically
+
+The queue holds up to 100 pending operations. Each operation retries up to 5 times with increasing delays between attempts. If something fails repeatedly, it appears in your sync history with an error.
+
+## Sync history
+
+View your recent sync activity in **Settings > Activity**. The activity panel shows:
+
+- What synced (folder created, file uploaded, item renamed)
+- When it happened
+- Whether it succeeded or failed
+- Error messages for failed operations
+
+This helps you troubleshoot sync issues and confirm that changes went through.
+
 ## File organization
 
 CanonCore mirrors your Drive folder structure:

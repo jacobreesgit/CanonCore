@@ -1,4 +1,4 @@
-- if you need to, use claude.md, and the mcp servers: sequential thinking, context7, neon, and shadcn to ensure best pratice. also if you like, use skills, e.g,Users/jacobrees/canoncore-v2/skills/frontend-design/SKILL.md or the superpower skills. also, make sure to follow jsdoc standards from claude.md. for tasks that require front-end design skill, update those todo items. never commit.
+- if you need to, use claude.md, and the mcp servers: sequential thinking, context7, neon, and shadcn to ensure best pratice. also if you like, use skills, e.g,Users/jacobrees/canoncore-v2/skills/frontend-design/SKILL.md or the superpower skills. also, make sure to follow jsdoc standards from claude.md. for tasks that require front-end design skill, update those todo items. never commit. never use superpowers execute skills skill
 
 - use the superpower skill to make a design document. when doing so, think about e2e, unit and integration to add/remove/change
 
@@ -21,3 +21,5 @@
 - use context7 and sequential thinking to do so
 
 - use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md NOT SUPERPOWERS, context7 and sequential thinking to ensure best practices on this project. really take your time and look at everything.
+
+- run check, fix, then run unit, intergration and e2e

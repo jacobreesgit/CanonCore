@@ -17,6 +17,8 @@ import { SyncStatus } from "@prisma/client";
 import { logger } from "@/lib/logger";
 import { categorizeFileType } from "@/lib/file-type-utils";
 import { drive_v3 } from "googleapis";
+import { logSyncOperation } from "@/lib/sync-log";
+import { startSyncTimer, SyncLogAction, SyncLogStatus } from "@/lib/sync-utils";
 
 /** Maximum nesting depth for folder sync (prevents runaway recursion). */
 const MAX_SYNC_DEPTH = 10;
@@ -117,6 +119,8 @@ export async function syncFromGoogleDrive(): Promise<{
     connection.rootFolderId
   );
 
+  const syncTimer = startSyncTimer();
+
   try {
     const drive = await getDriveClient(connection);
 
@@ -185,17 +189,50 @@ export async function syncFromGoogleDrive(): Promise<{
       await initialSync(drive, connection, ctx);
     }
 
-    // Update last sync time
+    // Fetch quota and update connection in single DB call
+    let quotaData: { usage?: bigint; limit?: bigint } = {};
+    try {
+      const aboutResponse = await withRateLimit(() =>
+        drive.about.get({ fields: "storageQuota" })
+      );
+      const quota = aboutResponse.data.storageQuota;
+      if (quota?.usage && quota?.limit) {
+        quotaData = {
+          usage: BigInt(quota.usage),
+          limit: BigInt(quota.limit),
+        };
+      }
+    } catch (error) {
+      // Quota fetch failure is non-fatal - log and continue
+      logger.warn({ err: error }, "[GoogleDrive] Failed to fetch quota");
+    }
+
+    // Update last sync time and quota in single operation
     await prisma.googleDriveConnection.update({
       where: { userId: session.user.id },
       data: {
         lastSyncAt: new Date(),
         lastError:
           ctx.errors.length > 0 ? `${ctx.errors.length} files failed` : null,
+        ...(quotaData.usage && { quotaBytesUsed: quotaData.usage }),
+        ...(quotaData.limit && { quotaBytesTotal: quotaData.limit }),
       },
     });
 
     revalidatePath("/my-items");
+
+    // Log successful sync operation
+    await logSyncOperation({
+      userId: session.user.id,
+      action: SyncLogAction.SYNC,
+      status:
+        ctx.stats.errors > 0 ? SyncLogStatus.FAILED : SyncLogStatus.SUCCESS,
+      error:
+        ctx.stats.errors > 0
+          ? `${ctx.stats.errors} items failed to sync`
+          : undefined,
+      duration: syncTimer(),
+    });
 
     return {
       success: true,
@@ -211,6 +248,15 @@ export async function syncFromGoogleDrive(): Promise<{
     await prisma.googleDriveConnection.update({
       where: { userId: session.user.id },
       data: { lastError: message },
+    });
+
+    // Log failed sync operation
+    await logSyncOperation({
+      userId: session.user.id,
+      action: SyncLogAction.SYNC,
+      status: SyncLogStatus.FAILED,
+      error: message,
+      duration: syncTimer(),
     });
 
     return { success: false, error: message };

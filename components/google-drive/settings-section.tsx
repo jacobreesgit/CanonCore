@@ -43,6 +43,7 @@ import { syncFromGoogleDrive } from "@/lib/google-drive-sync";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { StorageBar } from "@/components/google-drive/storage-bar";
 import type { GoogleDriveConnection } from "@/lib/types";
 
 interface GoogleDriveSettingsSectionProps {
@@ -190,6 +191,24 @@ export function GoogleDriveSettingsSection({
                     {connection.lastError}
                   </p>
                 )}
+            </div>
+
+            {/* Storage section - always show, with disabled state when no data */}
+            <div className="space-y-2 border-t p-3">
+              <Label className="text-muted-foreground text-xs">Storage</Label>
+              <StorageBar
+                bytesUsed={connection.quotaBytesUsed}
+                bytesTotal={connection.quotaBytesTotal}
+              />
+              <a
+                href="https://one.google.com/storage"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+              >
+                Manage Storage
+                <ExternalLink className="size-3" />
+              </a>
             </div>
 
             {/* Action buttons row */}

@@ -5,6 +5,39 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { drive_v3 } from "googleapis";
 
+/**
+ * Creates a mock batch response for testing.
+ *
+ * @param count - Number of successful responses to include
+ * @param includeFileIds - Whether to include file IDs in responses
+ * @returns Mock Response object
+ */
+function createMockBatchResponse(
+  count: number,
+  includeFileIds = true
+): Response {
+  const boundary = "batch_mock123";
+  let body = "";
+
+  for (let i = 0; i < count; i++) {
+    body += `--${boundary}\r\n`;
+    body += `Content-Type: application/http\r\n`;
+    body += `Content-ID: <response-item-${i}>\r\n\r\n`;
+    body += `HTTP/1.1 200 OK\r\n`;
+    body += `Content-Type: application/json\r\n\r\n`;
+    body += includeFileIds ? `{"id":"file-${i}"}\r\n` : `{}\r\n`;
+  }
+  body += `--${boundary}--`;
+
+  return {
+    ok: true,
+    headers: new Headers({
+      "content-type": `multipart/mixed; boundary=${boundary}`,
+    }),
+    text: async () => body,
+  } as Response;
+}
+
 // Mock dependencies before imports
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -370,6 +403,208 @@ describe("google-drive-client", () => {
       const result = await checkRootFolderStatus(mockDrive, "folder-123");
 
       expect(result).toEqual({ exists: true, trashed: false });
+    });
+  });
+
+  describe("batchDelete", () => {
+    beforeEach(() => {
+      vi.stubGlobal("fetch", vi.fn());
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("deletes multiple files in single request", async () => {
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        headers: new Headers({
+          "content-type": "multipart/mixed; boundary=batch_abc123",
+        }),
+        text: async () => `--batch_abc123
+Content-Type: application/http
+Content-ID: <response-item-0>
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{"id":"file-1"}
+--batch_abc123
+Content-Type: application/http
+Content-ID: <response-item-1>
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{"id":"file-2"}
+--batch_abc123--`,
+      } as Response);
+
+      const { batchDelete } = await import("@/lib/google-drive-client");
+      const result = await batchDelete("test-access-token", [
+        "file-1",
+        "file-2",
+      ]);
+
+      expect(result.succeeded).toEqual(["file-1", "file-2"]);
+      expect(result.failed).toEqual([]);
+    });
+
+    it("returns empty result for empty file array", async () => {
+      const { batchDelete } = await import("@/lib/google-drive-client");
+      const result = await batchDelete("token", []);
+
+      expect(result.succeeded).toEqual([]);
+      expect(result.failed).toEqual([]);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("reports partial failures", async () => {
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        headers: new Headers({
+          "content-type": "multipart/mixed; boundary=batch_xyz",
+        }),
+        text: async () => `--batch_xyz
+Content-Type: application/http
+Content-ID: <response-item-0>
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{"id":"file-1"}
+--batch_xyz
+Content-Type: application/http
+Content-ID: <response-item-1>
+
+HTTP/1.1 404 Not Found
+Content-Type: application/json
+
+{"error":{"message":"File not found"}}
+--batch_xyz--`,
+      } as Response);
+
+      const { batchDelete } = await import("@/lib/google-drive-client");
+      const result = await batchDelete("token", ["file-1", "file-2"]);
+
+      expect(result.succeeded).toContain("file-1");
+      expect(result.failed).toHaveLength(1);
+      expect(result.failed[0].error).toBe("File not found");
+    });
+
+    it("chunks large batches into multiple requests", async () => {
+      const fileIds = Array.from({ length: 150 }, (_, i) => `file-${i}`);
+
+      vi.mocked(global.fetch)
+        .mockResolvedValueOnce(createMockBatchResponse(100))
+        .mockResolvedValueOnce(createMockBatchResponse(50));
+
+      const { batchDelete } = await import("@/lib/google-drive-client");
+      const result = await batchDelete("token", fileIds);
+
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(result.succeeded).toHaveLength(150);
+    });
+
+    it("throws timeout error when fetch is aborted", async () => {
+      // Simulate an AbortError from fetch
+      const abortError = new Error("The operation was aborted.");
+      abortError.name = "AbortError";
+      vi.mocked(global.fetch).mockRejectedValue(abortError);
+
+      const { batchDelete } = await import("@/lib/google-drive-client");
+
+      await expect(batchDelete("token", ["file-1"])).rejects.toThrow(
+        /timeout/i
+      );
+    });
+  });
+
+  describe("batchMove", () => {
+    beforeEach(() => {
+      vi.stubGlobal("fetch", vi.fn());
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("moves multiple files to new parent", async () => {
+      vi.mocked(global.fetch).mockResolvedValue(
+        createMockBatchResponse(3, true)
+      );
+
+      const { batchMove } = await import("@/lib/google-drive-client");
+      const result = await batchMove(
+        "token",
+        ["file-1", "file-2", "file-3"],
+        "new-parent",
+        "old-parent"
+      );
+
+      expect(result.succeeded).toHaveLength(3);
+
+      // Verify request contains correct params
+      expect(global.fetch).toHaveBeenCalledWith(
+        "https://www.googleapis.com/batch/drive/v3",
+        expect.objectContaining({
+          body: expect.stringContaining("addParents=new-parent"),
+        })
+      );
+    });
+
+    it("returns empty result for empty file array", async () => {
+      const { batchMove } = await import("@/lib/google-drive-client");
+      const result = await batchMove("token", [], "new-parent", "old-parent");
+
+      expect(result.succeeded).toEqual([]);
+      expect(result.failed).toEqual([]);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("batchMoveFromDifferentParents", () => {
+    beforeEach(() => {
+      vi.stubGlobal("fetch", vi.fn());
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("handles files from different parents", async () => {
+      vi.mocked(global.fetch).mockResolvedValue(
+        createMockBatchResponse(2, true)
+      );
+
+      const { batchMoveFromDifferentParents } =
+        await import("@/lib/google-drive-client");
+
+      const result = await batchMoveFromDifferentParents(
+        "token",
+        [
+          { fileId: "file-1", oldParentId: "parent-a" },
+          { fileId: "file-2", oldParentId: "parent-b" },
+        ],
+        "new-parent"
+      );
+
+      expect(result.succeeded).toHaveLength(2);
+    });
+
+    it("returns empty result for empty file array", async () => {
+      const { batchMoveFromDifferentParents } =
+        await import("@/lib/google-drive-client");
+
+      const result = await batchMoveFromDifferentParents(
+        "token",
+        [],
+        "new-parent"
+      );
+
+      expect(result.succeeded).toEqual([]);
+      expect(result.failed).toEqual([]);
+      expect(global.fetch).not.toHaveBeenCalled();
     });
   });
 });
