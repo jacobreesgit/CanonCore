@@ -17,6 +17,9 @@ Element.prototype.releasePointerCapture = vi.fn();
 // Mock scrollIntoView for Radix UI
 Element.prototype.scrollIntoView = vi.fn();
 
+// Mock scrollTo for animated dialog scroll reset
+Element.prototype.scrollTo = vi.fn();
+
 // Mock Prisma
 vi.mock("@/lib/prisma", () => ({
   prisma: {

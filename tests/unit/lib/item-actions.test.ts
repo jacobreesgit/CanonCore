@@ -39,6 +39,16 @@ vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
 }));
 
+// Mock google-drive-client for batch operations
+vi.mock("@/lib/google-drive-client", () => ({
+  batchDelete: vi.fn(),
+}));
+
+// Mock crypto for token decryption
+vi.mock("@/lib/crypto", () => ({
+  decryptCredential: vi.fn().mockReturnValue("decrypted-access-token"),
+}));
+
 const mockAuth = auth as unknown as ReturnType<
   typeof vi.fn<() => Promise<Session | null>>
 >;
@@ -702,6 +712,136 @@ describe("deleteItem", () => {
 
     expect(checkRateLimit).toHaveBeenCalledWith("itemDelete");
     expect(result).toEqual({ success: true });
+  });
+
+  it("uses batch delete when item has descendants with Drive files", async () => {
+    const { batchDelete } = await import("@/lib/google-drive-client");
+    vi.mocked(batchDelete).mockResolvedValue({
+      succeeded: ["drive-1", "drive-2", "drive-3"],
+      failed: [],
+    });
+
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+
+    // Parent item with driveFileId
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "parent-item",
+      userId: "user-1",
+      driveFileId: "drive-1",
+      driveConnectionId: "conn-1",
+    } as never);
+
+    // Mock connection lookup
+    vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue({
+      id: "conn-1",
+      userId: "user-1",
+      encryptedAccessToken: "encrypted-token",
+      encryptedRefreshToken: "encrypted-refresh",
+      accessTokenExpiry: new Date(Date.now() + 3600000),
+    } as never);
+
+    // Mock recursive CTE to return descendants with driveFileIds
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      { driveFileId: "drive-2" },
+      { driveFileId: "drive-3" },
+      { driveFileId: null }, // A descendant without Drive file
+    ]);
+
+    vi.mocked(prisma.item.delete).mockResolvedValue({} as never);
+
+    const result = await deleteItem("parent-item");
+
+    expect(result.success).toBe(true);
+    // Should call batchDelete with parent + descendant driveFileIds
+    expect(batchDelete).toHaveBeenCalledWith(
+      expect.any(String), // access token
+      ["drive-1", "drive-2", "drive-3"]
+    );
+    expect(prisma.item.delete).toHaveBeenCalledWith({
+      where: { id: "parent-item" },
+    });
+  });
+
+  it("does not call batch delete when item has no Drive connection", async () => {
+    const { batchDelete } = await import("@/lib/google-drive-client");
+
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "local-item",
+      userId: "user-1",
+      driveFileId: null,
+      driveConnectionId: null,
+    } as never);
+    vi.mocked(prisma.item.delete).mockResolvedValue({} as never);
+
+    const result = await deleteItem("local-item");
+
+    expect(result.success).toBe(true);
+    expect(batchDelete).not.toHaveBeenCalled();
+    expect(prisma.item.delete).toHaveBeenCalled();
+  });
+
+  it("continues with local delete when batch delete partially fails", async () => {
+    const { batchDelete } = await import("@/lib/google-drive-client");
+    vi.mocked(batchDelete).mockResolvedValue({
+      succeeded: ["drive-1"],
+      failed: [{ fileId: "drive-2", error: "Not found" }],
+    });
+
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "parent-item",
+      userId: "user-1",
+      driveFileId: "drive-1",
+      driveConnectionId: "conn-1",
+    } as never);
+    vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue({
+      id: "conn-1",
+      userId: "user-1",
+      encryptedAccessToken: "encrypted-token",
+      encryptedRefreshToken: "encrypted-refresh",
+      accessTokenExpiry: new Date(Date.now() + 3600000),
+    } as never);
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{ driveFileId: "drive-2" }]);
+    vi.mocked(prisma.item.delete).mockResolvedValue({} as never);
+
+    const result = await deleteItem("parent-item");
+
+    // Should still succeed - Drive delete is soft-delete (recoverable)
+    expect(result.success).toBe(true);
+    expect(prisma.item.delete).toHaveBeenCalled();
+  });
+
+  it("handles batch delete when only parent has Drive file (no descendants)", async () => {
+    const { batchDelete } = await import("@/lib/google-drive-client");
+    vi.mocked(batchDelete).mockResolvedValue({
+      succeeded: ["drive-1"],
+      failed: [],
+    });
+
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "leaf-item",
+      userId: "user-1",
+      driveFileId: "drive-1",
+      driveConnectionId: "conn-1",
+    } as never);
+    vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue({
+      id: "conn-1",
+      userId: "user-1",
+      encryptedAccessToken: "encrypted-token",
+      encryptedRefreshToken: "encrypted-refresh",
+      accessTokenExpiry: new Date(Date.now() + 3600000),
+    } as never);
+    // No descendants
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+    vi.mocked(prisma.item.delete).mockResolvedValue({} as never);
+
+    const result = await deleteItem("leaf-item");
+
+    expect(result.success).toBe(true);
+    // Should still use batchDelete even for single file (simplifies code path)
+    expect(batchDelete).toHaveBeenCalledWith(expect.any(String), ["drive-1"]);
   });
 });
 

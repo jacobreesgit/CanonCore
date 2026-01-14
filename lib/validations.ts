@@ -49,16 +49,16 @@ export const forgotPasswordSchema = z.object({
 
 /**
  * Item name validation schema.
- * Allows alphanumeric, spaces, hyphens, underscores.
- * Compatible with filesystem naming.
+ * Allows alphanumeric, spaces, hyphens, underscores, and parentheses.
+ * Compatible with filesystem naming and TMDB metadata (e.g., "Torchwood (2006)").
  */
 export const itemNameSchema = z
   .string()
   .min(1, "Name is required")
   .max(255, "Name too long")
   .regex(
-    /^[a-zA-Z0-9\s\-_]+$/,
-    "Name can only contain letters, numbers, spaces, hyphens, and underscores"
+    /^[a-zA-Z0-9\s\-_()]+$/,
+    "Name can only contain letters, numbers, spaces, hyphens, underscores, and parentheses"
   );
 
 /**

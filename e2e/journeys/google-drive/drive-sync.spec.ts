@@ -8,6 +8,7 @@
 
 import { test, expect, prisma } from "../../fixtures";
 import { ItemsPage } from "../../pages/items.page";
+import { openSidebarIfClosed } from "../../helpers/sidebar-helpers";
 
 test.describe("Google Drive: Auto-Sync Operations", () => {
   let itemsPage: ItemsPage;
@@ -97,5 +98,82 @@ test.describe("Google Drive: Auto-Sync Operations", () => {
       where: { userId: testUser.id, name: "Renamed Sync Item" },
     });
     expect(renamedItem?.driveFileId).toBe(originalDriveId);
+  });
+
+  test("shows sync history after operations", async ({ page, testUser }) => {
+    // Create an item (triggers sync log)
+    await itemsPage.createItem("E2E Sync History Test");
+
+    // Wait for sync to complete
+    await expect(async () => {
+      const item = await prisma.item.findFirst({
+        where: { userId: testUser.id, name: "E2E Sync History Test" },
+      });
+      expect(item?.driveFileId).not.toBeNull();
+    }).toPass({ timeout: 15000 });
+
+    // Open sidebar on mobile if needed, then open profile settings via user menu
+    await openSidebarIfClosed(page);
+    await page.getByTestId("my-items-user-menu").click();
+    await page.getByRole("menuitem", { name: /settings/i }).click();
+
+    // Wait for dialog to open, then switch to Activity tab
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.getByRole("tab", { name: /activity/i }).click();
+
+    // Wait for history to load and verify create operation is shown
+    await expect(page.getByText("E2E Sync History Test").first()).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.getByText("Created").first()).toBeVisible();
+  });
+
+  test("deletes folder with children efficiently using batch delete", async ({
+    page,
+    testUser,
+  }) => {
+    // Create parent folder
+    await itemsPage.createItem("Batch Delete Parent");
+
+    // Wait for parent to sync
+    await expect(async () => {
+      const item = await prisma.item.findFirst({
+        where: { userId: testUser.id, name: "Batch Delete Parent" },
+      });
+      expect(item?.driveFileId).not.toBeNull();
+    }).toPass({ timeout: 15000 });
+
+    // Navigate into parent and create children
+    await itemsPage.clickItem("Batch Delete Parent");
+    await itemsPage.createItem("Child 1");
+    await itemsPage.createItem("Child 2");
+    await itemsPage.createItem("Child 3");
+
+    // Wait for all children to sync to Drive
+    await expect(async () => {
+      const items = await prisma.item.findMany({
+        where: { userId: testUser.id },
+      });
+      // Should have 4 items total (parent + 3 children)
+      expect(items.length).toBe(4);
+      // All should have driveFileId
+      expect(items.every((i) => i.driveFileId)).toBe(true);
+    }).toPass({ timeout: 30000 });
+
+    // Navigate back to root
+    await itemsPage.clickBreadcrumb("My Items");
+    await itemsPage.waitForLoadingComplete();
+
+    // Delete the parent (uses batch delete for all 4 items)
+    await itemsPage.deleteItemViaContextMenu("Batch Delete Parent");
+
+    // Verify parent item is gone from UI
+    await itemsPage.expectItemNotVisible("Batch Delete Parent");
+
+    // Verify all items (parent + children) are deleted from DB
+    const remaining = await prisma.item.count({
+      where: { userId: testUser.id },
+    });
+    expect(remaining).toBe(0);
   });
 });

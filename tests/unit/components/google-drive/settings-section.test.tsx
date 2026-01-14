@@ -23,6 +23,8 @@ describe("GoogleDriveSettingsSection", () => {
     needsReauth: false,
     lastSyncAt: new Date("2026-01-10T12:00:00Z"),
     lastError: null,
+    quotaBytesUsed: null,
+    quotaBytesTotal: null,
   };
 
   beforeEach(() => {
@@ -203,7 +205,7 @@ describe("GoogleDriveSettingsSection", () => {
         />
       );
 
-      const syncButton = screen.getByRole("button", { name: /sync/i });
+      const syncButton = screen.getByRole("button", { name: /^sync$/i });
       expect(syncButton).not.toBeDisabled();
     });
 
@@ -215,7 +217,7 @@ describe("GoogleDriveSettingsSection", () => {
         />
       );
 
-      const syncButton = screen.getByRole("button", { name: /sync/i });
+      const syncButton = screen.getByRole("button", { name: /^sync$/i });
       expect(syncButton).toBeDisabled();
     });
 
@@ -227,7 +229,7 @@ describe("GoogleDriveSettingsSection", () => {
         />
       );
 
-      const syncButton = screen.getByRole("button", { name: /sync/i });
+      const syncButton = screen.getByRole("button", { name: /^sync$/i });
       expect(syncButton).toBeDisabled();
     });
 
@@ -239,7 +241,7 @@ describe("GoogleDriveSettingsSection", () => {
         />
       );
 
-      const syncButton = screen.getByRole("button", { name: /sync/i });
+      const syncButton = screen.getByRole("button", { name: /^sync$/i });
       expect(syncButton).not.toBeDisabled();
     });
   });
@@ -280,6 +282,82 @@ describe("GoogleDriveSettingsSection", () => {
       // The error should be shown in the dedicated warning banner, not as plain text
       const errorTexts = screen.queryAllByText("ROOT_FOLDER_DELETED");
       expect(errorTexts).toHaveLength(0);
+    });
+  });
+
+  describe("Storage Quota Display", () => {
+    const mockConnectionWithQuota = {
+      email: "test@gmail.com",
+      rootFolderId: "folder-abc123",
+      isActive: true,
+      needsReauth: false,
+      lastSyncAt: new Date("2026-01-10T12:00:00Z"),
+      lastError: null,
+      quotaBytesUsed: BigInt("8053063680"), // 7.5 GB
+      quotaBytesTotal: BigInt("16106127360"), // 15 GB
+    };
+
+    it("displays storage bar when quota data exists", () => {
+      render(
+        <GoogleDriveSettingsSection
+          connection={mockConnectionWithQuota}
+          onConnectionChange={vi.fn()}
+        />
+      );
+
+      expect(screen.getByText(/7\.5 GB/)).toBeInTheDocument();
+      expect(screen.getByText(/15\.0 GB/)).toBeInTheDocument();
+      expect(screen.getByRole("progressbar")).toBeInTheDocument();
+    });
+
+    it("shows storage bar in disabled state when quota is null", () => {
+      render(
+        <GoogleDriveSettingsSection
+          connection={{
+            ...mockConnectionWithQuota,
+            quotaBytesUsed: null,
+            quotaBytesTotal: null,
+          }}
+          onConnectionChange={vi.fn()}
+        />
+      );
+
+      // Progress bar should still be visible but in disabled state
+      expect(screen.getByRole("progressbar")).toBeInTheDocument();
+      expect(
+        screen.getByText(/sync to see storage usage/i)
+      ).toBeInTheDocument();
+    });
+
+    it("shows Manage Storage link when quota exists", () => {
+      render(
+        <GoogleDriveSettingsSection
+          connection={mockConnectionWithQuota}
+          onConnectionChange={vi.fn()}
+        />
+      );
+
+      const link = screen.getByRole("link", { name: /manage storage/i });
+      expect(link).toHaveAttribute("href", "https://one.google.com/storage");
+      expect(link).toHaveAttribute("target", "_blank");
+      expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    });
+
+    it("shows Manage Storage link even when quota is null", () => {
+      render(
+        <GoogleDriveSettingsSection
+          connection={{
+            ...mockConnectionWithQuota,
+            quotaBytesUsed: null,
+            quotaBytesTotal: null,
+          }}
+          onConnectionChange={vi.fn()}
+        />
+      );
+
+      // Link should still be shown so user can manage storage
+      const link = screen.getByRole("link", { name: /manage storage/i });
+      expect(link).toHaveAttribute("href", "https://one.google.com/storage");
     });
   });
 });

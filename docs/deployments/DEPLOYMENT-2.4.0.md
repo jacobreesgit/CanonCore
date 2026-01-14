@@ -99,11 +99,11 @@ Both columns are nullable strings. Null means "use app defaults" (grid view, cus
 
 ## Test Results
 
-| Suite       | Tests  | Result     |
-| ----------- | ------ | ---------- |
-| Unit        | 1086   | All passed |
-| Integration | 47     | All passed |
-| E2E         | 58     | All passed |
+| Suite       | Tests | Result     |
+| ----------- | ----- | ---------- |
+| Unit        | 1086  | All passed |
+| Integration | 47    | All passed |
+| E2E         | 58    | All passed |
 
 ## API Changes
 
@@ -143,6 +143,12 @@ export type ViewMode = "grid" | "tree";
 
 ```typescript
 // lib/item-utils.ts
-export function sortItems(items: ItemWithArtwork[], sortBy: SortOption): ItemWithArtwork[];
-export function filterItems(items: ItemWithArtwork[], filterBy: FilterOption): ItemWithArtwork[];
+export function sortItems(
+  items: ItemWithArtwork[],
+  sortBy: SortOption
+): ItemWithArtwork[];
+export function filterItems(
+  items: ItemWithArtwork[],
+  filterBy: FilterOption
+): ItemWithArtwork[];
 ```

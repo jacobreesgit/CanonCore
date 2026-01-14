@@ -11,6 +11,12 @@ import { Readable } from "stream";
 import { prisma } from "@/lib/prisma";
 import { encryptCredential, decryptCredential } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
+import {
+  buildBatchRequest,
+  parseBatchResponse,
+  BatchOperation,
+  getBatchTimeout,
+} from "@/lib/google-drive-batch";
 
 // Rate limiter: max 10 concurrent, 100ms between requests (10/sec)
 const rateLimiter = new Bottleneck({
@@ -821,4 +827,392 @@ export async function createResumableUploadUrl(
   }
 
   return uploadUrl;
+}
+
+/** Result of a batch delete operation */
+export interface BatchDeleteResult {
+  succeeded: string[];
+  failed: Array<{ fileId: string; error: string }>;
+}
+
+/**
+ * Deletes multiple files in batch.
+ * Automatically chunks into multiple requests if > 100 files.
+ *
+ * @param accessToken - Valid OAuth access token
+ * @param fileIds - Array of file IDs to delete (move to trash)
+ * @returns Object with succeeded and failed file IDs
+ */
+export async function batchDelete(
+  accessToken: string,
+  fileIds: string[]
+): Promise<BatchDeleteResult> {
+  const result: BatchDeleteResult = { succeeded: [], failed: [] };
+
+  // Handle empty array - return early
+  if (fileIds.length === 0) {
+    return result;
+  }
+
+  const startTime = Date.now();
+
+  // Chunk into batches of 100
+  const chunks: string[][] = [];
+  for (let i = 0; i < fileIds.length; i += 100) {
+    chunks.push(fileIds.slice(i, i + 100));
+  }
+
+  for (const chunk of chunks) {
+    const operations: BatchOperation[] = chunk.map((fileId) => ({
+      method: "PATCH",
+      fileId,
+      body: { trashed: true },
+    }));
+
+    const { body, boundary } = buildBatchRequest(operations);
+
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), getBatchTimeout());
+
+    try {
+      const response = await fetch(
+        "https://www.googleapis.com/batch/drive/v3",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": `multipart/mixed; boundary=${boundary}`,
+          },
+          body,
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        // Entire batch failed
+        for (const fileId of chunk) {
+          result.failed.push({
+            fileId,
+            error: `Batch request failed: ${response.status}`,
+          });
+        }
+        continue;
+      }
+
+      // Extract boundary from response Content-Type
+      const contentType = response.headers.get("content-type") || "";
+      const responseBoundary =
+        contentType.match(/boundary=([^\s;]+)/)?.[1] || boundary;
+
+      const responseBody = await response.text();
+      const batchResults = parseBatchResponse(
+        responseBody,
+        responseBoundary,
+        chunk
+      );
+
+      // Collect results
+      for (const batchResult of batchResults) {
+        if (batchResult.success) {
+          result.succeeded.push(batchResult.fileId);
+        } else {
+          result.failed.push({
+            fileId: batchResult.fileId,
+            error: batchResult.error || "Unknown error",
+          });
+        }
+      }
+    } catch (error) {
+      clearTimeout(timeoutId);
+
+      // Handle abort/timeout
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error(`Batch delete timeout after ${getBatchTimeout()}ms`);
+      }
+
+      // Log and fail all items in this chunk
+      logger.error({ err: error, chunk }, "[Batch] Request failed");
+      for (const fileId of chunk) {
+        result.failed.push({
+          fileId,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+  }
+
+  // Log performance metrics
+  const duration = Date.now() - startTime;
+  logger.info(
+    {
+      duration,
+      total: fileIds.length,
+      succeeded: result.succeeded.length,
+      failed: result.failed.length,
+    },
+    "[Batch] Delete completed"
+  );
+
+  return result;
+}
+
+/** Result of a batch move operation */
+export interface BatchMoveResult {
+  succeeded: string[];
+  failed: Array<{ fileId: string; error: string }>;
+}
+
+/**
+ * Moves multiple files to a new parent folder in batch.
+ * All files must currently be in the same parent.
+ *
+ * @param accessToken - Valid OAuth access token
+ * @param fileIds - Array of file IDs to move
+ * @param newParentId - Destination folder ID
+ * @param oldParentId - Current parent folder ID
+ * @returns Object with succeeded and failed file IDs
+ */
+export async function batchMove(
+  accessToken: string,
+  fileIds: string[],
+  newParentId: string,
+  oldParentId: string
+): Promise<BatchMoveResult> {
+  const result: BatchMoveResult = { succeeded: [], failed: [] };
+
+  // Handle empty array - return early
+  if (fileIds.length === 0) {
+    return result;
+  }
+
+  const startTime = Date.now();
+
+  const chunks: string[][] = [];
+  for (let i = 0; i < fileIds.length; i += 100) {
+    chunks.push(fileIds.slice(i, i + 100));
+  }
+
+  for (const chunk of chunks) {
+    const operations: BatchOperation[] = chunk.map((fileId) => ({
+      method: "PATCH",
+      fileId,
+      params: {
+        addParents: newParentId,
+        removeParents: oldParentId,
+      },
+    }));
+
+    const { body, boundary } = buildBatchRequest(operations);
+
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), getBatchTimeout());
+
+    try {
+      const response = await fetch(
+        "https://www.googleapis.com/batch/drive/v3",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": `multipart/mixed; boundary=${boundary}`,
+          },
+          body,
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        for (const fileId of chunk) {
+          result.failed.push({
+            fileId,
+            error: `Batch request failed: ${response.status}`,
+          });
+        }
+        continue;
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+      const responseBoundary =
+        contentType.match(/boundary=([^\s;]+)/)?.[1] || boundary;
+      const responseBody = await response.text();
+      const batchResults = parseBatchResponse(
+        responseBody,
+        responseBoundary,
+        chunk
+      );
+
+      for (const batchResult of batchResults) {
+        if (batchResult.success) {
+          result.succeeded.push(batchResult.fileId);
+        } else {
+          result.failed.push({
+            fileId: batchResult.fileId,
+            error: batchResult.error || "Unknown error",
+          });
+        }
+      }
+    } catch (error) {
+      clearTimeout(timeoutId);
+
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error(`Batch move timeout after ${getBatchTimeout()}ms`);
+      }
+
+      logger.error({ err: error, chunk }, "[Batch] Move request failed");
+      for (const fileId of chunk) {
+        result.failed.push({
+          fileId,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+  }
+
+  // Log performance metrics
+  const duration = Date.now() - startTime;
+  logger.info(
+    {
+      duration,
+      total: fileIds.length,
+      succeeded: result.succeeded.length,
+      failed: result.failed.length,
+    },
+    "[Batch] Move completed"
+  );
+
+  return result;
+}
+
+/** Input for moving files from different parents */
+export interface MoveFromDifferentParent {
+  fileId: string;
+  oldParentId: string;
+}
+
+/**
+ * Moves files from different parent folders to a single destination.
+ *
+ * @param accessToken - Valid OAuth access token
+ * @param files - Array of file IDs with their current parent IDs
+ * @param newParentId - Destination folder ID
+ * @returns Object with succeeded and failed file IDs
+ */
+export async function batchMoveFromDifferentParents(
+  accessToken: string,
+  files: MoveFromDifferentParent[],
+  newParentId: string
+): Promise<BatchMoveResult> {
+  const result: BatchMoveResult = { succeeded: [], failed: [] };
+
+  // Handle empty array - return early
+  if (files.length === 0) {
+    return result;
+  }
+
+  const startTime = Date.now();
+
+  const chunks: MoveFromDifferentParent[][] = [];
+  for (let i = 0; i < files.length; i += 100) {
+    chunks.push(files.slice(i, i + 100));
+  }
+
+  for (const chunk of chunks) {
+    const operations: BatchOperation[] = chunk.map((file) => ({
+      method: "PATCH",
+      fileId: file.fileId,
+      params: {
+        addParents: newParentId,
+        removeParents: file.oldParentId,
+      },
+    }));
+
+    const { body, boundary } = buildBatchRequest(operations);
+
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), getBatchTimeout());
+
+    try {
+      const response = await fetch(
+        "https://www.googleapis.com/batch/drive/v3",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": `multipart/mixed; boundary=${boundary}`,
+          },
+          body,
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        for (const file of chunk) {
+          result.failed.push({
+            fileId: file.fileId,
+            error: `Batch failed: ${response.status}`,
+          });
+        }
+        continue;
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+      const responseBoundary =
+        contentType.match(/boundary=([^\s;]+)/)?.[1] || boundary;
+      const responseBody = await response.text();
+      const fileIds = chunk.map((f) => f.fileId);
+      const batchResults = parseBatchResponse(
+        responseBody,
+        responseBoundary,
+        fileIds
+      );
+
+      for (const batchResult of batchResults) {
+        if (batchResult.success) {
+          result.succeeded.push(batchResult.fileId);
+        } else {
+          result.failed.push({
+            fileId: batchResult.fileId,
+            error: batchResult.error || "Unknown error",
+          });
+        }
+      }
+    } catch (error) {
+      clearTimeout(timeoutId);
+
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error(`Batch move timeout after ${getBatchTimeout()}ms`);
+      }
+
+      logger.error({ err: error, chunk }, "[Batch] Move request failed");
+      for (const file of chunk) {
+        result.failed.push({
+          fileId: file.fileId,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+  }
+
+  // Log performance metrics
+  const duration = Date.now() - startTime;
+  logger.info(
+    {
+      duration,
+      total: files.length,
+      succeeded: result.succeeded.length,
+      failed: result.failed.length,
+    },
+    "[Batch] Move from different parents completed"
+  );
+
+  return result;
 }

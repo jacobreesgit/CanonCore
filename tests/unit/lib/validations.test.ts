@@ -8,6 +8,7 @@ import {
   emailSchema,
   passwordSchema,
   signUpSchema,
+  itemNameSchema,
   itemDescriptionSchema,
 } from "@/lib/validations";
 
@@ -79,6 +80,37 @@ describe("signUpSchema", () => {
       email: "user@example.com",
       password: "weak",
     });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("itemNameSchema", () => {
+  it("accepts simple name", () => {
+    expect(itemNameSchema.safeParse("Torchwood").success).toBe(true);
+  });
+
+  it("accepts name with year in parentheses (TMDB format)", () => {
+    expect(itemNameSchema.safeParse("Torchwood (2006)").success).toBe(true);
+  });
+
+  it("accepts name with hyphens and underscores", () => {
+    expect(itemNameSchema.safeParse("Spider-Man_Homecoming").success).toBe(
+      true
+    );
+  });
+
+  it("rejects empty name", () => {
+    const result = itemNameSchema.safeParse("");
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects name with special characters", () => {
+    const result = itemNameSchema.safeParse("Movie: The Sequel!");
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects name exceeding 255 characters", () => {
+    const result = itemNameSchema.safeParse("a".repeat(256));
     expect(result.success).toBe(false);
   });
 });
