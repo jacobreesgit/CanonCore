@@ -125,7 +125,7 @@ test.describe("Spotlight Search Journey", () => {
     await spotlightPage.expectOpen();
 
     // Should display keyboard shortcut hints in the footer
-    await expect(page.getByText(/press.*\/.*to toggle/i)).toBeVisible();
+    await expect(page.getByText(/\/.*to search/i)).toBeVisible();
     await expect(page.getByText(/esc.*to close/i)).toBeVisible();
   });
 

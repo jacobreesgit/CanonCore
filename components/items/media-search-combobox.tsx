@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Film, Tv, Search, Loader2 } from "lucide-react";
+import { useImageLoaded } from "@/hooks/use-image-loaded";
 import { Input } from "@/components/ui/input";
 import {
   Popover,
@@ -20,13 +21,13 @@ import { cn } from "@/lib/utils";
 
 /**
  * Poster thumbnail with load state tracking for smooth fade-in.
- * Shows film icon placeholder while loading.
+ * Uses useImageLoaded hook for cached image detection.
  *
  * @param posterPath - TMDB poster path
  */
 function PosterThumbnail({ posterPath }: { posterPath: string }) {
-  const [loaded, setLoaded] = useState(false);
-  const posterUrl = getPosterUrl(posterPath, "w92");
+  const posterUrl = getPosterUrl(posterPath, "w92") ?? undefined;
+  const { ref, loaded, onLoad, onError } = useImageLoaded(posterUrl);
 
   return (
     <div className="bg-muted relative h-14 w-10 shrink-0 overflow-hidden rounded">
@@ -38,13 +39,15 @@ function PosterThumbnail({ posterPath }: { posterPath: string }) {
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={posterUrl ?? undefined}
+        ref={ref}
+        src={posterUrl}
         alt=""
         className={cn(
           "absolute inset-0 h-full w-full object-cover transition-opacity duration-150",
           loaded ? "opacity-100" : "opacity-0"
         )}
-        onLoad={() => setLoaded(true)}
+        onLoad={onLoad}
+        onError={onError}
       />
     </div>
   );

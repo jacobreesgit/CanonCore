@@ -6,9 +6,16 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  type RefObject,
+} from "react";
 import { useRouter } from "next/navigation";
 import { Search, Loader2, Folder } from "lucide-react";
+import { useImageLoaded } from "@/hooks/use-image-loaded";
 import { toast } from "sonner";
 import {
   CommandDialog,
@@ -25,13 +32,32 @@ import { cn } from "@/lib/utils";
 import type { SearchableItem } from "@/lib/types";
 
 /**
+ * Resets scroll position to top when search value changes.
+ *
+ * @param listRef - Ref to the scrollable list element
+ * @param searchValue - Current search input value
+ */
+function useScrollReset(
+  listRef: RefObject<HTMLDivElement | null>,
+  searchValue: string
+) {
+  useEffect(() => {
+    if (listRef.current) {
+      listRef.current.scrollTop = 0;
+    }
+  }, [listRef, searchValue]);
+}
+
+/**
  * Artwork thumbnail with load state tracking.
  * Shows folder icon until image loads, then fades in.
+ * Uses useImageLoaded hook to handle cached images.
  *
  * @param artworkId - ID of the artwork to display
  */
 function ArtworkThumbnail({ artworkId }: { artworkId: string }) {
-  const [loaded, setLoaded] = useState(false);
+  const artworkSrc = `/api/artwork/${artworkId}`;
+  const { ref, loaded, onLoad, onError } = useImageLoaded(artworkSrc);
 
   return (
     <div className="bg-muted relative h-8 w-8 shrink-0 overflow-hidden rounded-md">
@@ -43,13 +69,15 @@ function ArtworkThumbnail({ artworkId }: { artworkId: string }) {
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={`/api/artwork/${artworkId}`}
+        ref={ref}
+        src={artworkSrc}
         alt=""
         className={cn(
           "absolute inset-0 h-full w-full object-cover transition-opacity duration-150",
           loaded ? "opacity-100" : "opacity-0"
         )}
-        onLoad={() => setLoaded(true)}
+        onLoad={onLoad}
+        onError={onError}
       />
     </div>
   );
@@ -86,6 +114,10 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const prevOpenRef = useRef(false);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Reset scroll to top when search value changes
+  useScrollReset(listRef, searchValue);
 
   // Use defaultOpen for testing, otherwise use context
   const open = defaultOpen ?? isOpen;
@@ -168,7 +200,7 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
         value={searchValue}
         onValueChange={setSearchValue}
       />
-      <CommandList className="max-h-[400px]">
+      <CommandList ref={listRef} className="max-h-[400px]">
         {isLoading ? (
           <div className="flex items-center justify-center gap-2 py-12">
             <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
@@ -221,9 +253,9 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
           </>
         )}
       </CommandList>
-      <div className="flex items-center justify-between border-t px-3 py-2">
+      <div className="flex items-center justify-start gap-3 border-t px-3 py-2">
         <span className="text-muted-foreground text-xs">
-          Press <Kbd>/</Kbd> to toggle
+          <Kbd>/</Kbd> to search
         </span>
         <span className="text-muted-foreground text-xs">
           <Kbd>esc</Kbd> to close

@@ -2,7 +2,7 @@
  * Unit tests for ItemHero component.
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ItemHero } from "@/components/items/item-hero";
@@ -15,6 +15,35 @@ vi.mock("@/components/shader1", () => ({
     </div>
   ),
 }));
+
+// Mock scrollHeight for overflow detection (jsdom doesn't support real layout)
+// COLLAPSED_HEIGHT_PX in item-hero.tsx is 56, so we return > 56 for long text
+const originalScrollHeightDescriptor = Object.getOwnPropertyDescriptor(
+  HTMLElement.prototype,
+  "scrollHeight"
+);
+
+beforeEach(() => {
+  Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
+    configurable: true,
+    get() {
+      // Simulate overflow for long text (> 100 chars triggers overflow)
+      const textLength = this.textContent?.length ?? 0;
+      return textLength > 100 ? 200 : 30;
+    },
+  });
+});
+
+afterEach(() => {
+  // Restore original descriptor
+  if (originalScrollHeightDescriptor) {
+    Object.defineProperty(
+      HTMLElement.prototype,
+      "scrollHeight",
+      originalScrollHeightDescriptor
+    );
+  }
+});
 
 describe("ItemHero", () => {
   const defaultProps = {
