@@ -54,6 +54,8 @@ import {
   deleteItems,
   reorderItems,
   getItems,
+  pinItem,
+  unpinItem,
 } from "@/lib/item-actions";
 import { getItemFiles } from "@/lib/item-file-actions";
 import { syncFromGoogleDrive } from "@/lib/google-drive-sync";
@@ -357,6 +359,48 @@ export function ItemsView({
     [setItems]
   );
 
+  // Handle pinning an item to the sidebar
+  const handlePinItem = useCallback(
+    async (id: string) => {
+      const result = await pinItem(id);
+      if (result.success) {
+        // Update local state to reflect pinned status
+        setItems((prev) =>
+          prev.map((item) =>
+            item.id === id
+              ? { ...item, pinnedOrder: Date.now() } // Use timestamp as temporary order
+              : item
+          )
+        );
+        toast.success("Pinned to sidebar");
+        router.refresh();
+      } else {
+        toast.error(result.error || "Failed to pin item");
+      }
+    },
+    [setItems, router]
+  );
+
+  // Handle unpinning an item from the sidebar
+  const handleUnpinItem = useCallback(
+    async (id: string) => {
+      const result = await unpinItem(id);
+      if (result.success) {
+        // Update local state to reflect unpinned status
+        setItems((prev) =>
+          prev.map((item) =>
+            item.id === id ? { ...item, pinnedOrder: null } : item
+          )
+        );
+        toast.success("Unpinned from sidebar");
+        router.refresh();
+      } else {
+        toast.error(result.error || "Failed to unpin item");
+      }
+    },
+    [setItems, router]
+  );
+
   // Handle tree reordering
   const handleTreeItemsChange = useCallback(
     async (newTreeItems: TreeItems) => {
@@ -643,6 +687,8 @@ export function ItemsView({
             onOpenSettings={handleOpenSettings}
             onDeleteItem={handleDeleteItem}
             hasDriveConnection={hasDriveConnection}
+            onPinItem={handlePinItem}
+            onUnpinItem={handleUnpinItem}
             isItemSelected={bulkSelection.isSelected}
             onItemSelectChange={(id, selected) =>
               selected !== bulkSelection.isSelected(id) &&
@@ -656,6 +702,8 @@ export function ItemsView({
             onOpenSettings={handleOpenSettings}
             onDeleteItem={handleDeleteItem}
             hasDriveConnection={hasDriveConnection}
+            onPinItem={handlePinItem}
+            onUnpinItem={handleUnpinItem}
           />
         )
       ) : isEditing ? (
@@ -668,6 +716,8 @@ export function ItemsView({
           onAddChild={handleAddChild}
           onAddChildComplete={refetchItems}
           hasDriveConnection={hasDriveConnection}
+          onPinItem={handlePinItem}
+          onUnpinItem={handleUnpinItem}
           isItemSelected={bulkSelection.isSelected}
           onItemSelectChange={(id, selected) =>
             selected !== bulkSelection.isSelected(id) &&
@@ -683,6 +733,8 @@ export function ItemsView({
           onAddChild={handleAddChild}
           onAddChildComplete={refetchItems}
           hasDriveConnection={hasDriveConnection}
+          onPinItem={handlePinItem}
+          onUnpinItem={handleUnpinItem}
         />
       )}
 

@@ -37,6 +37,10 @@ interface TreeProps {
   hasDriveConnection?: boolean;
   /** Indentation width per depth level. Defaults to 20. */
   indentationWidth?: number;
+  /** Callback to pin an item to the sidebar. */
+  onPinItem?(id: string): Promise<void>;
+  /** Callback to unpin an item from the sidebar. */
+  onUnpinItem?(id: string): Promise<void>;
 }
 
 /**
@@ -55,6 +59,8 @@ export function Tree({
   onAddChildComplete,
   hasDriveConnection = false,
   indentationWidth = 20,
+  onPinItem,
+  onUnpinItem,
 }: TreeProps) {
   const { isCollapsed, toggleCollapse } = useTreeCollapse(items);
 
@@ -78,6 +84,7 @@ export function Tree({
           description,
           children,
           depth,
+          pinnedOrder,
           driveFileId,
           fileCounts,
           childCount,
@@ -89,6 +96,7 @@ export function Tree({
             itemName={name}
             driveFileId={driveFileId}
             hasDriveConnection={hasDriveConnection}
+            isPinned={pinnedOrder != null}
             onSettings={
               onOpenSettings ? () => onOpenSettings(String(id)) : undefined
             }
@@ -100,6 +108,8 @@ export function Tree({
                 : undefined
             }
             onAddChildComplete={onAddChildComplete}
+            onPin={onPinItem ? () => onPinItem(String(id)) : undefined}
+            onUnpin={onUnpinItem ? () => onUnpinItem(String(id)) : undefined}
           >
             <TreeItem
               id={id}

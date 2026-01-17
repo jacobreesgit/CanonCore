@@ -23,6 +23,10 @@ interface GridProps {
   onDeleteItem?(id: string): Promise<void>;
   /** Whether user has Google Drive connected. */
   hasDriveConnection?: boolean;
+  /** Callback to pin an item to the sidebar. */
+  onPinItem?(id: string): Promise<void>;
+  /** Callback to unpin an item from the sidebar. */
+  onUnpinItem?(id: string): Promise<void>;
 }
 
 /** Number of items to load with priority (above the fold). */
@@ -41,6 +45,8 @@ export function Grid({
   onOpenSettings,
   onDeleteItem,
   hasDriveConnection = false,
+  onPinItem,
+  onUnpinItem,
 }: GridProps) {
   return (
     <div
@@ -53,11 +59,14 @@ export function Grid({
           itemName={item.name}
           driveFileId={item.driveFileId}
           showAddChild={false}
+          isPinned={item.pinnedOrder != null}
           onSettings={
             onOpenSettings ? () => onOpenSettings(item.id) : undefined
           }
           onDelete={onDeleteItem ? () => onDeleteItem(item.id) : undefined}
           hasDriveConnection={hasDriveConnection}
+          onPin={onPinItem ? () => onPinItem(item.id) : undefined}
+          onUnpin={onUnpinItem ? () => onUnpinItem(item.id) : undefined}
         >
           <GridItem
             id={item.id}

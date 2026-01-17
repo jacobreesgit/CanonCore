@@ -116,6 +116,7 @@ describe("ItemsView", () => {
     parentId: null,
     order: 0,
     depth: 0,
+    pinnedOrder: null,
     userId: "user-1",
     createdAt: new Date(),
     updatedAt: new Date(),

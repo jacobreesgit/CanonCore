@@ -30,6 +30,12 @@ interface SortableGridItemProps extends Omit<GridItemProps, "handleProps"> {
   childCount?: number;
   /** Whether user has Google Drive connected. */
   hasDriveConnection?: boolean;
+  /** Whether this item is pinned to the sidebar */
+  isPinned?: boolean;
+  /** Callback to pin the item to the sidebar */
+  onPin?(): Promise<void>;
+  /** Callback to unpin the item from the sidebar */
+  onUnpin?(): Promise<void>;
   /** Whether the item is selected (for bulk operations). */
   isSelected?: boolean;
   /** Callback when selection state changes. */
@@ -59,6 +65,9 @@ export function SortableGridItem({
   fileCounts,
   childCount,
   hasDriveConnection = false,
+  isPinned = false,
+  onPin,
+  onUnpin,
   isSelected,
   onSelectChange,
   ...props
@@ -82,9 +91,12 @@ export function SortableGridItem({
       itemName={name}
       driveFileId={driveFileId}
       showAddChild={false}
+      isPinned={isPinned}
       onSettings={onSettings}
       onDelete={onDelete}
       hasDriveConnection={hasDriveConnection}
+      onPin={onPin}
+      onUnpin={onUnpin}
     >
       <GridItem
         ref={setNodeRef}

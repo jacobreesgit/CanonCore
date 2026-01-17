@@ -10,6 +10,7 @@ import { MyItemsProviders } from "@/components/my-items-providers";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { auth, extractSidebarUser } from "@/lib/auth";
 import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
+import { getPinnedItems } from "@/lib/item-actions";
 
 /**
  * Wraps protected pages with sidebar and header.
@@ -28,8 +29,13 @@ export default async function MyItemsLayout({
 
   const user = extractSidebarUser(session)!;
 
-  // Server-side fetch for Drive connection - no flickering
-  const driveConnection = await getGoogleDriveConnection();
+  // Server-side fetch for Drive connection and pinned items - no flickering
+  const [driveConnection, pinnedResult] = await Promise.all([
+    getGoogleDriveConnection(),
+    getPinnedItems(),
+  ]);
+
+  const pinnedItems = pinnedResult.success ? pinnedResult.data : [];
 
   return (
     <MyItemsProviders>
@@ -47,6 +53,7 @@ export default async function MyItemsLayout({
           user={user}
           context="my-items"
           driveConnection={driveConnection}
+          pinnedItems={pinnedItems}
         />
         <SidebarInset className="overflow-hidden">
           <div className="@container/main flex min-h-full flex-col overflow-y-auto">

@@ -14,6 +14,7 @@
  *   - SEED_MOVIE_COUNT: Limit number of movies (0 = all, default: 0)
  *   - SEED_SHOW_COUNT: Limit number of TV shows (0 = all, default: 0)
  *   - SEED_USER_EMAIL: Override to seed single user only (default: null)
+ *   - SEED_GROUPED_STRUCTURE: Create Movies/TV Shows parent folders (default: true)
  *   - TMDB_API_DELAY_MS is hardcoded at 100ms for rate limiting
  */
 
@@ -68,6 +69,50 @@ export const SEED_SHOW_COUNT = parseInt(process.env.SEED_SHOW_COUNT || "0", 10);
 /** Override to seed single user only. */
 export const SEED_USER_EMAIL = process.env.SEED_USER_EMAIL || null;
 
+/** Enable grouped folder structure (Movies/, TV Shows/) instead of flat. */
+export const SEED_GROUPED_STRUCTURE =
+  process.env.SEED_GROUPED_STRUCTURE?.toLowerCase() !== "false";
+
+// =============================================================================
+// Doctor Who Special Handling
+// =============================================================================
+
+/** Classic Doctor Who TMDB ID (1963-1989). */
+export const CLASSIC_DOCTOR_WHO_ID = 121;
+
+/** Modern Doctor Who TMDB ID (2005+). */
+export const MODERN_DOCTOR_WHO_ID = 57243;
+
+/**
+ * Checks if a TV show ID is Classic Doctor Who.
+ *
+ * @param id - TMDB show ID
+ * @returns True if Classic Doctor Who
+ */
+export function isClassicDoctorWho(id: number): boolean {
+  return id === CLASSIC_DOCTOR_WHO_ID;
+}
+
+/**
+ * Checks if a TV show ID is Modern Doctor Who.
+ *
+ * @param id - TMDB show ID
+ * @returns True if Modern Doctor Who
+ */
+export function isModernDoctorWho(id: number): boolean {
+  return id === MODERN_DOCTOR_WHO_ID;
+}
+
+/**
+ * Checks if a TV show ID is any Doctor Who (Classic or Modern).
+ *
+ * @param id - TMDB show ID
+ * @returns True if any Doctor Who
+ */
+export function isDoctorWho(id: number): boolean {
+  return isClassicDoctorWho(id) || isModernDoctorWho(id);
+}
+
 /** Movie TMDB IDs to seed. */
 export const MOVIE_IDS = [
   278, // The Shawshank Redemption
@@ -84,7 +129,8 @@ export const MOVIE_IDS = [
 
 /** TV Show TMDB IDs to seed. */
 export const TV_SHOW_IDS = [
-  57243, // Doctor Who (2005)
+  121, // Doctor Who (Classic, 1963-1989)
+  57243, // Doctor Who (Modern, 2005+)
   1396, // Breaking Bad
   1399, // Game of Thrones
   60625, // Rick and Morty
