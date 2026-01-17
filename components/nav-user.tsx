@@ -79,7 +79,7 @@ export function NavUser({ user, driveConnection }: NavUserProps) {
               data-testid="my-items-user-menu"
               suppressHydrationWarning
             >
-              <Avatar className="h-8 w-8 rounded-full grayscale">
+              <Avatar className="size-8 rounded-full grayscale">
                 <AvatarImage src={user.avatar} alt={user.name} />
                 <AvatarFallback className="rounded-full bg-black text-white dark:bg-white dark:text-black">
                   CN
@@ -102,7 +102,7 @@ export function NavUser({ user, driveConnection }: NavUserProps) {
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-full">
+                <Avatar className="size-8 rounded-full">
                   <AvatarImage src={user.avatar} alt={user.name} />
                   <AvatarFallback className="rounded-full bg-black text-white dark:bg-white dark:text-black">
                     CN

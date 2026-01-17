@@ -10,13 +10,13 @@ describe("EditModeToggle", () => {
   it("should show 'Edit Mode' when not editing", () => {
     render(<EditModeToggle isEditing={false} onToggle={() => {}} />);
 
-    expect(screen.getByRole("button")).toHaveTextContent("Edit Mode");
+    expect(screen.getByRole("button")).toHaveTextContent("Edit");
   });
 
   it("should show 'View Mode' when editing", () => {
     render(<EditModeToggle isEditing={true} onToggle={() => {}} />);
 
-    expect(screen.getByRole("button")).toHaveTextContent("View Mode");
+    expect(screen.getByRole("button")).toHaveTextContent("Done");
   });
 
   it("should call onToggle when clicked", () => {

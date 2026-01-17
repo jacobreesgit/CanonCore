@@ -1974,19 +1974,19 @@ git commit -m "feat: implement grouped seed structure with pinned Movies/TV Show
 
 ### Available Flags Reference
 
-| Flag                    | Type    | Default | Description                                 |
-| ----------------------- | ------- | ------- | ------------------------------------------- |
-| `SEED_GROUPED_STRUCTURE`| boolean | true    | Create Movies/TV Shows parent folders       |
-| `SEED_ONLY_MOVIES`      | boolean | false   | Skip TV shows, seed only movies             |
-| `SEED_ONLY_SHOWS`       | boolean | false   | Skip movies, seed only TV shows             |
-| `SEED_SKIP_DRIVE`       | boolean | false   | Skip Google Drive uploads                   |
-| `SEED_SKIP_ARTWORK`     | boolean | false   | Skip downloading/uploading posters          |
-| `SEED_QUIET`            | boolean | false   | Suppress progress output                    |
-| `SEED_MOVIE_COUNT`      | number  | 0 (all) | Limit number of movies to seed              |
-| `SEED_SHOW_COUNT`       | number  | 0 (all) | Limit number of TV shows to seed            |
-| `SEED_USER_EMAIL`       | string  | null    | Override to seed single user only           |
-| `SEED_MAX_SEASONS`      | number  | 2       | Max seasons per TV show                     |
-| `SEED_MAX_EPISODES`     | number  | 10      | Max episodes per season                     |
+| Flag                     | Type    | Default | Description                           |
+| ------------------------ | ------- | ------- | ------------------------------------- |
+| `SEED_GROUPED_STRUCTURE` | boolean | true    | Create Movies/TV Shows parent folders |
+| `SEED_ONLY_MOVIES`       | boolean | false   | Skip TV shows, seed only movies       |
+| `SEED_ONLY_SHOWS`        | boolean | false   | Skip movies, seed only TV shows       |
+| `SEED_SKIP_DRIVE`        | boolean | false   | Skip Google Drive uploads             |
+| `SEED_SKIP_ARTWORK`      | boolean | false   | Skip downloading/uploading posters    |
+| `SEED_QUIET`             | boolean | false   | Suppress progress output              |
+| `SEED_MOVIE_COUNT`       | number  | 0 (all) | Limit number of movies to seed        |
+| `SEED_SHOW_COUNT`        | number  | 0 (all) | Limit number of TV shows to seed      |
+| `SEED_USER_EMAIL`        | string  | null    | Override to seed single user only     |
+| `SEED_MAX_SEASONS`       | number  | 2       | Max seasons per TV show               |
+| `SEED_MAX_EPISODES`      | number  | 10      | Max episodes per season               |
 
 ### Test Scenarios
 
@@ -2265,6 +2265,7 @@ Date: YYYY-MM-DD
 Tester: [name]
 
 ## Scenario 1: Quick Local Test
+
 - [x] Movies and TV Shows folders pinned
 - [x] 2 movies created
 - [x] 1 TV show created
@@ -2272,6 +2273,7 @@ Tester: [name]
 - [x] No Drive folders
 
 ## Scenario 2: Movies Only
+
 ...
 ```
 
@@ -2334,13 +2336,13 @@ git commit -m "docs: add seed flag testing results"
 
 ### Seed Flag Testing (Task 15)
 
-| Scenario | Flags Used | Purpose |
-| -------- | ---------- | ------- |
-| 1 | SKIP_DRIVE, SKIP_ARTWORK, counts | Quick local test |
-| 2 | ONLY_MOVIES, MOVIE_COUNT | Movies only with artwork |
-| 3 | ONLY_SHOWS | Doctor Who era grouping |
-| 4 | GROUPED_STRUCTURE=false | Flat structure backward compat |
-| 5 | USER_EMAIL | Single user seed |
-| 6 | (none) | Full production seed |
-| 7 | QUIET | Output suppression |
-| 8 | ONLY_MOVIES + ONLY_SHOWS | Conflicting flags handling |
+| Scenario | Flags Used                       | Purpose                        |
+| -------- | -------------------------------- | ------------------------------ |
+| 1        | SKIP_DRIVE, SKIP_ARTWORK, counts | Quick local test               |
+| 2        | ONLY_MOVIES, MOVIE_COUNT         | Movies only with artwork       |
+| 3        | ONLY_SHOWS                       | Doctor Who era grouping        |
+| 4        | GROUPED_STRUCTURE=false          | Flat structure backward compat |
+| 5        | USER_EMAIL                       | Single user seed               |
+| 6        | (none)                           | Full production seed           |
+| 7        | QUIET                            | Output suppression             |
+| 8        | ONLY_MOVIES + ONLY_SHOWS         | Conflicting flags handling     |

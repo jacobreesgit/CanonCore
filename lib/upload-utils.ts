@@ -372,9 +372,15 @@ export class BatchUploadManager {
 
 /**
  * Formats bytes into human-readable string (e.g., "1.5 MB").
+ * Shows one decimal place for non-whole numbers, none for whole numbers.
  *
  * @param bytes - Number of bytes (must be non-negative)
  * @returns Formatted string with appropriate unit
+ *
+ * @example
+ * formatBytes(1024) // "1 KB"
+ * formatBytes(1536) // "1.5 KB"
+ * formatBytes(1048576) // "1 MB"
  */
 export function formatBytes(bytes: number): string {
   if (bytes <= 0) return "0 B";
@@ -384,9 +390,10 @@ export function formatBytes(bytes: number): string {
     units.length - 1
   );
   const value = bytes / Math.pow(1024, i);
-  // Show decimal only for MB and GB, and only if not a whole number
+  // Show decimal only for non-whole numbers (KB+), none for bytes or whole values
+  const isWholeNumber = value % 1 === 0;
   const formatted =
-    i >= 2 && value % 1 !== 0 ? value.toFixed(1) : Math.round(value);
+    i >= 1 && !isWholeNumber ? value.toFixed(1) : Math.round(value);
   return `${formatted} ${units[i]}`;
 }
 

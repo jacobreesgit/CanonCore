@@ -50,12 +50,12 @@ SELECT "driveFileId" FROM descendants
 
 The `EmptyState` component displays context-appropriate messages with actionable buttons:
 
-| Variant        | Title             | Action        | When Shown                          |
-| -------------- | ----------------- | ------------- | ----------------------------------- |
-| `first-time`   | No items yet      | Add Item      | Root page, no items                 |
-| `no-children`  | No child items    | Add Child     | Item detail page, no children       |
-| `filter-empty` | No matching items | Clear Filter  | Filter active, no results           |
-| `search-empty` | No results        | Clear Search  | Search active, no results (future)  |
+| Variant        | Title             | Action       | When Shown                         |
+| -------------- | ----------------- | ------------ | ---------------------------------- |
+| `first-time`   | No items yet      | Add Item     | Root page, no items                |
+| `no-children`  | No child items    | Add Child    | Item detail page, no children      |
+| `filter-empty` | No matching items | Clear Filter | Filter active, no results          |
+| `search-empty` | No results        | Clear Search | Search active, no results (future) |
 
 Empty state logic now checks `currentLevelItems.length` (filtered items) instead of `items.length` (raw items), so the filter-empty variant displays correctly.
 
@@ -96,10 +96,10 @@ prisma/seed-config.ts                              # Seed configuration
 
 ## Test Results
 
-| Suite       | Tests | Result                 |
-| ----------- | ----- | ---------------------- |
-| Unit        | 1283  | All passed             |
-| Integration | 92    | All passed             |
+| Suite       | Tests | Result                   |
+| ----------- | ----- | ------------------------ |
+| Unit        | 1283  | All passed               |
+| Integration | 92    | All passed               |
 | E2E         | 416   | Passed (8 skip, 2 flaky) |
 
 ## API Changes
@@ -130,7 +130,11 @@ export function useBulkSelection<T extends { id: string }>(
 
 ```typescript
 // components/items/empty-state.tsx
-type EmptyStateVariant = "first-time" | "no-children" | "filter-empty" | "search-empty";
+type EmptyStateVariant =
+  | "first-time"
+  | "no-children"
+  | "filter-empty"
+  | "search-empty";
 
 interface EmptyStateProps {
   variant: EmptyStateVariant;
@@ -138,16 +142,22 @@ interface EmptyStateProps {
   className?: string;
 }
 
-export function EmptyState({ variant, onAction, className }: EmptyStateProps): JSX.Element;
+export function EmptyState({
+  variant,
+  onAction,
+  className,
+}: EmptyStateProps): JSX.Element;
 ```
 
 ### New server action
 
 ```typescript
 // lib/item-actions.ts
-export async function deleteItems(
-  ids: string[]
-): Promise<{ success: boolean; data?: { deleted: number; skipped: number }; error?: string }>;
+export async function deleteItems(ids: string[]): Promise<{
+  success: boolean;
+  data?: { deleted: number; skipped: number };
+  error?: string;
+}>;
 ```
 
 ### Updated component props

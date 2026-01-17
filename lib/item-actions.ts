@@ -17,6 +17,7 @@ import {
 import { batchDelete } from "@/lib/google-drive-client";
 import { decryptCredential } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
+import { handlePrismaError } from "@/lib/errors";
 import type {
   Item,
   ItemResult,
@@ -479,16 +480,23 @@ export async function createItem(
 
   const order = (maxOrderResult._max.order ?? -1) + 1;
 
-  const item = await prisma.item.create({
-    data: {
-      name: nameValidation.data,
-      description: validatedDescription,
-      parentId,
-      order,
-      depth,
-      userId: session.user.id,
-    },
-  });
+  let item;
+  try {
+    item = await prisma.item.create({
+      data: {
+        name: nameValidation.data,
+        description: validatedDescription,
+        parentId,
+        order,
+        depth,
+        userId: session.user.id,
+      },
+    });
+  } catch (error) {
+    const errorResult = handlePrismaError(error);
+    if (errorResult) return errorResult;
+    throw error;
+  }
 
   // Sync to Google Drive if user has connection
   const connection = await prisma.googleDriveConnection.findUnique({

@@ -27,8 +27,8 @@ test.describe("Bulk Delete", () => {
     // Enter edit mode
     await itemsPage.enterEditMode();
 
-    // Should show bulk actions toolbar with select-all checkbox
-    await expect(itemsPage.getSelectAllCheckbox()).toBeVisible();
+    // Should show bulk actions toolbar with select-all button
+    await expect(itemsPage.getSelectAllButton()).toBeVisible();
     await itemsPage.expectSelectionCount(0);
 
     // Delete button should not be visible when nothing selected

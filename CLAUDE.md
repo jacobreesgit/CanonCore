@@ -95,6 +95,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── items-toolbar.tsx         # Unified toolbar for root and detail pages
 │   │   ├── items-view.tsx            # Main view with tree/grid/edit/sort/filter
 │   │   ├── media-search-combobox.tsx # TMDB search with poster thumbnails
+│   │   ├── mobile-options-sheet.tsx  # Mobile drawer for Sort/Filter options
 │   │   ├── poster-selection-step.tsx # Wizard step for poster selection
 │   │   ├── queued-file-thumbnail.tsx # Thumbnail preview for queued uploads
 │   │   ├── sort-dropdown.tsx         # Sort option dropdown (name, date, custom)
@@ -124,7 +125,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   └── utilities.ts              # Tree manipulation helpers
 │   ├── providers/
 │   │   └── theme-provider.tsx        # next-themes provider wrapper
-│   ├── ui/                           # shadcn/ui + animated-dialog-content.tsx, checkbox.tsx, command.tsx, dropzone.tsx, kbd.tsx, password-input.tsx, progress.tsx, radio-group.tsx, scroll-area.tsx, select.tsx, tabs.tsx
+│   ├── ui/                           # shadcn/ui + animated-dialog-content.tsx, checkbox.tsx, command.tsx, drawer.tsx, dropzone.tsx, kbd.tsx, password-input.tsx, progress.tsx, radio-group.tsx, scroll-area.tsx, select.tsx, tabs.tsx
 │   ├── app-sidebar.tsx               # Context-aware navigation sidebar
 │   ├── error-boundary.tsx            # React error boundary for graceful error handling
 │   ├── my-items-providers.tsx        # Client-side providers for protected routes
@@ -189,6 +190,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── crypto.ts                     # AES-256-GCM credential encryption
 │   ├── email.ts                      # Resend email helper
 │   ├── env.ts                        # Zod environment variable validation
+│   ├── errors.ts                     # Centralized Prisma error handling
 │   ├── file-type-utils.ts            # Media/artwork/subtitle categorization
 │   ├── google-drive-actions.ts       # Google Drive connection management
 │   ├── google-drive-batch.ts         # Batch API request/response handling
@@ -229,7 +231,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── generate-refresh-token.ts     # Google Drive token generator for E2E tests
 │   └── setup-e2e-drive.ts            # E2E Drive environment setup
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 2.7.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 2.8.0)
     └── plans/                        # Design documents
 ```
 
@@ -270,6 +272,7 @@ pnpm run test:e2e:ui                        # UI mode
 - **Sort options**: Custom Order, Name A-Z/Z-A, Newest/Oldest, Recently Updated
 - **Filter options**: All Items, Has Files, No Files, Synced, Pending
 - **Edit mode toggle**: Click "Edit" to enable drag-and-drop, "Done" to return to view mode (disabled when not custom sort)
+- **Mobile-responsive toolbar**: Sort/Filter collapse into swipe-up drawer on mobile; buttons show icons only
 - **View mode**: Full background artwork with dark overlay (Feature222 aesthetic)
 - **Edit mode**: Simplified icons with drag handles for reordering
 - **Add Item dialog**: Modal with TMDB search combobox for auto-filling metadata
@@ -369,7 +372,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 1283 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system, sync queue, sync history, image loading hooks, bulk selection, empty states
+- 1285 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system, sync queue, sync history, image loading hooks, bulk selection, empty states
 
 ### E2E Testing
 

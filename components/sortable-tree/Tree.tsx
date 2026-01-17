@@ -10,6 +10,7 @@ import React, { useMemo } from "react";
 
 import { TreeItem } from "./components/TreeItem/TreeItem";
 import { ItemContextMenu } from "@/components/items/item-context-menu";
+import type { CreateItemResult } from "@/components/items/add-item-dialog";
 import { useTreeCollapse } from "@/hooks/use-tree-collapse";
 import { flattenTree, removeChildrenOf } from "./utilities";
 import type { TreeItems } from "@/lib/types";
@@ -25,7 +26,13 @@ interface TreeProps {
   /** Callback to delete an item. */
   onDeleteItem?(id: string): Promise<void>;
   /** Callback to add a child item. */
-  onAddChild?(parentId: string, name: string): Promise<string | undefined>;
+  onAddChild?(
+    parentId: string,
+    name: string,
+    description?: string
+  ): Promise<CreateItemResult>;
+  /** Callback to refresh data after child item is created. */
+  onAddChildComplete?(): Promise<void>;
   /** Whether user has Google Drive connected (for file uploads in Add Child dialog). */
   hasDriveConnection?: boolean;
   /** Indentation width per depth level. Defaults to 20. */
@@ -45,6 +52,7 @@ export function Tree({
   onOpenSettings,
   onDeleteItem,
   onAddChild,
+  onAddChildComplete,
   hasDriveConnection = false,
   indentationWidth = 20,
 }: TreeProps) {
@@ -87,9 +95,11 @@ export function Tree({
             onDelete={onDeleteItem ? () => onDeleteItem(String(id)) : undefined}
             onAddChild={
               onAddChild
-                ? (childName) => onAddChild(String(id), childName)
+                ? (childName, childDescription) =>
+                    onAddChild(String(id), childName, childDescription)
                 : undefined
             }
+            onAddChildComplete={onAddChildComplete}
           >
             <TreeItem
               id={id}
