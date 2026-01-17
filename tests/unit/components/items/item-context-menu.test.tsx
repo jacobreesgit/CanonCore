@@ -1,6 +1,6 @@
 /**
  * Unit tests for ItemContextMenu component.
- * Tests context menu options including Drive link.
+ * Tests context menu options including Drive link and pin/unpin.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -67,6 +67,101 @@ describe("ItemContextMenu", () => {
       );
       expect(menuItem).toHaveAttribute("target", "_blank");
       expect(menuItem).toHaveAttribute("rel", "noopener noreferrer");
+    });
+  });
+
+  describe("Pin/Unpin options", () => {
+    it("should show Pin to Sidebar when item is not pinned and onPin provided", async () => {
+      const onPin = vi.fn().mockResolvedValue(undefined);
+      render(
+        <ItemContextMenu
+          {...defaultProps}
+          isPinned={false}
+          onPin={onPin}
+          onUnpin={vi.fn()}
+        />
+      );
+
+      fireEvent.contextMenu(screen.getByRole("button", { name: /trigger/i }));
+
+      expect(
+        screen.getByRole("menuitem", { name: /pin to sidebar/i })
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: /unpin from sidebar/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it("should show Unpin from Sidebar when item is pinned and onUnpin provided", async () => {
+      const onUnpin = vi.fn().mockResolvedValue(undefined);
+      render(
+        <ItemContextMenu
+          {...defaultProps}
+          isPinned={true}
+          onPin={vi.fn()}
+          onUnpin={onUnpin}
+        />
+      );
+
+      fireEvent.contextMenu(screen.getByRole("button", { name: /trigger/i }));
+
+      expect(
+        screen.getByRole("menuitem", { name: /unpin from sidebar/i })
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: /pin to sidebar/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not show pin options when callbacks not provided", async () => {
+      render(<ItemContextMenu {...defaultProps} />);
+
+      fireEvent.contextMenu(screen.getByRole("button", { name: /trigger/i }));
+
+      expect(
+        screen.queryByRole("menuitem", { name: /pin to sidebar/i })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: /unpin from sidebar/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it("should call onPin when Pin to Sidebar is clicked", async () => {
+      const onPin = vi.fn().mockResolvedValue(undefined);
+      render(
+        <ItemContextMenu
+          {...defaultProps}
+          isPinned={false}
+          onPin={onPin}
+          onUnpin={vi.fn()}
+        />
+      );
+
+      fireEvent.contextMenu(screen.getByRole("button", { name: /trigger/i }));
+      fireEvent.click(
+        screen.getByRole("menuitem", { name: /pin to sidebar/i })
+      );
+
+      expect(onPin).toHaveBeenCalledTimes(1);
+    });
+
+    it("should call onUnpin when Unpin from Sidebar is clicked", async () => {
+      const onUnpin = vi.fn().mockResolvedValue(undefined);
+      render(
+        <ItemContextMenu
+          {...defaultProps}
+          isPinned={true}
+          onPin={vi.fn()}
+          onUnpin={onUnpin}
+        />
+      );
+
+      fireEvent.contextMenu(screen.getByRole("button", { name: /trigger/i }));
+      fireEvent.click(
+        screen.getByRole("menuitem", { name: /unpin from sidebar/i })
+      );
+
+      expect(onUnpin).toHaveBeenCalledTimes(1);
     });
   });
 });

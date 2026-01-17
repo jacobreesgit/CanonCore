@@ -132,6 +132,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── nav-docs.tsx                  # Docs tree navigation (Fumadocs)
 │   ├── nav-guest.tsx                 # Guest navigation with auth buttons
 │   ├── nav-main.tsx                  # Main navigation items
+│   ├── nav-pinned-items.tsx          # Pinned items sidebar section
 │   ├── nav-user.tsx                  # User dropdown menu
 │   ├── site-header.tsx               # Top header bar with breadcrumbs
 │   └── theme-toggle.tsx              # Dark/light mode toggle
@@ -211,7 +212,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── sync-utils.ts                 # Shared sync types and utilities
 │   ├── tmdb-actions.ts               # TMDB metadata server actions
 │   ├── tmdb-client.ts                # TMDB API client for movie/TV metadata
-│   ├── types.ts                      # Shared types (Item, ItemFile, SortOption, FilterOption, ViewMode, QueuedFile, TMDBMetadataSelection, SyncLogEntry)
+│   ├── types.ts                      # Shared types (Item, ItemFile, PinnedItem, SortOption, FilterOption, ViewMode, QueuedFile, TMDBMetadataSelection, SyncLogEntry)
 │   ├── upload-utils.ts               # Browser-to-Drive upload utilities
 │   ├── user-actions.ts               # User profile server actions
 │   ├── utils.ts                      # cn() helper
@@ -229,9 +230,10 @@ pnpm run test:e2e:ui                        # UI mode
 │   └── frontend-design/              # Frontend interface design
 ├── scripts/
 │   ├── generate-refresh-token.ts     # Google Drive token generator for E2E tests
-│   └── setup-e2e-drive.ts            # E2E Drive environment setup
+│   ├── setup-e2e-drive.ts            # E2E Drive environment setup
+│   └── verify-seed.ts                # Quick seed verification utility
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 2.8.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 2.9.0)
     └── plans/                        # Design documents
 ```
 
@@ -244,7 +246,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Protected routes use `await auth()` + redirect in server components
 - Password hashing with bcryptjs
 - Password reset emails via Resend (30 min expiry)
-- **Rate limiting**: Upstash Redis for auth (sign-in: 5/min, sign-up: 3/min, forgot: 2/min) and items (create: 30/min, update: 60/min, delete: 30/min)
+- **Rate limiting**: Upstash Redis for auth (sign-in: 5/min, sign-up: 3/min, forgot: 2/min) and items (create: 30/min, update: 60/min, delete: 30/min, pin: 30/min)
 - **Validation**: Zod schemas for email/password (8+ chars, uppercase, lowercase, number)
 - **Security logging**: All auth events logged with IP and timestamp
 
@@ -256,6 +258,7 @@ pnpm run test:e2e:ui                        # UI mode
 - User has optional `defaultViewMode`/`defaultSortBy` for preferences (String?, not enum for flexibility)
 - Item has self-referential parent/child relationships for hierarchy
 - Item has optional `description` field (max 1000 chars) for TMDB overviews or notes
+- Item has optional `pinnedOrder` field for sidebar pinning (null = not pinned, 0+ = pinned with order)
 - Item has Google Drive fields: `driveFileId`, `driveModifiedAt`, `syncStatus`, `driveConnectionId`
 - ItemFile stores files per item: `filename`, `driveFileId`, `fileType`, `mimeType`, `playbackPosition`, `isPrimary`, `isHero`
 - GoogleDriveConnection stores encrypted OAuth tokens with AES-256-GCM
@@ -276,11 +279,12 @@ pnpm run test:e2e:ui                        # UI mode
 - **View mode**: Full background artwork with dark overlay (Feature222 aesthetic)
 - **Edit mode**: Simplified icons with drag handles for reordering
 - **Add Item dialog**: Modal with TMDB search combobox for auto-filling metadata
-- **Server actions**: `createItem`, `updateItem`, `deleteItem`, `deleteItems`, `reorderItems`, `getSearchableItems` in `lib/item-actions.ts`
+- **Server actions**: `createItem`, `updateItem`, `deleteItem`, `deleteItems`, `reorderItems`, `getSearchableItems`, `pinItem`, `unpinItem`, `getPinnedItems` in `lib/item-actions.ts`
 - **Bulk delete**: Edit mode shows checkboxes for multi-select; select-all in toolbar; confirmation dialog before deletion
 - **Contextual empty states**: Different messages for first-time users, empty folders, and filter results with actionable buttons
 - **Breadcrumb navigation** for item drill-down
-- **Context menu**: Right-click for Settings, Delete, Add Child Item
+- **Pinned items**: Pin up to 10 items to sidebar for quick access; "Pinned" section with folder icons
+- **Context menu**: Right-click for Settings, Pin/Unpin, Delete, Add Child Item
 - **Settings dialog**: Rename items, add descriptions, select primary/hero files, upload files
 - **Item descriptions**: Optional 1000-character notes (for TMDB overviews), displayed in view mode
 - **Primary file selection**: Choose which file plays/displays when multiple files attached
@@ -372,7 +376,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 1285 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system, sync queue, sync history, image loading hooks, bulk selection, empty states
+- 1327 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system, sync queue, sync history, image loading hooks, bulk selection, empty states, pinned items
 
 ### E2E Testing
 

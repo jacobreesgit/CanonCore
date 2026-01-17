@@ -112,4 +112,83 @@ describe("seed-config", () => {
     expect(users).toHaveLength(1);
     expect(users[0].email).toBe("custom@test.com");
   });
+
+  describe("SEED_GROUPED_STRUCTURE", () => {
+    it("defaults to true when not set", async () => {
+      const config = await import("@/prisma/seed-config");
+      expect(config.SEED_GROUPED_STRUCTURE).toBe(true);
+    });
+
+    it("parses SEED_GROUPED_STRUCTURE=false", async () => {
+      process.env.SEED_GROUPED_STRUCTURE = "false";
+      const config = await import("@/prisma/seed-config");
+      expect(config.SEED_GROUPED_STRUCTURE).toBe(false);
+    });
+
+    it("parses SEED_GROUPED_STRUCTURE=FALSE (case insensitive)", async () => {
+      process.env.SEED_GROUPED_STRUCTURE = "FALSE";
+      const config = await import("@/prisma/seed-config");
+      expect(config.SEED_GROUPED_STRUCTURE).toBe(false);
+    });
+
+    it("treats any non-false value as true", async () => {
+      process.env.SEED_GROUPED_STRUCTURE = "true";
+      const config = await import("@/prisma/seed-config");
+      expect(config.SEED_GROUPED_STRUCTURE).toBe(true);
+    });
+  });
+
+  describe("Doctor Who constants and helpers", () => {
+    it("exports CLASSIC_DOCTOR_WHO_ID", async () => {
+      const config = await import("@/prisma/seed-config");
+      expect(config.CLASSIC_DOCTOR_WHO_ID).toBe(121);
+    });
+
+    it("exports MODERN_DOCTOR_WHO_ID", async () => {
+      const config = await import("@/prisma/seed-config");
+      expect(config.MODERN_DOCTOR_WHO_ID).toBe(57243);
+    });
+
+    it("isClassicDoctorWho returns true for Classic Doctor Who ID", async () => {
+      const config = await import("@/prisma/seed-config");
+      expect(config.isClassicDoctorWho(121)).toBe(true);
+    });
+
+    it("isClassicDoctorWho returns false for Modern Doctor Who ID", async () => {
+      const config = await import("@/prisma/seed-config");
+      expect(config.isClassicDoctorWho(57243)).toBe(false);
+    });
+
+    it("isModernDoctorWho returns true for Modern Doctor Who ID", async () => {
+      const config = await import("@/prisma/seed-config");
+      expect(config.isModernDoctorWho(57243)).toBe(true);
+    });
+
+    it("isModernDoctorWho returns false for Classic Doctor Who ID", async () => {
+      const config = await import("@/prisma/seed-config");
+      expect(config.isModernDoctorWho(121)).toBe(false);
+    });
+
+    it("isDoctorWho returns true for Classic Doctor Who ID", async () => {
+      const config = await import("@/prisma/seed-config");
+      expect(config.isDoctorWho(121)).toBe(true);
+    });
+
+    it("isDoctorWho returns true for Modern Doctor Who ID", async () => {
+      const config = await import("@/prisma/seed-config");
+      expect(config.isDoctorWho(57243)).toBe(true);
+    });
+
+    it("isDoctorWho returns false for other shows", async () => {
+      const config = await import("@/prisma/seed-config");
+      expect(config.isDoctorWho(1396)).toBe(false); // Breaking Bad
+      expect(config.isDoctorWho(1399)).toBe(false); // Game of Thrones
+    });
+
+    it("TV_SHOW_IDS includes both Doctor Who series", async () => {
+      const config = await import("@/prisma/seed-config");
+      expect(config.TV_SHOW_IDS).toContain(121); // Classic
+      expect(config.TV_SHOW_IDS).toContain(57243); // Modern
+    });
+  });
 });

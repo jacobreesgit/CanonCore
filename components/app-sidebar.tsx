@@ -11,9 +11,10 @@ import { usePathname } from "next/navigation";
 import { Folder, HelpCircle } from "lucide-react";
 import type { Root as PageTreeRoot } from "fumadocs-core/page-tree";
 import type { SidebarUser } from "@/lib/auth";
-import type { GoogleDriveConnection } from "@/lib/types";
+import type { GoogleDriveConnection, PinnedItem } from "@/lib/types";
 
 import { NavMain } from "@/components/nav-main";
+import { NavPinnedItems } from "@/components/nav-pinned-items";
 import { NavUser } from "@/components/nav-user";
 import { NavDocs } from "@/components/nav-docs";
 import { AuthButtons } from "@/components/nav-guest";
@@ -44,6 +45,8 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   docsTree?: PageTreeRoot;
   /** Google Drive connection (null if not connected) */
   driveConnection?: GoogleDriveConnection | null;
+  /** Pinned items for sidebar (only for my-items context) */
+  pinnedItems?: PinnedItem[];
 }
 
 /** Main navigation items for authenticated users. */
@@ -63,12 +66,14 @@ const myItemsNavMain = [
  * @param context - Determines which navigation items to display
  * @param docsTree - Fumadocs page tree for docs context
  * @param driveConnection - Google Drive connection or null
+ * @param pinnedItems - Pinned items for sidebar navigation
  */
 export function AppSidebar({
   user,
   context,
   docsTree,
   driveConnection,
+  pinnedItems,
   ...props
 }: AppSidebarProps) {
   const pathname = usePathname();
@@ -106,6 +111,11 @@ export function AppSidebar({
       <SidebarContent>
         {/* Show my-items nav for authenticated users on any page */}
         {user && <NavMain items={myItemsNavMain} />}
+
+        {/* Show pinned items for my-items context */}
+        {pinnedItems && pinnedItems.length > 0 && (
+          <NavPinnedItems items={pinnedItems} />
+        )}
 
         {context === "docs" && docsTree && (
           <NavDocs tree={docsTree} isAuthenticated={!!user} />

@@ -44,6 +44,7 @@ describe("SortableGrid", () => {
     parentId: null,
     order,
     depth: 0,
+    pinnedOrder: null,
     userId: "user-1",
     createdAt: new Date(),
     updatedAt: new Date(),

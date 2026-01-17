@@ -8,7 +8,7 @@
 import React, { forwardRef, HTMLAttributes } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
-import { ChevronRight, GripVertical, Leaf, Play } from "lucide-react";
+import { ChevronRight, GripVertical, Play } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ItemStats } from "@/components/items/item-stats";
 import { SyncIcon } from "@/components/items/sync-badge";
@@ -196,16 +196,6 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                 strokeWidth={2.5}
               />
             </button>
-          )}
-
-          {/* Item Icon - only in view mode */}
-          {!ghost && !showDragHandle && (
-            <span className="flex size-5 flex-shrink-0 items-center justify-center">
-              <Leaf
-                className="text-muted-foreground/70 size-4"
-                strokeWidth={1.75}
-              />
-            </span>
           )}
 
           {/* Item Name and Description */}

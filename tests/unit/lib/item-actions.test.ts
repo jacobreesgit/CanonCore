@@ -73,6 +73,7 @@ const mockItem = (overrides: {
   ...overrides,
   description: overrides.description ?? null,
   type: "FOLDER" as const,
+  pinnedOrder: null,
   // Google Drive fields
   driveFileId: null,
   driveModifiedAt: null,
@@ -210,6 +211,7 @@ describe("getAllItems", () => {
           ...item,
           description: null,
           order: 0,
+          pinnedOrder: null,
           userId: "user-123",
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -276,6 +278,7 @@ describe("getDescendants", () => {
         name: "Item",
         description: null,
         order: 0,
+        pinnedOrder: null,
         userId: "user-123",
         createdAt: new Date(),
         updatedAt: new Date(),

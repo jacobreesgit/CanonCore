@@ -20,6 +20,8 @@ interface SortableTreeItemProps extends Omit<TreeItemProps, "handleProps"> {
   id: UniqueIdentifier;
   /** Google Drive folder ID (if synced) */
   driveFileId?: string | null;
+  /** Whether this item is pinned to the sidebar */
+  isPinned?: boolean;
   /** Opens the item settings dialog */
   onSettings?(): void;
   onDelete?(): Promise<void>;
@@ -28,6 +30,10 @@ interface SortableTreeItemProps extends Omit<TreeItemProps, "handleProps"> {
   onAddChildComplete?(): Promise<void>;
   /** Whether user has Google Drive connected (for Add Child dialog) */
   hasDriveConnection?: boolean;
+  /** Callback to pin the item to the sidebar */
+  onPin?(): Promise<void>;
+  /** Callback to unpin the item from the sidebar */
+  onUnpin?(): Promise<void>;
   /** Whether the item is selected (for bulk operations). */
   isSelected?: boolean;
   /** Callback when selection state changes. */
@@ -54,11 +60,14 @@ export function SortableTreeItem({
   id,
   value,
   driveFileId,
+  isPinned = false,
   onSettings,
   onDelete,
   onAddChild,
   onAddChildComplete,
   hasDriveConnection = false,
+  onPin,
+  onUnpin,
   isSelected,
   onSelectChange,
   ...props
@@ -86,11 +95,14 @@ export function SortableTreeItem({
     <ItemContextMenu
       itemName={value}
       driveFileId={driveFileId}
+      isPinned={isPinned}
       onSettings={onSettings}
       onDelete={onDelete}
       onAddChild={onAddChild}
       onAddChildComplete={onAddChildComplete}
       hasDriveConnection={hasDriveConnection}
+      onPin={onPin}
+      onUnpin={onUnpin}
     >
       <TreeItem
         ref={setDraggableNodeRef}
