@@ -18,6 +18,7 @@ import { EditModeToggle } from "./edit-mode-toggle";
 import { ViewToggle, useStoredViewMode } from "./view-toggle";
 import { SortDropdown } from "./sort-dropdown";
 import { FilterDropdown } from "./filter-dropdown";
+import { MobileOptionsSheet } from "./mobile-options-sheet";
 import { AddItemDialog } from "./add-item-dialog";
 import { ItemSettingsDialog } from "./item-settings-dialog";
 import { ItemHero } from "./item-hero";
@@ -37,6 +38,7 @@ import type {
   ItemWithArtwork,
   TreeItems,
   SerializedItemFile,
+  TMDBMetadataSelection,
 } from "@/lib/types";
 import {
   itemsToTree,
@@ -47,6 +49,7 @@ import {
 import { useItemsSortFilter } from "@/hooks/use-items-sort-filter";
 import {
   createItem,
+  createItemWithMetadata,
   deleteItem,
   deleteItems,
   reorderItems,
@@ -268,10 +271,23 @@ export function ItemsView({
   );
 
   // Handle creating new item at root level
+  // Returns itemId on success for AddItemDialog to handle file uploads
   const handleCreateItem = useCallback(
-    async (name: string, description?: string): Promise<string | undefined> => {
+    async (
+      name: string,
+      description?: string,
+      tmdbSelection?: TMDBMetadataSelection
+    ): Promise<{ itemId?: string; error?: string }> => {
       try {
-        const result = await createItem(parentId, name, description);
+        // Use createItemWithMetadata if TMDB selection provided, otherwise basic createItem
+        const result = tmdbSelection
+          ? await createItemWithMetadata(parentId, name, description, {
+              tmdbId: tmdbSelection.tmdbId,
+              mediaType: tmdbSelection.mediaType,
+              options: tmdbSelection.options,
+            })
+          : await createItem(parentId, name, description);
+
         if (result.success && result.data) {
           const newItem: ItemWithArtwork = {
             ...result.data,
@@ -282,20 +298,16 @@ export function ItemsView({
             mediaIconType: null,
           };
           setItems((prev) => [...prev, newItem]);
-          startTransition(() => refetchItems());
-          toast.success(`Created "${name}"`);
-          return undefined;
+          return { itemId: result.data.id };
         }
-        toast.error(result.error || "Failed to create item");
-        return result.error;
+        return { error: result.error || "Failed to create item" };
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Failed to create item";
-        toast.error(message);
-        return message;
+        return { error: message };
       }
     },
-    [parentId, refetchItems, setItems]
+    [parentId, setItems]
   );
 
   // Handle deleting an item
@@ -314,12 +326,13 @@ export function ItemsView({
   );
 
   // Handle adding child item
+  // Returns itemId on success for AddItemDialog to handle file uploads
   const handleAddChild = useCallback(
     async (
       parentItemId: string,
       name: string,
       description?: string
-    ): Promise<string | undefined> => {
+    ): Promise<{ itemId?: string; error?: string }> => {
       try {
         const result = await createItem(parentItemId, name, description);
         if (result.success && result.data) {
@@ -332,20 +345,16 @@ export function ItemsView({
             mediaIconType: null,
           };
           setItems((prev) => [...prev, newItem]);
-          startTransition(() => refetchItems());
-          toast.success(`Created "${name}"`);
-          return undefined;
+          return { itemId: result.data.id };
         }
-        toast.error(result.error || "Failed to create item");
-        return result.error;
+        return { error: result.error || "Failed to create item" };
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Failed to create item";
-        toast.error(message);
-        return message;
+        return { error: message };
       }
     },
-    [refetchItems, setItems]
+    [setItems]
   );
 
   // Handle tree reordering
@@ -517,15 +526,41 @@ export function ItemsView({
 
       {/* Toolbar - always visible, buttons disabled when not applicable */}
       {!hideToolbar && (
-        <div className="flex items-center justify-between gap-3">
-          {/* Left side: Sync button + Sort/Filter */}
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-2 sm:gap-3">
+          {/* Left side: Mobile options sheet OR Desktop sync + dropdowns */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Mobile: Sync button + Options sheet */}
+            <div className="flex items-center gap-2 sm:hidden">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleSync}
+                disabled={!hasDriveConnection || isSyncing}
+                aria-label={isSyncing ? "Syncing" : "Sync"}
+                className="size-9"
+              >
+                {isSyncing ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="size-4" />
+                )}
+              </Button>
+              <MobileOptionsSheet
+                sortBy={sortBy}
+                onSortChange={setSortBy}
+                filterBy={filterBy}
+                onFilterChange={setFilterBy}
+                disabled={items.length === 0}
+              />
+            </div>
+
+            {/* Desktop: Sync button */}
             <Button
               variant="outline"
               size="sm"
               onClick={handleSync}
               disabled={!hasDriveConnection || isSyncing}
-              className="gap-1.5"
+              className="hidden gap-1.5 sm:inline-flex"
             >
               {isSyncing ? (
                 <Loader2 className="size-4 animate-spin" />
@@ -534,33 +569,47 @@ export function ItemsView({
               )}
               <span>{isSyncing ? "Syncing..." : "Sync"}</span>
             </Button>
-            <SortDropdown
-              value={sortBy}
-              onChange={setSortBy}
-              disabled={items.length === 0}
-            />
-            <FilterDropdown
-              value={filterBy}
-              onChange={setFilterBy}
-              disabled={items.length === 0}
-            />
+
+            {/* Desktop: Sort/Filter dropdowns */}
+            <div className="hidden items-center gap-3 sm:flex">
+              <SortDropdown
+                value={sortBy}
+                onChange={setSortBy}
+                disabled={items.length === 0}
+              />
+              <FilterDropdown
+                value={filterBy}
+                onChange={setFilterBy}
+                disabled={items.length === 0}
+              />
+            </div>
           </div>
 
           {/* Right side: Add Item + Edit + View toggle */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setAddItemOpen(true)}
               className="gap-1.5"
+              aria-label="Add"
             >
               <Plus className="size-4" strokeWidth={2} />
-              <span>Add Item</span>
+              <span className="hidden sm:inline" aria-hidden="true">
+                Add
+              </span>
             </Button>
             <EditModeToggle
               isEditing={isEditing}
               onToggle={() => setIsEditing((prev) => !prev)}
               disabled={items.length === 0 || !isCustomSort}
+              disabledReason={
+                items.length === 0
+                  ? "No items to edit"
+                  : !isCustomSort
+                    ? "Set sort to Custom Order to reorder"
+                    : undefined
+              }
             />
             <ViewToggle disabled={items.length === 0} />
           </div>
@@ -572,8 +621,8 @@ export function ItemsView({
         <BulkActionsToolbar
           selectionCount={bulkSelection.selectionCount}
           isAllSelected={bulkSelection.isAllSelected}
-          isPartiallySelected={bulkSelection.isPartiallySelected}
-          onToggleAll={bulkSelection.toggleAll}
+          onSelectAll={bulkSelection.selectAll}
+          onDeselectAll={bulkSelection.deselectAll}
           onDelete={() => setBulkDeleteDialogOpen(true)}
           isDeleting={isBulkDeleting}
         />
@@ -617,6 +666,7 @@ export function ItemsView({
           onOpenSettings={handleOpenSettings}
           onDeleteItem={handleDeleteItem}
           onAddChild={handleAddChild}
+          onAddChildComplete={refetchItems}
           hasDriveConnection={hasDriveConnection}
           isItemSelected={bulkSelection.isSelected}
           onItemSelectChange={(id, selected) =>
@@ -631,6 +681,7 @@ export function ItemsView({
           onOpenSettings={handleOpenSettings}
           onDeleteItem={handleDeleteItem}
           onAddChild={handleAddChild}
+          onAddChildComplete={refetchItems}
           hasDriveConnection={hasDriveConnection}
         />
       )}
@@ -675,6 +726,7 @@ export function ItemsView({
         open={addItemOpen}
         onOpenChange={setAddItemOpen}
         onAdd={handleCreateItem}
+        onComplete={refetchItems}
         hasDriveConnection={hasDriveConnection}
       />
 

@@ -41,6 +41,7 @@ import {
   setProperty,
 } from "./utilities";
 import type { FlattenedItem, SensorContext, TreeItems } from "@/lib/types";
+import type { CreateItemResult } from "@/components/items/add-item-dialog";
 import { sortableTreeKeyboardCoordinates } from "./keyboardCoordinates";
 import { SortableTreeItem, TreeItem } from "./components";
 
@@ -80,7 +81,13 @@ interface SortableTreeProps {
   /** Opens the settings dialog for an item */
   onOpenSettings?(id: string): void;
   onDeleteItem?(id: string): Promise<void>;
-  onAddChild?(parentId: string, name: string): Promise<string | undefined>;
+  onAddChild?(
+    parentId: string,
+    name: string,
+    description?: string
+  ): Promise<CreateItemResult>;
+  /** Callback to refresh data after child item is created */
+  onAddChildComplete?(): Promise<void>;
   collapsible?: boolean;
   indentationWidth?: number;
   indicator?: boolean;
@@ -115,6 +122,7 @@ export function SortableTree({
   onOpenSettings,
   onDeleteItem,
   onAddChild,
+  onAddChildComplete,
   collapsible = true,
   indentationWidth = 20,
   indicator = true,
@@ -262,9 +270,11 @@ export function SortableTree({
                 }
                 onAddChild={
                   onAddChild
-                    ? (childName) => onAddChild(String(id), childName)
+                    ? (childName, childDescription) =>
+                        onAddChild(String(id), childName, childDescription)
                     : undefined
                 }
+                onAddChildComplete={onAddChildComplete}
                 driveFileId={driveFileId}
                 showDescription={false}
                 hasDriveConnection={hasDriveConnection}

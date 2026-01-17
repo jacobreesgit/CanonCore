@@ -94,6 +94,12 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
     const shouldShowStats = showStats && !showDragHandle;
     const shouldShowPrimaryMedia = primaryMediaName && !showDragHandle; // Hide in edit mode
 
+    // In select mode, clicking the item toggles selection instead of navigation
+    const isSelectMode = !!onSelectChange;
+    const handleClick = isSelectMode
+      ? () => onSelectChange?.(!isSelected)
+      : onClick;
+
     return (
       <li
         ref={wrapperRef}
@@ -114,7 +120,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       >
         <div
           ref={ref}
-          onClick={onClick}
+          onClick={handleClick}
           className={cn(
             "group bg-card relative flex items-center gap-2 rounded-lg border px-2 py-1.5",
             "transition-all duration-200 ease-out",
@@ -131,7 +137,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                 "before:absolute before:top-1/2 before:-left-1.5 before:-translate-y-1/2",
                 "before:border-primary before:bg-background before:size-2.5 before:rounded-full before:border-2",
               ],
-            onClick && "cursor-pointer"
+            (onClick || isSelectMode) && "cursor-pointer"
           )}
         >
           {/* Selection Checkbox - shown in edit mode */}

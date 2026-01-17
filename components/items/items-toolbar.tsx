@@ -2,6 +2,7 @@
  * Unified toolbar for items views.
  * Handles content actions and view controls.
  * Used on both root /my-items and item detail pages for consistent UX.
+ * Responsive: collapses secondary options into sheet on mobile.
  */
 
 "use client";
@@ -12,6 +13,7 @@ import { EditModeToggle } from "./edit-mode-toggle";
 import { ViewToggle } from "./view-toggle";
 import { SortDropdown } from "./sort-dropdown";
 import { FilterDropdown } from "./filter-dropdown";
+import { MobileOptionsSheet } from "./mobile-options-sheet";
 import { ItemSettingsDialog } from "./item-settings-dialog";
 import type { SerializedItemFile, SortOption, FilterOption } from "@/lib/types";
 import { useState, useCallback, useTransition } from "react";
@@ -64,10 +66,15 @@ interface ItemsToolbarProps {
 
 /**
  * Unified toolbar component for items views.
+ * Responsive layout adapts to mobile with collapsed options.
  *
- * Layout:
- * - Left: (empty for now, reserved for future use)
- * - Right: Add Item, Edit, View toggle, Upload, Settings (detail page only)
+ * Desktop Layout:
+ * - Left: Sync, Sort, Filter
+ * - Right: Add Item, Edit, View toggle, Settings (detail page only)
+ *
+ * Mobile Layout:
+ * - Left: Options sheet (Sync + Sort + Filter)
+ * - Right: Add Item, Edit, View toggle, Settings
  */
 export function ItemsToolbar({
   hasItems,
@@ -155,15 +162,43 @@ export function ItemsToolbar({
 
   return (
     <>
-      <div className="flex items-center justify-between gap-3">
-        {/* Left side: Sync button + Sort/Filter */}
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-2 sm:gap-3">
+        {/* Left side: Mobile options sheet OR Desktop sync + dropdowns */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Mobile: Sync button + Options sheet */}
+          <div className="flex items-center gap-2 sm:hidden">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleSync}
+              disabled={!hasDriveConnection || isSyncing}
+              aria-label={isSyncing ? "Syncing" : "Sync"}
+              className="size-9"
+            >
+              {isSyncing ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <RefreshCw className="size-4" />
+              )}
+            </Button>
+            {hasSortFilter && filterBy !== undefined && onFilterChange && (
+              <MobileOptionsSheet
+                sortBy={sortBy}
+                onSortChange={onSortChange}
+                filterBy={filterBy}
+                onFilterChange={onFilterChange}
+                disabled={!hasItems}
+              />
+            )}
+          </div>
+
+          {/* Desktop: Sync button */}
           <Button
             variant="outline"
             size="sm"
             onClick={handleSync}
             disabled={!hasDriveConnection || isSyncing}
-            className="gap-1.5"
+            className="hidden gap-1.5 sm:inline-flex"
           >
             {isSyncing ? (
               <Loader2 className="size-4 animate-spin" />
@@ -173,9 +208,9 @@ export function ItemsToolbar({
             <span>{isSyncing ? "Syncing..." : "Sync"}</span>
           </Button>
 
-          {/* Sort/Filter dropdowns */}
+          {/* Desktop: Sort/Filter dropdowns */}
           {hasSortFilter && (
-            <>
+            <div className="hidden items-center gap-3 sm:flex">
               <SortDropdown
                 value={sortBy}
                 onChange={onSortChange}
@@ -188,27 +223,42 @@ export function ItemsToolbar({
                   disabled={!hasItems}
                 />
               )}
-            </>
+            </div>
           )}
         </div>
 
-        {/* Right side: Add Item + Edit + View toggle + Upload + Settings */}
-        <div className="flex items-center gap-3">
+        {/* Right side: Primary actions */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Add Item - always show text, it's the primary action */}
           <Button
             variant="outline"
             size="sm"
             onClick={onAddItem}
             disabled={!hasItems && !isItemDetailPage}
             className="gap-1.5"
+            aria-label="Add"
           >
             <Plus className="size-4" strokeWidth={2} />
-            <span>Add Item</span>
+            <span className="hidden sm:inline" aria-hidden="true">
+              Add
+            </span>
           </Button>
+
+          {/* Edit/Done toggle */}
           <EditModeToggle
             isEditing={isEditing}
             onToggle={onEditToggle ?? (() => {})}
             disabled={!hasItems || !isCustomSort}
+            disabledReason={
+              !hasItems
+                ? "No items to edit"
+                : !isCustomSort
+                  ? "Set sort to Custom Order to reorder"
+                  : undefined
+            }
           />
+
+          {/* View toggle - icons only on mobile via component */}
           <ViewToggle disabled={!hasItems} />
 
           {/* Settings button - item detail page only */}

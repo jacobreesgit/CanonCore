@@ -60,11 +60,11 @@ function ArtworkThumbnail({ artworkId }: { artworkId: string }) {
   const { ref, loaded, onLoad, onError } = useImageLoaded(artworkSrc);
 
   return (
-    <div className="bg-muted relative h-8 w-8 shrink-0 overflow-hidden rounded-md">
+    <div className="bg-muted relative size-8 shrink-0 overflow-hidden rounded-md">
       {/* Folder icon placeholder while loading */}
       {!loaded && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <Folder className="text-muted-foreground/50 h-4 w-4" />
+          <Folder className="text-muted-foreground/50 size-4" />
         </div>
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -203,14 +203,14 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
       <CommandList ref={listRef} className="max-h-[400px]">
         {isLoading ? (
           <div className="flex items-center justify-center gap-2 py-12">
-            <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+            <Loader2 className="text-muted-foreground size-4 animate-spin" />
             <span className="text-muted-foreground text-sm">Loading...</span>
           </div>
         ) : (
           <>
             <CommandEmpty className="py-12 text-center">
               <div className="flex flex-col items-center gap-2">
-                <Search className="text-muted-foreground/50 h-8 w-8" />
+                <Search className="text-muted-foreground/50 size-8" />
                 <p className="text-muted-foreground text-sm">No items found.</p>
               </div>
             </CommandEmpty>
@@ -227,8 +227,8 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
                     {item.artworkId ? (
                       <ArtworkThumbnail artworkId={item.artworkId} />
                     ) : (
-                      <div className="bg-muted/50 text-muted-foreground group-aria-selected:bg-primary/10 group-aria-selected:text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors">
-                        <Folder className="h-4 w-4" />
+                      <div className="bg-muted/50 text-muted-foreground group-aria-selected:bg-primary/10 group-aria-selected:text-primary flex size-8 shrink-0 items-center justify-center rounded-md transition-colors">
+                        <Folder className="size-4" />
                       </div>
                     )}
                     <div className="flex min-w-0 flex-1 flex-col">

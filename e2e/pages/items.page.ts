@@ -42,8 +42,9 @@ export class ItemsPage {
     this.viewToggleTree = page.getByRole("button", { name: /tree view/i });
     this.viewToggleGrid = page.getByRole("button", { name: /grid view/i });
     // Use .first() to avoid strict mode violation when both toolbar and empty state buttons are visible
+    // Match both "Add Item" (empty state) and "Add" (toolbar with icon)
     this.addFolderButton = page
-      .getByRole("button", { name: /add item/i })
+      .getByRole("button", { name: /^add( item)?$/i })
       .first();
     this.addFolderDialog = page.getByRole("dialog", { name: /create item/i });
     this.addFolderInput = page.getByLabel(/item name/i);
@@ -701,35 +702,119 @@ export class ItemsPage {
 
   /**
    * Opens the sort dropdown and selects a sort option.
+   * Handles both desktop dropdown and mobile Options sheet.
    *
    * @param option - The sort option label to select (e.g., "Name A-Z", "Created (Newest)")
    */
   async selectSortOption(option: string): Promise<void> {
-    await this.sortDropdown.click();
-    await this.page.getByRole("menuitemradio", { name: option }).click();
+    // Wait for either mobile or desktop control to be visible
+    const mobileOptionsButton = this.page.getByRole("button", {
+      name: "Options",
+    });
+    const desktopSortDropdown = this.sortDropdown;
+
+    // Wait for one of them to appear
+    await expect(mobileOptionsButton.or(desktopSortDropdown)).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Now check which one is visible
+    const isMobile = await mobileOptionsButton.isVisible();
+
+    if (isMobile) {
+      // Mobile: Use Options sheet
+      await mobileOptionsButton.click();
+      await this.page.getByRole("option", { name: option }).click();
+      // Close drawer by clicking outside or pressing escape
+      await this.page.keyboard.press("Escape");
+    } else {
+      // Desktop: Use dropdown
+      await desktopSortDropdown.click();
+      await this.page.getByRole("menuitemradio", { name: option }).click();
+    }
   }
 
   /**
    * Opens the filter dropdown and selects a filter option.
+   * Handles both desktop dropdown and mobile Options sheet.
    *
    * @param option - The filter option label to select (e.g., "All Items", "Has Files")
    */
   async selectFilterOption(option: string): Promise<void> {
-    await this.filterDropdown.click();
-    await this.page.getByRole("menuitemradio", { name: option }).click();
+    // Wait for either mobile or desktop control to be visible
+    const mobileOptionsButton = this.page.getByRole("button", {
+      name: "Options",
+    });
+    const desktopFilterDropdown = this.filterDropdown;
+
+    // Wait for one of them to appear
+    await expect(mobileOptionsButton.or(desktopFilterDropdown)).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Now check which one is visible
+    const isMobile = await mobileOptionsButton.isVisible();
+
+    if (isMobile) {
+      // Mobile: Use Options sheet
+      await mobileOptionsButton.click();
+      await this.page.getByRole("option", { name: option }).click();
+      // Close drawer by clicking outside or pressing escape
+      await this.page.keyboard.press("Escape");
+    } else {
+      // Desktop: Use dropdown
+      await desktopFilterDropdown.click();
+      await this.page.getByRole("menuitemradio", { name: option }).click();
+    }
   }
 
   /**
    * Gets the current sort option displayed in the dropdown.
+   * Handles both desktop dropdown and mobile Options sheet.
    */
   async getCurrentSortOption(): Promise<string> {
+    // Check if mobile Options button exists
+    const mobileOptionsButton = this.page.getByRole("button", {
+      name: "Options",
+    });
+    const isMobile = await mobileOptionsButton.isVisible();
+
+    if (isMobile) {
+      // Mobile: Open Options sheet and find selected sort option
+      await mobileOptionsButton.click();
+      const selectedOption = this.page
+        .getByRole("listbox", { name: /sort options/i })
+        .getByRole("option", { selected: true });
+      const text = (await selectedOption.textContent()) ?? "";
+      await this.page.keyboard.press("Escape");
+      return text;
+    }
+    // Desktop: Read from dropdown button
     return (await this.sortDropdown.textContent()) ?? "";
   }
 
   /**
    * Gets the current filter option displayed in the dropdown.
+   * Handles both desktop dropdown and mobile Options sheet.
    */
   async getCurrentFilterOption(): Promise<string> {
+    // Check if mobile Options button exists
+    const mobileOptionsButton = this.page.getByRole("button", {
+      name: "Options",
+    });
+    const isMobile = await mobileOptionsButton.isVisible();
+
+    if (isMobile) {
+      // Mobile: Open Options sheet and find selected filter option
+      await mobileOptionsButton.click();
+      const selectedOption = this.page
+        .getByRole("listbox", { name: /filter options/i })
+        .getByRole("option", { selected: true });
+      const text = (await selectedOption.textContent()) ?? "";
+      await this.page.keyboard.press("Escape");
+      return text;
+    }
+    // Desktop: Read from dropdown button
     return (await this.filterDropdown.textContent()) ?? "";
   }
 
@@ -755,10 +840,12 @@ export class ItemsPage {
   }
 
   /**
-   * Gets the select-all checkbox in the bulk actions toolbar.
+   * Gets the select-all button in the bulk actions toolbar.
    */
-  getSelectAllCheckbox(): Locator {
-    return this.page.getByRole("checkbox", { name: /select all items/i });
+  getSelectAllButton(): Locator {
+    return this.page.getByRole("button", {
+      name: /^(select all|deselect all)$/i,
+    });
   }
 
   /**
@@ -785,10 +872,10 @@ export class ItemsPage {
   }
 
   /**
-   * Toggles the select-all checkbox in the bulk actions toolbar.
+   * Toggles the select-all button in the bulk actions toolbar.
    */
   async toggleSelectAll(): Promise<void> {
-    await this.getSelectAllCheckbox().click();
+    await this.getSelectAllButton().click();
   }
 
   /**

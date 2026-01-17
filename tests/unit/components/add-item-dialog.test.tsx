@@ -82,42 +82,66 @@ describe("AddItemDialog", () => {
     });
   });
 
-  /** Helper to complete wizard: Next (step 1) → Next (step 2) → Apply (step 3) → Summary (step 4) */
+  /**
+   * Helper to complete wizard.
+   * With hasDriveConnection=true: 4 steps (text → poster → hero → summary)
+   * With hasDriveConnection=false: 2 steps (text → summary)
+   */
   // Note: AnimatedDialogContent uses AnimatePresence mode="sync" for crossfade,
   // so we must wait for old step to fully exit before querying Next button
-  const completeWizard = async (user: ReturnType<typeof userEvent.setup>) => {
-    // Wait for wizard step 1 to appear
-    await waitFor(() => {
-      expect(screen.getByText("Apply Metadata")).toBeInTheDocument();
-      expect(screen.getByText(/Step 1 of 4/i)).toBeInTheDocument();
-    });
+  const completeWizard = async (
+    user: ReturnType<typeof userEvent.setup>,
+    hasDriveConnection = true
+  ) => {
+    if (hasDriveConnection) {
+      // Wait for wizard step 1 to appear
+      await waitFor(() => {
+        expect(screen.getByText("Apply Metadata")).toBeInTheDocument();
+        expect(screen.getByText(/Step 1 of 4/i)).toBeInTheDocument();
+      });
 
-    // Step 1 → Step 2
-    await user.click(screen.getByRole("button", { name: /next/i }));
+      // Step 1 → Step 2
+      await user.click(screen.getByRole("button", { name: /next/i }));
 
-    // Wait for step 2 AND ensure step 1 is fully gone (animation complete)
-    await waitFor(() => {
-      expect(screen.getByText(/Step 2 of 4/i)).toBeInTheDocument();
-      expect(screen.queryByText(/Step 1 of 4/i)).not.toBeInTheDocument();
-    });
+      // Wait for step 2 AND ensure step 1 is fully gone (animation complete)
+      await waitFor(() => {
+        expect(screen.getByText(/Step 2 of 4/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Step 1 of 4/i)).not.toBeInTheDocument();
+      });
 
-    // Step 2 → Step 3
-    await user.click(screen.getByRole("button", { name: /next/i }));
+      // Step 2 → Step 3
+      await user.click(screen.getByRole("button", { name: /next/i }));
 
-    // Wait for step 3 AND ensure step 2 is fully gone
-    await waitFor(() => {
-      expect(screen.getByText(/Step 3 of 4/i)).toBeInTheDocument();
-      expect(screen.queryByText(/Step 2 of 4/i)).not.toBeInTheDocument();
-    });
+      // Wait for step 3 AND ensure step 2 is fully gone
+      await waitFor(() => {
+        expect(screen.getByText(/Step 3 of 4/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Step 2 of 4/i)).not.toBeInTheDocument();
+      });
 
-    // Step 3 → Step 4 (Summary)
-    await user.click(screen.getByRole("button", { name: /apply/i }));
+      // Step 3 → Step 4 (Summary)
+      await user.click(screen.getByRole("button", { name: /apply/i }));
 
-    // Wait for step 4 (wizard-summary) AND ensure step 3 is fully gone
-    await waitFor(() => {
-      expect(screen.getByText(/Step 4 of 4/i)).toBeInTheDocument();
-      expect(screen.queryByText(/Step 3 of 4/i)).not.toBeInTheDocument();
-    });
+      // Wait for step 4 (wizard-summary) AND ensure step 3 is fully gone
+      await waitFor(() => {
+        expect(screen.getByText(/Step 4 of 4/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Step 3 of 4/i)).not.toBeInTheDocument();
+      });
+    } else {
+      // Without Drive: 2 steps (text → summary)
+      await waitFor(() => {
+        expect(screen.getByText("Apply Metadata")).toBeInTheDocument();
+        expect(screen.getByText(/Step 1 of 2/i)).toBeInTheDocument();
+      });
+
+      // Step 1 → Step 2 (Summary)
+      await user.click(screen.getByRole("button", { name: /continue/i }));
+
+      // Wait for step 2 (wizard-summary) AND ensure step 1 is fully gone
+      await waitFor(() => {
+        expect(screen.getByText(/Step 2 of 2/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Step 1 of 2/i)).not.toBeInTheDocument();
+      });
+    }
   };
 
   it("renders dialog when open", async () => {
@@ -125,7 +149,7 @@ describe("AddItemDialog", () => {
       <AddItemDialog
         open={true}
         onOpenChange={() => {}}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
       />
     );
 
@@ -143,7 +167,7 @@ describe("AddItemDialog", () => {
       <AddItemDialog
         open={false}
         onOpenChange={() => {}}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
       />
     );
 
@@ -155,7 +179,7 @@ describe("AddItemDialog", () => {
       <AddItemDialog
         open={true}
         onOpenChange={() => {}}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
       />
     );
 
@@ -173,7 +197,7 @@ describe("AddItemDialog", () => {
       <AddItemDialog
         open={true}
         onOpenChange={() => {}}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
       />
     );
 
@@ -187,7 +211,7 @@ describe("AddItemDialog", () => {
 
   it("calls onAdd with trimmed item name on submit", async () => {
     const user = userEvent.setup();
-    const onAdd = vi.fn().mockResolvedValue(undefined);
+    const onAdd = vi.fn().mockResolvedValue({ itemId: "test-id" });
 
     render(<AddItemDialog open={true} onOpenChange={() => {}} onAdd={onAdd} />);
 
@@ -199,18 +223,14 @@ describe("AddItemDialog", () => {
     await user.click(screen.getByRole("button", { name: /^create$/i }));
 
     await waitFor(() => {
-      expect(onAdd).toHaveBeenCalledWith(
-        "New Item",
-        undefined,
-        undefined,
-        undefined
-      );
+      // onAdd now takes (name, description, tmdbSelection) - 3 args, not 4
+      expect(onAdd).toHaveBeenCalledWith("New Item", undefined, undefined);
     });
   });
 
   it("closes dialog on successful creation", async () => {
     const user = userEvent.setup();
-    const onAdd = vi.fn().mockResolvedValue(undefined);
+    const onAdd = vi.fn().mockResolvedValue({ itemId: "test-id" });
     const onOpenChange = vi.fn();
 
     render(
@@ -231,7 +251,7 @@ describe("AddItemDialog", () => {
 
   it("keeps dialog open on error", async () => {
     const user = userEvent.setup();
-    const onAdd = vi.fn().mockResolvedValue("Error message");
+    const onAdd = vi.fn().mockResolvedValue({ error: "Error message" });
     const onOpenChange = vi.fn();
 
     render(
@@ -253,7 +273,7 @@ describe("AddItemDialog", () => {
 
   it("allows manual text entry when typing", async () => {
     const user = userEvent.setup();
-    const onAdd = vi.fn().mockResolvedValue(undefined);
+    const onAdd = vi.fn().mockResolvedValue({ itemId: "test-id" });
 
     render(<AddItemDialog open={true} onOpenChange={() => {}} onAdd={onAdd} />);
 
@@ -265,9 +285,9 @@ describe("AddItemDialog", () => {
     await user.click(screen.getByRole("button", { name: /^create$/i }));
 
     await waitFor(() => {
+      // onAdd now takes (name, description, tmdbSelection) - 3 args, not 4
       expect(onAdd).toHaveBeenCalledWith(
         "Custom Item Name",
-        undefined,
         undefined,
         undefined
       );
@@ -279,7 +299,7 @@ describe("AddItemDialog", () => {
       <AddItemDialog
         open={false}
         onOpenChange={() => {}}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
       />
     );
 
@@ -287,7 +307,7 @@ describe("AddItemDialog", () => {
       <AddItemDialog
         open={true}
         onOpenChange={() => {}}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
       />
     );
 
@@ -300,7 +320,7 @@ describe("AddItemDialog", () => {
 
   it("shows loading state during submission", async () => {
     const user = userEvent.setup();
-    let resolveAdd: (value: string | undefined) => void;
+    let resolveAdd: (value: { itemId?: string; error?: string }) => void;
     const onAdd = vi.fn().mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -321,7 +341,7 @@ describe("AddItemDialog", () => {
 
     // Resolve the promise and wait for the component to update
     await waitFor(() => {
-      resolveAdd!(undefined);
+      resolveAdd!({ itemId: "test-id" });
     });
   });
 
@@ -333,7 +353,7 @@ describe("AddItemDialog", () => {
       <AddItemDialog
         open={true}
         onOpenChange={onOpenChange}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
       />
     );
 
@@ -353,7 +373,7 @@ describe("AddItemDialog", () => {
       <AddItemDialog
         open={true}
         onOpenChange={() => {}}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
       />
     );
 
@@ -371,7 +391,7 @@ describe("AddItemDialog", () => {
       <AddItemDialog
         open={true}
         onOpenChange={() => {}}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
         parentName="Movies"
       />
     );
@@ -390,7 +410,7 @@ describe("AddItemDialog", () => {
       <AddItemDialog
         open={true}
         onOpenChange={() => {}}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
       />
     );
 
@@ -404,7 +424,7 @@ describe("AddItemDialog", () => {
 
   it("passes description to onAdd when provided", async () => {
     const user = userEvent.setup();
-    const onAdd = vi.fn().mockResolvedValue(undefined);
+    const onAdd = vi.fn().mockResolvedValue({ itemId: "test-id" });
 
     render(<AddItemDialog open={true} onOpenChange={() => {}} onAdd={onAdd} />);
 
@@ -420,10 +440,10 @@ describe("AddItemDialog", () => {
     await user.click(screen.getByRole("button", { name: /^create$/i }));
 
     await waitFor(() => {
+      // onAdd now takes (name, description, tmdbSelection) - 3 args, not 4
       expect(onAdd).toHaveBeenCalledWith(
         "New Item",
         "My item description",
-        undefined,
         undefined
       );
     });
@@ -431,7 +451,7 @@ describe("AddItemDialog", () => {
 
   it("trims description whitespace", async () => {
     const user = userEvent.setup();
-    const onAdd = vi.fn().mockResolvedValue(undefined);
+    const onAdd = vi.fn().mockResolvedValue({ itemId: "test-id" });
 
     render(<AddItemDialog open={true} onOpenChange={() => {}} onAdd={onAdd} />);
 
@@ -447,10 +467,10 @@ describe("AddItemDialog", () => {
     await user.click(screen.getByRole("button", { name: /^create$/i }));
 
     await waitFor(() => {
+      // onAdd now takes (name, description, tmdbSelection) - 3 args, not 4
       expect(onAdd).toHaveBeenCalledWith(
         "New Item",
         "Trimmed description",
-        undefined,
         undefined
       );
     });
@@ -463,7 +483,7 @@ describe("AddItemDialog", () => {
       <AddItemDialog
         open={true}
         onOpenChange={() => {}}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
       />
     );
 
@@ -514,7 +534,8 @@ describe("AddItemDialog", () => {
       <AddItemDialog
         open={true}
         onOpenChange={() => {}}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
+        hasDriveConnection={true}
       />
     );
 
@@ -531,7 +552,7 @@ describe("AddItemDialog", () => {
 
     await user.click(screen.getByText("Fight Club"));
 
-    // Complete the 3-step wizard
+    // Complete the 4-step wizard
     await completeWizard(user);
 
     // Verify form fields were auto-filled
@@ -551,7 +572,7 @@ describe("AddItemDialog", () => {
 
   it("submits with auto-filled data from TMDB", async () => {
     const user = userEvent.setup();
-    const onAdd = vi.fn().mockResolvedValue(undefined);
+    const onAdd = vi.fn().mockResolvedValue({ itemId: "test-id" });
     vi.mocked(searchMediaAction).mockResolvedValue({
       success: true,
       data: [
@@ -578,7 +599,14 @@ describe("AddItemDialog", () => {
       },
     });
 
-    render(<AddItemDialog open={true} onOpenChange={() => {}} onAdd={onAdd} />);
+    render(
+      <AddItemDialog
+        open={true}
+        onOpenChange={() => {}}
+        onAdd={onAdd}
+        hasDriveConnection={true}
+      />
+    );
 
     await waitFor(() => {
       expect(screen.getByRole("combobox")).toBeInTheDocument();
@@ -592,7 +620,7 @@ describe("AddItemDialog", () => {
 
     await user.click(screen.getByText("The Shawshank Redemption"));
 
-    // Complete the 3-step wizard
+    // Complete the 4-step wizard
     await completeWizard(user);
 
     // Now click Create
@@ -604,10 +632,10 @@ describe("AddItemDialog", () => {
     await user.click(screen.getByRole("button", { name: /^create$/i }));
 
     await waitFor(() => {
+      // onAdd now takes (name, description, tmdbSelection) - 3 args, not 4
       expect(onAdd).toHaveBeenCalledWith(
         "The Shawshank Redemption (1994)",
         "Two imprisoned men bond over a number of years.",
-        undefined,
         expect.objectContaining({
           tmdbId: 278,
           mediaType: "movie",
@@ -648,7 +676,8 @@ describe("AddItemDialog", () => {
       <AddItemDialog
         open={true}
         onOpenChange={() => {}}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
+        hasDriveConnection={true}
       />
     );
 
@@ -664,7 +693,7 @@ describe("AddItemDialog", () => {
 
     await user.click(screen.getByText("Unknown Movie"));
 
-    // Complete the 3-step wizard
+    // Complete the 4-step wizard
     await completeWizard(user);
 
     await waitFor(() => {
@@ -679,7 +708,7 @@ describe("AddItemDialog", () => {
       <AddItemDialog
         open={true}
         onOpenChange={() => {}}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
       />
     );
 
@@ -765,7 +794,7 @@ describe("AddItemDialog - Categorized File Uploads", () => {
       <AddItemDialog
         open={true}
         onOpenChange={() => {}}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
         hasDriveConnection={true}
       />
     );
@@ -811,7 +840,7 @@ describe("AddItemDialog - Categorized File Uploads", () => {
       <AddItemDialog
         open={true}
         onOpenChange={() => {}}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
         hasDriveConnection={true}
       />
     );
@@ -844,7 +873,7 @@ describe("AddItemDialog - Categorized File Uploads", () => {
 
   it("creates item with no files when queues are empty", async () => {
     const user = userEvent.setup();
-    const onAdd = vi.fn().mockResolvedValue(undefined);
+    const onAdd = vi.fn().mockResolvedValue({ itemId: "test-id" });
 
     render(
       <AddItemDialog
@@ -863,12 +892,8 @@ describe("AddItemDialog - Categorized File Uploads", () => {
     await user.click(screen.getByRole("button", { name: /^create$/i }));
 
     await waitFor(() => {
-      expect(onAdd).toHaveBeenCalledWith(
-        "Test Item",
-        undefined,
-        undefined, // No files when queues are empty
-        undefined
-      );
+      // onAdd now takes (name, description, tmdbSelection) - 3 args, not 4
+      expect(onAdd).toHaveBeenCalledWith("Test Item", undefined, undefined);
     });
   });
 });
@@ -958,7 +983,7 @@ describe("AddItemDialog - Summary View Layout", () => {
       <AddItemDialog
         open={true}
         onOpenChange={() => {}}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
         hasDriveConnection={true}
       />
     );
@@ -1004,7 +1029,7 @@ describe("AddItemDialog - Summary View Layout", () => {
       <AddItemDialog
         open={true}
         onOpenChange={() => {}}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
         hasDriveConnection={true}
       />
     );
@@ -1026,8 +1051,11 @@ describe("AddItemDialog - Summary View Layout", () => {
     // NOW all sections should be visible
     expect(screen.getByLabelText(/name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
-    expect(screen.getByText("Artwork")).toBeInTheDocument();
-    expect(screen.getByText("Files")).toBeInTheDocument();
+    // Artwork section uses individual "Poster" and "Hero Banner" labels
+    expect(screen.getByText("Poster")).toBeInTheDocument();
+    expect(screen.getByText("Hero Banner")).toBeInTheDocument();
+    // Files tab exists
+    expect(screen.getByRole("tab", { name: /files/i })).toBeInTheDocument();
   });
 
   it("should show artwork preview cards for poster and hero after wizard completion", async () => {
@@ -1052,7 +1080,7 @@ describe("AddItemDialog - Summary View Layout", () => {
       <AddItemDialog
         open={true}
         onOpenChange={() => {}}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
         hasDriveConnection={true}
       />
     );
@@ -1073,13 +1101,15 @@ describe("AddItemDialog - Summary View Layout", () => {
 
     // Artwork section should have poster and hero thumbnails
     expect(screen.getByText("Poster")).toBeInTheDocument();
-    expect(screen.getByText("Hero")).toBeInTheDocument();
+    expect(screen.getByText("Hero Banner")).toBeInTheDocument();
 
-    // Should show artwork images with amber selection styling (checkmarks visible)
-    const posterPreview = screen.getByRole("button", {
+    // Should show artwork images in dropzone-style buttons
+    const posterPreview = screen.getByRole("img", {
       name: /poster preview/i,
     });
-    const heroPreview = screen.getByRole("button", { name: /hero preview/i });
+    const heroPreview = screen.getByRole("img", {
+      name: /hero banner preview/i,
+    });
     expect(posterPreview).toBeInTheDocument();
     expect(heroPreview).toBeInTheDocument();
   });
@@ -1100,7 +1130,7 @@ describe("AddItemDialog slot-based layout", () => {
       <AddItemDialog
         open
         onOpenChange={() => {}}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
       />
     );
 
@@ -1118,7 +1148,7 @@ describe("AddItemDialog slot-based layout", () => {
       <AddItemDialog
         open
         onOpenChange={() => {}}
-        onAdd={async () => undefined}
+        onAdd={async () => ({ itemId: "test-id" })}
       />
     );
 

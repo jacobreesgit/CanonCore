@@ -25,6 +25,7 @@ import { SyncStatus } from "@prisma/client";
 import { logger } from "@/lib/logger";
 import { logSyncOperation } from "@/lib/sync-log";
 import { startSyncTimer, SyncLogAction, SyncLogStatus } from "@/lib/sync-utils";
+import { handlePrismaError } from "@/lib/errors";
 
 /** Result type for Google Drive actions. */
 type ActionResult<T = void> =
@@ -283,6 +284,12 @@ export async function createFolderInGoogleDrive(
     revalidatePath("/my-items");
     return { success: true, data: { itemId: item.id, driveFileId } };
   } catch (error) {
+    // Check for user account deleted error first
+    const prismaError = handlePrismaError(error);
+    if (prismaError) {
+      return { success: false, error: prismaError.error };
+    }
+
     const message =
       error instanceof Error ? error.message : "Failed to create folder";
     logger.error({ err: error }, "[GoogleDrive] Create folder error");

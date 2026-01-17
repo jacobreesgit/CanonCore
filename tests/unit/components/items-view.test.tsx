@@ -156,9 +156,10 @@ describe("ItemsView", () => {
       expect(screen.getByText(/create your first item/i)).toBeInTheDocument();
     });
 
-    it("renders Add Item button in empty state", () => {
+    it("renders Add button in empty state", () => {
       render(<ItemsView items={[]} />);
-      const buttons = screen.getAllByRole("button", { name: /add item/i });
+      // Add button shows "Add" text (not "Add Item")
+      const buttons = screen.getAllByRole("button", { name: /^add$/i });
       expect(buttons.length).toBeGreaterThan(0);
     });
   });
@@ -166,27 +167,33 @@ describe("ItemsView", () => {
   describe("toolbar", () => {
     it("shows toolbar by default", () => {
       render(<ItemsView items={mockItems} />);
-      expect(
-        screen.getByRole("button", { name: /add item/i })
-      ).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /sync/i })).toBeInTheDocument();
+      // Add button shows "Add" text
+      const addButtons = screen.getAllByRole("button", { name: /^add$/i });
+      expect(addButtons.length).toBeGreaterThan(0);
+      // Sync buttons exist (mobile + desktop)
+      const syncButtons = screen.getAllByRole("button", { name: /sync/i });
+      expect(syncButtons.length).toBeGreaterThan(0);
     });
 
     it("hides toolbar when hideToolbar is true", () => {
       render(<ItemsView items={mockItems} hideToolbar />);
       expect(
-        screen.queryByRole("button", { name: /add item/i })
+        screen.queryByRole("button", { name: /^add$/i })
       ).not.toBeInTheDocument();
     });
 
     it("disables Sync button when no drive connection", () => {
       render(<ItemsView items={mockItems} hasDriveConnection={false} />);
-      expect(screen.getByRole("button", { name: /sync/i })).toBeDisabled();
+      // All sync buttons (mobile + desktop) should be disabled
+      const syncButtons = screen.getAllByRole("button", { name: /sync/i });
+      syncButtons.forEach((btn) => expect(btn).toBeDisabled());
     });
 
     it("enables Sync button when drive connected", () => {
       render(<ItemsView items={mockItems} hasDriveConnection />);
-      expect(screen.getByRole("button", { name: /sync/i })).toBeEnabled();
+      // All sync buttons (mobile + desktop) should be enabled
+      const syncButtons = screen.getAllByRole("button", { name: /sync/i });
+      syncButtons.forEach((btn) => expect(btn).toBeEnabled());
     });
 
     it("disables Edit and View toggle when no items", () => {
@@ -298,17 +305,21 @@ describe("ItemsView", () => {
     it("shows bulk actions toolbar in edit mode", () => {
       render(<ItemsView items={mockItems} isEditing={true} />);
 
-      // Toolbar should be visible
-      expect(screen.getByRole("checkbox")).toBeInTheDocument();
+      // Toolbar should be visible with Select All button (no checkbox)
+      expect(
+        screen.getByRole("button", { name: /select all/i })
+      ).toBeInTheDocument();
     });
 
     it("shows confirmation dialog when delete button clicked", async () => {
       const user = userEvent.setup();
       render(<ItemsView items={mockItems} isEditing={true} />);
 
-      // Select all items via checkbox
-      const checkbox = screen.getByRole("checkbox");
-      await user.click(checkbox);
+      // Select all items via Select All button
+      const selectAllButton = screen.getByRole("button", {
+        name: /select all/i,
+      });
+      await user.click(selectAllButton);
 
       // Click delete button
       const deleteButton = screen.getByRole("button", { name: /delete 2/i });
@@ -328,7 +339,7 @@ describe("ItemsView", () => {
       render(<ItemsView items={mockItems} isEditing={true} />);
 
       // Select all and click delete
-      await user.click(screen.getByRole("checkbox"));
+      await user.click(screen.getByRole("button", { name: /select all/i }));
       await user.click(screen.getByRole("button", { name: /delete 2/i }));
 
       // Wait for dialog
@@ -351,7 +362,7 @@ describe("ItemsView", () => {
       render(<ItemsView items={mockItems} isEditing={true} />);
 
       // Select all and click delete
-      await user.click(screen.getByRole("checkbox"));
+      await user.click(screen.getByRole("button", { name: /select all/i }));
       await user.click(screen.getByRole("button", { name: /delete 2/i }));
 
       // Wait for dialog and confirm

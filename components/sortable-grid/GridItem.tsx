@@ -117,20 +117,27 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
     const shouldShowCounts = showCounts;
     const shouldShowPrimaryMedia = primaryMediaName && !handleProps; // Hide in edit mode
 
+    // In select mode, clicking the item toggles selection instead of navigation
+    const isSelectMode = !!onSelectChange;
+    const handleClick = isSelectMode
+      ? () => onSelectChange?.(!isSelected)
+      : onClick;
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        handleClick?.();
+      }
+    };
+
     return (
       <div
         ref={combinedRef}
         data-id={String(id)}
-        onClick={onClick}
+        onClick={handleClick}
         role="button"
         tabIndex={0}
         aria-label={name}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onClick?.();
-          }
-        }}
+        onKeyDown={handleKeyDown}
         className={cn(
           // Base styles - Feature222 sizing
           "group relative w-full cursor-pointer overflow-hidden rounded-lg",
