@@ -23,7 +23,7 @@ describe("DialogFooter", () => {
     expect(footer.className).toContain("shrink-0");
   });
 
-  it("renders with pt-4 for top padding", () => {
+  it("renders with gap-2 for button spacing", () => {
     render(
       <Dialog open>
         <DialogContent>
@@ -35,7 +35,7 @@ describe("DialogFooter", () => {
     );
 
     const footer = screen.getByTestId("footer");
-    expect(footer.className).toContain("pt-4");
+    expect(footer.className).toContain("gap-2");
   });
 });
 

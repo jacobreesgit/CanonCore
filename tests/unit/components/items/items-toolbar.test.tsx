@@ -64,8 +64,9 @@ describe("ItemsToolbar", () => {
     it("should disable Add/Edit/View controls when hasItems is false", () => {
       render(<ItemsToolbar {...defaultProps} />);
 
-      // Controls are rendered but disabled
-      expect(screen.getByRole("button", { name: /add item/i })).toBeDisabled();
+      // Controls are rendered but disabled (Add button shows "Add" text)
+      const addButtons = screen.getAllByRole("button", { name: /^add$/i });
+      expect(addButtons[0]).toBeDisabled();
       expect(
         screen.getByRole("button", { name: /enter edit mode/i })
       ).toBeDisabled();
@@ -84,9 +85,8 @@ describe("ItemsToolbar", () => {
         />
       );
 
-      expect(
-        screen.getByRole("button", { name: /add item/i })
-      ).toBeInTheDocument();
+      const addButtons = screen.getAllByRole("button", { name: /^add$/i });
+      expect(addButtons[0]).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: /enter edit mode/i })
       ).toBeInTheDocument();
@@ -153,7 +153,7 @@ describe("ItemsToolbar", () => {
   });
 
   describe("Add Item button", () => {
-    it("should call onAddItem when Add Item clicked", async () => {
+    it("should call onAddItem when Add clicked", async () => {
       const user = userEvent.setup();
       const onAddItem = vi.fn();
 
@@ -166,7 +166,8 @@ describe("ItemsToolbar", () => {
         />
       );
 
-      await user.click(screen.getByRole("button", { name: /add item/i }));
+      const addButtons = screen.getAllByRole("button", { name: /^add$/i });
+      await user.click(addButtons[0]);
       expect(onAddItem).toHaveBeenCalledTimes(1);
     });
   });

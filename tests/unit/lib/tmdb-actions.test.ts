@@ -18,6 +18,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     item: { findUnique: vi.fn(), update: vi.fn() },
     itemFile: { create: vi.fn(), update: vi.fn() },
+    googleDriveConnection: { findUnique: vi.fn() },
   },
 }));
 vi.mock("@/lib/tmdb-client", () => ({
@@ -175,6 +176,10 @@ describe("tmdb-actions", () => {
     beforeEach(() => {
       vi.mocked(prisma.item.findUnique).mockResolvedValue(mockItem as never);
       vi.mocked(prisma.item.update).mockResolvedValue(mockItem as never);
+      // Mock user has a Drive connection (required for poster uploads)
+      vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue({
+        id: "conn-1",
+      } as never);
       vi.mocked(getMovie).mockResolvedValue({
         id: 278,
         title: "The Shawshank Redemption",
@@ -229,6 +234,10 @@ describe("tmdb-actions", () => {
         ...mockItem,
         driveConnectionId: null,
       } as never);
+      // User has no Drive connection
+      vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue(
+        null as never
+      );
 
       const result = await applyMetadataAction("item-1", 278, "movie");
 

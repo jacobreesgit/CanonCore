@@ -7,6 +7,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
+import Link from "next/link";
 import {
   Loader2,
   ImageIcon,
@@ -687,16 +688,22 @@ export function ItemSettingsDialog({
 
   /**
    * Handles wizard next navigation.
+   * Skips poster/hero steps when no Drive connection (images require Drive).
    */
   const handleWizardNext = useCallback(() => {
     if (currentStep === "wizard-text") {
-      setCurrentStep("wizard-poster");
+      // Skip image steps if no Drive connection
+      if (!hasDriveConnection) {
+        handleWizardComplete();
+      } else {
+        setCurrentStep("wizard-poster");
+      }
     } else if (currentStep === "wizard-poster") {
       setCurrentStep("wizard-hero");
     } else if (currentStep === "wizard-hero") {
       handleWizardComplete();
     }
-  }, [currentStep, handleWizardComplete]);
+  }, [currentStep, hasDriveConnection, handleWizardComplete]);
 
   /**
    * Handles wizard skip all.
@@ -792,6 +799,18 @@ export function ItemSettingsDialog({
   // Files tab content
   const filesContent = (
     <div className="space-y-4">
+      {!hasDriveConnection && (
+        <p className="text-muted-foreground border-muted rounded-lg border border-dashed p-3 text-center text-xs">
+          Connect Google Drive to upload files.{" "}
+          <Link
+            href="/docs/google-drive/connect-drive"
+            className="text-primary hover:underline"
+          >
+            Learn more
+          </Link>
+        </p>
+      )}
+
       <FileTypeCombobox
         label="Primary Media"
         description="The file that plays when clicking on this item."
@@ -882,7 +901,9 @@ export function ItemSettingsDialog({
               <div className="min-w-0">
                 <DialogTitle className="text-lg">Item Settings</DialogTitle>
                 <DialogDescription className="text-sm">
-                  Configure display preferences and upload files
+                  {hasDriveConnection
+                    ? "Configure display preferences and upload files"
+                    : "Configure display preferences"}
                 </DialogDescription>
               </div>
             </div>
@@ -950,7 +971,8 @@ export function ItemSettingsDialog({
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
                 <DialogDescription className="text-sm">
-                  Step {wizardStepNumber} of 3:{" "}
+                  Step {hasDriveConnection ? wizardStepNumber : 1} of{" "}
+                  {hasDriveConnection ? 3 : 1}:{" "}
                   {currentStep === "wizard-text"
                     ? "Title & Description"
                     : currentStep === "wizard-poster"
@@ -1034,15 +1056,27 @@ export function ItemSettingsDialog({
             >
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleWizardSkipAll}
-              disabled={isApplyingMetadata}
-            >
-              Skip All
-            </Button>
+            {/* Hide Skip All when no Drive - there are no image steps to skip */}
+            {hasDriveConnection && (
+              <Button
+                variant="destructive"
+                onClick={handleWizardSkipAll}
+                disabled={isApplyingMetadata}
+              >
+                Skip All
+              </Button>
+            )}
             <Button onClick={handleWizardNext} disabled={isApplyingMetadata}>
-              Next
+              {isApplyingMetadata ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Applying...
+                </>
+              ) : hasDriveConnection ? (
+                "Next"
+              ) : (
+                "Apply"
+              )}
             </Button>
           </DialogFooter>
         );
@@ -1104,10 +1138,14 @@ export function ItemSettingsDialog({
       case "main":
         return (
           <div className="min-w-0 py-2">
-            <ItemDialogTabs
-              detailsContent={detailsContent}
-              filesContent={filesContent}
-            />
+            {hasDriveConnection ? (
+              <ItemDialogTabs
+                detailsContent={detailsContent}
+                filesContent={filesContent}
+              />
+            ) : (
+              <div className="space-y-4">{detailsContent}</div>
+            )}
           </div>
         );
       case "episode-picker":
@@ -1182,8 +1220,9 @@ export function ItemSettingsDialog({
         if (!tmdbPreview) return null;
         return (
           <>
+            {/* Step indicator - 1 step without Drive, 3 with Drive */}
             <div className="flex gap-1.5 py-2">
-              {[1, 2, 3].map((step) => (
+              {(hasDriveConnection ? [1, 2, 3] : [1]).map((step) => (
                 <div
                   key={step}
                   className={cn(
@@ -1201,6 +1240,13 @@ export function ItemSettingsDialog({
               onOptionsChange={setTextOptions}
               disabled={false}
             />
+
+            {/* Note when images are skipped */}
+            {!hasDriveConnection && (
+              <p className="text-muted-foreground mt-4 text-center text-xs">
+                Connect Google Drive to add poster and hero images.
+              </p>
+            )}
           </>
         );
       case "wizard-poster":

@@ -34,6 +34,7 @@ import {
   type TMDBEpisode,
 } from "@/lib/tmdb-client";
 import { uploadBuffer } from "@/lib/google-drive-upload";
+import { handlePrismaError } from "@/lib/errors";
 
 /**
  * Options for selectively applying TMDB metadata fields.
@@ -172,6 +173,13 @@ export async function applyMetadataAction(
     return { success: false, error: "Item not found" };
   }
 
+  // Check if user has a Drive connection (item may not have driveConnectionId yet
+  // if this is called immediately after item creation, before async Drive folder sync)
+  const userHasDriveConnection = await prisma.googleDriveConnection.findUnique({
+    where: { userId: session.user.id },
+    select: { id: true },
+  });
+
   try {
     // Fetch metadata from TMDB
     let name: string;
@@ -223,8 +231,8 @@ export async function applyMetadataAction(
     const existingPrimary = item.files?.find((f) => f.isPrimary);
     const existingHero = item.files?.find((f) => f.isHero);
 
-    // Upload poster if option enabled and item has Drive connection
-    if (opts.updatePoster && item.driveConnectionId && posterPath) {
+    // Upload poster if option enabled and user has Drive connection
+    if (opts.updatePoster && userHasDriveConnection && posterPath) {
       const posterBuffer = await downloadPoster(posterPath);
 
       if (posterBuffer) {
@@ -265,7 +273,7 @@ export async function applyMetadataAction(
     }
 
     // Upload backdrop as hero image if option enabled
-    if (opts.updateBackdrop && item.driveConnectionId && backdropPath) {
+    if (opts.updateBackdrop && userHasDriveConnection && backdropPath) {
       const backdropBuffer = await downloadBackdrop(backdropPath);
 
       if (backdropBuffer) {
@@ -311,6 +319,12 @@ export async function applyMetadataAction(
 
     return { success: true };
   } catch (error) {
+    // Check for user account deleted error first
+    const prismaError = handlePrismaError(error);
+    if (prismaError) {
+      return { success: false, error: prismaError.error };
+    }
+
     logger.error({ error, itemId, tmdbId }, "Failed to apply TMDB metadata");
     return { success: false, error: "Failed to apply metadata" };
   }

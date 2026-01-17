@@ -48,7 +48,7 @@ export function NavMain({
                 tooltip="Search"
                 className="group"
               >
-                <Search className="h-4 w-4" />
+                <Search className="size-4" />
                 <span>Search</span>
                 <Kbd className="ml-auto">/</Kbd>
               </SidebarMenuButton>

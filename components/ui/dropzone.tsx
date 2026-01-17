@@ -96,7 +96,15 @@ export const Dropzone = ({
     disabled,
     onDrop: (acceptedFiles, fileRejections, event) => {
       if (fileRejections.length > 0) {
-        const message = fileRejections.at(0)?.errors.at(0)?.message;
+        let message = fileRejections.at(0)?.errors.at(0)?.message;
+
+        // Format byte sizes in error messages (e.g., "1048576 bytes" -> "1MB")
+        if (message) {
+          message = message.replace(/(\d+) bytes/g, (_, bytes) =>
+            renderBytes(Number(bytes))
+          );
+        }
+
         onError?.(new Error(message ?? "File validation failed"));
         return;
       }

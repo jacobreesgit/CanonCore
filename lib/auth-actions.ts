@@ -18,6 +18,7 @@ import {
   resetPasswordSchema,
 } from "@/lib/validations";
 import { logger } from "@/lib/logger";
+import { handlePrismaError } from "@/lib/errors";
 
 /**
  * Result type for auth actions.
@@ -94,6 +95,10 @@ export async function signUp(
     await logSecurityEvent("SIGNUP_SUCCESS", { email });
     return { success: true };
   } catch (error) {
+    // Check for foreign key constraint (shouldn't happen for user create, but for safety)
+    const prismaError = handlePrismaError(error);
+    if (prismaError) return prismaError;
+
     logger.error({ err: error, email }, "Sign up error");
     throw error;
   }
@@ -147,13 +152,20 @@ export async function forgotPassword(email: string): Promise<AuthResult> {
   const token = randomBytes(32).toString("hex");
   const expires = new Date(Date.now() + 30 * 60 * 1000);
 
-  await prisma.passwordReset.create({
-    data: {
-      token,
-      userId: user.id,
-      expires,
-    },
-  });
+  try {
+    await prisma.passwordReset.create({
+      data: {
+        token,
+        userId: user.id,
+        expires,
+      },
+    });
+  } catch (error) {
+    // Check for user deleted between lookup and create
+    const prismaError = handlePrismaError(error);
+    if (prismaError) return prismaError;
+    throw error;
+  }
 
   try {
     await sendPasswordResetEmail(email, token);

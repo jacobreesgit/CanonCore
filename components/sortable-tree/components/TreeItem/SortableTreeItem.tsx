@@ -14,6 +14,7 @@ import type { AnimateLayoutChanges } from "@dnd-kit/sortable";
 
 import { TreeItem, TreeItemProps } from "./TreeItem";
 import { ItemContextMenu } from "@/components/items/item-context-menu";
+import type { CreateItemResult } from "@/components/items/add-item-dialog";
 
 interface SortableTreeItemProps extends Omit<TreeItemProps, "handleProps"> {
   id: UniqueIdentifier;
@@ -22,7 +23,9 @@ interface SortableTreeItemProps extends Omit<TreeItemProps, "handleProps"> {
   /** Opens the item settings dialog */
   onSettings?(): void;
   onDelete?(): Promise<void>;
-  onAddChild?(name: string): Promise<string | undefined>;
+  onAddChild?(name: string, description?: string): Promise<CreateItemResult>;
+  /** Callback to refresh data after child item is created */
+  onAddChildComplete?(): Promise<void>;
   /** Whether user has Google Drive connected (for Add Child dialog) */
   hasDriveConnection?: boolean;
   /** Whether the item is selected (for bulk operations). */
@@ -54,6 +57,7 @@ export function SortableTreeItem({
   onSettings,
   onDelete,
   onAddChild,
+  onAddChildComplete,
   hasDriveConnection = false,
   isSelected,
   onSelectChange,
@@ -85,6 +89,7 @@ export function SortableTreeItem({
       onSettings={onSettings}
       onDelete={onDelete}
       onAddChild={onAddChild}
+      onAddChildComplete={onAddChildComplete}
       hasDriveConnection={hasDriveConnection}
     >
       <TreeItem
