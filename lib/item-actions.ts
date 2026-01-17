@@ -24,6 +24,7 @@ import type {
   BreadcrumbItem,
   ItemWithArtwork,
   SearchableItem,
+  PinnedItem,
 } from "@/lib/types";
 import { buildDescendantCounter, getMediaIconType } from "@/lib/item-utils";
 
@@ -112,6 +113,7 @@ export async function getItems(
       parentId: item.parentId,
       order: item.order,
       depth: item.depth,
+      pinnedOrder: item.pinnedOrder,
       userId: item.userId,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
@@ -211,6 +213,7 @@ export async function getAllItems(): Promise<ItemResult<ItemWithArtwork[]>> {
       parentId: item.parentId,
       order: item.order,
       depth: item.depth,
+      pinnedOrder: item.pinnedOrder,
       userId: item.userId,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
@@ -334,6 +337,7 @@ export async function getDescendants(
       parentId: item.parentId,
       order: item.order,
       depth: item.depth,
+      pinnedOrder: item.pinnedOrder,
       userId: item.userId,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
@@ -1131,4 +1135,167 @@ export async function createItemWithMetadata(
   });
 
   return { success: true, data: (updatedItem ?? item) as Item };
+}
+
+// =============================================================================
+// Pinned Items Actions
+// =============================================================================
+
+const MAX_PINNED_ITEMS = 10;
+
+/**
+ * Pins an item to the sidebar.
+ * Limited to 10 pinned items per user.
+ * Uses a transaction to prevent race conditions when checking the limit.
+ *
+ * @param id - Item ID to pin
+ * @returns Success or error
+ */
+export async function pinItem(id: string): Promise<ItemResult> {
+  const rateLimitResult = await checkRateLimit("itemPin");
+  if (rateLimitResult) {
+    return { error: rateLimitResult.error };
+  }
+
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  const userId = session.user.id;
+
+  // Use transaction to prevent TOCTOU race condition
+  // Without this, concurrent requests could exceed the 10-item limit
+  try {
+    await prisma.$transaction(async (tx) => {
+      const item = await tx.item.findUnique({
+        where: { id },
+        select: { userId: true, pinnedOrder: true },
+      });
+
+      if (!item) {
+        throw new Error("Item not found");
+      }
+
+      if (item.userId !== userId) {
+        throw new Error("Unauthorized");
+      }
+
+      // Already pinned - no-op
+      if (item.pinnedOrder !== null) {
+        return;
+      }
+
+      // Check max limit (within transaction for atomicity)
+      const pinnedCount = await tx.item.count({
+        where: {
+          userId,
+          pinnedOrder: { not: null },
+        },
+      });
+
+      if (pinnedCount >= MAX_PINNED_ITEMS) {
+        throw new Error("Maximum of 10 pinned items reached");
+      }
+
+      // Get next order value
+      const maxOrder = await tx.item.aggregate({
+        where: {
+          userId,
+          pinnedOrder: { not: null },
+        },
+        _max: { pinnedOrder: true },
+      });
+
+      const nextOrder = (maxOrder._max.pinnedOrder ?? -1) + 1;
+
+      await tx.item.update({
+        where: { id },
+        data: { pinnedOrder: nextOrder },
+      });
+    });
+
+    return { success: true };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to pin item";
+    return { error: message };
+  }
+}
+
+/**
+ * Unpins an item from the sidebar.
+ *
+ * @param id - Item ID to unpin
+ * @returns Success or error
+ */
+export async function unpinItem(id: string): Promise<ItemResult> {
+  const rateLimitResult = await checkRateLimit("itemPin");
+  if (rateLimitResult) {
+    return { error: rateLimitResult.error };
+  }
+
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  const item = await prisma.item.findUnique({
+    where: { id },
+    select: { userId: true, pinnedOrder: true },
+  });
+
+  if (!item) {
+    return { error: "Item not found" };
+  }
+
+  if (item.userId !== session.user.id) {
+    return { error: "Unauthorized" };
+  }
+
+  // Already unpinned
+  if (item.pinnedOrder === null) {
+    return { success: true };
+  }
+
+  await prisma.item.update({
+    where: { id },
+    data: { pinnedOrder: null },
+  });
+
+  return { success: true };
+}
+
+/**
+ * Fetches all pinned items for the current user.
+ * Returns items sorted by pinnedOrder for sidebar display.
+ *
+ * @returns PinnedItem array or error
+ */
+export async function getPinnedItems(): Promise<ItemResult<PinnedItem[]>> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  const items = await prisma.item.findMany({
+    where: {
+      userId: session.user.id,
+      pinnedOrder: { not: null },
+    },
+    orderBy: { pinnedOrder: "asc" },
+    select: {
+      id: true,
+      name: true,
+      pinnedOrder: true,
+    },
+  });
+
+  const pinnedItems: PinnedItem[] = items.map((item) => ({
+    id: item.id,
+    name: item.name,
+    pinnedOrder: item.pinnedOrder!,
+  }));
+
+  return { success: true, data: pinnedItems };
 }

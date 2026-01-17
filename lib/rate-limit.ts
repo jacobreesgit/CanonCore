@@ -46,6 +46,11 @@ export const rateLimiters = {
     limiter: Ratelimit.slidingWindow(30, "1 m"),
     prefix: "ratelimit:item:create",
   }),
+  itemPin: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(30, "1 m"),
+    prefix: "ratelimit:item:pin",
+  }),
   itemUpdate: new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(60, "1 m"),

@@ -214,11 +214,12 @@ export class ItemsPage {
   }
 
   getItemLocator(name: string): Locator {
-    // Target items in tree/grid views, not breadcrumbs
-    const treeItem = this.page
+    // Target items in tree/grid views within main content, not sidebar
+    const mainContent = this.page.getByRole("main");
+    const treeItem = mainContent
       .getByRole("listitem")
       .getByText(name, { exact: true });
-    const gridItem = this.page
+    const gridItem = mainContent
       .locator("[data-id]")
       .getByText(name, { exact: true });
     return treeItem.or(gridItem).first();
@@ -939,5 +940,100 @@ export class ItemsPage {
     await expect(
       this.page.getByRole("button", { name: /delete \d+/i })
     ).not.toBeVisible();
+  }
+
+  // ==================== Pin/Unpin Methods ====================
+
+  /**
+   * Pins an item to the sidebar via context menu.
+   *
+   * @param name - Name of the item to pin
+   */
+  async pinItemViaContextMenu(name: string): Promise<void> {
+    await this.openContextMenu(name);
+    await this.page.getByRole("menuitem", { name: /pin to sidebar/i }).click();
+    await this.page.waitForLoadState("networkidle");
+  }
+
+  /**
+   * Unpins an item from the sidebar via context menu.
+   *
+   * @param name - Name of the item to unpin
+   */
+  async unpinItemViaContextMenu(name: string): Promise<void> {
+    await this.openContextMenu(name);
+    await this.page
+      .getByRole("menuitem", { name: /unpin from sidebar/i })
+      .click();
+    await this.page.waitForLoadState("networkidle");
+  }
+
+  /**
+   * Checks if an item appears in the Pinned section of the sidebar.
+   *
+   * @param name - Name of the item to look for
+   */
+  async expectItemPinnedInSidebar(name: string): Promise<void> {
+    // Pinned section has a group label
+    const pinnedSection = this.page.locator(
+      '[data-slot="sidebar-group-label"]',
+      { hasText: "Pinned" }
+    );
+    await expect(pinnedSection).toBeVisible({ timeout: 5000 });
+
+    // Item should appear in the pinned section
+    const pinnedItem = this.page.locator('[data-slot="sidebar-menu-button"]', {
+      hasText: name,
+    });
+    await expect(pinnedItem).toBeVisible();
+  }
+
+  /**
+   * Checks that an item is NOT in the Pinned Items section of the sidebar.
+   *
+   * @param name - Name of the item that should not be pinned
+   */
+  async expectItemNotPinnedInSidebar(name: string): Promise<void> {
+    // Find buttons in sidebar with this name (should only be in pinned section if pinned)
+    const pinnedItem = this.page.locator('[data-slot="sidebar-menu-button"]', {
+      hasText: name,
+    });
+    // Should not be visible as a pinned item
+    await expect(pinnedItem).not.toBeVisible();
+  }
+
+  /**
+   * Checks that the Pinned section is visible in the sidebar.
+   */
+  async expectPinnedSectionVisible(): Promise<void> {
+    const pinnedSection = this.page.locator(
+      '[data-slot="sidebar-group-label"]',
+      { hasText: "Pinned" }
+    );
+    await expect(pinnedSection).toBeVisible();
+  }
+
+  /**
+   * Checks that the Pinned section is not visible in the sidebar.
+   */
+  async expectPinnedSectionNotVisible(): Promise<void> {
+    const pinnedSection = this.page.locator(
+      '[data-slot="sidebar-group-label"]',
+      { hasText: "Pinned" }
+    );
+    await expect(pinnedSection).not.toBeVisible();
+  }
+
+  /**
+   * Clicks on a pinned item in the sidebar to navigate to it.
+   *
+   * @param name - Name of the pinned item to click
+   */
+  async clickPinnedItem(name: string): Promise<void> {
+    const pinnedItem = this.page.locator('[data-slot="sidebar-menu-button"]', {
+      hasText: name,
+    });
+    await pinnedItem.click();
+    await this.page.waitForLoadState("networkidle");
   }
 }

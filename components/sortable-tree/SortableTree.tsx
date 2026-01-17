@@ -94,6 +94,10 @@ interface SortableTreeProps {
   maxDepth?: number;
   /** Whether user has Google Drive connected (for Add Child dialog) */
   hasDriveConnection?: boolean;
+  /** Callback to pin an item to the sidebar. */
+  onPinItem?(id: string): Promise<void>;
+  /** Callback to unpin an item from the sidebar. */
+  onUnpinItem?(id: string): Promise<void>;
   /** Check if an item is selected (for bulk operations). */
   isItemSelected?: (id: string) => boolean;
   /** Callback when an item's selection state changes. */
@@ -128,6 +132,8 @@ export function SortableTree({
   indicator = true,
   maxDepth = 10,
   hasDriveConnection = false,
+  onPinItem,
+  onUnpinItem,
   isItemSelected,
   onItemSelectChange,
 }: SortableTreeProps) {
@@ -245,6 +251,7 @@ export function SortableTree({
               children,
               collapsed,
               depth,
+              pinnedOrder,
               driveFileId,
             }) => (
               <SortableTreeItem
@@ -256,6 +263,7 @@ export function SortableTree({
                 indentationWidth={indentationWidth}
                 indicator={indicator}
                 collapsed={Boolean(collapsed && children.length)}
+                isPinned={pinnedOrder != null}
                 onCollapse={
                   collapsible && children.length
                     ? () => handleCollapse(id)
@@ -278,6 +286,10 @@ export function SortableTree({
                 driveFileId={driveFileId}
                 showDescription={false}
                 hasDriveConnection={hasDriveConnection}
+                onPin={onPinItem ? () => onPinItem(String(id)) : undefined}
+                onUnpin={
+                  onUnpinItem ? () => onUnpinItem(String(id)) : undefined
+                }
                 isSelected={isItemSelected?.(String(id))}
                 onSelectChange={
                   onItemSelectChange

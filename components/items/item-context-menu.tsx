@@ -23,7 +23,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AddItemDialog, type CreateItemResult } from "./add-item-dialog";
-import { Plus, Settings, Trash2, ExternalLink } from "lucide-react";
+import {
+  Plus,
+  Settings,
+  Trash2,
+  ExternalLink,
+  Pin,
+  PinOff,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ItemContextMenuProps {
@@ -34,26 +41,35 @@ interface ItemContextMenuProps {
   showAddChild?: boolean;
   /** Whether user has Google Drive connected (for file uploads in Add Child dialog) */
   hasDriveConnection?: boolean;
+  /** Whether this item is currently pinned to the sidebar */
+  isPinned?: boolean;
   /** Opens the unified settings dialog */
   onSettings?(): void;
   onDelete?(): Promise<void>;
   onAddChild?(name: string, description?: string): Promise<CreateItemResult>;
   /** Callback to refresh data after child item is created (for AddItemDialog) */
   onAddChildComplete?(): Promise<void>;
+  /** Callback to pin the item to the sidebar */
+  onPin?(): Promise<void>;
+  /** Callback to unpin the item from the sidebar */
+  onUnpin?(): Promise<void>;
 }
 
 /**
  * Context menu wrapper for item actions.
- * Provides right-click menu with settings, delete, add child, and Drive link options.
+ * Provides right-click menu with settings, delete, add child, pin/unpin, and Drive link options.
  *
  * @param children - The element to wrap with context menu
  * @param itemName - Name of the item for delete confirmation
  * @param driveFileId - Google Drive folder ID (shows "Open in Drive" if set)
  * @param showAddChild - Whether to show "Add Child Item" option
  * @param hasDriveConnection - Whether Google Drive is connected (for file uploads)
+ * @param isPinned - Whether this item is pinned to the sidebar
  * @param onSettings - Callback to open settings dialog
  * @param onDelete - Callback to delete the item
  * @param onAddChild - Callback to create a child item
+ * @param onPin - Callback to pin the item to the sidebar
+ * @param onUnpin - Callback to unpin the item from the sidebar
  */
 export function ItemContextMenu({
   children,
@@ -61,10 +77,13 @@ export function ItemContextMenu({
   driveFileId,
   showAddChild = true,
   hasDriveConnection = false,
+  isPinned = false,
   onSettings,
   onDelete,
   onAddChild,
   onAddChildComplete,
+  onPin,
+  onUnpin,
 }: ItemContextMenuProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [addChildOpen, setAddChildOpen] = useState(false);
@@ -99,6 +118,18 @@ export function ItemContextMenu({
             <ContextMenuItem onClick={onSettings} className="gap-2">
               <Settings className="size-4" strokeWidth={2} />
               <span>Settings</span>
+            </ContextMenuItem>
+          )}
+          {isPinned && onUnpin && (
+            <ContextMenuItem onClick={onUnpin} className="gap-2">
+              <PinOff className="size-4" strokeWidth={2} />
+              <span>Unpin from Sidebar</span>
+            </ContextMenuItem>
+          )}
+          {!isPinned && onPin && (
+            <ContextMenuItem onClick={onPin} className="gap-2">
+              <Pin className="size-4" strokeWidth={2} />
+              <span>Pin to Sidebar</span>
             </ContextMenuItem>
           )}
           {driveFileId && (
