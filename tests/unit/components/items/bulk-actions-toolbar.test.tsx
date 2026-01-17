@@ -8,120 +8,84 @@ import { describe, it, expect, vi } from "vitest";
 import { BulkActionsToolbar } from "@/components/items/bulk-actions-toolbar";
 
 describe("BulkActionsToolbar", () => {
-  it("renders selection count", () => {
-    render(
-      <BulkActionsToolbar
-        selectionCount={5}
-        isAllSelected={false}
-        isPartiallySelected={true}
-        onToggleAll={() => {}}
-        onDelete={() => {}}
-        isDeleting={false}
-      />
-    );
+  const defaultProps = {
+    selectionCount: 0,
+    isAllSelected: false,
+    onSelectAll: () => {},
+    onDeselectAll: () => {},
+    onDelete: () => {},
+    isDeleting: false,
+  };
+
+  it("renders selection count when items selected", () => {
+    render(<BulkActionsToolbar {...defaultProps} selectionCount={5} />);
 
     expect(screen.getByText("5 selected")).toBeInTheDocument();
   });
 
-  it("renders select all checkbox", () => {
-    render(
-      <BulkActionsToolbar
-        selectionCount={0}
-        isAllSelected={false}
-        isPartiallySelected={false}
-        onToggleAll={() => {}}
-        onDelete={() => {}}
-        isDeleting={false}
-      />
-    );
+  it("renders 'Select items' when no items selected", () => {
+    render(<BulkActionsToolbar {...defaultProps} />);
 
-    expect(screen.getByRole("checkbox")).toBeInTheDocument();
+    expect(screen.getByText("Select items")).toBeInTheDocument();
   });
 
-  it("shows checkbox as checked when all selected", () => {
-    render(
-      <BulkActionsToolbar
-        selectionCount={5}
-        isAllSelected={true}
-        isPartiallySelected={false}
-        onToggleAll={() => {}}
-        onDelete={() => {}}
-        isDeleting={false}
-      />
-    );
+  it("renders Select All button", () => {
+    render(<BulkActionsToolbar {...defaultProps} />);
 
-    expect(screen.getByRole("checkbox")).toBeChecked();
+    expect(
+      screen.getByRole("button", { name: "Select All" })
+    ).toBeInTheDocument();
   });
 
-  it("shows checkbox as indeterminate when partially selected", () => {
+  it("shows Deselect All button when all selected", () => {
     render(
-      <BulkActionsToolbar
-        selectionCount={2}
-        isAllSelected={false}
-        isPartiallySelected={true}
-        onToggleAll={() => {}}
-        onDelete={() => {}}
-        isDeleting={false}
-      />
+      <BulkActionsToolbar {...defaultProps} selectionCount={5} isAllSelected />
     );
 
-    expect(screen.getByRole("checkbox")).toHaveAttribute(
-      "data-state",
-      "indeterminate"
-    );
+    expect(
+      screen.getByRole("button", { name: "Deselect All" })
+    ).toBeInTheDocument();
   });
 
-  it("calls onToggleAll when checkbox clicked", async () => {
-    const onToggleAll = vi.fn();
+  it("calls onSelectAll when Select All button clicked", async () => {
+    const onSelectAll = vi.fn();
+    const user = userEvent.setup();
+    render(<BulkActionsToolbar {...defaultProps} onSelectAll={onSelectAll} />);
+
+    await user.click(screen.getByRole("button", { name: "Select All" }));
+
+    expect(onSelectAll).toHaveBeenCalled();
+  });
+
+  it("calls onDeselectAll when Deselect All button clicked", async () => {
+    const onDeselectAll = vi.fn();
     const user = userEvent.setup();
     render(
       <BulkActionsToolbar
-        selectionCount={0}
-        isAllSelected={false}
-        isPartiallySelected={false}
-        onToggleAll={onToggleAll}
-        onDelete={() => {}}
-        isDeleting={false}
+        {...defaultProps}
+        selectionCount={5}
+        isAllSelected
+        onDeselectAll={onDeselectAll}
       />
     );
 
-    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: "Deselect All" }));
 
-    expect(onToggleAll).toHaveBeenCalled();
+    expect(onDeselectAll).toHaveBeenCalled();
   });
 
-  it("renders delete button when items selected", () => {
-    render(
-      <BulkActionsToolbar
-        selectionCount={3}
-        isAllSelected={false}
-        isPartiallySelected={true}
-        onToggleAll={() => {}}
-        onDelete={() => {}}
-        isDeleting={false}
-      />
-    );
+  it("renders delete button with count when items selected", () => {
+    render(<BulkActionsToolbar {...defaultProps} selectionCount={3} />);
 
     expect(
       screen.getByRole("button", { name: /delete 3/i })
     ).toBeInTheDocument();
   });
 
-  it("hides delete button when no items selected", () => {
-    render(
-      <BulkActionsToolbar
-        selectionCount={0}
-        isAllSelected={false}
-        isPartiallySelected={false}
-        onToggleAll={() => {}}
-        onDelete={() => {}}
-        isDeleting={false}
-      />
-    );
+  it("disables delete button when no items selected", () => {
+    render(<BulkActionsToolbar {...defaultProps} />);
 
-    expect(
-      screen.queryByRole("button", { name: /delete/i })
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /delete/i })).toBeDisabled();
   });
 
   it("calls onDelete when delete button clicked", async () => {
@@ -129,12 +93,9 @@ describe("BulkActionsToolbar", () => {
     const user = userEvent.setup();
     render(
       <BulkActionsToolbar
+        {...defaultProps}
         selectionCount={2}
-        isAllSelected={false}
-        isPartiallySelected={true}
-        onToggleAll={() => {}}
         onDelete={onDelete}
-        isDeleting={false}
       />
     );
 
@@ -145,14 +106,7 @@ describe("BulkActionsToolbar", () => {
 
   it("shows loading state when deleting", () => {
     render(
-      <BulkActionsToolbar
-        selectionCount={2}
-        isAllSelected={false}
-        isPartiallySelected={true}
-        onToggleAll={() => {}}
-        onDelete={() => {}}
-        isDeleting={true}
-      />
+      <BulkActionsToolbar {...defaultProps} selectionCount={2} isDeleting />
     );
 
     expect(screen.getByRole("button", { name: /deleting/i })).toBeDisabled();

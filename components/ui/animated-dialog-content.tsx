@@ -183,7 +183,7 @@ function AnimatedDialogContent({
           // Subsequent renders: animated height container
           <motion.div
             className="relative"
-            style={{ overflow: "hidden" }}
+            style={{ clipPath: "inset(0 -8px)" }}
             animate={{ height: state.height }}
             initial={false}
             transition={

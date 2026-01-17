@@ -1,6 +1,6 @@
 {
   "name": "canoncore",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "private": true,
   "scripts": {
     "build": "next build",
@@ -78,6 +78,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.5.5",
     "three": "^0.182.0",
+    "vaul": "^1.1.2",
     "zod": "^4.2.1"
   },
   "devDependencies": {

@@ -144,6 +144,60 @@ describe("DropzoneEmptyState", () => {
   });
 });
 
+describe("Dropzone error formatting", () => {
+  it("should format byte sizes in file rejection error messages", async () => {
+    const onError = vi.fn();
+
+    // Override the mock to simulate a file rejection
+    const { useDropzone } = vi.mocked(
+      await import("react-dropzone")
+    ) as unknown as { useDropzone: ReturnType<typeof vi.fn> };
+
+    useDropzone.mockImplementationOnce(({ onDrop }) => {
+      // Simulate calling onDrop with a file rejection containing raw bytes
+      setTimeout(() => {
+        onDrop?.(
+          [],
+          [
+            {
+              file: new File([""], "large.jpg"),
+              errors: [
+                {
+                  code: "file-too-large",
+                  message: "File is larger than 1048576 bytes",
+                },
+              ],
+            },
+          ],
+          {} as DragEvent
+        );
+      }, 0);
+
+      return {
+        getRootProps: () => ({}),
+        getInputProps: () => ({}),
+        isDragActive: false,
+      };
+    });
+
+    render(
+      <Dropzone onError={onError}>
+        <span>Upload</span>
+      </Dropzone>
+    );
+
+    // Wait for the simulated rejection
+    await new Promise<void>((resolve) => {
+      setTimeout(() => {
+        expect(onError).toHaveBeenCalledWith(
+          new Error("File is larger than 1MB")
+        );
+        resolve();
+      }, 10);
+    });
+  });
+});
+
 describe("DropzoneContent", () => {
   it("should not render content when no src is provided", () => {
     render(

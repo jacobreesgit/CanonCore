@@ -22,7 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { AddItemDialog } from "./add-item-dialog";
+import { AddItemDialog, type CreateItemResult } from "./add-item-dialog";
 import { Plus, Settings, Trash2, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +37,9 @@ interface ItemContextMenuProps {
   /** Opens the unified settings dialog */
   onSettings?(): void;
   onDelete?(): Promise<void>;
-  onAddChild?(name: string, description?: string): Promise<string | undefined>;
+  onAddChild?(name: string, description?: string): Promise<CreateItemResult>;
+  /** Callback to refresh data after child item is created (for AddItemDialog) */
+  onAddChildComplete?(): Promise<void>;
 }
 
 /**
@@ -62,6 +64,7 @@ export function ItemContextMenu({
   onSettings,
   onDelete,
   onAddChild,
+  onAddChildComplete,
 }: ItemContextMenuProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [addChildOpen, setAddChildOpen] = useState(false);
@@ -162,9 +165,10 @@ export function ItemContextMenu({
         open={addChildOpen}
         onOpenChange={setAddChildOpen}
         onAdd={async (name, description) => {
-          if (!onAddChild) return "No handler";
+          if (!onAddChild) return { error: "No handler" };
           return onAddChild(name, description);
         }}
+        onComplete={onAddChildComplete}
         parentName={itemName}
         hasDriveConnection={hasDriveConnection}
       />

@@ -23,7 +23,9 @@ test.describe("Empty States", () => {
       await page.waitForLoadState("networkidle");
 
       // Should show first-time empty state
-      await expect(page.getByText("No items yet")).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText("No items yet")).toBeVisible({
+        timeout: 10000,
+      });
       await expect(
         page.getByText(/create your first item to start organizing/i)
       ).toBeVisible();
@@ -50,7 +52,10 @@ test.describe("Empty States", () => {
       await expect(
         page.getByRole("button", { name: /add item/i }).first()
       ).toBeVisible({ timeout: 10000 });
-      await page.getByRole("button", { name: /add item/i }).first().click();
+      await page
+        .getByRole("button", { name: /add item/i })
+        .first()
+        .click();
 
       // Add item dialog should open
       await expect(
@@ -127,7 +132,9 @@ test.describe("Empty States", () => {
       await page.waitForLoadState("networkidle");
 
       // Should show filter-empty state
-      await expect(page.getByText("No matching items")).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText("No matching items")).toBeVisible({
+        timeout: 10000,
+      });
       await expect(
         page.getByText(/no items match your current filter/i)
       ).toBeVisible();
@@ -143,7 +150,9 @@ test.describe("Empty States", () => {
       // Apply filter that matches nothing
       await itemsPage.selectFilterOption("Has Files");
       await page.waitForLoadState("networkidle");
-      await expect(page.getByText("No matching items")).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText("No matching items")).toBeVisible({
+        timeout: 10000,
+      });
 
       // Click Clear Filter button
       await page.getByRole("button", { name: /clear filter/i }).click();

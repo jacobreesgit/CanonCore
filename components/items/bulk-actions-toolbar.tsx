@@ -1,13 +1,12 @@
 /**
  * Toolbar for bulk actions on selected items.
- * Shows selection count and actions like delete.
+ * Shows selection count and actions like select all and delete.
  */
 
 "use client";
 
 import { Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 interface BulkActionsToolbarProps {
@@ -15,10 +14,10 @@ interface BulkActionsToolbarProps {
   selectionCount: number;
   /** Whether all items are selected */
   isAllSelected: boolean;
-  /** Whether some but not all items are selected */
-  isPartiallySelected: boolean;
-  /** Callback to toggle all selection */
-  onToggleAll: () => void;
+  /** Callback to select all items */
+  onSelectAll: () => void;
+  /** Callback to deselect all items */
+  onDeselectAll: () => void;
   /** Callback to delete selected items */
   onDelete: () => void;
   /** Whether delete is in progress */
@@ -33,27 +32,17 @@ interface BulkActionsToolbarProps {
  *
  * @param selectionCount - Number of currently selected items
  * @param isAllSelected - True when all items are selected
- * @param isPartiallySelected - True when some but not all items are selected
- * @param onToggleAll - Called when select-all checkbox is toggled
+ * @param onSelectAll - Called when Select All button is clicked
+ * @param onDeselectAll - Called when Deselect All button is clicked
  * @param onDelete - Called when delete button is clicked
  * @param isDeleting - Shows loading state when true
  * @param className - Additional CSS classes
- *
- * @example
- * <BulkActionsToolbar
- *   selectionCount={selectedIds.size}
- *   isAllSelected={isAllSelected}
- *   isPartiallySelected={isPartiallySelected}
- *   onToggleAll={toggleAll}
- *   onDelete={handleBulkDelete}
- *   isDeleting={isDeleting}
- * />
  */
 export function BulkActionsToolbar({
   selectionCount,
   isAllSelected,
-  isPartiallySelected,
-  onToggleAll,
+  onSelectAll,
+  onDeselectAll,
   onDelete,
   isDeleting,
   className,
@@ -61,21 +50,12 @@ export function BulkActionsToolbar({
   return (
     <div
       className={cn(
-        "bg-muted/50 flex items-center gap-4 rounded-lg border px-4 py-2",
+        "bg-muted/50 flex h-12 items-center gap-4 rounded-lg border px-4",
         "backdrop-blur-sm transition-all duration-200",
         selectionCount > 0 && "border-primary/20 bg-primary/5",
         className
       )}
     >
-      <Checkbox
-        checked={
-          isAllSelected ? true : isPartiallySelected ? "indeterminate" : false
-        }
-        onCheckedChange={onToggleAll}
-        aria-label="Select all items"
-        className="data-[state=checked]:bg-primary data-[state=indeterminate]:bg-primary"
-      />
-
       <span
         className={cn(
           "text-sm transition-colors",
@@ -87,13 +67,21 @@ export function BulkActionsToolbar({
         {selectionCount > 0 ? `${selectionCount} selected` : "Select items"}
       </span>
 
-      {selectionCount > 0 && (
+      <div className="ml-auto flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={isAllSelected ? onDeselectAll : onSelectAll}
+        >
+          {isAllSelected ? "Deselect All" : "Select All"}
+        </Button>
+
         <Button
           variant="destructive"
           size="sm"
           onClick={onDelete}
-          disabled={isDeleting}
-          className="ml-auto gap-2 shadow-sm transition-all hover:shadow-md"
+          disabled={isDeleting || selectionCount === 0}
+          className="gap-2 shadow-sm transition-all hover:shadow-md"
         >
           {isDeleting ? (
             <>
@@ -103,11 +91,13 @@ export function BulkActionsToolbar({
           ) : (
             <>
               <Trash2 className="size-4" />
-              <span>Delete {selectionCount}</span>
+              <span>
+                Delete{selectionCount > 0 ? ` ${selectionCount}` : ""}
+              </span>
             </>
           )}
         </Button>
-      )}
+      </div>
     </div>
   );
 }

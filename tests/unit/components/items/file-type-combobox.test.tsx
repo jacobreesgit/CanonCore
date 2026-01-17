@@ -530,7 +530,7 @@ describe("FileTypeCombobox Upload-Only Mode", () => {
 
     render(<FileTypeCombobox {...defaultProps} queuedFiles={queuedFiles} />);
 
-    // 1024 + 2048 = 3072 bytes = 3 KB (formatBytes only shows decimals for MB/GB)
+    // 1024 + 2048 = 3072 bytes = 3 KB (whole number, no decimal)
     expect(screen.getByText("3 KB")).toBeInTheDocument();
   });
 });

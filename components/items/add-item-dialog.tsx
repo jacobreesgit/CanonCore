@@ -8,8 +8,9 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import Image from "next/image";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import Link from "next/link";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Plus,
   Loader2,
@@ -20,8 +21,10 @@ import {
   Film,
   ImageIcon,
   FileText,
-  Check,
-  ImageOff,
+  Trash2,
+  AlertCircle,
+  RefreshCw,
+  X,
 } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { AnimatedDialogContent } from "@/components/ui/animated-dialog-content";
@@ -74,6 +77,12 @@ import type {
   TMDBMetadataSelection,
   ArtworkSelectionSource,
 } from "@/lib/types";
+import { createUploadSessions, confirmUpload } from "@/lib/google-drive-upload";
+import {
+  BatchUploadManager,
+  formatBytes,
+  type UploadState,
+} from "@/lib/upload-utils";
 import { toast } from "sonner";
 
 /** Steps for add item dialog navigation. */
@@ -93,26 +102,35 @@ type EpisodePickerSelection =
   | { type: "season"; seasonNumber: number }
   | { type: "episode"; seasonNumber: number; episodeNumber: number };
 
+/** Result from item creation. */
+export interface CreateItemResult {
+  /** Created item ID on success */
+  itemId?: string;
+  /** Error message on failure */
+  error?: string;
+}
+
 interface AddItemDialogProps {
   /** Whether the dialog is open */
   open: boolean;
   /** Callback when dialog open state changes */
   onOpenChange: (open: boolean) => void;
   /**
-   * Callback to create the item.
-   * Returns error message or undefined on success.
+   * Callback to create the item (without file uploads).
+   * Returns item ID on success, error message on failure.
+   * File uploads are handled by the dialog after item creation.
    *
    * @param name - Item name
    * @param description - Optional description
-   * @param queuedFiles - Optional files to upload after creation
    * @param tmdbSelection - Optional TMDB metadata to apply
    */
   onAdd: (
     name: string,
     description?: string,
-    queuedFiles?: QueuedFile[],
     tmdbSelection?: TMDBMetadataSelection
-  ) => Promise<string | undefined>;
+  ) => Promise<CreateItemResult>;
+  /** Callback after item and files are fully created (for refreshing data) */
+  onComplete?: () => Promise<void>;
   /** Parent item name for context (optional) */
   parentName?: string;
   /** Whether user has Google Drive connected (enables uploads) */
@@ -173,6 +191,7 @@ export function AddItemDialog({
   open,
   onOpenChange,
   onAdd,
+  onComplete,
   parentName,
   hasDriveConnection = false,
 }: AddItemDialogProps) {
@@ -183,6 +202,12 @@ export function AddItemDialog({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Upload state
+  const [uploadState, setUploadState] = useState<UploadState | null>(null);
+  const [failedFiles, setFailedFiles] = useState<QueuedFile[]>([]);
+  const [createdItemId, setCreatedItemId] = useState<string | null>(null);
+  const uploadManagerRef = useRef<BatchUploadManager | null>(null);
 
   // Categorized file queue state
   const [queuedFiles, setQueuedFiles] =
@@ -265,6 +290,12 @@ export function AddItemDialog({
       setEpisodes([]);
       setSelectedSeason(null);
       setEpisodeError(null);
+      // Reset upload state
+      setUploadState(null);
+      setFailedFiles([]);
+      setCreatedItemId(null);
+      uploadManagerRef.current?.cancel();
+      uploadManagerRef.current = null;
       resetWizardState();
     }
   }, [open, resetWizardState]);
@@ -549,6 +580,7 @@ export function AddItemDialog({
 
   /**
    * Handles wizard back navigation.
+   * Skips poster/hero steps when no Drive connection (images require Drive).
    */
   const handleWizardBack = useCallback(() => {
     if (currentStep === "wizard-text") {
@@ -565,23 +597,35 @@ export function AddItemDialog({
     } else if (currentStep === "wizard-hero") {
       setCurrentStep("wizard-poster");
     } else if (currentStep === "wizard-summary") {
-      setCurrentStep("wizard-hero");
+      // Skip image steps when no Drive connection
+      if (!hasDriveConnection) {
+        setCurrentStep("wizard-text");
+      } else {
+        setCurrentStep("wizard-hero");
+      }
     }
-  }, [currentStep, pendingTmdbResult]);
+  }, [currentStep, pendingTmdbResult, hasDriveConnection]);
 
   /**
    * Handles wizard next navigation.
+   * Skips poster/hero steps when no Drive connection (images require Drive).
    */
   const handleWizardNext = useCallback(() => {
     if (currentStep === "wizard-text") {
-      setCurrentStep("wizard-poster");
+      // Skip image steps if no Drive connection
+      if (!hasDriveConnection) {
+        applyWizardSelections();
+        setCurrentStep("wizard-summary");
+      } else {
+        setCurrentStep("wizard-poster");
+      }
     } else if (currentStep === "wizard-poster") {
       setCurrentStep("wizard-hero");
     } else if (currentStep === "wizard-hero") {
       applyWizardSelections();
       setCurrentStep("wizard-summary");
     }
-  }, [currentStep, applyWizardSelections]);
+  }, [currentStep, hasDriveConnection, applyWizardSelections]);
 
   /**
    * Handles wizard skip all.
@@ -699,6 +743,24 @@ export function AddItemDialog({
   }, []);
 
   /**
+   * Clears the poster selection.
+   */
+  const handleClearPoster = useCallback(() => {
+    setPosterValue(null);
+    setPosterSource(null);
+    setPosterSkipped(true);
+  }, []);
+
+  /**
+   * Clears the backdrop/hero selection.
+   */
+  const handleClearBackdrop = useCallback(() => {
+    setBackdropValue(null);
+    setBackdropSource(null);
+    setBackdropSkipped(true);
+  }, []);
+
+  /**
    * Total count of all queued files across categories.
    */
   const totalQueuedCount = useMemo(() => {
@@ -711,29 +773,197 @@ export function AddItemDialog({
   }, [queuedFiles]);
 
   /**
+   * Starts file upload for the created item.
+   * Shows progress UI and handles errors.
+   */
+  const startUpload = useCallback(
+    async (itemId: string, filesToUpload: QueuedFile[]) => {
+      const fileMetadata = filesToUpload.map((f) => ({
+        name: f.file.name,
+        mimeType: f.file.type || "application/octet-stream",
+        fileType: f.fileType,
+        isPrimary: f.isPrimary,
+        isHero: f.isHero,
+      }));
+
+      const uploadResult = await createUploadSessions(
+        itemId,
+        fileMetadata,
+        window.location.origin
+      );
+
+      if (!uploadResult.success || !uploadResult.sessions) {
+        setUploadState({
+          status: "error",
+          files: filesToUpload.map((f) => ({
+            name: f.file.name,
+            progress: 0,
+            status: "error",
+            error: uploadResult.error || "Failed to create upload session",
+          })),
+          successCount: 0,
+          errorCount: filesToUpload.length,
+        });
+        setFailedFiles(filesToUpload);
+        return;
+      }
+
+      const files = filesToUpload.map((f) => f.file);
+      const manager = new BatchUploadManager(
+        uploadResult.sessions,
+        files,
+        setUploadState,
+        confirmUpload,
+        3
+      );
+
+      uploadManagerRef.current = manager;
+      const finalState = await manager.start();
+
+      // Track failed files for retry
+      const failed = filesToUpload.filter(
+        (_, i) => finalState.files[i]?.status === "error"
+      );
+      setFailedFiles(failed);
+
+      // If all succeeded, close dialog
+      if (failed.length === 0) {
+        await onComplete?.().catch((err) => {
+          console.warn("[AddItemDialog] Refetch failed after upload:", err);
+        });
+        toast.success(`Created "${name}"`);
+        onOpenChange(false);
+      }
+    },
+    [name, onComplete, onOpenChange]
+  );
+
+  /**
+   * Retries failed uploads.
+   */
+  const handleRetryUpload = useCallback(async () => {
+    if (!failedFiles.length || !createdItemId) return;
+    await startUpload(createdItemId, failedFiles);
+  }, [failedFiles, createdItemId, startUpload]);
+
+  /**
+   * Dismisses upload errors and closes dialog.
+   * Item was created successfully, just files failed.
+   */
+  const handleDismissUpload = useCallback(async () => {
+    uploadManagerRef.current?.cancel();
+    uploadManagerRef.current = null;
+    setUploadState(null);
+    setFailedFiles([]);
+    await onComplete?.().catch((err) => {
+      console.warn("[AddItemDialog] Refetch failed after dismiss:", err);
+    });
+    toast.success(`Created "${name}" (some files failed to upload)`);
+    onOpenChange(false);
+  }, [name, onComplete, onOpenChange]);
+
+  /**
    * Submits the form to create the item.
+   * Computes TMDB options at submit time to ensure current artwork values are used.
+   * Handles file uploads with progress tracking.
    */
   async function handleSubmit() {
-    if (!name.trim() || isLoading) return;
+    if (!name.trim() || isLoading || uploadState?.status === "uploading")
+      return;
 
     setIsLoading(true);
     try {
       const desc = description.trim() || undefined;
       const filesToUpload =
         totalQueuedCount > 0 ? prepareFilesForUpload(queuedFiles) : undefined;
-      const error = await onAdd(
-        name.trim(),
-        desc,
-        filesToUpload,
-        selectedTmdbOptions || undefined
-      );
-      if (!error) {
-        onOpenChange(false);
+
+      // Compute TMDB options at submit time using current state values
+      // This ensures artwork changes made in summary step are included
+      let tmdbOptions: TMDBMetadataSelection | undefined;
+      if (pendingTmdbResult && tmdbPreview) {
+        tmdbOptions = {
+          tmdbId: pendingTmdbResult.id,
+          mediaType: pendingTmdbResult.mediaType,
+          options: {
+            updateName: textOptions.updateName,
+            updateDescription: textOptions.updateDescription,
+            updatePoster:
+              !posterSkipped && posterSource === "tmdb" && !!posterValue,
+            updateBackdrop:
+              !backdropSkipped && backdropSource === "tmdb" && !!backdropValue,
+          },
+          preview: {
+            name: tmdbPreview.name,
+            description: tmdbPreview.description,
+            posterPath:
+              posterSource === "tmdb" && !posterSkipped ? posterValue : null,
+            backdropPath:
+              backdropSource === "tmdb" && !backdropSkipped
+                ? backdropValue
+                : null,
+          },
+        };
       }
+
+      // Create the item (without files)
+      const result = await onAdd(name.trim(), desc, tmdbOptions);
+
+      if (result.error || !result.itemId) {
+        toast.error(result.error || "Failed to create item");
+        return;
+      }
+
+      // If no files to upload, we're done
+      if (!filesToUpload || filesToUpload.length === 0 || !hasDriveConnection) {
+        await onComplete?.().catch((err) => {
+          console.warn("[AddItemDialog] Refetch failed after create:", err);
+        });
+        toast.success(`Created "${name}"`);
+        onOpenChange(false);
+        return;
+      }
+
+      // Start file uploads with progress tracking
+      setCreatedItemId(result.itemId);
+      setIsLoading(false); // Switch from "Creating" to upload progress
+      await startUpload(result.itemId, filesToUpload);
     } finally {
       setIsLoading(false);
     }
   }
+
+  // Upload progress stats for display
+  const uploadProgress = useMemo(() => {
+    if (!uploadState || uploadState.status !== "uploading") return null;
+
+    const currentFileIndex = uploadState.files.findIndex(
+      (f) => f.status === "uploading"
+    );
+    const overallPercent = Math.round(
+      uploadState.files.reduce((sum, f) => sum + f.progress, 0) /
+        uploadState.files.length
+    );
+    const totalLoaded = uploadState.files.reduce(
+      (sum, f) => sum + (f.loaded || 0),
+      0
+    );
+    const totalSize = uploadState.files.reduce(
+      (sum, f) => sum + (f.total || 0),
+      0
+    );
+
+    return {
+      currentFileIndex,
+      overallPercent,
+      totalLoaded,
+      totalSize,
+      fileCount: uploadState.files.length,
+    };
+  }, [uploadState]);
+
+  const isUploading = uploadState?.status === "uploading";
+  const hasUploadError =
+    uploadState?.status === "error" && failedFiles.length > 0;
 
   const descriptionId = "item-dialog-description";
   const dialogHint = parentName
@@ -842,7 +1072,13 @@ export function AddItemDialog({
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
                 <DialogDescription className="text-sm">
-                  Step {wizardStepNumber} of 4:{" "}
+                  Step{" "}
+                  {hasDriveConnection
+                    ? wizardStepNumber
+                    : wizardStepNumber === 1
+                      ? 1
+                      : 2}{" "}
+                  of {hasDriveConnection ? 4 : 2}:{" "}
                   {currentStep === "wizard-text"
                     ? "Title & Description"
                     : currentStep === "wizard-poster"
@@ -921,6 +1157,107 @@ export function AddItemDialog({
   };
 
   /**
+   * Renders upload progress/error UI for footer.
+   */
+  const renderUploadProgress = () => {
+    if (!uploadState) return null;
+
+    return (
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className={cn(
+            "mb-4 overflow-hidden rounded-lg border",
+            hasUploadError
+              ? "border-destructive/30 bg-destructive/5"
+              : "bg-muted/30"
+          )}
+        >
+          <div className="flex items-center justify-between px-3 py-2">
+            <div className="flex items-center gap-2 text-sm">
+              {isUploading && uploadProgress && (
+                <>
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      duration: 1,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                    className="border-primary size-4 rounded-full border-2 border-t-transparent"
+                  />
+                  <span className="flex items-center gap-2">
+                    <span>Uploading...</span>
+                    <span className="bg-primary/15 text-primary inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 font-mono text-xs font-medium tracking-tight tabular-nums">
+                      <span>{uploadProgress.overallPercent}%</span>
+                      {uploadProgress.totalSize > 0 && (
+                        <>
+                          <span className="text-primary/50">·</span>
+                          <span>
+                            {formatBytes(uploadProgress.totalLoaded)}/
+                            {formatBytes(uploadProgress.totalSize)}
+                          </span>
+                        </>
+                      )}
+                    </span>
+                    {uploadProgress.fileCount > 1 && (
+                      <span className="text-muted-foreground text-xs">
+                        ({uploadProgress.currentFileIndex + 1}/
+                        {uploadProgress.fileCount})
+                      </span>
+                    )}
+                  </span>
+                </>
+              )}
+
+              {hasUploadError && (
+                <motion.div
+                  initial={{ x: -10, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  className="flex items-center gap-2"
+                >
+                  <AlertCircle className="text-destructive size-4" />
+                  <span>
+                    {uploadState.successCount} uploaded, {failedFiles.length}{" "}
+                    failed
+                  </span>
+                </motion.div>
+              )}
+            </div>
+
+            {hasUploadError && (
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRetryUpload}
+                  className="h-7 gap-1 px-2 text-xs"
+                >
+                  <RefreshCw className="size-3" />
+                  Retry
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleDismissUpload}
+                  className="text-muted-foreground hover:text-foreground size-7 p-0"
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  };
+
+  /**
    * Gets the footer content for the current step.
    * Footers are rendered outside the animated area via slot-based API.
    */
@@ -928,24 +1265,35 @@ export function AddItemDialog({
     switch (currentStep) {
       case "main":
         return (
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleSubmit} disabled={!name.trim() || isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                "Create"
-              )}
-            </Button>
+          <DialogFooter className="flex-col items-stretch gap-0 sm:flex-col">
+            {renderUploadProgress()}
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isLoading || isUploading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={!name.trim() || isLoading || isUploading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : isUploading ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  "Create"
+                )}
+              </Button>
+            </div>
           </DialogFooter>
         );
       case "episode-picker":
@@ -984,10 +1332,15 @@ export function AddItemDialog({
             <Button variant="outline" onClick={handleWizardCancel}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleWizardSkipAll}>
-              Skip All
+            {/* Hide Skip All when no Drive - there are no image steps to skip */}
+            {hasDriveConnection && (
+              <Button variant="destructive" onClick={handleWizardSkipAll}>
+                Skip All
+              </Button>
+            )}
+            <Button onClick={handleWizardNext}>
+              {hasDriveConnection ? "Next" : "Continue"}
             </Button>
-            <Button onClick={handleWizardNext}>Next</Button>
           </DialogFooter>
         );
       case "wizard-poster":
@@ -1013,24 +1366,35 @@ export function AddItemDialog({
         );
       case "wizard-summary":
         return (
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={handleWizardCancel}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleSubmit} disabled={!name.trim() || isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                "Create"
-              )}
-            </Button>
+          <DialogFooter className="flex-col items-stretch gap-0 sm:flex-col">
+            {renderUploadProgress()}
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button
+                variant="outline"
+                onClick={handleWizardCancel}
+                disabled={isLoading || isUploading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={!name.trim() || isLoading || isUploading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : isUploading ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  "Create"
+                )}
+              </Button>
+            </div>
           </DialogFooter>
         );
       case "change-poster":
@@ -1070,8 +1434,9 @@ export function AddItemDialog({
             placeholder="Search movies & TV shows..."
           />
           {isLoadingPreview && (
-            <div className="bg-background/80 absolute inset-0 flex items-center justify-center rounded-md">
+            <div className="bg-background/80 absolute inset-0 flex items-center justify-center gap-2 rounded-md">
               <Loader2 className="text-muted-foreground size-4 animate-spin" />
+              <span className="text-muted-foreground text-sm">Loading...</span>
             </div>
           )}
         </div>
@@ -1108,6 +1473,18 @@ export function AddItemDialog({
   // Files tab content (shown before wizard completion)
   const filesContent = (
     <div className="space-y-4">
+      {!hasDriveConnection && (
+        <p className="text-muted-foreground border-muted rounded-lg border border-dashed p-3 text-center text-xs">
+          Connect Google Drive to upload files.{" "}
+          <Link
+            href="/docs/google-drive/connect-drive"
+            className="text-primary hover:underline"
+          >
+            Learn more
+          </Link>
+        </p>
+      )}
+
       <FileTypeCombobox
         uploadOnly
         label="Primary Media"
@@ -1180,10 +1557,14 @@ export function AddItemDialog({
       case "main":
         return (
           <div className="py-2">
-            <ItemDialogTabs
-              detailsContent={detailsContent}
-              filesContent={filesContent}
-            />
+            {hasDriveConnection ? (
+              <ItemDialogTabs
+                detailsContent={detailsContent}
+                filesContent={filesContent}
+              />
+            ) : (
+              <div className="space-y-4">{detailsContent}</div>
+            )}
           </div>
         );
       case "episode-picker":
@@ -1262,9 +1643,9 @@ export function AddItemDialog({
         if (!tmdbPreview) return null;
         return (
           <>
-            {/* Step indicator */}
+            {/* Step indicator - 2 steps without Drive, 4 with Drive */}
             <div className="flex gap-1.5 py-2">
-              {[1, 2, 3, 4].map((step) => (
+              {(hasDriveConnection ? [1, 2, 3, 4] : [1, 2]).map((step) => (
                 <div
                   key={step}
                   className={cn(
@@ -1282,6 +1663,13 @@ export function AddItemDialog({
               onOptionsChange={setTextOptions}
               disabled={false}
             />
+
+            {/* Note when images are skipped */}
+            {!hasDriveConnection && (
+              <p className="text-muted-foreground mt-4 text-center text-xs">
+                Connect Google Drive to add poster and hero images.
+              </p>
+            )}
           </>
         );
       case "wizard-poster":
@@ -1357,89 +1745,133 @@ export function AddItemDialog({
       case "wizard-summary":
         return (
           <>
-            {/* Step indicator */}
+            {/* Step indicator - 2 steps without Drive, 4 with Drive */}
             <div className="flex gap-1.5 py-2">
-              {[1, 2, 3, 4].map((step) => (
+              {(hasDriveConnection ? [1, 2, 3, 4] : [1, 2]).map((step) => (
                 <div
                   key={step}
                   className={cn(
                     "h-1 flex-1 rounded-full transition-colors",
-                    step <= wizardStepNumber ? "bg-amber-500" : "bg-muted"
+                    step <= (hasDriveConnection ? wizardStepNumber : 2)
+                      ? "bg-amber-500"
+                      : "bg-muted"
                   )}
                 />
               ))}
             </div>
 
-            {/* Tabbed content - Details (summary) and Files */}
+            {/* Content - Show tabs only with Drive connection */}
             <div className="py-2">
-              <ItemDialogTabs
-                detailsContent={
-                  <div className="space-y-4">
-                    {/* Name Field */}
-                    <div className="space-y-2">
-                      <Label htmlFor="summary-item-name">Name</Label>
-                      <MediaSearchCombobox
-                        id="summary-item-name"
-                        value={name}
-                        onChange={setName}
-                        onSelect={handleMediaSelect}
-                      />
-                    </div>
+              {hasDriveConnection ? (
+                <ItemDialogTabs
+                  detailsContent={
+                    <div className="space-y-4">
+                      {/* Name Field */}
+                      <div className="space-y-2">
+                        <Label htmlFor="summary-item-name">Name</Label>
+                        <MediaSearchCombobox
+                          id="summary-item-name"
+                          value={name}
+                          onChange={setName}
+                          onSelect={handleMediaSelect}
+                        />
+                      </div>
 
-                    {/* Description Field */}
-                    <div className="space-y-2">
-                      <Label htmlFor="summary-item-description">
-                        Description{" "}
-                        <span className="text-muted-foreground font-normal">
-                          (optional)
-                        </span>
-                      </Label>
-                      <Textarea
-                        id="summary-item-description"
-                        value={description}
-                        onChange={(e) =>
-                          setDescription(e.target.value.slice(0, 1000))
-                        }
-                        placeholder="Optional description or notes..."
-                        rows={3}
-                        disabled={isLoading}
-                        className="resize-none"
-                      />
-                      <p className="text-muted-foreground text-xs tabular-nums">
-                        {description.length} / 1000
-                      </p>
-                    </div>
+                      {/* Description Field */}
+                      <div className="space-y-2">
+                        <Label htmlFor="summary-item-description">
+                          Description{" "}
+                          <span className="text-muted-foreground font-normal">
+                            (optional)
+                          </span>
+                        </Label>
+                        <Textarea
+                          id="summary-item-description"
+                          value={description}
+                          onChange={(e) =>
+                            setDescription(e.target.value.slice(0, 1000))
+                          }
+                          placeholder="Optional description or notes..."
+                          rows={3}
+                          disabled={isLoading}
+                          className="resize-none"
+                        />
+                        <p className="text-muted-foreground text-xs tabular-nums">
+                          {description.length} / 1000
+                        </p>
+                      </div>
 
-                    {/* Artwork Section - Hidden for episodes */}
-                    {showArtworkSection && (
-                      <div className="space-y-3">
-                        <Label>Artwork</Label>
-                        <div className="grid grid-cols-2 gap-3">
-                          <SummaryArtworkThumbnail
+                      {/* Artwork Section - Hidden for episodes */}
+                      {showArtworkSection && (
+                        <>
+                          <SummaryArtworkDropzone
                             label="Poster"
+                            icon={ImageIcon}
                             value={posterValue}
                             source={posterSource}
                             queuedFiles={queuedFiles.artwork}
                             type="poster"
                             onClick={handleOpenChangePoster}
+                            onClear={handleClearPoster}
                             disabled={isLoading}
+                            helpText="Used as the thumbnail in grid and tree views."
                           />
-                          <SummaryArtworkThumbnail
-                            label="Hero"
+                          <SummaryArtworkDropzone
+                            label="Hero Banner"
+                            icon={Sparkles}
                             value={backdropValue}
                             source={backdropSource}
                             queuedFiles={queuedFiles.hero}
                             type="hero"
                             onClick={handleOpenChangeHero}
+                            onClear={handleClearBackdrop}
                             disabled={isLoading}
+                            helpText="Displayed at the top of the item detail page."
                           />
-                        </div>
-                      </div>
-                    )}
+                        </>
+                      )}
+                    </div>
+                  }
+                  filesContent={filesContent}
+                />
+              ) : (
+                <div className="space-y-4">
+                  {/* Name Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="summary-item-name">Name</Label>
+                    <MediaSearchCombobox
+                      id="summary-item-name"
+                      value={name}
+                      onChange={setName}
+                      onSelect={handleMediaSelect}
+                    />
                   </div>
-                }
-                filesContent={filesContent}
-              />
+
+                  {/* Description Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="summary-item-description">
+                      Description{" "}
+                      <span className="text-muted-foreground font-normal">
+                        (optional)
+                      </span>
+                    </Label>
+                    <Textarea
+                      id="summary-item-description"
+                      value={description}
+                      onChange={(e) =>
+                        setDescription(e.target.value.slice(0, 1000))
+                      }
+                      placeholder="Optional description or notes..."
+                      rows={3}
+                      disabled={isLoading}
+                      className="resize-none"
+                    />
+                    <p className="text-muted-foreground text-xs tabular-nums">
+                      {description.length} / 1000
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         );
@@ -1507,25 +1939,43 @@ export function AddItemDialog({
 // ============================================================================
 
 /**
- * Summary artwork thumbnail with amber selection styling.
- * Both poster and hero use portrait aspect ratio for consistency.
+ * Summary artwork dropzone for selecting poster or hero images.
+ * Follows the dropzone pattern from profile settings for consistency.
+ * Click navigates to the selection wizard step instead of opening file picker.
+ *
+ * @param label - Display label (e.g., "Poster", "Hero")
+ * @param icon - Icon component to display in header
+ * @param value - Selected image value (TMDB path or queued file ID)
+ * @param source - Source of the selection (tmdb, queued, or null)
+ * @param queuedFiles - Array of queued files for preview
+ * @param type - Type of artwork for URL generation
+ * @param onClick - Handler to navigate to selection step
+ * @param onClear - Handler to clear the selection
+ * @param disabled - Whether interaction is disabled
+ * @param helpText - Help text shown below the dropzone
  */
-function SummaryArtworkThumbnail({
+function SummaryArtworkDropzone({
   label,
+  icon: Icon,
   value,
   source,
   queuedFiles,
   type,
   onClick,
+  onClear,
   disabled,
+  helpText,
 }: {
   label: string;
+  icon: React.ComponentType<{ className?: string }>;
   value: string | null;
   source: ArtworkSelectionSource | null;
   queuedFiles: QueuedFile[];
   type: "poster" | "hero";
   onClick: () => void;
+  onClear: () => void;
   disabled: boolean;
+  helpText: string;
 }) {
   const [hasError, setHasError] = useState(false);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
@@ -1570,53 +2020,65 @@ function SummaryArtworkThumbnail({
   const hasSelection = value !== null && source !== null;
 
   return (
-    <div className="space-y-2">
-      <span className="text-muted-foreground text-xs font-medium">{label}</span>
-      <button
+    <div className="space-y-3">
+      {/* Header with icon and label */}
+      <div className="flex items-center gap-2">
+        <div
+          className={cn(
+            "flex size-7 items-center justify-center rounded-lg",
+            "bg-primary/10"
+          )}
+        >
+          <Icon className="text-primary size-3.5" />
+        </div>
+        <span className="text-sm font-medium">{label}</span>
+      </div>
+
+      {/* Dropzone-style button */}
+      <Button
         type="button"
+        variant="outline"
         onClick={onClick}
         disabled={disabled}
         className={cn(
-          "group relative w-full overflow-hidden rounded-lg transition-all duration-200",
-          "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
-          "aspect-[2/3]",
-          hasSelection && [
-            "ring-offset-background ring-2 ring-amber-500 ring-offset-2",
-            "shadow-[0_0_20px_rgba(245,158,11,0.3)]",
-          ],
-          !hasSelection && [
-            "border-muted-foreground/30 border-2 border-dashed",
-            "hover:border-muted-foreground/50",
-          ],
+          "relative h-24 w-full overflow-hidden p-0",
           disabled && "cursor-not-allowed opacity-50"
         )}
       >
         {imageUrl ? (
-          <>
-            <Image
-              src={imageUrl}
-              alt={`${label} preview`}
-              fill
-              className="object-cover"
-              sizes="200px"
-              onError={() => setHasError(true)}
-            />
-            {/* Selection checkmark overlay */}
-            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-              <div className="flex size-8 items-center justify-center rounded-full bg-amber-500 shadow-lg">
-                <Check className="size-5 text-white" />
-              </div>
-            </div>
-            {/* Hover overlay */}
-            <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10" />
-          </>
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt={`${label} preview`}
+            className="size-full object-cover"
+            onError={() => setHasError(true)}
+          />
         ) : (
-          <div className="bg-muted/30 flex h-full flex-col items-center justify-center gap-2">
-            <ImageOff className="text-muted-foreground/40 size-8" />
-            <span className="text-muted-foreground text-xs">None</span>
+          <div className="flex size-full flex-col items-center justify-center gap-1">
+            <Icon className="text-muted-foreground/50 size-6" />
+            <p className="text-muted-foreground text-xs">
+              Click to choose {label.toLowerCase()}
+            </p>
           </div>
         )}
-      </button>
+      </Button>
+
+      {/* Clear button - only shown when there's a selection */}
+      {hasSelection && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onClear}
+          disabled={disabled}
+        >
+          <Trash2 className="mr-1.5 size-3.5" />
+          Clear
+        </Button>
+      )}
+
+      {/* Help text */}
+      <p className="text-muted-foreground text-xs">{helpText}</p>
     </div>
   );
 }

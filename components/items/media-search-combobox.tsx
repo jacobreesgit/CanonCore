@@ -187,7 +187,7 @@ export function MediaSearchCombobox({
     <Popover open={open} onOpenChange={setOpen} modal={false}>
       <PopoverTrigger asChild>
         <div className={cn("relative", className)}>
-          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             id={id}
             ref={inputRef}
@@ -213,7 +213,7 @@ export function MediaSearchCombobox({
         {/* Empty State - Type to search */}
         {!isLoading && !hasSearched && query.length < 2 && (
           <div className="flex flex-col items-center gap-2 py-8">
-            <Search className="text-muted-foreground/50 h-8 w-8" />
+            <Search className="text-muted-foreground/50 size-8" />
             <p className="text-muted-foreground text-sm">
               Type to search movies & TV shows
             </p>
@@ -223,7 +223,7 @@ export function MediaSearchCombobox({
         {/* Loading State */}
         {isLoading && (
           <div className="flex items-center justify-center gap-2 py-8">
-            <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+            <Loader2 className="text-muted-foreground size-4 animate-spin" />
             <span className="text-muted-foreground text-sm">
               Searching TMDB...
             </span>
@@ -233,7 +233,7 @@ export function MediaSearchCombobox({
         {/* No Results */}
         {!isLoading && hasSearched && results.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-8">
-            <Search className="text-muted-foreground/50 h-8 w-8" />
+            <Search className="text-muted-foreground/50 size-8" />
             <p className="text-muted-foreground text-sm">No results found</p>
           </div>
         )}
@@ -267,9 +267,9 @@ export function MediaSearchCombobox({
                 ) : (
                   <div className="bg-muted flex h-14 w-10 shrink-0 items-center justify-center rounded">
                     {result.mediaType === "movie" ? (
-                      <Film className="text-muted-foreground h-5 w-5" />
+                      <Film className="text-muted-foreground size-5" />
                     ) : (
-                      <Tv className="text-muted-foreground h-5 w-5" />
+                      <Tv className="text-muted-foreground size-5" />
                     )}
                   </div>
                 )}

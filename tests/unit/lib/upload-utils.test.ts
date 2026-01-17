@@ -665,25 +665,25 @@ describe("upload-utils", () => {
       expect(formatBytes(1023)).toBe("1023 B");
     });
 
-    it("should format kilobytes", () => {
-      expect(formatBytes(1024)).toBe("1 KB");
-      expect(formatBytes(1536)).toBe("2 KB"); // Rounds to nearest
-      expect(formatBytes(10240)).toBe("10 KB");
+    it("should format kilobytes (decimals only for non-whole numbers)", () => {
+      expect(formatBytes(1024)).toBe("1 KB"); // Whole number, no decimal
+      expect(formatBytes(1536)).toBe("1.5 KB"); // Non-whole, has decimal
+      expect(formatBytes(10240)).toBe("10 KB"); // Whole number, no decimal
     });
 
-    it("should format megabytes with decimals", () => {
-      expect(formatBytes(1048576)).toBe("1 MB");
-      expect(formatBytes(1572864)).toBe("1.5 MB"); // 1.5 MB
-      expect(formatBytes(104857600)).toBe("100 MB");
+    it("should format megabytes (decimals only for non-whole numbers)", () => {
+      expect(formatBytes(1048576)).toBe("1 MB"); // Whole number, no decimal
+      expect(formatBytes(1572864)).toBe("1.5 MB"); // Non-whole, has decimal
+      expect(formatBytes(104857600)).toBe("100 MB"); // Whole number, no decimal
     });
 
-    it("should format gigabytes with decimals", () => {
-      expect(formatBytes(1073741824)).toBe("1 GB");
-      expect(formatBytes(1610612736)).toBe("1.5 GB"); // 1.5 GB
+    it("should format gigabytes (decimals only for non-whole numbers)", () => {
+      expect(formatBytes(1073741824)).toBe("1 GB"); // Whole number, no decimal
+      expect(formatBytes(1610612736)).toBe("1.5 GB"); // Non-whole, has decimal
     });
 
     it("should cap at GB for very large files", () => {
-      expect(formatBytes(1099511627776)).toBe("1024 GB"); // 1 TB shows as GB
+      expect(formatBytes(1099511627776)).toBe("1024 GB"); // 1 TB shows as GB, whole number
     });
   });
 });
