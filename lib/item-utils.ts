@@ -67,6 +67,8 @@ export function itemsToTree(items: ItemInput[]): TreeItem[] {
       depth: item.depth,
       parentId: item.parentId,
       children: [],
+      // Include pinned order for sidebar pin state
+      pinnedOrder: "pinnedOrder" in item ? item.pinnedOrder : null,
       // Include artwork if available
       artworkId: "artworkId" in item ? item.artworkId : null,
       // Include Google Drive folder ID if synced

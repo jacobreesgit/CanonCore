@@ -20,6 +20,8 @@ export interface Item {
   parentId: string | null;
   order: number;
   depth: number;
+  // Pinned to sidebar (null = not pinned, 0+ = pinned with order)
+  pinnedOrder: number | null;
   userId: string;
   createdAt: Date;
   updatedAt: Date;
@@ -45,6 +47,8 @@ export interface TreeItem {
   parentId: UniqueIdentifier | null;
   children: TreeItem[];
   collapsed?: boolean;
+  // Pinned to sidebar (null = not pinned, 0+ = pinned with order)
+  pinnedOrder?: number | null;
   // Artwork thumbnail
   artworkId?: string | null;
   // Google Drive folder ID (if synced)
@@ -225,6 +229,16 @@ export interface SearchableItem {
   artworkId: string | null;
   /** Breadcrumb path like "Movies / Star Wars" for nested items */
   breadcrumb: string | null;
+}
+
+/**
+ * Pinned item for sidebar navigation display.
+ * Minimal data needed for rendering pinned items in the sidebar.
+ */
+export interface PinnedItem {
+  id: string;
+  name: string;
+  pinnedOrder: number;
 }
 
 /**

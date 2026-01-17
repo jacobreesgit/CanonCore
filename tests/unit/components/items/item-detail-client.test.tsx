@@ -104,6 +104,7 @@ describe("ItemDetailClient", () => {
       parentId: "item-1",
       order: 0,
       depth: 1,
+      pinnedOrder: null,
       userId: "user-1",
       createdAt: new Date(),
       updatedAt: new Date(),

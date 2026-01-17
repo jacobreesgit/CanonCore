@@ -38,6 +38,10 @@ interface SortableGridProps {
   onDeleteItem?(id: string): Promise<void>;
   /** Whether user has Google Drive connected. */
   hasDriveConnection?: boolean;
+  /** Callback to pin an item to the sidebar. */
+  onPinItem?(id: string): Promise<void>;
+  /** Callback to unpin an item from the sidebar. */
+  onUnpinItem?(id: string): Promise<void>;
   /** Check if an item is selected (for bulk operations). */
   isItemSelected?: (id: string) => boolean;
   /** Callback when an item's selection state changes. */
@@ -61,6 +65,8 @@ export function SortableGrid({
   onOpenSettings,
   onDeleteItem,
   hasDriveConnection = false,
+  onPinItem,
+  onUnpinItem,
   isItemSelected,
   onItemSelectChange,
 }: SortableGridProps) {
@@ -140,6 +146,9 @@ export function SortableGrid({
               childCount={item.childCount}
               showDescription={false}
               hasDriveConnection={hasDriveConnection}
+              isPinned={item.pinnedOrder != null}
+              onPin={onPinItem ? () => onPinItem(item.id) : undefined}
+              onUnpin={onUnpinItem ? () => onUnpinItem(item.id) : undefined}
               isSelected={isItemSelected?.(item.id)}
               onSelectChange={
                 onItemSelectChange

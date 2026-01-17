@@ -126,6 +126,9 @@ model Item {
   order       Int      @default(0)
   depth       Int      @default(0)
 
+  // Pinned to sidebar (null = not pinned, 0+ = pinned with order)
+  pinnedOrder Int?
+
   // Hierarchy (max 10 levels deep)
   parentId  String?
   parent    Item?    @relation("ItemChildren", fields: [parentId], references: [id], onDelete: Cascade)
@@ -154,6 +157,7 @@ model Item {
   @@index([parentId])
   @@index([userId])
   @@index([userId, parentId, order])
+  @@index([userId, pinnedOrder])
 
   // Compound index for Drive lookups (used in sync queries)
   @@index([driveConnectionId, driveFileId])
