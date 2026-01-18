@@ -2,9 +2,9 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Add intelligent "Continue Watching" buttons that find the first incomplete item in DFS order across item hierarchies.
+**Goal:** Add "Go to [ItemName]" button that navigates to the first incomplete item in DFS order across item hierarchies.
 
-**Architecture:** Server action `getFirstIncompleteItem()` traverses descendants via recursive CTE and returns the first item with incomplete primary media (< 90%). The hero component displays either a single "Continue" button (when current item has no media) or dual buttons (current Resume + child Continue).
+**Architecture:** Server action `getFirstIncompleteItem()` traverses descendants via recursive CTE and returns the first item with incomplete primary media (< 90%). The hero component reuses the existing button style, showing either one button (when current has no media) or two identical-style buttons (when current has media).
 
 **Tech Stack:** TypeScript, Prisma raw SQL (recursive CTE), React Server Components, Next.js Server Actions
 
@@ -12,19 +12,19 @@
 
 ## Feature Requirements
 
-1. **Item with NO media but HAS children with media:** Show "Continue [ItemName]" button for first incomplete descendant in DFS order
-2. **Item with media:** Show existing "Resume" button (left) + "Continue [ChildName]" button (right) for first incomplete descendant
-3. **My Items root page:** Show "Continue [ItemName]" button for first incomplete item in entire library
+1. **Item with NO media but HAS children with media:** Show "Go to [ItemName]" button for first incomplete descendant (DFS order)
+2. **Item with media:** Show "Resume/Play" button (left) + "Go to [ItemName]" button (right) - **same button style**
+3. **My Items root page:** Show "Go to [ItemName]" button for first incomplete item in entire library
 
 ## Key Definitions
 
 - **Incomplete item:** Has primary media file with `playbackPosition < playbackDuration * 0.9`
 - **DFS order:** Depth-first search visiting children by `order` field, descending into each child before siblings
-- **Primary media:** The file marked `isPrimary=true` with `fileType=MEDIA`, or first media file if none marked
+- **Primary media:** The file marked `isPrimary=true` with `fileType=MEDIA` (items without explicit primary media are not considered)
 
 ---
 
-## Task 1: Add ContinueItem Type
+## Task 1: Add NextItem Type
 
 **Files:**
 
@@ -36,22 +36,14 @@ Add after line 403 (after `isValidViewMode` function):
 
 ```typescript
 /**
- * Minimal item data for "Continue Watching" button display.
+ * Minimal item data for "Go to" button display.
  * Returned by getFirstIncompleteItem() server action.
  */
-export interface ContinueItem {
+export interface NextItem {
   /** Item ID for navigation */
   id: string;
-  /** Item name for button label */
+  /** Item name for button label ("Go to [name]") */
   name: string;
-  /** Artwork ID for optional thumbnail */
-  artworkId: string | null;
-  /** Primary media filename */
-  primaryMediaName: string | null;
-  /** Current playback position (seconds) for progress display */
-  playbackPosition: number | null;
-  /** Total duration (seconds) */
-  playbackDuration: number | null;
 }
 ```
 
@@ -68,7 +60,7 @@ Expected: PASS
 ```bash
 git add lib/types.ts
 git commit -m "$(cat <<'EOF'
-feat: add ContinueItem type for continue watching feature
+feat: add NextItem type for go-to navigation feature
 EOF
 )"
 ```
@@ -286,6 +278,36 @@ describe("findFirstIncompleteItem", () => {
     // Should return "a" because it has order 0, even though "b" appears first in array
     expect(findFirstIncompleteItem(items)).toBe("a");
   });
+
+  it("treats exactly 90% position as complete (threshold boundary)", () => {
+    const items = [
+      {
+        id: "1",
+        order: 0,
+        parentId: null,
+        hasPrimaryMedia: true,
+        position: 90,
+        duration: 100,
+      },
+    ];
+    // 90 >= 100 * 0.9 → 90 >= 90 → TRUE (complete)
+    expect(findFirstIncompleteItem(items)).toBeNull();
+  });
+
+  it("treats just below 90% as incomplete (threshold boundary)", () => {
+    const items = [
+      {
+        id: "1",
+        order: 0,
+        parentId: null,
+        hasPrimaryMedia: true,
+        position: 89.9,
+        duration: 100,
+      },
+    ];
+    // 89.9 >= 100 * 0.9 → 89.9 >= 90 → FALSE (incomplete)
+    expect(findFirstIncompleteItem(items)).toBe("1");
+  });
 });
 ```
 
@@ -481,7 +503,6 @@ describe("getFirstIncompleteItem", () => {
     expect(result.data).not.toBeNull();
     expect(result.data?.id).toBe(incomplete.id);
     expect(result.data?.name).toBe("Incomplete");
-    expect(result.data?.primaryMediaName).toBe("movie.mp4");
   });
 
   it("follows DFS order for nested items", async () => {
@@ -562,47 +583,6 @@ describe("getFirstIncompleteItem", () => {
     expect(result.data?.id).toBe(incompleteChild.id);
   });
 
-  it("returns null when no items have media", async () => {
-    await prisma.item.create({
-      data: {
-        name: "Folder",
-        userId: testUser.id,
-        order: 0,
-        depth: 0,
-      },
-    });
-
-    const result = await getFirstIncompleteItem();
-    expect(result.success).toBe(true);
-    expect(result.data).toBeNull();
-  });
-
-  it("returns item with null position (not started)", async () => {
-    const item = await prisma.item.create({
-      data: {
-        name: "Not Started",
-        userId: testUser.id,
-        order: 0,
-        depth: 0,
-      },
-    });
-    await prisma.itemFile.create({
-      data: {
-        itemId: item.id,
-        filename: "video.mp4",
-        fileType: "MEDIA",
-        isPrimary: true,
-        playbackPosition: null,
-        playbackDuration: 100,
-      },
-    });
-
-    const result = await getFirstIncompleteItem();
-    expect(result.success).toBe(true);
-    expect(result.data?.id).toBe(item.id);
-    expect(result.data?.playbackPosition).toBeNull();
-  });
-
   describe("with parentId filter", () => {
     it("returns first incomplete descendant of specified parent", async () => {
       // Create two parent folders
@@ -677,22 +657,19 @@ Expected: FAIL - `getFirstIncompleteItem` is not exported
 Add to `lib/item-actions.ts`:
 
 ```typescript
-import type { ContinueItem } from "./types";
-import {
-  findFirstIncompleteItem,
-  COMPLETION_THRESHOLD,
-} from "./progress-utils";
+import type { NextItem } from "./types";
+import { findFirstIncompleteItem } from "./progress-utils";
 
 /**
  * Gets the first incomplete item in DFS order.
- * Used for "Continue Watching" button on My Items and item detail pages.
+ * Used for "Go to" button on My Items and item detail pages.
  *
  * @param parentId - Optional parent ID to search within (null = entire library)
  * @returns First incomplete item data or null if all complete
  */
 export async function getFirstIncompleteItem(
   parentId?: string | null
-): Promise<ItemResult<ContinueItem | null>> {
+): Promise<ItemResult<NextItem | null>> {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "Unauthorized" };
@@ -708,9 +685,7 @@ export async function getFirstIncompleteItem(
             name: string;
             order: number;
             parentId: string | null;
-            artworkId: string | null;
             hasPrimaryMedia: boolean;
-            primaryMediaName: string | null;
             position: number | null;
             duration: number | null;
           }[]
@@ -727,11 +702,9 @@ export async function getFirstIncompleteItem(
             i.name,
             i."order",
             i."parentId",
-            (SELECT f."driveFileId" FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'ARTWORK' ORDER BY f."isPrimary" DESC, f."createdAt" ASC LIMIT 1) as "artworkId",
-            EXISTS(SELECT 1 FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA') as "hasPrimaryMedia",
-            (SELECT f.filename FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' ORDER BY f."isPrimary" DESC, f."createdAt" ASC LIMIT 1) as "primaryMediaName",
-            (SELECT f."playbackPosition" FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' ORDER BY f."isPrimary" DESC, f."createdAt" ASC LIMIT 1) as "position",
-            (SELECT f."playbackDuration" FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' ORDER BY f."isPrimary" DESC, f."createdAt" ASC LIMIT 1) as "duration"
+            EXISTS(SELECT 1 FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' AND f."isPrimary" = true) as "hasPrimaryMedia",
+            (SELECT f."playbackPosition" FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' AND f."isPrimary" = true LIMIT 1) as "position",
+            (SELECT f."playbackDuration" FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' AND f."isPrimary" = true LIMIT 1) as "duration"
           FROM "Item" i
           WHERE i.id IN (SELECT id FROM descendants)
           ORDER BY i."order"
@@ -742,9 +715,7 @@ export async function getFirstIncompleteItem(
             name: string;
             order: number;
             parentId: string | null;
-            artworkId: string | null;
             hasPrimaryMedia: boolean;
-            primaryMediaName: string | null;
             position: number | null;
             duration: number | null;
           }[]
@@ -754,11 +725,9 @@ export async function getFirstIncompleteItem(
             i.name,
             i."order",
             i."parentId",
-            (SELECT f."driveFileId" FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'ARTWORK' ORDER BY f."isPrimary" DESC, f."createdAt" ASC LIMIT 1) as "artworkId",
-            EXISTS(SELECT 1 FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA') as "hasPrimaryMedia",
-            (SELECT f.filename FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' ORDER BY f."isPrimary" DESC, f."createdAt" ASC LIMIT 1) as "primaryMediaName",
-            (SELECT f."playbackPosition" FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' ORDER BY f."isPrimary" DESC, f."createdAt" ASC LIMIT 1) as "position",
-            (SELECT f."playbackDuration" FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' ORDER BY f."isPrimary" DESC, f."createdAt" ASC LIMIT 1) as "duration"
+            EXISTS(SELECT 1 FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' AND f."isPrimary" = true) as "hasPrimaryMedia",
+            (SELECT f."playbackPosition" FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' AND f."isPrimary" = true LIMIT 1) as "position",
+            (SELECT f."playbackDuration" FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' AND f."isPrimary" = true LIMIT 1) as "duration"
           FROM "Item" i
           WHERE i."userId" = ${session.user.id}
           ORDER BY i."order"
@@ -791,15 +760,11 @@ export async function getFirstIncompleteItem(
       data: {
         id: incompleteItem.id,
         name: incompleteItem.name,
-        artworkId: incompleteItem.artworkId,
-        primaryMediaName: incompleteItem.primaryMediaName,
-        playbackPosition: incompleteItem.position,
-        playbackDuration: incompleteItem.duration,
       },
     };
   } catch (error) {
     logger.error({ error }, "Failed to get first incomplete item");
-    return { error: "Failed to get continue watching item" };
+    return { error: "Failed to get next item" };
   }
 }
 ```
@@ -812,27 +777,19 @@ pnpm run test:integration tests/integration/items/item-progress.test.ts
 
 Expected: PASS
 
-**Step 5: Run type check**
-
-```bash
-pnpm run type-check
-```
-
-Expected: PASS
-
-**Step 6: Commit**
+**Step 5: Commit**
 
 ```bash
 git add lib/item-actions.ts tests/integration/items/item-progress.test.ts
 git commit -m "$(cat <<'EOF'
-feat: add getFirstIncompleteItem server action for continue watching
+feat: add getFirstIncompleteItem server action
 EOF
 )"
 ```
 
 ---
 
-## Task 4: Update ItemHero to Support Continue Button
+## Task 4: Update ItemHero to Support "Go to" Button
 
 **Files:**
 
@@ -844,36 +801,32 @@ EOF
 Add to `tests/unit/components/items/item-hero.test.tsx`:
 
 ```typescript
-import { ContinueItem } from "@/lib/types";
+import { NextItem } from "@/lib/types";
 
-describe("ItemHero continue button", () => {
-  const mockContinueItem: ContinueItem = {
-    id: "continue-123",
+describe("ItemHero go-to button", () => {
+  const mockNextItem: NextItem = {
+    id: "next-123",
     name: "Breaking Bad S01E02",
-    artworkId: "art-456",
-    primaryMediaName: "episode.mp4",
-    playbackPosition: 1200,
-    playbackDuration: 3600,
   };
 
-  it("shows Continue button when no media but continueItem provided", () => {
+  it("shows Go to button when no media but nextItem provided", () => {
     render(
       <ItemHero
         name="TV Shows"
         hasMedia={false}
-        continueItem={mockContinueItem}
-        onContinue={vi.fn()}
+        nextItem={mockNextItem}
+        onGoToNext={vi.fn()}
       />
     );
 
-    expect(screen.getByTestId("item-hero-continue")).toBeInTheDocument();
-    expect(screen.getByTestId("item-hero-continue")).toHaveTextContent(
-      "Continue Breaking Bad S01E02"
+    expect(screen.getByTestId("item-hero-goto")).toBeInTheDocument();
+    expect(screen.getByTestId("item-hero-goto")).toHaveTextContent(
+      "Go to Breaking Bad S01E02"
     );
     expect(screen.queryByTestId("item-hero-play")).not.toBeInTheDocument();
   });
 
-  it("shows both Resume and Continue buttons when has media and continueItem", () => {
+  it("shows both Resume and Go to buttons when has media and nextItem", () => {
     render(
       <ItemHero
         name="Movie"
@@ -881,54 +834,94 @@ describe("ItemHero continue button", () => {
         hasProgress={true}
         primaryMediaName="movie.mp4"
         onPlay={vi.fn()}
-        continueItem={mockContinueItem}
-        onContinue={vi.fn()}
+        nextItem={mockNextItem}
+        onGoToNext={vi.fn()}
       />
     );
 
     expect(screen.getByTestId("item-hero-play")).toBeInTheDocument();
-    expect(screen.getByTestId("item-hero-continue")).toBeInTheDocument();
+    expect(screen.getByTestId("item-hero-goto")).toBeInTheDocument();
   });
 
-  it("calls onContinue when Continue button clicked", async () => {
-    const onContinue = vi.fn();
-    render(
-      <ItemHero
-        name="TV Shows"
-        hasMedia={false}
-        continueItem={mockContinueItem}
-        onContinue={onContinue}
-      />
-    );
-
-    await userEvent.click(screen.getByTestId("item-hero-continue"));
-    expect(onContinue).toHaveBeenCalledWith(mockContinueItem);
-  });
-
-  it("does not show Continue button without onContinue callback", () => {
-    render(
-      <ItemHero
-        name="TV Shows"
-        hasMedia={false}
-        continueItem={mockContinueItem}
-      />
-    );
-
-    expect(screen.queryByTestId("item-hero-continue")).not.toBeInTheDocument();
-  });
-
-  it("does not show Continue button when continueItem is null", () => {
+  it("both buttons use same glass variant style", () => {
     render(
       <ItemHero
         name="Movie"
         hasMedia={true}
         onPlay={vi.fn()}
-        continueItem={null}
-        onContinue={vi.fn()}
+        nextItem={mockNextItem}
+        onGoToNext={vi.fn()}
       />
     );
 
-    expect(screen.queryByTestId("item-hero-continue")).not.toBeInTheDocument();
+    const playButton = screen.getByTestId("item-hero-play");
+    const gotoButton = screen.getByTestId("item-hero-goto");
+
+    // Both should have glass variant (same style)
+    expect(playButton.className).toContain("glass");
+    expect(gotoButton.className).toContain("glass");
+  });
+
+  it("calls onGoToNext when Go to button clicked", async () => {
+    const onGoToNext = vi.fn();
+    render(
+      <ItemHero
+        name="TV Shows"
+        hasMedia={false}
+        nextItem={mockNextItem}
+        onGoToNext={onGoToNext}
+      />
+    );
+
+    await userEvent.click(screen.getByTestId("item-hero-goto"));
+    expect(onGoToNext).toHaveBeenCalledWith(mockNextItem);
+  });
+
+  it("does not show Go to button without onGoToNext callback", () => {
+    render(
+      <ItemHero
+        name="TV Shows"
+        hasMedia={false}
+        nextItem={mockNextItem}
+      />
+    );
+
+    expect(screen.queryByTestId("item-hero-goto")).not.toBeInTheDocument();
+  });
+
+  it("does not show Go to button when nextItem is null", () => {
+    render(
+      <ItemHero
+        name="Movie"
+        hasMedia={true}
+        onPlay={vi.fn()}
+        nextItem={null}
+        onGoToNext={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByTestId("item-hero-goto")).not.toBeInTheDocument();
+  });
+
+  it("shows full item name in title attribute for tooltip on hover", () => {
+    const longNameItem: NextItem = {
+      id: "long-123",
+      name: "Breaking Bad - Season 1 - Episode 2 - Cat's in the Bag...",
+    };
+    render(
+      <ItemHero
+        name="TV Shows"
+        hasMedia={false}
+        nextItem={longNameItem}
+        onGoToNext={vi.fn()}
+      />
+    );
+
+    const gotoButton = screen.getByTestId("item-hero-goto");
+    expect(gotoButton).toHaveAttribute(
+      "title",
+      "Go to Breaking Bad - Season 1 - Episode 2 - Cat's in the Bag..."
+    );
   });
 });
 ```
@@ -939,64 +932,74 @@ describe("ItemHero continue button", () => {
 pnpm run test:unit tests/unit/components/items/item-hero.test.tsx
 ```
 
-Expected: FAIL - `continueItem` and `onContinue` props not defined
+Expected: FAIL - `nextItem` and `onGoToNext` props not defined
 
 **Step 3: Update ItemHero component**
 
 Modify `components/items/item-hero.tsx`:
 
 ```typescript
-import type { ContinueItem } from "@/lib/types";
+import type { NextItem } from "@/lib/types";
+import { Play, ChevronDown, ChevronUp, Maximize2, ArrowRight } from "lucide-react";
 
 interface ItemHeroProps {
   // ... existing props ...
-  /** Item to continue watching (first incomplete descendant). */
-  continueItem?: ContinueItem | null;
-  /** Callback when continue button clicked. */
-  onContinue?: (item: ContinueItem) => void;
+  /** Next incomplete item to navigate to (first incomplete descendant). */
+  nextItem?: NextItem | null;
+  /** Callback when "Go to" button clicked. */
+  onGoToNext?: (item: NextItem) => void;
 }
 
 export function ItemHero({
   // ... existing props ...
-  continueItem,
-  onContinue,
+  nextItem,
+  onGoToNext,
 }: ItemHeroProps) {
   // ... existing logic ...
 
-  // Show continue button when:
-  // 1. continueItem exists AND onContinue callback exists
-  // 2. Either: no media on current item OR has media (show both)
-  const showContinue = continueItem && onContinue;
+  // Show go-to button when nextItem exists AND onGoToNext callback exists
+  const showGoTo = nextItem && onGoToNext;
 
   return (
     <motion.section /* ... */>
       {isCollapsedState ? (
-        // Collapsed content - update buttons section
+        // Collapsed content - horizontal bar
         <motion.div /* ... */>
           {/* ... name ... */}
           <div className="flex items-center gap-2">
             {hasMedia && onPlay && (
-              <Button /* existing play button */ />
-            )}
-            {showContinue && (
               <Button
                 size="sm"
                 variant="glass"
-                onClick={() => onContinue(continueItem)}
+                onClick={onPlay}
                 className="max-w-[200px] gap-2"
-                data-testid="item-hero-continue"
+                data-testid="item-hero-play"
               >
                 <Play className="size-4 shrink-0" />
                 <span className="truncate">
-                  Continue {continueItem.name}
+                  {hasProgress ? "Resume" : "Play"}
+                  {primaryMediaName && ` ${primaryMediaName}`}
                 </span>
+              </Button>
+            )}
+            {showGoTo && (
+              <Button
+                size="sm"
+                variant="glass"
+                onClick={() => onGoToNext(nextItem)}
+                className="max-w-[200px] gap-2"
+                title={`Go to ${nextItem.name}`}
+                data-testid="item-hero-goto"
+              >
+                <ArrowRight className="size-4 shrink-0" />
+                <span className="truncate">Go to {nextItem.name}</span>
               </Button>
             )}
             {/* collapse button */}
           </div>
         </motion.div>
       ) : (
-        // Expanded content - update buttons section
+        // Expanded content - full cinematic hero
         <motion.div /* ... */>
           {/* ... title, description, progress ... */}
 
@@ -1019,19 +1022,18 @@ export function ItemHero({
               </Button>
             )}
 
-            {/* Continue button for first incomplete descendant */}
-            {showContinue && (
+            {/* Go to button for first incomplete descendant - same style as play button */}
+            {showGoTo && (
               <Button
                 size="lg"
-                variant={hasMedia ? "outline" : "glass"}
-                onClick={() => onContinue(continueItem)}
-                className="max-w-xs gap-2 border-white/30 text-white hover:bg-white/10"
-                data-testid="item-hero-continue"
+                variant="glass"
+                onClick={() => onGoToNext(nextItem)}
+                className="max-w-xs gap-2"
+                title={`Go to ${nextItem.name}`}
+                data-testid="item-hero-goto"
               >
-                <Play className="size-5 shrink-0" />
-                <span className="truncate">
-                  Continue {continueItem.name}
-                </span>
+                <ArrowRight className="size-5 shrink-0" />
+                <span className="truncate">Go to {nextItem.name}</span>
               </Button>
             )}
           </div>
@@ -1055,24 +1057,108 @@ Expected: PASS
 ```bash
 git add components/items/item-hero.tsx tests/unit/components/items/item-hero.test.tsx
 git commit -m "$(cat <<'EOF'
-feat: add continue button support to ItemHero component
+feat: add go-to button support to ItemHero component
 EOF
 )"
 ```
 
 ---
 
-## Task 5: Wire Up ItemDetailClient with Continue Watching
+## Task 5: Wire Up ItemDetailClient with Go To Button
 
 **Files:**
 
+- Create: `hooks/use-goto-item.ts`
 - Modify: `components/items/item-detail-client.tsx`
 - Modify: `app/(my-items)/my-items/[itemId]/page.tsx`
 - Test: `tests/unit/components/items/item-detail-client.test.tsx`
+- Test: `tests/unit/hooks/use-goto-item.test.ts`
 
-**Step 1: Update the page to fetch continueItem**
+**Step 1: Create shared navigation hook**
 
-Modify `app/(my-items)/my-items/[itemId]/page.tsx` to fetch and pass continueItem:
+Create `hooks/use-goto-item.ts`:
+
+```typescript
+/**
+ * Hook for navigating to items via "Go to" button.
+ * Shared between ItemDetailClient and ItemsView to avoid duplication.
+ */
+
+"use client";
+
+import { useCallback } from "react";
+import { useRouter } from "next/navigation";
+import type { NextItem } from "@/lib/types";
+
+/**
+ * Returns a memoized callback for navigating to an item.
+ * Used by "Go to [ItemName]" buttons in hero components.
+ *
+ * @returns Callback that navigates to /my-items/{item.id}
+ */
+export function useGoToItem() {
+  const router = useRouter();
+
+  return useCallback(
+    (item: NextItem) => {
+      router.push(`/my-items/${item.id}`);
+    },
+    [router]
+  );
+}
+```
+
+**Step 2: Write hook unit test**
+
+Create `tests/unit/hooks/use-goto-item.test.ts`:
+
+```typescript
+import { renderHook } from "@testing-library/react";
+import { useGoToItem } from "@/hooks/use-goto-item";
+import { vi, describe, it, expect, beforeEach } from "vitest";
+
+// Mock next/navigation
+const mockPush = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
+describe("useGoToItem", () => {
+  beforeEach(() => {
+    mockPush.mockClear();
+  });
+
+  it("returns a stable callback", () => {
+    const { result, rerender } = renderHook(() => useGoToItem());
+    const firstCallback = result.current;
+
+    rerender();
+    const secondCallback = result.current;
+
+    expect(firstCallback).toBe(secondCallback);
+  });
+
+  it("navigates to correct URL when called", () => {
+    const { result } = renderHook(() => useGoToItem());
+
+    result.current({ id: "item-123", name: "Test Item" });
+
+    expect(mockPush).toHaveBeenCalledWith("/my-items/item-123");
+  });
+
+  it("uses item.id for navigation, not name", () => {
+    const { result } = renderHook(() => useGoToItem());
+
+    result.current({ id: "abc", name: "Different Name" });
+
+    expect(mockPush).toHaveBeenCalledWith("/my-items/abc");
+  });
+});
+```
+
+**Step 3: Update the page to fetch nextItem**
+
+Modify `app/(my-items)/my-items/[itemId]/page.tsx` to fetch and pass nextItem:
 
 ```typescript
 import { getFirstIncompleteItem } from "@/lib/item-actions";
@@ -1080,14 +1166,14 @@ import { getFirstIncompleteItem } from "@/lib/item-actions";
 export default async function ItemDetailPage({ params }: Props) {
   // ... existing fetches ...
 
-  // Fetch continue item in parallel with others
+  // Fetch next item in parallel with others
   const [
     breadcrumbsResult,
     childItemsResult,
     filesResult,
     progressResult,
     driveConnection,
-    continueItemResult, // NEW
+    nextItemResult, // NEW
   ] = await Promise.all([
     getAncestors(itemId),
     getDescendants(itemId),
@@ -1099,7 +1185,7 @@ export default async function ItemDetailPage({ params }: Props) {
 
   // ... existing processing ...
 
-  const continueItem = continueItemResult.success ? continueItemResult.data : null;
+  const nextItem = nextItemResult.success ? nextItemResult.data : null;
 
   return (
     <ItemDetailClient
@@ -1109,48 +1195,41 @@ export default async function ItemDetailPage({ params }: Props) {
       artworkId={artworkId}
       itemProgress={itemProgress}
       hasDriveConnection={hasDriveConnection}
-      continueItem={continueItem} // NEW
+      nextItem={nextItem} // NEW
     />
   );
 }
 ```
 
-**Step 2: Update ItemDetailClient**
+**Step 4: Update ItemDetailClient**
 
 Modify `components/items/item-detail-client.tsx`:
 
 ```typescript
-import type { ContinueItem } from "@/lib/types";
+import type { NextItem } from "@/lib/types";
+import { useGoToItem } from "@/hooks/use-goto-item";
 
 interface ItemDetailClientProps {
   // ... existing props ...
-  /** First incomplete descendant for continue watching. */
-  continueItem?: ContinueItem | null;
+  /** First incomplete descendant for "Go to" navigation. */
+  nextItem?: NextItem | null;
 }
 
 export function ItemDetailClient({
   // ... existing props ...
-  continueItem,
+  nextItem,
 }: ItemDetailClientProps) {
-  const router = useRouter();
   // ... existing state ...
 
-  /**
-   * Handles continue button click - navigates to item and starts playback.
-   */
-  const handleContinue = useCallback(
-    (item: ContinueItem) => {
-      router.push(`/my-items/${item.id}`);
-    },
-    [router]
-  );
+  // Use shared navigation hook
+  const handleGoToNext = useGoToItem();
 
   return (
     <div /* ... */>
       <ItemHero
         // ... existing props ...
-        continueItem={continueItem}
-        onContinue={handleContinue}
+        nextItem={nextItem}
+        onGoToNext={handleGoToNext}
       />
       {/* ... rest of component ... */}
     </div>
@@ -1158,71 +1237,73 @@ export function ItemDetailClient({
 }
 ```
 
-**Step 3: Write unit test**
+**Step 5: Write component unit test**
 
 Add to `tests/unit/components/items/item-detail-client.test.tsx`:
 
 ```typescript
-describe("continue watching", () => {
-  const mockContinueItem: ContinueItem = {
-    id: "continue-123",
+import type { NextItem } from "@/lib/types";
+
+describe("go to next item", () => {
+  const mockNextItem: NextItem = {
+    id: "next-123",
     name: "Episode 2",
-    artworkId: null,
-    primaryMediaName: "ep2.mp4",
-    playbackPosition: 1200,
-    playbackDuration: 3600,
   };
 
-  it("passes continueItem to ItemHero", () => {
+  it("passes nextItem to ItemHero", () => {
     render(
       <ItemDetailClient
         item={{ id: "1", name: "TV Show", description: null }}
         childItems={[]}
-        continueItem={mockContinueItem}
+        nextItem={mockNextItem}
       />
     );
 
-    expect(screen.getByTestId("item-hero-continue")).toHaveTextContent(
-      "Continue Episode 2"
+    expect(screen.getByTestId("item-hero-goto")).toHaveTextContent(
+      "Go to Episode 2"
     );
   });
 
-  it("navigates to continue item on click", async () => {
+  it("navigates to next item on click", async () => {
     render(
       <ItemDetailClient
         item={{ id: "1", name: "TV Show", description: null }}
         childItems={[]}
-        continueItem={mockContinueItem}
+        nextItem={mockNextItem}
       />
     );
 
-    await userEvent.click(screen.getByTestId("item-hero-continue"));
-    expect(mockRouter.push).toHaveBeenCalledWith("/my-items/continue-123");
+    await userEvent.click(screen.getByTestId("item-hero-goto"));
+    expect(mockRouter.push).toHaveBeenCalledWith("/my-items/next-123");
   });
 });
 ```
 
-**Step 4: Run tests**
+**Step 6: Run tests**
 
 ```bash
-pnpm run test:unit tests/unit/components/items/item-detail-client.test.tsx
+pnpm run test:unit tests/unit/hooks/use-goto-item.test.ts tests/unit/components/items/item-detail-client.test.tsx
 ```
 
 Expected: PASS
 
-**Step 5: Commit**
+**Step 7: Commit**
 
 ```bash
-git add app/(my-items)/my-items/[itemId]/page.tsx components/items/item-detail-client.tsx tests/unit/components/items/item-detail-client.test.tsx
+git add hooks/use-goto-item.ts app/(my-items)/my-items/[itemId]/page.tsx components/items/item-detail-client.tsx tests/unit/hooks/use-goto-item.test.ts tests/unit/components/items/item-detail-client.test.tsx
 git commit -m "$(cat <<'EOF'
-feat: wire up continue watching on item detail pages
+feat: wire up go-to button on item detail pages
+
+- Add shared useGoToItem hook for navigation
+- Update ItemDetailClient to use hook
+- Fetch nextItem in page server component
 EOF
 )"
 ```
 
 ---
 
-## Task 6: Wire Up My Items Page with Continue Watching
+## Task 6: Wire Up My Items Page with Go To Button
 
 **Files:**
 
@@ -1230,7 +1311,7 @@ EOF
 - Modify: `components/items/items-view.tsx`
 - Test: `tests/unit/components/items-view.test.tsx`
 
-**Step 1: Update MyItemsPage to fetch continueItem**
+**Step 1: Update MyItemsPage to fetch nextItem**
 
 Modify `app/(my-items)/my-items/page.tsx`:
 
@@ -1238,7 +1319,7 @@ Modify `app/(my-items)/my-items/page.tsx`:
 import { getFirstIncompleteItem } from "@/lib/item-actions";
 
 export default async function MyItemsPage() {
-  const [itemsResult, profileResult, driveConnection, libraryProgress, continueItemResult] =
+  const [itemsResult, profileResult, driveConnection, libraryProgress, nextItemResult] =
     await Promise.all([
       getAllItems(),
       getProfile(),
@@ -1247,7 +1328,7 @@ export default async function MyItemsPage() {
       getFirstIncompleteItem(), // NEW - library-wide
     ]);
 
-  const continueItem = continueItemResult.success ? continueItemResult.data : null;
+  const nextItem = nextItemResult.success ? nextItemResult.data : null;
 
   return (
     <>
@@ -1257,7 +1338,7 @@ export default async function MyItemsPage() {
         heroTitle="My Items"
         heroBackgroundUrl={hasHeroImage ? "/api/user/hero" : undefined}
         heroProgress={libraryProgress}
-        heroContinueItem={continueItem} // NEW
+        heroNextItem={nextItem} // NEW
         hasDriveConnection={hasDriveConnection}
       />
     </>
@@ -1265,35 +1346,28 @@ export default async function MyItemsPage() {
 }
 ```
 
-**Step 2: Update ItemsView to handle continue item**
+**Step 2: Update ItemsView to handle next item**
 
 Modify `components/items/items-view.tsx`:
 
 ```typescript
-import type { ContinueItem } from "@/lib/types";
+import type { NextItem } from "@/lib/types";
+import { useGoToItem } from "@/hooks/use-goto-item";
 
 interface ItemsViewProps {
   // ... existing props ...
-  /** Continue item for hero display (library-wide). */
-  heroContinueItem?: ContinueItem | null;
+  /** Next incomplete item for hero display (library-wide). */
+  heroNextItem?: NextItem | null;
 }
 
 export function ItemsView({
   // ... existing props ...
-  heroContinueItem,
+  heroNextItem,
 }: ItemsViewProps) {
-  const router = useRouter();
   // ... existing code ...
 
-  /**
-   * Handles continue button click from hero.
-   */
-  const handleHeroContinue = useCallback(
-    (item: ContinueItem) => {
-      router.push(`/my-items/${item.id}`);
-    },
-    [router]
-  );
+  // Use shared navigation hook (same as ItemDetailClient)
+  const handleHeroGoToNext = useGoToItem();
 
   return (
     <div /* ... */>
@@ -1305,8 +1379,8 @@ export function ItemsView({
           progressLabel={heroProgress ? formatProgressLabel(heroProgress) : null}
           isCollapsed={isCollapsed}
           onCollapse={toggleCollapse}
-          continueItem={heroContinueItem}
-          onContinue={handleHeroContinue}
+          nextItem={heroNextItem}
+          onGoToNext={handleHeroGoToNext}
         />
       )}
       {/* ... rest ... */}
@@ -1320,41 +1394,39 @@ export function ItemsView({
 Add to `tests/unit/components/items-view.test.tsx`:
 
 ```typescript
-describe("hero continue watching", () => {
-  const mockContinueItem: ContinueItem = {
-    id: "continue-123",
+import type { NextItem } from "@/lib/types";
+
+describe("hero go-to button", () => {
+  const mockNextItem: NextItem = {
+    id: "next-123",
     name: "Breaking Bad S01E02",
-    artworkId: null,
-    primaryMediaName: "ep.mp4",
-    playbackPosition: 1200,
-    playbackDuration: 3600,
   };
 
-  it("shows continue button in hero when heroContinueItem provided", () => {
+  it("shows go-to button in hero when heroNextItem provided", () => {
     render(
       <ItemsView
         items={[]}
         heroTitle="My Items"
-        heroContinueItem={mockContinueItem}
+        heroNextItem={mockNextItem}
       />
     );
 
-    expect(screen.getByTestId("item-hero-continue")).toHaveTextContent(
-      "Continue Breaking Bad S01E02"
+    expect(screen.getByTestId("item-hero-goto")).toHaveTextContent(
+      "Go to Breaking Bad S01E02"
     );
   });
 
-  it("navigates to continue item on hero continue click", async () => {
+  it("navigates to next item on hero go-to click", async () => {
     render(
       <ItemsView
         items={[]}
         heroTitle="My Items"
-        heroContinueItem={mockContinueItem}
+        heroNextItem={mockNextItem}
       />
     );
 
-    await userEvent.click(screen.getByTestId("item-hero-continue"));
-    expect(mockRouter.push).toHaveBeenCalledWith("/my-items/continue-123");
+    await userEvent.click(screen.getByTestId("item-hero-goto"));
+    expect(mockRouter.push).toHaveBeenCalledWith("/my-items/next-123");
   });
 });
 ```
@@ -1372,14 +1444,14 @@ Expected: PASS
 ```bash
 git add app/(my-items)/my-items/page.tsx components/items/items-view.tsx tests/unit/components/items-view.test.tsx
 git commit -m "$(cat <<'EOF'
-feat: add continue watching button to My Items hero
+feat: add go-to button to My Items hero
 EOF
 )"
 ```
 
 ---
 
-## Task 7: Add E2E Tests for Continue Watching
+## Task 7: Add E2E Tests
 
 **Files:**
 
@@ -1390,194 +1462,208 @@ EOF
 Add to `e2e/journeys/items/item-progress.spec.ts`:
 
 ```typescript
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../../fixtures";
 
-test.describe("Continue Watching", () => {
-  test.beforeEach(async ({ page }) => {
-    // Sign in as test user
-    await page.goto("/sign-in");
-    await page.fill('[data-testid="email-input"]', "test@example.com");
-    await page.fill('[data-testid="password-input"]', "Password123");
-    await page.click('[data-testid="sign-in-button"]');
-    await page.waitForURL("/my-items");
+test.describe("Go to Next Item", () => {
+  // Use database fixture for deterministic test data
+  test.beforeEach(async ({ testDb, testUser }) => {
+    // Clean up any existing test items
+    await testDb.cleanupUserItems(testUser.id);
   });
 
-  test("shows Continue button on My Items page when incomplete item exists", async ({
-    page,
-    db,
-  }) => {
-    // Create item with incomplete media
-    const item = await db.item.create({
-      data: {
-        name: "Test Movie",
-        userId: testUserId,
-        order: 0,
-        depth: 0,
-      },
-    });
-    await db.itemFile.create({
-      data: {
-        itemId: item.id,
-        filename: "movie.mp4",
-        fileType: "MEDIA",
-        isPrimary: true,
-        playbackPosition: 1200, // 20 min watched
-        playbackDuration: 7200, // 2 hour movie
-      },
-    });
-
-    await page.reload();
-    const continueButton = page.getByTestId("item-hero-continue");
-    await expect(continueButton).toBeVisible();
-    await expect(continueButton).toContainText("Continue Test Movie");
+  test.afterEach(async ({ testDb, testUser }) => {
+    await testDb.cleanupUserItems(testUser.id);
   });
 
-  test("navigates to item when Continue button clicked", async ({
+  test("shows Go to button when incomplete item exists", async ({
     page,
-    db,
+    testDb,
+    testUser,
   }) => {
-    const item = await db.item.create({
-      data: {
-        name: "Incomplete Movie",
-        userId: testUserId,
-        order: 0,
-        depth: 0,
-      },
+    // Setup: Create item with incomplete primary media
+    await testDb.createItem({
+      name: "Incomplete Movie",
+      userId: testUser.id,
+      order: 0,
+      depth: 0,
     });
-    await db.itemFile.create({
-      data: {
-        itemId: item.id,
-        filename: "movie.mp4",
-        fileType: "MEDIA",
-        isPrimary: true,
-        playbackPosition: 50,
-        playbackDuration: 100,
-      },
+    const item = await testDb.getLastCreatedItem();
+    await testDb.createItemFile({
+      itemId: item.id,
+      filename: "movie.mp4",
+      fileType: "MEDIA",
+      isPrimary: true,
+      playbackPosition: 50,
+      playbackDuration: 100,
     });
 
-    await page.reload();
-    await page.click('[data-testid="item-hero-continue"]');
+    await page.goto("/my-items");
+    const gotoButton = page.getByTestId("item-hero-goto");
+
+    await expect(gotoButton).toBeVisible();
+    await expect(gotoButton).toContainText("Go to Incomplete Movie");
+  });
+
+  test("hides Go to button when all items are complete", async ({
+    page,
+    testDb,
+    testUser,
+  }) => {
+    // Setup: Create item with complete primary media (95%)
+    await testDb.createItem({
+      name: "Complete Movie",
+      userId: testUser.id,
+      order: 0,
+      depth: 0,
+    });
+    const item = await testDb.getLastCreatedItem();
+    await testDb.createItemFile({
+      itemId: item.id,
+      filename: "movie.mp4",
+      fileType: "MEDIA",
+      isPrimary: true,
+      playbackPosition: 95,
+      playbackDuration: 100,
+    });
+
+    await page.goto("/my-items");
+    const gotoButton = page.getByTestId("item-hero-goto");
+
+    await expect(gotoButton).not.toBeVisible();
+  });
+
+  test("navigates to item when Go to button clicked", async ({
+    page,
+    testDb,
+    testUser,
+  }) => {
+    // Setup: Create incomplete item
+    await testDb.createItem({
+      name: "Target Item",
+      userId: testUser.id,
+      order: 0,
+      depth: 0,
+    });
+    const item = await testDb.getLastCreatedItem();
+    await testDb.createItemFile({
+      itemId: item.id,
+      filename: "video.mp4",
+      fileType: "MEDIA",
+      isPrimary: true,
+      playbackPosition: 30,
+      playbackDuration: 100,
+    });
+
+    await page.goto("/my-items");
+    const gotoButton = page.getByTestId("item-hero-goto");
+
+    await gotoButton.click();
     await expect(page).toHaveURL(`/my-items/${item.id}`);
   });
 
-  test("shows Continue button on item detail page for incomplete child", async ({
+  test("shows both Play and Go to when item has media and incomplete children", async ({
     page,
-    db,
+    testDb,
+    testUser,
   }) => {
-    // Create folder with incomplete child
-    const folder = await db.item.create({
-      data: {
-        name: "TV Show",
-        userId: testUserId,
-        order: 0,
-        depth: 0,
-      },
+    // Setup: Create parent with complete media
+    await testDb.createItem({
+      name: "TV Show",
+      userId: testUser.id,
+      order: 0,
+      depth: 0,
     });
-    const episode = await db.item.create({
-      data: {
-        name: "S01E02",
-        parentId: folder.id,
-        userId: testUserId,
-        order: 0,
-        depth: 1,
-      },
-    });
-    await db.itemFile.create({
-      data: {
-        itemId: episode.id,
-        filename: "ep.mp4",
-        fileType: "MEDIA",
-        isPrimary: true,
-        playbackPosition: 50,
-        playbackDuration: 100,
-      },
+    const parent = await testDb.getLastCreatedItem();
+    await testDb.createItemFile({
+      itemId: parent.id,
+      filename: "intro.mp4",
+      fileType: "MEDIA",
+      isPrimary: true,
+      playbackPosition: 95,
+      playbackDuration: 100,
     });
 
-    await page.goto(`/my-items/${folder.id}`);
-    const continueButton = page.getByTestId("item-hero-continue");
-    await expect(continueButton).toBeVisible();
-    await expect(continueButton).toContainText("Continue S01E02");
+    // Create incomplete child
+    await testDb.createItem({
+      name: "Episode 1",
+      userId: testUser.id,
+      parentId: parent.id,
+      order: 0,
+      depth: 1,
+    });
+    const child = await testDb.getLastCreatedItem();
+    await testDb.createItemFile({
+      itemId: child.id,
+      filename: "ep1.mp4",
+      fileType: "MEDIA",
+      isPrimary: true,
+      playbackPosition: 0,
+      playbackDuration: 3600,
+    });
+
+    await page.goto(`/my-items/${parent.id}`);
+
+    const playButton = page.getByTestId("item-hero-play");
+    const gotoButton = page.getByTestId("item-hero-goto");
+
+    await expect(playButton).toBeVisible();
+    await expect(gotoButton).toBeVisible();
+    await expect(gotoButton).toContainText("Go to Episode 1");
   });
 
-  test("shows both Resume and Continue when item has media and incomplete children", async ({
+  test("follows DFS order - finds nested incomplete before root sibling", async ({
     page,
-    db,
+    testDb,
+    testUser,
   }) => {
-    // Create item with its own media + incomplete child
-    const item = await db.item.create({
-      data: {
-        name: "Movie Collection",
-        userId: testUserId,
-        order: 0,
-        depth: 0,
-      },
+    // Setup: Create folder with incomplete child
+    await testDb.createItem({
+      name: "Folder",
+      userId: testUser.id,
+      order: 0,
+      depth: 0,
     });
-    await db.itemFile.create({
-      data: {
-        itemId: item.id,
-        filename: "intro.mp4",
-        fileType: "MEDIA",
-        isPrimary: true,
-        playbackPosition: 10,
-        playbackDuration: 60,
-      },
+    const folder = await testDb.getLastCreatedItem();
+
+    await testDb.createItem({
+      name: "Nested Movie",
+      userId: testUser.id,
+      parentId: folder.id,
+      order: 0,
+      depth: 1,
+    });
+    const nested = await testDb.getLastCreatedItem();
+    await testDb.createItemFile({
+      itemId: nested.id,
+      filename: "nested.mp4",
+      fileType: "MEDIA",
+      isPrimary: true,
+      playbackPosition: 50,
+      playbackDuration: 100,
     });
 
-    const child = await db.item.create({
-      data: {
-        name: "Sequel",
-        parentId: item.id,
-        userId: testUserId,
-        order: 0,
-        depth: 1,
-      },
+    // Create root-level incomplete (should NOT be shown - DFS visits folder first)
+    await testDb.createItem({
+      name: "Root Movie",
+      userId: testUser.id,
+      order: 1,
+      depth: 0,
     });
-    await db.itemFile.create({
-      data: {
-        itemId: child.id,
-        filename: "sequel.mp4",
-        fileType: "MEDIA",
-        isPrimary: true,
-        playbackPosition: 0,
-        playbackDuration: 100,
-      },
+    const root = await testDb.getLastCreatedItem();
+    await testDb.createItemFile({
+      itemId: root.id,
+      filename: "root.mp4",
+      fileType: "MEDIA",
+      isPrimary: true,
+      playbackPosition: 30,
+      playbackDuration: 100,
     });
 
-    await page.goto(`/my-items/${item.id}`);
+    await page.goto("/my-items");
+    const gotoButton = page.getByTestId("item-hero-goto");
 
-    // Both buttons should be visible
-    await expect(page.getByTestId("item-hero-play")).toBeVisible();
-    await expect(page.getByTestId("item-hero-continue")).toBeVisible();
-    await expect(page.getByTestId("item-hero-continue")).toContainText(
-      "Continue Sequel"
-    );
-  });
-
-  test("does not show Continue button when all items are complete", async ({
-    page,
-    db,
-  }) => {
-    const item = await db.item.create({
-      data: {
-        name: "Complete Movie",
-        userId: testUserId,
-        order: 0,
-        depth: 0,
-      },
-    });
-    await db.itemFile.create({
-      data: {
-        itemId: item.id,
-        filename: "movie.mp4",
-        fileType: "MEDIA",
-        isPrimary: true,
-        playbackPosition: 95, // >= 90% complete
-        playbackDuration: 100,
-      },
-    });
-
-    await page.reload();
-    await expect(page.getByTestId("item-hero-continue")).not.toBeVisible();
+    // Should show "Nested Movie" not "Root Movie" due to DFS order
+    await expect(gotoButton).toContainText("Go to Nested Movie");
   });
 });
 ```
@@ -1595,7 +1681,7 @@ Expected: PASS
 ```bash
 git add e2e/journeys/items/item-progress.spec.ts
 git commit -m "$(cat <<'EOF'
-test: add E2E tests for continue watching feature
+test: add E2E tests for go-to next item feature
 EOF
 )"
 ```
@@ -1620,15 +1706,7 @@ pnpm run test:integration
 
 Expected: All tests pass
 
-**Step 3: Run E2E tests**
-
-```bash
-pnpm run test:e2e
-```
-
-Expected: All tests pass
-
-**Step 4: Run full check suite**
+**Step 3: Run full check suite**
 
 ```bash
 pnpm run check
@@ -1636,30 +1714,27 @@ pnpm run check
 
 Expected: Format, lint, type-check, knip, and build all pass
 
-**Step 5: Manual verification**
+**Step 4: Manual verification**
 
 1. Start dev server: `pnpm run dev`
-2. Sign in and create test data:
-   - Create "Movies" folder
-   - Add child "Star Wars" with media file
-   - Play Star Wars partially (< 90%)
-3. Verify My Items page shows "Continue Star Wars" button
-4. Verify clicking button navigates to Star Wars item
-5. Verify Movies folder page shows "Continue Star Wars" button
-6. Complete Star Wars (> 90%)
-7. Verify Continue buttons no longer appear
+2. Sign in and verify:
+   - My Items page shows "Go to [ItemName]" for first incomplete item
+   - Clicking navigates to that item
+   - Item detail page with no media shows "Go to [ChildName]"
+   - Item detail page with media shows both "Resume" and "Go to" buttons (same style)
+   - All items complete = no "Go to" button
 
-**Step 6: Final commit**
+**Step 5: Final commit**
 
 ```bash
 git add .
 git commit -m "$(cat <<'EOF'
-feat: complete continue watching feature with DFS traversal
+feat: complete go-to next item feature with DFS traversal
 
-- Add ContinueItem type for continue watching data
+- Add NextItem type for navigation data
 - Add findFirstIncompleteItem utility for DFS traversal
 - Add getFirstIncompleteItem server action
-- Update ItemHero to support Continue button
+- Update ItemHero with Go to button (same style as Resume)
 - Wire up item detail and My Items pages
 - Add comprehensive unit, integration, and E2E tests
 EOF
@@ -1670,19 +1745,26 @@ EOF
 
 ## Summary
 
-| Task | Description                              | Files                                        |
-| ---- | ---------------------------------------- | -------------------------------------------- |
-| 1    | Add ContinueItem type                    | `lib/types.ts`                               |
-| 2    | Add findFirstIncompleteItem utility      | `lib/progress-utils.ts`, tests               |
-| 3    | Add getFirstIncompleteItem server action | `lib/item-actions.ts`, integration tests     |
-| 4    | Update ItemHero for Continue button      | `components/items/item-hero.tsx`, tests      |
-| 5    | Wire up ItemDetailClient                 | `item-detail-client.tsx`, page, tests        |
-| 6    | Wire up My Items page                    | `my-items/page.tsx`, `items-view.tsx`, tests |
-| 7    | Add E2E tests                            | `e2e/journeys/items/item-progress.spec.ts`   |
-| 8    | Final verification                       | All tests pass                               |
+| Task | Description                              | Files                                                           |
+| ---- | ---------------------------------------- | --------------------------------------------------------------- |
+| 1    | Add NextItem type                        | `lib/types.ts`                                                  |
+| 2    | Add findFirstIncompleteItem utility      | `lib/progress-utils.ts`, tests (incl. 90% boundary)             |
+| 3    | Add getFirstIncompleteItem server action | `lib/item-actions.ts`, integration tests                        |
+| 4    | Update ItemHero with Go to button        | `components/items/item-hero.tsx`, tests (incl. tooltip)         |
+| 5    | Wire up ItemDetailClient                 | `hooks/use-goto-item.ts`, `item-detail-client.tsx`, page, tests |
+| 6    | Wire up My Items page                    | `my-items/page.tsx`, `items-view.tsx` (uses shared hook), tests |
+| 7    | Add E2E tests                            | `e2e/journeys/items/item-progress.spec.ts` (deterministic)      |
+| 8    | Final verification                       | All tests pass                                                  |
 
-## Test Coverage
+## Button Behavior Summary
 
-- **Unit tests:** findFirstIncompleteItem DFS logic, ItemHero Continue button rendering
-- **Integration tests:** getFirstIncompleteItem server action with real database
-- **E2E tests:** Full user flow for continue watching on My Items and item detail pages
+| Scenario                                   | Buttons Shown                   |
+| ------------------------------------------ | ------------------------------- |
+| Item has media, no incomplete children     | Resume/Play only                |
+| Item has media, has incomplete children    | Resume/Play + Go to [ChildName] |
+| Item has no media, has incomplete children | Go to [ChildName] only          |
+| Item has no media, no incomplete children  | No buttons                      |
+| My Items with incomplete item in library   | Go to [ItemName]                |
+| My Items with all items complete           | No Go to button                 |
+
+Both buttons use the same `variant="glass"` style for visual consistency.

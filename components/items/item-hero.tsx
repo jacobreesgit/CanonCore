@@ -10,10 +10,17 @@
 
 import { useState, useRef, useLayoutEffect } from "react";
 import { motion } from "motion/react";
-import { Play, ChevronDown, ChevronUp, Maximize2 } from "lucide-react";
+import {
+  Play,
+  ChevronDown,
+  ChevronUp,
+  Maximize2,
+  ArrowRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Shader1 } from "@/components/shader1";
 import { cn } from "@/lib/utils";
+import type { NextItem } from "@/lib/types";
 
 /** Collapsed height for description container in pixels (matches 3.5rem at 16px base). */
 const COLLAPSED_HEIGHT_PX = 56;
@@ -39,6 +46,10 @@ interface ItemHeroProps {
   progressLabel?: string | null;
   /** Callback when play button clicked. */
   onPlay?: () => void;
+  /** Next incomplete item to navigate to (for "Go to" button). */
+  nextItem?: NextItem | null;
+  /** Callback when "Go to" button clicked. */
+  onGoToNext?: (item: NextItem) => void;
   /** Whether hero is in collapsed state. */
   isCollapsed?: boolean;
   /** Callback to toggle collapsed state. */
@@ -65,6 +76,8 @@ export function ItemHero({
   progressPercentage,
   progressLabel,
   onPlay,
+  nextItem,
+  onGoToNext,
   isCollapsed = false,
   onCollapse,
   className,
@@ -141,6 +154,18 @@ export function ItemHero({
                   {hasProgress ? "Resume" : "Play"}
                   {primaryMediaName && ` ${primaryMediaName}`}
                 </span>
+              </Button>
+            )}
+            {nextItem && onGoToNext && (
+              <Button
+                size="sm"
+                variant="glass"
+                onClick={() => onGoToNext(nextItem)}
+                className="max-w-[200px] gap-2"
+                data-testid="item-hero-goto"
+              >
+                <span className="truncate">Go to {nextItem.name}</span>
+                <ArrowRight className="size-4 shrink-0" />
               </Button>
             )}
             <Button
@@ -284,22 +309,36 @@ export function ItemHero({
               </div>
             )}
 
-            {/* Play button with primary media name in label */}
-            {hasMedia && onPlay && (
-              <Button
-                size="lg"
-                variant="glass"
-                onClick={onPlay}
-                className="max-w-xs gap-2"
-                data-testid="item-hero-play"
-              >
-                <Play className="size-5 shrink-0" />
-                <span className="truncate">
-                  {hasProgress ? "Resume" : "Play"}
-                  {primaryMediaName && ` ${primaryMediaName}`}
-                </span>
-              </Button>
-            )}
+            {/* CTA buttons - Play and/or Go to */}
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              {hasMedia && onPlay && (
+                <Button
+                  size="lg"
+                  variant="glass"
+                  onClick={onPlay}
+                  className="max-w-xs gap-2"
+                  data-testid="item-hero-play"
+                >
+                  <Play className="size-5 shrink-0" />
+                  <span className="truncate">
+                    {hasProgress ? "Resume" : "Play"}
+                    {primaryMediaName && ` ${primaryMediaName}`}
+                  </span>
+                </Button>
+              )}
+              {nextItem && onGoToNext && (
+                <Button
+                  size="lg"
+                  variant="glass"
+                  onClick={() => onGoToNext(nextItem)}
+                  className="max-w-xs gap-2"
+                  data-testid="item-hero-goto"
+                >
+                  <span className="truncate">Go to {nextItem.name}</span>
+                  <ArrowRight className="size-5 shrink-0" />
+                </Button>
+              )}
+            </div>
           </div>
         </motion.div>
       )}

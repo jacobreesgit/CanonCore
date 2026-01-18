@@ -400,3 +400,14 @@ export function isValidFilterOption(value: string): value is FilterOption {
 export function isValidViewMode(value: string): value is ViewMode {
   return VALID_VIEW_MODES.includes(value as ViewMode);
 }
+
+/**
+ * Minimal item data for "Go to" button display.
+ * Returned by getFirstIncompleteItem() server action.
+ */
+export interface NextItem {
+  /** Item ID for navigation */
+  id: string;
+  /** Item name for button label ("Go to [name]") */
+  name: string;
+}
