@@ -297,4 +297,73 @@ describe("ItemHero", () => {
       expect(screen.getByTestId("hero-read-more")).toBeInTheDocument();
     });
   });
+
+  describe("go to button", () => {
+    const nextItem = { id: "next-item-123", name: "Episode 5" };
+
+    it("should show go to button when nextItem and onGoToNext provided", () => {
+      render(
+        <ItemHero {...defaultProps} nextItem={nextItem} onGoToNext={() => {}} />
+      );
+      expect(
+        screen.getByRole("button", { name: /go to episode 5/i })
+      ).toBeInTheDocument();
+    });
+
+    it("should not show go to button when nextItem is null", () => {
+      render(
+        <ItemHero {...defaultProps} nextItem={null} onGoToNext={() => {}} />
+      );
+      expect(
+        screen.queryByRole("button", { name: /go to/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not show go to button when onGoToNext is missing", () => {
+      render(<ItemHero {...defaultProps} nextItem={nextItem} />);
+      expect(
+        screen.queryByRole("button", { name: /go to/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it("should call onGoToNext with nextItem when clicked", async () => {
+      const user = userEvent.setup();
+      const onGoToNext = vi.fn();
+      render(
+        <ItemHero
+          {...defaultProps}
+          nextItem={nextItem}
+          onGoToNext={onGoToNext}
+        />
+      );
+
+      await user.click(
+        screen.getByRole("button", { name: /go to episode 5/i })
+      );
+      expect(onGoToNext).toHaveBeenCalledWith(nextItem);
+      expect(onGoToNext).toHaveBeenCalledTimes(1);
+    });
+
+    it("should show go to button in collapsed state", () => {
+      render(
+        <ItemHero
+          {...defaultProps}
+          isCollapsed={true}
+          onCollapse={() => {}}
+          nextItem={nextItem}
+          onGoToNext={() => {}}
+        />
+      );
+      expect(
+        screen.getByRole("button", { name: /go to episode 5/i })
+      ).toBeInTheDocument();
+    });
+
+    it("should have data-testid for E2E targeting", () => {
+      render(
+        <ItemHero {...defaultProps} nextItem={nextItem} onGoToNext={() => {}} />
+      );
+      expect(screen.getByTestId("item-hero-goto")).toBeInTheDocument();
+    });
+  });
 });
