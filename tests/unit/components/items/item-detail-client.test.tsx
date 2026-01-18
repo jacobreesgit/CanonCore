@@ -120,6 +120,7 @@ describe("ItemDetailClient", () => {
       childCount: 0,
       primaryMediaName: null,
       mediaIconType: null,
+      progress: null,
     },
   ];
 

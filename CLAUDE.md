@@ -203,6 +203,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── item-utils.ts                 # Tree/flat conversion, sortItems(), filterItems(), descendant counter
 │   ├── logger.ts                     # Pino structured logging with request context
 │   ├── prisma.ts                     # Prisma client singleton
+│   ├── progress-utils.ts             # Playback progress calculation (90% threshold)
 │   ├── queue-aware-actions.ts        # Actions that queue when offline
 │   ├── rate-limit.ts                 # Upstash Redis rate limiting
 │   ├── source.ts                     # Fumadocs source configuration
@@ -212,7 +213,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── sync-utils.ts                 # Shared sync types and utilities
 │   ├── tmdb-actions.ts               # TMDB metadata server actions
 │   ├── tmdb-client.ts                # TMDB API client for movie/TV metadata
-│   ├── types.ts                      # Shared types (Item, ItemFile, PinnedItem, SortOption, FilterOption, ViewMode, QueuedFile, TMDBMetadataSelection, SyncLogEntry)
+│   ├── types.ts                      # Shared types (Item, ItemFile, ItemProgress, PinnedItem, SortOption, FilterOption, ViewMode, QueuedFile, TMDBMetadataSelection, SyncLogEntry)
 │   ├── upload-utils.ts               # Browser-to-Drive upload utilities
 │   ├── user-actions.ts               # User profile server actions
 │   ├── utils.ts                      # cn() helper
@@ -221,7 +222,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── migrations/                   # Database migrations
 │   ├── schema.prisma                 # User, PasswordReset, Item, ItemFile, GoogleDriveConnection, SyncLog
 │   ├── seed.ts                       # Database seeding with TMDB + Drive integration
-│   ├── seed-config.ts                # Seed configuration (movie/TV IDs, limits)
+│   ├── seed-config.ts                # Seed configuration (movie/TV IDs, limits, playback simulation)
 │   └── seed-cleanup.ts               # Safe cleanup with protected folders
 ├── proxy.ts                          # Next.js proxy for request ID injection
 ├── skills/                           # Claude Code skills
@@ -233,7 +234,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── setup-e2e-drive.ts            # E2E Drive environment setup
 │   └── verify-seed.ts                # Quick seed verification utility
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 2.9.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 3.0.0)
     └── plans/                        # Design documents
 ```
 
@@ -290,6 +291,7 @@ pnpm run test:e2e:ui                        # UI mode
 - **Primary file selection**: Choose which file plays/displays when multiple files attached
 - **Hero artwork selection**: Choose separate artwork for hero banner display (isHero field)
 - **Sync status badges**: Visual indicators showing sync state (synced, pending, error)
+- **Progress tracking**: Progress bars show watched/total items across hierarchies (90% threshold for "watched")
 - **Toast notifications**: Success/error feedback via Sonner
 - **Max depth**: 10 levels of nesting
 
@@ -357,7 +359,7 @@ pnpm run test:e2e:ui                        # UI mode
 ### User Documentation
 
 - **Fumadocs** for MDX-based documentation at `/docs`
-- **22 pages** covering getting started, account, files/folders, google-drive, views, and preferences
+- **23 pages** covering getting started, account, files/folders, google-drive, views, and preferences
 - **Unified layout** with context-aware sidebar navigation using app sidebar shell
 - **NavDocs component** renders Fumadocs page tree with collapsible folders
 - Content in `content/docs/` with `meta.json` for structure
@@ -376,7 +378,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 1327 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system, sync queue, sync history, image loading hooks, bulk selection, empty states, pinned items
+- 1347 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system, sync queue, sync history, image loading hooks, bulk selection, empty states, pinned items, progress tracking
 
 ### E2E Testing
 

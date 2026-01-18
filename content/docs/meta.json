@@ -22,6 +22,7 @@
     "google-drive/sync-files",
     "google-drive/upload-files",
     "google-drive/media-playback",
+    "google-drive/progress-tracking",
     "---Views---",
     "views/tree-view",
     "views/grid-view",

@@ -39,7 +39,9 @@ import type {
   TreeItems,
   SerializedItemFile,
   TMDBMetadataSelection,
+  ItemProgress,
 } from "@/lib/types";
+import { formatProgressLabel } from "@/lib/progress-utils";
 import {
   itemsToTree,
   treeToItemUpdates,
@@ -87,10 +89,10 @@ interface ItemsViewProps {
   onAddItemOpenChange?: (open: boolean) => void;
   /** Hero title (displays ItemHero after toolbar when provided). */
   heroTitle?: string;
-  /** Item count for hero stats display. */
-  heroItemCount?: number;
   /** Background URL for hero (e.g., /api/user/hero for My Items page). */
   heroBackgroundUrl?: string;
+  /** Progress data for hero display (library-wide progress for My Items). */
+  heroProgress?: ItemProgress | null;
   /** Whether user has Google Drive connected (shows Sync button). */
   hasDriveConnection?: boolean;
 }
@@ -108,7 +110,6 @@ interface ItemsViewProps {
  * @param addItemOpen - External add dialog control
  * @param onAddItemOpenChange - Callback when add dialog state changes
  * @param heroTitle - Title for hero banner (when provided)
- * @param heroItemCount - Item count for hero stats
  * @param heroBackgroundUrl - Background URL for hero
  * @param hasDriveConnection - Whether Google Drive is connected
  */
@@ -121,8 +122,8 @@ export function ItemsView({
   addItemOpen: externalAddItemOpen,
   onAddItemOpenChange,
   heroTitle,
-  heroItemCount,
   heroBackgroundUrl,
+  heroProgress,
   hasDriveConnection = false,
 }: ItemsViewProps) {
   const router = useRouter();
@@ -298,6 +299,7 @@ export function ItemsView({
             childCount: 0,
             primaryMediaName: null,
             mediaIconType: null,
+            progress: null,
           };
           setItems((prev) => [...prev, newItem]);
           return { itemId: result.data.id };
@@ -345,6 +347,7 @@ export function ItemsView({
             childCount: 0,
             primaryMediaName: null,
             mediaIconType: null,
+            progress: null,
           };
           setItems((prev) => [...prev, newItem]);
           return { itemId: result.data.id };
@@ -561,8 +564,11 @@ export function ItemsView({
       {heroTitle && (
         <ItemHero
           name={heroTitle}
-          childCount={heroItemCount ?? items.length}
           backgroundUrl={heroBackgroundUrl}
+          progressPercentage={heroProgress?.percentage ?? null}
+          progressLabel={
+            heroProgress ? formatProgressLabel(heroProgress) : null
+          }
           isCollapsed={isCollapsed}
           onCollapse={toggleCollapse}
         />

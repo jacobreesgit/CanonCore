@@ -31,6 +31,7 @@ const mockItems: ItemWithArtwork[] = [
     childCount: 3,
     primaryMediaName: "movie.mp4",
     mediaIconType: "film",
+    progress: null,
   },
   {
     id: "2",
@@ -55,6 +56,7 @@ const mockItems: ItemWithArtwork[] = [
     childCount: 0,
     primaryMediaName: null,
     mediaIconType: null,
+    progress: null,
   },
 ];
 

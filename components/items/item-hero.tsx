@@ -10,17 +10,7 @@
 
 import { useState, useRef, useLayoutEffect } from "react";
 import { motion } from "motion/react";
-import {
-  Play,
-  Film,
-  ImageIcon,
-  FileText,
-  Folder,
-  Music,
-  ChevronDown,
-  ChevronUp,
-  Maximize2,
-} from "lucide-react";
+import { Play, ChevronDown, ChevronUp, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Shader1 } from "@/components/shader1";
 import { cn } from "@/lib/utils";
@@ -41,18 +31,12 @@ interface ItemHeroProps {
   hasMedia?: boolean;
   /** Whether media has watch progress (shows Resume vs Play). */
   hasProgress?: boolean;
-  /** Number of media files. */
-  mediaCount?: number;
-  /** Number of artwork files. */
-  artworkCount?: number;
-  /** Number of subtitle files. */
-  subtitleCount?: number;
-  /** Number of child items. */
-  childCount?: number;
   /** Primary media filename for "now playing" display. */
   primaryMediaName?: string | null;
-  /** Primary media MIME type (e.g., "audio/mpeg", "video/mp4") for icon display. */
-  primaryMediaMimeType?: string | null;
+  /** Progress percentage (0-100) for item and descendants, null if no items with media. */
+  progressPercentage?: number | null;
+  /** Progress label (e.g., "5/10 watched (of 15 items)") for display. */
+  progressLabel?: string | null;
   /** Callback when play button clicked. */
   onPlay?: () => void;
   /** Whether hero is in collapsed state. */
@@ -77,12 +61,9 @@ export function ItemHero({
   backgroundUrl,
   hasMedia = false,
   hasProgress = false,
-  mediaCount = 0,
-  artworkCount = 0,
-  subtitleCount = 0,
-  childCount = 0,
   primaryMediaName,
-  primaryMediaMimeType,
+  progressPercentage,
+  progressLabel,
   onPlay,
   isCollapsed = false,
   onCollapse,
@@ -107,10 +88,6 @@ export function ItemHero({
     window.addEventListener("resize", checkOverflow);
     return () => window.removeEventListener("resize", checkOverflow);
   }, [description]);
-
-  // Determine if primary media is audio (show Music icon) or video (show Film icon)
-  const isAudio = primaryMediaMimeType?.startsWith("audio/") ?? false;
-  const MediaIcon = isAudio ? Music : Film;
 
   // Determine background source: backgroundUrl takes precedence over artworkId
   const backgroundSrc =
@@ -227,16 +204,16 @@ export function ItemHero({
             </div>
           )}
 
-          {/* Content overlay - centered */}
-          <div className="relative z-20 flex flex-col items-center gap-6 p-8 text-center text-white">
+          {/* Content overlay - centered with consistent width */}
+          <div className="relative z-20 flex w-full max-w-4xl flex-col items-center gap-6 p-8 text-center text-white">
             {/* Title */}
-            <h1 className="line-clamp-2 max-w-2xl text-4xl font-bold tracking-tight drop-shadow-lg md:text-5xl">
+            <h1 className="line-clamp-2 text-4xl font-bold tracking-tight drop-shadow-lg md:text-5xl">
               {name}
             </h1>
 
             {/* Description with expand/collapse for long text */}
             {description && (
-              <div className="flex w-[85%] flex-col items-center">
+              <div className="flex w-full flex-col items-center">
                 <motion.div
                   initial={false}
                   animate={{
@@ -279,36 +256,33 @@ export function ItemHero({
               </div>
             )}
 
-            {/* Stats row */}
-            <div
-              data-testid="item-hero-stats"
-              className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/70"
-            >
-              {mediaCount > 0 && (
-                <span className="flex items-center gap-1.5">
-                  <MediaIcon className="size-4" />
-                  {mediaCount} media file{mediaCount !== 1 ? "s" : ""}
-                </span>
-              )}
-              {artworkCount > 0 && (
-                <span className="flex items-center gap-1.5">
-                  <ImageIcon className="size-4" />
-                  {artworkCount} artwork
-                </span>
-              )}
-              {subtitleCount > 0 && (
-                <span className="flex items-center gap-1.5">
-                  <FileText className="size-4" />
-                  {subtitleCount} subtitle{subtitleCount !== 1 ? "s" : ""}
-                </span>
-              )}
-              {childCount > 0 && (
-                <span className="flex items-center gap-1.5">
-                  <Folder className="size-4" />
-                  {childCount} item{childCount !== 1 ? "s" : ""}
-                </span>
-              )}
-            </div>
+            {/* Progress bar - shown when items have media */}
+            {progressPercentage !== null && (
+              <div className="flex w-full flex-col items-center gap-1.5">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20 backdrop-blur-sm">
+                  <motion.div
+                    data-testid="hero-progress-bar"
+                    className="h-full rounded-full bg-white"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progressPercentage}%` }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 100,
+                      damping: 20,
+                      delay: 0.2,
+                    }}
+                  />
+                </div>
+                {progressLabel && (
+                  <span
+                    data-testid="hero-progress-label"
+                    className="text-xs tracking-wide text-white/60"
+                  >
+                    {progressLabel}
+                  </span>
+                )}
+              </div>
+            )}
 
             {/* Play button with primary media name in label */}
             {hasMedia && onPlay && (

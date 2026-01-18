@@ -135,9 +135,7 @@ describe("NavPinnedItems", () => {
   });
 
   it("renders with Pinned label", () => {
-    const items: PinnedItem[] = [
-      { id: "1", name: "Movies", pinnedOrder: 0 },
-    ];
+    const items: PinnedItem[] = [{ id: "1", name: "Movies", pinnedOrder: 0 }];
 
     render(<NavPinnedItems items={items} />);
 
@@ -196,9 +194,7 @@ describe("NavPinnedItems", () => {
   });
 
   it("renders folder icon for all pinned items", () => {
-    const items: PinnedItem[] = [
-      { id: "1", name: "Movies", pinnedOrder: 0 },
-    ];
+    const items: PinnedItem[] = [{ id: "1", name: "Movies", pinnedOrder: 0 }];
 
     render(<NavPinnedItems items={items} />);
 
