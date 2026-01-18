@@ -89,7 +89,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── item-context-menu.tsx     # Right-click actions menu
 │   │   ├── item-detail-client.tsx    # Client wrapper with hero and media player
 │   │   ├── item-dialog-tabs.tsx      # Tabbed interface for Add/Edit dialogs
-│   │   ├── item-hero.tsx             # Hero banner with artwork, title, play button
+│   │   ├── item-hero.tsx             # Hero banner with artwork, title, play button, go-to button
 │   │   ├── item-settings-dialog.tsx  # Settings with file selection and upload
 │   │   ├── item-stats.tsx            # Reusable child/file count stats display
 │   │   ├── items-toolbar.tsx         # Unified toolbar for root and detail pages
@@ -175,6 +175,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── use-artwork-upload.ts         # Artwork upload flow with progress
 │   ├── use-bulk-selection.ts         # Bulk item selection with select-all/toggle
 │   ├── use-controllable-state.ts     # Controlled/uncontrolled component state
+│   ├── use-go-to-item.ts             # Fetch first incomplete item and navigate for "Go to" button
 │   ├── use-hero-collapse.ts          # Hero section scroll-triggered collapse
 │   ├── use-image-loaded.ts           # Cached image detection for reliable loading
 │   ├── use-items-sort-filter.ts      # Sort/filter state with localStorage persistence
@@ -203,7 +204,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── item-utils.ts                 # Tree/flat conversion, sortItems(), filterItems(), descendant counter
 │   ├── logger.ts                     # Pino structured logging with request context
 │   ├── prisma.ts                     # Prisma client singleton
-│   ├── progress-utils.ts             # Playback progress calculation (90% threshold)
+│   ├── progress-utils.ts             # Playback progress calculation (90% threshold), DFS traversal for first incomplete item
 │   ├── queue-aware-actions.ts        # Actions that queue when offline
 │   ├── rate-limit.ts                 # Upstash Redis rate limiting
 │   ├── source.ts                     # Fumadocs source configuration
@@ -213,7 +214,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── sync-utils.ts                 # Shared sync types and utilities
 │   ├── tmdb-actions.ts               # TMDB metadata server actions
 │   ├── tmdb-client.ts                # TMDB API client for movie/TV metadata
-│   ├── types.ts                      # Shared types (Item, ItemFile, ItemProgress, PinnedItem, SortOption, FilterOption, ViewMode, QueuedFile, TMDBMetadataSelection, SyncLogEntry)
+│   ├── types.ts                      # Shared types (Item, ItemFile, ItemProgress, PinnedItem, NextItem, SortOption, FilterOption, ViewMode, QueuedFile, TMDBMetadataSelection, SyncLogEntry)
 │   ├── upload-utils.ts               # Browser-to-Drive upload utilities
 │   ├── user-actions.ts               # User profile server actions
 │   ├── utils.ts                      # cn() helper
@@ -234,7 +235,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── setup-e2e-drive.ts            # E2E Drive environment setup
 │   └── verify-seed.ts                # Quick seed verification utility
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 3.0.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 3.1.0)
     └── plans/                        # Design documents
 ```
 
@@ -280,7 +281,7 @@ pnpm run test:e2e:ui                        # UI mode
 - **View mode**: Full background artwork with dark overlay (Feature222 aesthetic)
 - **Edit mode**: Simplified icons with drag handles for reordering
 - **Add Item dialog**: Modal with TMDB search combobox for auto-filling metadata
-- **Server actions**: `createItem`, `updateItem`, `deleteItem`, `deleteItems`, `reorderItems`, `getSearchableItems`, `pinItem`, `unpinItem`, `getPinnedItems` in `lib/item-actions.ts`
+- **Server actions**: `createItem`, `updateItem`, `deleteItem`, `deleteItems`, `reorderItems`, `getSearchableItems`, `pinItem`, `unpinItem`, `getPinnedItems`, `getFirstIncompleteItem` in `lib/item-actions.ts`
 - **Bulk delete**: Edit mode shows checkboxes for multi-select; select-all in toolbar; confirmation dialog before deletion
 - **Contextual empty states**: Different messages for first-time users, empty folders, and filter results with actionable buttons
 - **Breadcrumb navigation** for item drill-down
@@ -292,6 +293,7 @@ pnpm run test:e2e:ui                        # UI mode
 - **Hero artwork selection**: Choose separate artwork for hero banner display (isHero field)
 - **Sync status badges**: Visual indicators showing sync state (synced, pending, error)
 - **Progress tracking**: Progress bars show watched/total items across hierarchies (90% threshold for "watched")
+- **Go to button**: "Go to [ItemName]" button navigates to first incomplete item in DFS order for continue watching workflow
 - **Toast notifications**: Success/error feedback via Sonner
 - **Max depth**: 10 levels of nesting
 

@@ -49,6 +49,7 @@ import {
   filterItems,
 } from "@/lib/item-utils";
 import { useItemsSortFilter } from "@/hooks/use-items-sort-filter";
+import { useGoToItem } from "@/hooks/use-go-to-item";
 import {
   createItem,
   createItemWithMetadata,
@@ -134,6 +135,12 @@ export function ItemsView({
 
   // Hero collapse state with localStorage persistence
   const { isCollapsed, toggleCollapse } = useHeroCollapse();
+
+  // First incomplete item for "Go to" button (only when hero is shown)
+  const { nextItem, goToNext } = useGoToItem({
+    parentId: parentId ?? undefined,
+    enabled: !!heroTitle,
+  });
 
   /**
    * Wrapper around setItems that also updates the ref synchronously.
@@ -569,6 +576,8 @@ export function ItemsView({
           progressLabel={
             heroProgress ? formatProgressLabel(heroProgress) : null
           }
+          nextItem={nextItem ?? null}
+          onGoToNext={goToNext}
           isCollapsed={isCollapsed}
           onCollapse={toggleCollapse}
         />

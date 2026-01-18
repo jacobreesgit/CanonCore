@@ -25,9 +25,14 @@ import type {
   ItemWithArtwork,
   SearchableItem,
   PinnedItem,
+  NextItem,
 } from "@/lib/types";
 import { buildDescendantCounter, getMediaIconType } from "@/lib/item-utils";
-import { type ItemProgress, COMPLETION_THRESHOLD } from "@/lib/progress-utils";
+import {
+  type ItemProgress,
+  COMPLETION_THRESHOLD,
+  findFirstIncompleteItem,
+} from "@/lib/progress-utils";
 
 const MAX_DEPTH = 10;
 
@@ -209,6 +214,117 @@ export async function getLibraryProgress(): Promise<ItemProgress | null> {
         : null,
     totalItems,
   };
+}
+
+/**
+ * Gets the first incomplete item in DFS order.
+ * Used for "Go to" button on My Items and item detail pages.
+ * An item is incomplete if it has primary media that is < 90% watched.
+ *
+ * @param parentId - Optional parent ID to search within (null = entire library)
+ * @returns First incomplete item data or null if all complete
+ */
+export async function getFirstIncompleteItem(
+  parentId?: string | null
+): Promise<ItemResult<NextItem | null>> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  try {
+    // Query items with their primary media progress
+    // Uses recursive CTE if parentId specified, otherwise fetches all
+    const itemsWithProgress = parentId
+      ? await prisma.$queryRaw<
+          {
+            id: string;
+            name: string;
+            order: number;
+            parentId: string | null;
+            hasPrimaryMedia: boolean;
+            position: number | null;
+            duration: number | null;
+          }[]
+        >`
+          WITH RECURSIVE descendants AS (
+            SELECT id FROM "Item" WHERE "parentId" = ${parentId} AND "userId" = ${session.user.id}
+            UNION ALL
+            SELECT i.id FROM "Item" i
+            INNER JOIN descendants d ON i."parentId" = d.id
+            WHERE i."userId" = ${session.user.id}
+          )
+          SELECT
+            i.id,
+            i.name,
+            i."order",
+            i."parentId",
+            EXISTS(SELECT 1 FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' AND f."isPrimary" = true) as "hasPrimaryMedia",
+            (SELECT f."playbackPosition" FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' AND f."isPrimary" = true LIMIT 1) as "position",
+            (SELECT f."playbackDuration" FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' AND f."isPrimary" = true LIMIT 1) as "duration"
+          FROM "Item" i
+          WHERE i.id IN (SELECT id FROM descendants)
+          ORDER BY i."order"
+        `
+      : await prisma.$queryRaw<
+          {
+            id: string;
+            name: string;
+            order: number;
+            parentId: string | null;
+            hasPrimaryMedia: boolean;
+            position: number | null;
+            duration: number | null;
+          }[]
+        >`
+          SELECT
+            i.id,
+            i.name,
+            i."order",
+            i."parentId",
+            EXISTS(SELECT 1 FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' AND f."isPrimary" = true) as "hasPrimaryMedia",
+            (SELECT f."playbackPosition" FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' AND f."isPrimary" = true LIMIT 1) as "position",
+            (SELECT f."playbackDuration" FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' AND f."isPrimary" = true LIMIT 1) as "duration"
+          FROM "Item" i
+          WHERE i."userId" = ${session.user.id}
+          ORDER BY i."order"
+        `;
+
+    // Find first incomplete using utility function
+    // When filtering by parentId, start traversal from that parent
+    const incompleteId = findFirstIncompleteItem(
+      itemsWithProgress.map((item) => ({
+        id: item.id,
+        order: item.order,
+        parentId: item.parentId,
+        hasPrimaryMedia: item.hasPrimaryMedia,
+        position: item.position,
+        duration: item.duration,
+      })),
+      parentId ?? null
+    );
+
+    if (!incompleteId) {
+      return { success: true, data: null };
+    }
+
+    // Get full data for the incomplete item
+    const incompleteItem = itemsWithProgress.find((i) => i.id === incompleteId);
+    if (!incompleteItem) {
+      return { success: true, data: null };
+    }
+
+    return {
+      success: true,
+      data: {
+        id: incompleteItem.id,
+        name: incompleteItem.name,
+      },
+    };
+  } catch (error) {
+    logger.error({ error }, "Failed to get first incomplete item");
+    return { error: "Failed to get next item" };
+  }
 }
 
 /**

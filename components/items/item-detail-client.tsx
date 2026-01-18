@@ -20,6 +20,7 @@ import type {
 } from "@/lib/types";
 import { getItems } from "@/lib/item-actions";
 import { useHeroCollapse } from "@/hooks/use-hero-collapse";
+import { useGoToItem } from "@/hooks/use-go-to-item";
 import { formatProgressLabel } from "@/lib/progress-utils";
 
 interface ItemDetailClientProps {
@@ -69,6 +70,9 @@ export function ItemDetailClient({
 
   // Hero collapse state with localStorage persistence
   const { isCollapsed, toggleCollapse } = useHeroCollapse();
+
+  // First incomplete item for "Go to" button
+  const { nextItem, goToNext } = useGoToItem({ parentId: item.id });
 
   // Resolve hero artwork using fallback chain: isHero -> isPrimary -> first
   const heroArtworkId = useMemo(() => {
@@ -171,6 +175,8 @@ export function ItemDetailClient({
         progressPercentage={itemProgress?.percentage ?? null}
         progressLabel={itemProgress ? formatProgressLabel(itemProgress) : null}
         onPlay={handlePlay}
+        nextItem={nextItem ?? null}
+        onGoToNext={goToNext}
         isCollapsed={isCollapsed}
         onCollapse={toggleCollapse}
       />

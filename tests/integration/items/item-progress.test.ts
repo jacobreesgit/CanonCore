@@ -14,7 +14,11 @@ import {
   beforeEach,
 } from "vitest";
 import type { Session } from "next-auth";
-import { getItems, getLibraryProgress } from "@/lib/item-actions";
+import {
+  getItems,
+  getLibraryProgress,
+  getFirstIncompleteItem,
+} from "@/lib/item-actions";
 import { prisma } from "@/lib/prisma";
 import "../setup";
 
@@ -633,5 +637,285 @@ describe("getLibraryProgress", () => {
 
     const progress = await getLibraryProgress();
     expect(progress).toBeNull();
+  });
+});
+
+describe("getFirstIncompleteItem", () => {
+  beforeEach(async () => {
+    // Clean up any items from previous tests to ensure isolation
+    await prisma.itemFile.deleteMany({
+      where: { item: { userId: TEST_USER_ID } },
+    });
+    await prisma.item.deleteMany({ where: { userId: TEST_USER_ID } });
+
+    // Mock auth to return test user for each test
+    mockAuth.mockResolvedValue({
+      user: { id: TEST_USER_ID, email: TEST_USER_EMAIL },
+      expires: new Date().toISOString(),
+    });
+  });
+
+  it("returns null for user with no items", async () => {
+    const result = await getFirstIncompleteItem();
+    expect(result.success).toBe(true);
+    if (!result.success) throw new Error("Expected success");
+    expect(result.data).toBeNull();
+  });
+
+  it("returns null when all items are complete", async () => {
+    // Create item with complete primary media
+    const item = await prisma.item.create({
+      data: {
+        name: "Complete",
+        userId: TEST_USER_ID,
+        order: 0,
+        depth: 0,
+        files: {
+          create: {
+            filename: "video.mp4",
+            fileType: "MEDIA",
+            isPrimary: true,
+            playbackPosition: 95,
+            playbackDuration: 100,
+          },
+        },
+      },
+    });
+
+    const result = await getFirstIncompleteItem();
+    expect(result.success).toBe(true);
+    if (!result.success) throw new Error("Expected success");
+    expect(result.data).toBeNull();
+
+    // Cleanup
+    await prisma.itemFile.deleteMany({ where: { itemId: item.id } });
+    await prisma.item.delete({ where: { id: item.id } });
+  });
+
+  it("returns first incomplete item in library", async () => {
+    // Create complete item
+    const complete = await prisma.item.create({
+      data: {
+        name: "Complete",
+        userId: TEST_USER_ID,
+        order: 0,
+        depth: 0,
+        files: {
+          create: {
+            filename: "video.mp4",
+            fileType: "MEDIA",
+            isPrimary: true,
+            playbackPosition: 95,
+            playbackDuration: 100,
+          },
+        },
+      },
+    });
+
+    // Create incomplete item
+    const incomplete = await prisma.item.create({
+      data: {
+        name: "Incomplete",
+        userId: TEST_USER_ID,
+        order: 1,
+        depth: 0,
+        files: {
+          create: {
+            filename: "movie.mp4",
+            fileType: "MEDIA",
+            isPrimary: true,
+            playbackPosition: 50,
+            playbackDuration: 100,
+          },
+        },
+      },
+    });
+
+    const result = await getFirstIncompleteItem();
+    expect(result.success).toBe(true);
+    if (!result.success) throw new Error("Expected success");
+    expect(result.data).not.toBeNull();
+    expect(result.data?.id).toBe(incomplete.id);
+    expect(result.data?.name).toBe("Incomplete");
+
+    // Cleanup
+    await prisma.itemFile.deleteMany({
+      where: { itemId: { in: [complete.id, incomplete.id] } },
+    });
+    await prisma.item.deleteMany({
+      where: { id: { in: [complete.id, incomplete.id] } },
+    });
+  });
+
+  it("follows DFS order for nested items", async () => {
+    // Create parent folder
+    const parent = await prisma.item.create({
+      data: {
+        name: "Movies",
+        userId: TEST_USER_ID,
+        order: 0,
+        depth: 0,
+      },
+    });
+
+    // Create complete child
+    const completeChild = await prisma.item.create({
+      data: {
+        name: "Complete Movie",
+        parentId: parent.id,
+        userId: TEST_USER_ID,
+        order: 0,
+        depth: 1,
+        files: {
+          create: {
+            filename: "complete.mp4",
+            fileType: "MEDIA",
+            isPrimary: true,
+            playbackPosition: 95,
+            playbackDuration: 100,
+          },
+        },
+      },
+    });
+
+    // Create incomplete child (should be found)
+    const incompleteChild = await prisma.item.create({
+      data: {
+        name: "Incomplete Movie",
+        parentId: parent.id,
+        userId: TEST_USER_ID,
+        order: 1,
+        depth: 1,
+        files: {
+          create: {
+            filename: "incomplete.mp4",
+            fileType: "MEDIA",
+            isPrimary: true,
+            playbackPosition: 50,
+            playbackDuration: 100,
+          },
+        },
+      },
+    });
+
+    // Create root-level incomplete (should NOT be found - DFS goes into Movies first)
+    const rootIncomplete = await prisma.item.create({
+      data: {
+        name: "Root Incomplete",
+        userId: TEST_USER_ID,
+        order: 1,
+        depth: 0,
+        files: {
+          create: {
+            filename: "root.mp4",
+            fileType: "MEDIA",
+            isPrimary: true,
+            playbackPosition: 30,
+            playbackDuration: 100,
+          },
+        },
+      },
+    });
+
+    const result = await getFirstIncompleteItem();
+    expect(result.success).toBe(true);
+    if (!result.success) throw new Error("Expected success");
+    expect(result.data?.id).toBe(incompleteChild.id);
+
+    // Cleanup
+    await prisma.itemFile.deleteMany({
+      where: {
+        itemId: {
+          in: [completeChild.id, incompleteChild.id, rootIncomplete.id],
+        },
+      },
+    });
+    await prisma.item.deleteMany({
+      where: {
+        id: {
+          in: [
+            parent.id,
+            completeChild.id,
+            incompleteChild.id,
+            rootIncomplete.id,
+          ],
+        },
+      },
+    });
+  });
+
+  describe("with parentId filter", () => {
+    it("returns first incomplete descendant of specified parent", async () => {
+      // Create two parent folders
+      const folder1 = await prisma.item.create({
+        data: { name: "Folder 1", userId: TEST_USER_ID, order: 0, depth: 0 },
+      });
+      const folder2 = await prisma.item.create({
+        data: { name: "Folder 2", userId: TEST_USER_ID, order: 1, depth: 0 },
+      });
+
+      // Incomplete in folder1
+      const child1 = await prisma.item.create({
+        data: {
+          name: "Child 1",
+          parentId: folder1.id,
+          userId: TEST_USER_ID,
+          order: 0,
+          depth: 1,
+          files: {
+            create: {
+              filename: "v1.mp4",
+              fileType: "MEDIA",
+              isPrimary: true,
+              playbackPosition: 50,
+              playbackDuration: 100,
+            },
+          },
+        },
+      });
+
+      // Incomplete in folder2
+      const child2 = await prisma.item.create({
+        data: {
+          name: "Child 2",
+          parentId: folder2.id,
+          userId: TEST_USER_ID,
+          order: 0,
+          depth: 1,
+          files: {
+            create: {
+              filename: "v2.mp4",
+              fileType: "MEDIA",
+              isPrimary: true,
+              playbackPosition: 30,
+              playbackDuration: 100,
+            },
+          },
+        },
+      });
+
+      // Query for folder2's descendants only
+      const result = await getFirstIncompleteItem(folder2.id);
+      expect(result.success).toBe(true);
+      if (!result.success) throw new Error("Expected success");
+      expect(result.data?.id).toBe(child2.id);
+
+      // Cleanup
+      await prisma.itemFile.deleteMany({
+        where: { itemId: { in: [child1.id, child2.id] } },
+      });
+      await prisma.item.deleteMany({
+        where: {
+          id: { in: [folder1.id, folder2.id, child1.id, child2.id] },
+        },
+      });
+    });
+  });
+
+  it("returns error for unauthenticated user", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const result = await getFirstIncompleteItem();
+    expect(result.error).toBe("Unauthorized");
   });
 });
