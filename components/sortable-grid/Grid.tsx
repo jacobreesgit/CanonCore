@@ -74,10 +74,10 @@ export function Grid({
             description={item.description}
             onClick={() => onItemClick?.(item.id)}
             artworkId={item.artworkId}
-            fileCounts={item.fileCounts}
-            childCount={item.childCount}
-            primaryMediaName={item.primaryMediaName}
-            mediaIconType={item.mediaIconType}
+            progressPercentage={item.progress?.percentage ?? null}
+            watchedCount={item.progress?.watchedItems}
+            totalMediaCount={item.progress?.itemsWithMedia}
+            totalItems={item.progress?.totalItems}
             showArtwork={true}
             showDescription={true}
             priority={index < PRIORITY_COUNT}

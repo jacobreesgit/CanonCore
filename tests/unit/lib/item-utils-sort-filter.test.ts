@@ -34,6 +34,7 @@ const mockItems: ItemWithArtwork[] = [
     childCount: 0,
     primaryMediaName: null,
     mediaIconType: null,
+    progress: null,
   },
   {
     id: "2",
@@ -57,6 +58,7 @@ const mockItems: ItemWithArtwork[] = [
     childCount: 0,
     primaryMediaName: null,
     mediaIconType: null,
+    progress: null,
   },
   {
     id: "3",
@@ -80,6 +82,7 @@ const mockItems: ItemWithArtwork[] = [
     childCount: 0,
     primaryMediaName: null,
     mediaIconType: null,
+    progress: null,
   },
   {
     id: "4",
@@ -103,6 +106,7 @@ const mockItems: ItemWithArtwork[] = [
     childCount: 0,
     primaryMediaName: null,
     mediaIconType: null,
+    progress: null,
   },
 ];
 

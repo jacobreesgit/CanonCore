@@ -31,7 +31,7 @@ async function verify() {
   console.log(
     "\n📌 Pinned items:",
     pinned.length > 0
-      ? pinned.map((i: any) => `${i.name} (order: ${i.pinnedOrder})`).join(", ")
+      ? pinned.map((i) => `${i.name} (order: ${i.pinnedOrder})`).join(", ")
       : "none"
   );
 
@@ -44,9 +44,14 @@ async function verify() {
     : [];
   console.log(
     "\n🎬 Movies folder:",
-    moviesFolder ? `found (pinnedOrder: ${(moviesFolder as any).pinnedOrder})` : "NOT FOUND"
+    moviesFolder
+      ? `found (pinnedOrder: ${moviesFolder.pinnedOrder})`
+      : "NOT FOUND"
   );
-  console.log("   Movies inside:", movies.map((m) => m.name).join(", ") || "none");
+  console.log(
+    "   Movies inside:",
+    movies.map((m) => m.name).join(", ") || "none"
+  );
   console.log("   Movie count:", movies.length);
 
   // Check TV Shows folder and children
@@ -58,9 +63,12 @@ async function verify() {
     : [];
   console.log(
     "\n📺 TV Shows folder:",
-    tvFolder ? `found (pinnedOrder: ${(tvFolder as any).pinnedOrder})` : "NOT FOUND"
+    tvFolder ? `found (pinnedOrder: ${tvFolder.pinnedOrder})` : "NOT FOUND"
   );
-  console.log("   Shows inside:", tvShows.map((s) => s.name).join(", ") || "none");
+  console.log(
+    "   Shows inside:",
+    tvShows.map((s) => s.name).join(", ") || "none"
+  );
 
   // Check Doctor Who substructure
   const doctorWho = await prisma.item.findFirst({
@@ -70,11 +78,16 @@ async function verify() {
     const doctorWhoChildren = await prisma.item.findMany({
       where: { parentId: doctorWho.id },
     });
-    console.log("\n🎭 Doctor Who subfolders:", doctorWhoChildren.map(c => c.name).join(", ") || "none");
+    console.log(
+      "\n🎭 Doctor Who subfolders:",
+      doctorWhoChildren.map((c) => c.name).join(", ") || "none"
+    );
   }
 
   // Check artwork files
-  const artworkCount = await prisma.itemFile.count({ where: { fileType: "ARTWORK" } });
+  const artworkCount = await prisma.itemFile.count({
+    where: { fileType: "ARTWORK" },
+  });
   console.log("\n🖼️  Artwork files:", artworkCount);
 
   // Check Drive connections
@@ -91,7 +104,10 @@ async function verify() {
   const rootItems = await prisma.item.findMany({
     where: { userId: user.id, parentId: null },
   });
-  console.log("\n🏠 Root level items:", rootItems.map(i => i.name).join(", ") || "none");
+  console.log(
+    "\n🏠 Root level items:",
+    rootItems.map((i) => i.name).join(", ") || "none"
+  );
 
   // Check test user items
   const testUser = await prisma.user.findUnique({
@@ -110,7 +126,7 @@ async function verify() {
   const allUsers = await prisma.user.findMany({
     select: { email: true },
   });
-  console.log("\n👥 All users:", allUsers.map(u => u.email).join(", "));
+  console.log("\n👥 All users:", allUsers.map((u) => u.email).join(", "));
 
   await prisma.$disconnect();
 }

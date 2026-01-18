@@ -202,8 +202,8 @@ model Item {
 ```typescript
 // prisma/seed-config.ts
 export const SEED_GROUPED_STRUCTURE: boolean;
-export const CLASSIC_DOCTOR_WHO_ID: number;  // 121
-export const MODERN_DOCTOR_WHO_ID: number;   // 57243
+export const CLASSIC_DOCTOR_WHO_ID: number; // 121
+export const MODERN_DOCTOR_WHO_ID: number; // 57243
 export function isDoctorWho(id: number): boolean;
 ```
 

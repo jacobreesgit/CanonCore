@@ -192,33 +192,6 @@ describe("ItemHero", () => {
     });
   });
 
-  describe("file stats", () => {
-    it("should show media count when provided", () => {
-      render(<ItemHero {...defaultProps} mediaCount={3} />);
-      expect(screen.getByText(/3 media/i)).toBeInTheDocument();
-    });
-
-    it("should show artwork count when provided", () => {
-      render(<ItemHero {...defaultProps} artworkCount={2} />);
-      expect(screen.getByText(/2 artwork/i)).toBeInTheDocument();
-    });
-
-    it("should show subtitle count when provided", () => {
-      render(<ItemHero {...defaultProps} subtitleCount={2} />);
-      expect(screen.getByText(/2 subtitle/i)).toBeInTheDocument();
-    });
-
-    it("should show child count as items", () => {
-      render(<ItemHero {...defaultProps} childCount={5} />);
-      expect(screen.getByText(/5 items/i)).toBeInTheDocument();
-    });
-
-    it("should show singular item label for count of 1", () => {
-      render(<ItemHero {...defaultProps} childCount={1} />);
-      expect(screen.getByText("1 item")).toBeInTheDocument();
-    });
-  });
-
   describe("collapse/expand", () => {
     it("should render collapse button when onCollapse provided", () => {
       render(

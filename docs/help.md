@@ -22,4 +22,4 @@
 
 - use /Users/jacobrees/canoncore-v2/skills/code-review-excellence/SKILL.md NOT SUPERPOWERS, context7 and sequential thinking to ensure best practices on this project. really take your time and look at everything.
 
-- run check, fix, then run unit, intergration and e2e
+- run check, fix, then run the new unit, intergration and e2e

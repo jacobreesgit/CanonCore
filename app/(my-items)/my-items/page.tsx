@@ -5,7 +5,7 @@
 
 import { Suspense } from "react";
 import { ItemsView } from "@/components/items";
-import { getAllItems } from "@/lib/item-actions";
+import { getAllItems, getLibraryProgress } from "@/lib/item-actions";
 import { getProfile } from "@/lib/user-actions";
 import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
 import { OAuthToast } from "@/components/google-drive";
@@ -16,17 +16,18 @@ import { SiteHeader } from "@/components/site-header";
  * Displays all user items with hero banner.
  */
 export default async function MyItemsPage() {
-  // Fetch all items
-  const itemsResult = await getAllItems();
-  const items = itemsResult.success ? (itemsResult.data ?? []) : [];
+  // Fetch items, profile, Drive connection, and library progress in parallel
+  const [itemsResult, profileResult, driveConnection, libraryProgress] =
+    await Promise.all([
+      getAllItems(),
+      getProfile(),
+      getGoogleDriveConnection(),
+      getLibraryProgress(),
+    ]);
 
-  // Check if user has hero image
-  const profileResult = await getProfile();
+  const items = itemsResult.success ? (itemsResult.data ?? []) : [];
   const hasHeroImage =
     profileResult.success && profileResult.data?.hasHeroImage;
-
-  // Check for Google Drive connection
-  const driveConnection = await getGoogleDriveConnection();
   const hasDriveConnection =
     driveConnection !== null && !driveConnection.needsReauth;
 
@@ -41,6 +42,7 @@ export default async function MyItemsPage() {
           items={items}
           heroTitle="My Items"
           heroBackgroundUrl={hasHeroImage ? "/api/user/hero" : undefined}
+          heroProgress={libraryProgress}
           hasDriveConnection={hasDriveConnection}
         />
       </div>
