@@ -6,7 +6,7 @@
 import { notFound } from "next/navigation";
 import { ItemDetailClient } from "@/components/items";
 import { SiteHeader } from "@/components/site-header";
-import { getItem, getDescendants } from "@/lib/item-actions";
+import { getItem, getDescendants, getItemProgress } from "@/lib/item-actions";
 import { getItemFiles } from "@/lib/item-file-actions";
 import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
 
@@ -39,12 +39,14 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
     })
   );
 
-  // Fetch descendants, attached files, and Drive connection status in parallel
-  const [childrenResult, filesResult, driveConnection] = await Promise.all([
-    getDescendants(itemId),
-    getItemFiles(itemId),
-    getGoogleDriveConnection(),
-  ]);
+  // Fetch descendants, attached files, progress, and Drive connection in parallel
+  const [childrenResult, filesResult, itemProgress, driveConnection] =
+    await Promise.all([
+      getDescendants(itemId),
+      getItemFiles(itemId),
+      getItemProgress(itemId),
+      getGoogleDriveConnection(),
+    ]);
 
   const childItems = childrenResult.success ? (childrenResult.data ?? []) : [];
   const files =
@@ -69,6 +71,7 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
           }}
           childItems={childItems}
           files={files}
+          itemProgress={itemProgress}
           hasDriveConnection={hasDriveConnection}
         />
       </div>

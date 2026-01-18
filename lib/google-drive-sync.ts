@@ -51,6 +51,24 @@ interface SyncItemFileResult {
   hadChanges: boolean;
 }
 
+/** Options for sync operations. */
+interface SyncOptions {
+  /** Whether to fetch and update storage quota (default: false). */
+  fetchQuota?: boolean;
+  /** Whether to revalidate the /my-items path after sync (default: false). */
+  revalidate?: boolean;
+}
+
+/** Result type for sync operations. */
+interface SyncResult {
+  success: boolean;
+  itemsCreated?: number;
+  itemsUpdated?: number;
+  itemsErrored?: number;
+  errors?: Array<{ fileName: string; error: string }>;
+  error?: string;
+}
+
 /**
  * Creates a fresh sync context for a sync operation.
  *
@@ -74,34 +92,28 @@ function createSyncContext(
 }
 
 /**
- * Syncs items from the user's Google Drive connection.
+ * Core sync logic shared between syncFromGoogleDrive and syncByUserId.
+ * Performs the actual sync operation for a given connection.
  *
- * @returns Object with success status, sync stats, and any errors
+ * @param connection - The Google Drive connection to sync
+ * @param options - Sync options (fetchQuota, revalidate)
+ * @returns Sync result with stats and any errors
  */
-export async function syncFromGoogleDrive(): Promise<{
-  success: boolean;
-  itemsCreated?: number;
-  itemsUpdated?: number;
-  itemsErrored?: number;
-  errors?: Array<{ fileName: string; error: string }>;
-  error?: string;
-}> {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { success: false, error: "Unauthorized" };
-  }
-
-  const connection = await prisma.googleDriveConnection.findUnique({
-    where: { userId: session.user.id },
-  });
-
-  if (!connection) {
-    return { success: false, error: "No Google Drive connected" };
-  }
-
-  if (connection.needsReauth) {
-    return { success: false, error: "Please reconnect your Google Drive" };
-  }
+async function syncForConnection(
+  connection: {
+    id: string;
+    userId: string;
+    rootFolderId: string;
+    changePageToken: string | null;
+    lastError: string | null;
+    email: string;
+    encryptedRefreshToken: string;
+    encryptedAccessToken: string | null;
+    accessTokenExpiry: Date | null;
+  },
+  options: SyncOptions = {}
+): Promise<SyncResult> {
+  const { fetchQuota = false, revalidate = false } = options;
 
   logger.info(
     {
@@ -189,41 +201,49 @@ export async function syncFromGoogleDrive(): Promise<{
       await initialSync(drive, connection, ctx);
     }
 
-    // Fetch quota and update connection in single DB call
-    let quotaData: { usage?: bigint; limit?: bigint } = {};
-    try {
-      const aboutResponse = await withRateLimit(() =>
-        drive.about.get({ fields: "storageQuota" })
-      );
-      const quota = aboutResponse.data.storageQuota;
-      if (quota?.usage && quota?.limit) {
-        quotaData = {
-          usage: BigInt(quota.usage),
-          limit: BigInt(quota.limit),
-        };
+    // Build update data for connection
+    const updateData: {
+      lastSyncAt: Date;
+      lastError: string | null;
+      quotaBytesUsed?: bigint;
+      quotaBytesTotal?: bigint;
+    } = {
+      lastSyncAt: new Date(),
+      lastError:
+        ctx.errors.length > 0 ? `${ctx.errors.length} files failed` : null,
+    };
+
+    // Optionally fetch quota
+    if (fetchQuota) {
+      try {
+        const aboutResponse = await withRateLimit(() =>
+          drive.about.get({ fields: "storageQuota" })
+        );
+        const quota = aboutResponse.data.storageQuota;
+        if (quota?.usage && quota?.limit) {
+          updateData.quotaBytesUsed = BigInt(quota.usage);
+          updateData.quotaBytesTotal = BigInt(quota.limit);
+        }
+      } catch (error) {
+        // Quota fetch failure is non-fatal - log and continue
+        logger.warn({ err: error }, "[GoogleDrive] Failed to fetch quota");
       }
-    } catch (error) {
-      // Quota fetch failure is non-fatal - log and continue
-      logger.warn({ err: error }, "[GoogleDrive] Failed to fetch quota");
     }
 
-    // Update last sync time and quota in single operation
+    // Update connection state
     await prisma.googleDriveConnection.update({
-      where: { userId: session.user.id },
-      data: {
-        lastSyncAt: new Date(),
-        lastError:
-          ctx.errors.length > 0 ? `${ctx.errors.length} files failed` : null,
-        ...(quotaData.usage && { quotaBytesUsed: quotaData.usage }),
-        ...(quotaData.limit && { quotaBytesTotal: quotaData.limit }),
-      },
+      where: { userId: connection.userId },
+      data: updateData,
     });
 
-    revalidatePath("/my-items");
+    // Optionally revalidate path
+    if (revalidate) {
+      revalidatePath("/my-items");
+    }
 
     // Log successful sync operation
     await logSyncOperation({
-      userId: session.user.id,
+      userId: connection.userId,
       action: SyncLogAction.SYNC,
       status:
         ctx.stats.errors > 0 ? SyncLogStatus.FAILED : SyncLogStatus.SUCCESS,
@@ -246,13 +266,13 @@ export async function syncFromGoogleDrive(): Promise<{
     logger.error({ err: error }, "[GoogleDrive] Sync error");
 
     await prisma.googleDriveConnection.update({
-      where: { userId: session.user.id },
+      where: { userId: connection.userId },
       data: { lastError: message },
     });
 
     // Log failed sync operation
     await logSyncOperation({
-      userId: session.user.id,
+      userId: connection.userId,
       action: SyncLogAction.SYNC,
       status: SyncLogStatus.FAILED,
       error: message,
@@ -261,6 +281,33 @@ export async function syncFromGoogleDrive(): Promise<{
 
     return { success: false, error: message };
   }
+}
+
+/**
+ * Syncs items from the user's Google Drive connection.
+ * Fetches quota and revalidates the page after sync.
+ *
+ * @returns Object with success status, sync stats, and any errors
+ */
+export async function syncFromGoogleDrive(): Promise<SyncResult> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const connection = await prisma.googleDriveConnection.findUnique({
+    where: { userId: session.user.id },
+  });
+
+  if (!connection) {
+    return { success: false, error: "No Google Drive connected" };
+  }
+
+  if (connection.needsReauth) {
+    return { success: false, error: "Please reconnect your Google Drive" };
+  }
+
+  return syncForConnection(connection, { fetchQuota: true, revalidate: true });
 }
 
 /**
@@ -936,4 +983,28 @@ async function handleFileChanged(
     depth,
     nextOrder
   );
+}
+
+/**
+ * Syncs items from Google Drive for a specific user by ID.
+ * Used by seed script and other contexts where auth session is unavailable.
+ * Does not fetch quota or revalidate paths (use syncFromGoogleDrive for that).
+ *
+ * @param userId - The user ID to sync for
+ * @returns Object with success status, sync stats, and any errors
+ */
+export async function syncByUserId(userId: string): Promise<SyncResult> {
+  const connection = await prisma.googleDriveConnection.findUnique({
+    where: { userId },
+  });
+
+  if (!connection) {
+    return { success: false, error: "No Google Drive connected" };
+  }
+
+  if (connection.needsReauth) {
+    return { success: false, error: "Please reconnect your Google Drive" };
+  }
+
+  return syncForConnection(connection);
 }

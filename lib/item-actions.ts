@@ -27,8 +27,189 @@ import type {
   PinnedItem,
 } from "@/lib/types";
 import { buildDescendantCounter, getMediaIconType } from "@/lib/item-utils";
+import { type ItemProgress, COMPLETION_THRESHOLD } from "@/lib/progress-utils";
 
 const MAX_DEPTH = 10;
+
+/**
+ * Builds a map of item IDs to their progress (self + all descendants).
+ * Uses recursive CTE to count items with watched primary media.
+ * Item-based counting: an item is "watched" when its primary media is >= 90% complete.
+ *
+ * @param userId - User ID for authorization
+ * @param itemIds - Array of item IDs to calculate progress for
+ * @returns Map of item ID to ItemProgress
+ */
+async function buildDescendantProgressMap(
+  userId: string,
+  itemIds: string[]
+): Promise<Map<string, ItemProgress>> {
+  if (itemIds.length === 0) {
+    return new Map();
+  }
+
+  // Single query: count items with primary media and watched status
+  const progressData = await prisma.$queryRaw<
+    Array<{
+      rootItemId: string;
+      totalItems: bigint;
+      itemsWithMedia: bigint;
+      watchedItems: bigint;
+    }>
+  >`
+    WITH RECURSIVE descendants AS (
+      -- Base: the items themselves
+      SELECT id, id as "rootItemId" FROM "Item"
+      WHERE id = ANY(${itemIds}) AND "userId" = ${userId}
+      UNION ALL
+      -- Recursive: all descendants
+      SELECT i.id, d."rootItemId"
+      FROM "Item" i
+      INNER JOIN descendants d ON i."parentId" = d.id
+      WHERE i."userId" = ${userId}
+    )
+    SELECT
+      d."rootItemId",
+      COUNT(DISTINCT d.id) as "totalItems",
+      COUNT(DISTINCT CASE WHEN f.id IS NOT NULL THEN d.id END) as "itemsWithMedia",
+      COUNT(DISTINCT CASE
+        WHEN f."playbackPosition" IS NOT NULL
+          AND f."playbackDuration" IS NOT NULL
+          AND f."playbackDuration" > 0
+          AND f."playbackPosition" >= f."playbackDuration" * ${COMPLETION_THRESHOLD}
+        THEN d.id
+      END) as "watchedItems"
+    FROM descendants d
+    LEFT JOIN "ItemFile" f ON f."itemId" = d.id
+      AND f."fileType" = 'MEDIA'
+      AND f."isPrimary" = true
+    GROUP BY d."rootItemId"
+  `;
+
+  // Build progress map from query results
+  const progressMap = new Map<string, ItemProgress>();
+
+  for (const row of progressData) {
+    const totalItems = Number(row.totalItems);
+    const itemsWithMedia = Number(row.itemsWithMedia);
+    const watchedItems = Number(row.watchedItems);
+
+    progressMap.set(row.rootItemId, {
+      watchedItems,
+      itemsWithMedia,
+      percentage:
+        itemsWithMedia > 0
+          ? Math.round((watchedItems / itemsWithMedia) * 100)
+          : null,
+      totalItems,
+    });
+  }
+
+  // Ensure all requested items have an entry (even if not in results)
+  for (const itemId of itemIds) {
+    if (!progressMap.has(itemId)) {
+      progressMap.set(itemId, {
+        watchedItems: 0,
+        itemsWithMedia: 0,
+        percentage: null,
+        totalItems: 0,
+      });
+    }
+  }
+
+  return progressMap;
+}
+
+/**
+ * Fetches progress for a single item (self + all descendants).
+ * Returns null if no media files exist in the subtree.
+ *
+ * @param itemId - Item ID to get progress for
+ * @returns Progress data or null if no media files
+ */
+export async function getItemProgress(
+  itemId: string
+): Promise<ItemProgress | null> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return null;
+  }
+
+  const progressMap = await buildDescendantProgressMap(session.user.id, [
+    itemId,
+  ]);
+  const progress = progressMap.get(itemId);
+
+  // Return null if no media files (percentage is null)
+  if (!progress || progress.percentage === null) {
+    return null;
+  }
+
+  return progress;
+}
+
+/**
+ * Fetches progress across all items in the user's library.
+ * Returns aggregate completion stats for the entire collection.
+ * Item-based counting: an item is "watched" when its primary media is >= 90% complete.
+ *
+ * @returns Library-wide progress data or null if no items
+ */
+export async function getLibraryProgress(): Promise<ItemProgress | null> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return null;
+  }
+
+  // Count items with primary media and watched status (single query)
+  const result = await prisma.$queryRaw<
+    Array<{
+      totalItems: bigint;
+      itemsWithMedia: bigint;
+      watchedItems: bigint;
+    }>
+  >`
+    SELECT
+      COUNT(DISTINCT i.id) as "totalItems",
+      COUNT(DISTINCT CASE WHEN f.id IS NOT NULL THEN i.id END) as "itemsWithMedia",
+      COUNT(DISTINCT CASE
+        WHEN f."playbackPosition" IS NOT NULL
+          AND f."playbackDuration" IS NOT NULL
+          AND f."playbackDuration" > 0
+          AND f."playbackPosition" >= f."playbackDuration" * ${COMPLETION_THRESHOLD}
+        THEN i.id
+      END) as "watchedItems"
+    FROM "Item" i
+    LEFT JOIN "ItemFile" f ON f."itemId" = i.id
+      AND f."fileType" = 'MEDIA'
+      AND f."isPrimary" = true
+    WHERE i."userId" = ${session.user.id}
+  `;
+
+  if (result.length === 0) {
+    return null;
+  }
+
+  const row = result[0];
+  const totalItems = Number(row.totalItems);
+  const itemsWithMedia = Number(row.itemsWithMedia);
+  const watchedItems = Number(row.watchedItems);
+
+  // Return null if no items
+  if (totalItems === 0) {
+    return null;
+  }
+
+  return {
+    watchedItems,
+    itemsWithMedia,
+    percentage:
+      itemsWithMedia > 0
+        ? Math.round((watchedItems / itemsWithMedia) * 100)
+        : null,
+    totalItems,
+  };
+}
 
 /**
  * Fetches items for a given parent with artwork thumbnails.
@@ -78,6 +259,12 @@ export async function getItems(
     },
   });
 
+  // Build progress map for all items (single query for efficiency)
+  const progressMap = await buildDescendantProgressMap(
+    session.user.id,
+    items.map((i) => i.id)
+  );
+
   // Transform to ItemWithArtwork with file counts and descendant count
   const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => {
     // Find primary artwork, or first artwork if no primary
@@ -106,6 +293,11 @@ export async function getItems(
     // Determine media icon type: film (all video), music (all audio), mixed (both)
     const mediaIconType = getMediaIconType(mediaFiles);
 
+    // Get progress (null if no media files in subtree)
+    const itemProgress = progressMap.get(item.id);
+    const progress =
+      itemProgress && itemProgress.percentage !== null ? itemProgress : null;
+
     return {
       id: item.id,
       name: item.name,
@@ -129,6 +321,7 @@ export async function getItems(
       childCount: countDescendants(item.id),
       primaryMediaName,
       mediaIconType,
+      progress,
     };
   });
 
@@ -179,6 +372,12 @@ export async function getAllItems(): Promise<ItemResult<ItemWithArtwork[]>> {
     },
   });
 
+  // Build progress map for all items (single query for efficiency)
+  const progressMap = await buildDescendantProgressMap(
+    session.user.id,
+    items.map((i) => i.id)
+  );
+
   // Transform to ItemWithArtwork with file counts and descendant count
   const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => {
     const primaryArtwork = item.files.find(
@@ -206,6 +405,11 @@ export async function getAllItems(): Promise<ItemResult<ItemWithArtwork[]>> {
     // Determine media icon type: film (all video), music (all audio), mixed (both)
     const mediaIconType = getMediaIconType(mediaFiles);
 
+    // Get progress (null if no media files in subtree)
+    const itemProgress = progressMap.get(item.id);
+    const progress =
+      itemProgress && itemProgress.percentage !== null ? itemProgress : null;
+
     return {
       id: item.id,
       name: item.name,
@@ -229,6 +433,7 @@ export async function getAllItems(): Promise<ItemResult<ItemWithArtwork[]>> {
       childCount: countDescendants(item.id),
       primaryMediaName,
       mediaIconType,
+      progress,
     };
   });
 
@@ -304,6 +509,12 @@ export async function getDescendants(
     items.map((item) => ({ id: item.id, parentId: item.parentId }))
   );
 
+  // Build progress map for all items (single query for efficiency)
+  const progressMap = await buildDescendantProgressMap(
+    session.user.id,
+    items.map((i) => i.id)
+  );
+
   const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => {
     const primaryArtwork = item.files.find(
       (f) => f.fileType === "ARTWORK" && f.isPrimary
@@ -330,6 +541,11 @@ export async function getDescendants(
     // Determine media icon type: film (all video), music (all audio), mixed (both)
     const mediaIconType = getMediaIconType(mediaFiles);
 
+    // Get progress (null if no media files in subtree)
+    const itemProgress = progressMap.get(item.id);
+    const progress =
+      itemProgress && itemProgress.percentage !== null ? itemProgress : null;
+
     return {
       id: item.id,
       name: item.name,
@@ -353,6 +569,7 @@ export async function getDescendants(
       childCount: countDescendants(item.id),
       primaryMediaName,
       mediaIconType,
+      progress,
     };
   });
 

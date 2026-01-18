@@ -1,7 +1,7 @@
 /**
  * Grid item card component with Feature222 aesthetic.
  * Full background image with dark overlay, content overlaid at bottom.
- * Displays name, description, and file counts.
+ * Displays name, description, and progress.
  */
 
 "use client";
@@ -9,13 +9,12 @@
 import React, { forwardRef, useCallback, HTMLAttributes } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
-import { Folder, GripVertical, Play } from "lucide-react";
+import { Folder, GripVertical } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useImageLoaded } from "@/hooks/use-image-loaded";
 import { useLazyImage } from "@/hooks/use-lazy-image";
-import { ItemStats } from "@/components/items/item-stats";
 import { SyncIcon } from "@/components/items/sync-badge";
-import type { FileCounts, SyncStatus } from "@/lib/types";
+import type { SyncStatus } from "@/lib/types";
 
 export interface GridItemProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -35,18 +34,16 @@ export interface GridItemProps extends Omit<
   showArtwork?: boolean;
   /** Whether to show description. Defaults to true. Hidden in edit mode. */
   showDescription?: boolean;
-  /** Whether to show file/child counts. Defaults to true. Hidden in edit mode. */
-  showCounts?: boolean;
-  /** File counts by type for display. */
-  fileCounts?: FileCounts;
-  /** Number of child items (subfolders). */
-  childCount?: number;
   /** Sync status for displaying indicator. */
   syncStatus?: SyncStatus;
-  /** Primary media filename for "now playing" display. */
-  primaryMediaName?: string | null;
-  /** Media icon type: film (all video), music (all audio), mixed (both). */
-  mediaIconType?: "film" | "music" | "mixed" | null;
+  /** Progress percentage (0-100) for item and descendants, null if no media files. */
+  progressPercentage?: number | null;
+  /** Number of watched (>90% complete) media files. */
+  watchedCount?: number;
+  /** Total number of media files (item + descendants). */
+  totalMediaCount?: number;
+  /** Total number of items (item + descendants) for progress label. */
+  totalItems?: number;
   /** Load image immediately without waiting for viewport. */
   priority?: boolean;
   /** Whether the item is selected (for bulk operations). */
@@ -70,12 +67,11 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       artworkId,
       showArtwork = true,
       showDescription = true,
-      showCounts = true,
-      fileCounts,
-      childCount,
       syncStatus,
-      primaryMediaName,
-      mediaIconType,
+      progressPercentage,
+      watchedCount,
+      totalMediaCount,
+      totalItems,
       priority = false,
       isSelected,
       onSelectChange,
@@ -114,8 +110,11 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
     } = useImageLoaded(artworkSrc);
     const shouldShowArtwork = showArtwork && artworkId && !imageError;
     const shouldShowDescription = showDescription && description;
-    const shouldShowCounts = showCounts;
-    const shouldShowPrimaryMedia = primaryMediaName && !handleProps; // Hide in edit mode
+    const shouldShowWatched =
+      watchedCount !== undefined &&
+      totalMediaCount !== undefined &&
+      totalMediaCount > 0 &&
+      !handleProps; // Hide in edit mode
 
     // In select mode, clicking the item toggles selection instead of navigation
     const isSelectMode = !!onSelectChange;
@@ -269,24 +268,29 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
             </p>
           )}
 
-          {/* Primary media indicator - subtle inline display */}
-          {shouldShowPrimaryMedia && (
-            <span className="mt-1.5 flex items-center gap-1.5 text-sm text-white/60">
-              <Play className="size-3 shrink-0 fill-current opacity-70" />
-              <span className="truncate">{primaryMediaName}</span>
+          {/* Watched count indicator */}
+          {shouldShowWatched && (
+            <span className="mt-1.5 text-sm text-white/60">
+              {watchedCount}/{totalMediaCount} watched
+              {totalItems !== undefined && totalItems > totalMediaCount && (
+                <>
+                  {" "}
+                  (of {totalItems} {totalItems === 1 ? "item" : "items"})
+                </>
+              )}
             </span>
           )}
 
-          {/* Stats row */}
-          {shouldShowCounts && (
-            <div className="mt-3" data-testid="grid-item-stats">
-              <ItemStats
-                childCount={childCount}
-                fileCounts={fileCounts}
-                mediaIconType={mediaIconType}
-                variant="overlay"
-                showEmpty
-              />
+          {/* Progress bar - only in view mode (not in edit mode) */}
+          {progressPercentage !== null && !handleProps && (
+            <div className="mt-2">
+              <div className="h-1 w-full overflow-hidden rounded-full bg-white/20">
+                <div
+                  data-testid="grid-item-progress-bar"
+                  className="h-full rounded-full bg-white transition-all duration-300"
+                  style={{ width: `${progressPercentage}%` }}
+                />
+              </div>
             </div>
           )}
         </div>

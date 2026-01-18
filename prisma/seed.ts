@@ -34,6 +34,7 @@
  *   - SEED_MAX_EPISODES: Max episodes per season (0 = unlimited, default: 10)
  *   - SEED_RANDOM_SEED: Seed for reproducible random file counts (default: random)
  *   - SEED_GROUPED_STRUCTURE: Create Movies/TV Shows parent folders (default: true)
+ *   - SEED_SIMULATE_PLAYBACK: Generate playback progress data (default: true)
  *
  * Grouped Structure (default):
  *   When SEED_GROUPED_STRUCTURE=true (default), creates pinned parent folders:
@@ -62,6 +63,8 @@ import {
   SEED_SKIP_ARTWORK,
   SEED_QUIET,
   SEED_GROUPED_STRUCTURE,
+  SEED_SIMULATE_PLAYBACK,
+  PLAYBACK_DURATIONS,
   getEffectiveMovieIds,
   getEffectiveTVShowIds,
   getEffectiveSeedUsers,
@@ -499,6 +502,43 @@ async function attachRandomFiles(
           : "episode.mp4"
         : `media-${i + 1}.mp4`;
 
+    // Generate realistic playback data for progress bar testing
+    let playbackDuration: number | null = null;
+    let playbackPosition: number | null = null;
+
+    if (SEED_SIMULATE_PLAYBACK) {
+      const durationRange =
+        level === "movie"
+          ? PLAYBACK_DURATIONS.movie
+          : PLAYBACK_DURATIONS.episode;
+
+      playbackDuration = Math.floor(
+        durationRange.min + random() * (durationRange.max - durationRange.min)
+      );
+
+      // Simulate varying watch states using seeded random
+      const watchState = random();
+      if (watchState < 0.25) {
+        // Unwatched (25%)
+        playbackPosition = null;
+      } else if (watchState < 0.5) {
+        // Partially watched 30-50% (25%)
+        playbackPosition = Math.floor(
+          playbackDuration * (0.3 + random() * 0.2)
+        );
+      } else if (watchState < 0.75) {
+        // Almost done 70-85%, below 90% threshold (25%)
+        playbackPosition = Math.floor(
+          playbackDuration * (0.7 + random() * 0.15)
+        );
+      } else {
+        // Complete 91-100% (25%)
+        playbackPosition = Math.floor(
+          playbackDuration * (0.91 + random() * 0.09)
+        );
+      }
+    }
+
     await prisma.itemFile.create({
       data: {
         itemId,
@@ -510,6 +550,8 @@ async function attachRandomFiles(
         isPrimary: i === 0,
         isHero: false,
         syncStatus: SyncStatus.SYNCED,
+        playbackDuration,
+        playbackPosition,
       },
     });
   }
@@ -1464,6 +1506,33 @@ async function main(): Promise<void> {
       );
       if (!SEED_SKIP_DRIVE) {
         log(`   📁 Content synced to Google Drive`);
+
+        // Run auto-sync to catch any pre-existing files and set changePageToken
+        try {
+          const { syncByUserId } = await import("@/lib/google-drive-sync");
+          const syncResult = await syncByUserId(demoUserId);
+          if (syncResult.success) {
+            const created = syncResult.itemsCreated ?? 0;
+            const updated = syncResult.itemsUpdated ?? 0;
+            if (created > 0 || updated > 0) {
+              log(
+                `   🔄 Auto-sync complete: ${created} created, ${updated} updated`
+              );
+            } else {
+              log(`   🔄 Auto-sync complete: no additional changes`);
+            }
+          } else {
+            console.warn(
+              `   ⚠️ Auto-sync warning: ${syncResult.error} (items created locally)`
+            );
+          }
+        } catch (syncError) {
+          console.warn(
+            "   ⚠️ Auto-sync failed (items created locally):",
+            syncError instanceof Error ? syncError.message : syncError
+          );
+          // Don't fail seed - user can sync manually later
+        }
       }
       if (SEED_GROUPED_STRUCTURE) {
         log(`   📌 Movies and TV Shows folders pinned to sidebar`);

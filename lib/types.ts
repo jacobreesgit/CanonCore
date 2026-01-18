@@ -7,6 +7,8 @@ import type { UniqueIdentifier } from "@dnd-kit/core";
 import type { FileType, SyncStatus } from "@prisma/client";
 // Re-export SyncStatus enum for client-side use
 export { SyncStatus } from "@prisma/client";
+// Re-export ItemProgress from progress-utils for convenience
+export type { ItemProgress } from "./progress-utils";
 
 /**
  * Database Item type (from Prisma).
@@ -56,10 +58,16 @@ export interface TreeItem {
   // File and child counts for stats display
   fileCounts?: FileCounts;
   childCount?: number;
-  // Primary media filename for "now playing" display
-  primaryMediaName?: string | null;
   // Media icon type: 'film' (all video), 'music' (all audio), 'mixed' (both)
   mediaIconType?: "film" | "music" | "mixed" | null;
+  /** Progress percentage (0-100) for item and descendants, null if no media */
+  progressPercentage?: number | null;
+  /** Number of watched (>90% complete) media files (item + descendants) */
+  watchedCount?: number;
+  /** Total number of media files (item + descendants) */
+  totalMediaCount?: number;
+  /** Total number of items (item + descendants) for progress label */
+  totalItems?: number;
 }
 
 export type TreeItems = TreeItem[];
@@ -191,6 +199,8 @@ export interface ItemWithArtwork extends Item {
   primaryMediaName: string | null;
   /** Media icon type: 'film' (all video), 'music' (all audio), 'mixed' (both) */
   mediaIconType: "film" | "music" | "mixed" | null;
+  /** Progress data for item and all descendants (null if no media files) */
+  progress: import("./progress-utils").ItemProgress | null;
 }
 
 /**

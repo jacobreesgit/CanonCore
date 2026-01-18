@@ -13,9 +13,14 @@ import { ItemsView } from "./items-view";
 import { ItemHero } from "./item-hero";
 import { MediaOverlay } from "@/components/media/media-overlay";
 import { updatePlaybackPosition } from "@/lib/item-file-actions";
-import type { ItemWithArtwork, SerializedItemFile } from "@/lib/types";
+import type {
+  ItemWithArtwork,
+  SerializedItemFile,
+  ItemProgress,
+} from "@/lib/types";
 import { getItems } from "@/lib/item-actions";
 import { useHeroCollapse } from "@/hooks/use-hero-collapse";
+import { formatProgressLabel } from "@/lib/progress-utils";
 
 interface ItemDetailClientProps {
   /** Current item being viewed. */
@@ -34,6 +39,8 @@ interface ItemDetailClientProps {
   };
   /** Primary artwork ID for hero background. */
   artworkId?: string | null;
+  /** Progress data for this item (from server). */
+  itemProgress?: ItemProgress | null;
   /** Whether user has Google Drive connected (shows Upload button). */
   hasDriveConnection?: boolean;
 }
@@ -48,6 +55,7 @@ export function ItemDetailClient({
   childItems: initialChildItems,
   files,
   artworkId,
+  itemProgress,
   hasDriveConnection = false,
 }: ItemDetailClientProps) {
   const router = useRouter();
@@ -159,12 +167,9 @@ export function ItemDetailClient({
         artworkId={heroArtworkId}
         hasMedia={hasMedia}
         hasProgress={hasProgress}
-        mediaCount={files?.media.length ?? 0}
-        artworkCount={files?.artwork.length ?? 0}
-        subtitleCount={files?.subtitles.length ?? 0}
-        childCount={childItems.length}
         primaryMediaName={primaryMedia?.filename ?? null}
-        primaryMediaMimeType={primaryMedia?.mimeType ?? null}
+        progressPercentage={itemProgress?.percentage ?? null}
+        progressLabel={itemProgress ? formatProgressLabel(itemProgress) : null}
         onPlay={handlePlay}
         isCollapsed={isCollapsed}
         onCollapse={toggleCollapse}

@@ -19,7 +19,11 @@ export default defineConfig({
   },
 
   projects: [
-    { name: "setup", testMatch: /global\.setup\.ts/ },
+    {
+      name: "setup",
+      testMatch: /global\.setup\.ts/,
+      timeout: 5 * 60 * 1000, // 5 minutes for large file uploads
+    },
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },

@@ -13,6 +13,8 @@
  *   - SEED_QUIET: Suppress progress output (default: false)
  *   - SEED_MOVIE_COUNT: Limit number of movies (0 = all, default: 0)
  *   - SEED_SHOW_COUNT: Limit number of TV shows (0 = all, default: 0)
+ *   - SEED_MOVIE_IDS: Comma-separated TMDB movie IDs to seed (overrides default list)
+ *   - SEED_SHOW_IDS: Comma-separated TMDB show IDs to seed (overrides default list)
  *   - SEED_USER_EMAIL: Override to seed single user only (default: null)
  *   - SEED_GROUPED_STRUCTURE: Create Movies/TV Shows parent folders (default: true)
  *   - TMDB_API_DELAY_MS is hardcoded at 100ms for rate limiting
@@ -69,9 +71,29 @@ export const SEED_SHOW_COUNT = parseInt(process.env.SEED_SHOW_COUNT || "0", 10);
 /** Override to seed single user only. */
 export const SEED_USER_EMAIL = process.env.SEED_USER_EMAIL || null;
 
+/** Specific movie IDs to seed (overrides default list). */
+export const SEED_MOVIE_IDS = process.env.SEED_MOVIE_IDS
+  ? process.env.SEED_MOVIE_IDS.split(",").map((id) => parseInt(id.trim(), 10))
+  : null;
+
+/** Specific TV show IDs to seed (overrides default list). */
+export const SEED_SHOW_IDS = process.env.SEED_SHOW_IDS
+  ? process.env.SEED_SHOW_IDS.split(",").map((id) => parseInt(id.trim(), 10))
+  : null;
+
 /** Enable grouped folder structure (Movies/, TV Shows/) instead of flat. */
 export const SEED_GROUPED_STRUCTURE =
   process.env.SEED_GROUPED_STRUCTURE?.toLowerCase() !== "false";
+
+/** Enable playback progress simulation for progress bar testing. */
+export const SEED_SIMULATE_PLAYBACK =
+  process.env.SEED_SIMULATE_PLAYBACK?.toLowerCase() !== "false";
+
+/** Duration ranges in seconds for different content types. */
+export const PLAYBACK_DURATIONS = {
+  movie: { min: 5400, max: 10800 }, // 1.5-3 hours
+  episode: { min: 1800, max: 4200 }, // 30-70 minutes
+};
 
 // =============================================================================
 // Doctor Who Special Handling
@@ -165,24 +187,26 @@ export const PROTECTED_FOLDERS = ["Breaking Bad", "CanonCore"];
 
 /**
  * Returns effective movie IDs based on flags.
- * Respects SEED_ONLY_SHOWS and SEED_MOVIE_COUNT.
+ * Respects SEED_ONLY_SHOWS, SEED_MOVIE_IDS, and SEED_MOVIE_COUNT.
  *
  * @returns Array of movie TMDB IDs to seed
  */
 export function getEffectiveMovieIds(): number[] {
   if (SEED_ONLY_SHOWS) return [];
+  if (SEED_MOVIE_IDS) return SEED_MOVIE_IDS;
   if (SEED_MOVIE_COUNT > 0) return MOVIE_IDS.slice(0, SEED_MOVIE_COUNT);
   return MOVIE_IDS;
 }
 
 /**
  * Returns effective TV show IDs based on flags.
- * Respects SEED_ONLY_MOVIES and SEED_SHOW_COUNT.
+ * Respects SEED_ONLY_MOVIES, SEED_SHOW_IDS, and SEED_SHOW_COUNT.
  *
  * @returns Array of TV show TMDB IDs to seed
  */
 export function getEffectiveTVShowIds(): number[] {
   if (SEED_ONLY_MOVIES) return [];
+  if (SEED_SHOW_IDS) return SEED_SHOW_IDS;
   if (SEED_SHOW_COUNT > 0) return TV_SHOW_IDS.slice(0, SEED_SHOW_COUNT);
   return TV_SHOW_IDS;
 }

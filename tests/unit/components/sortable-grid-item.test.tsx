@@ -89,17 +89,4 @@ describe("SortableGridItem", () => {
     // In edit mode (SortableGridItem), showArtwork is false
     expect(container.querySelector("img")).not.toBeInTheDocument();
   });
-
-  it("hides counts in edit mode (showCounts=false)", () => {
-    renderWithDnd(
-      <SortableGridItem
-        id="item-1"
-        name="Test"
-        fileCounts={{ media: 5, artwork: 2, subtitles: 1 }}
-        childCount={3}
-      />
-    );
-    // showCounts is false in edit mode - ItemStats should not render
-    expect(screen.queryByTestId("item-stats")).not.toBeInTheDocument();
-  });
 });

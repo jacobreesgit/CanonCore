@@ -76,11 +76,23 @@ export function itemsToTree(items: ItemInput[]): TreeItem[] {
       // Include file and child counts for stats display
       fileCounts: "fileCounts" in item ? item.fileCounts : undefined,
       childCount: "childCount" in item ? item.childCount : undefined,
-      // Include primary media name for "now playing" display
-      primaryMediaName:
-        "primaryMediaName" in item ? item.primaryMediaName : undefined,
       // Include media icon type for audio/video/mixed display
       mediaIconType: "mediaIconType" in item ? item.mediaIconType : undefined,
+      // Include progress data for display
+      progressPercentage:
+        "progress" in item ? (item.progress?.percentage ?? null) : null,
+      watchedCount:
+        "progress" in item
+          ? (item.progress?.watchedItems ?? undefined)
+          : undefined,
+      totalMediaCount:
+        "progress" in item
+          ? (item.progress?.itemsWithMedia ?? undefined)
+          : undefined,
+      totalItems:
+        "progress" in item
+          ? (item.progress?.totalItems ?? undefined)
+          : undefined,
     });
   }
 

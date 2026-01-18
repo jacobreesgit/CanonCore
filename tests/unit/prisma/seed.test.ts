@@ -446,5 +446,108 @@ Generated for testing purposes.
         expect(user.name.length).toBeGreaterThan(0);
       }
     });
+
+    it("exports playback simulation config", async () => {
+      const config = await import("../../../prisma/seed-config");
+
+      // SEED_SIMULATE_PLAYBACK should be a boolean
+      expect(typeof config.SEED_SIMULATE_PLAYBACK).toBe("boolean");
+
+      // PLAYBACK_DURATIONS should have movie and episode ranges
+      expect(config.PLAYBACK_DURATIONS).toBeDefined();
+      expect(config.PLAYBACK_DURATIONS.movie).toBeDefined();
+      expect(config.PLAYBACK_DURATIONS.episode).toBeDefined();
+    });
+  });
+
+  describe("playback simulation", () => {
+    it("generates movie duration within expected range", async () => {
+      const { PLAYBACK_DURATIONS } =
+        await import("../../../prisma/seed-config");
+
+      // Movie duration should be 1.5-3 hours (5400-10800 seconds)
+      expect(PLAYBACK_DURATIONS.movie.min).toBe(5400);
+      expect(PLAYBACK_DURATIONS.movie.max).toBe(10800);
+
+      // Test that a sample duration is in range
+      const sampleDuration = 7200; // 2 hours
+      expect(sampleDuration).toBeGreaterThanOrEqual(
+        PLAYBACK_DURATIONS.movie.min
+      );
+      expect(sampleDuration).toBeLessThanOrEqual(PLAYBACK_DURATIONS.movie.max);
+    });
+
+    it("generates episode duration within expected range", async () => {
+      const { PLAYBACK_DURATIONS } =
+        await import("../../../prisma/seed-config");
+
+      // Episode duration should be 30-70 minutes (1800-4200 seconds)
+      expect(PLAYBACK_DURATIONS.episode.min).toBe(1800);
+      expect(PLAYBACK_DURATIONS.episode.max).toBe(4200);
+
+      // Test that a sample duration is in range
+      const sampleDuration = 2700; // 45 minutes
+      expect(sampleDuration).toBeGreaterThanOrEqual(
+        PLAYBACK_DURATIONS.episode.min
+      );
+      expect(sampleDuration).toBeLessThanOrEqual(
+        PLAYBACK_DURATIONS.episode.max
+      );
+    });
+
+    it("creates varied watch states based on random threshold", () => {
+      // Simulate the watch state distribution from seed.ts
+      // With seeded random, should get reproducible distribution:
+      // ~25% unwatched (< 0.25), ~25% partial (< 0.5), ~25% almost done (< 0.75), ~25% complete
+
+      function getWatchState(
+        watchState: number,
+        duration: number
+      ): { position: number | null; isComplete: boolean } {
+        let playbackPosition: number | null;
+
+        if (watchState < 0.25) {
+          // Unwatched (25%)
+          playbackPosition = null;
+        } else if (watchState < 0.5) {
+          // Partially watched 30-50% (25%)
+          playbackPosition = Math.floor(duration * 0.4); // ~40%
+        } else if (watchState < 0.75) {
+          // Almost done 70-85%, below 90% threshold (25%)
+          playbackPosition = Math.floor(duration * 0.8); // ~80%
+        } else {
+          // Complete 91-100% (25%)
+          playbackPosition = Math.floor(duration * 0.95); // ~95%
+        }
+
+        const isComplete =
+          playbackPosition !== null && playbackPosition >= duration * 0.9;
+
+        return { position: playbackPosition, isComplete };
+      }
+
+      const duration = 7200; // 2 hours
+
+      // Test each quartile
+      const unwatched = getWatchState(0.1, duration);
+      expect(unwatched.position).toBeNull();
+      expect(unwatched.isComplete).toBe(false);
+
+      const partial = getWatchState(0.3, duration);
+      expect(partial.position).not.toBeNull();
+      expect(partial.position).toBeLessThan(duration * 0.5);
+      expect(partial.isComplete).toBe(false);
+
+      const almostDone = getWatchState(0.6, duration);
+      expect(almostDone.position).not.toBeNull();
+      expect(almostDone.position).toBeGreaterThanOrEqual(duration * 0.7);
+      expect(almostDone.position).toBeLessThan(duration * 0.9);
+      expect(almostDone.isComplete).toBe(false);
+
+      const complete = getWatchState(0.8, duration);
+      expect(complete.position).not.toBeNull();
+      expect(complete.position).toBeGreaterThanOrEqual(duration * 0.9);
+      expect(complete.isComplete).toBe(true);
+    });
   });
 });

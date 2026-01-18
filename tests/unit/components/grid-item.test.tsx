@@ -1,6 +1,6 @@
 /**
  * Unit tests for GridItem component.
- * Tests artwork display, file counts, and accessibility.
+ * Tests artwork display, progress, and accessibility.
  */
 
 import { describe, it, expect, vi } from "vitest";
@@ -76,154 +76,6 @@ describe("GridItem", () => {
 
       // Should not render hidden img
       expect(container.querySelector("img")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("file counts", () => {
-    it("should render media count when fileCounts.media > 0", () => {
-      render(
-        <GridItem
-          id="1"
-          name="Test Item"
-          fileCounts={{ media: 5, artwork: 0, subtitles: 0 }}
-        />
-      );
-
-      const mediaCount = screen.getByTestId("media-count");
-      expect(mediaCount).toBeInTheDocument();
-      expect(mediaCount).toHaveTextContent("5");
-    });
-
-    it("should render artwork count when fileCounts.artwork > 0", () => {
-      render(
-        <GridItem
-          id="1"
-          name="Test Item"
-          fileCounts={{ media: 0, artwork: 3, subtitles: 0 }}
-        />
-      );
-
-      const artworkCount = screen.getByTestId("artwork-count");
-      expect(artworkCount).toBeInTheDocument();
-      expect(artworkCount).toHaveTextContent("3");
-    });
-
-    it("should render subtitle count when fileCounts.subtitles > 0", () => {
-      render(
-        <GridItem
-          id="1"
-          name="Test Item"
-          fileCounts={{ media: 0, artwork: 0, subtitles: 2 }}
-        />
-      );
-
-      const subtitleCount = screen.getByTestId("subtitle-count");
-      expect(subtitleCount).toBeInTheDocument();
-      expect(subtitleCount).toHaveTextContent("2");
-    });
-
-    it("should render all counts when all > 0", () => {
-      render(
-        <GridItem
-          id="1"
-          name="Test Item"
-          fileCounts={{ media: 4, artwork: 2, subtitles: 1 }}
-        />
-      );
-
-      expect(screen.getByTestId("media-count")).toHaveTextContent("4");
-      expect(screen.getByTestId("artwork-count")).toHaveTextContent("2");
-      expect(screen.getByTestId("subtitle-count")).toHaveTextContent("1");
-    });
-
-    it("should not render zero counts", () => {
-      render(
-        <GridItem
-          id="1"
-          name="Test Item"
-          fileCounts={{ media: 0, artwork: 0, subtitles: 0 }}
-        />
-      );
-
-      expect(screen.queryByTestId("media-count")).not.toBeInTheDocument();
-      expect(screen.queryByTestId("artwork-count")).not.toBeInTheDocument();
-      expect(screen.queryByTestId("subtitle-count")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("child count", () => {
-    it("should render child count when childCount > 0", () => {
-      render(<GridItem id="1" name="Test Item" childCount={7} />);
-
-      const childCount = screen.getByTestId("child-count");
-      expect(childCount).toBeInTheDocument();
-      expect(childCount).toHaveTextContent("7");
-    });
-
-    it("should not render child count when childCount is 0", () => {
-      render(<GridItem id="1" name="Test Item" childCount={0} />);
-
-      expect(screen.queryByTestId("child-count")).not.toBeInTheDocument();
-    });
-
-    it("should not render child count when undefined", () => {
-      render(<GridItem id="1" name="Test Item" />);
-
-      expect(screen.queryByTestId("child-count")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("showCounts prop", () => {
-    it("should show stats section by default", () => {
-      render(
-        <GridItem
-          id="1"
-          name="Test Item"
-          fileCounts={{ media: 1, artwork: 0, subtitles: 0 }}
-        />
-      );
-
-      expect(screen.getByTestId("grid-item-stats")).toBeInTheDocument();
-    });
-
-    it("should hide stats section when showCounts is false", () => {
-      render(
-        <GridItem
-          id="1"
-          name="Test Item"
-          fileCounts={{ media: 1, artwork: 0, subtitles: 0 }}
-          showCounts={false}
-        />
-      );
-
-      expect(screen.queryByTestId("grid-item-stats")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("empty state", () => {
-    it("should show 'Empty' when no files and no children", () => {
-      render(
-        <GridItem
-          id="1"
-          name="Test Item"
-          fileCounts={{ media: 0, artwork: 0, subtitles: 0 }}
-          childCount={0}
-        />
-      );
-
-      expect(screen.getByTestId("empty-state")).toHaveTextContent("Empty");
-    });
-
-    it("should show 'Empty' when fileCounts is undefined", () => {
-      render(<GridItem id="1" name="Test Item" />);
-
-      expect(screen.getByTestId("empty-state")).toHaveTextContent("Empty");
-    });
-
-    it("should not show 'Empty' when has content", () => {
-      render(<GridItem id="1" name="Test Item" childCount={1} />);
-
-      expect(screen.queryByTestId("empty-state")).not.toBeInTheDocument();
     });
   });
 
@@ -365,30 +217,33 @@ describe("GridItem", () => {
     });
   });
 
-  describe("primary media", () => {
-    it("should show primary media name when provided and not in edit mode", () => {
-      render(<GridItem id="1" name="Test" primaryMediaName="movie.mkv" />);
-      expect(screen.getByText("movie.mkv")).toBeInTheDocument();
+  describe("watched count", () => {
+    it("should show watched count when provided and not in edit mode", () => {
+      render(
+        <GridItem id="1" name="Test" watchedCount={3} totalMediaCount={10} />
+      );
+      expect(screen.getByText("3/10 watched")).toBeInTheDocument();
     });
 
-    it("should hide primary media name in edit mode (when handleProps present)", () => {
+    it("should hide watched count in edit mode (when handleProps present)", () => {
       const handleProps = { onPointerDown: vi.fn() };
       render(
         <GridItem
           id="1"
           name="Test"
-          primaryMediaName="movie.mkv"
+          watchedCount={3}
+          totalMediaCount={10}
           handleProps={handleProps}
         />
       );
-      expect(screen.queryByText("movie.mkv")).not.toBeInTheDocument();
+      expect(screen.queryByText("3/10 watched")).not.toBeInTheDocument();
     });
 
-    it("should show play icon with primary media name", () => {
-      render(<GridItem id="1" name="Test" primaryMediaName="movie.mkv" />);
-      // Play icon is rendered with the primary media name
-      const mediaContainer = screen.getByText("movie.mkv").closest("span");
-      expect(mediaContainer).toBeInTheDocument();
+    it("should not show watched count when totalMediaCount is 0", () => {
+      render(
+        <GridItem id="1" name="Test" watchedCount={0} totalMediaCount={0} />
+      );
+      expect(screen.queryByText(/watched/)).not.toBeInTheDocument();
     });
   });
 

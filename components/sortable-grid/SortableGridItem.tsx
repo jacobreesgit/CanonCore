@@ -13,7 +13,6 @@ import { CSS } from "@dnd-kit/utilities";
 
 import { GridItem, GridItemProps } from "./GridItem";
 import { ItemContextMenu } from "@/components/items/item-context-menu";
-import type { FileCounts } from "@/lib/types";
 
 interface SortableGridItemProps extends Omit<GridItemProps, "handleProps"> {
   id: UniqueIdentifier;
@@ -24,10 +23,6 @@ interface SortableGridItemProps extends Omit<GridItemProps, "handleProps"> {
   artworkId?: string | null;
   /** Google Drive folder ID (if synced). */
   driveFileId?: string | null;
-  /** File counts by type for display. */
-  fileCounts?: FileCounts;
-  /** Number of child items (subfolders). */
-  childCount?: number;
   /** Whether user has Google Drive connected. */
   hasDriveConnection?: boolean;
   /** Whether this item is pinned to the sidebar */
@@ -52,8 +47,6 @@ interface SortableGridItemProps extends Omit<GridItemProps, "handleProps"> {
  * @param onDelete - Callback to delete the item
  * @param artworkId - Artwork file ID for thumbnail
  * @param driveFileId - Google Drive folder ID (shows "Open in Drive" if set)
- * @param fileCounts - File counts by type
- * @param childCount - Number of child items
  */
 export function SortableGridItem({
   id,
@@ -62,8 +55,6 @@ export function SortableGridItem({
   onDelete,
   artworkId,
   driveFileId,
-  fileCounts,
-  childCount,
   hasDriveConnection = false,
   isPinned = false,
   onPin,
@@ -109,10 +100,7 @@ export function SortableGridItem({
           ...listeners,
         }}
         artworkId={artworkId}
-        fileCounts={fileCounts}
-        childCount={childCount}
         showArtwork={false}
-        showCounts={false}
         isSelected={isSelected}
         onSelectChange={onSelectChange}
         {...props}

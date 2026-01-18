@@ -1,10 +1,12 @@
 - public user profiles and your user profile... what should show
 - public and explore "item templates" make a copy/fork, you can "add" and it adds all the stuff to your sftp apart from subtitles and media files
 
+- Hero 226 carousel --> redo item hero
+
 - vercel skills
 - one last look - repeat until 10/10
 
-- seeding --> best for portfolio and also figure out best screenshots and copy for projects portfolio
+- seeding --> best for portfolio and also figure out best screenshots and copy for projects portfolio. for seeding, things with
 
 - None:
 - that design skill tweet - upload bit
