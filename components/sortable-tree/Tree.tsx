@@ -88,8 +88,11 @@ export function Tree({
           driveFileId,
           fileCounts,
           childCount,
-          primaryMediaName,
           mediaIconType,
+          progressPercentage,
+          watchedCount,
+          totalMediaCount,
+          totalItems,
         }) => (
           <ItemContextMenu
             key={id}
@@ -125,8 +128,11 @@ export function Tree({
               onClick={() => onItemClick?.(String(id))}
               showDragHandle={false}
               fileCounts={fileCounts}
-              primaryMediaName={primaryMediaName}
               mediaIconType={mediaIconType}
+              progressPercentage={progressPercentage}
+              watchedCount={watchedCount}
+              totalMediaCount={totalMediaCount}
+              totalItems={totalItems}
             />
           </ItemContextMenu>
         )

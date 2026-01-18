@@ -8,9 +8,8 @@
 import React, { forwardRef, HTMLAttributes } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
-import { ChevronRight, GripVertical, Play } from "lucide-react";
+import { ChevronRight, GripVertical } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ItemStats } from "@/components/items/item-stats";
 import { SyncIcon } from "@/components/items/sync-badge";
 import type { FileCounts, SyncStatus } from "@/lib/types";
 
@@ -45,10 +44,16 @@ export interface TreeItemProps extends Omit<
   showStats?: boolean;
   /** Sync status for displaying indicator. */
   syncStatus?: SyncStatus;
-  /** Primary media filename for "now playing" display. */
-  primaryMediaName?: string | null;
   /** Media icon type: film (all video), music (all audio), mixed (both). */
   mediaIconType?: "film" | "music" | "mixed" | null;
+  /** Progress percentage (0-100) for item and descendants, null if no media files. */
+  progressPercentage?: number | null;
+  /** Number of watched (>90% complete) media files. */
+  watchedCount?: number;
+  /** Total number of media files (item + descendants). */
+  totalMediaCount?: number;
+  /** Total number of items (item + descendants) for progress label. */
+  totalItems?: number;
   /** Whether the item is selected (for bulk operations). */
   isSelected?: boolean;
   /** Callback when selection state changes. */
@@ -78,11 +83,11 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       showDragHandle = true,
       description,
       showDescription = true,
-      fileCounts,
-      showStats = true,
       syncStatus,
-      primaryMediaName,
-      mediaIconType,
+      progressPercentage,
+      watchedCount,
+      totalMediaCount,
+      totalItems,
       isSelected,
       onSelectChange,
       ...props
@@ -91,8 +96,11 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
   ) {
     const shouldShowDescription = showDescription && description;
     const shouldShowCheckbox = showDragHandle && onSelectChange;
-    const shouldShowStats = showStats && !showDragHandle;
-    const shouldShowPrimaryMedia = primaryMediaName && !showDragHandle; // Hide in edit mode
+    const shouldShowWatched =
+      watchedCount !== undefined &&
+      totalMediaCount !== undefined &&
+      totalMediaCount > 0 &&
+      !showDragHandle; // Hide in edit mode
 
     // In select mode, clicking the item toggles selection instead of navigation
     const isSelectMode = !!onSelectChange;
@@ -223,24 +231,31 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                       {description}
                     </span>
                   )}
-                  {/* Primary media indicator */}
-                  {shouldShowPrimaryMedia && (
-                    <span className="text-muted-foreground mt-0.5 flex items-center gap-1 text-xs">
-                      <Play className="size-2.5 shrink-0 fill-current opacity-60" />
-                      <span className="truncate opacity-80">
-                        {primaryMediaName}
-                      </span>
+                  {/* Watched count indicator */}
+                  {shouldShowWatched && (
+                    <span className="text-muted-foreground mt-0.5 text-xs">
+                      {watchedCount}/{totalMediaCount} watched
+                      {totalItems !== undefined &&
+                        totalItems > totalMediaCount && (
+                          <>
+                            {" "}
+                            (of {totalItems}{" "}
+                            {totalItems === 1 ? "item" : "items"})
+                          </>
+                        )}
                     </span>
                   )}
-                  {shouldShowStats && (
-                    <ItemStats
-                      childCount={childCount}
-                      fileCounts={fileCounts}
-                      mediaIconType={mediaIconType}
-                      variant="muted"
-                      format="text"
-                      className="mt-0.5 text-xs"
-                    />
+                  {/* Progress bar - only in view mode */}
+                  {progressPercentage !== null && (
+                    <div className="mt-1">
+                      <div className="bg-muted-foreground/20 h-1 w-full overflow-hidden rounded-full">
+                        <div
+                          data-testid="tree-item-progress-bar"
+                          className="bg-primary h-full rounded-full transition-all duration-300"
+                          style={{ width: `${progressPercentage}%` }}
+                        />
+                      </div>
+                    </div>
                   )}
                 </>
               )}

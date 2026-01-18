@@ -131,6 +131,7 @@ describe("ItemsView", () => {
     childCount: 0,
     primaryMediaName: null,
     mediaIconType: null,
+    progress: null,
   });
 
   const mockItems: ItemWithArtwork[] = [
