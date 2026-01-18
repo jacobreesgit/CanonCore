@@ -1,7 +1,5 @@
-- public user profiles and your user profile... what should show
-- public and explore "item templates" make a copy/fork, you can "add" and it adds all the stuff to your sftp apart from subtitles and media files
-
-- Hero 226 carousel --> redo item hero
+- Hero 226 carousel --> redo item hero. item hero during loading too
+- profile pic for my items one (facebook profile pic and cover photo vibes)
 
 - vercel skills
 - one last look - repeat until 10/10

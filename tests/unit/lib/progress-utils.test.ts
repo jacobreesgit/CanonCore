@@ -9,6 +9,7 @@ import {
   isFileComplete,
   calculateProgress,
   formatProgressLabel,
+  findFirstIncompleteItem,
   COMPLETION_THRESHOLD,
   type ItemProgress,
 } from "@/lib/progress-utils";
@@ -300,6 +301,226 @@ describe("progress-utils", () => {
         totalItems: 2, // parent + 1 child
       };
       expect(formatProgressLabel(progress)).toBe("(2 items)");
+    });
+  });
+
+  describe("findFirstIncompleteItem", () => {
+    it("returns null for empty array", () => {
+      const result = findFirstIncompleteItem([]);
+      expect(result).toBeNull();
+    });
+
+    it("returns null when all items are complete", () => {
+      const items = [
+        {
+          id: "1",
+          order: 0,
+          parentId: null,
+          hasPrimaryMedia: true,
+          position: 95,
+          duration: 100,
+        },
+        {
+          id: "2",
+          order: 1,
+          parentId: null,
+          hasPrimaryMedia: true,
+          position: 100,
+          duration: 100,
+        },
+      ];
+      expect(findFirstIncompleteItem(items)).toBeNull();
+    });
+
+    it("returns null when no items have media", () => {
+      const items = [
+        {
+          id: "1",
+          order: 0,
+          parentId: null,
+          hasPrimaryMedia: false,
+          position: null,
+          duration: null,
+        },
+      ];
+      expect(findFirstIncompleteItem(items)).toBeNull();
+    });
+
+    it("returns first incomplete item in order", () => {
+      const items = [
+        {
+          id: "1",
+          order: 0,
+          parentId: null,
+          hasPrimaryMedia: true,
+          position: 95,
+          duration: 100,
+        }, // complete
+        {
+          id: "2",
+          order: 1,
+          parentId: null,
+          hasPrimaryMedia: true,
+          position: 50,
+          duration: 100,
+        }, // incomplete
+        {
+          id: "3",
+          order: 2,
+          parentId: null,
+          hasPrimaryMedia: true,
+          position: 30,
+          duration: 100,
+        }, // incomplete
+      ];
+      expect(findFirstIncompleteItem(items)).toBe("2");
+    });
+
+    it("follows DFS order - visits children before siblings", () => {
+      // Tree structure:
+      // 1 (order 0, complete)
+      //   ├─ 1a (order 0, complete)
+      //   └─ 1b (order 1, incomplete) <- should be found
+      // 2 (order 1, incomplete) <- NOT this one
+      const items = [
+        {
+          id: "1",
+          order: 0,
+          parentId: null,
+          hasPrimaryMedia: true,
+          position: 95,
+          duration: 100,
+        },
+        {
+          id: "1a",
+          order: 0,
+          parentId: "1",
+          hasPrimaryMedia: true,
+          position: 95,
+          duration: 100,
+        },
+        {
+          id: "1b",
+          order: 1,
+          parentId: "1",
+          hasPrimaryMedia: true,
+          position: 50,
+          duration: 100,
+        },
+        {
+          id: "2",
+          order: 1,
+          parentId: null,
+          hasPrimaryMedia: true,
+          position: 50,
+          duration: 100,
+        },
+      ];
+      expect(findFirstIncompleteItem(items)).toBe("1b");
+    });
+
+    it("skips items without media in DFS traversal", () => {
+      // Tree: folder -> incomplete child
+      const items = [
+        {
+          id: "folder",
+          order: 0,
+          parentId: null,
+          hasPrimaryMedia: false,
+          position: null,
+          duration: null,
+        },
+        {
+          id: "child",
+          order: 0,
+          parentId: "folder",
+          hasPrimaryMedia: true,
+          position: 50,
+          duration: 100,
+        },
+      ];
+      expect(findFirstIncompleteItem(items)).toBe("child");
+    });
+
+    it("treats null position as incomplete (not started)", () => {
+      const items = [
+        {
+          id: "1",
+          order: 0,
+          parentId: null,
+          hasPrimaryMedia: true,
+          position: null,
+          duration: 100,
+        },
+      ];
+      expect(findFirstIncompleteItem(items)).toBe("1");
+    });
+
+    it("treats zero position as incomplete", () => {
+      const items = [
+        {
+          id: "1",
+          order: 0,
+          parentId: null,
+          hasPrimaryMedia: true,
+          position: 0,
+          duration: 100,
+        },
+      ];
+      expect(findFirstIncompleteItem(items)).toBe("1");
+    });
+
+    it("respects order field for sibling ordering", () => {
+      const items = [
+        {
+          id: "b",
+          order: 1,
+          parentId: null,
+          hasPrimaryMedia: true,
+          position: 50,
+          duration: 100,
+        },
+        {
+          id: "a",
+          order: 0,
+          parentId: null,
+          hasPrimaryMedia: true,
+          position: 50,
+          duration: 100,
+        },
+      ];
+      // Should return "a" because it has order 0, even though "b" appears first in array
+      expect(findFirstIncompleteItem(items)).toBe("a");
+    });
+
+    it("treats exactly 90% position as complete (threshold boundary)", () => {
+      const items = [
+        {
+          id: "1",
+          order: 0,
+          parentId: null,
+          hasPrimaryMedia: true,
+          position: 90,
+          duration: 100,
+        },
+      ];
+      // 90 >= 100 * 0.9 → 90 >= 90 → TRUE (complete)
+      expect(findFirstIncompleteItem(items)).toBeNull();
+    });
+
+    it("treats just below 90% as incomplete (threshold boundary)", () => {
+      const items = [
+        {
+          id: "1",
+          order: 0,
+          parentId: null,
+          hasPrimaryMedia: true,
+          position: 89.9,
+          duration: 100,
+        },
+      ];
+      // 89.9 >= 100 * 0.9 → 89.9 >= 90 → FALSE (incomplete)
+      expect(findFirstIncompleteItem(items)).toBe("1");
     });
   });
 });

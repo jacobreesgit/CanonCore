@@ -110,3 +110,68 @@ export function formatProgressLabel(progress: ItemProgress): string | null {
   const itemWord = progress.totalItems === 1 ? "item" : "items";
   return `(${progress.totalItems} ${itemWord})`;
 }
+
+/**
+ * Input type for findFirstIncompleteItem.
+ * Minimal data needed for DFS traversal and completion check.
+ */
+export interface IncompleteItemInput {
+  id: string;
+  order: number;
+  parentId: string | null;
+  hasPrimaryMedia: boolean;
+  position: number | null;
+  duration: number | null;
+}
+
+/**
+ * Finds the first incomplete item in DFS order.
+ * An item is incomplete if it has primary media that is < 90% watched.
+ * Items without media are skipped but their children are still traversed.
+ *
+ * @param items - Flat array of items with order, parentId, and media info
+ * @param startFromParentId - Optional parent ID to start traversal from (for filtering)
+ * @returns ID of first incomplete item, or null if all complete/no media
+ */
+export function findFirstIncompleteItem(
+  items: IncompleteItemInput[],
+  startFromParentId: string | null = null
+): string | null {
+  if (items.length === 0) return null;
+
+  // Build parent -> children map
+  const childrenMap = new Map<string | null, IncompleteItemInput[]>();
+  for (const item of items) {
+    const siblings = childrenMap.get(item.parentId) ?? [];
+    siblings.push(item);
+    childrenMap.set(item.parentId, siblings);
+  }
+
+  // Sort children by order at each level
+  for (const children of childrenMap.values()) {
+    children.sort((a, b) => a.order - b.order);
+  }
+
+  // DFS traversal
+  function traverse(parentId: string | null): string | null {
+    const children = childrenMap.get(parentId) ?? [];
+
+    for (const item of children) {
+      // Check if this item is incomplete
+      if (
+        item.hasPrimaryMedia &&
+        !isFileComplete(item.position, item.duration)
+      ) {
+        return item.id;
+      }
+
+      // Recurse into children (DFS - depth first)
+      const found = traverse(item.id);
+      if (found) return found;
+    }
+
+    return null;
+  }
+
+  return traverse(startFromParentId);
+}
