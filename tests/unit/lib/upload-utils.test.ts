@@ -662,7 +662,7 @@ describe("upload-utils", () => {
 
     it("should format bytes", () => {
       expect(formatBytes(500)).toBe("500 B");
-      expect(formatBytes(1023)).toBe("1023 B");
+      expect(formatBytes(1023)).toBe("1,023 B"); // Locale-aware thousand separator
     });
 
     it("should format kilobytes (decimals only for non-whole numbers)", () => {
@@ -683,7 +683,7 @@ describe("upload-utils", () => {
     });
 
     it("should cap at GB for very large files", () => {
-      expect(formatBytes(1099511627776)).toBe("1024 GB"); // 1 TB shows as GB, whole number
+      expect(formatBytes(1099511627776)).toBe("1,024 GB"); // 1 TB shows as GB with locale separator
     });
   });
 });

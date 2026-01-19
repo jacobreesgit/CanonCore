@@ -124,14 +124,22 @@ export function NavPinnedItems({ items }: NavPinnedItemsProps) {
                       onClick={() => router.push(`${href}?settings=true`)}
                       className="gap-2"
                     >
-                      <Settings className="size-4" strokeWidth={2} />
+                      <Settings
+                        aria-hidden="true"
+                        className="size-4"
+                        strokeWidth={2}
+                      />
                       <span>Settings</span>
                     </ContextMenuItem>
                     <ContextMenuItem
                       onClick={() => handleUnpin(item.id)}
                       className="gap-2"
                     >
-                      <PinOff className="size-4" strokeWidth={2} />
+                      <PinOff
+                        aria-hidden="true"
+                        className="size-4"
+                        strokeWidth={2}
+                      />
                       <span>Unpin from Sidebar</span>
                     </ContextMenuItem>
                     <ContextMenuSeparator />
@@ -142,7 +150,11 @@ export function NavPinnedItems({ items }: NavPinnedItemsProps) {
                         "text-destructive focus:text-destructive focus:bg-destructive/10"
                       )}
                     >
-                      <Trash2 className="size-4" strokeWidth={2} />
+                      <Trash2
+                        aria-hidden="true"
+                        className="size-4"
+                        strokeWidth={2}
+                      />
                       <span>Delete</span>
                     </ContextMenuItem>
                   </ContextMenuContent>

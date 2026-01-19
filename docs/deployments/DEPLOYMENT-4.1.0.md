@@ -15,16 +15,16 @@ A new skill with 50+ optimization rules organized by category:
 
 **Categories:**
 
-| Category   | Rules | Focus                                      |
-| ---------- | ----- | ------------------------------------------ |
+| Category   | Rules | Focus                                       |
+| ---------- | ----- | ------------------------------------------- |
 | Rendering  | 7     | Conditional render, hydration, JSX hoisting |
-| Rerender   | 7     | Memo, dependencies, derived state          |
-| Async      | 5     | Parallel fetching, suspense, defer await   |
-| Server     | 5     | Caching, serialization, parallel fetching  |
-| Bundle     | 5     | Dynamic imports, barrel imports, preload   |
-| Client     | 4     | Event listeners, localStorage, SWR         |
-| JavaScript | 11    | Loop optimization, caching, early exit     |
-| Advanced   | 2     | Event handler refs, useLatest pattern      |
+| Rerender   | 7     | Memo, dependencies, derived state           |
+| Async      | 5     | Parallel fetching, suspense, defer await    |
+| Server     | 5     | Caching, serialization, parallel fetching   |
+| Bundle     | 5     | Dynamic imports, barrel imports, preload    |
+| Client     | 4     | Event listeners, localStorage, SWR          |
+| JavaScript | 11    | Loop optimization, caching, early exit      |
+| Advanced   | 2     | Event handler refs, useLatest pattern       |
 
 **Usage:**
 
@@ -49,41 +49,41 @@ A new skill for creating distinctive frontend interfaces:
 
 **New unit tests:**
 
-| File                          | Tests | Coverage                              |
-| ----------------------------- | ----- | ------------------------------------- |
-| use-artwork-upload.test.ts    | 40+   | Upload flow, validation, progress     |
-| use-controllable-state.test.ts| 30+   | Controlled/uncontrolled state         |
-| use-go-to-item.test.ts        | 25+   | Navigation, DFS traversal             |
-| use-mobile.test.ts            | 15+   | Breakpoint detection                  |
-| auth.test.ts                  | 30+   | NextAuth config, session handling     |
-| auth-actions.test.ts          | 25+   | Sign up, password reset               |
-| email.test.ts                 | 15+   | Resend integration                    |
-| errors.test.ts                | 20+   | Prisma error handling                 |
-| google-drive-client.test.ts   | 50+   | OAuth, token refresh, API calls       |
-| google-drive-sync.test.ts     | 80+   | Bidirectional sync operations         |
-| item-actions.test.ts          | 45+   | CRUD, reorder, pin operations         |
-| item-file-actions.test.ts     | 40+   | File operations, playback progress    |
-| item-utils-tree.test.ts       | 60+   | Tree/flat conversion, sorting         |
-| rate-limit.test.ts            | 25+   | Upstash rate limiting                 |
-| tmdb-actions.test.ts          | 25+   | Metadata search, circuit breaker      |
-| validations.test.ts           | 30+   | Zod schema validation                 |
+| File                           | Tests | Coverage                           |
+| ------------------------------ | ----- | ---------------------------------- |
+| use-artwork-upload.test.ts     | 40+   | Upload flow, validation, progress  |
+| use-controllable-state.test.ts | 30+   | Controlled/uncontrolled state      |
+| use-go-to-item.test.ts         | 25+   | Navigation, DFS traversal          |
+| use-mobile.test.ts             | 15+   | Breakpoint detection               |
+| auth.test.ts                   | 30+   | NextAuth config, session handling  |
+| auth-actions.test.ts           | 25+   | Sign up, password reset            |
+| email.test.ts                  | 15+   | Resend integration                 |
+| errors.test.ts                 | 20+   | Prisma error handling              |
+| google-drive-client.test.ts    | 50+   | OAuth, token refresh, API calls    |
+| google-drive-sync.test.ts      | 80+   | Bidirectional sync operations      |
+| item-actions.test.ts           | 45+   | CRUD, reorder, pin operations      |
+| item-file-actions.test.ts      | 40+   | File operations, playback progress |
+| item-utils-tree.test.ts        | 60+   | Tree/flat conversion, sorting      |
+| rate-limit.test.ts             | 25+   | Upstash rate limiting              |
+| tmdb-actions.test.ts           | 25+   | Metadata search, circuit breaker   |
+| validations.test.ts            | 30+   | Zod schema validation              |
 
 **New integration tests:**
 
-| File                       | Tests | Coverage                        |
-| -------------------------- | ----- | ------------------------------- |
-| fork.test.ts               | 50+   | Fork creation, restrictions     |
-| public-profile.test.ts     | 55+   | Profile visibility, username    |
-| item-delete.test.ts        | 20+   | Cascade delete, cleanup         |
+| File                   | Tests | Coverage                     |
+| ---------------------- | ----- | ---------------------------- |
+| fork.test.ts           | 50+   | Fork creation, restrictions  |
+| public-profile.test.ts | 55+   | Profile visibility, username |
+| item-delete.test.ts    | 20+   | Cascade delete, cleanup      |
 
 **New E2E tests:**
 
-| File                       | Tests | Coverage                        |
-| -------------------------- | ----- | ------------------------------- |
-| playback-progress.spec.ts  | 45+   | Video progress, resume playback |
-| preferences.spec.ts        | 17+   | Default view, sort preferences  |
-| explore.spec.ts            | 35+   | Public browse, item cards       |
-| public-profile.spec.ts     | 20+   | Profile page, forking flow      |
+| File                      | Tests | Coverage                        |
+| ------------------------- | ----- | ------------------------------- |
+| playback-progress.spec.ts | 45+   | Video progress, resume playback |
+| preferences.spec.ts       | 17+   | Default view, sort preferences  |
+| explore.spec.ts           | 35+   | Public browse, item cards       |
+| public-profile.spec.ts    | 20+   | Profile page, forking flow      |
 
 ### Codebase audit documentation
 
@@ -148,17 +148,18 @@ tests/integration/items/item-delete.test.ts        # Expanded tests
 
 ## Test Results
 
-| Suite       | Tests | Previous | Change    |
-| ----------- | ----- | -------- | --------- |
-| Unit        | 2100+ | 1480+    | +620 new  |
-| Integration | 210+  | 102+     | +108 new  |
-| E2E         | ~520  | ~440     | +80 new   |
+| Suite       | Tests | Previous | Change   |
+| ----------- | ----- | -------- | -------- |
+| Unit        | 2100+ | 1480+    | +620 new |
+| Integration | 210+  | 102+     | +108 new |
+| E2E         | ~520  | ~440     | +80 new  |
 
 ## Skills Reference
 
 ### React best practices rules
 
 **Rendering:**
+
 - `rendering-activity` - Use React 19 Activity for offscreen prep
 - `rendering-animate-svg-wrapper` - Wrap animated SVGs in memo
 - `rendering-conditional-render` - Avoid ternary for conditional render
@@ -167,6 +168,7 @@ tests/integration/items/item-delete.test.ts        # Expanded tests
 - `rendering-hydration-no-flicker` - Prevent hydration mismatch flicker
 
 **Rerender:**
+
 - `rerender-defer-reads` - Defer expensive reads with useDeferredValue
 - `rerender-dependencies` - Minimize hook dependencies
 - `rerender-derived-state` - Compute derived state in render
@@ -176,6 +178,7 @@ tests/integration/items/item-delete.test.ts        # Expanded tests
 - `rerender-transitions` - Use transitions for non-urgent updates
 
 **Server:**
+
 - `server-after-nonblocking` - Use after() for non-blocking work
 - `server-cache-lru` - LRU cache for expensive computations
 - `server-cache-react` - Use React cache for request dedup
@@ -183,6 +186,7 @@ tests/integration/items/item-delete.test.ts        # Expanded tests
 - `server-serialization` - Efficient serialization patterns
 
 **Bundle:**
+
 - `bundle-barrel-imports` - Avoid barrel imports
 - `bundle-conditional` - Conditional loading for features
 - `bundle-defer-third-party` - Defer third-party scripts
@@ -190,12 +194,14 @@ tests/integration/items/item-delete.test.ts        # Expanded tests
 - `bundle-preload` - Preload critical resources
 
 **Client:**
+
 - `client-event-listeners` - Clean up event listeners
 - `client-localstorage-schema` - Version localStorage schemas
 - `client-passive-event-listeners` - Use passive scroll listeners
 - `client-swr-dedup` - Deduplicate SWR requests
 
 **JavaScript:**
+
 - `js-batch-dom-css` - Batch DOM reads/writes
 - `js-cache-function-results` - Cache function results
 - `js-cache-property-access` - Cache repeated property access

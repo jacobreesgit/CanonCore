@@ -43,10 +43,14 @@ export default async function DocsLayout({
         docsTree={source.pageTree}
       />
       <SidebarInset className="overflow-hidden">
-        <div className="@container/main flex min-h-full flex-col overflow-y-auto">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="@container/main flex min-h-full flex-col overflow-y-auto outline-none"
+        >
           <SiteHeader title="Documentation" titleHref="/docs" />
           {children}
-        </div>
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );

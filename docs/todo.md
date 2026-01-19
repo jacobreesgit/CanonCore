@@ -1,11 +1,12 @@
-- Hero 226 carousel --> redo item hero. item hero during loading too
+- seed script to remove all google drive seed user content and empty bin and ctreate the folders/upload the sfuff before running seed
+- figure out best screenshots and copy for this projects portfolio. but then this makes me think we need to properly plan out the portfolio and what we're going to write for this canoncore page. look at handbook files to help. think about everythuing, e.g. profle pic. and also make sure we have all features
+
+- Hero 226 carousel --> redo item hero. item hero during loading too. or no collapse and scroll?
 - profile pic for my items one (facebook profile pic and cover photo vibes)
 
-- figure out best screenshots and copy for projects portfolio. but then this makes me think we need to properly plan out the portfolio and what we're going to write for this canoncore page. look at handbook files to help. think about everythuing, e.g. profle pic
-
-- None:
+- Task 8: URL-Based State Management
 - that design skill tweet - upload bit
-- google drive required for images
+- that different auth pge
 - refactor wizard state in add-item-dialog and item-settings-dialog to use useReducer for cleaner state management. also split up to be more managable
 - Large File Streaming Upload (2.1)
 - Quota Check Script (2.4 admin script)
@@ -13,4 +14,5 @@
 - tmdb makes children
 - ask what else plex and jellyfin does
 - tags?
+
 - ios: https://github.com/heroui-inc/heroui-native

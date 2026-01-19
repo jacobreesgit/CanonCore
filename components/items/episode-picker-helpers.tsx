@@ -47,6 +47,7 @@ export function SeasonItem({ season, onClick }: SeasonItemProps) {
           <img
             src={getPosterUrl(season.poster_path, "w92") ?? undefined}
             alt=""
+            loading="lazy"
             className="h-full w-full object-cover"
           />
         </div>
@@ -100,6 +101,7 @@ export function EpisodeItem({ episode, onClick }: EpisodeItemProps) {
           <img
             src={getStillUrl(episode.still_path, "w300") ?? undefined}
             alt=""
+            loading="lazy"
             className="h-full w-full object-cover"
           />
         </div>

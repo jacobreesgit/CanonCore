@@ -6,6 +6,15 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  /* Color scheme declaration for native browser UI (scrollbars, form controls) */
+  color-scheme: light;
+
+  /* Safe area insets for notched devices (iPhone X+, etc.) */
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -42,6 +51,9 @@
 }
 
 .dark {
+  /* Color scheme declaration for native browser UI (scrollbars, form controls) */
+  color-scheme: dark;
+
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.145 0 0);
@@ -124,4 +136,54 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /**
+   * Touch interaction improvements.
+   * - touch-action: manipulation prevents 300ms tap delay on mobile
+   * - -webkit-tap-highlight-color removes iOS default blue highlight
+   */
+  button,
+  a,
+  [role="button"],
+  [tabindex]:not([tabindex="-1"]) {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/**
+ * Reduced motion support for users who prefer minimal animations.
+ * Disables animations and transitions globally while preserving functionality.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/**
+ * Skip link for keyboard/screen reader users.
+ * Hidden by default, visible on focus for WCAG 2.1 Level A compliance.
+ */
+.skip-link {
+  @apply fixed left-0 top-0 z-[9999] -translate-y-full bg-background px-4 py-2 text-sm font-medium text-foreground transition-transform focus:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+}
+
+/**
+ * Content-visibility optimization for large lists.
+ * Allows browser to skip rendering off-screen items for better performance.
+ */
+.content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 48px; /* Tree item height */
+}
+
+.content-auto-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 300px; /* Grid card approx height */
 }

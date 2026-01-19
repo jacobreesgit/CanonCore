@@ -79,7 +79,6 @@ export function NavUser({ user, driveConnection }: NavUserProps) {
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer"
               data-testid="my-items-user-menu"
-              suppressHydrationWarning
             >
               <Avatar className="size-8 rounded-full grayscale">
                 <AvatarImage src={user.avatar} alt={user.name} />
@@ -87,13 +86,13 @@ export function NavUser({ user, driveConnection }: NavUserProps) {
                   CN
                 </AvatarFallback>
               </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
+              <div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
                 <span className="text-muted-foreground truncate text-xs">
                   {user.email}
                 </span>
               </div>
-              <MoreVertical className="ml-auto size-4" />
+              <MoreVertical aria-hidden="true" className="ml-auto size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -110,7 +109,7 @@ export function NavUser({ user, driveConnection }: NavUserProps) {
                     CN
                   </AvatarFallback>
                 </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
+                <div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>
                   <span className="text-muted-foreground truncate text-xs">
                     {user.email}
@@ -139,14 +138,14 @@ export function NavUser({ user, driveConnection }: NavUserProps) {
               onClick={() => setProfileDialogOpen(true)}
               data-testid="my-items-settings-button"
             >
-              <Settings />
+              <Settings aria-hidden="true" />
               Settings
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={handleSignOut}
               data-testid="my-items-sign-out-button"
             >
-              <LogOut />
+              <LogOut aria-hidden="true" />
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>

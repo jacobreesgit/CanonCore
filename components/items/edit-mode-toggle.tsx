@@ -6,7 +6,7 @@
 
 "use client";
 
-import React from "react";
+import React, { useCallback } from "react";
 import { Pencil, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,9 +27,19 @@ interface EditModeToggleProps {
 }
 
 /**
+ * Preloads dnd-kit chunks on hover/focus for instant edit mode activation.
+ * Called before user clicks to eliminate loading delay.
+ */
+const preloadDndKit = () => {
+  import("@/components/sortable-tree");
+  import("@/components/sortable-grid");
+};
+
+/**
  * Button to toggle between view and edit modes.
  * Shows "Edit" in view mode, "Done" in edit mode.
  * Displays tooltip with reason when disabled.
+ * Preloads dnd-kit chunk on hover/focus for faster edit mode entry.
  *
  * @param isEditing - Whether edit mode is active
  * @param onToggle - Callback to toggle edit mode
@@ -42,23 +52,32 @@ export function EditModeToggle({
   disabled = false,
   disabledReason,
 }: EditModeToggleProps) {
+  // Only preload when not already in edit mode (chunks already loaded)
+  const handlePreload = useCallback(() => {
+    if (!isEditing) {
+      preloadDndKit();
+    }
+  }, [isEditing]);
+
   const button = (
     <Button
       variant="outline"
       size="sm"
       onClick={onToggle}
+      onMouseEnter={handlePreload}
+      onFocus={handlePreload}
       disabled={disabled}
       aria-label={isEditing ? "Exit edit mode" : "Enter edit mode"}
       className="gap-1.5"
     >
       {isEditing ? (
         <>
-          <Check className="size-4" />
+          <Check aria-hidden="true" className="size-4" />
           <span className="hidden sm:inline">Done</span>
         </>
       ) : (
         <>
-          <Pencil className="size-4" />
+          <Pencil aria-hidden="true" className="size-4" />
           <span className="hidden sm:inline">Edit</span>
         </>
       )}

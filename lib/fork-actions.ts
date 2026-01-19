@@ -64,18 +64,21 @@ export async function forkItem(
   sourceItemId: string,
   parentId: string | null = null
 ): Promise<ItemResult<ForkResult>> {
-  const session = await auth();
+  // Run auth and rate limit in parallel (async-parallel pattern)
+  const [session, rateLimitResult] = await Promise.all([
+    auth(),
+    checkRateLimit("fork"),
+  ]);
+
   if (!session?.user?.id) {
     return { error: "Not authenticated" };
   }
 
-  const userId = session.user.id;
-
-  // Rate limit fork operations
-  const rateLimitResult = await checkRateLimit("fork");
   if (rateLimitResult) {
     return { error: rateLimitResult.error };
   }
+
+  const userId = session.user.id;
 
   try {
     // Fetch source item with owner info
@@ -106,22 +109,23 @@ export async function forkItem(
       return { error: "Cannot fork your own items" };
     }
 
-    // Verify item is fully public
-    const isPublic = await isItemFullyPublic(sourceItemId);
+    // Run public check and existing fork check in parallel (async-parallel pattern)
+    const [isPublic, existingFork] = await Promise.all([
+      isItemFullyPublic(sourceItemId),
+      prisma.fork.findUnique({
+        where: {
+          sourceItemId_userId: {
+            sourceItemId,
+            userId,
+          },
+        },
+        select: { targetItemId: true },
+      }),
+    ]);
+
     if (!isPublic) {
       return { error: "Item is not publicly accessible" };
     }
-
-    // Check if user already forked this item
-    const existingFork = await prisma.fork.findUnique({
-      where: {
-        sourceItemId_userId: {
-          sourceItemId,
-          userId,
-        },
-      },
-      select: { targetItemId: true },
-    });
 
     if (existingFork) {
       return { error: "You have already forked this item" };

@@ -20,8 +20,18 @@ interface StorageBarProps {
   className?: string;
 }
 
+/** Cached number formatter for locale-aware formatting */
+const numberFormatter = new Intl.NumberFormat(undefined, {
+  maximumFractionDigits: 1,
+});
+
+const wholeNumberFormatter = new Intl.NumberFormat(undefined, {
+  maximumFractionDigits: 0,
+});
+
 /**
  * Formats bytes to human-readable string (e.g., "14.2 GB").
+ * Uses Intl.NumberFormat for locale-aware number formatting.
  *
  * @param bytes - Number of bytes to format
  * @returns Human-readable string with appropriate unit
@@ -29,14 +39,14 @@ interface StorageBarProps {
 export function formatBytes(bytes: bigint): string {
   const gb = Number(bytes) / (1024 * 1024 * 1024);
   if (gb >= 1) {
-    return `${gb.toFixed(1)} GB`;
+    return `${numberFormatter.format(gb)} GB`;
   }
   const mb = Number(bytes) / (1024 * 1024);
   if (mb >= 1) {
-    return `${mb.toFixed(0)} MB`;
+    return `${wholeNumberFormatter.format(mb)} MB`;
   }
   const kb = Number(bytes) / 1024;
-  return `${kb.toFixed(0)} KB`;
+  return `${wholeNumberFormatter.format(kb)} KB`;
 }
 
 /**

@@ -2,11 +2,13 @@
  * WebGL shader background component.
  * Animated 3D shader effect using react-three-fiber.
  * Used as fallback when no artwork is available.
+ * Respects prefers-reduced-motion for accessibility.
  */
 
 "use client";
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { useReducedMotion } from "motion/react";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 
@@ -124,6 +126,8 @@ const Shader1 = ({
   className,
   color = "#0000ff",
 }: ShaderBackgroundProps) => {
+  const shouldReduceMotion = useReducedMotion();
+
   const shaderUniforms = useMemo(
     () => ({
       u_time: { value: 0 },
@@ -133,6 +137,15 @@ const Shader1 = ({
     }),
     [uniforms, color]
   );
+
+  // Show static gradient when reduced motion is preferred
+  if (shouldReduceMotion) {
+    return (
+      <section className={cn(className, "absolute inset-0 h-screen w-full")}>
+        <div className="h-full w-full bg-gradient-to-br from-blue-900 via-purple-900 to-slate-900" />
+      </section>
+    );
+  }
 
   return (
     <section className={cn(className, "absolute inset-0 h-screen w-full")}>

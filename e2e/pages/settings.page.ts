@@ -200,8 +200,12 @@ export class SettingsPage {
     // Wait longer than the 500ms debounce delay for the API call to start
     await this.page.waitForTimeout(600);
     // Wait for the result text to appear (either "available" or "taken")
-    const resultText = this.page.locator("text=/username is (available|already taken)/i");
-    await resultText.waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
+    const resultText = this.page.locator(
+      "text=/username is (available|already taken)/i"
+    );
+    await resultText
+      .waitFor({ state: "visible", timeout: 5000 })
+      .catch(() => {});
   }
 
   /**

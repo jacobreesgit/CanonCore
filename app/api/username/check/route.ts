@@ -31,7 +31,8 @@ export async function GET(
     );
   }
 
-  const session = await auth();
+  // Start auth early, await only when needed (async-defer-await pattern)
+  const sessionPromise = auth();
 
   const searchParams = request.nextUrl.searchParams;
   const username = searchParams.get("username");
@@ -76,6 +77,8 @@ export async function GET(
     });
 
     // If authenticated user owns this username, it's "available" to them
+    // Await session only when needed (after validation and DB check)
+    const session = await sessionPromise;
     if (existingUser && session?.user?.id === existingUser.id) {
       return NextResponse.json({ available: true });
     }
