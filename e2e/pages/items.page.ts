@@ -175,13 +175,17 @@ export class ItemsPage {
 
   async clickItem(name: string) {
     // Target items in tree/grid views, not breadcrumbs
+    // Tree view: items are in listitem elements
     const treeItem = this.page
       .getByRole("listitem")
       .getByText(name, { exact: true });
+    // Grid view: items are buttons with the item name as accessible name
+    const gridButton = this.page.getByRole("button", { name, exact: true });
+    // Legacy selector for backward compatibility
     const gridItem = this.page
       .locator("[data-id]")
       .getByText(name, { exact: true });
-    await treeItem.or(gridItem).first().click();
+    await treeItem.or(gridButton).or(gridItem).first().click();
     // Wait for navigation and page content to be ready
     await this.page.waitForLoadState("networkidle");
     await this.page.waitForLoadState("domcontentloaded");
@@ -237,9 +241,7 @@ export class ItemsPage {
     // Ensure item is visible and scroll into view
     await item.scrollIntoViewIfNeeded();
     await item.waitFor({ state: "visible", timeout: 5000 });
-    // Click to focus first, then right-click
-    await item.click();
-    await this.page.waitForTimeout(50);
+    // Right-click to open context menu (don't left-click first as it navigates)
     await item.click({ button: "right" });
   }
 

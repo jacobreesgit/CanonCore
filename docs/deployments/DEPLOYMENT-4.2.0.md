@@ -39,11 +39,11 @@ experimental: {
 
 Public auth functions now use React.cache() to prevent duplicate database queries when called from both generateMetadata and page components:
 
-| Function           | Queries Before | Queries After |
-| ------------------ | -------------- | ------------- |
-| getPublicProfile   | 2              | 1             |
-| isItemFullyPublic  | 2              | 1             |
-| getPublicItem      | 2              | 1             |
+| Function          | Queries Before | Queries After |
+| ----------------- | -------------- | ------------- |
+| getPublicProfile  | 2              | 1             |
+| isItemFullyPublic | 2              | 1             |
+| getPublicItem     | 2              | 1             |
 
 ### Parallel async operations
 
@@ -76,10 +76,10 @@ Added WCAG 2.1 Level A compliant skip link for keyboard and screen reader users:
 
 Components now respect `prefers-reduced-motion` user preference:
 
-| Component    | Affected Animations                 |
-| ------------ | ----------------------------------- |
-| item-hero    | Layout spring, opacity transitions  |
-| globals.css  | All animations and transitions      |
+| Component   | Affected Animations                |
+| ----------- | ---------------------------------- |
+| item-hero   | Layout spring, opacity transitions |
+| globals.css | All animations and transitions     |
 
 ### Notched device support
 
@@ -168,11 +168,11 @@ next.config.mjs                                # optimizePackageImports
 
 ## Performance Impact
 
-| Metric                  | Before  | After   | Improvement |
-| ----------------------- | ------- | ------- | ----------- |
-| Public page DB queries  | 2x      | 1x      | -50%        |
-| Auth action latency     | ~100ms  | ~60ms   | ~40%        |
-| Analytics bundle        | Sync    | Deferred | Non-blocking |
+| Metric                 | Before | After    | Improvement  |
+| ---------------------- | ------ | -------- | ------------ |
+| Public page DB queries | 2x     | 1x       | -50%         |
+| Auth action latency    | ~100ms | ~60ms    | ~40%         |
+| Analytics bundle       | Sync   | Deferred | Non-blocking |
 
 ## Breaking Changes
 
@@ -187,6 +187,7 @@ No database migrations required. CSS changes are additive and won't affect exist
 This release includes 17 comprehensive audit documents covering:
 
 **Performance audits (8 files):**
+
 - Async patterns and parallel fetching
 - Bundle size optimization
 - Server-side performance
@@ -197,6 +198,7 @@ This release includes 17 comprehensive audit documents covering:
 - Advanced patterns
 
 **UX/Accessibility audits (14 files):**
+
 - Accessibility (WCAG compliance)
 - Focus states
 - Forms

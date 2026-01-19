@@ -8,6 +8,21 @@ import { render, screen } from "@testing-library/react";
 import { SortableGrid } from "@/components/sortable-grid/SortableGrid";
 import type { ItemWithArtwork } from "@/lib/types";
 
+// Mock hooks to prevent Vitest worker shutdown issues with module resolution
+vi.mock("@/hooks/use-lazy-image", () => ({
+  useLazyImage: () => ({ ref: () => {}, shouldLoad: true }),
+}));
+
+vi.mock("@/hooks/use-image-loaded", () => ({
+  useImageLoaded: () => ({
+    ref: { current: null },
+    loaded: false,
+    error: false,
+    onLoad: vi.fn(),
+    onError: vi.fn(),
+  }),
+}));
+
 // Mock SortableGridItem to simplify testing
 vi.mock("@/components/sortable-grid/SortableGridItem", () => ({
   SortableGridItem: ({

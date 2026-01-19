@@ -7,6 +7,13 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { GridItem } from "@/components/sortable-grid/GridItem";
 
+// Mock useLazyImage to prevent Vitest worker shutdown issues with module resolution
+// Note: useImageLoaded is not mocked because it only uses React state/refs and needs
+// to work correctly for tests that simulate image load/error events
+vi.mock("@/hooks/use-lazy-image", () => ({
+  useLazyImage: () => ({ ref: () => {}, shouldLoad: true }),
+}));
+
 describe("GridItem", () => {
   describe("artwork display", () => {
     it("should render img element when artworkId provided", () => {

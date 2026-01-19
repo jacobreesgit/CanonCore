@@ -109,7 +109,7 @@ Run: `pnpm run test && pnpm run build`
 ```css
 /* In app/globals.css */
 .skip-link {
-  @apply fixed left-0 top-0 z-[9999] -translate-y-full bg-background px-4 py-2 text-sm font-medium text-foreground transition-transform focus:translate-y-0;
+  @apply bg-background text-foreground fixed top-0 left-0 z-[9999] -translate-y-full px-4 py-2 text-sm font-medium transition-transform focus:translate-y-0;
 }
 ```
 
@@ -271,13 +271,9 @@ const preloadDndKit = () => {
 };
 
 // In EditModeToggle component
-<Button
-  onMouseEnter={preloadDndKit}
-  onFocus={preloadDndKit}
-  onClick={onToggle}
->
+<Button onMouseEnter={preloadDndKit} onFocus={preloadDndKit} onClick={onToggle}>
   {isEditing ? "Done" : "Edit"}
-</Button>
+</Button>;
 ```
 
 ---
@@ -322,7 +318,7 @@ Plus ensuring CSS is loaded when component mounts.
 
 ---
 
-### Task 8: URL-Based State Management 
+### Task 8: URL-Based State Management
 
 **Why:** Currently sort/filter/view state is stored in localStorage. URL-based state would enable:
 

@@ -9,6 +9,21 @@ import { SortableGridItem } from "@/components/sortable-grid/SortableGridItem";
 import { DndContext } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 
+// Mock hooks to prevent Vitest worker shutdown issues with module resolution
+vi.mock("@/hooks/use-lazy-image", () => ({
+  useLazyImage: () => ({ ref: () => {}, shouldLoad: true }),
+}));
+
+vi.mock("@/hooks/use-image-loaded", () => ({
+  useImageLoaded: () => ({
+    ref: { current: null },
+    loaded: false,
+    error: false,
+    onLoad: vi.fn(),
+    onError: vi.fn(),
+  }),
+}));
+
 // Mock useSortable hook
 vi.mock("@dnd-kit/sortable", async () => {
   const actual = await vi.importActual("@dnd-kit/sortable");

@@ -108,6 +108,87 @@ vi.mock("@/lib/auth", () => ({
   handlers: { GET: vi.fn(), POST: vi.fn() },
 }));
 
+// Mock PrismaClientKnownRequestError for error testing
+class MockPrismaClientKnownRequestError extends Error {
+  code: string;
+  meta?: Record<string, unknown>;
+  clientVersion?: string;
+  constructor(
+    message: string,
+    {
+      code,
+      meta,
+      clientVersion,
+    }: { code: string; meta?: Record<string, unknown>; clientVersion?: string }
+  ) {
+    super(message);
+    this.name = "PrismaClientKnownRequestError";
+    this.code = code;
+    this.meta = meta;
+    this.clientVersion = clientVersion;
+  }
+}
+
+// Mock PrismaClientInitializationError for error testing
+class MockPrismaClientInitializationError extends Error {
+  clientVersion?: string;
+  constructor(message: string, clientVersion?: string) {
+    super(message);
+    this.name = "PrismaClientInitializationError";
+    this.clientVersion = clientVersion;
+  }
+}
+
+// Mock PrismaClientValidationError for error testing
+class MockPrismaClientValidationError extends Error {
+  clientVersion?: string;
+  constructor(
+    message: string,
+    { clientVersion }: { clientVersion?: string } = {}
+  ) {
+    super(message);
+    this.name = "PrismaClientValidationError";
+    this.clientVersion = clientVersion;
+  }
+}
+
+// Mock @prisma/client for enum imports in components and Prisma namespace
+vi.mock("@prisma/client", () => ({
+  SyncStatus: {
+    SYNCED: "SYNCED",
+    SYNCING: "SYNCING",
+    PENDING: "PENDING",
+    ERROR: "ERROR",
+  },
+  SyncLogAction: {
+    CREATE: "CREATE",
+    RENAME: "RENAME",
+    DELETE: "DELETE",
+    MOVE: "MOVE",
+    UPLOAD: "UPLOAD",
+    DOWNLOAD: "DOWNLOAD",
+    SYNC: "SYNC",
+  },
+  SyncLogStatus: {
+    SUCCESS: "SUCCESS",
+    FAILED: "FAILED",
+    PENDING: "PENDING",
+  },
+  FileType: {
+    MEDIA: "MEDIA",
+    ARTWORK: "ARTWORK",
+    SUBTITLE: "SUBTITLE",
+  },
+  Prisma: {
+    PrismaClientKnownRequestError: MockPrismaClientKnownRequestError,
+    PrismaClientInitializationError: MockPrismaClientInitializationError,
+    PrismaClientValidationError: MockPrismaClientValidationError,
+  },
+}));
+
+// Export mock class for use in tests
+export { MockPrismaClientKnownRequestError };
+
 // Mock logger for unit tests
 vi.mock("@/lib/logger", () => ({
   logger: {
