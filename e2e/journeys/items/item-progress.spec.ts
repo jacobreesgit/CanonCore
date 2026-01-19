@@ -27,9 +27,7 @@ test.describe("Item Progress Bars", () => {
     // Switch to tree view and verify no progress bar there either
     await itemsPage.switchToTreeView();
     await expect(page.getByTestId("tree-item-progress-bar")).not.toBeVisible();
-
-    // Cleanup
-    await itemsPage.deleteItemViaContextMenu("Empty Folder");
+    // Note: No cleanup needed - each test uses a fresh user
   });
 
   test("hides progress bar in edit mode (grid view)", async ({
@@ -50,9 +48,7 @@ test.describe("Item Progress Bars", () => {
 
     // Exit edit mode
     await itemsPage.exitEditMode();
-
-    // Cleanup
-    await itemsPage.deleteItemViaContextMenu("Grid Test Item");
+    // Note: No cleanup needed - each test uses a fresh user
   });
 
   test("hides progress bar in edit mode (tree view)", async ({
@@ -74,9 +70,7 @@ test.describe("Item Progress Bars", () => {
 
     // Exit edit mode
     await itemsPage.exitEditMode();
-
-    // Cleanup
-    await itemsPage.deleteItemViaContextMenu("Tree Test Item");
+    // Note: No cleanup needed - each test uses a fresh user
   });
 
   test("shows hero section on item detail page", async ({
@@ -95,10 +89,7 @@ test.describe("Item Progress Bars", () => {
 
     // Hero progress bar should not be visible (no media files)
     await expect(page.getByTestId("hero-progress-bar")).not.toBeVisible();
-
-    // Navigate back and cleanup
-    await itemsPage.breadcrumbHome.click();
-    await itemsPage.deleteItemViaContextMenu("Hero Test");
+    // Note: No cleanup needed - each test uses a fresh user
   });
 
   test("navigates between views without progress bar errors", async ({
@@ -125,9 +116,6 @@ test.describe("Item Progress Bars", () => {
 
     // No errors should occur - page should remain stable
     await expect(page.getByTestId("items-grid-view")).toBeVisible();
-
-    // Cleanup
-    await itemsPage.deleteItemViaContextMenu("Progress Item A");
-    await itemsPage.deleteItemViaContextMenu("Progress Item B");
+    // Note: No cleanup needed - each test uses a fresh user
   });
 });

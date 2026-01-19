@@ -641,6 +641,387 @@ describe("setPrimaryFile", () => {
   });
 });
 
+describe("updateItemSettings", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns error when rate limited", async () => {
+    const { checkRateLimit } = await import("@/lib/rate-limit");
+    vi.mocked(checkRateLimit).mockResolvedValueOnce({
+      error: "Too many attempts. Please try again later.",
+    });
+    const { updateItemSettings } = await import("@/lib/item-file-actions");
+
+    const result = await updateItemSettings("item-1", { name: "New Name" });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Too many attempts. Please try again later.");
+    }
+  });
+
+  it("returns error when not authenticated", async () => {
+    mockAuth.mockResolvedValue(null);
+    const { updateItemSettings } = await import("@/lib/item-file-actions");
+
+    const result = await updateItemSettings("item-1", { name: "New Name" });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Unauthorized");
+    }
+  });
+
+  it("returns error when item not found", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue(null);
+    const { updateItemSettings } = await import("@/lib/item-file-actions");
+
+    const result = await updateItemSettings("nonexistent", {
+      name: "New Name",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Item not found");
+    }
+  });
+
+  it("returns error when user does not own the item", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "item-1",
+      userId: "other-user",
+      name: "Old Name",
+      driveFileId: null,
+    } as never);
+    const { updateItemSettings } = await import("@/lib/item-file-actions");
+
+    const result = await updateItemSettings("item-1", { name: "New Name" });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Access denied");
+    }
+  });
+
+  it("returns error for invalid name (empty)", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "item-1",
+      userId: "user-1",
+      name: "Old Name",
+      driveFileId: null,
+    } as never);
+    const { updateItemSettings } = await import("@/lib/item-file-actions");
+
+    const result = await updateItemSettings("item-1", { name: "" });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("returns error for description exceeding max length", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "item-1",
+      userId: "user-1",
+      name: "Old Name",
+      driveFileId: null,
+    } as never);
+    const { updateItemSettings } = await import("@/lib/item-file-actions");
+
+    const result = await updateItemSettings("item-1", {
+      description: "x".repeat(1001), // Max is 1000
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("updates item name successfully", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "item-1",
+      userId: "user-1",
+      name: "Old Name",
+      driveFileId: null,
+    } as never);
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
+      if (typeof fn === "function") {
+        return fn(prisma);
+      }
+      return Promise.all(fn);
+    });
+    vi.mocked(prisma.item.update).mockResolvedValue({
+      id: "item-1",
+      name: "New Name",
+    } as never);
+    const { updateItemSettings } = await import("@/lib/item-file-actions");
+
+    const result = await updateItemSettings("item-1", { name: "New Name" });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("updates item description successfully", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "item-1",
+      userId: "user-1",
+      name: "Old Name",
+      driveFileId: null,
+    } as never);
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
+      if (typeof fn === "function") {
+        return fn(prisma);
+      }
+      return Promise.all(fn);
+    });
+    vi.mocked(prisma.item.update).mockResolvedValue({
+      id: "item-1",
+      description: "New description",
+    } as never);
+    const { updateItemSettings } = await import("@/lib/item-file-actions");
+
+    const result = await updateItemSettings("item-1", {
+      description: "New description",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("clears description when empty string provided", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "item-1",
+      userId: "user-1",
+      name: "Old Name",
+      driveFileId: null,
+    } as never);
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
+      if (typeof fn === "function") {
+        return fn(prisma);
+      }
+      return Promise.all(fn);
+    });
+    vi.mocked(prisma.item.update).mockResolvedValue({
+      id: "item-1",
+      description: null,
+    } as never);
+    const { updateItemSettings } = await import("@/lib/item-file-actions");
+
+    const result = await updateItemSettings("item-1", { description: "" });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("returns error when file not found for primary selection", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "item-1",
+      userId: "user-1",
+      name: "Old Name",
+      driveFileId: null,
+    } as never);
+    vi.mocked(prisma.itemFile.findMany).mockResolvedValue([]);
+    const { updateItemSettings } = await import("@/lib/item-file-actions");
+
+    const result = await updateItemSettings("item-1", {
+      primaryMediaId: "nonexistent-file",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("One or more files not found");
+    }
+  });
+
+  it("returns error when file belongs to different item", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "item-1",
+      userId: "user-1",
+      name: "Old Name",
+      driveFileId: null,
+    } as never);
+    vi.mocked(prisma.itemFile.findMany).mockResolvedValue([
+      { id: "file-1", itemId: "different-item", fileType: "MEDIA" },
+    ] as never);
+    const { updateItemSettings } = await import("@/lib/item-file-actions");
+
+    const result = await updateItemSettings("item-1", {
+      primaryMediaId: "file-1",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("File does not belong to this item");
+    }
+  });
+
+  it("returns error when primary media is wrong file type", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "item-1",
+      userId: "user-1",
+      name: "Old Name",
+      driveFileId: null,
+    } as never);
+    vi.mocked(prisma.itemFile.findMany).mockResolvedValue([
+      { id: "file-1", itemId: "item-1", fileType: "ARTWORK" },
+    ] as never);
+    const { updateItemSettings } = await import("@/lib/item-file-actions");
+
+    const result = await updateItemSettings("item-1", {
+      primaryMediaId: "file-1",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Primary media must be a MEDIA file");
+    }
+  });
+
+  it("returns error when primary artwork is wrong file type", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "item-1",
+      userId: "user-1",
+      name: "Old Name",
+      driveFileId: null,
+    } as never);
+    vi.mocked(prisma.itemFile.findMany).mockResolvedValue([
+      { id: "file-1", itemId: "item-1", fileType: "MEDIA" },
+    ] as never);
+    const { updateItemSettings } = await import("@/lib/item-file-actions");
+
+    const result = await updateItemSettings("item-1", {
+      primaryArtworkId: "file-1",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Primary artwork must be an ARTWORK file");
+    }
+  });
+
+  it("returns error when hero image is wrong file type", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "item-1",
+      userId: "user-1",
+      name: "Old Name",
+      driveFileId: null,
+    } as never);
+    vi.mocked(prisma.itemFile.findMany).mockResolvedValue([
+      { id: "file-1", itemId: "item-1", fileType: "SUBTITLE" },
+    ] as never);
+    const { updateItemSettings } = await import("@/lib/item-file-actions");
+
+    const result = await updateItemSettings("item-1", {
+      heroArtworkId: "file-1",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Hero image must be an ARTWORK file");
+    }
+  });
+
+  it("returns error when primary subtitle is wrong file type", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "item-1",
+      userId: "user-1",
+      name: "Old Name",
+      driveFileId: null,
+    } as never);
+    vi.mocked(prisma.itemFile.findMany).mockResolvedValue([
+      { id: "file-1", itemId: "item-1", fileType: "MEDIA" },
+    ] as never);
+    const { updateItemSettings } = await import("@/lib/item-file-actions");
+
+    const result = await updateItemSettings("item-1", {
+      primarySubtitleId: "file-1",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Primary subtitle must be a SUBTITLE file");
+    }
+  });
+
+  it("triggers Google Drive rename when item has driveFileId", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "item-1",
+      userId: "user-1",
+      name: "Old Name",
+      driveFileId: "drive-file-123",
+    } as never);
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
+      if (typeof fn === "function") {
+        return fn(prisma);
+      }
+      return Promise.all(fn);
+    });
+    vi.mocked(prisma.item.update).mockResolvedValue({
+      id: "item-1",
+      name: "New Name",
+    } as never);
+
+    const { renameItemInGoogleDrive } =
+      await import("@/lib/google-drive-actions");
+    vi.mocked(renameItemInGoogleDrive).mockResolvedValue({ success: true });
+
+    const { updateItemSettings } = await import("@/lib/item-file-actions");
+
+    await updateItemSettings("item-1", { name: "New Name" });
+
+    // Give time for async call
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(renameItemInGoogleDrive).toHaveBeenCalledWith("item-1", "New Name");
+  });
+
+  it("updates all settings atomically", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "item-1",
+      userId: "user-1",
+      name: "Old Name",
+      driveFileId: null,
+    } as never);
+    vi.mocked(prisma.itemFile.findMany).mockResolvedValue([
+      { id: "media-1", itemId: "item-1", fileType: "MEDIA" },
+      { id: "artwork-1", itemId: "item-1", fileType: "ARTWORK" },
+    ] as never);
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn) => {
+      if (typeof fn === "function") {
+        return fn(prisma);
+      }
+      return Promise.all(fn);
+    });
+    vi.mocked(prisma.item.update).mockResolvedValue({} as never);
+    vi.mocked(prisma.itemFile.updateMany).mockResolvedValue({
+      count: 1,
+    } as never);
+    vi.mocked(prisma.itemFile.update).mockResolvedValue({} as never);
+
+    const { updateItemSettings } = await import("@/lib/item-file-actions");
+
+    const result = await updateItemSettings("item-1", {
+      name: "New Name",
+      description: "New description",
+      primaryMediaId: "media-1",
+      primaryArtworkId: "artwork-1",
+    });
+
+    expect(result.success).toBe(true);
+    expect(prisma.$transaction).toHaveBeenCalled();
+  });
+});
+
 describe("deleteItemFile", () => {
   beforeEach(() => {
     vi.clearAllMocks();

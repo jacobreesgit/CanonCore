@@ -15,6 +15,11 @@ import {
   deleteItem,
   reorderItems,
   getSearchableItems,
+  setItemVisibility,
+  getItemVisibility,
+  getItemProgress,
+  getLibraryProgress,
+  getFirstIncompleteItem,
 } from "@/lib/item-actions";
 import { getMediaIconType } from "@/lib/item-utils";
 import { prisma } from "@/lib/prisma";
@@ -1423,5 +1428,444 @@ describe("deleteItems (bulk)", () => {
 
     expect(result.success).toBe(true);
     expect(batchDelete).not.toHaveBeenCalled();
+  });
+});
+
+describe("setItemVisibility", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns error when not authenticated", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const result = await setItemVisibility("item-1", true);
+
+    expect(result.error).toBe("Unauthorized");
+  });
+
+  it("returns error when item not found", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue(null);
+
+    const result = await setItemVisibility("nonexistent", true);
+
+    expect(result.error).toBe("Item not found");
+  });
+
+  it("returns error when item belongs to another user", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      userId: "other-user",
+      isPublic: false,
+    } as never);
+
+    const result = await setItemVisibility("item-1", true);
+
+    expect(result.error).toBe("Unauthorized");
+  });
+
+  it("returns success with zero affected when visibility unchanged", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      userId: "user-1",
+      isPublic: true,
+    } as never);
+
+    const result = await setItemVisibility("item-1", true);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data?.affectedCount).toBe(0);
+    }
+    expect(prisma.item.update).not.toHaveBeenCalled();
+  });
+
+  it("makes item public and returns affected count of 1", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      userId: "user-1",
+      isPublic: false,
+    } as never);
+    vi.mocked(prisma.item.update).mockResolvedValue({} as never);
+
+    const result = await setItemVisibility("item-1", true);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data?.affectedCount).toBe(1);
+    }
+    expect(prisma.item.update).toHaveBeenCalledWith({
+      where: { id: "item-1" },
+      data: { isPublic: true },
+    });
+  });
+
+  it("makes item private and cascades to descendants", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      userId: "user-1",
+      isPublic: true,
+    } as never);
+    // Recursive CTE returns parent + 3 descendants
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      { id: "item-1" },
+      { id: "child-1" },
+      { id: "child-2" },
+      { id: "grandchild-1" },
+    ]);
+    vi.mocked(prisma.item.updateMany).mockResolvedValue({ count: 4 });
+
+    const result = await setItemVisibility("item-1", false);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      // Returns count - 1 because parent isn't counted as "affected child"
+      expect(result.data?.affectedCount).toBe(3);
+    }
+    expect(prisma.item.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["item-1", "child-1", "child-2", "grandchild-1"] } },
+      data: { isPublic: false },
+    });
+  });
+
+  it("makes leaf item private with zero affected children", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      userId: "user-1",
+      isPublic: true,
+    } as never);
+    // Only the item itself, no descendants
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{ id: "leaf-item" }]);
+    vi.mocked(prisma.item.updateMany).mockResolvedValue({ count: 1 });
+
+    const result = await setItemVisibility("leaf-item", false);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data?.affectedCount).toBe(0); // No children affected
+    }
+  });
+
+  it("should check rate limit before processing", async () => {
+    const { checkRateLimit } = await import("@/lib/rate-limit");
+    vi.mocked(checkRateLimit).mockResolvedValueOnce({
+      error: "Too many attempts. Please try again later.",
+    });
+
+    const result = await setItemVisibility("item-1", true);
+
+    expect(checkRateLimit).toHaveBeenCalledWith("itemUpdate");
+    expect(result.error).toBe("Too many attempts. Please try again later.");
+  });
+});
+
+describe("getItemVisibility", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns error when not authenticated", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const result = await getItemVisibility("item-1");
+
+    expect(result.error).toBe("Unauthorized");
+  });
+
+  it("returns error when item not found", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue(null);
+
+    const result = await getItemVisibility("nonexistent");
+
+    expect(result.error).toBe("Item not found");
+  });
+
+  it("returns error when item belongs to another user", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      userId: "other-user",
+      isPublic: true,
+    } as never);
+
+    const result = await getItemVisibility("item-1");
+
+    expect(result.error).toBe("Unauthorized");
+  });
+
+  it("returns isPublic true for public item", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      userId: "user-1",
+      isPublic: true,
+    } as never);
+
+    const result = await getItemVisibility("item-1");
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data?.isPublic).toBe(true);
+    }
+  });
+
+  it("returns isPublic false for private item", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      userId: "user-1",
+      isPublic: false,
+    } as never);
+
+    const result = await getItemVisibility("item-1");
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data?.isPublic).toBe(false);
+    }
+  });
+});
+
+describe("getItemProgress", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns null when not authenticated", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const result = await getItemProgress("item-1");
+
+    expect(result).toBeNull();
+  });
+
+  it("calls buildDescendantProgressMap with correct parameters", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    // Mock the recursive CTE queries that buildDescendantProgressMap uses
+    // First call: get descendants
+    // Second call: get progress data
+    vi.mocked(prisma.$queryRaw)
+      .mockResolvedValueOnce([{ id: "item-1" }]) // descendants
+      .mockResolvedValueOnce([]); // no progress data
+
+    const result = await getItemProgress("item-1");
+
+    // Returns null when no media files (percentage is null)
+    expect(result).toBeNull();
+    expect(prisma.$queryRaw).toHaveBeenCalled();
+  });
+
+  it("returns null when item has no media files", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    // No media files - returns empty progress data
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+    vi.mocked(prisma.item.findMany).mockResolvedValue([
+      { id: "item-1", parentId: null },
+    ] as never);
+
+    const result = await getItemProgress("item-1");
+
+    // Returns null when no media files (percentage would be null)
+    expect(result).toBeNull();
+  });
+});
+
+describe("getLibraryProgress", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns null when not authenticated", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const result = await getLibraryProgress();
+
+    expect(result).toBeNull();
+  });
+
+  it("returns aggregate progress for library", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    // Mock the raw query that calculates library progress
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      {
+        totalItems: BigInt(10),
+        itemsWithMedia: BigInt(5),
+        watchedItems: BigInt(3),
+      },
+    ]);
+
+    const result = await getLibraryProgress();
+
+    expect(result).not.toBeNull();
+    if (result) {
+      expect(result.totalItems).toBe(10);
+      expect(result.itemsWithMedia).toBe(5);
+      expect(result.watchedItems).toBe(3);
+      expect(result.percentage).toBe(60); // 3/5 = 60%
+    }
+  });
+
+  it("returns null when library has no items", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      {
+        totalItems: BigInt(0),
+        itemsWithMedia: BigInt(0),
+        watchedItems: BigInt(0),
+      },
+    ]);
+
+    const result = await getLibraryProgress();
+
+    expect(result).toBeNull();
+  });
+
+  it("returns null percentage when no items have media", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      {
+        totalItems: BigInt(5),
+        itemsWithMedia: BigInt(0),
+        watchedItems: BigInt(0),
+      },
+    ]);
+
+    const result = await getLibraryProgress();
+
+    expect(result).not.toBeNull();
+    if (result) {
+      expect(result.percentage).toBeNull();
+    }
+  });
+});
+
+describe("getFirstIncompleteItem", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns error when not authenticated", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const result = await getFirstIncompleteItem();
+
+    expect(result.error).toBe("Unauthorized");
+  });
+
+  it("returns null when all items are complete", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    // All items have 100% progress
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      {
+        id: "item-1",
+        name: "Completed Movie",
+        order: 0,
+        parentId: null,
+        hasPrimaryMedia: true,
+        position: 100,
+        duration: 100,
+      },
+    ]);
+
+    const result = await getFirstIncompleteItem();
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toBeNull();
+    }
+  });
+
+  it("returns first incomplete item", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      {
+        id: "item-1",
+        name: "Completed Movie",
+        order: 0,
+        parentId: null,
+        hasPrimaryMedia: true,
+        position: 100,
+        duration: 100,
+      },
+      {
+        id: "item-2",
+        name: "Unwatched Movie",
+        order: 1,
+        parentId: null,
+        hasPrimaryMedia: true,
+        position: 0,
+        duration: 100,
+      },
+    ]);
+
+    const result = await getFirstIncompleteItem();
+
+    expect(result.success).toBe(true);
+    if (result.success && result.data) {
+      expect(result.data.id).toBe("item-2");
+      expect(result.data.name).toBe("Unwatched Movie");
+    }
+  });
+
+  it("returns first incomplete within parent scope", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    // When parentId is specified, uses recursive CTE
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      {
+        id: "child-1",
+        name: "Child 1",
+        order: 0,
+        parentId: "parent-1",
+        hasPrimaryMedia: true,
+        position: 100,
+        duration: 100,
+      },
+      {
+        id: "child-2",
+        name: "Child 2 - Incomplete",
+        order: 1,
+        parentId: "parent-1",
+        hasPrimaryMedia: true,
+        position: 50,
+        duration: 100,
+      },
+    ]);
+
+    const result = await getFirstIncompleteItem("parent-1");
+
+    expect(result.success).toBe(true);
+    if (result.success && result.data) {
+      expect(result.data.id).toBe("child-2");
+    }
+  });
+
+  it("skips items without primary media", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      {
+        id: "item-1",
+        name: "No Media Folder",
+        order: 0,
+        parentId: null,
+        hasPrimaryMedia: false,
+        position: null,
+        duration: null,
+      },
+      {
+        id: "item-2",
+        name: "Has Media",
+        order: 1,
+        parentId: null,
+        hasPrimaryMedia: true,
+        position: 0,
+        duration: 100,
+      },
+    ]);
+
+    const result = await getFirstIncompleteItem();
+
+    expect(result.success).toBe(true);
+    if (result.success && result.data) {
+      expect(result.data.id).toBe("item-2");
+    }
   });
 });

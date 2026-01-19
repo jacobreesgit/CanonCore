@@ -391,7 +391,7 @@ export async function getExploreItems(
   });
 
   return items
-    .filter((item) => item.user.username !== null)
+    .filter((item) => item.user?.username !== null)
     .map((item) => ({
       id: item.id,
       name: item.name,
