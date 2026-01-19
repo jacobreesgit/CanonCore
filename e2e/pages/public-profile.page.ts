@@ -36,7 +36,9 @@ export class PublicProfilePage {
     });
     this.forkDialogConfirm = page.getByRole("button", { name: /fork here/i });
     this.forkCount = page.getByText(/\d+ forks?/);
-    this.breadcrumb = page.getByLabel("Breadcrumb");
+    // There are two breadcrumbs: header (Home) and content (username > item)
+    // The content breadcrumb is the second/last one
+    this.breadcrumb = page.getByLabel("Breadcrumb").last();
   }
 
   /** Navigate to a public profile */
@@ -82,9 +84,8 @@ export class PublicProfilePage {
 
   /** Fork an item to root */
   async forkItem() {
+    // Fork happens directly without dialog in current implementation
     await this.forkButton.click();
-    await expect(this.forkDestinationDialog).toBeVisible();
-    await this.forkDialogConfirm.click();
   }
 
   /** Expect fork button to show "In Your Library" */

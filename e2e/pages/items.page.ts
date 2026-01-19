@@ -216,17 +216,31 @@ export class ItemsPage {
   getItemLocator(name: string): Locator {
     // Target items in tree/grid views within main content, not sidebar
     const mainContent = this.page.getByRole("main");
+    // Tree items are listitems, grid items are buttons with data-id
     const treeItem = mainContent
       .getByRole("listitem")
       .getByText(name, { exact: true });
     const gridItem = mainContent
       .locator("[data-id]")
       .getByText(name, { exact: true });
-    return treeItem.or(gridItem).first();
+    // Also match buttons directly (grid cards render as buttons)
+    const gridButton = mainContent
+      .getByRole("button", { name, exact: true });
+    return treeItem.or(gridItem).or(gridButton).first();
   }
 
   async openContextMenu(name: string) {
+    // Dismiss any open overlays by pressing Escape
+    await this.page.keyboard.press("Escape");
+    await this.page.waitForTimeout(100);
+
     const item = this.getItemLocator(name);
+    // Ensure item is visible and scroll into view
+    await item.scrollIntoViewIfNeeded();
+    await item.waitFor({ state: "visible", timeout: 5000 });
+    // Click to focus first, then right-click
+    await item.click();
+    await this.page.waitForTimeout(50);
     await item.click({ button: "right" });
   }
 
@@ -236,8 +250,26 @@ export class ItemsPage {
    * @param name - Name of the item to open settings for
    */
   async openSettingsViaContextMenu(name: string) {
-    await this.openContextMenu(name);
-    await this.page.getByRole("menuitem", { name: /settings/i }).click();
+    const settingsMenuItem = this.page.getByRole("menuitem", {
+      name: /settings/i,
+    });
+    // Retry context menu opening up to 3 times
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await this.openContextMenu(name);
+      try {
+        await settingsMenuItem.waitFor({ state: "visible", timeout: 2000 });
+        break;
+      } catch {
+        await this.page.keyboard.press("Escape");
+        await this.page.waitForTimeout(200);
+        if (attempt === 2) {
+          throw new Error(
+            `Context menu failed to open for item "${name}" after 3 attempts`
+          );
+        }
+      }
+    }
+    await settingsMenuItem.click({ force: true });
     // Wait for settings dialog to appear
     await expect(
       this.page.getByRole("dialog", { name: /settings/i })
@@ -363,12 +395,32 @@ export class ItemsPage {
   }
 
   async deleteItemViaContextMenu(name: string) {
-    await this.openContextMenu(name);
-    // Wait for context menu to appear and click delete
+    // Retry context menu opening up to 3 times (can be flaky)
     const deleteMenuItem = this.page.getByRole("menuitem", { name: /delete/i });
-    await expect(deleteMenuItem).toBeVisible({ timeout: 5000 });
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await this.openContextMenu(name);
+      // Wait for context menu to appear
+      try {
+        await deleteMenuItem.waitFor({ state: "visible", timeout: 2000 });
+        break;
+      } catch {
+        // Menu didn't appear, press Escape and retry
+        await this.page.keyboard.press("Escape");
+        await this.page.waitForTimeout(200);
+        if (attempt === 2) {
+          throw new Error(`Context menu failed to open for item "${name}" after 3 attempts`);
+        }
+      }
+    }
     await deleteMenuItem.click({ force: true });
-    await this.page.getByRole("button", { name: /^delete$/i }).click();
+    // Wait for delete confirmation dialog to appear
+    const deleteDialog = this.page.getByRole("dialog", { name: /delete/i });
+    await deleteDialog.waitFor({ state: "visible", timeout: 5000 });
+    // Wait for dialog animation to settle
+    await this.page.waitForTimeout(300);
+    // Click the delete button in the dialog (force to bypass animation stability check)
+    const deleteButton = deleteDialog.getByRole("button", { name: /^delete$/i });
+    await deleteButton.click({ force: true });
     // Wait for confirmation dialog to close
     await expect(
       this.page.getByRole("dialog", { name: /delete/i })

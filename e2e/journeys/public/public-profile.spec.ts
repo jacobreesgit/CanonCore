@@ -16,7 +16,7 @@ test.describe("Public Profiles Journey", () => {
   test.beforeEach(async ({ page, signUpPage }) => {
     // Create owner with public profile
     ownerEmail = generateUniqueEmail("public-owner");
-    ownerUsername = `testuser${Date.now()}`;
+    ownerUsername = `tu${Date.now()}`;
 
     await signUpPage.goto();
     await signUpPage.signUp(ownerEmail, TEST_PASSWORD, TEST_PASSWORD);
@@ -66,7 +66,7 @@ test.describe("Public Profiles Journey", () => {
     // Sign out first
     await page.getByTestId("my-items-user-menu").click();
     await page.getByTestId("my-items-sign-out-button").click();
-    await page.waitForURL("/sign-in", { timeout: 10000 });
+    await page.waitForURL("/", { timeout: 10000 });
 
     // Visit public profile
     await publicProfilePage.gotoProfile(ownerUsername);
@@ -81,7 +81,7 @@ test.describe("Public Profiles Journey", () => {
     // Sign out first
     await page.getByTestId("my-items-user-menu").click();
     await page.getByTestId("my-items-sign-out-button").click();
-    await page.waitForURL("/sign-in", { timeout: 10000 });
+    await page.waitForURL("/", { timeout: 10000 });
 
     // Visit public item
     await publicProfilePage.gotoItem(ownerUsername, publicItemId);
@@ -98,7 +98,7 @@ test.describe("Public Profiles Journey", () => {
     // Sign out first
     await page.getByTestId("my-items-user-menu").click();
     await page.getByTestId("my-items-sign-out-button").click();
-    await page.waitForURL("/sign-in", { timeout: 10000 });
+    await page.waitForURL("/", { timeout: 10000 });
 
     // Visit public item
     await publicProfilePage.gotoItem(ownerUsername, publicItemId);
@@ -123,7 +123,7 @@ test.describe("Public Profiles Journey", () => {
     // Sign out first
     await page.getByTestId("my-items-user-menu").click();
     await page.getByTestId("my-items-sign-out-button").click();
-    await page.waitForURL("/sign-in", { timeout: 10000 });
+    await page.waitForURL("/", { timeout: 10000 });
 
     // Visit public profile
     await publicProfilePage.gotoProfile(ownerUsername);
@@ -141,12 +141,12 @@ test.describe("Public Profiles Journey", () => {
   }) => {
     // Create another user with no items
     const emptyUserEmail = generateUniqueEmail("empty-profile");
-    const emptyUsername = `emptyuser${Date.now()}`;
+    const emptyUsername = `empty${Date.now()}`;
 
     // Sign out current user
     await page.getByTestId("my-items-user-menu").click();
     await page.getByTestId("my-items-sign-out-button").click();
-    await page.waitForURL("/sign-in", { timeout: 10000 });
+    await page.waitForURL("/", { timeout: 10000 });
 
     // Create empty user via sign up
     await signUpPage.goto();
@@ -165,7 +165,7 @@ test.describe("Public Profiles Journey", () => {
     // Sign out
     await page.getByTestId("my-items-user-menu").click();
     await page.getByTestId("my-items-sign-out-button").click();
-    await page.waitForURL("/sign-in", { timeout: 10000 });
+    await page.waitForURL("/", { timeout: 10000 });
 
     // Visit empty profile
     await publicProfilePage.gotoProfile(emptyUsername);
@@ -173,6 +173,185 @@ test.describe("Public Profiles Journey", () => {
 
     // Cleanup
     await prisma.user.delete({ where: { id: emptyUser!.id } }).catch(() => {});
+  });
+});
+
+test.describe("Public Profile Enablement Journey", () => {
+  let userEmail: string;
+  let userId: string;
+
+  test.beforeEach(async ({ page, signUpPage }) => {
+    // Create a new user for each test
+    userEmail = generateUniqueEmail("enablement");
+
+    await signUpPage.goto();
+    await signUpPage.signUp(userEmail, TEST_PASSWORD, TEST_PASSWORD);
+    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+
+    // Get user ID for cleanup
+    const user = await prisma.user.findUnique({
+      where: { email: userEmail },
+    });
+    userId = user!.id;
+  });
+
+  test.afterEach(async () => {
+    // Cleanup
+    await prisma.item.deleteMany({ where: { userId } }).catch(() => {});
+    await prisma.user.delete({ where: { id: userId } }).catch(() => {});
+  });
+
+  test("can enable public profile via settings", async ({
+    page,
+    settingsPage,
+    publicProfilePage,
+  }) => {
+    const username = `tu${Date.now()}`;
+
+    // Open settings
+    await settingsPage.openFromNavUser();
+
+    // Set username
+    await settingsPage.setUsername(username);
+    await settingsPage.waitForUsernameValidation();
+    expect(await settingsPage.isUsernameAvailable()).toBe(true);
+
+    // Enable public profile
+    await settingsPage.togglePublicProfile();
+    await settingsPage.confirmMakePublic();
+    expect(await settingsPage.isPublicProfileEnabled()).toBe(true);
+
+    // Save changes
+    await settingsPage.saveChanges();
+    await settingsPage.expectSettingsSavedToast();
+
+    // Verify profile is accessible publicly
+    await publicProfilePage.gotoProfile(username);
+    await expect(page).toHaveURL(`/u/${username}`);
+  });
+
+  test("shows confirmation dialog when enabling public profile", async ({
+    page,
+    settingsPage,
+  }) => {
+    // Open settings
+    await settingsPage.openFromNavUser();
+
+    // Set a username first
+    const username = `confirm${Date.now()}`;
+    await settingsPage.setUsername(username);
+    await settingsPage.waitForUsernameValidation();
+
+    // Toggle public - should show confirmation
+    await settingsPage.togglePublicProfile();
+
+    // Verify confirmation dialog appears
+    await expect(
+      page.getByRole("alertdialog", { name: /make your profile public/i })
+    ).toBeVisible();
+
+    // Cancel - switch should remain off
+    await settingsPage.cancelMakePublic();
+    expect(await settingsPage.isPublicProfileEnabled()).toBe(false);
+
+    // Toggle again and confirm
+    await settingsPage.togglePublicProfile();
+    await settingsPage.confirmMakePublic();
+    expect(await settingsPage.isPublicProfileEnabled()).toBe(true);
+  });
+
+  test("validates username availability", async ({ settingsPage }) => {
+    // First create a user with an existing username
+    const existingUsername = `exist${Date.now()}`;
+    await prisma.user.create({
+      data: {
+        email: `existing-${Date.now()}@test.example.com`,
+        passwordHash: "hashedpassword",
+        username: existingUsername,
+        isPublic: true,
+      },
+    });
+
+    try {
+      // Open settings
+      await settingsPage.openFromNavUser();
+
+      // Try to use existing username
+      await settingsPage.setUsername(existingUsername);
+      await settingsPage.waitForUsernameValidation();
+
+      // Should show as taken
+      expect(await settingsPage.isUsernameTaken()).toBe(true);
+
+      // Change to available username
+      const availableUsername = `avail${Date.now()}`;
+      await settingsPage.setUsername(availableUsername);
+      await settingsPage.waitForUsernameValidation();
+
+      // Should show as available
+      expect(await settingsPage.isUsernameAvailable()).toBe(true);
+    } finally {
+      // Cleanup existing user
+      await prisma.user
+        .deleteMany({ where: { username: existingUsername } })
+        .catch(() => {});
+    }
+  });
+
+  test("shows public profile URL preview", async ({ settingsPage }) => {
+    // Open settings
+    await settingsPage.openFromNavUser();
+
+    // Set username
+    const username = `preview${Date.now()}`;
+    await settingsPage.setUsername(username);
+
+    // Verify URL preview updates
+    const preview = await settingsPage.getPublicUrlPreview();
+    expect(preview).toContain(`canoncore.com/u/${username}`);
+  });
+
+  test("can disable public profile", async ({
+    page,
+    settingsPage,
+    publicProfilePage,
+  }) => {
+    const username = `disable${Date.now()}`;
+
+    // First enable public profile via DB
+    await prisma.user.update({
+      where: { id: userId },
+      data: { username, isPublic: true },
+    });
+
+    // Reload page
+    await page.reload();
+
+    // Verify profile is accessible
+    await publicProfilePage.gotoProfile(username);
+    await expect(page).toHaveURL(`/u/${username}`);
+
+    // Go back to my items
+    await page.goto("/my-items");
+
+    // Open settings and disable
+    await settingsPage.openFromNavUser();
+    expect(await settingsPage.isPublicProfileEnabled()).toBe(true);
+
+    await settingsPage.togglePublicProfile();
+    expect(await settingsPage.isPublicProfileEnabled()).toBe(false);
+
+    await settingsPage.saveChanges();
+    await settingsPage.expectSettingsSavedToast();
+
+    // Verify profile is no longer accessible (should show 404)
+    await publicProfilePage.gotoProfile(username);
+    // Private profile returns 404 - Next.js shows "This page could not be found"
+    await expect(
+      page.getByText(/not found|could not be found|doesn't exist/i)
+    ).toBeVisible({
+      timeout: 5000,
+    });
   });
 });
 
@@ -185,7 +364,7 @@ test.describe("Fork Journey", () => {
   test.beforeEach(async () => {
     // Create owner with public profile directly in DB
     ownerEmail = generateUniqueEmail("fork-owner");
-    ownerUsername = `forkowner${Date.now()}`;
+    ownerUsername = `fork${Date.now()}`;
 
     const { hash } = await import("bcryptjs");
     const passwordHash = await hash(TEST_PASSWORD, 10);

@@ -563,6 +563,385 @@ Content-Type: application/json
     });
   });
 
+  describe("createRootFolder", () => {
+    it("returns existing folder if found", async () => {
+      const mockDrive = {
+        files: {
+          list: vi.fn().mockResolvedValue({
+            data: {
+              files: [{ id: "existing-folder-123", name: "CanonCore" }],
+            },
+          }),
+          create: vi.fn(),
+        },
+      } as unknown as drive_v3.Drive;
+
+      const { createRootFolder } = await import("@/lib/google-drive-client");
+      const result = await createRootFolder(mockDrive);
+
+      expect(result.id).toBe("existing-folder-123");
+      expect(result.wasExisting).toBe(true);
+      expect(mockDrive.files.create).not.toHaveBeenCalled();
+    });
+
+    it("creates new folder if not found", async () => {
+      const mockDrive = {
+        files: {
+          list: vi.fn().mockResolvedValue({ data: { files: [] } }),
+          create: vi.fn().mockResolvedValue({ data: { id: "new-folder-456" } }),
+        },
+      } as unknown as drive_v3.Drive;
+
+      const { createRootFolder } = await import("@/lib/google-drive-client");
+      const result = await createRootFolder(mockDrive);
+
+      expect(result.id).toBe("new-folder-456");
+      expect(result.wasExisting).toBe(false);
+      expect(mockDrive.files.create).toHaveBeenCalled();
+    });
+
+    it("throws if folder creation fails", async () => {
+      const mockDrive = {
+        files: {
+          list: vi.fn().mockResolvedValue({ data: { files: [] } }),
+          create: vi.fn().mockResolvedValue({ data: {} }), // No id returned
+        },
+      } as unknown as drive_v3.Drive;
+
+      const { createRootFolder } = await import("@/lib/google-drive-client");
+
+      await expect(createRootFolder(mockDrive)).rejects.toThrow(
+        "Failed to create CanonCore folder"
+      );
+    });
+  });
+
+  describe("listFiles", () => {
+    it("returns files and next page token", async () => {
+      const mockDrive = {
+        files: {
+          list: vi.fn().mockResolvedValue({
+            data: {
+              files: [
+                { id: "file-1", name: "test.mp4" },
+                { id: "file-2", name: "test2.mp4" },
+              ],
+              nextPageToken: "next-page-token",
+            },
+          }),
+        },
+      } as unknown as drive_v3.Drive;
+
+      const { listFiles } = await import("@/lib/google-drive-client");
+      const result = await listFiles(mockDrive, "parent-folder-id");
+
+      expect(result.files).toHaveLength(2);
+      expect(result.nextPageToken).toBe("next-page-token");
+    });
+
+    it("handles empty file list", async () => {
+      const mockDrive = {
+        files: {
+          list: vi.fn().mockResolvedValue({
+            data: { files: [], nextPageToken: null },
+          }),
+        },
+      } as unknown as drive_v3.Drive;
+
+      const { listFiles } = await import("@/lib/google-drive-client");
+      const result = await listFiles(mockDrive, "parent-folder-id");
+
+      expect(result.files).toHaveLength(0);
+      expect(result.nextPageToken).toBeUndefined();
+    });
+
+    it("passes page token for pagination", async () => {
+      const mockDrive = {
+        files: {
+          list: vi.fn().mockResolvedValue({
+            data: { files: [], nextPageToken: null },
+          }),
+        },
+      } as unknown as drive_v3.Drive;
+
+      const { listFiles } = await import("@/lib/google-drive-client");
+      await listFiles(mockDrive, "parent-folder-id", "page-token");
+
+      expect(mockDrive.files.list).toHaveBeenCalledWith(
+        expect.objectContaining({ pageToken: "page-token" })
+      );
+    });
+  });
+
+  describe("createFolder", () => {
+    it("creates folder and returns id", async () => {
+      const mockDrive = {
+        files: {
+          create: vi.fn().mockResolvedValue({ data: { id: "new-folder-id" } }),
+        },
+      } as unknown as drive_v3.Drive;
+
+      const { createFolder } = await import("@/lib/google-drive-client");
+      const result = await createFolder(
+        mockDrive,
+        "My Folder",
+        "parent-folder-id"
+      );
+
+      expect(result).toBe("new-folder-id");
+      expect(mockDrive.files.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requestBody: expect.objectContaining({
+            name: "My Folder",
+            mimeType: "application/vnd.google-apps.folder",
+          }),
+        })
+      );
+    });
+
+    it("throws if folder creation fails", async () => {
+      const mockDrive = {
+        files: {
+          create: vi.fn().mockResolvedValue({ data: {} }),
+        },
+      } as unknown as drive_v3.Drive;
+
+      const { createFolder } = await import("@/lib/google-drive-client");
+
+      await expect(
+        createFolder(mockDrive, "My Folder", "parent-id")
+      ).rejects.toThrow("Failed to create folder");
+    });
+  });
+
+  describe("deleteFile", () => {
+    it("moves file to trash", async () => {
+      const mockDrive = {
+        files: {
+          update: vi.fn().mockResolvedValue({ data: {} }),
+        },
+      } as unknown as drive_v3.Drive;
+
+      const { deleteFile } = await import("@/lib/google-drive-client");
+      await deleteFile(mockDrive, "file-to-delete");
+
+      expect(mockDrive.files.update).toHaveBeenCalledWith({
+        fileId: "file-to-delete",
+        requestBody: { trashed: true },
+      });
+    });
+  });
+
+  describe("renameFile", () => {
+    it("renames file in Drive", async () => {
+      const mockDrive = {
+        files: {
+          update: vi.fn().mockResolvedValue({ data: {} }),
+        },
+      } as unknown as drive_v3.Drive;
+
+      const { renameFile } = await import("@/lib/google-drive-client");
+      await renameFile(mockDrive, "file-id", "new-name.mp4");
+
+      expect(mockDrive.files.update).toHaveBeenCalledWith({
+        fileId: "file-id",
+        requestBody: { name: "new-name.mp4" },
+      });
+    });
+  });
+
+  describe("moveFile", () => {
+    it("moves file to new parent", async () => {
+      const mockDrive = {
+        files: {
+          update: vi.fn().mockResolvedValue({ data: {} }),
+        },
+      } as unknown as drive_v3.Drive;
+
+      const { moveFile } = await import("@/lib/google-drive-client");
+      await moveFile(mockDrive, "file-id", "new-parent", "old-parent");
+
+      expect(mockDrive.files.update).toHaveBeenCalledWith({
+        fileId: "file-id",
+        addParents: "new-parent",
+        removeParents: "old-parent",
+      });
+    });
+  });
+
+  describe("downloadFile", () => {
+    it("downloads file content", async () => {
+      const testContent = Buffer.from("test file content");
+      const mockDrive = {
+        files: {
+          get: vi.fn().mockResolvedValue({ data: testContent }),
+        },
+      } as unknown as drive_v3.Drive;
+
+      const { downloadFile } = await import("@/lib/google-drive-client");
+      const result = await downloadFile(mockDrive, "file-id");
+
+      expect(result).toBeInstanceOf(Buffer);
+      expect(mockDrive.files.get).toHaveBeenCalledWith(
+        { fileId: "file-id", alt: "media" },
+        { responseType: "arraybuffer" }
+      );
+    });
+  });
+
+  describe("getUserEmail", () => {
+    beforeEach(() => {
+      vi.stubGlobal("fetch", vi.fn());
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("returns email from Google API", async () => {
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({ email: "user@example.com" }),
+      } as Response);
+
+      const { getUserEmail } = await import("@/lib/google-drive-client");
+      const email = await getUserEmail("test-access-token");
+
+      expect(email).toBe("user@example.com");
+    });
+
+    it("throws if API request fails", async () => {
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: false,
+      } as Response);
+
+      const { getUserEmail } = await import("@/lib/google-drive-client");
+
+      await expect(getUserEmail("test-token")).rejects.toThrow(
+        "Failed to get user info from Google"
+      );
+    });
+
+    it("throws if no email returned", async () => {
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({}),
+      } as Response);
+
+      const { getUserEmail } = await import("@/lib/google-drive-client");
+
+      await expect(getUserEmail("test-token")).rejects.toThrow(
+        "No email returned from Google"
+      );
+    });
+  });
+
+  describe("createResumableUploadUrl", () => {
+    beforeEach(() => {
+      vi.stubGlobal("fetch", vi.fn());
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("returns upload URL from Location header", async () => {
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        headers: new Headers({
+          Location:
+            "https://www.googleapis.com/upload/drive/v3/files?uploadId=xyz",
+        }),
+      } as Response);
+
+      const { createResumableUploadUrl } =
+        await import("@/lib/google-drive-client");
+      const url = await createResumableUploadUrl(
+        "test-token",
+        "file.mp4",
+        "video/mp4",
+        "parent-folder",
+        "https://example.com"
+      );
+
+      expect(url).toContain("uploadId=xyz");
+    });
+
+    it("throws if request fails", async () => {
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: false,
+        status: 400,
+        text: async () => "Bad Request",
+      } as Response);
+
+      const { createResumableUploadUrl } =
+        await import("@/lib/google-drive-client");
+
+      await expect(
+        createResumableUploadUrl(
+          "test-token",
+          "file.mp4",
+          "video/mp4",
+          "parent-folder",
+          "https://example.com"
+        )
+      ).rejects.toThrow("Failed to create upload session: 400");
+    });
+
+    it("throws if no Location header", async () => {
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        headers: new Headers({}),
+      } as Response);
+
+      const { createResumableUploadUrl } =
+        await import("@/lib/google-drive-client");
+
+      await expect(
+        createResumableUploadUrl(
+          "test-token",
+          "file.mp4",
+          "video/mp4",
+          "parent-folder",
+          "https://example.com"
+        )
+      ).rejects.toThrow("No upload URL returned");
+    });
+  });
+
+  describe("permanentlyDeleteFile", () => {
+    it("permanently deletes file", async () => {
+      const mockDrive = {
+        files: {
+          delete: vi.fn().mockResolvedValue({}),
+        },
+      } as unknown as drive_v3.Drive;
+
+      const { permanentlyDeleteFile } =
+        await import("@/lib/google-drive-client");
+      await permanentlyDeleteFile(mockDrive, "file-to-delete");
+
+      expect(mockDrive.files.delete).toHaveBeenCalledWith({
+        fileId: "file-to-delete",
+      });
+    });
+  });
+
+  describe("emptyTrash", () => {
+    it("empties trash", async () => {
+      const mockDrive = {
+        files: {
+          emptyTrash: vi.fn().mockResolvedValue({}),
+        },
+      } as unknown as drive_v3.Drive;
+
+      const { emptyTrash } = await import("@/lib/google-drive-client");
+      await emptyTrash(mockDrive);
+
+      expect(mockDrive.files.emptyTrash).toHaveBeenCalledWith({});
+    });
+  });
+
   describe("batchMoveFromDifferentParents", () => {
     beforeEach(() => {
       vi.stubGlobal("fetch", vi.fn());
@@ -605,6 +984,113 @@ Content-Type: application/json
       expect(result.succeeded).toEqual([]);
       expect(result.failed).toEqual([]);
       expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("handles batch request failure with non-ok response", async () => {
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: "Internal Server Error",
+      } as Response);
+
+      const { batchMoveFromDifferentParents } =
+        await import("@/lib/google-drive-client");
+
+      const result = await batchMoveFromDifferentParents(
+        "token",
+        [
+          { fileId: "file-1", oldParentId: "parent-a" },
+          { fileId: "file-2", oldParentId: "parent-b" },
+        ],
+        "new-parent"
+      );
+
+      // All files should be marked as failed
+      expect(result.succeeded).toHaveLength(0);
+      expect(result.failed).toHaveLength(2);
+      expect(result.failed[0].error).toContain("Batch failed: 500");
+    });
+
+    it("handles partial batch failures in response", async () => {
+      // Create a response with mixed success/failure
+      const boundary = "batch_mock123";
+      let body = "";
+
+      // First file succeeds
+      body += `--${boundary}\r\n`;
+      body += `Content-Type: application/http\r\n`;
+      body += `Content-ID: <response-item-0>\r\n\r\n`;
+      body += `HTTP/1.1 200 OK\r\n`;
+      body += `Content-Type: application/json\r\n\r\n`;
+      body += `{"id":"file-1"}\r\n`;
+
+      // Second file fails
+      body += `--${boundary}\r\n`;
+      body += `Content-Type: application/http\r\n`;
+      body += `Content-ID: <response-item-1>\r\n\r\n`;
+      body += `HTTP/1.1 404 Not Found\r\n`;
+      body += `Content-Type: application/json\r\n\r\n`;
+      body += `{"error":{"message":"File not found"}}\r\n`;
+
+      body += `--${boundary}--`;
+
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        headers: new Headers({
+          "content-type": `multipart/mixed; boundary=${boundary}`,
+        }),
+        text: async () => body,
+      } as Response);
+
+      const { batchMoveFromDifferentParents } =
+        await import("@/lib/google-drive-client");
+
+      const result = await batchMoveFromDifferentParents(
+        "token",
+        [
+          { fileId: "file-1", oldParentId: "parent-a" },
+          { fileId: "file-2", oldParentId: "parent-b" },
+        ],
+        "new-parent"
+      );
+
+      expect(result.succeeded).toHaveLength(1);
+      expect(result.failed).toHaveLength(1);
+      expect(result.failed[0].fileId).toBe("file-2");
+    });
+
+    it("handles network errors during batch request", async () => {
+      vi.mocked(global.fetch).mockRejectedValue(new Error("Network error"));
+
+      const { batchMoveFromDifferentParents } =
+        await import("@/lib/google-drive-client");
+
+      const result = await batchMoveFromDifferentParents(
+        "token",
+        [{ fileId: "file-1", oldParentId: "parent-a" }],
+        "new-parent"
+      );
+
+      expect(result.succeeded).toHaveLength(0);
+      expect(result.failed).toHaveLength(1);
+      expect(result.failed[0].error).toBe("Network error");
+    });
+
+    it("handles timeout errors during batch request", async () => {
+      const abortError = new Error("Aborted");
+      abortError.name = "AbortError";
+      vi.mocked(global.fetch).mockRejectedValue(abortError);
+
+      const { batchMoveFromDifferentParents } =
+        await import("@/lib/google-drive-client");
+
+      await expect(
+        batchMoveFromDifferentParents(
+          "token",
+          [{ fileId: "file-1", oldParentId: "parent-a" }],
+          "new-parent"
+        )
+      ).rejects.toThrow("Batch move timeout");
     });
   });
 });
