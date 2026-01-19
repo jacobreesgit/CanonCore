@@ -171,7 +171,7 @@
  * Hidden by default, visible on focus for WCAG 2.1 Level A compliance.
  */
 .skip-link {
-  @apply fixed left-0 top-0 z-[9999] -translate-y-full bg-background px-4 py-2 text-sm font-medium text-foreground transition-transform focus:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+  @apply bg-background text-foreground focus-visible:ring-ring fixed top-0 left-0 z-[9999] -translate-y-full px-4 py-2 text-sm font-medium transition-transform focus:translate-y-0 focus:outline-none focus-visible:ring-2;
 }
 
 /**

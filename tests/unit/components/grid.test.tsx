@@ -7,6 +7,26 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { Grid } from "@/components/sortable-grid/Grid";
 import type { ItemWithArtwork } from "@/lib/types";
 
+// Mock hooks and components to prevent Vitest worker shutdown issues with module resolution
+vi.mock("@/hooks/use-lazy-image", () => ({
+  useLazyImage: () => ({ ref: () => {}, shouldLoad: true }),
+}));
+
+vi.mock("@/hooks/use-image-loaded", () => ({
+  useImageLoaded: () => ({
+    ref: { current: null },
+    loaded: false,
+    error: false,
+    onLoad: vi.fn(),
+    onError: vi.fn(),
+  }),
+}));
+
+// Mock ItemContextMenu to prevent deep import chain during shutdown
+vi.mock("@/components/items/item-context-menu", () => ({
+  ItemContextMenu: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 const mockItems: ItemWithArtwork[] = [
   {
     id: "1",

@@ -23,10 +23,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "CanonCore",
   description: "CanonCore - Media Library Manager",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#242424" },
-  ],
   icons: {
     icon: [
       { url: "/favicon.ico", media: "(prefers-color-scheme: light)" },
@@ -45,9 +41,14 @@ export const metadata: Metadata = {
 /**
  * Viewport configuration for safe area support on notched devices.
  * viewport-fit=cover enables env(safe-area-inset-*) CSS functions.
+ * themeColor sets browser chrome color for light/dark modes.
  */
 export const viewport: Viewport = {
   viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#242424" },
+  ],
 };
 
 /**

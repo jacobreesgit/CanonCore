@@ -39,6 +39,36 @@ vi.mock("sonner", () => ({
   },
 }));
 
+// Mock sortable components to prevent module resolution during shutdown
+vi.mock("@/components/sortable-grid", () => ({
+  SortableGrid: () => null,
+  Grid: () => null,
+}));
+
+vi.mock("@/components/sortable-tree", () => ({
+  SortableTree: () => null,
+  Tree: () => null,
+}));
+
+vi.mock("@/hooks/use-lazy-image", () => ({
+  useLazyImage: () => ({ ref: { current: null }, isInView: true }),
+}));
+
+vi.mock("@/hooks/use-image-loaded", () => ({
+  useImageLoaded: () => ({
+    ref: { current: null },
+    loaded: false,
+    error: false,
+    onLoad: vi.fn(),
+    onError: vi.fn(),
+  }),
+}));
+
+// Mock ItemContextMenu to prevent deep import chain during shutdown
+vi.mock("@/components/items/item-context-menu", () => ({
+  ItemContextMenu: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 describe("ItemsToolbar", () => {
   const defaultProps = {
     hasItems: false,

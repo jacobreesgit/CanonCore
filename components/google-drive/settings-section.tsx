@@ -232,7 +232,10 @@ export function GoogleDriveSettingsSection({
                     className="h-7 gap-1.5 px-2 text-xs"
                   >
                     {isSyncing ? (
-                      <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
+                      <Loader2
+                        aria-hidden="true"
+                        className="size-3.5 animate-spin"
+                      />
                     ) : (
                       <RefreshCw aria-hidden="true" className="size-3.5" />
                     )}
@@ -261,7 +264,10 @@ export function GoogleDriveSettingsSection({
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          <ExternalLink aria-hidden="true" className="size-3.5" />
+                          <ExternalLink
+                            aria-hidden="true"
+                            className="size-3.5"
+                          />
                           Drive
                         </a>
                       </Button>
@@ -287,7 +293,10 @@ export function GoogleDriveSettingsSection({
                         className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 gap-1.5 px-2 text-xs"
                       >
                         {isDisconnecting ? (
-                          <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
+                          <Loader2
+                            aria-hidden="true"
+                            className="size-3.5 animate-spin"
+                          />
                         ) : (
                           <Trash2 aria-hidden="true" className="size-3.5" />
                         )}
@@ -324,7 +333,10 @@ export function GoogleDriveSettingsSection({
           {connection.lastError === "ROOT_FOLDER_TRASHED" && (
             <div className="rounded-md border border-yellow-500/50 bg-yellow-500/10 p-3">
               <div className="flex items-start gap-2">
-                <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 text-yellow-600 dark:text-yellow-500" />
+                <AlertTriangle
+                  aria-hidden="true"
+                  className="mt-0.5 size-4 text-yellow-600 dark:text-yellow-500"
+                />
                 <div className="space-y-1.5">
                   <p className="text-sm font-medium">
                     CanonCore folder is in Trash
@@ -353,7 +365,10 @@ export function GoogleDriveSettingsSection({
           {connection.lastError === "ROOT_FOLDER_DELETED" && (
             <div className="border-destructive/50 bg-destructive/10 rounded-md border p-3">
               <div className="flex items-start gap-2">
-                <AlertTriangle aria-hidden="true" className="text-destructive mt-0.5 size-4" />
+                <AlertTriangle
+                  aria-hidden="true"
+                  className="text-destructive mt-0.5 size-4"
+                />
                 <div className="space-y-1">
                   <p className="text-sm font-medium">
                     CanonCore folder was deleted
@@ -376,7 +391,10 @@ export function GoogleDriveSettingsSection({
               disabled={isConnecting}
             >
               {isConnecting ? (
-                <Loader2 aria-hidden="true" className="mr-1.5 size-3.5 animate-spin" />
+                <Loader2
+                  aria-hidden="true"
+                  className="mr-1.5 size-3.5 animate-spin"
+                />
               ) : (
                 <Link2 aria-hidden="true" className="mr-1.5 size-3.5" />
               )}
@@ -391,7 +409,10 @@ export function GoogleDriveSettingsSection({
           </p>
           <Button onClick={handleConnect} disabled={isConnecting} size="sm">
             {isConnecting ? (
-              <Loader2 aria-hidden="true" className="mr-1.5 size-3.5 animate-spin" />
+              <Loader2
+                aria-hidden="true"
+                className="mr-1.5 size-3.5 animate-spin"
+              />
             ) : (
               <Cloud aria-hidden="true" className="mr-1.5 size-3.5" />
             )}
