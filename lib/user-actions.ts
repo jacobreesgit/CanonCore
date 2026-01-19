@@ -233,13 +233,16 @@ export async function changePassword(data: {
   currentPassword: string;
   newPassword: string;
 }): Promise<ActionResult<void>> {
-  const userId = await getAuthUserId();
+  // Run auth and rate limit in parallel (async-parallel pattern)
+  const [userId, rateLimitResult] = await Promise.all([
+    getAuthUserId(),
+    checkRateLimit("passwordChange"),
+  ]);
+
   if (!userId) {
     return { success: false, error: "Not authenticated" };
   }
 
-  // Rate limiting
-  const rateLimitResult = await checkRateLimit("passwordChange");
   if (rateLimitResult) {
     await logSecurityEvent("PASSWORD_CHANGE_RATE_LIMITED", { userId });
     return { success: false, ...rateLimitResult };

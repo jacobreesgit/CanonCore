@@ -4,12 +4,13 @@
  * Supports both item artwork (via artworkId) and direct URLs (via backgroundUrl).
  * Falls back to animated shader when no image available.
  * Long descriptions expand with motion animation via "Read More" button.
+ * Respects prefers-reduced-motion for accessibility.
  */
 
 "use client";
 
 import { useState, useRef, useLayoutEffect } from "react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import {
   Play,
   ChevronDown,
@@ -82,10 +83,16 @@ export function ItemHero({
   onCollapse,
   className,
 }: ItemHeroProps) {
+  const shouldReduceMotion = useReducedMotion();
   const [imageError, setImageError] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const descriptionRef = useRef<HTMLParagraphElement>(null);
+
+  // Motion transition settings - instant when reduced motion is preferred
+  const springTransition = shouldReduceMotion
+    ? { duration: 0 }
+    : { type: "spring" as const, stiffness: 400, damping: 35 };
 
   // Detect actual text overflow by comparing scroll height to collapsed height
   useLayoutEffect(() => {
@@ -112,9 +119,9 @@ export function ItemHero({
   return (
     <motion.section
       data-testid="item-hero"
-      layout
+      layout={!shouldReduceMotion}
       initial={false}
-      transition={{ type: "spring", stiffness: 400, damping: 35 }}
+      transition={springTransition}
       className={cn(
         "relative overflow-hidden rounded-xl",
         shouldShowBackground &&
@@ -132,12 +139,12 @@ export function ItemHero({
         // Collapsed content - horizontal bar
         <motion.div
           key="collapsed"
-          initial={{ opacity: 0 }}
+          initial={shouldReduceMotion ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.15 }}
+          transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.15 }}
           className="relative z-20 flex h-14 items-center justify-between rounded-xl border border-white/10 bg-black/40 px-4 backdrop-blur-md"
         >
-          <h1 className="truncate text-lg font-semibold text-white/90">
+          <h1 className="min-w-0 truncate text-lg font-semibold text-white/90">
             {name}
           </h1>
           <div className="flex items-center gap-2">
@@ -183,9 +190,9 @@ export function ItemHero({
         // Expanded content - full cinematic hero
         <motion.div
           key="expanded"
-          initial={{ opacity: 0 }}
+          initial={shouldReduceMotion ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.15 }}
+          transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.15 }}
           className="flex min-h-[max(240px,30dvh)] items-center justify-center"
         >
           {/* Collapse button - top right */}
@@ -232,7 +239,7 @@ export function ItemHero({
           {/* Content overlay - centered with consistent width */}
           <div className="relative z-20 flex w-full max-w-4xl flex-col items-center gap-6 p-8 text-center text-white">
             {/* Title */}
-            <h1 className="line-clamp-2 text-4xl font-bold tracking-tight drop-shadow-lg md:text-5xl">
+            <h1 className="line-clamp-2 text-4xl font-bold tracking-tight text-balance drop-shadow-lg md:text-5xl">
               {name}
             </h1>
 
@@ -245,7 +252,7 @@ export function ItemHero({
                     height:
                       descriptionExpanded || !isOverflowing ? "auto" : "3.5rem",
                   }}
-                  transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                  transition={springTransition}
                   className="overflow-hidden"
                   data-testid="hero-description"
                 >
@@ -268,11 +275,11 @@ export function ItemHero({
                     {descriptionExpanded ? "Show Less" : "Read More"}
                     <motion.span
                       animate={{ rotate: descriptionExpanded ? 180 : 0 }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 400,
-                        damping: 25,
-                      }}
+                      transition={
+                        shouldReduceMotion
+                          ? { duration: 0 }
+                          : { type: "spring", stiffness: 400, damping: 25 }
+                      }
                     >
                       <ChevronDown className="size-4" />
                     </motion.span>
@@ -288,20 +295,24 @@ export function ItemHero({
                   <motion.div
                     data-testid="hero-progress-bar"
                     className="h-full rounded-full bg-white"
-                    initial={{ width: 0 }}
+                    initial={shouldReduceMotion ? false : { width: 0 }}
                     animate={{ width: `${progressPercentage}%` }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 100,
-                      damping: 20,
-                      delay: 0.2,
-                    }}
+                    transition={
+                      shouldReduceMotion
+                        ? { duration: 0 }
+                        : {
+                            type: "spring",
+                            stiffness: 100,
+                            damping: 20,
+                            delay: 0.2,
+                          }
+                    }
                   />
                 </div>
                 {progressLabel && (
                   <span
                     data-testid="hero-progress-label"
-                    className="text-xs tracking-wide text-white/60"
+                    className="text-xs tracking-wide text-white/60 tabular-nums"
                   >
                     {progressLabel}
                   </span>

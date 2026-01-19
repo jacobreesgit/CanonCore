@@ -110,25 +110,25 @@ export function ItemContextMenu({
               onClick={() => setAddChildOpen(true)}
               className="gap-2"
             >
-              <Plus className="size-4" strokeWidth={2} />
+              <Plus aria-hidden="true" className="size-4" strokeWidth={2} />
               <span>Add Child Item</span>
             </ContextMenuItem>
           )}
           {onSettings && (
             <ContextMenuItem onClick={onSettings} className="gap-2">
-              <Settings className="size-4" strokeWidth={2} />
+              <Settings aria-hidden="true" className="size-4" strokeWidth={2} />
               <span>Settings</span>
             </ContextMenuItem>
           )}
           {isPinned && onUnpin && (
             <ContextMenuItem onClick={onUnpin} className="gap-2">
-              <PinOff className="size-4" strokeWidth={2} />
+              <PinOff aria-hidden="true" className="size-4" strokeWidth={2} />
               <span>Unpin from Sidebar</span>
             </ContextMenuItem>
           )}
           {!isPinned && onPin && (
             <ContextMenuItem onClick={onPin} className="gap-2">
-              <Pin className="size-4" strokeWidth={2} />
+              <Pin aria-hidden="true" className="size-4" strokeWidth={2} />
               <span>Pin to Sidebar</span>
             </ContextMenuItem>
           )}
@@ -139,7 +139,11 @@ export function ItemContextMenu({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <ExternalLink className="size-4" strokeWidth={2} />
+                <ExternalLink
+                  aria-hidden="true"
+                  className="size-4"
+                  strokeWidth={2}
+                />
                 <span>Open in Drive</span>
               </a>
             </ContextMenuItem>
@@ -154,7 +158,7 @@ export function ItemContextMenu({
                   "text-destructive focus:text-destructive focus:bg-destructive/10"
                 )}
               >
-                <Trash2 className="size-4" strokeWidth={2} />
+                <Trash2 aria-hidden="true" className="size-4" strokeWidth={2} />
                 <span>Delete</span>
               </ContextMenuItem>
             </>

@@ -104,7 +104,15 @@ export default function SignUpPage() {
           `,
         }}
       />
-      <div className="relative z-10 flex h-full items-center justify-center">
+      <div
+        className="relative z-10 flex h-full items-center justify-center"
+        style={{
+          paddingTop: "var(--safe-area-inset-top)",
+          paddingRight: "var(--safe-area-inset-right)",
+          paddingBottom: "var(--safe-area-inset-bottom)",
+          paddingLeft: "var(--safe-area-inset-left)",
+        }}
+      >
         <div className="flex flex-col items-center gap-6 lg:justify-start">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-1.5">
@@ -117,7 +125,9 @@ export default function SignUpPage() {
             onSubmit={onSubmit}
             className="border-muted bg-background flex w-full max-w-sm min-w-sm flex-col items-center gap-y-4 rounded-md border px-6 py-8 shadow-md"
           >
-            <h1 className="text-xl font-semibold">Create your account</h1>
+            <h1 className="text-xl font-semibold text-balance">
+              Create your account
+            </h1>
 
             {error && (
               <div
@@ -132,7 +142,10 @@ export default function SignUpPage() {
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
+                autoComplete="email"
+                spellCheck={false}
                 placeholder="Email"
                 className="text-sm"
                 value={email}
@@ -152,7 +165,10 @@ export default function SignUpPage() {
               <div className="relative">
                 <Input
                   id="username"
+                  name="username"
                   type="text"
+                  autoComplete="username"
+                  spellCheck={false}
                   placeholder="Choose a username"
                   className={cn(
                     "pr-10 text-sm",
@@ -191,6 +207,8 @@ export default function SignUpPage() {
               <Label htmlFor="password">Password</Label>
               <PasswordInput
                 id="password"
+                name="new-password"
+                autoComplete="new-password"
                 placeholder="Password"
                 className="text-sm"
                 value={password}
@@ -205,6 +223,8 @@ export default function SignUpPage() {
               <Label htmlFor="confirmPassword">Confirm password</Label>
               <PasswordInput
                 id="confirmPassword"
+                name="confirm-password"
+                autoComplete="new-password"
                 placeholder="Confirm password"
                 className="text-sm"
                 value={confirmPassword}
@@ -220,7 +240,7 @@ export default function SignUpPage() {
               disabled={loading}
               data-testid="sign-up-submit-button"
             >
-              {loading ? "Creating account..." : "Create account"}
+              {loading ? "Creating account…" : "Create account"}
             </Button>
           </form>
 

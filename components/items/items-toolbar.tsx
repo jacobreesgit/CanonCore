@@ -205,7 +205,7 @@ export function ItemsToolbar({
             ) : (
               <RefreshCw className="size-4" />
             )}
-            <span>{isSyncing ? "Syncing..." : "Sync"}</span>
+            <span>{isSyncing ? "Syncing…" : "Sync"}</span>
           </Button>
 
           {/* Desktop: Sort/Filter dropdowns */}

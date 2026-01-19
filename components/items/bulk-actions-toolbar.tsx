@@ -51,7 +51,7 @@ export function BulkActionsToolbar({
     <div
       className={cn(
         "bg-muted/50 flex h-12 items-center gap-4 rounded-lg border px-4",
-        "backdrop-blur-sm transition-all duration-200",
+        "backdrop-blur-sm transition-colors duration-200",
         selectionCount > 0 && "border-primary/20 bg-primary/5",
         className
       )}

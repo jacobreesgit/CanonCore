@@ -32,6 +32,12 @@ export const ARTWORK_EXTENSIONS = [
 /** Subtitle file extensions */
 export const SUBTITLE_EXTENSIONS = [".srt", ".vtt", ".sub", ".ass"] as const;
 
+// Sets for O(1) lookups (js-set-map-lookups)
+const MEDIA_EXTENSIONS_SET = new Set<string>(MEDIA_EXTENSIONS);
+const ARTWORK_EXTENSIONS_SET = new Set<string>(ARTWORK_EXTENSIONS);
+const SUBTITLE_EXTENSIONS_SET = new Set<string>(SUBTITLE_EXTENSIONS);
+const SUBTITLE_BARE_SET = new Set(["srt", "vtt", "sub", "ass"]);
+
 /** Extension to MIME type mapping */
 const MIME_TYPES: Record<string, string> = {
   // Video
@@ -82,13 +88,13 @@ export function getFileTypeByExtension(filename: string): FileType | null {
   const ext = getExtension(filename);
   if (!ext) return null;
 
-  if ((MEDIA_EXTENSIONS as readonly string[]).includes(ext)) {
+  if (MEDIA_EXTENSIONS_SET.has(ext)) {
     return "MEDIA";
   }
-  if ((ARTWORK_EXTENSIONS as readonly string[]).includes(ext)) {
+  if (ARTWORK_EXTENSIONS_SET.has(ext)) {
     return "ARTWORK";
   }
-  if ((SUBTITLE_EXTENSIONS as readonly string[]).includes(ext)) {
+  if (SUBTITLE_EXTENSIONS_SET.has(ext)) {
     return "SUBTITLE";
   }
 
@@ -125,7 +131,7 @@ export function categorizeFileType(
     return "ARTWORK";
   }
   const ext = filename.split(".").pop()?.toLowerCase();
-  if (["srt", "vtt", "sub", "ass"].includes(ext || "")) {
+  if (ext && SUBTITLE_BARE_SET.has(ext)) {
     return "SUBTITLE";
   }
   return "MEDIA";

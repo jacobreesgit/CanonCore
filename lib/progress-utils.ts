@@ -64,12 +64,19 @@ export function calculateProgress(
     };
   }
 
-  const itemsWithMedia = items.filter((item) => item.hasPrimaryMedia).length;
-  const watchedItems = items.filter(
-    (item) =>
-      item.hasPrimaryMedia &&
-      isFileComplete(item.primaryMediaPosition, item.primaryMediaDuration)
-  ).length;
+  // Single pass to count both itemsWithMedia and watchedItems (js-combine-iterations)
+  let itemsWithMedia = 0;
+  let watchedItems = 0;
+  for (const item of items) {
+    if (item.hasPrimaryMedia) {
+      itemsWithMedia++;
+      if (
+        isFileComplete(item.primaryMediaPosition, item.primaryMediaDuration)
+      ) {
+        watchedItems++;
+      }
+    }
+  }
 
   return {
     watchedItems,

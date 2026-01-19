@@ -142,7 +142,7 @@ export function MobileOptionsSheet({
                   className={cn(
                     "flex w-full items-center justify-between px-4 py-3 text-left text-sm transition-colors",
                     "hover:bg-muted/50 active:bg-muted",
-                    "focus:bg-muted/50 focus-visible:ring-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-inset",
+                    "focus-visible:bg-muted/50 focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset",
                     sortBy === option.value && "bg-muted/30"
                   )}
                 >
@@ -190,7 +190,7 @@ export function MobileOptionsSheet({
                   className={cn(
                     "flex w-full items-center justify-between px-4 py-3 text-left text-sm transition-colors",
                     "hover:bg-muted/50 active:bg-muted",
-                    "focus:bg-muted/50 focus-visible:ring-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-inset",
+                    "focus-visible:bg-muted/50 focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset",
                     filterBy === option.value && "bg-muted/30"
                   )}
                 >

@@ -247,13 +247,16 @@ export async function updateItemSettings(
   itemId: string,
   changes: ItemSettingsChanges
 ): Promise<ItemFileResult> {
-  // Rate limit check
-  const rateLimitResult = await checkRateLimit("itemUpdate");
+  // Run rate limit and auth in parallel (async-parallel pattern)
+  const [rateLimitResult, session] = await Promise.all([
+    checkRateLimit("itemUpdate"),
+    auth(),
+  ]);
+
   if (rateLimitResult) {
     return { success: false, error: rateLimitResult.error };
   }
 
-  const session = await auth();
   if (!session?.user?.id) {
     return { success: false, error: "Unauthorized" };
   }
@@ -459,13 +462,16 @@ export async function updateItemSettings(
  * }
  */
 export async function deleteItemFile(fileId: string): Promise<ItemFileResult> {
-  // Rate limit check
-  const rateLimitResult = await checkRateLimit("itemDelete");
+  // Run rate limit and auth in parallel (async-parallel pattern)
+  const [rateLimitResult, session] = await Promise.all([
+    checkRateLimit("itemDelete"),
+    auth(),
+  ]);
+
   if (rateLimitResult) {
     return { success: false, error: rateLimitResult.error };
   }
 
-  const session = await auth();
   if (!session?.user?.id) {
     return { success: false, error: "Unauthorized" };
   }

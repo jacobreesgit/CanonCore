@@ -224,8 +224,7 @@ export class ItemsPage {
       .locator("[data-id]")
       .getByText(name, { exact: true });
     // Also match buttons directly (grid cards render as buttons)
-    const gridButton = mainContent
-      .getByRole("button", { name, exact: true });
+    const gridButton = mainContent.getByRole("button", { name, exact: true });
     return treeItem.or(gridItem).or(gridButton).first();
   }
 
@@ -408,7 +407,9 @@ export class ItemsPage {
         await this.page.keyboard.press("Escape");
         await this.page.waitForTimeout(200);
         if (attempt === 2) {
-          throw new Error(`Context menu failed to open for item "${name}" after 3 attempts`);
+          throw new Error(
+            `Context menu failed to open for item "${name}" after 3 attempts`
+          );
         }
       }
     }
@@ -419,7 +420,9 @@ export class ItemsPage {
     // Wait for dialog animation to settle
     await this.page.waitForTimeout(300);
     // Click the delete button in the dialog (force to bypass animation stability check)
-    const deleteButton = deleteDialog.getByRole("button", { name: /^delete$/i });
+    const deleteButton = deleteDialog.getByRole("button", {
+      name: /^delete$/i,
+    });
     await deleteButton.click({ force: true });
     // Wait for confirmation dialog to close
     await expect(

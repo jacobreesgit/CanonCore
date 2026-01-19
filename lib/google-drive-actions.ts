@@ -556,34 +556,34 @@ export async function moveItemInGoogleDrive(
       return { success: false, error: "No Google Drive connected" };
     }
 
-    // Get new parent's Drive ID
+    // Get new and old parent's Drive IDs in parallel (async-parallel pattern)
+    const [newParent, oldParent] = await Promise.all([
+      newParentId
+        ? prisma.item.findFirst({
+            where: { id: newParentId, userId: session.user.id },
+            select: { driveFileId: true },
+          })
+        : Promise.resolve(null),
+      oldParentId
+        ? prisma.item.findFirst({
+            where: { id: oldParentId, userId: session.user.id },
+            select: { driveFileId: true },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    // Resolve Drive IDs with fallback to root folder
     let newParentDriveId: string | null = connection.rootFolderId;
-
     if (newParentId) {
-      const newParent = await prisma.item.findFirst({
-        where: { id: newParentId, userId: session.user.id },
-        select: { driveFileId: true },
-      });
-
       if (!newParent?.driveFileId) {
         return { success: false, error: "New parent not found in Drive" };
       }
-
       newParentDriveId = newParent.driveFileId;
     }
 
-    // Get old parent's Drive ID (passed in because DB already updated)
     let oldParentDriveId: string | null = connection.rootFolderId;
-
-    if (oldParentId) {
-      const oldParent = await prisma.item.findFirst({
-        where: { id: oldParentId, userId: session.user.id },
-        select: { driveFileId: true },
-      });
-
-      if (oldParent?.driveFileId) {
-        oldParentDriveId = oldParent.driveFileId;
-      }
+    if (oldParentId && oldParent?.driveFileId) {
+      oldParentDriveId = oldParent.driveFileId;
     }
 
     if (oldParentDriveId && newParentDriveId) {

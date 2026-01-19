@@ -78,7 +78,7 @@ export function PreferencesTab() {
     return (
       <div className="flex items-center justify-center gap-2 py-8">
         <Loader2 className="text-muted-foreground size-4 animate-spin" />
-        <span className="text-muted-foreground text-sm">Loading...</span>
+        <span className="text-muted-foreground text-sm">Loading…</span>
       </div>
     );
   }

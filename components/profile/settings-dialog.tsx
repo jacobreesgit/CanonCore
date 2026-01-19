@@ -495,7 +495,7 @@ export function SettingsDialog({
                   "bg-primary/10 ring-primary/20 ring-1"
                 )}
               >
-                <Settings className="text-primary size-5" />
+                <Settings aria-hidden="true" className="text-primary size-5" />
               </div>
               <div className="min-w-0">
                 <DialogTitle className="text-lg">Settings</DialogTitle>
@@ -518,7 +518,7 @@ export function SettingsDialog({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Back"
               >
-                <ChevronLeft className="size-5" />
+                <ChevronLeft aria-hidden="true" className="size-5" />
               </Button>
               <div
                 className={cn(
@@ -526,7 +526,7 @@ export function SettingsDialog({
                   "bg-primary/10 ring-primary/20 ring-1"
                 )}
               >
-                <Lock className="text-primary size-5" />
+                <Lock aria-hidden="true" className="text-primary size-5" />
               </div>
               <div className="min-w-0">
                 <DialogTitle className="text-lg">Change Password</DialogTitle>
@@ -549,7 +549,7 @@ export function SettingsDialog({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Back"
               >
-                <ChevronLeft className="size-5" />
+                <ChevronLeft aria-hidden="true" className="size-5" />
               </Button>
               <div
                 className={cn(
@@ -557,7 +557,7 @@ export function SettingsDialog({
                   "bg-primary/10 ring-primary/20 ring-1"
                 )}
               >
-                <Mail className="text-primary size-5" />
+                <Mail aria-hidden="true" className="text-primary size-5" />
               </div>
               <div className="min-w-0">
                 <DialogTitle className="text-lg">Change Email</DialogTitle>
@@ -595,8 +595,8 @@ export function SettingsDialog({
             >
               {isMainSaving ? (
                 <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Saving...
+                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                  Saving…
                 </>
               ) : (
                 "Save Changes"
@@ -617,8 +617,8 @@ export function SettingsDialog({
             <Button onClick={handlePasswordSubmit} disabled={isPasswordSaving}>
               {isPasswordSaving ? (
                 <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Changing...
+                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                  Changing…
                 </>
               ) : (
                 "Change Password"
@@ -639,8 +639,8 @@ export function SettingsDialog({
             <Button onClick={handleEmailSubmit} disabled={isEmailSaving}>
               {isEmailSaving ? (
                 <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Changing...
+                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                  Changing…
                 </>
               ) : (
                 "Change Email"
@@ -687,7 +687,7 @@ export function SettingsDialog({
                         "bg-primary/10"
                       )}
                     >
-                      <ImageIcon className="text-primary size-3.5" />
+                      <ImageIcon aria-hidden="true" className="text-primary size-3.5" />
                     </div>
                     <Label className="text-sm font-medium">
                       Profile Picture
@@ -717,7 +717,7 @@ export function SettingsDialog({
                       />
                     ) : (
                       <div className="flex size-full flex-col items-center justify-center gap-1">
-                        <ImageIcon className="text-muted-foreground/50 size-6" />
+                        <ImageIcon aria-hidden="true" className="text-muted-foreground/50 size-6" />
                         <p className="text-muted-foreground text-xs">
                           Drag and drop or click to upload
                         </p>
@@ -732,7 +732,7 @@ export function SettingsDialog({
                       size="sm"
                       onClick={handleRemoveProfileImage}
                     >
-                      <Trash2 className="mr-1.5 size-3.5" />
+                      <Trash2 aria-hidden="true" className="mr-1.5 size-3.5" />
                       Remove
                     </Button>
                   )}
@@ -752,6 +752,8 @@ export function SettingsDialog({
                   </Label>
                   <Input
                     id="settings-name"
+                    name="name"
+                    autoComplete="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Your name"
@@ -768,7 +770,7 @@ export function SettingsDialog({
                         "bg-primary/10"
                       )}
                     >
-                      <AtSign className="text-primary size-3.5" />
+                      <AtSign aria-hidden="true" className="text-primary size-3.5" />
                     </div>
                     <Label
                       htmlFor="settings-username"
@@ -780,6 +782,9 @@ export function SettingsDialog({
                   <div className="relative">
                     <Input
                       id="settings-username"
+                      name="username"
+                      autoComplete="username"
+                      spellCheck={false}
                       value={username}
                       onChange={(e) =>
                         setUsername(
@@ -804,13 +809,13 @@ export function SettingsDialog({
                     {username && (
                       <div className="absolute top-1/2 right-3 -translate-y-1/2">
                         {usernameValidation.isValidating ? (
-                          <Loader2 className="text-muted-foreground size-4 animate-spin" />
+                          <Loader2 aria-hidden="true" className="text-muted-foreground size-4 animate-spin" />
                         ) : usernameValidation.isValidFormat &&
                           usernameValidation.isAvailable === true ? (
-                          <Check className="size-4 text-green-500" />
+                          <Check aria-hidden="true" className="size-4 text-green-500" />
                         ) : usernameValidation.error ||
                           usernameValidation.isAvailable === false ? (
-                          <X className="text-destructive size-4" />
+                          <X aria-hidden="true" className="text-destructive size-4" />
                         ) : null}
                       </div>
                     )}
@@ -851,6 +856,7 @@ export function SettingsDialog({
                         )}
                       >
                         <Globe
+                          aria-hidden="true"
                           className={cn(
                             "size-4",
                             isPublic
@@ -896,7 +902,7 @@ export function SettingsDialog({
                         "bg-primary/10"
                       )}
                     >
-                      <Mail className="text-primary size-3.5" />
+                      <Mail aria-hidden="true" className="text-primary size-3.5" />
                     </div>
                     <Label className="text-sm font-medium">Email</Label>
                   </div>
@@ -926,7 +932,7 @@ export function SettingsDialog({
                         "bg-primary/10"
                       )}
                     >
-                      <Sparkles className="text-primary size-3.5" />
+                      <Sparkles aria-hidden="true" className="text-primary size-3.5" />
                     </div>
                     <Label className="text-sm font-medium">Hero Banner</Label>
                   </div>
@@ -957,7 +963,7 @@ export function SettingsDialog({
                       />
                     ) : (
                       <div className="flex size-full flex-col items-center justify-center gap-1">
-                        <Sparkles className="text-muted-foreground/50 size-6" />
+                        <Sparkles aria-hidden="true" className="text-muted-foreground/50 size-6" />
                         <p className="text-muted-foreground text-xs">
                           Drag and drop or click to upload
                         </p>
@@ -972,7 +978,7 @@ export function SettingsDialog({
                       size="sm"
                       onClick={handleRemoveHeroImage}
                     >
-                      <Trash2 className="mr-1.5 size-3.5" />
+                      <Trash2 aria-hidden="true" className="mr-1.5 size-3.5" />
                       Remove Banner
                     </Button>
                   )}
@@ -992,7 +998,7 @@ export function SettingsDialog({
                         "bg-primary/10"
                       )}
                     >
-                      <Lock className="text-primary size-3.5" />
+                      <Lock aria-hidden="true" className="text-primary size-3.5" />
                     </div>
                     <Label className="text-sm font-medium">Password</Label>
                   </div>
@@ -1002,7 +1008,7 @@ export function SettingsDialog({
                     onClick={() => setCurrentStep("password")}
                     className="w-full"
                   >
-                    <Lock className="mr-2 size-4" />
+                    <Lock aria-hidden="true" className="mr-2 size-4" />
                     Change Password
                   </Button>
                   <p className="text-muted-foreground text-xs">
@@ -1024,7 +1030,7 @@ export function SettingsDialog({
               ) : (
                 <div className="space-y-4 py-8 text-center">
                   <div className="bg-muted/50 mx-auto flex size-12 items-center justify-center rounded-full">
-                    <Cloud className="text-muted-foreground size-6" />
+                    <Cloud aria-hidden="true" className="text-muted-foreground size-6" />
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm font-medium">No sync activity</p>
@@ -1052,6 +1058,8 @@ export function SettingsDialog({
               <Label htmlFor="change-current-password">Current Password</Label>
               <PasswordInput
                 id="change-current-password"
+                name="current-password"
+                autoComplete="current-password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="Enter current password"
@@ -1063,6 +1071,8 @@ export function SettingsDialog({
               <Label htmlFor="change-new-password">New Password</Label>
               <PasswordInput
                 id="change-new-password"
+                name="new-password"
+                autoComplete="new-password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Enter new password"
@@ -1076,6 +1086,8 @@ export function SettingsDialog({
               </Label>
               <PasswordInput
                 id="change-confirm-password"
+                name="confirm-password"
+                autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Repeat new password"
@@ -1103,7 +1115,10 @@ export function SettingsDialog({
               <Label htmlFor="change-new-email">New Email</Label>
               <Input
                 id="change-new-email"
+                name="email"
                 type="email"
+                autoComplete="email"
+                spellCheck={false}
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
                 placeholder="Enter new email address"
@@ -1115,6 +1130,8 @@ export function SettingsDialog({
               <Label htmlFor="change-email-password">Current Password</Label>
               <PasswordInput
                 id="change-email-password"
+                name="current-password"
+                autoComplete="current-password"
                 value={emailPassword}
                 onChange={(e) => setEmailPassword(e.target.value)}
                 placeholder="Verify with your password"
@@ -1149,7 +1166,7 @@ export function SettingsDialog({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <Globe className="h-5 w-5 text-amber-500" />
+              <Globe aria-hidden="true" className="h-5 w-5 text-amber-500" />
               Make your profile public?
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">

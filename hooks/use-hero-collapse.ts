@@ -24,15 +24,23 @@ export function useHeroCollapse() {
 
   // Read from localStorage on mount (client-side only)
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === "true") {
-      setIsCollapsed(true); // eslint-disable-line react-hooks/set-state-in-effect -- Intentional: one-time hydration from localStorage
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored === "true") {
+        setIsCollapsed(true); // eslint-disable-line react-hooks/set-state-in-effect -- Intentional: one-time hydration from localStorage
+      }
+    } catch {
+      // localStorage unavailable (private browsing, disabled, quota exceeded)
     }
   }, []);
 
   // Sync to localStorage when state changes (skip initial false)
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, String(isCollapsed));
+    try {
+      localStorage.setItem(STORAGE_KEY, String(isCollapsed));
+    } catch {
+      // localStorage unavailable (private browsing, disabled, quota exceeded)
+    }
   }, [isCollapsed]);
 
   const toggleCollapse = useCallback(() => {

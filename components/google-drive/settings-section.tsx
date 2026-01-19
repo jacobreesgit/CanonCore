@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -67,6 +67,14 @@ export function GoogleDriveSettingsSection({
   const [isConnecting, startConnectTransition] = useTransition();
   const [isDisconnecting, startDisconnectTransition] = useTransition();
   const [isSyncing, startSyncTransition] = useTransition();
+
+  // Track client mount to prevent hydration mismatch with relative time
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    // Standard pattern for detecting client-side mount to avoid hydration mismatch
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
 
   /**
    * Initiates the Google Drive OAuth flow.
@@ -151,7 +159,7 @@ export function GoogleDriveSettingsSection({
             "bg-primary/10"
           )}
         >
-          <Cloud className="text-primary size-3.5" />
+          <Cloud aria-hidden="true" className="text-primary size-3.5" />
         </div>
         <Label className="text-sm font-medium">Google Drive</Label>
       </div>
@@ -166,17 +174,17 @@ export function GoogleDriveSettingsSection({
                 <span className="text-sm font-medium">{connection.email}</span>
                 {connection.needsReauth ? (
                   <Badge variant="destructive" className="text-xs">
-                    <AlertTriangle className="mr-1 size-3" />
+                    <AlertTriangle aria-hidden="true" className="mr-1 size-3" />
                     Reconnect
                   </Badge>
                 ) : (
                   <Badge variant="secondary" className="text-xs">
-                    <CheckCircle2 className="mr-1 size-3" />
+                    <CheckCircle2 aria-hidden="true" className="mr-1 size-3" />
                     Connected
                   </Badge>
                 )}
               </div>
-              {connection.lastSyncAt && (
+              {connection.lastSyncAt && mounted && (
                 <p className="text-muted-foreground text-xs">
                   Last synced{" "}
                   {formatDistanceToNow(connection.lastSyncAt, {
@@ -207,7 +215,7 @@ export function GoogleDriveSettingsSection({
                 className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
               >
                 Manage Storage
-                <ExternalLink className="size-3" />
+                <ExternalLink aria-hidden="true" className="size-3" />
               </a>
             </div>
 
@@ -224,9 +232,9 @@ export function GoogleDriveSettingsSection({
                     className="h-7 gap-1.5 px-2 text-xs"
                   >
                     {isSyncing ? (
-                      <Loader2 className="size-3.5 animate-spin" />
+                      <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
                     ) : (
-                      <RefreshCw className="size-3.5" />
+                      <RefreshCw aria-hidden="true" className="size-3.5" />
                     )}
                     Sync
                   </Button>
@@ -253,7 +261,7 @@ export function GoogleDriveSettingsSection({
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          <ExternalLink className="size-3.5" />
+                          <ExternalLink aria-hidden="true" className="size-3.5" />
                           Drive
                         </a>
                       </Button>
@@ -279,9 +287,9 @@ export function GoogleDriveSettingsSection({
                         className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 gap-1.5 px-2 text-xs"
                       >
                         {isDisconnecting ? (
-                          <Loader2 className="size-3.5 animate-spin" />
+                          <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
                         ) : (
-                          <Trash2 className="size-3.5" />
+                          <Trash2 aria-hidden="true" className="size-3.5" />
                         )}
                         Disconnect
                       </Button>
@@ -316,7 +324,7 @@ export function GoogleDriveSettingsSection({
           {connection.lastError === "ROOT_FOLDER_TRASHED" && (
             <div className="rounded-md border border-yellow-500/50 bg-yellow-500/10 p-3">
               <div className="flex items-start gap-2">
-                <AlertTriangle className="mt-0.5 size-4 text-yellow-600 dark:text-yellow-500" />
+                <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 text-yellow-600 dark:text-yellow-500" />
                 <div className="space-y-1.5">
                   <p className="text-sm font-medium">
                     CanonCore folder is in Trash
@@ -332,7 +340,7 @@ export function GoogleDriveSettingsSection({
                       rel="noopener noreferrer"
                       className="text-primary hover:text-primary/80 inline-flex items-center gap-1.5 text-xs transition-colors"
                     >
-                      <ExternalLink className="size-3" />
+                      <ExternalLink aria-hidden="true" className="size-3" />
                       Restore in Drive
                     </a>
                   )}
@@ -345,7 +353,7 @@ export function GoogleDriveSettingsSection({
           {connection.lastError === "ROOT_FOLDER_DELETED" && (
             <div className="border-destructive/50 bg-destructive/10 rounded-md border p-3">
               <div className="flex items-start gap-2">
-                <AlertTriangle className="text-destructive mt-0.5 size-4" />
+                <AlertTriangle aria-hidden="true" className="text-destructive mt-0.5 size-4" />
                 <div className="space-y-1">
                   <p className="text-sm font-medium">
                     CanonCore folder was deleted
@@ -368,9 +376,9 @@ export function GoogleDriveSettingsSection({
               disabled={isConnecting}
             >
               {isConnecting ? (
-                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                <Loader2 aria-hidden="true" className="mr-1.5 size-3.5 animate-spin" />
               ) : (
-                <Link2 className="mr-1.5 size-3.5" />
+                <Link2 aria-hidden="true" className="mr-1.5 size-3.5" />
               )}
               Reconnect
             </Button>
@@ -383,9 +391,9 @@ export function GoogleDriveSettingsSection({
           </p>
           <Button onClick={handleConnect} disabled={isConnecting} size="sm">
             {isConnecting ? (
-              <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              <Loader2 aria-hidden="true" className="mr-1.5 size-3.5 animate-spin" />
             ) : (
-              <Cloud className="mr-1.5 size-3.5" />
+              <Cloud aria-hidden="true" className="mr-1.5 size-3.5" />
             )}
             Connect Google Drive
           </Button>

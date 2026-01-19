@@ -54,7 +54,15 @@ export default function ForgotPasswordPage() {
           `,
         }}
       />
-      <div className="relative z-10 flex h-full items-center justify-center">
+      <div
+        className="relative z-10 flex h-full items-center justify-center"
+        style={{
+          paddingTop: "var(--safe-area-inset-top)",
+          paddingRight: "var(--safe-area-inset-right)",
+          paddingBottom: "var(--safe-area-inset-bottom)",
+          paddingLeft: "var(--safe-area-inset-left)",
+        }}
+      >
         <div className="flex flex-col items-center gap-6 lg:justify-start">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-1.5">
@@ -65,7 +73,9 @@ export default function ForgotPasswordPage() {
 
           {message ? (
             <div className="border-muted bg-background flex w-full max-w-sm min-w-sm flex-col items-center gap-y-4 rounded-md border px-6 py-8 shadow-md">
-              <h1 className="text-xl font-semibold">Check your email</h1>
+              <h1 className="text-xl font-semibold text-balance">
+                Check your email
+              </h1>
 
               <div
                 data-testid="forgot-password-success-message"
@@ -88,7 +98,9 @@ export default function ForgotPasswordPage() {
               onSubmit={onSubmit}
               className="border-muted bg-background flex w-full max-w-sm min-w-sm flex-col items-center gap-y-4 rounded-md border px-6 py-8 shadow-md"
             >
-              <h1 className="text-xl font-semibold">Reset your password</h1>
+              <h1 className="text-xl font-semibold text-balance">
+                Reset your password
+              </h1>
               <p className="text-muted-foreground text-center text-sm">
                 Enter your email address and we&apos;ll send you a link to reset
                 your password.
@@ -107,7 +119,10 @@ export default function ForgotPasswordPage() {
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
+                  name="email"
                   type="email"
+                  autoComplete="email"
+                  spellCheck={false}
                   placeholder="Email"
                   className="text-sm"
                   value={email}

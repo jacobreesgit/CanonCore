@@ -21,8 +21,14 @@ type DropzoneContextType = {
   maxFiles?: DropzoneOptions["maxFiles"];
 };
 
+/** Cached number formatter for locale-aware byte formatting */
+const bytesFormatter = new Intl.NumberFormat(undefined, {
+  maximumFractionDigits: 2,
+});
+
 /**
  * Formats bytes into human-readable string.
+ * Uses Intl.NumberFormat for locale-aware number formatting.
  */
 const renderBytes = (bytes: number) => {
   const units = ["B", "KB", "MB", "GB", "TB", "PB"];
@@ -34,8 +40,8 @@ const renderBytes = (bytes: number) => {
     unitIndex++;
   }
 
-  // Remove trailing zeros (e.g., "1.00MB" -> "1MB")
-  const formatted = size.toFixed(2).replace(/\.?0+$/, "");
+  // Format with locale-aware number formatting
+  const formatted = bytesFormatter.format(size);
   return `${formatted}${units[unitIndex]}`;
 };
 
@@ -185,10 +191,12 @@ export const DropzoneContent = ({
       </div>
       <p className="my-2 w-full truncate text-sm font-medium">
         {src.length > maxLabelItems
-          ? `${new Intl.ListFormat("en").format(
+          ? `${new Intl.ListFormat(undefined, { type: "conjunction" }).format(
               src.slice(0, maxLabelItems).map((file) => file.name)
             )} and ${src.length - maxLabelItems} more`
-          : new Intl.ListFormat("en").format(src.map((file) => file.name))}
+          : new Intl.ListFormat(undefined, { type: "conjunction" }).format(
+              src.map((file) => file.name)
+            )}
       </p>
       <p className="text-muted-foreground w-full text-xs text-wrap">
         Drag and drop or click to replace
@@ -226,7 +234,9 @@ export const DropzoneEmptyState = ({
 
   if (accept) {
     caption += "Accepts ";
-    caption += new Intl.ListFormat("en").format(Object.keys(accept));
+    caption += new Intl.ListFormat(undefined, { type: "conjunction" }).format(
+      Object.keys(accept)
+    );
   }
 
   if (minSize && maxSize) {

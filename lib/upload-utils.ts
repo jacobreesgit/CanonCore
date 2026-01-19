@@ -370,8 +370,18 @@ export class BatchUploadManager {
   }
 }
 
+/** Cached number formatters for locale-aware byte formatting */
+const byteDecimalFormatter = new Intl.NumberFormat(undefined, {
+  maximumFractionDigits: 1,
+});
+
+const byteWholeFormatter = new Intl.NumberFormat(undefined, {
+  maximumFractionDigits: 0,
+});
+
 /**
  * Formats bytes into human-readable string (e.g., "1.5 MB").
+ * Uses Intl.NumberFormat for locale-aware number formatting.
  * Shows one decimal place for non-whole numbers, none for whole numbers.
  *
  * @param bytes - Number of bytes (must be non-negative)
@@ -393,7 +403,9 @@ export function formatBytes(bytes: number): string {
   // Show decimal only for non-whole numbers (KB+), none for bytes or whole values
   const isWholeNumber = value % 1 === 0;
   const formatted =
-    i >= 1 && !isWholeNumber ? value.toFixed(1) : Math.round(value);
+    i >= 1 && !isWholeNumber
+      ? byteDecimalFormatter.format(value)
+      : byteWholeFormatter.format(Math.round(value));
   return `${formatted} ${units[i]}`;
 }
 

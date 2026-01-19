@@ -64,7 +64,7 @@ function ArtworkThumbnail({ artworkId }: { artworkId: string }) {
       {/* Folder icon placeholder while loading */}
       {!loaded && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <Folder className="text-muted-foreground/50 size-4" />
+          <Folder aria-hidden="true" className="text-muted-foreground/50 size-4" />
         </div>
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -72,6 +72,7 @@ function ArtworkThumbnail({ artworkId }: { artworkId: string }) {
         ref={ref}
         src={artworkSrc}
         alt=""
+        loading="lazy"
         className={cn(
           "absolute inset-0 h-full w-full object-cover transition-opacity duration-150",
           loaded ? "opacity-100" : "opacity-0"
@@ -195,22 +196,34 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
   return (
     <CommandDialog open={open} onOpenChange={handleOpenChange}>
       <CommandInput
-        placeholder="Search items..."
+        placeholder="Search items…"
         className="border-none focus:ring-0"
         value={searchValue}
         onValueChange={setSearchValue}
       />
       <CommandList ref={listRef} className="max-h-[400px]">
+        {/* Screen reader announcement for search results */}
+        <div
+          aria-live="polite"
+          aria-atomic="true"
+          className="sr-only"
+        >
+          {isLoading
+            ? "Loading items…"
+            : items.length === 0
+              ? "No items found"
+              : `${items.length} ${items.length === 1 ? "item" : "items"} available`}
+        </div>
         {isLoading ? (
           <div className="flex items-center justify-center gap-2 py-12">
-            <Loader2 className="text-muted-foreground size-4 animate-spin" />
-            <span className="text-muted-foreground text-sm">Loading...</span>
+            <Loader2 aria-hidden="true" className="text-muted-foreground size-4 animate-spin" />
+            <span className="text-muted-foreground text-sm">Loading…</span>
           </div>
         ) : (
           <>
             <CommandEmpty className="py-12 text-center">
               <div className="flex flex-col items-center gap-2">
-                <Search className="text-muted-foreground/50 size-8" />
+                <Search aria-hidden="true" className="text-muted-foreground/50 size-8" />
                 <p className="text-muted-foreground text-sm">No items found.</p>
               </div>
             </CommandEmpty>
@@ -228,7 +241,7 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
                       <ArtworkThumbnail artworkId={item.artworkId} />
                     ) : (
                       <div className="bg-muted/50 text-muted-foreground group-aria-selected:bg-primary/10 group-aria-selected:text-primary flex size-8 shrink-0 items-center justify-center rounded-md transition-colors">
-                        <Folder className="size-4" />
+                        <Folder aria-hidden="true" className="size-4" />
                       </div>
                     )}
                     <div className="flex min-w-0 flex-1 flex-col">
