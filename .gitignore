@@ -43,3 +43,6 @@ e2e/.auth/
 
 # Seed media files (large video files for seeding)
 seed-media/
+
+# Personal notes
+Handbook/

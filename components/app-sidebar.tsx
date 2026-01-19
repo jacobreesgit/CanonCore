@@ -8,7 +8,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Folder, HelpCircle } from "lucide-react";
+import { Compass, Folder, HelpCircle } from "lucide-react";
 import type { Root as PageTreeRoot } from "fumadocs-core/page-tree";
 import type { SidebarUser } from "@/lib/auth";
 import type { GoogleDriveConnection, PinnedItem } from "@/lib/types";
@@ -49,12 +49,26 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   pinnedItems?: PinnedItem[];
 }
 
-/** Main navigation items for authenticated users. */
-const myItemsNavMain = [
+/** Navigation items for authenticated users. */
+const authNavItems = [
   {
     title: "My Items",
     url: "/my-items",
     icon: Folder,
+  },
+  {
+    title: "Explore",
+    url: "/explore",
+    icon: Compass,
+  },
+];
+
+/** Navigation items for guests (unauthenticated). */
+const guestNavItems = [
+  {
+    title: "Explore",
+    url: "/explore",
+    icon: Compass,
   },
 ];
 
@@ -109,8 +123,8 @@ export function AppSidebar({
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Show my-items nav for authenticated users on any page */}
-        {user && <NavMain items={myItemsNavMain} />}
+        {/* Show nav items based on auth state */}
+        <NavMain items={user ? authNavItems : guestNavItems} />
 
         {/* Show pinned items for my-items context */}
         {pinnedItems && pinnedItems.length > 0 && (

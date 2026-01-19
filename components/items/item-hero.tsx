@@ -281,8 +281,8 @@ export function ItemHero({
               </div>
             )}
 
-            {/* Progress bar - shown when items have media */}
-            {progressPercentage !== null && (
+            {/* Progress bar - shown when items have media (check both null and undefined) */}
+            {progressPercentage != null && (
               <div className="flex w-full flex-col items-center gap-1.5">
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20 backdrop-blur-sm">
                   <motion.div

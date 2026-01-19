@@ -6,7 +6,7 @@
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { auth, extractSidebarUser } from "@/lib/auth";
+import { auth, getExtendedSidebarUser } from "@/lib/auth";
 import { MyItemsProviders } from "@/components/my-items-providers";
 
 /**
@@ -20,7 +20,7 @@ export default async function PublicLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
-  const user = extractSidebarUser(session);
+  const user = await getExtendedSidebarUser(session);
 
   const content = (
     <SidebarProvider

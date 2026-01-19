@@ -37,6 +37,8 @@ function createMockUser(
     passwordHash: string;
     emailVerified: Date | null;
     name: string | null;
+    username: string | null;
+    isPublic: boolean;
     image: Uint8Array<ArrayBuffer> | null;
     imageMime: string | null;
     heroImage: Uint8Array<ArrayBuffer> | null;
@@ -53,6 +55,8 @@ function createMockUser(
     passwordHash: "hashed",
     emailVerified: null,
     name: null,
+    username: null,
+    isPublic: false,
     image: null,
     imageMime: null,
     heroImage: null,

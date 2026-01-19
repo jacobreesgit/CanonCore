@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
 
 // Mock dependencies before imports
 vi.mock("@/lib/auth", () => ({
@@ -25,6 +26,15 @@ import { prisma } from "@/lib/prisma";
 const mockAuth = vi.mocked(auth);
 const mockFindUnique = vi.mocked(prisma.user.findUnique);
 
+/** Create a mock NextRequest for testing */
+function createMockRequest(params?: URLSearchParams): NextRequest {
+  const url = new URL("http://localhost/api/user/avatar");
+  if (params) {
+    params.forEach((value, key) => url.searchParams.set(key, value));
+  }
+  return new NextRequest(url);
+}
+
 describe("GET /api/user/avatar", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -33,7 +43,7 @@ describe("GET /api/user/avatar", () => {
   it("returns 401 when not authenticated", async () => {
     mockAuth.mockResolvedValue(null as never);
 
-    const response = await GET();
+    const response = await GET(createMockRequest());
 
     expect(response.status).toBe(401);
   });
@@ -45,7 +55,7 @@ describe("GET /api/user/avatar", () => {
       imageMime: null,
     } as never);
 
-    const response = await GET();
+    const response = await GET(createMockRequest());
 
     expect(response.status).toBe(404);
     expect(mockFindUnique).toHaveBeenCalledWith({
@@ -61,7 +71,7 @@ describe("GET /api/user/avatar", () => {
       imageMime: null,
     } as never);
 
-    const response = await GET();
+    const response = await GET(createMockRequest());
 
     expect(response.status).toBe(404);
   });
@@ -74,7 +84,7 @@ describe("GET /api/user/avatar", () => {
       imageMime: "image/png",
     } as never);
 
-    const response = await GET();
+    const response = await GET(createMockRequest());
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("image/png");
@@ -90,8 +100,8 @@ describe("GET /api/user/avatar", () => {
       imageMime: "image/jpeg",
     } as never);
 
-    const response1 = await GET();
-    const response2 = await GET();
+    const response1 = await GET(createMockRequest());
+    const response2 = await GET(createMockRequest());
 
     expect(response1.headers.get("ETag")).toBe(response2.headers.get("ETag"));
   });
@@ -104,7 +114,7 @@ describe("GET /api/user/avatar", () => {
       imageMime: "image/webp",
     } as never);
 
-    const response = await GET();
+    const response = await GET(createMockRequest());
     const body = await response.arrayBuffer();
 
     expect(Buffer.from(body)).toEqual(imageData);

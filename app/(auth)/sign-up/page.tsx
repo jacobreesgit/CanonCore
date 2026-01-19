@@ -14,18 +14,32 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { signUp } from "@/lib/auth-actions";
+import { useUsernameValidation } from "@/hooks/use-username-validation";
+import { Check, X, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 /**
- * Renders sign-up form with email, password, and confirmation fields.
+ * Renders sign-up form with email, username, password, and confirmation fields.
  * Validates password requirements and handles registration errors.
  */
 export default function SignUpPage() {
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  const validation = useUsernameValidation(username);
+  const {
+    isValidating,
+    isValidFormat,
+    isAvailable,
+    error: usernameError,
+    success: usernameSuccess,
+  } = validation;
+  const isUsernameValid = username && isValidFormat && isAvailable === true;
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,10 +55,16 @@ export default function SignUpPage() {
       return;
     }
 
+    // Check username validity if provided
+    if (username && !isUsernameValid) {
+      setError(usernameError || "Please wait for username validation");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const result = await signUp(email, password);
+      const result = await signUp(email, password, username || undefined);
 
       if (result.error) {
         setError(result.error);
@@ -120,6 +140,51 @@ export default function SignUpPage() {
                 required
                 data-testid="sign-up-email-input"
               />
+            </div>
+
+            <div className="flex w-full flex-col gap-2">
+              <Label htmlFor="username">
+                Username{" "}
+                <span className="text-muted-foreground font-normal">
+                  (optional)
+                </span>
+              </Label>
+              <div className="relative">
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="Choose a username"
+                  className={cn(
+                    "pr-10 text-sm",
+                    username &&
+                      (isUsernameValid
+                        ? "border-green-500 focus-visible:ring-green-500/20"
+                        : usernameError
+                          ? "border-destructive focus-visible:ring-destructive/20"
+                          : "")
+                  )}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                  data-testid="sign-up-username-input"
+                />
+                {username && (
+                  <div className="absolute top-1/2 right-3 -translate-y-1/2">
+                    {isValidating ? (
+                      <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+                    ) : isUsernameValid ? (
+                      <Check className="h-4 w-4 text-green-500" />
+                    ) : usernameError ? (
+                      <X className="text-destructive h-4 w-4" />
+                    ) : null}
+                  </div>
+                )}
+              </div>
+              {username && usernameError && (
+                <p className="text-destructive text-xs">{usernameError}</p>
+              )}
+              {username && usernameSuccess && (
+                <p className="text-xs text-green-600">{usernameSuccess}</p>
+              )}
             </div>
 
             <div className="flex w-full flex-col gap-2">
