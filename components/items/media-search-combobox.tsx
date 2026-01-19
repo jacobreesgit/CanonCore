@@ -42,6 +42,7 @@ function PosterThumbnail({ posterPath }: { posterPath: string }) {
         ref={ref}
         src={posterUrl}
         alt=""
+        loading="lazy"
         className={cn(
           "absolute inset-0 h-full w-full object-cover transition-opacity duration-150",
           loaded ? "opacity-100" : "opacity-0"
@@ -257,7 +258,7 @@ export function MediaSearchCombobox({
                 className={cn(
                   "flex w-full items-center gap-3 rounded-md px-2 py-2 text-left",
                   "hover:bg-accent hover:text-accent-foreground",
-                  "focus:bg-accent focus:text-accent-foreground focus:outline-none",
+                  "focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:outline-none",
                   "cursor-pointer transition-colors"
                 )}
               >

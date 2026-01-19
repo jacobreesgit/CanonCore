@@ -306,7 +306,7 @@ function ImageThumbnail({
       onClick={onClick}
       disabled={disabled || isSkipped}
       className={cn(
-        "bg-muted group relative overflow-hidden rounded-lg transition-all duration-200",
+        "bg-muted group relative overflow-hidden rounded-lg transition-[transform,opacity,box-shadow] duration-200",
         "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
         aspectClass,
         // Selection states
@@ -336,6 +336,7 @@ function ImageThumbnail({
         ref={ref}
         src={src}
         alt={alt}
+        loading="lazy"
         className={cn(
           "absolute inset-0 z-10 h-full w-full object-cover transition-opacity duration-150",
           isLoaded ? "opacity-100" : "opacity-0"
@@ -431,7 +432,7 @@ function ExistingFileThumbnail({
       onClick={onClick}
       disabled={disabled || isSkipped}
       className={cn(
-        "bg-muted group relative overflow-hidden rounded-lg transition-all duration-200",
+        "bg-muted group relative overflow-hidden rounded-lg transition-[transform,opacity,box-shadow] duration-200",
         "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
         aspectClass,
         isSelected &&
@@ -460,6 +461,7 @@ function ExistingFileThumbnail({
         ref={ref}
         src={src}
         alt={file.filename}
+        loading="lazy"
         data-testid="image"
         className={cn(
           "absolute inset-0 z-10 h-full w-full object-cover transition-opacity duration-150",

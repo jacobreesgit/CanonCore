@@ -52,16 +52,26 @@ const ACTION_LABELS: Record<SyncLogAction, string> = {
   [SyncLogAction.SYNC]: "Synced",
 };
 
+/** Cached number formatter for locale-aware duration formatting */
+const durationFormatter = new Intl.NumberFormat(undefined, {
+  maximumFractionDigits: 1,
+});
+
+const durationWholeFormatter = new Intl.NumberFormat(undefined, {
+  maximumFractionDigits: 0,
+});
+
 /**
  * Formats duration in a human-readable way.
+ * Uses Intl.NumberFormat for locale-aware number formatting.
  *
  * @param ms - Duration in milliseconds
  * @returns Formatted duration string
  */
 function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${(ms / 60000).toFixed(1)}m`;
+  if (ms < 1000) return `${durationWholeFormatter.format(ms)}ms`;
+  if (ms < 60000) return `${durationFormatter.format(ms / 1000)}s`;
+  return `${durationFormatter.format(ms / 60000)}m`;
 }
 
 /**
@@ -110,7 +120,7 @@ export function SyncHistory() {
     return (
       <div className="flex items-center justify-center gap-2 py-8">
         <Loader2 className="text-muted-foreground size-4 animate-spin" />
-        <span className="text-muted-foreground text-sm">Loading...</span>
+        <span className="text-muted-foreground text-sm">Loading…</span>
       </div>
     );
   }
@@ -214,7 +224,9 @@ export function SyncHistory() {
                   {log.duration !== null && log.duration > 0 && (
                     <>
                       <span className="text-muted-foreground/50">·</span>
-                      <span>{formatDuration(log.duration)}</span>
+                      <span className="tabular-nums">
+                        {formatDuration(log.duration)}
+                      </span>
                     </>
                   )}
                 </div>

@@ -231,85 +231,92 @@ export async function applyMetadataAction(
     const existingPrimary = item.files?.find((f) => f.isPrimary);
     const existingHero = item.files?.find((f) => f.isHero);
 
-    // Upload poster if option enabled and user has Drive connection
-    if (opts.updatePoster && userHasDriveConnection && posterPath) {
-      const posterBuffer = await downloadPoster(posterPath);
+    // Download poster and backdrop in parallel (async-parallel pattern)
+    const shouldDownloadPoster =
+      opts.updatePoster && userHasDriveConnection && posterPath;
+    const shouldDownloadBackdrop =
+      opts.updateBackdrop && userHasDriveConnection && backdropPath;
 
-      if (posterBuffer) {
-        const uploadResult = await uploadBuffer(
-          itemId,
-          posterBuffer,
-          "poster.jpg",
-          "image/jpeg"
-        );
+    const [posterBuffer, backdropBuffer] = await Promise.all([
+      shouldDownloadPoster
+        ? downloadPoster(posterPath!)
+        : Promise.resolve(null),
+      shouldDownloadBackdrop
+        ? downloadBackdrop(backdropPath!)
+        : Promise.resolve(null),
+    ]);
 
-        if (uploadResult.success && uploadResult.data?.driveFileId) {
-          if (existingPrimary) {
-            // Update existing primary artwork file
-            await prisma.itemFile.update({
-              where: { id: existingPrimary.id },
-              data: {
-                filename: "poster.jpg",
-                driveFileId: uploadResult.data.driveFileId,
-                size: BigInt(posterBuffer.length),
-              },
-            });
-          } else {
-            // Create new ItemFile record for poster
-            await prisma.itemFile.create({
-              data: {
-                itemId,
-                filename: "poster.jpg",
-                fileType: "ARTWORK",
-                mimeType: "image/jpeg",
-                size: BigInt(posterBuffer.length),
-                driveFileId: uploadResult.data.driveFileId,
-                isPrimary: true,
-              },
-            });
-          }
+    // Upload poster if downloaded successfully
+    if (posterBuffer) {
+      const uploadResult = await uploadBuffer(
+        itemId,
+        posterBuffer,
+        "poster.jpg",
+        "image/jpeg"
+      );
+
+      if (uploadResult.success && uploadResult.data?.driveFileId) {
+        if (existingPrimary) {
+          // Update existing primary artwork file
+          await prisma.itemFile.update({
+            where: { id: existingPrimary.id },
+            data: {
+              filename: "poster.jpg",
+              driveFileId: uploadResult.data.driveFileId,
+              size: BigInt(posterBuffer.length),
+            },
+          });
+        } else {
+          // Create new ItemFile record for poster
+          await prisma.itemFile.create({
+            data: {
+              itemId,
+              filename: "poster.jpg",
+              fileType: "ARTWORK",
+              mimeType: "image/jpeg",
+              size: BigInt(posterBuffer.length),
+              driveFileId: uploadResult.data.driveFileId,
+              isPrimary: true,
+            },
+          });
         }
       }
     }
 
-    // Upload backdrop as hero image if option enabled
-    if (opts.updateBackdrop && userHasDriveConnection && backdropPath) {
-      const backdropBuffer = await downloadBackdrop(backdropPath);
+    // Upload backdrop as hero image if downloaded successfully
+    if (backdropBuffer) {
+      const uploadResult = await uploadBuffer(
+        itemId,
+        backdropBuffer,
+        "backdrop.jpg",
+        "image/jpeg"
+      );
 
-      if (backdropBuffer) {
-        const uploadResult = await uploadBuffer(
-          itemId,
-          backdropBuffer,
-          "backdrop.jpg",
-          "image/jpeg"
-        );
-
-        if (uploadResult.success && uploadResult.data?.driveFileId) {
-          if (existingHero) {
-            // Update existing hero artwork file
-            await prisma.itemFile.update({
-              where: { id: existingHero.id },
-              data: {
-                filename: "backdrop.jpg",
-                driveFileId: uploadResult.data.driveFileId,
-                size: BigInt(backdropBuffer.length),
-              },
-            });
-          } else {
-            // Create new ItemFile record for backdrop (hero image)
-            await prisma.itemFile.create({
-              data: {
-                itemId,
-                filename: "backdrop.jpg",
-                fileType: "ARTWORK",
-                mimeType: "image/jpeg",
-                size: BigInt(backdropBuffer.length),
-                driveFileId: uploadResult.data.driveFileId,
-                isPrimary: false,
-                isHero: true,
-              },
-            });
-          }
+      if (uploadResult.success && uploadResult.data?.driveFileId) {
+        if (existingHero) {
+          // Update existing hero artwork file
+          await prisma.itemFile.update({
+            where: { id: existingHero.id },
+            data: {
+              filename: "backdrop.jpg",
+              driveFileId: uploadResult.data.driveFileId,
+              size: BigInt(backdropBuffer.length),
+            },
+          });
+        } else {
+          // Create new ItemFile record for backdrop (hero image)
+          await prisma.itemFile.create({
+            data: {
+              itemId,
+              filename: "backdrop.jpg",
+              fileType: "ARTWORK",
+              mimeType: "image/jpeg",
+              size: BigInt(backdropBuffer.length),
+              driveFileId: uploadResult.data.driveFileId,
+              isPrimary: false,
+              isHero: true,
+            },
+          });
         }
       }
     }

@@ -113,6 +113,8 @@ export function AppSidebar({
                 <img
                   src="/black.png"
                   alt="CanonCore"
+                  width={20}
+                  height={20}
                   className="h-5 w-auto dark:invert"
                 />
                 <span className="text-base font-semibold">CanonCore</span>

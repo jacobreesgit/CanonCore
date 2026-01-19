@@ -251,29 +251,27 @@ export function sortItems(
 ): ItemWithArtwork[] {
   if (items.length === 0) return [];
 
-  const sorted = [...items];
-
   switch (sortBy) {
     case "custom":
-      return sorted.sort((a, b) => a.order - b.order);
+      return items.toSorted((a, b) => a.order - b.order);
     case "name-asc":
-      return sorted.sort((a, b) => a.name.localeCompare(b.name));
+      return items.toSorted((a, b) => a.name.localeCompare(b.name));
     case "name-desc":
-      return sorted.sort((a, b) => b.name.localeCompare(a.name));
+      return items.toSorted((a, b) => b.name.localeCompare(a.name));
     case "created-desc":
-      return sorted.sort(
+      return items.toSorted(
         (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
       );
     case "created-asc":
-      return sorted.sort(
+      return items.toSorted(
         (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
       );
     case "updated-desc":
-      return sorted.sort(
+      return items.toSorted(
         (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
       );
     default:
-      return sorted;
+      return [...items];
   }
 }
 

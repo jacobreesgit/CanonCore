@@ -42,7 +42,7 @@ export function SortDropdown({ value, onChange, disabled }: SortDropdownProps) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" disabled={disabled}>
-          <ArrowUpDown className="mr-2 size-4" />
+          <ArrowUpDown aria-hidden="true" className="mr-2 size-4" />
           {currentLabel}
         </Button>
       </DropdownMenuTrigger>

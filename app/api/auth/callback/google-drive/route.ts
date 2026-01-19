@@ -76,15 +76,16 @@ export async function GET(request: NextRequest) {
     const { accessToken, refreshToken, expiresIn } =
       await exchangeCodeForTokens(code);
 
-    // Get user's Google email
-    const email = await getUserEmail(accessToken);
-
-    // Create Drive client and root folder
+    // Create Drive client (sync)
     const tempAuth = new google.auth.OAuth2();
     tempAuth.setCredentials({ access_token: accessToken });
     const drive = google.drive({ version: "v3", auth: tempAuth });
 
-    const rootFolder = await createRootFolder(drive);
+    // Get email and create root folder in parallel (async-parallel pattern)
+    const [email, rootFolder] = await Promise.all([
+      getUserEmail(accessToken),
+      createRootFolder(drive),
+    ]);
 
     // Upsert connection (single per user)
     await prisma.googleDriveConnection.upsert({

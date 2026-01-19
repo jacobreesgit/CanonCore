@@ -761,14 +761,14 @@ export function ItemSettingsDialog({
             onSelect={handleMediaSelect}
             onChange={setName}
             value={name}
-            placeholder="Search movies & TV shows..."
+            placeholder="Search movies & TV shows…"
           />
           {(isLoadingPreview || isApplyingMetadata) && (
             <div className="bg-background/80 absolute inset-0 flex items-center justify-center rounded-md">
               <div className="flex items-center gap-2">
-                <Loader2 className="text-muted-foreground size-4 animate-spin" />
+                <Loader2 aria-hidden="true" className="text-muted-foreground size-4 animate-spin" />
                 <span className="text-muted-foreground text-sm">
-                  {isLoadingPreview ? "Loading preview..." : "Applying..."}
+                  {isLoadingPreview ? "Loading preview…" : "Applying…"}
                 </span>
               </div>
             </div>
@@ -785,7 +785,7 @@ export function ItemSettingsDialog({
           id="item-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Add a short description..."
+          placeholder="Add a short description…"
           maxLength={1000}
           className="min-h-[80px] resize-none"
         />
@@ -896,7 +896,7 @@ export function ItemSettingsDialog({
                   "bg-primary/10 ring-primary/20 ring-1"
                 )}
               >
-                <Settings2 className="text-primary size-5" />
+                <Settings2 aria-hidden="true" className="text-primary size-5" />
               </div>
               <div className="min-w-0">
                 <DialogTitle className="text-lg">Item Settings</DialogTitle>
@@ -920,7 +920,7 @@ export function ItemSettingsDialog({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Back"
               >
-                <ChevronLeft className="size-5" />
+                <ChevronLeft aria-hidden="true" className="size-5" />
               </Button>
               <div
                 className={cn(
@@ -929,9 +929,9 @@ export function ItemSettingsDialog({
                 )}
               >
                 {selectedSeason ? (
-                  <Film className="size-5 text-blue-500" />
+                  <Film aria-hidden="true" className="size-5 text-blue-500" />
                 ) : (
-                  <Tv className="size-5 text-blue-500" />
+                  <Tv aria-hidden="true" className="size-5 text-blue-500" />
                 )}
               </div>
               <div className="min-w-0 flex-1">
@@ -958,7 +958,7 @@ export function ItemSettingsDialog({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Back"
               >
-                <ChevronLeft className="size-5" />
+                <ChevronLeft aria-hidden="true" className="size-5" />
               </Button>
               <div
                 className={cn(
@@ -966,7 +966,7 @@ export function ItemSettingsDialog({
                   "bg-amber-500/10 ring-1 ring-amber-500/20"
                 )}
               >
-                <Sparkles className="size-5 text-amber-500" />
+                <Sparkles aria-hidden="true" className="size-5 text-amber-500" />
               </div>
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
@@ -1007,7 +1007,7 @@ export function ItemSettingsDialog({
             <Button onClick={handleSave} disabled={!isDirty || isSaving}>
               {isSaving ? (
                 <>
-                  <Loader2 className="size-4 animate-spin" />
+                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
                   Saving...
                 </>
               ) : (
@@ -1069,7 +1069,7 @@ export function ItemSettingsDialog({
             <Button onClick={handleWizardNext} disabled={isApplyingMetadata}>
               {isApplyingMetadata ? (
                 <>
-                  <Loader2 className="size-4 animate-spin" />
+                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
                   Applying...
                 </>
               ) : hasDriveConnection ? (
@@ -1115,7 +1115,7 @@ export function ItemSettingsDialog({
             <Button onClick={handleWizardNext} disabled={isApplyingMetadata}>
               {isApplyingMetadata ? (
                 <>
-                  <Loader2 className="size-4 animate-spin" />
+                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
                   Applying...
                 </>
               ) : (
@@ -1161,10 +1161,10 @@ export function ItemSettingsDialog({
                   }}
                   className="text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
                 >
-                  <ChevronLeft className="size-4" />
+                  <ChevronLeft aria-hidden="true" className="size-4" />
                   <span className="max-w-[150px] truncate">{displayTitle}</span>
                 </button>
-                <ChevronRight className="text-muted-foreground/50 size-4" />
+                <ChevronRight aria-hidden="true" className="text-muted-foreground/50 size-4" />
                 <span className="text-foreground font-medium">
                   {selectedSeason.name}
                 </span>

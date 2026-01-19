@@ -34,10 +34,14 @@ export default async function PublicLayout({
     >
       <AppSidebar variant="inset" user={user} context="home" />
       <SidebarInset className="overflow-hidden">
-        <div className="@container/main flex min-h-full flex-col overflow-y-auto">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="@container/main flex min-h-full flex-col overflow-y-auto outline-none"
+        >
           <SiteHeader title="Home" titleHref="/" />
           {children}
-        </div>
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );

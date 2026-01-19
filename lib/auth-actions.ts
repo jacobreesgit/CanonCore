@@ -85,29 +85,30 @@ export async function signUp(
   }
 
   try {
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
+    // Run uniqueness checks in parallel (async-parallel pattern)
+    const [existingUser, existingUsername] = await Promise.all([
+      prisma.user.findUnique({
+        where: { email },
+      }),
+      username
+        ? prisma.user.findFirst({
+            where: {
+              username: {
+                equals: username,
+                mode: "insensitive",
+              },
+            },
+          })
+        : Promise.resolve(null),
+    ]);
 
     if (existingUser) {
       await logSecurityEvent("SIGNUP_DUPLICATE_EMAIL", { email });
       return { error: "An account with this email already exists" };
     }
 
-    // Check username availability if provided
-    if (username) {
-      const existingUsername = await prisma.user.findFirst({
-        where: {
-          username: {
-            equals: username,
-            mode: "insensitive",
-          },
-        },
-      });
-
-      if (existingUsername) {
-        return { error: "This username is already taken" };
-      }
+    if (existingUsername) {
+      return { error: "This username is already taken" };
     }
 
     const passwordHash = await hash(password, 10);

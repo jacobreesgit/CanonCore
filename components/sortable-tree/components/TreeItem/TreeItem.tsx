@@ -131,7 +131,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
           onClick={handleClick}
           className={cn(
             "group bg-card relative flex items-center gap-2 rounded-lg border px-2 py-1.5",
-            "transition-all duration-200 ease-out",
+            "transition-colors duration-200 ease-out",
             "hover:bg-accent/50 hover:border-accent-foreground/20",
             "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
             clone && [
@@ -191,7 +191,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
               }}
               className={cn(
                 "flex-shrink-0 cursor-pointer rounded p-0.5",
-                "text-muted-foreground transition-all duration-200",
+                "text-muted-foreground transition-colors duration-200",
                 "hover:text-foreground hover:bg-muted/50",
                 "focus-visible:ring-ring focus-visible:ring-1 focus-visible:outline-none"
               )}
@@ -251,7 +251,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                       <div className="bg-muted-foreground/20 h-1 w-full overflow-hidden rounded-full">
                         <div
                           data-testid="tree-item-progress-bar"
-                          className="bg-primary h-full rounded-full transition-all duration-300"
+                          className="bg-primary h-full rounded-full transition-[width] duration-300"
                           style={{ width: `${progressPercentage}%` }}
                         />
                       </div>
@@ -263,7 +263,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
           )}
 
           {/* Child Count Badge (for clone/drag overlay) */}
-          {clone && childCount && childCount > 1 && (
+          {clone && childCount !== undefined && childCount > 1 ? (
             <span
               className={cn(
                 "absolute -top-2 -right-2 z-10",
@@ -277,7 +277,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
             >
               {childCount}
             </span>
-          )}
+          ) : null}
         </div>
       </li>
     );

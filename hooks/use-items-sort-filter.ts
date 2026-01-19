@@ -42,16 +42,26 @@ interface UseItemsSortFilterReturn {
  * Gets the sort option from localStorage, validating and returning default if invalid.
  */
 function getSortSnapshot(): SortOption {
-  const stored = localStorage.getItem(SORT_STORAGE_KEY);
-  return stored && isValidSortOption(stored) ? stored : DEFAULT_SORT;
+  try {
+    const stored = localStorage.getItem(SORT_STORAGE_KEY);
+    return stored && isValidSortOption(stored) ? stored : DEFAULT_SORT;
+  } catch {
+    // localStorage unavailable (private browsing, disabled, quota exceeded)
+    return DEFAULT_SORT;
+  }
 }
 
 /**
  * Gets the filter option from localStorage, validating and returning default if invalid.
  */
 function getFilterSnapshot(): FilterOption {
-  const stored = localStorage.getItem(FILTER_STORAGE_KEY);
-  return stored && isValidFilterOption(stored) ? stored : DEFAULT_FILTER;
+  try {
+    const stored = localStorage.getItem(FILTER_STORAGE_KEY);
+    return stored && isValidFilterOption(stored) ? stored : DEFAULT_FILTER;
+  } catch {
+    // localStorage unavailable (private browsing, disabled, quota exceeded)
+    return DEFAULT_FILTER;
+  }
 }
 
 /**
@@ -106,7 +116,11 @@ export function useItemsSortFilter(): UseItemsSortFilterReturn {
   );
 
   const setSortBy = useCallback((sort: SortOption) => {
-    localStorage.setItem(SORT_STORAGE_KEY, sort);
+    try {
+      localStorage.setItem(SORT_STORAGE_KEY, sort);
+    } catch {
+      // localStorage unavailable (private browsing, disabled, quota exceeded)
+    }
     // Trigger storage event for useSyncExternalStore to pick up
     window.dispatchEvent(
       new StorageEvent("storage", { key: SORT_STORAGE_KEY })
@@ -114,7 +128,11 @@ export function useItemsSortFilter(): UseItemsSortFilterReturn {
   }, []);
 
   const setFilterBy = useCallback((filter: FilterOption) => {
-    localStorage.setItem(FILTER_STORAGE_KEY, filter);
+    try {
+      localStorage.setItem(FILTER_STORAGE_KEY, filter);
+    } catch {
+      // localStorage unavailable (private browsing, disabled, quota exceeded)
+    }
     // Trigger storage event for useSyncExternalStore to pick up
     window.dispatchEvent(
       new StorageEvent("storage", { key: FILTER_STORAGE_KEY })

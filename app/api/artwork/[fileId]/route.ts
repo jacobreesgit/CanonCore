@@ -63,12 +63,11 @@ export async function GET(
   { params }: { params: Promise<{ fileId: string }> }
 ) {
   try {
-    const session = await auth();
+    // Start auth and params in parallel (async-api-routes pattern)
+    const [session, { fileId }] = await Promise.all([auth(), params]);
     if (!session?.user?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
-
-    const { fileId } = await params;
 
     // Get ItemFile with Item and Drive connection
     const itemFile = await prisma.itemFile.findUnique({

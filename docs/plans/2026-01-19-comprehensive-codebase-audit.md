@@ -790,7 +790,7 @@ grep -r "Image" components/ --include="*.tsx" | grep "next/image"
 
 **Rules:**
 
-1. Virtualize large lists (>50 items)
+1. Virtualize large lists (>50 items) - not for grid or tree
 2. No layout reads in render
 3. Batch DOM reads/writes
 4. Prefer uncontrolled inputs
@@ -1202,19 +1202,6 @@ pnpm run check
 **Step 2:** Fix any issues
 
 **Step 3:** Commit: `chore: final audit cleanup`
-
----
-
-### Task 3.3: Audit Report
-
-**Step 1:** Create summary document `docs/audits/2026-01-19-audit-report.md`:
-
-- Total findings per category
-- Files with most issues
-- Patterns that needed fixing
-- Recommendations for future development
-
-**Step 2:** Commit: `docs: add audit report`
 
 ---
 

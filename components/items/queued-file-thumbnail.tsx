@@ -104,7 +104,7 @@ export function QueuedFileThumbnail({
         onClick={onClick}
         disabled={disabled || isSkipped}
         className={cn(
-          "relative w-full overflow-hidden rounded-lg transition-all duration-200",
+          "relative w-full overflow-hidden rounded-lg transition-[transform,opacity,box-shadow] duration-200",
           aspectClass,
           "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
           isSelected &&

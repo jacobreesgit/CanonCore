@@ -20,8 +20,10 @@ export type PasswordInputProps = Omit<React.ComponentProps<"input">, "type">;
 /**
  * Renders a password input with visibility toggle button.
  * Uses Eye/EyeOff icons to indicate current visibility state.
+ * Disables spellcheck by default since passwords should not be checked.
  *
  * @param className - Additional CSS classes
+ * @param spellCheck - Whether to enable spellcheck (defaults to false)
  * @param props - Standard input props (excluding type)
  *
  * @example
@@ -32,13 +34,14 @@ export type PasswordInputProps = Omit<React.ComponentProps<"input">, "type">;
  * />
  */
 const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
-  ({ className, ...props }, ref) => {
+  ({ className, spellCheck = false, ...props }, ref) => {
     const [showPassword, setShowPassword] = React.useState(false);
 
     return (
       <div className="relative">
         <input
           type={showPassword ? "text" : "password"}
+          spellCheck={spellCheck}
           data-slot="input"
           className={cn(
             "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 pr-10 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",

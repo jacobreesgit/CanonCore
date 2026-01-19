@@ -758,13 +758,16 @@ export async function createItem(
   name: string,
   description?: string
 ): Promise<ItemResult<Item>> {
-  // Rate limit check
-  const rateLimitResult = await checkRateLimit("itemCreate");
+  // Run rate limit and auth in parallel (async-parallel pattern)
+  const [rateLimitResult, session] = await Promise.all([
+    checkRateLimit("itemCreate"),
+    auth(),
+  ]);
+
   if (rateLimitResult) {
     return { error: rateLimitResult.error };
   }
 
-  const session = await auth();
   if (!session?.user?.id) {
     return { error: "Unauthorized" };
   }
@@ -895,13 +898,16 @@ export async function updateItem(
   id: string,
   data: { name?: string; description?: string }
 ): Promise<ItemResult> {
-  // Rate limit check
-  const rateLimitResult = await checkRateLimit("itemUpdate");
+  // Run rate limit and auth in parallel (async-parallel pattern)
+  const [rateLimitResult, session] = await Promise.all([
+    checkRateLimit("itemUpdate"),
+    auth(),
+  ]);
+
   if (rateLimitResult) {
     return { error: rateLimitResult.error };
   }
 
-  const session = await auth();
   if (!session?.user?.id) {
     return { error: "Unauthorized" };
   }
@@ -973,13 +979,16 @@ export async function updateItem(
  * @returns Success or error
  */
 export async function deleteItem(id: string): Promise<ItemResult> {
-  // Rate limit check
-  const rateLimitResult = await checkRateLimit("itemDelete");
+  // Run rate limit and auth in parallel (async-parallel pattern)
+  const [rateLimitResult, session] = await Promise.all([
+    checkRateLimit("itemDelete"),
+    auth(),
+  ]);
+
   if (rateLimitResult) {
     return { error: rateLimitResult.error };
   }
 
-  const session = await auth();
   if (!session?.user?.id) {
     return { error: "Unauthorized" };
   }
@@ -1173,13 +1182,16 @@ export async function reorderItems(
 export async function getSearchableItems(): Promise<
   ItemResult<SearchableItem[]>
 > {
-  // Rate limit check
-  const rateLimitResult = await checkRateLimit("itemSearch");
+  // Run rate limit and auth in parallel (async-parallel pattern)
+  const [rateLimitResult, session] = await Promise.all([
+    checkRateLimit("itemSearch"),
+    auth(),
+  ]);
+
   if (rateLimitResult) {
     return { error: rateLimitResult.error };
   }
 
-  const session = await auth();
   if (!session?.user?.id) {
     return { error: "Not authenticated" };
   }
@@ -1269,13 +1281,16 @@ export async function getSearchableItems(): Promise<
 export async function deleteItems(
   itemIds: string[]
 ): Promise<ItemResult<{ deleted: number; skipped: number }>> {
-  // Rate limit check
-  const rateLimitResult = await checkRateLimit("itemDelete");
+  // Run rate limit and auth in parallel (async-parallel pattern)
+  const [rateLimitResult, session] = await Promise.all([
+    checkRateLimit("itemDelete"),
+    auth(),
+  ]);
+
   if (rateLimitResult) {
     return { error: rateLimitResult.error };
   }
 
-  const session = await auth();
   if (!session?.user?.id) {
     return { error: "Not authenticated" };
   }
@@ -1484,12 +1499,16 @@ const MAX_PINNED_ITEMS = 10;
  * @returns Success or error
  */
 export async function pinItem(id: string): Promise<ItemResult> {
-  const rateLimitResult = await checkRateLimit("itemPin");
+  // Run rate limit and auth in parallel (async-parallel pattern)
+  const [rateLimitResult, session] = await Promise.all([
+    checkRateLimit("itemPin"),
+    auth(),
+  ]);
+
   if (rateLimitResult) {
     return { error: rateLimitResult.error };
   }
 
-  const session = await auth();
   if (!session?.user?.id) {
     return { error: "Unauthorized" };
   }
@@ -1562,12 +1581,16 @@ export async function pinItem(id: string): Promise<ItemResult> {
  * @returns Success or error
  */
 export async function unpinItem(id: string): Promise<ItemResult> {
-  const rateLimitResult = await checkRateLimit("itemPin");
+  // Run rate limit and auth in parallel (async-parallel pattern)
+  const [rateLimitResult, session] = await Promise.all([
+    checkRateLimit("itemPin"),
+    auth(),
+  ]);
+
   if (rateLimitResult) {
     return { error: rateLimitResult.error };
   }
 
-  const session = await auth();
   if (!session?.user?.id) {
     return { error: "Unauthorized" };
   }
@@ -1652,12 +1675,16 @@ export async function setItemVisibility(
   id: string,
   isPublic: boolean
 ): Promise<ItemResult<{ affectedCount: number }>> {
-  const rateLimitResult = await checkRateLimit("itemUpdate");
+  // Run rate limit and auth in parallel (async-parallel pattern)
+  const [rateLimitResult, session] = await Promise.all([
+    checkRateLimit("itemUpdate"),
+    auth(),
+  ]);
+
   if (rateLimitResult) {
     return { error: rateLimitResult.error };
   }
 
-  const session = await auth();
   if (!session?.user?.id) {
     return { error: "Unauthorized" };
   }

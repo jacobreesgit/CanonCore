@@ -47,10 +47,11 @@ export function FilterDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" disabled={disabled}>
-          <Filter className="mr-2 size-4" />
+          <Filter aria-hidden="true" className="mr-2 size-4" />
           {currentLabel}
           {isActive && (
             <span
+              aria-hidden="true"
               data-active="true"
               className="bg-primary ml-2 size-2 rounded-full"
             />

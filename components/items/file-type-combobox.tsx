@@ -91,6 +91,7 @@ function ArtworkThumbnail({
         ref={ref}
         src={artworkSrc}
         alt=""
+        loading="lazy"
         className={cn(
           "absolute inset-0 h-full w-full object-cover transition-opacity duration-150",
           loaded ? "opacity-100" : "opacity-0"
@@ -741,7 +742,7 @@ function FileTypeComboboxSelectMode({
             <div className="border-b p-2">
               <Input
                 ref={inputRef}
-                placeholder="Search files..."
+                placeholder="Search files…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-8"

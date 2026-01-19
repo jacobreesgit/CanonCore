@@ -48,7 +48,7 @@ export function NavMain({
                 tooltip="Search"
                 className="group"
               >
-                <Search className="size-4" />
+                <Search aria-hidden="true" className="size-4" />
                 <span>Search</span>
                 <Kbd className="ml-auto">/</Kbd>
               </SidebarMenuButton>
@@ -67,7 +67,7 @@ export function NavMain({
                   isActive={isActive}
                 >
                   <Link href={item.url}>
-                    {item.icon && <item.icon />}
+                    {item.icon && <item.icon aria-hidden="true" />}
                     <span>{item.title}</span>
                   </Link>
                 </SidebarMenuButton>

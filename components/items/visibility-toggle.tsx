@@ -119,9 +119,12 @@ export function VisibilityToggle({
       >
         <div className="flex items-center gap-3">
           {currentValue ? (
-            <Globe className="h-5 w-5 text-green-500" />
+            <Globe aria-hidden="true" className="h-5 w-5 text-green-500" />
           ) : (
-            <Lock className="text-muted-foreground h-5 w-5" />
+            <Lock
+              aria-hidden="true"
+              className="text-muted-foreground h-5 w-5"
+            />
           )}
           <div className="space-y-0.5">
             <Label
@@ -139,7 +142,10 @@ export function VisibilityToggle({
         </div>
         <div className="flex items-center gap-2">
           {isUpdating && (
-            <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+            <Loader2
+              aria-hidden="true"
+              className="text-muted-foreground h-4 w-4 animate-spin"
+            />
           )}
           <Switch
             id={`visibility-${itemId}`}
@@ -158,7 +164,10 @@ export function VisibilityToggle({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              <AlertTriangle
+                aria-hidden="true"
+                className="h-5 w-5 text-amber-500"
+              />
               Make Item Private?
             </AlertDialogTitle>
             <AlertDialogDescription>

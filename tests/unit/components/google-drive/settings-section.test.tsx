@@ -306,7 +306,7 @@ describe("GoogleDriveSettingsSection", () => {
       );
 
       expect(screen.getByText(/7\.5 GB/)).toBeInTheDocument();
-      expect(screen.getByText(/15\.0 GB/)).toBeInTheDocument();
+      expect(screen.getByText(/15 GB/)).toBeInTheDocument();
       expect(screen.getByRole("progressbar")).toBeInTheDocument();
     });
 
