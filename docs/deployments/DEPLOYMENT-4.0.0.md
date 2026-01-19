@@ -15,10 +15,10 @@ Users can enable a public profile in Settings:
 
 **Profile settings:**
 
-| Field      | Description                                          |
-| ---------- | ---------------------------------------------------- |
-| Username   | Unique handle (3-20 chars, alphanumeric + underscore) |
-| Public     | Toggle to make profile discoverable                  |
+| Field    | Description                                           |
+| -------- | ----------------------------------------------------- |
+| Username | Unique handle (3-20 chars, alphanumeric + underscore) |
+| Public   | Toggle to make profile discoverable                   |
 
 **Username validation rules:**
 
@@ -51,13 +51,13 @@ Users can copy public items to their own library:
 
 **Fork behavior:**
 
-| Aspect          | Behavior                                      |
-| --------------- | --------------------------------------------- |
-| What's copied   | Name, description, TMDB metadata              |
-| What's not      | Files, child items, progress                  |
-| Placement       | Choose root or any existing folder            |
-| Attribution     | Shows "Forked from [name] by @username"       |
-| Fork count      | Public items display their fork count         |
+| Aspect        | Behavior                                |
+| ------------- | --------------------------------------- |
+| What's copied | Name, description, TMDB metadata        |
+| What's not    | Files, child items, progress            |
+| Placement     | Choose root or any existing folder      |
+| Attribution   | Shows "Forked from [name] by @username" |
+| Fork count    | Public items display their fork count   |
 
 **Fork restrictions:**
 
@@ -96,10 +96,10 @@ The sidebar now includes an Explore link:
 
 **Navigation by auth state:**
 
-| User Type      | Navigation Items          |
-| -------------- | ------------------------- |
-| Authenticated  | My Items, Explore         |
-| Guest          | Explore                   |
+| User Type     | Navigation Items  |
+| ------------- | ----------------- |
+| Authenticated | My Items, Explore |
+| Guest         | Explore           |
 
 ## Files Changed
 
@@ -257,18 +257,27 @@ export async function forkItem(
 ): Promise<ItemResult<ForkResult>>;
 
 /** Get fork status for current user */
-export async function getForkStatus(itemId: string): Promise<ItemResult<ForkStatus>>;
+export async function getForkStatus(
+  itemId: string
+): Promise<ItemResult<ForkStatus>>;
 
 /** Get fork info (source, count) for an item */
-export async function getForkInfo(itemId: string): Promise<ItemResult<ForkInfo>>;
+export async function getForkInfo(
+  itemId: string
+): Promise<ItemResult<ForkInfo>>;
 
 // lib/public-auth.ts
 
 /** Get public profile by username */
-export async function getPublicProfile(username: string): Promise<PublicProfile | null>;
+export async function getPublicProfile(
+  username: string
+): Promise<PublicProfile | null>;
 
 /** Get public items for a user */
-export async function getPublicItems(userId: string, parentId?: string | null): Promise<PublicItem[]>;
+export async function getPublicItems(
+  userId: string,
+  parentId?: string | null
+): Promise<PublicItem[]>;
 
 /** Check if item is fully public (all ancestors public) */
 export async function isItemFullyPublic(itemId: string): Promise<boolean>;
@@ -284,10 +293,10 @@ GET  /api/username/check    - Check availability (query: username)
 
 ### Rate limits
 
-| Action    | Limit    |
-| --------- | -------- |
-| fork      | 10/min   |
-| username  | 20/min   |
+| Action   | Limit  |
+| -------- | ------ |
+| fork     | 10/min |
+| username | 20/min |
 
 ## Breaking Changes
 

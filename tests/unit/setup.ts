@@ -25,6 +25,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       deleteMany: vi.fn(),
@@ -41,6 +42,7 @@ vi.mock("@/lib/prisma", () => ({
       findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       delete: vi.fn(),
       deleteMany: vi.fn(),
       aggregate: vi.fn(),

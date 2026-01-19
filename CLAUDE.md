@@ -165,6 +165,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── unit/
 │   │   ├── api/                      # API route tests (stream, artwork, user)
 │   │   ├── components/               # Component tests (media, items, ui)
+│   │   ├── hooks/                    # Hook tests (upload, state, navigation, mobile)
 │   │   ├── lib/                      # Library tests (auth, items, google-drive, crypto)
 │   │   ├── e2e/                      # E2E fixture unit tests
 │   │   ├── setup.ts                  # Mocks for Prisma, email, rate-limit
@@ -173,6 +174,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── auth/                     # Auth integration tests
 │   │   ├── google-drive/             # Google Drive integration tests (batch operations)
 │   │   ├── items/                    # Items integration tests (CRUD, hierarchy)
+│   │   ├── public/                   # Public profile and fork integration tests
 │   │   ├── user/                     # User profile integration tests
 │   │   ├── setup.ts                  # DB cleanup, env loading, rate-limit bypass
 │   │   └── vitest.config.ts
@@ -241,13 +243,15 @@ pnpm run test:e2e:ui                        # UI mode
 ├── skills/                           # Claude Code skills
 │   ├── code-review-excellence/       # Code review best practices
 │   ├── docs-write/                   # Documentation writing style
-│   └── frontend-design/              # Frontend interface design
+│   ├── frontend-design/              # Frontend interface design
+│   ├── react-best-practices/         # React optimization rules (50+)
+│   └── web-design-guidelines/        # Frontend design principles
 ├── scripts/
 │   ├── generate-refresh-token.ts     # Google Drive token generator for E2E tests
 │   ├── setup-e2e-drive.ts            # E2E Drive environment setup
 │   └── verify-seed.ts                # Quick seed verification utility
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 3.2.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 4.1.0)
     └── plans/                        # Design documents
 ```
 
@@ -410,7 +414,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 1480+ unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system, sync queue, sync history, image loading hooks, bulk selection, empty states, pinned items, progress tracking, public profiles, forking, username validation
+- 2100+ unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system, sync queue, sync history, image loading hooks, bulk selection, empty states, pinned items, progress tracking, public profiles, forking, username validation, rate limiting, error handling, tree utilities
 
 ### E2E Testing
 
