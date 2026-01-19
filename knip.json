@@ -6,10 +6,16 @@
     "source.config.ts",
     ".source/**",
     "scripts/**",
-    "prisma/seed-cleanup.ts"
+    "prisma/seed-cleanup.ts",
+    "components/items/fork-destination-dialog.tsx",
+    "components/items/visibility-toggle.tsx"
   ],
   "ignoreBinaries": ["pkill", "lsof"],
-  "ignoreDependencies": ["pino-pretty", "baseline-browser-mapping"],
+  "ignoreDependencies": [
+    "pino-pretty",
+    "baseline-browser-mapping",
+    "@tanstack/react-virtual"
+  ],
   "ignoreExportsUsedInFile": {
     "interface": true,
     "type": true

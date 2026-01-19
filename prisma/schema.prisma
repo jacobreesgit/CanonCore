@@ -13,6 +13,10 @@ model User {
   passwordHash    String
   name            String?
 
+  // Public profile fields
+  username        String?          // lowercase, 3-20 chars, [a-z0-9_] - case-insensitive uniqueness via raw SQL index
+  isPublic        Boolean          @default(false) // profile visible at /u/username
+
   // Profile image - binary storage
   image           Bytes?           // Profile picture (max 1MB)
   imageMime       String?          // MIME type (image/jpeg, image/png, etc.)
@@ -36,6 +40,9 @@ model User {
 
   // Sync history
   syncLogs              SyncLog[]
+
+  // Fork records (items this user has forked)
+  forks                 Fork[]
 }
 
 model PasswordReset {
@@ -129,6 +136,18 @@ model Item {
   // Pinned to sidebar (null = not pinned, 0+ = pinned with order)
   pinnedOrder Int?
 
+  // Public visibility (for public profiles feature)
+  isPublic    Boolean  @default(false) // visible on public profile
+
+  // TMDB metadata (for fork artwork re-fetch)
+  tmdbId      Int?     // TMDB movie/TV ID
+  tmdbType    String?  // "movie" | "tv"
+
+  // Fork tracking
+  forkedFromId  String?  // original item ID if this was forked
+  forkedFrom    Item?    @relation("ItemFork", fields: [forkedFromId], references: [id], onDelete: SetNull)
+  forks         Item[]   @relation("ItemFork")
+
   // Hierarchy (max 10 levels deep)
   parentId  String?
   parent    Item?    @relation("ItemChildren", fields: [parentId], references: [id], onDelete: Cascade)
@@ -150,6 +169,10 @@ model Item {
   driveConnectionId     String?
   driveConnection       GoogleDriveConnection? @relation(fields: [driveConnectionId], references: [id], onDelete: SetNull)
 
+  // Fork relations (for Fork model)
+  sourceForks   Fork[]   @relation("ForkSource")
+  targetForks   Fork[]   @relation("ForkTarget")
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -162,6 +185,11 @@ model Item {
   // Compound index for Drive lookups (used in sync queries)
   @@index([driveConnectionId, driveFileId])
   @@index([syncStatus])
+
+  // Indexes for public profile queries
+  @@index([isPublic, updatedAt(sort: Desc)])  // Explore page sorting
+  @@index([userId, isPublic])                  // User's public items
+  @@index([forkedFromId])                      // Fork lookups
 }
 
 model ItemFile {
@@ -232,4 +260,23 @@ model SyncLog {
   @@index([userId, createdAt(sort: Desc)])  // Recent activity by user
   @@index([userId, status])                  // Filter by status per user
   @@index([createdAt])                       // For cleanup job
+}
+
+/// Fork record tracking when a user forks a public item.
+/// Creates a copy in the user's library with reference to original.
+model Fork {
+  id            String   @id @default(cuid())
+  sourceItemId  String   // original public item
+  targetItemId  String   // forked copy in user's library
+  userId        String   // who forked
+  createdAt     DateTime @default(now())
+
+  sourceItem    Item     @relation("ForkSource", fields: [sourceItemId], references: [id], onDelete: Cascade)
+  targetItem    Item     @relation("ForkTarget", fields: [targetItemId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // One fork per user per source item (prevents duplicate forks)
+  @@unique([sourceItemId, userId])
+  @@index([sourceItemId])
+  @@index([userId])
 }

@@ -18,6 +18,14 @@ export interface SidebarUser {
   email: string;
   /** URL to user's avatar image */
   avatar?: string;
+  /** User's username for public profile */
+  username?: string | null;
+  /** Whether user's profile is public */
+  isPublic?: boolean;
+  /** Whether user has a profile image */
+  hasImage?: boolean;
+  /** Whether user has a hero image */
+  hasHeroImage?: boolean;
 }
 
 /**
@@ -38,6 +46,47 @@ export function extractSidebarUser(
     name: session.user.name ?? session.user.email?.split("@")[0] ?? "User",
     email: session.user.email ?? "",
     avatar: session.user.image ?? undefined,
+  };
+}
+
+/**
+ * Fetches extended user data from the database for sidebar display.
+ * Includes username, isPublic, and image flags not stored in JWT.
+ *
+ * @param session - NextAuth session object
+ * @returns Extended sidebar user data or null for unauthenticated users
+ */
+export async function getExtendedSidebarUser(
+  session: Session | null
+): Promise<SidebarUser | null> {
+  if (!session?.user?.id) {
+    return null;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      name: true,
+      email: true,
+      username: true,
+      isPublic: true,
+      image: true,
+      heroImage: true,
+    },
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  return {
+    name: user.name ?? user.email.split("@")[0] ?? "User",
+    email: user.email,
+    avatar: user.image ? "/api/user/avatar" : undefined,
+    username: user.username,
+    isPublic: user.isPublic,
+    hasImage: user.image !== null,
+    hasHeroImage: user.heroImage !== null,
   };
 }
 

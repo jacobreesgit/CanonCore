@@ -411,3 +411,94 @@ export interface NextItem {
   /** Item name for button label ("Go to [name]") */
   name: string;
 }
+
+// =============================================================================
+// Public Profile Types
+// =============================================================================
+
+/**
+ * Public user profile data for display on public profile pages.
+ * Only includes fields safe for public consumption.
+ */
+export interface PublicUserProfile {
+  /** User ID */
+  id: string;
+  /** Public username (URL slug) */
+  username: string;
+  /** Display name (may be null) */
+  name: string | null;
+  /** Whether user has a profile image */
+  hasImage: boolean;
+  /** Whether user has a hero banner image */
+  hasHeroImage: boolean;
+  /** When the profile was created */
+  createdAt: Date;
+}
+
+/**
+ * Public item data displayed on public profiles and explore pages.
+ * Excludes sensitive fields like userId for non-owner views.
+ */
+export interface PublicItemCard {
+  /** Item ID */
+  id: string;
+  /** Item name */
+  name: string;
+  /** Item description (truncated for cards) */
+  description: string | null;
+  /** First artwork file ID for thumbnail */
+  artworkId: string | null;
+  /** Number of times this item has been forked */
+  forkCount: number;
+  /** TMDB ID if linked */
+  tmdbId: number | null;
+  /** TMDB media type (movie/tv) */
+  tmdbType: string | null;
+  /** Owner's username for attribution */
+  ownerUsername: string;
+  /** When item was last updated */
+  updatedAt: Date;
+}
+
+/**
+ * Fork relationship info for display in item details.
+ */
+export interface ForkRelationship {
+  /** Original source item (if this was forked from somewhere) */
+  source: {
+    id: string;
+    name: string;
+    ownerUsername: string | null;
+  } | null;
+  /** Number of times this item has been forked by others */
+  forkCount: number;
+}
+
+/**
+ * Username availability check result.
+ */
+export interface UsernameCheckResult {
+  /** Whether the username is available */
+  available: boolean;
+  /** Validation error message if invalid format */
+  error?: string;
+}
+
+/**
+ * User profile settings for the settings dialog.
+ * Includes both public profile and preference fields.
+ */
+export interface UserProfileSettings {
+  /** Current username (null if not set) */
+  username: string | null;
+  /** Whether profile is public */
+  isPublic: boolean;
+  /** Display name */
+  name: string | null;
+  /** Email address (read-only display) */
+  email: string;
+  /** Default view mode preference */
+  defaultViewMode: ViewMode | null;
+  /** Default sort preference */
+  defaultSortBy: SortOption | null;
+}

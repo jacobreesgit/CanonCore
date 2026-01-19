@@ -113,6 +113,8 @@ function createMockUser(overrides = {}) {
     passwordHash: "mock-password-hash", // Matches bcrypt mock for "Password1"
     emailVerified: null,
     name: "Test User",
+    username: null,
+    isPublic: false,
     image: null,
     imageMime: null,
     heroImage: null,

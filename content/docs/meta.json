@@ -28,6 +28,10 @@
     "views/grid-view",
     "views/sort-and-filter",
     "views/drag-and-drop",
+    "---Sharing---",
+    "sharing/public-profile",
+    "sharing/explore",
+    "sharing/forking",
     "---Preferences---",
     "preferences/dark-mode",
     "preferences/default-settings"
