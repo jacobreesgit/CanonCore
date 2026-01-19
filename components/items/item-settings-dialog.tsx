@@ -766,7 +766,10 @@ export function ItemSettingsDialog({
           {(isLoadingPreview || isApplyingMetadata) && (
             <div className="bg-background/80 absolute inset-0 flex items-center justify-center rounded-md">
               <div className="flex items-center gap-2">
-                <Loader2 aria-hidden="true" className="text-muted-foreground size-4 animate-spin" />
+                <Loader2
+                  aria-hidden="true"
+                  className="text-muted-foreground size-4 animate-spin"
+                />
                 <span className="text-muted-foreground text-sm">
                   {isLoadingPreview ? "Loading preview…" : "Applying…"}
                 </span>
@@ -966,7 +969,10 @@ export function ItemSettingsDialog({
                   "bg-amber-500/10 ring-1 ring-amber-500/20"
                 )}
               >
-                <Sparkles aria-hidden="true" className="size-5 text-amber-500" />
+                <Sparkles
+                  aria-hidden="true"
+                  className="size-5 text-amber-500"
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
@@ -1164,7 +1170,10 @@ export function ItemSettingsDialog({
                   <ChevronLeft aria-hidden="true" className="size-4" />
                   <span className="max-w-[150px] truncate">{displayTitle}</span>
                 </button>
-                <ChevronRight aria-hidden="true" className="text-muted-foreground/50 size-4" />
+                <ChevronRight
+                  aria-hidden="true"
+                  className="text-muted-foreground/50 size-4"
+                />
                 <span className="text-foreground font-medium">
                   {selectedSeason.name}
                 </span>

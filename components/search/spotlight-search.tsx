@@ -64,7 +64,10 @@ function ArtworkThumbnail({ artworkId }: { artworkId: string }) {
       {/* Folder icon placeholder while loading */}
       {!loaded && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <Folder aria-hidden="true" className="text-muted-foreground/50 size-4" />
+          <Folder
+            aria-hidden="true"
+            className="text-muted-foreground/50 size-4"
+          />
         </div>
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -203,11 +206,7 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
       />
       <CommandList ref={listRef} className="max-h-[400px]">
         {/* Screen reader announcement for search results */}
-        <div
-          aria-live="polite"
-          aria-atomic="true"
-          className="sr-only"
-        >
+        <div aria-live="polite" aria-atomic="true" className="sr-only">
           {isLoading
             ? "Loading items…"
             : items.length === 0
@@ -216,14 +215,20 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
         </div>
         {isLoading ? (
           <div className="flex items-center justify-center gap-2 py-12">
-            <Loader2 aria-hidden="true" className="text-muted-foreground size-4 animate-spin" />
+            <Loader2
+              aria-hidden="true"
+              className="text-muted-foreground size-4 animate-spin"
+            />
             <span className="text-muted-foreground text-sm">Loading…</span>
           </div>
         ) : (
           <>
             <CommandEmpty className="py-12 text-center">
               <div className="flex flex-col items-center gap-2">
-                <Search aria-hidden="true" className="text-muted-foreground/50 size-8" />
+                <Search
+                  aria-hidden="true"
+                  className="text-muted-foreground/50 size-8"
+                />
                 <p className="text-muted-foreground text-sm">No items found.</p>
               </div>
             </CommandEmpty>

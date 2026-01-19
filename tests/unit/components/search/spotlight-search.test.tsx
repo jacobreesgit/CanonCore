@@ -98,7 +98,9 @@ describe("SpotlightSearch", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/no items found/i)).toBeInTheDocument();
+      // Use getAllByText since there's both visible text and sr-only announcement
+      const elements = screen.getAllByText(/no items found/i);
+      expect(elements.length).toBeGreaterThan(0);
     });
   });
 
@@ -223,7 +225,9 @@ describe("SpotlightSearch", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/no items found/i)).toBeInTheDocument();
+      // Use getAllByText since there's both visible text and sr-only announcement
+      const elements = screen.getAllByText(/no items found/i);
+      expect(elements.length).toBeGreaterThan(0);
     });
   });
 
@@ -244,12 +248,13 @@ describe("SpotlightSearch", () => {
       </SpotlightProvider>
     );
 
-    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+    // Use getAllByText since there's both visible text and sr-only announcement
+    expect(screen.getAllByText(/loading/i).length).toBeGreaterThan(0);
 
     resolvePromise({ success: true, data: [] });
 
     await waitFor(() => {
-      expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
+      expect(screen.queryAllByText(/loading/i).length).toBe(0);
     });
   });
 

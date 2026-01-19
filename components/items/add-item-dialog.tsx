@@ -1067,7 +1067,10 @@ export function AddItemDialog({
                   "bg-amber-500/10 ring-1 ring-amber-500/20"
                 )}
               >
-                <Sparkles aria-hidden="true" className="size-5 text-amber-500" />
+                <Sparkles
+                  aria-hidden="true"
+                  className="size-5 text-amber-500"
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
@@ -1110,7 +1113,10 @@ export function AddItemDialog({
                   "bg-violet-500/10 ring-1 ring-violet-500/20"
                 )}
               >
-                <ImageIcon aria-hidden="true" className="size-5 text-violet-500" />
+                <ImageIcon
+                  aria-hidden="true"
+                  className="size-5 text-violet-500"
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-lg">Change Poster</DialogTitle>
@@ -1140,7 +1146,10 @@ export function AddItemDialog({
                   "bg-violet-500/10 ring-1 ring-violet-500/20"
                 )}
               >
-                <ImageIcon aria-hidden="true" className="size-5 text-violet-500" />
+                <ImageIcon
+                  aria-hidden="true"
+                  className="size-5 text-violet-500"
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-lg">Change Hero</DialogTitle>
@@ -1219,7 +1228,10 @@ export function AddItemDialog({
                   animate={{ x: 0, opacity: 1 }}
                   className="flex items-center gap-2"
                 >
-                  <AlertCircle aria-hidden="true" className="text-destructive size-4" />
+                  <AlertCircle
+                    aria-hidden="true"
+                    className="text-destructive size-4"
+                  />
                   <span>
                     {uploadState.successCount} uploaded, {failedFiles.length}{" "}
                     failed
@@ -1282,12 +1294,18 @@ export function AddItemDialog({
               >
                 {isLoading ? (
                   <>
-                    <Loader2 aria-hidden="true" className="mr-2 size-4 animate-spin" />
+                    <Loader2
+                      aria-hidden="true"
+                      className="mr-2 size-4 animate-spin"
+                    />
                     Creating…
                   </>
                 ) : isUploading ? (
                   <>
-                    <Loader2 aria-hidden="true" className="mr-2 size-4 animate-spin" />
+                    <Loader2
+                      aria-hidden="true"
+                      className="mr-2 size-4 animate-spin"
+                    />
                     Uploading…
                   </>
                 ) : (
@@ -1383,12 +1401,18 @@ export function AddItemDialog({
               >
                 {isLoading ? (
                   <>
-                    <Loader2 aria-hidden="true" className="mr-2 size-4 animate-spin" />
+                    <Loader2
+                      aria-hidden="true"
+                      className="mr-2 size-4 animate-spin"
+                    />
                     Creating…
                   </>
                 ) : isUploading ? (
                   <>
-                    <Loader2 aria-hidden="true" className="mr-2 size-4 animate-spin" />
+                    <Loader2
+                      aria-hidden="true"
+                      className="mr-2 size-4 animate-spin"
+                    />
                     Uploading…
                   </>
                 ) : (
@@ -1436,7 +1460,10 @@ export function AddItemDialog({
           />
           {isLoadingPreview && (
             <div className="bg-background/80 absolute inset-0 flex items-center justify-center gap-2 rounded-md">
-              <Loader2 aria-hidden="true" className="text-muted-foreground size-4 animate-spin" />
+              <Loader2
+                aria-hidden="true"
+                className="text-muted-foreground size-4 animate-spin"
+              />
               <span className="text-muted-foreground text-sm">Loading…</span>
             </div>
           )}
@@ -1585,7 +1612,10 @@ export function AddItemDialog({
                   <ChevronLeft aria-hidden="true" className="size-4" />
                   <span className="max-w-[150px] truncate">{displayTitle}</span>
                 </button>
-                <ChevronRight aria-hidden="true" className="text-muted-foreground/50 size-4" />
+                <ChevronRight
+                  aria-hidden="true"
+                  className="text-muted-foreground/50 size-4"
+                />
                 <span className="text-foreground font-medium">
                   {selectedSeason.name}
                 </span>
@@ -2057,7 +2087,10 @@ function SummaryArtworkDropzone({
           />
         ) : (
           <div className="flex size-full flex-col items-center justify-center gap-1">
-            <Icon aria-hidden="true" className="text-muted-foreground/50 size-6" />
+            <Icon
+              aria-hidden="true"
+              className="text-muted-foreground/50 size-6"
+            />
             <p className="text-muted-foreground text-xs">
               Click to choose {label.toLowerCase()}
             </p>
