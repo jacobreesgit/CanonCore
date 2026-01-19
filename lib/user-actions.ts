@@ -14,7 +14,7 @@ import { fileTypeFromBuffer } from "file-type";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { emailSchema, passwordSchema } from "@/lib/validations";
+import { emailSchema, passwordSchema, usernameSchema } from "@/lib/validations";
 import { logger } from "@/lib/logger";
 import type { ViewMode, SortOption } from "@/lib/types";
 import {
@@ -115,6 +115,8 @@ async function stripExifMetadata(buffer: Uint8Array): Promise<Uint8Array> {
 export async function updateProfile(data: {
   name?: string;
   email?: string;
+  username?: string | null;
+  isPublic?: boolean;
   currentPassword?: string;
 }): Promise<ActionResult<void>> {
   const userId = await getAuthUserId();
@@ -123,6 +125,32 @@ export async function updateProfile(data: {
   }
 
   try {
+    // Validate username if provided
+    if (data.username !== undefined && data.username !== null) {
+      const usernameValidation = usernameSchema.safeParse(data.username);
+      if (!usernameValidation.success) {
+        return {
+          success: false,
+          error: usernameValidation.error.issues[0].message,
+        };
+      }
+
+      // Check username uniqueness (case-insensitive)
+      const existingUsername = await prisma.user.findFirst({
+        where: {
+          username: {
+            equals: data.username,
+            mode: "insensitive",
+          },
+          id: { not: userId },
+        },
+      });
+
+      if (existingUsername) {
+        return { success: false, error: "Username already taken" };
+      }
+    }
+
     // Validate email if provided
     if (data.email !== undefined) {
       const emailValidation = emailSchema.safeParse(data.email);
@@ -182,6 +210,8 @@ export async function updateProfile(data: {
       data: {
         ...(data.name !== undefined && { name: data.name }),
         ...(data.email !== undefined && { email: data.email }),
+        ...(data.username !== undefined && { username: data.username }),
+        ...(data.isPublic !== undefined && { isPublic: data.isPublic }),
       },
     });
 

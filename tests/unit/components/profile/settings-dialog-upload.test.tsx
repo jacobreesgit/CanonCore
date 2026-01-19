@@ -59,6 +59,8 @@ describe("SettingsDialog Upload", () => {
     user: {
       name: "Test User",
       email: "test@example.com",
+      username: null,
+      isPublic: false,
       hasImage: false,
       hasHeroImage: false,
     },

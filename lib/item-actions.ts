@@ -33,8 +33,7 @@ import {
   COMPLETION_THRESHOLD,
   findFirstIncompleteItem,
 } from "@/lib/progress-utils";
-
-const MAX_DEPTH = 10;
+import { MAX_ITEM_DEPTH } from "@/lib/config/items";
 
 /**
  * Builds a map of item IDs to their progress (self + all descendants).
@@ -799,7 +798,7 @@ export async function createItem(
       return { error: "Parent not found" };
     }
 
-    if (parent.depth >= MAX_DEPTH - 1) {
+    if (parent.depth >= MAX_ITEM_DEPTH - 1) {
       return { error: "Maximum nesting depth reached" };
     }
 
@@ -1113,7 +1112,7 @@ export async function reorderItems(
 
   // Check depth constraints for any parentId changes
   for (const update of updates) {
-    if (update.depth !== undefined && update.depth >= MAX_DEPTH) {
+    if (update.depth !== undefined && update.depth >= MAX_ITEM_DEPTH) {
       return { error: "Maximum nesting depth reached" };
     }
   }
@@ -1631,4 +1630,127 @@ export async function getPinnedItems(): Promise<ItemResult<PinnedItem[]>> {
   }));
 
   return { success: true, data: pinnedItems };
+}
+
+// =============================================================================
+// Public Visibility Actions
+// =============================================================================
+
+/**
+ * Sets the public visibility of an item.
+ * Making an item public allows it to appear on the owner's public profile.
+ *
+ * Privacy cascade rules:
+ * - Setting an item to public: only that item becomes public (children stay private)
+ * - Setting an item to private: item and ALL descendants become private
+ *
+ * @param id - Item ID to update
+ * @param isPublic - New visibility state
+ * @returns Success or error
+ */
+export async function setItemVisibility(
+  id: string,
+  isPublic: boolean
+): Promise<ItemResult<{ affectedCount: number }>> {
+  const rateLimitResult = await checkRateLimit("itemUpdate");
+  if (rateLimitResult) {
+    return { error: rateLimitResult.error };
+  }
+
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  const item = await prisma.item.findUnique({
+    where: { id },
+    select: { userId: true, isPublic: true },
+  });
+
+  if (!item) {
+    return { error: "Item not found" };
+  }
+
+  if (item.userId !== session.user.id) {
+    return { error: "Unauthorized" };
+  }
+
+  // No change needed
+  if (item.isPublic === isPublic) {
+    return { success: true, data: { affectedCount: 0 } };
+  }
+
+  try {
+    if (isPublic) {
+      // Making public: only update this item
+      await prisma.item.update({
+        where: { id },
+        data: { isPublic: true },
+      });
+
+      logger.info({ userId: session.user.id, itemId: id }, "Item made public");
+      return { success: true, data: { affectedCount: 1 } };
+    } else {
+      // Making private: cascade to all descendants
+      // Use recursive CTE to find all descendant IDs
+      const descendantIds = await prisma.$queryRaw<Array<{ id: string }>>`
+        WITH RECURSIVE descendants AS (
+          SELECT id FROM "Item" WHERE id = ${id}
+          UNION ALL
+          SELECT i.id FROM "Item" i
+          INNER JOIN descendants d ON i."parentId" = d.id
+        )
+        SELECT id FROM descendants
+      `;
+
+      const ids = descendantIds.map((d) => d.id);
+
+      await prisma.item.updateMany({
+        where: { id: { in: ids } },
+        data: { isPublic: false },
+      });
+
+      logger.info(
+        { userId: session.user.id, itemId: id, cascadeCount: ids.length },
+        "Item and descendants made private"
+      );
+
+      // Return count minus 1 because we don't count the item itself, only children
+      return { success: true, data: { affectedCount: ids.length - 1 } };
+    }
+  } catch (error) {
+    logger.error({ error, itemId: id }, "Failed to update item visibility");
+    const prismaError = handlePrismaError(error);
+    return prismaError ?? { error: "Failed to update item visibility" };
+  }
+}
+
+/**
+ * Gets the public visibility state of an item.
+ *
+ * @param id - Item ID to check
+ * @returns Visibility state or error
+ */
+export async function getItemVisibility(
+  id: string
+): Promise<ItemResult<{ isPublic: boolean }>> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  const item = await prisma.item.findUnique({
+    where: { id },
+    select: { userId: true, isPublic: true },
+  });
+
+  if (!item) {
+    return { error: "Item not found" };
+  }
+
+  if (item.userId !== session.user.id) {
+    return { error: "Unauthorized" };
+  }
+
+  return { success: true, data: { isPublic: item.isPublic } };
 }

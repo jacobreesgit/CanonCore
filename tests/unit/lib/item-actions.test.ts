@@ -69,11 +69,16 @@ const mockItem = (overrides: {
   depth: number;
   userId: string;
   artworkId?: string | null;
+  isPublic?: boolean;
 }) => ({
   ...overrides,
   description: overrides.description ?? null,
   type: "FOLDER" as const,
   pinnedOrder: null,
+  isPublic: overrides.isPublic ?? false,
+  tmdbId: null,
+  tmdbType: null,
+  forkedFromId: null,
   // Google Drive fields
   driveFileId: null,
   driveModifiedAt: null,

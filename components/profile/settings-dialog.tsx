@@ -17,6 +17,10 @@ import {
   Trash2,
   ChevronLeft,
   Cloud,
+  Globe,
+  AtSign,
+  Check,
+  X,
 } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { AnimatedDialogContent } from "@/components/ui/animated-dialog-content";
@@ -26,12 +30,24 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Dropzone } from "@/components/ui/dropzone";
 import { PasswordInput } from "@/components/ui/password-input";
+import { Switch } from "@/components/ui/switch";
+import { useUsernameValidation } from "@/hooks/use-username-validation";
 import {
   updateProfile,
   uploadProfileImage,
@@ -63,6 +79,8 @@ interface SettingsDialogProps {
   user: {
     name: string | null;
     email: string;
+    username: string | null;
+    isPublic: boolean;
     hasImage: boolean;
     hasHeroImage: boolean;
   };
@@ -109,8 +127,14 @@ export function SettingsDialog({
 
   // Main step state
   const [name, setName] = useState(user.name ?? "");
+  const [username, setUsername] = useState(user.username ?? "");
+  const [isPublic, setIsPublic] = useState(user.isPublic);
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [heroImage, setHeroImage] = useState<File | null>(null);
+  const [showPublicConfirm, setShowPublicConfirm] = useState(false);
+
+  // Username validation
+  const usernameValidation = useUsernameValidation(username, user.username);
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(
     null
   );
@@ -124,18 +148,30 @@ export function SettingsDialog({
     () => ({
       name: user.name ?? "",
       email: user.email,
+      username: user.username ?? "",
+      isPublic: user.isPublic,
     }),
-    [user.name, user.email]
+    [user.name, user.email, user.username, user.isPublic]
   );
 
   // Dirty state detection for main step
   const isDirty = useMemo(() => {
     const nameChanged = name !== originalValues.name;
+    const usernameChanged = username !== originalValues.username;
+    const isPublicChanged = isPublic !== originalValues.isPublic;
     const profileImageChanging = profileImage !== null || removeProfile;
     const heroImageChanging = heroImage !== null || removeHero;
-    return nameChanged || profileImageChanging || heroImageChanging;
+    return (
+      nameChanged ||
+      usernameChanged ||
+      isPublicChanged ||
+      profileImageChanging ||
+      heroImageChanging
+    );
   }, [
     name,
+    username,
+    isPublic,
     profileImage,
     heroImage,
     removeProfile,
@@ -158,6 +194,8 @@ export function SettingsDialog({
       setIsEmailSaving(false);
       // Reset main state
       setName(user.name ?? "");
+      setUsername(user.username ?? "");
+      setIsPublic(user.isPublic);
       setProfileImage(null);
       setHeroImage(null);
       setProfileImagePreview(null);
@@ -166,7 +204,7 @@ export function SettingsDialog({
       setRemoveHero(false);
       setIsMainSaving(false);
     }
-  }, [open, user.name, user.email]);
+  }, [open, user.name, user.email, user.username, user.isPublic]);
 
   // Cleanup preview URLs on unmount
   useEffect(() => {
@@ -288,8 +326,30 @@ export function SettingsDialog({
     setRemoveHero(true);
   }, []);
 
+  /** Handles public profile toggle with confirmation when enabling. */
+  const handlePublicToggle = useCallback(
+    (checked: boolean) => {
+      if (checked && !isPublic) {
+        // Show confirmation when turning public on
+        setShowPublicConfirm(true);
+      } else {
+        // Allow immediate toggle when turning off
+        setIsPublic(checked);
+      }
+    },
+    [isPublic]
+  );
+
+  /** Confirms enabling public profile. */
+  const handlePublicConfirm = useCallback(() => {
+    setIsPublic(true);
+    setShowPublicConfirm(false);
+  }, []);
+
   const handleMainCancel = useCallback(() => {
     setName(originalValues.name);
+    setUsername(originalValues.username);
+    setIsPublic(originalValues.isPublic);
     setProfileImage(null);
     setHeroImage(null);
     setProfileImagePreview(null);
@@ -305,9 +365,42 @@ export function SettingsDialog({
       let hasError = false;
 
       const nameChanged = name !== originalValues.name;
+      const usernameChanged = username !== originalValues.username;
+      const isPublicChanged = isPublic !== originalValues.isPublic;
 
-      if (nameChanged) {
-        const result = await updateProfile({ name });
+      // Validate username before saving if changed
+      if (usernameChanged && username) {
+        if (!usernameValidation.isValidFormat) {
+          toast.error(usernameValidation.error || "Invalid username format");
+          setIsMainSaving(false);
+          return;
+        }
+        if (usernameValidation.isAvailable === false) {
+          toast.error("Username is already taken");
+          setIsMainSaving(false);
+          return;
+        }
+      }
+
+      // Update profile fields if any changed
+      if ((nameChanged || usernameChanged || isPublicChanged) && !hasError) {
+        const updateData: {
+          name?: string;
+          username?: string | null;
+          isPublic?: boolean;
+        } = {};
+
+        if (nameChanged) {
+          updateData.name = name;
+        }
+        if (usernameChanged) {
+          updateData.username = username || null;
+        }
+        if (isPublicChanged) {
+          updateData.isPublic = isPublic;
+        }
+
+        const result = await updateProfile(updateData);
 
         if (!result.success) {
           toast.error(result.error);
@@ -361,6 +454,9 @@ export function SettingsDialog({
     }
   }, [
     name,
+    username,
+    isPublic,
+    usernameValidation,
     profileImage,
     heroImage,
     removeProfile,
@@ -663,6 +759,134 @@ export function SettingsDialog({
                   />
                 </div>
 
+                {/* Username Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={cn(
+                        "flex size-7 items-center justify-center rounded-lg",
+                        "bg-primary/10"
+                      )}
+                    >
+                      <AtSign className="text-primary size-3.5" />
+                    </div>
+                    <Label
+                      htmlFor="settings-username"
+                      className="text-sm font-medium"
+                    >
+                      Username
+                    </Label>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      id="settings-username"
+                      value={username}
+                      onChange={(e) =>
+                        setUsername(
+                          e.target.value
+                            .toLowerCase()
+                            .replace(/[^a-z0-9_]/g, "")
+                        )
+                      }
+                      placeholder="your_username"
+                      className={cn(
+                        "h-10 pr-10",
+                        username &&
+                          usernameValidation.isValidFormat &&
+                          usernameValidation.isAvailable === true &&
+                          "border-green-500 focus-visible:ring-green-500/20",
+                        username &&
+                          (usernameValidation.error ||
+                            usernameValidation.isAvailable === false) &&
+                          "border-destructive focus-visible:ring-destructive/20"
+                      )}
+                    />
+                    {username && (
+                      <div className="absolute top-1/2 right-3 -translate-y-1/2">
+                        {usernameValidation.isValidating ? (
+                          <Loader2 className="text-muted-foreground size-4 animate-spin" />
+                        ) : usernameValidation.isValidFormat &&
+                          usernameValidation.isAvailable === true ? (
+                          <Check className="size-4 text-green-500" />
+                        ) : usernameValidation.error ||
+                          usernameValidation.isAvailable === false ? (
+                          <X className="text-destructive size-4" />
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                  {username && usernameValidation.error && (
+                    <p className="text-destructive text-xs">
+                      {usernameValidation.error}
+                    </p>
+                  )}
+                  {username &&
+                    usernameValidation.isAvailable === false &&
+                    !usernameValidation.error && (
+                      <p className="text-destructive text-xs">
+                        Username is already taken
+                      </p>
+                    )}
+                  {username &&
+                    usernameValidation.isValidFormat &&
+                    usernameValidation.isAvailable === true && (
+                      <p className="text-xs text-green-600 dark:text-green-500">
+                        Username is available
+                      </p>
+                    )}
+                  <p className="text-muted-foreground text-xs">
+                    Used for your public profile URL: canoncore.com/u/
+                    {username || "username"}
+                  </p>
+                </div>
+
+                {/* Public Profile Toggle */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between rounded-lg border p-4">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={cn(
+                          "flex size-9 items-center justify-center rounded-lg",
+                          isPublic ? "bg-green-500/10" : "bg-muted"
+                        )}
+                      >
+                        <Globe
+                          className={cn(
+                            "size-4",
+                            isPublic
+                              ? "text-green-500"
+                              : "text-muted-foreground"
+                          )}
+                        />
+                      </div>
+                      <div className="space-y-0.5">
+                        <Label
+                          htmlFor="settings-public"
+                          className="text-sm font-medium"
+                        >
+                          Public Profile
+                        </Label>
+                        <p className="text-muted-foreground text-xs">
+                          {isPublic
+                            ? "Your profile is visible to anyone"
+                            : "Your profile is private"}
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      id="settings-public"
+                      checked={isPublic}
+                      onCheckedChange={handlePublicToggle}
+                    />
+                  </div>
+                  <p className="text-muted-foreground text-xs">
+                    When enabled, others can view your public items at your
+                    profile URL.
+                    {!username &&
+                      " Set a username above to enable your public profile."}
+                  </p>
+                </div>
+
                 {/* Email Section */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
@@ -908,15 +1132,50 @@ export function SettingsDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <AnimatedDialogContent
-        stepKey={currentStep}
-        className="max-h-[90vh]"
-        header={getStepHeader()}
-        footer={getStepFooter()}
-      >
-        {getStepBody()}
-      </AnimatedDialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <AnimatedDialogContent
+          stepKey={currentStep}
+          className="max-h-[90vh]"
+          header={getStepHeader()}
+          footer={getStepFooter()}
+        >
+          {getStepBody()}
+        </AnimatedDialogContent>
+      </Dialog>
+
+      {/* Public profile confirmation dialog */}
+      <AlertDialog open={showPublicConfirm} onOpenChange={setShowPublicConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5 text-amber-500" />
+              Make your profile public?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                When you enable a public profile, the following will be visible
+                to anyone on the internet:
+              </p>
+              <ul className="list-inside list-disc space-y-1 text-sm">
+                <li>Your display name and username</li>
+                <li>Your profile picture and hero banner</li>
+                <li>Any items you mark as public</li>
+                <li>When you joined</li>
+              </ul>
+              <p className="text-muted-foreground">
+                You can change this setting at any time.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Private</AlertDialogCancel>
+            <AlertDialogAction onClick={handlePublicConfirm}>
+              Make Public
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

@@ -55,6 +55,9 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   │   └── [[...slug]]/page.tsx  # Dynamic documentation pages
 │   │   └── layout.tsx                # Docs layout with sidebar navigation
 │   ├── (public)/
+│   │   ├── explore/page.tsx          # Browse public collections
+│   │   ├── u/[username]/page.tsx     # Public profile page
+│   │   ├── u/[username]/[itemId]/page.tsx  # Public item detail
 │   │   ├── layout.tsx                # Public layout with guest sidebar
 │   │   └── page.tsx                  # Public landing page
 │   ├── api/
@@ -62,10 +65,12 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── auth/
 │   │   │   ├── [...nextauth]/route.ts   # NextAuth API route
 │   │   │   └── callback/google-drive/route.ts  # OAuth callback
+│   │   ├── fork/[itemId]/route.ts       # Fork public items to library
 │   │   ├── stream/[fileId]/route.ts     # Stream media from Google Drive
-│   │   └── user/
-│   │       ├── avatar/route.ts          # User avatar image endpoint
-│   │       └── hero/route.ts            # User hero banner endpoint
+│   │   ├── user/
+│   │   │   ├── avatar/route.ts          # User avatar image endpoint
+│   │   │   └── hero/route.ts            # User hero banner endpoint
+│   │   └── username/check/route.ts      # Username availability check
 │   ├── globals.css
 │   └── layout.tsx                    # Root layout with providers
 ├── components/
@@ -84,6 +89,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── file-type-combobox.tsx    # File type picker with uploadOnly mode for Add dialog
 │   │   ├── files-section.tsx         # File display section for settings dialog
 │   │   ├── filter-dropdown.tsx       # Filter option dropdown (all, has-files, synced, etc.)
+│   │   ├── fork-destination-dialog.tsx # Folder picker for placing forked items
 │   │   ├── hero-selection-step.tsx   # Wizard step for backdrop/hero selection
 │   │   ├── image-selection-grid.tsx  # Grid for selecting TMDB/existing artwork
 │   │   ├── item-context-menu.tsx     # Right-click actions menu
@@ -101,7 +107,8 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── sort-dropdown.tsx         # Sort option dropdown (name, date, custom)
 │   │   ├── sync-badge.tsx            # Google Drive sync status indicators
 │   │   ├── title-description-step.tsx # Wizard step for name/description options
-│   │   └── view-toggle.tsx           # Tree/grid view switcher
+│   │   ├── view-toggle.tsx           # Tree/grid view switcher
+│   │   └── visibility-toggle.tsx     # Public/private toggle for items
 │   ├── media/                        # Media playback components
 │   │   ├── media-overlay.tsx         # Full-screen media viewer
 │   │   └── media-player.tsx          # Vidstack video player wrapper
@@ -147,6 +154,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── media/                    # Media playback tests (video seeking)
 │   │   ├── navigation/               # Sidebar navigation active state tests
 │   │   ├── profile/                  # Profile settings tests
+│   │   ├── public/                   # Public profiles and forking tests
 │   │   ├── security/                 # Security header tests (HSTS, CSP)
 │   │   ├── theme/                    # Dark mode E2E tests
 │   │   ├── global.setup.ts           # Global test setup
@@ -182,7 +190,8 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── use-lazy-image.ts             # Intersection Observer lazy loading with priority
 │   ├── use-mobile.ts                 # Mobile breakpoint hook
 │   ├── use-online-status.ts          # Browser online/offline status hook
-│   └── use-tree-collapse.ts          # Shared tree collapse/expand state
+│   ├── use-tree-collapse.ts          # Shared tree collapse/expand state
+│   └── use-username-validation.ts    # Username availability check with debounce
 ├── content/
 │   └── docs/                         # MDX documentation pages (22 files)
 ├── lib/
@@ -193,7 +202,9 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── email.ts                      # Resend email helper
 │   ├── env.ts                        # Zod environment variable validation
 │   ├── errors.ts                     # Centralized Prisma error handling
+│   ├── config/usernames.ts           # Username validation rules and constants
 │   ├── file-type-utils.ts            # Media/artwork/subtitle categorization
+│   ├── fork-actions.ts               # Fork server actions (forkItem, getForkStatus, getForkInfo)
 │   ├── google-drive-actions.ts       # Google Drive connection management
 │   ├── google-drive-batch.ts         # Batch API request/response handling
 │   ├── google-drive-client.ts        # Google Drive API client with OAuth
@@ -205,6 +216,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── logger.ts                     # Pino structured logging with request context
 │   ├── prisma.ts                     # Prisma client singleton
 │   ├── progress-utils.ts             # Playback progress calculation (90% threshold), DFS traversal for first incomplete item
+│   ├── public-auth.ts                # Public profile/item auth utilities (isItemFullyPublic, getPublicItems)
 │   ├── queue-aware-actions.ts        # Actions that queue when offline
 │   ├── rate-limit.ts                 # Upstash Redis rate limiting
 │   ├── source.ts                     # Fumadocs source configuration
@@ -214,14 +226,14 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── sync-utils.ts                 # Shared sync types and utilities
 │   ├── tmdb-actions.ts               # TMDB metadata server actions
 │   ├── tmdb-client.ts                # TMDB API client for movie/TV metadata
-│   ├── types.ts                      # Shared types (Item, ItemFile, ItemProgress, PinnedItem, NextItem, SortOption, FilterOption, ViewMode, QueuedFile, TMDBMetadataSelection, SyncLogEntry)
+│   ├── types.ts                      # Shared types (Item, ItemFile, ItemProgress, PinnedItem, NextItem, PublicProfile, PublicItem, ForkStatus, ForkInfo, SortOption, FilterOption, ViewMode, QueuedFile, TMDBMetadataSelection, SyncLogEntry)
 │   ├── upload-utils.ts               # Browser-to-Drive upload utilities
 │   ├── user-actions.ts               # User profile server actions
 │   ├── utils.ts                      # cn() helper
-│   └── validations.ts                # Zod schemas (auth, items, uploads)
+│   └── validations.ts                # Zod schemas (auth, items, uploads, username)
 ├── prisma/
 │   ├── migrations/                   # Database migrations
-│   ├── schema.prisma                 # User, PasswordReset, Item, ItemFile, GoogleDriveConnection, SyncLog
+│   ├── schema.prisma                 # User, PasswordReset, Item, ItemFile, GoogleDriveConnection, SyncLog, Fork
 │   ├── seed.ts                       # Database seeding with TMDB + Drive integration
 │   ├── seed-config.ts                # Seed configuration (movie/TV IDs, limits, playback simulation)
 │   └── seed-cleanup.ts               # Safe cleanup with protected folders
@@ -235,7 +247,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── setup-e2e-drive.ts            # E2E Drive environment setup
 │   └── verify-seed.ts                # Quick seed verification utility
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 3.1.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 3.2.0)
     └── plans/                        # Design documents
 ```
 
@@ -248,20 +260,23 @@ pnpm run test:e2e:ui                        # UI mode
 - Protected routes use `await auth()` + redirect in server components
 - Password hashing with bcryptjs
 - Password reset emails via Resend (30 min expiry)
-- **Rate limiting**: Upstash Redis for auth (sign-in: 5/min, sign-up: 3/min, forgot: 2/min) and items (create: 30/min, update: 60/min, delete: 30/min, pin: 30/min)
+- **Rate limiting**: Upstash Redis for auth (sign-in: 5/min, sign-up: 3/min, forgot: 2/min), items (create: 30/min, update: 60/min, delete: 30/min, pin: 30/min), and public features (fork: 10/min, username: 20/min)
 - **Validation**: Zod schemas for email/password (8+ chars, uppercase, lowercase, number)
 - **Security logging**: All auth events logged with IP and timestamp
 
 ### Database
 
 - **Prisma 7** with PostgreSQL (Neon)
-- Schema: User, PasswordReset, Item, ItemFile, GoogleDriveConnection models
+- Schema: User, PasswordReset, Item, ItemFile, GoogleDriveConnection, Fork models
 - User has optional `image`/`heroImage` blob fields for avatar and hero banner
 - User has optional `defaultViewMode`/`defaultSortBy` for preferences (String?, not enum for flexibility)
+- User has optional `username` (unique, case-insensitive) and `isPublic` for public profiles
 - Item has self-referential parent/child relationships for hierarchy
 - Item has optional `description` field (max 1000 chars) for TMDB overviews or notes
 - Item has optional `pinnedOrder` field for sidebar pinning (null = not pinned, 0+ = pinned with order)
+- Item has optional `isPublic` for visibility and `forkedFromId` for fork tracking
 - Item has Google Drive fields: `driveFileId`, `driveModifiedAt`, `syncStatus`, `driveConnectionId`
+- Fork tracks item copies: `sourceItemId`, `targetItemId`, `userId` with unique constraint on source+user
 - ItemFile stores files per item: `filename`, `driveFileId`, `fileType`, `mimeType`, `playbackPosition`, `isPrimary`, `isHero`
 - GoogleDriveConnection stores encrypted OAuth tokens with AES-256-GCM
 - SyncLog tracks sync operations with action type, status, and duration
@@ -296,6 +311,21 @@ pnpm run test:e2e:ui                        # UI mode
 - **Go to button**: "Go to [ItemName]" button navigates to first incomplete item in DFS order for continue watching workflow
 - **Toast notifications**: Success/error feedback via Sonner
 - **Max depth**: 10 levels of nesting
+
+### Public Profiles & Forking
+
+- **Public profiles**: Users can enable public visibility with unique username at `/u/[username]`
+- **Username validation**: 3-20 chars, alphanumeric + underscores, no leading numbers, case-insensitive uniqueness
+- **Item visibility**: Items can be made public/private independently via toggle in settings
+- **Fully public check**: Item is only viewable when profile AND all ancestor items are public
+- **Forking**: Copy public items to your library with `forkItem()` server action
+- **Fork rules**: Cannot fork own items, cannot fork same item twice, forked items start private
+- **Fork destination dialog**: Choose root or any folder when forking, virtualized for large libraries
+- **Fork attribution**: Shows "Forked from [name] by @username" and fork count on public items
+- **Explore page**: Browse all public collections at `/explore`, shows item cards with owner username
+- **Sidebar navigation**: Explore link shown for both authenticated and guest users
+- **Server actions**: `forkItem()`, `getForkStatus()`, `getForkInfo()` in `lib/fork-actions.ts`
+- **Public auth utilities**: `getPublicProfile()`, `getPublicItems()`, `isItemFullyPublic()` in `lib/public-auth.ts`
 
 ### TMDB Metadata Integration
 
@@ -380,12 +410,12 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 1347 unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system, sync queue, sync history, image loading hooks, bulk selection, empty states, pinned items, progress tracking
+- 1480+ unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system, sync queue, sync history, image loading hooks, bulk selection, empty states, pinned items, progress tracking, public profiles, forking, username validation
 
 ### E2E Testing
 
 - **Playwright** with Page Object Model pattern
-- Tests in `e2e/journeys/` organized by feature (auth, docs, google-drive, items, profile, theme)
+- Tests in `e2e/journeys/` organized by feature (auth, docs, google-drive, items, profile, public, theme)
 - Page objects in `e2e/pages/` for reusable interactions
 - Fixtures in `e2e/fixtures/` for auth, database, and Google Drive setup
 - Google Drive E2E tests use real test account with refresh token
