@@ -687,7 +687,10 @@ export function SettingsDialog({
                         "bg-primary/10"
                       )}
                     >
-                      <ImageIcon aria-hidden="true" className="text-primary size-3.5" />
+                      <ImageIcon
+                        aria-hidden="true"
+                        className="text-primary size-3.5"
+                      />
                     </div>
                     <Label className="text-sm font-medium">
                       Profile Picture
@@ -717,7 +720,10 @@ export function SettingsDialog({
                       />
                     ) : (
                       <div className="flex size-full flex-col items-center justify-center gap-1">
-                        <ImageIcon aria-hidden="true" className="text-muted-foreground/50 size-6" />
+                        <ImageIcon
+                          aria-hidden="true"
+                          className="text-muted-foreground/50 size-6"
+                        />
                         <p className="text-muted-foreground text-xs">
                           Drag and drop or click to upload
                         </p>
@@ -770,7 +776,10 @@ export function SettingsDialog({
                         "bg-primary/10"
                       )}
                     >
-                      <AtSign aria-hidden="true" className="text-primary size-3.5" />
+                      <AtSign
+                        aria-hidden="true"
+                        className="text-primary size-3.5"
+                      />
                     </div>
                     <Label
                       htmlFor="settings-username"
@@ -809,13 +818,22 @@ export function SettingsDialog({
                     {username && (
                       <div className="absolute top-1/2 right-3 -translate-y-1/2">
                         {usernameValidation.isValidating ? (
-                          <Loader2 aria-hidden="true" className="text-muted-foreground size-4 animate-spin" />
+                          <Loader2
+                            aria-hidden="true"
+                            className="text-muted-foreground size-4 animate-spin"
+                          />
                         ) : usernameValidation.isValidFormat &&
                           usernameValidation.isAvailable === true ? (
-                          <Check aria-hidden="true" className="size-4 text-green-500" />
+                          <Check
+                            aria-hidden="true"
+                            className="size-4 text-green-500"
+                          />
                         ) : usernameValidation.error ||
                           usernameValidation.isAvailable === false ? (
-                          <X aria-hidden="true" className="text-destructive size-4" />
+                          <X
+                            aria-hidden="true"
+                            className="text-destructive size-4"
+                          />
                         ) : null}
                       </div>
                     )}
@@ -902,7 +920,10 @@ export function SettingsDialog({
                         "bg-primary/10"
                       )}
                     >
-                      <Mail aria-hidden="true" className="text-primary size-3.5" />
+                      <Mail
+                        aria-hidden="true"
+                        className="text-primary size-3.5"
+                      />
                     </div>
                     <Label className="text-sm font-medium">Email</Label>
                   </div>
@@ -932,7 +953,10 @@ export function SettingsDialog({
                         "bg-primary/10"
                       )}
                     >
-                      <Sparkles aria-hidden="true" className="text-primary size-3.5" />
+                      <Sparkles
+                        aria-hidden="true"
+                        className="text-primary size-3.5"
+                      />
                     </div>
                     <Label className="text-sm font-medium">Hero Banner</Label>
                   </div>
@@ -963,7 +987,10 @@ export function SettingsDialog({
                       />
                     ) : (
                       <div className="flex size-full flex-col items-center justify-center gap-1">
-                        <Sparkles aria-hidden="true" className="text-muted-foreground/50 size-6" />
+                        <Sparkles
+                          aria-hidden="true"
+                          className="text-muted-foreground/50 size-6"
+                        />
                         <p className="text-muted-foreground text-xs">
                           Drag and drop or click to upload
                         </p>
@@ -998,7 +1025,10 @@ export function SettingsDialog({
                         "bg-primary/10"
                       )}
                     >
-                      <Lock aria-hidden="true" className="text-primary size-3.5" />
+                      <Lock
+                        aria-hidden="true"
+                        className="text-primary size-3.5"
+                      />
                     </div>
                     <Label className="text-sm font-medium">Password</Label>
                   </div>
@@ -1030,7 +1060,10 @@ export function SettingsDialog({
               ) : (
                 <div className="space-y-4 py-8 text-center">
                   <div className="bg-muted/50 mx-auto flex size-12 items-center justify-center rounded-full">
-                    <Cloud aria-hidden="true" className="text-muted-foreground size-6" />
+                    <Cloud
+                      aria-hidden="true"
+                      className="text-muted-foreground size-6"
+                    />
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm font-medium">No sync activity</p>

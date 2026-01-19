@@ -30,10 +30,15 @@ export class SettingsPage {
 
   /**
    * Closes the Settings dialog.
+   * Uses specific selector to avoid matching mobile sidebar which also has role="dialog".
    */
   async close(): Promise<void> {
     await this.page.getByRole("button", { name: "Close" }).click();
-    await this.page.getByRole("dialog").waitFor({ state: "hidden" });
+    // Wait for the settings dialog specifically (not the mobile sidebar)
+    // The settings dialog has data-slot="dialog-content"
+    await this.page
+      .locator('[role="dialog"][data-slot="dialog-content"]')
+      .waitFor({ state: "hidden" });
   }
 
   /**

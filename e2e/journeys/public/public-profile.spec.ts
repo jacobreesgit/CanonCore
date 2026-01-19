@@ -62,10 +62,10 @@ test.describe("Public Profiles Journey", () => {
   test("can view public profile as unauthenticated user", async ({
     page,
     publicProfilePage,
+    myItemsPage,
   }) => {
-    // Sign out first
-    await page.getByTestId("my-items-user-menu").click();
-    await page.getByTestId("my-items-sign-out-button").click();
+    // Sign out first (handles mobile sidebar)
+    await myItemsPage.signOut();
     await page.waitForURL("/", { timeout: 10000 });
 
     // Visit public profile
@@ -77,10 +77,10 @@ test.describe("Public Profiles Journey", () => {
   test("can view public item as unauthenticated user", async ({
     page,
     publicProfilePage,
+    myItemsPage,
   }) => {
-    // Sign out first
-    await page.getByTestId("my-items-user-menu").click();
-    await page.getByTestId("my-items-sign-out-button").click();
+    // Sign out first (handles mobile sidebar)
+    await myItemsPage.signOut();
     await page.waitForURL("/", { timeout: 10000 });
 
     // Visit public item
@@ -94,10 +94,10 @@ test.describe("Public Profiles Journey", () => {
   test("shows breadcrumb navigation on public item", async ({
     page,
     publicProfilePage,
+    myItemsPage,
   }) => {
-    // Sign out first
-    await page.getByTestId("my-items-user-menu").click();
-    await page.getByTestId("my-items-sign-out-button").click();
+    // Sign out first (handles mobile sidebar)
+    await myItemsPage.signOut();
     await page.waitForURL("/", { timeout: 10000 });
 
     // Visit public item
@@ -119,10 +119,10 @@ test.describe("Public Profiles Journey", () => {
   test("can navigate from profile to item", async ({
     page,
     publicProfilePage,
+    myItemsPage,
   }) => {
-    // Sign out first
-    await page.getByTestId("my-items-user-menu").click();
-    await page.getByTestId("my-items-sign-out-button").click();
+    // Sign out first (handles mobile sidebar)
+    await myItemsPage.signOut();
     await page.waitForURL("/", { timeout: 10000 });
 
     // Visit public profile
@@ -138,14 +138,14 @@ test.describe("Public Profiles Journey", () => {
     page,
     signUpPage,
     publicProfilePage,
+    myItemsPage,
   }) => {
     // Create another user with no items
     const emptyUserEmail = generateUniqueEmail("empty-profile");
     const emptyUsername = `empty${Date.now()}`;
 
-    // Sign out current user
-    await page.getByTestId("my-items-user-menu").click();
-    await page.getByTestId("my-items-sign-out-button").click();
+    // Sign out current user (handles mobile sidebar)
+    await myItemsPage.signOut();
     await page.waitForURL("/", { timeout: 10000 });
 
     // Create empty user via sign up
@@ -162,9 +162,8 @@ test.describe("Public Profiles Journey", () => {
       data: { isPublic: true, username: emptyUsername },
     });
 
-    // Sign out
-    await page.getByTestId("my-items-user-menu").click();
-    await page.getByTestId("my-items-sign-out-button").click();
+    // Sign out (handles mobile sidebar)
+    await myItemsPage.signOut();
     await page.waitForURL("/", { timeout: 10000 });
 
     // Visit empty profile

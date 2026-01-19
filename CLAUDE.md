@@ -169,7 +169,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── hooks/                    # Hook tests (upload, state, navigation, mobile)
 │   │   ├── lib/                      # Library tests (auth, items, google-drive, crypto)
 │   │   ├── e2e/                      # E2E fixture unit tests
-│   │   ├── setup.ts                  # Mocks for Prisma, email, rate-limit
+│   │   ├── setup.ts                  # Mocks for Prisma (client + errors), email, rate-limit
 │   │   └── vitest.config.ts
 │   ├── integration/
 │   │   ├── auth/                     # Auth integration tests
@@ -252,7 +252,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── setup-e2e-drive.ts            # E2E Drive environment setup
 │   └── verify-seed.ts                # Quick seed verification utility
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 4.2.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 4.3.0)
     └── plans/                        # Design documents and audit reports
 ```
 

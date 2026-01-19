@@ -20,7 +20,10 @@ function VideoPlayerSkeleton() {
   return (
     <div className="flex h-full w-full items-center justify-center">
       <div className="flex flex-col items-center gap-3">
-        <Loader2 aria-hidden="true" className="size-8 animate-spin text-white/70" />
+        <Loader2
+          aria-hidden="true"
+          className="size-8 animate-spin text-white/70"
+        />
         <span className="text-sm text-white/70">Loading player…</span>
       </div>
     </div>

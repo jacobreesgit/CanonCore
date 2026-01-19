@@ -68,6 +68,7 @@ vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: vi.fn() })),
 }));
 
+
 // Mock view mode hook - default to tree view
 vi.mock("@/components/items/view-toggle", () => ({
   useStoredViewMode: vi.fn(() => ["tree"]),
@@ -209,7 +210,7 @@ describe("ItemsView", () => {
   });
 
   describe("external control", () => {
-    it("uses external isEditing state when provided", () => {
+    it("uses external isEditing state when provided", async () => {
       const onEditingChange = vi.fn();
       render(
         <ItemsView
@@ -219,7 +220,10 @@ describe("ItemsView", () => {
         />
       );
       // When isEditing=true, should show SortableTree (edit mode)
-      expect(screen.getByTestId("sortable-tree")).toBeInTheDocument();
+      // Use waitFor since SortableTree is dynamically imported
+      await waitFor(() => {
+        expect(screen.getByTestId("sortable-tree")).toBeInTheDocument();
+      });
     });
 
     it("uses external addItemOpen state when provided", () => {
