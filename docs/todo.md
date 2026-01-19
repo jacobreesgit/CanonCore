@@ -2,9 +2,12 @@
 - profile pic for my items one (facebook profile pic and cover photo vibes)
 
 - vercel skills
+- everything claude code
 - one last look - repeat until 10/10
 
-- seeding --> best for portfolio and also figure out best screenshots and copy for projects portfolio. for seeding, things with
+- figure out best screenshots and copy for projects portfolio. but then this makes me think we need to properly plan out the portfolio and what we're going to write for this canoncore page. look at handbook files to help.
+
+we need to plan out
 
 - None:
 - that design skill tweet - upload bit

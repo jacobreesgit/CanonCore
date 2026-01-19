@@ -50,15 +50,17 @@ async function logSecurityEvent(
  *
  * @param email - User's email address
  * @param password - Plain text password (will be hashed with bcrypt)
+ * @param username - Optional username for public profile
  * @returns Success object or error message
  *
  * @example
- * const result = await signUp("user@example.com", "Password123!");
+ * const result = await signUp("user@example.com", "Password123!", "johndoe");
  * if (result.error) console.error(result.error);
  */
 export async function signUp(
   email: string,
-  password: string
+  password: string,
+  username?: string
 ): Promise<AuthResult> {
   // Rate limiting
   const rateLimitResult = await checkRateLimit("signUp");
@@ -73,6 +75,15 @@ export async function signUp(
     return { error: validation.error.issues[0].message };
   }
 
+  // Validate username if provided
+  if (username) {
+    const { usernameSchema } = await import("@/lib/validations");
+    const usernameValidation = usernameSchema.safeParse(username);
+    if (!usernameValidation.success) {
+      return { error: usernameValidation.error.issues[0].message };
+    }
+  }
+
   try {
     const existingUser = await prisma.user.findUnique({
       where: { email },
@@ -83,16 +94,33 @@ export async function signUp(
       return { error: "An account with this email already exists" };
     }
 
+    // Check username availability if provided
+    if (username) {
+      const existingUsername = await prisma.user.findFirst({
+        where: {
+          username: {
+            equals: username,
+            mode: "insensitive",
+          },
+        },
+      });
+
+      if (existingUsername) {
+        return { error: "This username is already taken" };
+      }
+    }
+
     const passwordHash = await hash(password, 10);
 
     await prisma.user.create({
       data: {
         email,
         passwordHash,
+        username: username ?? null,
       },
     });
 
-    await logSecurityEvent("SIGNUP_SUCCESS", { email });
+    await logSecurityEvent("SIGNUP_SUCCESS", { email, username });
     return { success: true };
   } catch (error) {
     // Check for foreign key constraint (shouldn't happen for user create, but for safety)

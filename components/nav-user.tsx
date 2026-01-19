@@ -39,6 +39,8 @@ interface NavUserProps {
     name: string;
     email: string;
     avatar?: string;
+    username?: string | null;
+    isPublic?: boolean;
     hasImage?: boolean;
     hasHeroImage?: boolean;
   };
@@ -157,6 +159,8 @@ export function NavUser({ user, driveConnection }: NavUserProps) {
           user={{
             name: user.name || null,
             email: user.email,
+            username: user.username ?? null,
+            isPublic: user.isPublic ?? false,
             hasImage: user.hasImage ?? false,
             hasHeroImage: user.hasHeroImage ?? false,
           }}

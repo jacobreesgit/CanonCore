@@ -88,6 +88,28 @@ export const rateLimiters = {
     limiter: Ratelimit.slidingWindow(15, "1 m"),
     prefix: "ratelimit:tmdb:images",
   }),
+
+  // Public profile rate limiters
+  usernameCheck: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(60, "1 m"),
+    prefix: "ratelimit:username:check",
+  }),
+  fork: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(10, "1 m"),
+    prefix: "ratelimit:fork",
+  }),
+  publicProfile: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(60, "1 m"),
+    prefix: "ratelimit:public:profile",
+  }),
+  explore: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(30, "1 m"),
+    prefix: "ratelimit:explore",
+  }),
 };
 
 /**
