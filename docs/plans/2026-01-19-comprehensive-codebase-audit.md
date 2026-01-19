@@ -14,25 +14,25 @@
 
 ### Files to Audit
 
-| Category | Count | Files |
-|----------|-------|-------|
-| **App Pages** | 12 | `app/**/page.tsx`, `app/**/layout.tsx` |
-| **App API Routes** | 7 | `app/api/**/route.ts` |
-| **Client Components** | 4 | `app/**/*-client.tsx` |
-| **Custom Components** | 59 | `components/**/*.tsx` (excluding `ui/`) |
-| **Hooks** | 12 | `hooks/*.ts` |
-| **Server Actions** | 9 | `lib/*-actions.ts` |
-| **Lib Utilities** | 28 | `lib/*.ts` (non-actions) |
-| **Contexts** | 1 | `contexts/*.tsx` |
+| Category              | Count | Files                                   |
+| --------------------- | ----- | --------------------------------------- |
+| **App Pages**         | 12    | `app/**/page.tsx`, `app/**/layout.tsx`  |
+| **App API Routes**    | 7     | `app/api/**/route.ts`                   |
+| **Client Components** | 4     | `app/**/*-client.tsx`                   |
+| **Custom Components** | 59    | `components/**/*.tsx` (excluding `ui/`) |
+| **Hooks**             | 12    | `hooks/*.ts`                            |
+| **Server Actions**    | 9     | `lib/*-actions.ts`                      |
+| **Lib Utilities**     | 28    | `lib/*.ts` (non-actions)                |
+| **Contexts**          | 1     | `contexts/*.tsx`                        |
 
 **Excluded:** `components/ui/*` (shadcn generated code)
 
 ### Rules to Apply
 
-| Skill | Rules | Priority |
-|-------|-------|----------|
-| **react-best-practices** | 47 | Critical → Low |
-| **web-design-guidelines** | 90 | Accessibility → Anti-patterns |
+| Skill                     | Rules | Priority                      |
+| ------------------------- | ----- | ----------------------------- |
+| **react-best-practices**  | 47    | Critical → Low                |
+| **web-design-guidelines** | 90    | Accessibility → Anti-patterns |
 
 ---
 
@@ -41,6 +41,7 @@
 ### Task 1.1: Eliminating Waterfalls (CRITICAL) - 5 Rules
 
 **Rules:**
+
 1. `async-defer-await` - Move await into branches where actually used
 2. `async-parallel` - Use Promise.all() for independent operations
 3. `async-dependencies` - Use better-all for partial dependencies
@@ -79,11 +80,13 @@ app/(public)/explore/page.tsx
 **Step 1:** Read rule `skills/react-best-practices/rules/async-defer-await.md`
 
 **Step 2:** For each file, check for:
+
 - `await` statements that could be deferred
 - Sequential awaits that could be parallel
 - Promises started late in the function
 
 **Step 3:** Document findings in format:
+
 ```
 FILE:LINE - RULE - FINDING - FIX
 ```
@@ -99,6 +102,7 @@ FILE:LINE - RULE - FINDING - FIX
 ### Task 1.2: Bundle Size Optimization (CRITICAL) - 5 Rules
 
 **Rules:**
+
 1. `bundle-barrel-imports` - Import directly, avoid barrel files
 2. `bundle-dynamic-imports` - Use next/dynamic for heavy components
 3. `bundle-defer-third-party` - Load analytics/logging after hydration
@@ -129,9 +133,10 @@ app/(my-items)/layout.tsx
 app/(public)/layout.tsx
 ```
 
-**Step 1:** Read each bundle-* rule file
+**Step 1:** Read each bundle-\* rule file
 
 **Step 2:** Check for:
+
 - Barrel imports (`import { X, Y, Z } from '@/components'`)
 - Heavy components not dynamically imported (media player, charts, modals)
 - Third-party scripts loaded synchronously
@@ -140,10 +145,11 @@ app/(public)/layout.tsx
 **Step 3:** Document findings
 
 **Step 4:** Implement fixes using `next/dynamic`:
+
 ```tsx
-const HeavyComponent = dynamic(() => import('./HeavyComponent'), {
-  loading: () => <Skeleton />
-})
+const HeavyComponent = dynamic(() => import("./HeavyComponent"), {
+  loading: () => <Skeleton />,
+});
 ```
 
 **Step 5:** Run `pnpm run check`
@@ -155,6 +161,7 @@ const HeavyComponent = dynamic(() => import('./HeavyComponent'), {
 ### Task 1.3: Server-Side Performance (HIGH) - 5 Rules
 
 **Rules:**
+
 1. `server-cache-react` - Use React.cache() for per-request deduplication
 2. `server-cache-lru` - Use LRU cache for cross-request caching
 3. `server-serialization` - Minimize data passed to client components
@@ -177,9 +184,10 @@ lib/tmdb-client.ts
 lib/google-drive-client.ts
 ```
 
-**Step 1:** Read each server-* rule file
+**Step 1:** Read each server-\* rule file
 
 **Step 2:** Check for:
+
 - Duplicate data fetching that could use React.cache()
 - Expensive operations that could benefit from LRU caching
 - Large objects passed to client components
@@ -198,6 +206,7 @@ lib/google-drive-client.ts
 ### Task 1.4: Client-Side Data Fetching (MEDIUM-HIGH) - 4 Rules
 
 **Rules:**
+
 1. `client-swr-dedup` - Use SWR for automatic request deduplication
 2. `client-event-listeners` - Deduplicate global event listeners
 3. `client-localstorage-schema` - Validate localStorage data with schema
@@ -228,9 +237,10 @@ contexts/spotlight-context.tsx
 lib/sync-queue.ts
 ```
 
-**Step 1:** Read each client-* rule file
+**Step 1:** Read each client-\* rule file
 
 **Step 2:** Check for:
+
 - Fetching patterns that could use SWR
 - Duplicate event listener registrations
 - localStorage reads without validation
@@ -249,6 +259,7 @@ lib/sync-queue.ts
 ### Task 1.5: Re-render Optimization (MEDIUM) - 7 Rules
 
 **Rules:**
+
 1. `rerender-defer-reads` - Don't subscribe to state only used in callbacks
 2. `rerender-memo` - Extract expensive work into memoized components
 3. `rerender-dependencies` - Use primitive dependencies in effects
@@ -261,9 +272,10 @@ lib/sync-queue.ts
 
 ALL 59 custom components in `components/` (excluding `ui/`)
 
-**Step 1:** Read each rerender-* rule file
+**Step 1:** Read each rerender-\* rule file
 
 **Step 2:** For each component, check for:
+
 - State subscriptions that cause unnecessary re-renders
 - Missing useMemo/useCallback where expensive
 - Object/array dependencies in useEffect
@@ -285,6 +297,7 @@ ALL 59 custom components in `components/` (excluding `ui/`)
 ### Task 1.6: Rendering Performance (MEDIUM) - 7 Rules
 
 **Rules:**
+
 1. `rendering-animate-svg-wrapper` - Animate div wrapper, not SVG element
 2. `rendering-content-visibility` - Use content-visibility for long lists
 3. `rendering-hoist-jsx` - Extract static JSX outside components
@@ -311,9 +324,10 @@ components/theme-toggle.tsx (if has SVG)
 All files with conditional rendering
 ```
 
-**Step 1:** Read each rendering-* rule file
+**Step 1:** Read each rendering-\* rule file
 
 **Step 2:** Check for:
+
 - SVG animations (should animate wrapper div)
 - Long lists without content-visibility
 - Static JSX defined inside components
@@ -335,6 +349,7 @@ All files with conditional rendering
 ### Task 1.7: JavaScript Performance (LOW-MEDIUM) - 12 Rules
 
 **Rules:**
+
 1. `js-batch-dom-css` - Group CSS changes via classes or cssText
 2. `js-index-maps` - Build Map for repeated lookups
 3. `js-cache-property-access` - Cache object properties in loops
@@ -367,9 +382,10 @@ components/items/items-view.tsx
 components/search/spotlight-search.tsx
 ```
 
-**Step 1:** Read each js-* rule file
+**Step 1:** Read each js-\* rule file
 
 **Step 2:** Check for:
+
 - Multiple DOM/CSS changes in sequence
 - Array.find() in loops (should use Map)
 - Property access in tight loops
@@ -394,6 +410,7 @@ components/search/spotlight-search.tsx
 ### Task 1.8: Advanced Patterns (LOW) - 2 Rules
 
 **Rules:**
+
 1. `advanced-event-handler-refs` - Store event handlers in refs
 2. `advanced-use-latest` - useLatest for stable callback refs
 
@@ -412,9 +429,10 @@ components/search/spotlight-search.tsx
 contexts/spotlight-context.tsx
 ```
 
-**Step 1:** Read each advanced-* rule file
+**Step 1:** Read each advanced-\* rule file
 
 **Step 2:** Check for:
+
 - Event handlers that cause re-renders
 - Callbacks that need stable references
 
@@ -433,6 +451,7 @@ contexts/spotlight-context.tsx
 ### Task 2.1: Accessibility (10 Rules)
 
 **Rules:**
+
 1. Icon-only buttons need `aria-label`
 2. Form controls need `<label>` or `aria-label`
 3. Interactive elements need keyboard handlers
@@ -447,6 +466,7 @@ contexts/spotlight-context.tsx
 **Files to Audit:**
 
 ALL interactive components:
+
 ```
 components/items/items-toolbar.tsx
 components/items/bulk-actions-toolbar.tsx
@@ -477,6 +497,7 @@ components/media/media-overlay.tsx
 **Step 1:** Fetch guidelines from source URL
 
 **Step 2:** For each component:
+
 - Check icon buttons for aria-label
 - Check form controls for labels
 - Check interactive elements for keyboard handlers
@@ -485,6 +506,7 @@ components/media/media-overlay.tsx
 - Check decorative icons for aria-hidden
 
 **Step 3:** Document findings in format:
+
 ```
 FILE:LINE - RULE - FINDING
 ```
@@ -500,6 +522,7 @@ FILE:LINE - RULE - FINDING
 ### Task 2.2: Focus States (4 Rules)
 
 **Rules:**
+
 1. Interactive elements need visible focus states
 2. Never remove outline without focus replacement
 3. Use `:focus-visible` over `:focus`
@@ -516,6 +539,7 @@ All interactive components from Task 2.1
 **Step 1:** Check global CSS for focus styles
 
 **Step 2:** Check each interactive component for:
+
 - Visible focus indicators
 - Proper use of focus-visible
 - focus-within for grouped elements
@@ -533,6 +557,7 @@ All interactive components from Task 2.1
 ### Task 2.3: Forms (11 Rules)
 
 **Rules:**
+
 1. Inputs need `autocomplete` and `name`
 2. Use correct input `type` and `inputmode`
 3. Never block paste functionality
@@ -582,6 +607,7 @@ components/ui/select.tsx
 ### Task 2.4: Animation (6 Rules)
 
 **Rules:**
+
 1. Honor `prefers-reduced-motion`
 2. Animate only `transform`/`opacity`
 3. Never use `transition: all`
@@ -603,12 +629,14 @@ All components with animations/transitions
 ```
 
 **Step 1:** Search for animation/transition usage:
+
 ```bash
 grep -r "transition" components/ --include="*.tsx"
 grep -r "animate" components/ --include="*.tsx"
 ```
 
 **Step 2:** Check each for:
+
 - prefers-reduced-motion media query
 - Animating only transform/opacity
 - No `transition: all`
@@ -628,6 +656,7 @@ grep -r "animate" components/ --include="*.tsx"
 ### Task 2.5: Typography (6 Rules)
 
 **Rules:**
+
 1. Use ellipsis `…` not `...`
 2. Use curly quotes, not straight
 3. Non-breaking spaces in measurements/brands
@@ -638,6 +667,7 @@ grep -r "animate" components/ --include="*.tsx"
 **Files to Audit:**
 
 ALL files with text content:
+
 ```
 components/items/empty-state.tsx
 components/items/item-hero.tsx
@@ -651,12 +681,14 @@ All page.tsx files
 ```
 
 **Step 1:** Search for:
+
 ```bash
 grep -r '\.\.\.' components/ app/ --include="*.tsx"
 grep -r "Loading" components/ app/ --include="*.tsx"
 ```
 
 **Step 2:** Check for:
+
 - `...` that should be `…`
 - Straight quotes that should be curly
 - Numbers that need tabular-nums
@@ -675,6 +707,7 @@ grep -r "Loading" components/ app/ --include="*.tsx"
 ### Task 2.6: Content Handling (4 Rules)
 
 **Rules:**
+
 1. Text containers handle long content
 2. Flex children need `min-w-0`
 3. Handle empty states
@@ -693,6 +726,7 @@ All components displaying user-generated content
 ```
 
 **Step 1:** Check each component for:
+
 - Text overflow handling (truncate, wrap)
 - min-w-0 on flex children
 - Empty state handling
@@ -711,6 +745,7 @@ All components displaying user-generated content
 ### Task 2.7: Images (3 Rules)
 
 **Rules:**
+
 1. `<img>` needs explicit dimensions
 2. Below-fold images use `loading="lazy"`
 3. Above-fold critical images use `priority`
@@ -729,12 +764,14 @@ hooks/use-lazy-image.ts
 ```
 
 **Step 1:** Search for image usage:
+
 ```bash
 grep -r "<img" components/ --include="*.tsx"
 grep -r "Image" components/ --include="*.tsx" | grep "next/image"
 ```
 
 **Step 2:** Check each for:
+
 - Explicit width/height
 - loading="lazy" for below-fold
 - priority for above-fold
@@ -752,6 +789,7 @@ grep -r "Image" components/ --include="*.tsx" | grep "next/image"
 ### Task 2.8: Performance (6 Rules)
 
 **Rules:**
+
 1. Virtualize large lists (>50 items)
 2. No layout reads in render
 3. Batch DOM reads/writes
@@ -771,6 +809,7 @@ All components with lists
 ```
 
 **Step 1:** Check for:
+
 - Lists that could exceed 50 items (need virtualization)
 - getBoundingClientRect() or similar in render
 - Multiple DOM operations that should be batched
@@ -790,6 +829,7 @@ All components with lists
 ### Task 2.9: Navigation & State (4 Rules)
 
 **Rules:**
+
 1. URL reflects state (filters, tabs, pagination)
 2. Links use `<a>`/`<Link>`
 3. Deep-link stateful UI
@@ -810,6 +850,7 @@ app/(my-items)/my-items/page.tsx
 ```
 
 **Step 1:** Check for:
+
 - Filter/sort state in URL params
 - Proper Link usage for navigation
 - Deep-linkable UI states
@@ -828,6 +869,7 @@ app/(my-items)/my-items/page.tsx
 ### Task 2.10: Touch & Interaction (5 Rules)
 
 **Rules:**
+
 1. Use `touch-action: manipulation`
 2. Set `-webkit-tap-highlight-color`
 3. Use `overscroll-behavior: contain` in modals
@@ -851,6 +893,7 @@ All modal/dialog components
 **Step 1:** Check global CSS for touch styles
 
 **Step 2:** Check each component for:
+
 - touch-action on interactive elements
 - tap-highlight-color
 - overscroll-behavior in modals
@@ -870,6 +913,7 @@ All modal/dialog components
 ### Task 2.11: Safe Areas & Layout (3 Rules)
 
 **Rules:**
+
 1. Full-bleed layouts use `env(safe-area-inset-*)`
 2. Avoid unwanted scrollbars
 3. Prefer Flex/Grid over JS measurement
@@ -887,6 +931,7 @@ components/items/items-view.tsx
 ```
 
 **Step 1:** Check for:
+
 - Safe area insets in full-bleed layouts
 - overflow handling
 - JS-based layout that could be CSS
@@ -904,6 +949,7 @@ components/items/items-view.tsx
 ### Task 2.12: Dark Mode & Theming (3 Rules)
 
 **Rules:**
+
 1. Set `color-scheme: dark` on `<html>`
 2. Use `<meta name="theme-color">`
 3. Native `<select>` needs explicit colors
@@ -919,6 +965,7 @@ components/ui/select.tsx
 ```
 
 **Step 1:** Check for:
+
 - color-scheme meta/CSS
 - theme-color meta tag
 - Explicit colors on native selects
@@ -936,6 +983,7 @@ components/ui/select.tsx
 ### Task 2.13: Locale & i18n (3 Rules)
 
 **Rules:**
+
 1. Use `Intl.DateTimeFormat`
 2. Use `Intl.NumberFormat`
 3. Detect language via headers/navigator, not IP
@@ -951,11 +999,13 @@ All files with date/number formatting
 ```
 
 **Step 1:** Search for:
+
 ```bash
 grep -r "toLocaleString\|toLocaleDateString\|new Date" lib/ components/ --include="*.ts" --include="*.tsx"
 ```
 
 **Step 2:** Check for:
+
 - Hardcoded date formats
 - Hardcoded number formats
 - IP-based language detection
@@ -973,6 +1023,7 @@ grep -r "toLocaleString\|toLocaleDateString\|new Date" lib/ components/ --includ
 ### Task 2.14: Hydration Safety (3 Rules)
 
 **Rules:**
+
 1. Inputs with `value` need `onChange`
 2. Guard date/time rendering against mismatch
 3. Minimize `suppressHydrationWarning`
@@ -980,6 +1031,7 @@ grep -r "toLocaleString\|toLocaleDateString\|new Date" lib/ components/ --includ
 **Files to Audit:**
 
 ALL client components:
+
 ```
 app/(public)/u/[username]/public-profile-client.tsx
 app/(public)/u/[username]/[itemId]/public-item-client.tsx
@@ -992,6 +1044,7 @@ All components with controlled inputs
 ```
 
 **Step 1:** Check for:
+
 - Controlled inputs missing onChange
 - Date/time rendered without guards
 - Excessive suppressHydrationWarning
@@ -1009,6 +1062,7 @@ All components with controlled inputs
 ### Task 2.15: Hover & Interactive States (2 Rules)
 
 **Rules:**
+
 1. Buttons/links need `hover:` state
 2. Interactive states increase contrast
 
@@ -1021,6 +1075,7 @@ All interactive components
 ```
 
 **Step 1:** Check for:
+
 - Missing hover states
 - Low-contrast interactive states
 
@@ -1037,6 +1092,7 @@ All interactive components
 ### Task 2.16: Content & Copy (7 Rules)
 
 **Rules:**
+
 1. Use active voice
 2. Title Case for headings/buttons
 3. Use numerals for counts
@@ -1048,6 +1104,7 @@ All interactive components
 **Files to Audit:**
 
 ALL files with user-facing text:
+
 ```
 components/items/empty-state.tsx
 components/items/add-item-dialog.tsx
@@ -1060,6 +1117,7 @@ lib/validations.ts (error messages)
 ```
 
 **Step 1:** Review all user-facing copy for:
+
 - Active voice
 - Proper capitalization
 - Numerals for counts
@@ -1079,6 +1137,7 @@ lib/validations.ts (error messages)
 ### Task 2.17: Anti-patterns (10 Rules)
 
 **Rules:**
+
 1. Disabling zoom via viewport meta
 2. `onPaste` with `preventDefault`
 3. `transition: all`
@@ -1095,6 +1154,7 @@ lib/validations.ts (error messages)
 ENTIRE CODEBASE - search for anti-patterns:
 
 **Step 1:** Run searches:
+
 ```bash
 grep -r "user-scalable=no\|maximum-scale=1" app/ --include="*.tsx"
 grep -r "onPaste.*preventDefault" components/ --include="*.tsx"
@@ -1119,6 +1179,7 @@ grep -r "<div.*onClick\|<span.*onClick" components/ --include="*.tsx"
 ### Task 3.1: Full Test Suite
 
 **Step 1:** Run all tests:
+
 ```bash
 pnpm run test
 pnpm run test:e2e
@@ -1133,6 +1194,7 @@ pnpm run test:e2e
 ### Task 3.2: Build Verification
 
 **Step 1:** Run full check:
+
 ```bash
 pnpm run check
 ```
@@ -1146,6 +1208,7 @@ pnpm run check
 ### Task 3.3: Audit Report
 
 **Step 1:** Create summary document `docs/audits/2026-01-19-audit-report.md`:
+
 - Total findings per category
 - Files with most issues
 - Patterns that needed fixing
@@ -1157,35 +1220,35 @@ pnpm run check
 
 ## Execution Summary
 
-| Phase | Tasks | Rules | Est. Files |
-|-------|-------|-------|------------|
-| 1.1 | Waterfalls | 5 | 24 |
-| 1.2 | Bundle Size | 5 | 19 |
-| 1.3 | Server Performance | 5 | 11 |
-| 1.4 | Client Data | 4 | 20 |
-| 1.5 | Re-renders | 7 | 59 |
-| 1.6 | Rendering | 7 | 12 |
-| 1.7 | JavaScript | 12 | 14 |
-| 1.8 | Advanced | 2 | 10 |
-| 2.1 | Accessibility | 10 | 24 |
-| 2.2 | Focus States | 4 | 25 |
-| 2.3 | Forms | 11 | 17 |
-| 2.4 | Animation | 6 | 8 |
-| 2.5 | Typography | 6 | 10 |
-| 2.6 | Content | 4 | 7 |
-| 2.7 | Images | 3 | 8 |
-| 2.8 | Performance | 6 | 6 |
-| 2.9 | Navigation | 4 | 9 |
-| 2.10 | Touch | 5 | 10 |
-| 2.11 | Layout | 3 | 7 |
-| 2.12 | Dark Mode | 3 | 5 |
-| 2.13 | i18n | 3 | 5 |
-| 2.14 | Hydration | 3 | 8 |
-| 2.15 | Hover States | 2 | 3 |
-| 2.16 | Copy | 7 | 9 |
-| 2.17 | Anti-patterns | 10 | ALL |
-| 3.x | Verification | 3 | ALL |
-| **Total** | **28** | **137** | **~130 unique** |
+| Phase     | Tasks              | Rules   | Est. Files      |
+| --------- | ------------------ | ------- | --------------- |
+| 1.1       | Waterfalls         | 5       | 24              |
+| 1.2       | Bundle Size        | 5       | 19              |
+| 1.3       | Server Performance | 5       | 11              |
+| 1.4       | Client Data        | 4       | 20              |
+| 1.5       | Re-renders         | 7       | 59              |
+| 1.6       | Rendering          | 7       | 12              |
+| 1.7       | JavaScript         | 12      | 14              |
+| 1.8       | Advanced           | 2       | 10              |
+| 2.1       | Accessibility      | 10      | 24              |
+| 2.2       | Focus States       | 4       | 25              |
+| 2.3       | Forms              | 11      | 17              |
+| 2.4       | Animation          | 6       | 8               |
+| 2.5       | Typography         | 6       | 10              |
+| 2.6       | Content            | 4       | 7               |
+| 2.7       | Images             | 3       | 8               |
+| 2.8       | Performance        | 6       | 6               |
+| 2.9       | Navigation         | 4       | 9               |
+| 2.10      | Touch              | 5       | 10              |
+| 2.11      | Layout             | 3       | 7               |
+| 2.12      | Dark Mode          | 3       | 5               |
+| 2.13      | i18n               | 3       | 5               |
+| 2.14      | Hydration          | 3       | 8               |
+| 2.15      | Hover States       | 2       | 3               |
+| 2.16      | Copy               | 7       | 9               |
+| 2.17      | Anti-patterns      | 10      | ALL             |
+| 3.x       | Verification       | 3       | ALL             |
+| **Total** | **28**             | **137** | **~130 unique** |
 
 ---
 
@@ -1193,20 +1256,21 @@ pnpm run check
 
 ### High-Priority Files (Touch Many Rules)
 
-| File | Rule Categories |
-|------|-----------------|
-| `components/items/items-view.tsx` | async, bundle, rerender, rendering, js, accessibility, content, performance |
-| `components/items/item-settings-dialog.tsx` | bundle, forms, accessibility, focus |
-| `components/items/add-item-dialog.tsx` | bundle, forms, accessibility, focus |
-| `components/search/spotlight-search.tsx` | client, rerender, rendering, accessibility, forms, performance |
-| `components/media/media-player.tsx` | bundle, advanced, accessibility, touch |
-| `app/layout.tsx` | bundle, server, layout, dark-mode, performance |
-| `lib/item-actions.ts` | async, server, js |
-| `hooks/use-items-sort-filter.ts` | client, js, rerender |
+| File                                        | Rule Categories                                                             |
+| ------------------------------------------- | --------------------------------------------------------------------------- |
+| `components/items/items-view.tsx`           | async, bundle, rerender, rendering, js, accessibility, content, performance |
+| `components/items/item-settings-dialog.tsx` | bundle, forms, accessibility, focus                                         |
+| `components/items/add-item-dialog.tsx`      | bundle, forms, accessibility, focus                                         |
+| `components/search/spotlight-search.tsx`    | client, rerender, rendering, accessibility, forms, performance              |
+| `components/media/media-player.tsx`         | bundle, advanced, accessibility, touch                                      |
+| `app/layout.tsx`                            | bundle, server, layout, dark-mode, performance                              |
+| `lib/item-actions.ts`                       | async, server, js                                                           |
+| `hooks/use-items-sort-filter.ts`            | client, js, rerender                                                        |
 
 ### shadcn Components to Skip
 
 All files in `components/ui/` are shadcn generated and should be skipped EXCEPT:
+
 - Check for focus states
 - Check for accessibility attributes
 - Check for dark mode colors on native elements

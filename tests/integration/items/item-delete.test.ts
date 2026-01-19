@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Session } from "next-auth";
-import { deleteItem } from "@/lib/item-actions";
+import { deleteItem, deleteItems } from "@/lib/item-actions";
 import { prisma } from "@/lib/prisma";
 import "../setup";
 
@@ -171,5 +171,169 @@ describe("deleteItem integration", () => {
     });
     expect(deletedChild).toBeNull();
     expect(deletedGrandchild).toBeNull();
+  });
+});
+
+describe("deleteItems (bulk) integration", () => {
+  let testUserId: string;
+
+  beforeEach(async () => {
+    const user = await prisma.user.create({
+      data: {
+        email: `bulk-delete-${Date.now()}-${Math.random().toString(36).slice(2)}@test.example.com`,
+        passwordHash: "hashedpassword123",
+      },
+    });
+    testUserId = user.id;
+  });
+
+  afterEach(async () => {
+    await prisma.item.deleteMany({ where: { userId: testUserId } });
+    await prisma.user.delete({ where: { id: testUserId } }).catch(() => {});
+  });
+
+  it("deletes multiple items in single operation", async () => {
+    mockAuth.mockResolvedValue({
+      user: { id: testUserId, email: "test@test.example.com" },
+      expires: new Date().toISOString(),
+    });
+
+    const item1 = await prisma.item.create({
+      data: { name: "Item 1", userId: testUserId, order: 0, depth: 0 },
+    });
+    const item2 = await prisma.item.create({
+      data: { name: "Item 2", userId: testUserId, order: 1, depth: 0 },
+    });
+    const item3 = await prisma.item.create({
+      data: { name: "Item 3", userId: testUserId, order: 2, depth: 0 },
+    });
+
+    const result = await deleteItems([item1.id, item2.id, item3.id]);
+
+    expect(result.success).toBe(true);
+    if (result.success && result.data) {
+      expect(result.data.deleted).toBe(3);
+      expect(result.data.skipped).toBe(0);
+    }
+
+    // Verify all items deleted
+    const remaining = await prisma.item.findMany({
+      where: { id: { in: [item1.id, item2.id, item3.id] } },
+    });
+    expect(remaining).toHaveLength(0);
+  });
+
+  it("skips items not owned by user", async () => {
+    // Create another user
+    const otherUser = await prisma.user.create({
+      data: {
+        email: `other-${Date.now()}@test.example.com`,
+        passwordHash: "hashedpassword123",
+      },
+    });
+
+    mockAuth.mockResolvedValue({
+      user: { id: testUserId, email: "test@test.example.com" },
+      expires: new Date().toISOString(),
+    });
+
+    const ownedItem = await prisma.item.create({
+      data: { name: "My Item", userId: testUserId, order: 0, depth: 0 },
+    });
+    const otherItem = await prisma.item.create({
+      data: { name: "Other Item", userId: otherUser.id, order: 0, depth: 0 },
+    });
+
+    try {
+      const result = await deleteItems([ownedItem.id, otherItem.id]);
+
+      expect(result.success).toBe(true);
+      if (result.success && result.data) {
+        expect(result.data.deleted).toBe(1);
+        expect(result.data.skipped).toBe(1);
+      }
+
+      // Verify owned item deleted, other item still exists
+      const deletedOwned = await prisma.item.findUnique({
+        where: { id: ownedItem.id },
+      });
+      const stillExists = await prisma.item.findUnique({
+        where: { id: otherItem.id },
+      });
+      expect(deletedOwned).toBeNull();
+      expect(stillExists).not.toBeNull();
+    } finally {
+      await prisma.item.deleteMany({ where: { userId: otherUser.id } });
+      await prisma.user.delete({ where: { id: otherUser.id } }).catch(() => {});
+    }
+  });
+
+  it("returns error when no items to delete", async () => {
+    mockAuth.mockResolvedValue({
+      user: { id: testUserId, email: "test@test.example.com" },
+      expires: new Date().toISOString(),
+    });
+
+    const result = await deleteItems([]);
+
+    expect(result.success).toBeFalsy();
+    expect(result.error).toMatch(/no items/i);
+  });
+
+  it("returns error when not authenticated", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const item = await prisma.item.create({
+      data: { name: "Protected Item", userId: testUserId, order: 0, depth: 0 },
+    });
+
+    const result = await deleteItems([item.id]);
+
+    expect(result.success).toBeFalsy();
+    expect(result.error).toMatch(/authenticated/i);
+  });
+
+  it("cascades delete to children of bulk-deleted items", async () => {
+    mockAuth.mockResolvedValue({
+      user: { id: testUserId, email: "test@test.example.com" },
+      expires: new Date().toISOString(),
+    });
+
+    // Create parent with children
+    const parent1 = await prisma.item.create({
+      data: { name: "Parent 1", userId: testUserId, order: 0, depth: 0 },
+    });
+    const child1 = await prisma.item.create({
+      data: {
+        name: "Child 1",
+        userId: testUserId,
+        parentId: parent1.id,
+        order: 0,
+        depth: 1,
+      },
+    });
+
+    const parent2 = await prisma.item.create({
+      data: { name: "Parent 2", userId: testUserId, order: 1, depth: 0 },
+    });
+    const child2 = await prisma.item.create({
+      data: {
+        name: "Child 2",
+        userId: testUserId,
+        parentId: parent2.id,
+        order: 0,
+        depth: 1,
+      },
+    });
+
+    const result = await deleteItems([parent1.id, parent2.id]);
+
+    expect(result.success).toBe(true);
+
+    // Verify both parents and their children are deleted
+    const remaining = await prisma.item.findMany({
+      where: { id: { in: [parent1.id, parent2.id, child1.id, child2.id] } },
+    });
+    expect(remaining).toHaveLength(0);
   });
 });

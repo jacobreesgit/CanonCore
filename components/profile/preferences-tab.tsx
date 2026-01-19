@@ -55,6 +55,8 @@ export function PreferencesTab() {
     if (!result.success) {
       setViewMode(previousValue);
       toast.error(result.error ?? "Failed to save view mode");
+    } else {
+      toast.success("Preferences saved");
     }
   };
 
@@ -67,6 +69,8 @@ export function PreferencesTab() {
     if (!result.success) {
       setSortBy(previousValue);
       toast.error(result.error ?? "Failed to save sort preference");
+    } else {
+      toast.success("Preferences saved");
     }
   };
 

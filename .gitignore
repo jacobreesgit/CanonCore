@@ -35,6 +35,9 @@ playwright-report/
 test-results/
 e2e/.auth/
 
+# Test coverage reports
+coverage/
+
 # Temp reference files
 /temp/
 

@@ -10,6 +10,8 @@ import {
   getSeasonsAction,
   getEpisodesAction,
   getEpisodePreviewAction,
+  getMetadataPreviewAction,
+  getImagesAction,
 } from "@/lib/tmdb-actions";
 
 // Mock dependencies
@@ -28,6 +30,14 @@ vi.mock("@/lib/tmdb-client", () => ({
   getTVSeasons: vi.fn(),
   getTVEpisodes: vi.fn(),
   getEpisodeDetails: vi.fn(),
+  getMovieImages: vi.fn(),
+  getTVShowImages: vi.fn(),
+  getPosterUrl: vi.fn((p: string | null, size?: string) =>
+    p ? `https://image.tmdb.org/t/p/${size || "w342"}${p}` : null
+  ),
+  getBackdropUrl: vi.fn((p: string | null, size?: string) =>
+    p ? `https://image.tmdb.org/t/p/${size || "w780"}${p}` : null
+  ),
   getStillUrl: vi.fn((p: string | null) =>
     p ? `https://image.tmdb.org/t/p/w300${p}` : null
   ),
@@ -59,6 +69,8 @@ import {
   getTVSeasons,
   getTVEpisodes,
   getEpisodeDetails,
+  getMovieImages,
+  getTVShowImages,
   downloadPoster,
   downloadBackdrop,
   isTMDBConfigured,
@@ -682,6 +694,228 @@ describe("tmdb-actions", () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBe("Failed to fetch episode preview");
+      }
+    });
+  });
+
+  describe("getMetadataPreviewAction", () => {
+    it("returns preview for movie", async () => {
+      vi.mocked(getMovie).mockResolvedValue({
+        id: 278,
+        title: "The Shawshank Redemption",
+        overview: "Two imprisoned men bond over a number of years...",
+        poster_path: "/poster.jpg",
+        backdrop_path: "/backdrop.jpg",
+        release_date: "1994-09-23",
+      });
+
+      const result = await getMetadataPreviewAction(278, "movie");
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data?.name).toBe("The Shawshank Redemption (1994)");
+        expect(result.data?.posterUrl).toContain("/poster.jpg");
+        expect(result.data?.backdropUrl).toContain("/backdrop.jpg");
+      }
+    });
+
+    it("returns preview for TV show", async () => {
+      vi.mocked(getTVShow).mockResolvedValue({
+        id: 1396,
+        name: "Breaking Bad",
+        overview: "A chemistry teacher diagnosed with terminal lung cancer...",
+        poster_path: "/bb-poster.jpg",
+        backdrop_path: "/bb-backdrop.jpg",
+        first_air_date: "2008-01-20",
+        number_of_seasons: 5,
+      });
+
+      const result = await getMetadataPreviewAction(1396, "tv");
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data?.name).toBe("Breaking Bad (2008)");
+        expect(result.data?.posterUrl).toContain("/bb-poster.jpg");
+      }
+    });
+
+    it("requires authentication", async () => {
+      vi.mocked(auth).mockResolvedValue(null as never);
+
+      const result = await getMetadataPreviewAction(278, "movie");
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Not authenticated");
+      }
+    });
+
+    it("checks rate limit", async () => {
+      vi.mocked(checkRateLimit).mockResolvedValue({
+        error: "Too many attempts. Please try again later.",
+      });
+
+      const result = await getMetadataPreviewAction(278, "movie");
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toContain("Too many attempts");
+      }
+    });
+
+    it("returns error when TMDB not configured", async () => {
+      vi.mocked(isTMDBConfigured).mockReturnValue(false);
+
+      const result = await getMetadataPreviewAction(278, "movie");
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("TMDB integration not configured");
+      }
+    });
+
+    it("returns error when movie not found", async () => {
+      vi.mocked(getMovie).mockResolvedValue(null);
+
+      const result = await getMetadataPreviewAction(999999, "movie");
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Movie not found on TMDB");
+      }
+    });
+
+    it("returns error when TV show not found", async () => {
+      vi.mocked(getTVShow).mockResolvedValue(null);
+
+      const result = await getMetadataPreviewAction(999999, "tv");
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("TV show not found on TMDB");
+      }
+    });
+
+    it("handles fetch errors", async () => {
+      vi.mocked(getMovie).mockRejectedValue(new Error("Network error"));
+
+      const result = await getMetadataPreviewAction(278, "movie");
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Failed to fetch preview");
+      }
+    });
+  });
+
+  describe("getImagesAction", () => {
+    const mockImages = {
+      posters: [
+        {
+          file_path: "/poster1.jpg",
+          vote_average: 5.5,
+          iso_639_1: "en",
+          width: 500,
+          height: 750,
+        },
+        {
+          file_path: "/poster2.jpg",
+          vote_average: 4.2,
+          iso_639_1: null,
+          width: 500,
+          height: 750,
+        },
+      ],
+      backdrops: [
+        {
+          file_path: "/bd1.jpg",
+          vote_average: 5.8,
+          iso_639_1: null,
+          width: 1920,
+          height: 1080,
+        },
+      ],
+    };
+
+    it("returns images for movie", async () => {
+      vi.mocked(getMovieImages).mockResolvedValue(mockImages);
+
+      const result = await getImagesAction(278, "movie");
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data?.posters).toHaveLength(2);
+        expect(result.data?.backdrops).toHaveLength(1);
+      }
+      expect(getMovieImages).toHaveBeenCalledWith(278);
+    });
+
+    it("returns images for TV show", async () => {
+      vi.mocked(getTVShowImages).mockResolvedValue(mockImages);
+
+      const result = await getImagesAction(1396, "tv");
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data?.posters).toHaveLength(2);
+      }
+      expect(getTVShowImages).toHaveBeenCalledWith(1396);
+    });
+
+    it("requires authentication", async () => {
+      vi.mocked(auth).mockResolvedValue(null as never);
+
+      const result = await getImagesAction(278, "movie");
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Not authenticated");
+      }
+    });
+
+    it("checks rate limit", async () => {
+      vi.mocked(checkRateLimit).mockResolvedValue({
+        error: "Too many attempts. Please try again later.",
+      });
+
+      const result = await getImagesAction(278, "movie");
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toContain("Too many attempts");
+      }
+    });
+
+    it("returns error when TMDB not configured", async () => {
+      vi.mocked(isTMDBConfigured).mockReturnValue(false);
+
+      const result = await getImagesAction(278, "movie");
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("TMDB integration not configured");
+      }
+    });
+
+    it("returns error when images not found", async () => {
+      vi.mocked(getMovieImages).mockResolvedValue(null);
+
+      const result = await getImagesAction(999999, "movie");
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Images not found");
+      }
+    });
+
+    it("handles fetch errors", async () => {
+      vi.mocked(getMovieImages).mockRejectedValue(new Error("Network error"));
+
+      const result = await getImagesAction(278, "movie");
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Failed to fetch images");
       }
     });
   });
