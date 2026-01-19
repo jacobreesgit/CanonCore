@@ -998,7 +998,7 @@ export function AddItemDialog({
                   "bg-primary/10 ring-primary/20 ring-1"
                 )}
               >
-                <Plus className="text-primary size-5" />
+                <Plus aria-hidden="true" className="text-primary size-5" />
               </div>
               <div>
                 <DialogTitle className="text-lg">Create Item</DialogTitle>
@@ -1020,7 +1020,7 @@ export function AddItemDialog({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Back"
               >
-                <ChevronLeft className="size-5" />
+                <ChevronLeft aria-hidden="true" className="size-5" />
               </Button>
               <div
                 className={cn(
@@ -1029,9 +1029,9 @@ export function AddItemDialog({
                 )}
               >
                 {selectedSeason ? (
-                  <Film className="size-5 text-blue-500" />
+                  <Film aria-hidden="true" className="size-5 text-blue-500" />
                 ) : (
-                  <Tv className="size-5 text-blue-500" />
+                  <Tv aria-hidden="true" className="size-5 text-blue-500" />
                 )}
               </div>
               <div className="min-w-0 flex-1">
@@ -1059,7 +1059,7 @@ export function AddItemDialog({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Back"
               >
-                <ChevronLeft className="size-5" />
+                <ChevronLeft aria-hidden="true" className="size-5" />
               </Button>
               <div
                 className={cn(
@@ -1067,7 +1067,7 @@ export function AddItemDialog({
                   "bg-amber-500/10 ring-1 ring-amber-500/20"
                 )}
               >
-                <Sparkles className="size-5 text-amber-500" />
+                <Sparkles aria-hidden="true" className="size-5 text-amber-500" />
               </div>
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
@@ -1102,7 +1102,7 @@ export function AddItemDialog({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Back"
               >
-                <ChevronLeft className="size-5" />
+                <ChevronLeft aria-hidden="true" className="size-5" />
               </Button>
               <div
                 className={cn(
@@ -1110,7 +1110,7 @@ export function AddItemDialog({
                   "bg-violet-500/10 ring-1 ring-violet-500/20"
                 )}
               >
-                <ImageIcon className="size-5 text-violet-500" />
+                <ImageIcon aria-hidden="true" className="size-5 text-violet-500" />
               </div>
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-lg">Change Poster</DialogTitle>
@@ -1132,7 +1132,7 @@ export function AddItemDialog({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Back"
               >
-                <ChevronLeft className="size-5" />
+                <ChevronLeft aria-hidden="true" className="size-5" />
               </Button>
               <div
                 className={cn(
@@ -1140,7 +1140,7 @@ export function AddItemDialog({
                   "bg-violet-500/10 ring-1 ring-violet-500/20"
                 )}
               >
-                <ImageIcon className="size-5 text-violet-500" />
+                <ImageIcon aria-hidden="true" className="size-5 text-violet-500" />
               </div>
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-lg">Change Hero</DialogTitle>
@@ -1190,7 +1190,7 @@ export function AddItemDialog({
                     className="border-primary size-4 rounded-full border-2 border-t-transparent"
                   />
                   <span className="flex items-center gap-2">
-                    <span>Uploading...</span>
+                    <span>Uploading…</span>
                     <span className="bg-primary/15 text-primary inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 font-mono text-xs font-medium tracking-tight tabular-nums">
                       <span>{uploadProgress.overallPercent}%</span>
                       {uploadProgress.totalSize > 0 && (
@@ -1219,7 +1219,7 @@ export function AddItemDialog({
                   animate={{ x: 0, opacity: 1 }}
                   className="flex items-center gap-2"
                 >
-                  <AlertCircle className="text-destructive size-4" />
+                  <AlertCircle aria-hidden="true" className="text-destructive size-4" />
                   <span>
                     {uploadState.successCount} uploaded, {failedFiles.length}{" "}
                     failed
@@ -1237,7 +1237,7 @@ export function AddItemDialog({
                   onClick={handleRetryUpload}
                   className="h-7 gap-1 px-2 text-xs"
                 >
-                  <RefreshCw className="size-3" />
+                  <RefreshCw aria-hidden="true" className="size-3" />
                   Retry
                 </Button>
                 <Button
@@ -1246,8 +1246,9 @@ export function AddItemDialog({
                   size="sm"
                   onClick={handleDismissUpload}
                   className="text-muted-foreground hover:text-foreground size-7 p-0"
+                  aria-label="Dismiss upload errors"
                 >
-                  <X className="size-4" />
+                  <X aria-hidden="true" className="size-4" />
                 </Button>
               </div>
             )}
@@ -1281,13 +1282,13 @@ export function AddItemDialog({
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                    Creating...
+                    <Loader2 aria-hidden="true" className="mr-2 size-4 animate-spin" />
+                    Creating…
                   </>
                 ) : isUploading ? (
                   <>
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                    Uploading...
+                    <Loader2 aria-hidden="true" className="mr-2 size-4 animate-spin" />
+                    Uploading…
                   </>
                 ) : (
                   "Create"
@@ -1382,13 +1383,13 @@ export function AddItemDialog({
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                    Creating...
+                    <Loader2 aria-hidden="true" className="mr-2 size-4 animate-spin" />
+                    Creating…
                   </>
                 ) : isUploading ? (
                   <>
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                    Uploading...
+                    <Loader2 aria-hidden="true" className="mr-2 size-4 animate-spin" />
+                    Uploading…
                   </>
                 ) : (
                   "Create"
@@ -1431,12 +1432,12 @@ export function AddItemDialog({
             onSelect={handleMediaSelect}
             onChange={setName}
             value={name}
-            placeholder="Search movies & TV shows..."
+            placeholder="Search movies & TV shows…"
           />
           {isLoadingPreview && (
             <div className="bg-background/80 absolute inset-0 flex items-center justify-center gap-2 rounded-md">
-              <Loader2 className="text-muted-foreground size-4 animate-spin" />
-              <span className="text-muted-foreground text-sm">Loading...</span>
+              <Loader2 aria-hidden="true" className="text-muted-foreground size-4 animate-spin" />
+              <span className="text-muted-foreground text-sm">Loading…</span>
             </div>
           )}
         </div>
@@ -1458,7 +1459,7 @@ export function AddItemDialog({
           id="item-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Add a short description..."
+          placeholder="Add a short description…"
           disabled={isLoading}
           className="min-h-[80px] resize-none"
           maxLength={1000}
@@ -1581,10 +1582,10 @@ export function AddItemDialog({
                   }}
                   className="text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
                 >
-                  <ChevronLeft className="size-4" />
+                  <ChevronLeft aria-hidden="true" className="size-4" />
                   <span className="max-w-[150px] truncate">{displayTitle}</span>
                 </button>
-                <ChevronRight className="text-muted-foreground/50 size-4" />
+                <ChevronRight aria-hidden="true" className="text-muted-foreground/50 size-4" />
                 <span className="text-foreground font-medium">
                   {selectedSeason.name}
                 </span>
@@ -1596,7 +1597,7 @@ export function AddItemDialog({
               {!selectedSeason ? (
                 // Seasons view
                 isLoadingSeasons ? (
-                  <LoadingState message="Loading seasons..." />
+                  <LoadingState message="Loading seasons…" />
                 ) : episodeError ? (
                   <ErrorState message={episodeError} />
                 ) : (
@@ -1614,7 +1615,7 @@ export function AddItemDialog({
                 )
               ) : // Episodes view
               isLoadingEpisodes ? (
-                <LoadingState message="Loading episodes..." />
+                <LoadingState message="Loading episodes…" />
               ) : episodeError ? (
                 <ErrorState message={episodeError} />
               ) : (
@@ -2029,7 +2030,7 @@ function SummaryArtworkDropzone({
             "bg-primary/10"
           )}
         >
-          <Icon className="text-primary size-3.5" />
+          <Icon aria-hidden="true" className="text-primary size-3.5" />
         </div>
         <span className="text-sm font-medium">{label}</span>
       </div>
@@ -2050,12 +2051,13 @@ function SummaryArtworkDropzone({
           <img
             src={imageUrl}
             alt={`${label} preview`}
+            loading="lazy"
             className="size-full object-cover"
             onError={() => setHasError(true)}
           />
         ) : (
           <div className="flex size-full flex-col items-center justify-center gap-1">
-            <Icon className="text-muted-foreground/50 size-6" />
+            <Icon aria-hidden="true" className="text-muted-foreground/50 size-6" />
             <p className="text-muted-foreground text-xs">
               Click to choose {label.toLowerCase()}
             </p>
@@ -2072,7 +2074,7 @@ function SummaryArtworkDropzone({
           onClick={onClear}
           disabled={disabled}
         >
-          <Trash2 className="mr-1.5 size-3.5" />
+          <Trash2 aria-hidden="true" className="mr-1.5 size-3.5" />
           Clear
         </Button>
       )}

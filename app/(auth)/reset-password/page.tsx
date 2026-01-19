@@ -75,7 +75,15 @@ function ResetPasswordForm() {
             `,
           }}
         />
-        <div className="relative z-10 flex h-full items-center justify-center">
+        <div
+          className="relative z-10 flex h-full items-center justify-center"
+          style={{
+            paddingTop: "var(--safe-area-inset-top)",
+            paddingRight: "var(--safe-area-inset-right)",
+            paddingBottom: "var(--safe-area-inset-bottom)",
+            paddingLeft: "var(--safe-area-inset-left)",
+          }}
+        >
           <div className="flex flex-col items-center gap-6 lg:justify-start">
             {/* Success checkmark */}
             <div className="flex size-14 items-center justify-center rounded-full bg-green-500 text-white">
@@ -83,7 +91,7 @@ function ResetPasswordForm() {
             </div>
 
             <div className="border-muted bg-background flex w-full max-w-sm min-w-sm flex-col items-center gap-y-4 rounded-md border px-6 py-8 shadow-md">
-              <h1 className="text-xl font-semibold">
+              <h1 className="text-xl font-semibold text-balance">
                 Password reset successful
               </h1>
               <p
@@ -120,7 +128,15 @@ function ResetPasswordForm() {
           `,
         }}
       />
-      <div className="relative z-10 flex h-full items-center justify-center">
+      <div
+        className="relative z-10 flex h-full items-center justify-center"
+        style={{
+          paddingTop: "var(--safe-area-inset-top)",
+          paddingRight: "var(--safe-area-inset-right)",
+          paddingBottom: "var(--safe-area-inset-bottom)",
+          paddingLeft: "var(--safe-area-inset-left)",
+        }}
+      >
         <div className="flex flex-col items-center gap-6 lg:justify-start">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-1.5">
@@ -133,7 +149,9 @@ function ResetPasswordForm() {
             onSubmit={onSubmit}
             className="border-muted bg-background flex w-full max-w-sm min-w-sm flex-col items-center gap-y-4 rounded-md border px-6 py-8 shadow-md"
           >
-            <h1 className="text-xl font-semibold">Set new password</h1>
+            <h1 className="text-xl font-semibold text-balance">
+              Set new password
+            </h1>
             <p className="text-muted-foreground text-center text-sm">
               Choose a strong password for your account
             </p>
@@ -151,6 +169,8 @@ function ResetPasswordForm() {
               <Label htmlFor="password">New password</Label>
               <PasswordInput
                 id="password"
+                name="new-password"
+                autoComplete="new-password"
                 placeholder="New password"
                 className="text-sm"
                 value={password}
@@ -165,6 +185,8 @@ function ResetPasswordForm() {
               <Label htmlFor="confirmPassword">Confirm new password</Label>
               <PasswordInput
                 id="confirmPassword"
+                name="confirm-password"
+                autoComplete="new-password"
                 placeholder="Confirm new password"
                 className="text-sm"
                 value={confirmPassword}

@@ -145,15 +145,16 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
           "bg-muted",
           // Overlay pseudo-element
           "before:absolute before:inset-0 before:z-10 before:bg-black/50",
-          "before:transition-all before:duration-300",
+          "before:transition-colors before:duration-300",
           "hover:before:bg-black/30",
           // Focus styles for accessibility
           "focus-visible:ring-primary focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
-          // Drag states
-          isDragging && "scale-[0.98] opacity-40",
+          // Drag states - select-none prevents text selection during drag
+          isDragging && "scale-[0.98] opacity-40 select-none",
           isOverlay && [
             "ring-primary/50 shadow-2xl ring-2 shadow-black/25",
             "scale-[1.03]",
+            "select-none",
           ],
           className
         )}
@@ -167,6 +168,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
             ref={imgRef}
             src={artworkSrc}
             alt=""
+            loading={priority ? "eager" : "lazy"}
             className={cn(
               "absolute inset-0 z-0 h-full w-full object-cover",
               "transition-opacity duration-200",
@@ -185,7 +187,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
               "flex size-8 items-center justify-center",
               "rounded-md",
               "bg-black/40 backdrop-blur-sm",
-              "transition-all duration-150",
+              "transition-colors duration-150",
               "hover:bg-black/60"
             )}
             onClick={(e) => e.stopPropagation()}
@@ -214,7 +216,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
               "flex size-8 items-center justify-center",
               "touch-none rounded-md",
               "bg-black/40 backdrop-blur-sm",
-              "text-white/60 transition-all duration-150",
+              "text-white/60 transition-colors duration-150",
               "hover:bg-black/60 hover:text-white",
               "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
               "cursor-grab active:cursor-grabbing"
@@ -253,7 +255,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
         <div className="relative z-20 flex h-full flex-col justify-end p-4">
           {/* Title with sync indicator */}
           <div className="flex items-center gap-1.5">
-            <h3 className="truncate text-lg leading-tight font-semibold text-white drop-shadow-md md:text-xl">
+            <h3 className="min-w-0 truncate text-lg leading-tight font-semibold text-white drop-shadow-md md:text-xl">
               {name}
             </h3>
             {syncStatus && syncStatus !== "SYNCED" && (
@@ -287,7 +289,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
               <div className="h-1 w-full overflow-hidden rounded-full bg-white/20">
                 <div
                   data-testid="grid-item-progress-bar"
-                  className="h-full rounded-full bg-white transition-all duration-300"
+                  className="h-full rounded-full bg-white transition-[width] duration-300"
                   style={{ width: `${progressPercentage}%` }}
                 />
               </div>

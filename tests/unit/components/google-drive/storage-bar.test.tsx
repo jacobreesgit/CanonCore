@@ -15,8 +15,8 @@ describe("StorageBar", () => {
       />
     );
 
-    expect(screen.getByText(/1\.0 GB/)).toBeInTheDocument();
-    expect(screen.getByText(/15\.0 GB/)).toBeInTheDocument();
+    expect(screen.getByText(/1 GB/)).toBeInTheDocument();
+    expect(screen.getByText(/15 GB/)).toBeInTheDocument();
   });
 
   it("renders progress bar with correct percentage", () => {

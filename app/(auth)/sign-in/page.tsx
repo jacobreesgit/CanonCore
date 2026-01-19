@@ -62,7 +62,15 @@ export default function SignInPage() {
           `,
         }}
       />
-      <div className="relative z-10 flex h-full items-center justify-center">
+      <div
+        className="relative z-10 flex h-full items-center justify-center"
+        style={{
+          paddingTop: "var(--safe-area-inset-top)",
+          paddingRight: "var(--safe-area-inset-right)",
+          paddingBottom: "var(--safe-area-inset-bottom)",
+          paddingLeft: "var(--safe-area-inset-left)",
+        }}
+      >
         <div className="flex flex-col items-center gap-6 lg:justify-start">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-1.5">
@@ -75,7 +83,7 @@ export default function SignInPage() {
             onSubmit={onSubmit}
             className="border-muted bg-background flex w-full max-w-sm min-w-sm flex-col items-center gap-y-4 rounded-md border px-6 py-8 shadow-md"
           >
-            <h1 className="text-xl font-semibold">Welcome back</h1>
+            <h1 className="text-xl font-semibold text-balance">Welcome back</h1>
 
             {error && (
               <div
@@ -90,7 +98,10 @@ export default function SignInPage() {
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
+                autoComplete="email"
+                spellCheck={false}
                 placeholder="Email"
                 className="text-sm"
                 value={email}
@@ -113,6 +124,8 @@ export default function SignInPage() {
               </div>
               <PasswordInput
                 id="password"
+                name="password"
+                autoComplete="current-password"
                 placeholder="Password"
                 className="text-sm"
                 value={password}
@@ -128,7 +141,7 @@ export default function SignInPage() {
               disabled={loading}
               data-testid="sign-in-submit-button"
             >
-              {loading ? "Signing in..." : "Sign in"}
+              {loading ? "Signing in…" : "Sign in"}
             </Button>
           </form>
 

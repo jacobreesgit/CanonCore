@@ -31,7 +31,7 @@ export function AuthButtons() {
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isDocsActive}>
           <Link href="/docs">
-            <HelpCircle className="size-4" />
+            <HelpCircle aria-hidden="true" className="size-4" />
             <span>Get Help</span>
           </Link>
         </SidebarMenuButton>
@@ -39,7 +39,7 @@ export function AuthButtons() {
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isSignInActive}>
           <Link href="/sign-in">
-            <ArrowRight className="size-4" />
+            <ArrowRight aria-hidden="true" className="size-4" />
             <span>Get Started</span>
           </Link>
         </SidebarMenuButton>

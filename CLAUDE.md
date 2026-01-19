@@ -95,7 +95,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── item-context-menu.tsx     # Right-click actions menu
 │   │   ├── item-detail-client.tsx    # Client wrapper with hero and media player
 │   │   ├── item-dialog-tabs.tsx      # Tabbed interface for Add/Edit dialogs
-│   │   ├── item-hero.tsx             # Hero banner with artwork, title, play button, go-to button
+│   │   ├── item-hero.tsx             # Hero banner with artwork, title, play/go-to buttons, reduced motion support
 │   │   ├── item-settings-dialog.tsx  # Settings with file selection and upload
 │   │   ├── item-stats.tsx            # Reusable child/file count stats display
 │   │   ├── items-toolbar.tsx         # Unified toolbar for root and detail pages
@@ -132,6 +132,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   └── utilities.ts              # Tree manipulation helpers
 │   ├── providers/
 │   │   └── theme-provider.tsx        # next-themes provider wrapper
+│   ├── deferred-analytics.tsx        # Deferred Vercel Analytics loader
 │   ├── ui/                           # shadcn/ui + animated-dialog-content.tsx, checkbox.tsx, command.tsx, drawer.tsx, dropzone.tsx, kbd.tsx, password-input.tsx, progress.tsx, radio-group.tsx, scroll-area.tsx, select.tsx, tabs.tsx
 │   ├── app-sidebar.tsx               # Context-aware navigation sidebar
 │   ├── error-boundary.tsx            # React error boundary for graceful error handling
@@ -251,8 +252,8 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── setup-e2e-drive.ts            # E2E Drive environment setup
 │   └── verify-seed.ts                # Quick seed verification utility
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 4.1.0)
-    └── plans/                        # Design documents
+    ├── deployments/                  # Deployment summaries (0.2.0 - 4.2.0)
+    └── plans/                        # Design documents and audit reports
 ```
 
 ### Authentication
@@ -300,7 +301,7 @@ pnpm run test:e2e:ui                        # UI mode
 - **View mode**: Full background artwork with dark overlay (Feature222 aesthetic)
 - **Edit mode**: Simplified icons with drag handles for reordering
 - **Add Item dialog**: Modal with TMDB search combobox for auto-filling metadata
-- **Server actions**: `createItem`, `updateItem`, `deleteItem`, `deleteItems`, `reorderItems`, `getSearchableItems`, `pinItem`, `unpinItem`, `getPinnedItems`, `getFirstIncompleteItem` in `lib/item-actions.ts`
+- **Server actions**: `createItem`, `updateItem`, `deleteItem`, `deleteItems`, `reorderItems`, `getSearchableItems`, `pinItem`, `unpinItem`, `getPinnedItems`, `getFirstIncompleteItem` in `lib/item-actions.ts` (parallel async for rate limit + auth)
 - **Bulk delete**: Edit mode shows checkboxes for multi-select; select-all in toolbar; confirmation dialog before deletion
 - **Contextual empty states**: Different messages for first-time users, empty folders, and filter results with actionable buttons
 - **Breadcrumb navigation** for item drill-down
@@ -329,7 +330,7 @@ pnpm run test:e2e:ui                        # UI mode
 - **Explore page**: Browse all public collections at `/explore`, shows item cards with owner username
 - **Sidebar navigation**: Explore link shown for both authenticated and guest users
 - **Server actions**: `forkItem()`, `getForkStatus()`, `getForkInfo()` in `lib/fork-actions.ts`
-- **Public auth utilities**: `getPublicProfile()`, `getPublicItems()`, `isItemFullyPublic()` in `lib/public-auth.ts`
+- **Public auth utilities**: `getPublicProfile()`, `getPublicItems()`, `isItemFullyPublic()` in `lib/public-auth.ts` (React.cache() for request deduplication)
 
 ### TMDB Metadata Integration
 
@@ -406,7 +407,17 @@ pnpm run test:e2e:ui                        # UI mode
 - **next-themes** for theme management with system preference detection
 - **ThemeProvider** wraps app in `app/layout.tsx`
 - **ThemeToggle** button in header with sun/moon icons
+- **color-scheme CSS**: Browser-native dark mode for scrollbars and form controls
 - Preference persists to localStorage
+
+### Accessibility
+
+- **Skip link**: "Skip to main content" for keyboard/screen reader navigation (WCAG 2.1 Level A)
+- **Reduced motion**: `@media (prefers-reduced-motion)` disables animations globally
+- **Component support**: `useReducedMotion` in item-hero and other animated components
+- **Touch optimization**: 300ms tap delay removal, iOS highlight suppression
+- **Safe area support**: CSS variables for notched devices (iPhone X+)
+- **Decorative icons**: `aria-hidden="true"` on non-interactive icons
 
 ### Unit & Integration Testing
 
@@ -419,7 +430,7 @@ pnpm run test:e2e:ui                        # UI mode
 ### E2E Testing
 
 - **Playwright** with Page Object Model pattern
-- Tests in `e2e/journeys/` organized by feature (auth, docs, google-drive, items, profile, public, theme)
+- Tests in `e2e/journeys/` organized by feature (auth, docs, google-drive, items, media, navigation, profile, public, security, theme)
 - Page objects in `e2e/pages/` for reusable interactions
 - Fixtures in `e2e/fixtures/` for auth, database, and Google Drive setup
 - Google Drive E2E tests use real test account with refresh token

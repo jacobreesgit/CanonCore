@@ -1,16 +1,39 @@
 /**
  * Fullscreen media player overlay.
  * Simple black backdrop with fullscreen video player.
+ * VideoPlayer is dynamically imported to defer Vidstack library load.
  */
 
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import dynamic from "next/dynamic";
+import { X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { VideoPlayer } from "./media-player";
 import type { SerializedItemFile } from "@/lib/types";
+
+/**
+ * Loading skeleton for VideoPlayer while Vidstack loads.
+ */
+function VideoPlayerSkeleton() {
+  return (
+    <div className="flex h-full w-full items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <Loader2 aria-hidden="true" className="size-8 animate-spin text-white/70" />
+        <span className="text-sm text-white/70">Loading player…</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Dynamically imported VideoPlayer to defer Vidstack bundle.
+ */
+const VideoPlayer = dynamic(
+  () => import("./media-player").then((mod) => mod.VideoPlayer),
+  { loading: () => <VideoPlayerSkeleton />, ssr: false }
+);
 
 interface MediaOverlayProps {
   /** The media file to play */
@@ -111,7 +134,7 @@ export function MediaOverlay({
         className="absolute top-4 right-4 z-10 size-10 rounded-full bg-black/50 text-white hover:bg-black/70"
         aria-label="Close player"
       >
-        <X className="size-5" />
+        <X aria-hidden="true" className="size-5" />
       </Button>
 
       {/* Player */}

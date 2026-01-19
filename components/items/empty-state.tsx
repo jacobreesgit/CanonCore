@@ -110,7 +110,7 @@ export function EmptyState({ variant, onAction, className }: EmptyStateProps) {
 
       {/* Text content */}
       <div className="max-w-xs text-center">
-        <h3 className="text-foreground text-lg font-semibold tracking-tight">
+        <h3 className="text-foreground text-lg font-semibold tracking-tight text-balance">
           {config.title}
         </h3>
         <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed">
@@ -127,7 +127,7 @@ export function EmptyState({ variant, onAction, className }: EmptyStateProps) {
           className={cn(
             "mt-1 gap-1.5",
             "shadow-xs hover:shadow-sm",
-            "transition-all duration-200"
+            "transition-shadow duration-200"
           )}
         >
           <ActionIcon className="size-4" />

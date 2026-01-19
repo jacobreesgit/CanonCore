@@ -302,10 +302,16 @@ test.describe("Explore Page Journey", () => {
 
       // Should see items from both owners (use .first() for potential duplicates)
       await expect(
-        page.getByTestId("items-grid-view").getByText("Owner 1 Collection").first()
+        page
+          .getByTestId("items-grid-view")
+          .getByText("Owner 1 Collection")
+          .first()
       ).toBeVisible();
       await expect(
-        page.getByTestId("items-grid-view").getByText("Owner 2 Collection").first()
+        page
+          .getByTestId("items-grid-view")
+          .getByText("Owner 2 Collection")
+          .first()
       ).toBeVisible();
 
       // Should see both usernames (use .first() since they appear multiple times in grid)

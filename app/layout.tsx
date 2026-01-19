@@ -3,11 +3,11 @@
  * Sets up fonts, session provider, and analytics tracking.
  */
 
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { DeferredAnalytics } from "@/components/deferred-analytics";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -23,6 +23,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "CanonCore",
   description: "CanonCore - Media Library Manager",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#242424" },
+  ],
   icons: {
     icon: [
       { url: "/favicon.ico", media: "(prefers-color-scheme: light)" },
@@ -39,6 +43,14 @@ export const metadata: Metadata = {
 };
 
 /**
+ * Viewport configuration for safe area support on notched devices.
+ * viewport-fit=cover enables env(safe-area-inset-*) CSS functions.
+ */
+export const viewport: Viewport = {
+  viewportFit: "cover",
+};
+
+/**
  * Wraps all pages with HTML structure, fonts, and session context.
  */
 export default function RootLayout({
@@ -48,14 +60,22 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Preconnect to TMDB image CDN for faster poster/backdrop loading */}
+        <link rel="preconnect" href="https://image.tmdb.org" />
+      </head>
       <body
         className={`${geist.variable} ${geistMono.variable} overflow-hidden antialiased`}
       >
+        {/* Skip link for keyboard/screen reader users - WCAG 2.1 Level A */}
+        <a href="#main-content" className="skip-link">
+          Skip to main content
+        </a>
         <ThemeProvider>
           <SessionProvider>{children}</SessionProvider>
           <Toaster />
         </ThemeProvider>
-        <Analytics />
+        <DeferredAnalytics />
       </body>
     </html>
   );

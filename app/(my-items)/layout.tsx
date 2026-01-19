@@ -60,9 +60,13 @@ export default async function MyItemsLayout({
           pinnedItems={pinnedItems}
         />
         <SidebarInset className="overflow-hidden">
-          <div className="@container/main flex min-h-full flex-col overflow-y-auto">
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="@container/main flex min-h-full flex-col overflow-y-auto outline-none"
+          >
             <ErrorBoundary>{children}</ErrorBoundary>
-          </div>
+          </main>
         </SidebarInset>
       </SidebarProvider>
     </MyItemsProviders>

@@ -74,22 +74,21 @@ export default async function PublicItemPage({ params }: PageProps) {
     notFound();
   }
 
-  // Get additional data in parallel
-  const [childItems, breadcrumb, forkInfo, session] = await Promise.all([
-    getPublicChildItems(itemId, 50, 0),
-    getPublicBreadcrumb(itemId),
-    getForkInfo(itemId),
-    auth(),
-  ]);
+  // Get additional data in parallel (including fork status for authenticated users)
+  const [childItems, breadcrumb, forkInfo, session, forkStatusResult] =
+    await Promise.all([
+      getPublicChildItems(itemId, 50, 0),
+      getPublicBreadcrumb(itemId),
+      getForkInfo(itemId),
+      auth(),
+      getForkStatus(itemId), // Safe for unauthenticated - returns error
+    ]);
 
-  // Get fork status for authenticated users
-  let forkStatus = null;
-  if (session?.user?.id) {
-    const statusResult = await getForkStatus(itemId);
-    if ("data" in statusResult && statusResult.data) {
-      forkStatus = statusResult.data;
-    }
-  }
+  // Extract fork status if authenticated and request succeeded
+  const forkStatus =
+    session?.user?.id && "data" in forkStatusResult && forkStatusResult.data
+      ? forkStatusResult.data
+      : null;
 
   return (
     <PublicItemClient

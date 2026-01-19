@@ -1,8 +1,11 @@
 /**
  * Authorization helpers for public profiles and items.
  * Provides access control logic for public content visibility.
+ * Uses React.cache() for per-request deduplication when called from
+ * both generateMetadata and page components.
  */
 
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -55,58 +58,61 @@ export interface PublicItem {
 /**
  * Fetches a public user profile by username.
  * Returns null if user doesn't exist, profile isn't public, or no username set.
+ * Cached per-request to deduplicate calls from generateMetadata and page.
  *
  * @param username - Username to look up (case-insensitive)
  * @returns Public profile data or null if not found/not public
  */
-export async function getPublicProfile(
-  username: string
-): Promise<PublicProfile | null> {
-  const user = await prisma.user.findFirst({
-    where: {
-      username: {
-        equals: username,
-        mode: "insensitive",
+export const getPublicProfile = cache(
+  async (username: string): Promise<PublicProfile | null> => {
+    const user = await prisma.user.findFirst({
+      where: {
+        username: {
+          equals: username,
+          mode: "insensitive",
+        },
+        isPublic: true,
       },
-      isPublic: true,
-    },
-    select: {
-      id: true,
-      username: true,
-      name: true,
-      image: true,
-      heroImage: true,
-      createdAt: true,
-    },
-  });
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        image: true,
+        heroImage: true,
+        createdAt: true,
+      },
+    });
 
-  if (!user || !user.username) {
-    return null;
+    if (!user || !user.username) {
+      return null;
+    }
+
+    return {
+      id: user.id,
+      username: user.username,
+      name: user.name,
+      hasImage: user.image !== null,
+      hasHeroImage: user.heroImage !== null,
+      createdAt: user.createdAt,
+    };
   }
-
-  return {
-    id: user.id,
-    username: user.username,
-    name: user.name,
-    hasImage: user.image !== null,
-    hasHeroImage: user.heroImage !== null,
-    createdAt: user.createdAt,
-  };
-}
+);
 
 /**
  * Checks if an item and ALL its ancestors are public.
  * Required for proper privacy enforcement - a child of a private parent
  * should not be accessible even if marked public.
+ * Cached per-request to avoid duplicate recursive CTE queries.
  *
  * Uses recursive CTE for efficient ancestor chain verification.
  *
  * @param itemId - Item ID to check
  * @returns True if item and all ancestors are public
  */
-export async function isItemFullyPublic(itemId: string): Promise<boolean> {
-  // Use recursive CTE to check entire ancestor chain
-  const result = await prisma.$queryRaw<Array<{ is_fully_public: boolean }>>`
+export const isItemFullyPublic = cache(
+  async (itemId: string): Promise<boolean> => {
+    // Use recursive CTE to check entire ancestor chain
+    const result = await prisma.$queryRaw<Array<{ is_fully_public: boolean }>>`
     WITH RECURSIVE ancestors AS (
       -- Start with the target item
       SELECT id, "parentId", "isPublic"
@@ -125,8 +131,9 @@ export async function isItemFullyPublic(itemId: string): Promise<boolean> {
     ) as is_fully_public
   `;
 
-  return result[0]?.is_fully_public ?? false;
-}
+    return result[0]?.is_fully_public ?? false;
+  }
+);
 
 /**
  * Checks if an item can be viewed by a given user.
@@ -164,62 +171,63 @@ export async function canViewItem(
 /**
  * Fetches a public item with visibility verification.
  * Returns null if item doesn't exist or isn't fully public.
+ * Cached per-request to deduplicate calls from generateMetadata and page.
  *
  * @param itemId - Item ID to fetch
  * @returns Public item data or null
  */
-export async function getPublicItem(
-  itemId: string
-): Promise<PublicItem | null> {
-  // First verify the item is fully public
-  const isPublic = await isItemFullyPublic(itemId);
-  if (!isPublic) {
-    return null;
-  }
+export const getPublicItem = cache(
+  async (itemId: string): Promise<PublicItem | null> => {
+    // First verify the item is fully public
+    const isPublic = await isItemFullyPublic(itemId);
+    if (!isPublic) {
+      return null;
+    }
 
-  // Fetch item with fork count and artwork
-  const item = await prisma.item.findUnique({
-    where: { id: itemId },
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      parentId: true,
-      depth: true,
-      userId: true,
-      tmdbId: true,
-      tmdbType: true,
-      updatedAt: true,
-      files: {
-        where: { fileType: "ARTWORK" },
-        select: { id: true },
-        take: 1,
-        orderBy: { isPrimary: "desc" },
+    // Fetch item with fork count and artwork
+    const item = await prisma.item.findUnique({
+      where: { id: itemId },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        parentId: true,
+        depth: true,
+        userId: true,
+        tmdbId: true,
+        tmdbType: true,
+        updatedAt: true,
+        files: {
+          where: { fileType: "ARTWORK" },
+          select: { id: true },
+          take: 1,
+          orderBy: { isPrimary: "desc" },
+        },
+        _count: {
+          select: { sourceForks: true },
+        },
       },
-      _count: {
-        select: { sourceForks: true },
-      },
-    },
-  });
+    });
 
-  if (!item) {
-    return null;
+    if (!item) {
+      return null;
+    }
+
+    return {
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      parentId: item.parentId,
+      depth: item.depth,
+      userId: item.userId,
+      artworkId: item.files[0]?.id ?? null,
+      tmdbId: item.tmdbId,
+      tmdbType: item.tmdbType,
+      forkCount: item._count.sourceForks,
+      updatedAt: item.updatedAt,
+    };
   }
-
-  return {
-    id: item.id,
-    name: item.name,
-    description: item.description,
-    parentId: item.parentId,
-    depth: item.depth,
-    userId: item.userId,
-    artworkId: item.files[0]?.id ?? null,
-    tmdbId: item.tmdbId,
-    tmdbType: item.tmdbType,
-    forkCount: item._count.sourceForks,
-    updatedAt: item.updatedAt,
-  };
-}
+);
 
 /**
  * Fetches all public items for a user's public profile.

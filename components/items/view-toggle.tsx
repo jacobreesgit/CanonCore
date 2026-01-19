@@ -32,8 +32,13 @@ export function useStoredViewMode(): [ViewMode, (mode: ViewMode) => void] {
   }, []);
 
   const getSnapshot = useCallback((): ViewMode => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored === "tree" ? "tree" : "grid";
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored === "tree" ? "tree" : "grid";
+    } catch {
+      // localStorage unavailable (private browsing, disabled, quota exceeded)
+      return "grid";
+    }
   }, []);
 
   const getServerSnapshot = useCallback((): ViewMode => "grid", []);
@@ -45,7 +50,11 @@ export function useStoredViewMode(): [ViewMode, (mode: ViewMode) => void] {
   );
 
   const setValue = useCallback((mode: ViewMode) => {
-    localStorage.setItem(STORAGE_KEY, mode);
+    try {
+      localStorage.setItem(STORAGE_KEY, mode);
+    } catch {
+      // localStorage unavailable (private browsing, disabled, quota exceeded)
+    }
     window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY }));
   }, []);
 
@@ -109,7 +118,7 @@ export function ViewToggle({
             : "text-muted-foreground hover:text-foreground/80"
         )}
       >
-        <LayoutGrid className="size-4" strokeWidth={2} />
+        <LayoutGrid aria-hidden="true" className="size-4" strokeWidth={2} />
         <span className="hidden sm:inline">Grid</span>
       </button>
 
@@ -127,7 +136,7 @@ export function ViewToggle({
             : "text-muted-foreground hover:text-foreground/80"
         )}
       >
-        <List className="size-4" strokeWidth={2} />
+        <List aria-hidden="true" className="size-4" strokeWidth={2} />
         <span className="hidden sm:inline">Tree</span>
       </button>
     </div>

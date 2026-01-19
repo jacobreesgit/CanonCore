@@ -7,13 +7,53 @@
 
 import { useState, useTransition, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Loader2, Plus, RefreshCw } from "lucide-react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { UniqueIdentifier } from "@dnd-kit/core";
 import { toast } from "sonner";
 
-import { SortableTree, Tree } from "@/components/sortable-tree";
-import { SortableGrid, Grid } from "@/components/sortable-grid";
+// Static imports for view-only mode (common case)
+import { Tree } from "@/components/sortable-tree";
+import { Grid } from "@/components/sortable-grid";
+import { Skeleton } from "@/components/ui/skeleton";
+
+/**
+ * Loading skeleton for tree view during edit mode chunk load.
+ */
+function TreeSkeleton() {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Skeleton key={i} className="h-10 w-full" />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Loading skeleton for grid view during edit mode chunk load.
+ */
+function GridSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <Skeleton key={i} className="aspect-[2/3] w-full rounded-lg" />
+      ))}
+    </div>
+  );
+}
+
+// Dynamic imports for edit mode (~15KB dnd-kit loaded on demand)
+const SortableTree = dynamic(
+  () => import("@/components/sortable-tree").then((mod) => mod.SortableTree),
+  { loading: () => <TreeSkeleton />, ssr: false }
+);
+
+const SortableGrid = dynamic(
+  () => import("@/components/sortable-grid").then((mod) => mod.SortableGrid),
+  { loading: () => <GridSkeleton />, ssr: false }
+);
 import { EditModeToggle } from "./edit-mode-toggle";
 import { ViewToggle, useStoredViewMode } from "./view-toggle";
 import { SortDropdown } from "./sort-dropdown";

@@ -81,7 +81,9 @@ function FolderItemRow({
       ) : (
         <Folder className="h-4 w-4 flex-shrink-0" />
       )}
-      <span className="truncate text-sm font-medium">{folder.name}</span>
+      <span className="min-w-0 truncate text-sm font-medium">
+        {folder.name}
+      </span>
       {folder.hasChildren && (
         <ChevronRight className="ml-auto h-4 w-4 flex-shrink-0 opacity-50" />
       )}
@@ -116,6 +118,7 @@ export function ForkDestinationDialog({
 
   // Virtualization for large lists
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Virtual API is intentionally used here for virtualization
   const virtualizer = useVirtualizer({
     count: filteredFolders.length,
     getScrollElement: () => scrollContainerRef.current,
@@ -217,7 +220,7 @@ export function ForkDestinationDialog({
                 <div className="relative">
                   <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                   <Input
-                    placeholder="Search folders..."
+                    placeholder="Search folders…"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     disabled={isForking}
