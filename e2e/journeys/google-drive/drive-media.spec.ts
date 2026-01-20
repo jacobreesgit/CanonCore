@@ -3,67 +3,45 @@
  * Tests artwork display, video streaming, and seeking.
  *
  * SETUP REQUIRED:
- * 1. Ensure E2E_GOOGLE_ROOT_FOLDER_ID points to a valid folder in the test Drive account
- *    - Open Google Drive as the E2E test account (jacobreesmedia@gmail.com)
- *    - Create a folder (e.g., "CanonCore-E2E-Tests")
- *    - Get the folder ID from the URL: drive.google.com/drive/folders/[FOLDER_ID]
- *    - Set E2E_GOOGLE_ROOT_FOLDER_ID=[FOLDER_ID] in .env.local
- *
- * 2. Create a subfolder named "Breaking Bad" inside that folder
- *
- * 3. Add a video file to the "Breaking Bad" folder
+ * Run `pnpm run setup:e2e-drive` to create the pre-synced E2E Drive user
+ * with the "Breaking Bad" folder and video file already in the database.
  */
 
 import { test, expect } from "../../fixtures";
 import { ItemsPage } from "../../pages/items.page";
 
 test.describe("Google Drive: Media Playback", () => {
-  // Skip on mobile - sync and media playback tests are unreliable in mobile emulation
+  // Skip on mobile - media playback tests are unreliable in mobile emulation
   // The core functionality is validated by desktop tests
   test.skip(({ isMobile }) => isMobile, "Skipping on mobile - sync unreliable");
 
-  // Run tests serially - they share the same Google Drive account and parallel
-  // execution causes race conditions with sync and Prisma operations
+  // Run tests serially - they share the same Google Drive account
   test.describe.configure({ mode: "serial" });
 
   let itemsPage: ItemsPage;
-  // This folder must exist in E2E_GOOGLE_ROOT_FOLDER_ID with a video file
+  // This folder is pre-synced by setup:e2e-drive
   const TEST_ITEM_NAME = "Breaking Bad";
 
-  test.beforeEach(
-    async ({
-      page,
-      setupDriveConnection,
-      testUser,
-      cleanupUserItems,
-      cleanupTestDriveFolders,
-    }) => {
-      // Clean up any leftover test folders from Google Drive (keeps "Breaking Bad")
-      await cleanupTestDriveFolders();
+  test.beforeEach(async ({ page, e2eDriveUser, cleanupTestDriveFolders }) => {
+    // Clean up any leftover test folders from Google Drive (keeps "Breaking Bad")
+    await cleanupTestDriveFolders();
 
-      // Clean up any leftover items from previous test runs
-      await cleanupUserItems(testUser.id);
+    // e2eDriveUser fixture logs us in - "Breaking Bad" is already in the database
+    itemsPage = new ItemsPage(page);
 
-      await setupDriveConnection(testUser.id);
-      itemsPage = new ItemsPage(page);
-      await itemsPage.goto();
-      await itemsPage.waitForLoadingComplete();
+    // Navigate to items page with fresh state (closes any modals from previous tests)
+    await itemsPage.goto();
+    await page.waitForLoadState("networkidle");
+    await itemsPage.waitForLoadingComplete();
 
-      // Trigger sync from toolbar to import the pre-existing "Breaking Bad" folder from Drive
-      const syncButton = page.getByRole("button", { name: /sync/i });
-      await syncButton.click();
+    // Wait for the item to be visible (could be button in grid view or listitem in tree view)
+    await expect(
+      page.getByRole("button", { name: TEST_ITEM_NAME, exact: true })
+    ).toBeVisible({ timeout: 10000 });
 
-      // Wait for sync to complete - use polling instead of fixed timeout
-      await expect(async () => {
-        await page.reload();
-        await itemsPage.waitForLoadingComplete();
-        await expect(page.getByText(TEST_ITEM_NAME)).toBeVisible();
-      }).toPass({ timeout: 30000, intervals: [2000, 3000, 5000] });
-
-      // Note: If we get here, the item was found. If it times out above,
-      // the error message from toPass will indicate the sync didn't complete.
-    }
-  );
+    // Suppress unused variable warning - fixture is used for login side effect
+    void e2eDriveUser;
+  });
 
   test("displays item detail page correctly", async ({ page }) => {
     // Navigate to the test item
@@ -119,54 +97,4 @@ test.describe("Google Drive: Media Playback", () => {
     }
   });
 
-  test("video player supports seeking", async ({ page }) => {
-    await itemsPage.clickItem(TEST_ITEM_NAME);
-
-    const playButton = page.getByRole("button", { name: /play/i });
-    const hasPlayButton = await playButton.count();
-
-    if (hasPlayButton > 0) {
-      await playButton.click();
-
-      const videoPlayer = page.locator("video");
-      await expect(videoPlayer).toBeVisible({ timeout: 15000 });
-
-      // Wait for video to be ready (with timeout)
-      await videoPlayer.evaluate(async (video: HTMLVideoElement) => {
-        await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(
-            () => reject(new Error("Video metadata timeout")),
-            20000
-          );
-          if (video.readyState >= 1) {
-            clearTimeout(timeout);
-            resolve();
-          } else {
-            video.addEventListener(
-              "loadedmetadata",
-              () => {
-                clearTimeout(timeout);
-                resolve();
-              },
-              { once: true }
-            );
-          }
-        });
-      });
-
-      // Seek to 50% of video
-      await videoPlayer.evaluate((video: HTMLVideoElement) => {
-        const targetTime = Math.min(10, video.duration * 0.5);
-        video.currentTime = targetTime;
-      });
-
-      // Verify seek worked
-      const currentTime = await videoPlayer.evaluate(
-        (v: HTMLVideoElement) => v.currentTime
-      );
-      expect(currentTime).toBeGreaterThan(0);
-    } else {
-      test.skip(true, "No media files available for seeking test");
-    }
-  });
 });

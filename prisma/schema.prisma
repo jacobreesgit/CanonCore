@@ -139,6 +139,9 @@ model Item {
   // Public visibility (for public profiles feature)
   isPublic    Boolean  @default(false) // visible on public profile
 
+  // Visibility inheritance from parent
+  inheritVisibility  Boolean  @default(false)  // false = explicit visibility, true = inherit from parent
+
   // TMDB metadata (for fork artwork re-fetch)
   tmdbId      Int?     // TMDB movie/TV ID
   tmdbType    String?  // "movie" | "tv"

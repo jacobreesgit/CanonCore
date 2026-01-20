@@ -87,20 +87,20 @@ describe("NavMain", () => {
     expect(button.getAttribute("data-active")).toBe("true");
   });
 
-  it("renders My Items button as active on nested path /my-items/123", () => {
+  it("renders My Items button as inactive on nested path /my-items/123 (pinned items handle this)", () => {
     mockPathname.mockReturnValue("/my-items/abc123");
     render(<NavMain items={testItems} />);
 
     const button = screen.getByTestId("sidebar-menu-button");
-    expect(button.getAttribute("data-active")).toBe("true");
+    expect(button.getAttribute("data-active")).toBe("false");
   });
 
-  it("renders My Items button as active on /my-items/connections", () => {
+  it("renders My Items button as inactive on /my-items/connections (pinned items handle this)", () => {
     mockPathname.mockReturnValue("/my-items/connections");
     render(<NavMain items={testItems} />);
 
     const button = screen.getByTestId("sidebar-menu-button");
-    expect(button.getAttribute("data-active")).toBe("true");
+    expect(button.getAttribute("data-active")).toBe("false");
   });
 
   it("renders My Items button as inactive on /docs", () => {

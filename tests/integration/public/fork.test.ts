@@ -133,6 +133,7 @@ describe("Fork Integration", () => {
           expect(forkedItem?.userId).toBe(forker.id);
           expect(forkedItem?.name).toBe("Public Movie");
           expect(forkedItem?.isPublic).toBe(false); // Forked items start private
+          expect(forkedItem?.inheritVisibility).toBe(false); // Forked items use explicit visibility
           expect(forkedItem?.forkedFromId).toBe(publicItem.id);
         }
       } finally {
@@ -279,29 +280,32 @@ describe("Fork Integration", () => {
       }
     });
 
-    it("prevents forking item with private ancestor", async () => {
+    it("prevents forking item that inherits from private ancestor", async () => {
       const { user: owner } = await createTestUser("owner-ancestor", {
         isPublic: true,
         username: `ownera${Date.now()}`,
       });
       const { user: forker } = await createTestUser("forker-ancestor");
 
-      // Create: Private Parent > Public Child
+      // Create: Private Parent > Inheriting Child
       const privateParent = await prisma.item.create({
         data: {
           userId: owner.id,
           name: "Private Parent",
           isPublic: false,
+          inheritVisibility: false,
           order: 0,
           depth: 0,
         },
       });
 
-      const publicChild = await prisma.item.create({
+      // Child inherits visibility from private parent (effectively private)
+      const inheritingChild = await prisma.item.create({
         data: {
           userId: owner.id,
-          name: "Public Child",
-          isPublic: true,
+          name: "Inheriting Child",
+          isPublic: false,
+          inheritVisibility: true,
           parentId: privateParent.id,
           order: 0,
           depth: 1,
@@ -310,7 +314,7 @@ describe("Fork Integration", () => {
 
       try {
         currentTestUserId = forker.id;
-        const result = await forkItem(publicChild.id);
+        const result = await forkItem(inheritingChild.id);
 
         expect("error" in result).toBe(true);
         if ("error" in result) {

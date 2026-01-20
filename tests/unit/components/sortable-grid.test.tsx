@@ -60,6 +60,8 @@ describe("SortableGrid", () => {
     order,
     depth: 0,
     pinnedOrder: null,
+    isPublic: false,
+    inheritVisibility: false,
     userId: "user-1",
     createdAt: new Date(),
     updatedAt: new Date(),

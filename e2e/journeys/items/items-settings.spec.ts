@@ -407,7 +407,7 @@ test.describe("Item Page Settings", () => {
 
 test.describe("File Deletion", () => {
   test.skip(
-    !process.env.E2E_GOOGLE_REFRESH_TOKEN,
+    !process.env.GOOGLE_E2E_REFRESH_TOKEN,
     "Requires Google Drive test credentials"
   );
 

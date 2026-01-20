@@ -172,6 +172,7 @@ export async function forkItem(
           tmdbId: sourceItem.tmdbId,
           tmdbType: sourceItem.tmdbType,
           isPublic: false, // Forked items start private
+          inheritVisibility: false, // Forked items use explicit visibility
         },
       });
 

@@ -78,6 +78,10 @@ describe("ItemsToolbar", () => {
     id: "item-1",
     name: "Movies",
     description: "My movie collection",
+    isPublic: false,
+    inheritVisibility: false,
+    hasParent: false,
+    hasChildren: false,
   };
 
   beforeEach(() => {

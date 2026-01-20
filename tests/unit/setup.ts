@@ -46,6 +46,7 @@ vi.mock("@/lib/prisma", () => ({
       delete: vi.fn(),
       deleteMany: vi.fn(),
       aggregate: vi.fn(),
+      count: vi.fn(),
     },
     googleDriveConnection: {
       findUnique: vi.fn(),

@@ -18,7 +18,10 @@ Added comprehensive Prisma error class mocks to the test setup, enabling proper 
 class MockPrismaClientKnownRequestError extends Error {
   code: string;
   meta?: Record<string, unknown>;
-  constructor(message: string, { code, meta }: { code: string; meta?: Record<string, unknown> }) {
+  constructor(
+    message: string,
+    { code, meta }: { code: string; meta?: Record<string, unknown> }
+  ) {
     super(message);
     this.name = "PrismaClientKnownRequestError";
     this.code = code;

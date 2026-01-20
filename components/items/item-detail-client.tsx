@@ -29,6 +29,10 @@ interface ItemDetailClientProps {
     id: string;
     name: string;
     description: string | null;
+    isPublic: boolean;
+    inheritVisibility: boolean;
+    parentId: string | null;
+    childCount: number;
   };
   /** Child items to display. */
   childItems: ItemWithArtwork[];
@@ -155,6 +159,10 @@ export function ItemDetailClient({
       id: item.id,
       name: item.name,
       description: item.description,
+      isPublic: item.isPublic,
+      inheritVisibility: item.inheritVisibility,
+      hasParent: item.parentId !== null,
+      hasChildren: item.childCount > 0,
     },
     childCount: childItems.length,
     hasDriveConnection,

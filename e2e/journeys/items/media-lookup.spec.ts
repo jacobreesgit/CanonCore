@@ -532,7 +532,7 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
 
     // Files tab only appears when Google Drive is connected
     test.skip(
-      !process.env.E2E_GOOGLE_REFRESH_TOKEN,
+      !process.env.GOOGLE_E2E_REFRESH_TOKEN,
       "Requires Google Drive connection for Files tab"
     );
 

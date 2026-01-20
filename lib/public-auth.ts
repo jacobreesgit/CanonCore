@@ -99,35 +99,56 @@ export const getPublicProfile = cache(
 );
 
 /**
- * Checks if an item and ALL its ancestors are public.
- * Required for proper privacy enforcement - a child of a private parent
- * should not be accessible even if marked public.
- * Cached per-request to avoid duplicate recursive CTE queries.
+ * Checks if an item is effectively public (directly or via inheritance).
+ * An item is effectively public if:
+ * 1. It has isPublic=true and inheritVisibility=false (explicit), OR
+ * 2. It has inheritVisibility=true AND an ancestor in its chain is effectively public
  *
- * Uses recursive CTE for efficient ancestor chain verification.
+ * Uses recursive CTE to walk up the tree and determine effective visibility.
+ * CTE terminates when it finds an item with inheritVisibility=false (the "resolver").
  *
  * @param itemId - Item ID to check
- * @returns True if item and all ancestors are public
+ * @returns True if item is effectively public
  */
 export const isItemFullyPublic = cache(
   async (itemId: string): Promise<boolean> => {
-    // Use recursive CTE to check entire ancestor chain
+    // Use recursive CTE to check effective visibility through inheritance chain
     const result = await prisma.$queryRaw<Array<{ is_fully_public: boolean }>>`
-    WITH RECURSIVE ancestors AS (
+    WITH RECURSIVE visibility_chain AS (
       -- Start with the target item
-      SELECT id, "parentId", "isPublic"
+      SELECT
+        id,
+        "parentId",
+        "isPublic",
+        "inheritVisibility",
+        CASE
+          WHEN "inheritVisibility" = false THEN "isPublic"
+          ELSE NULL  -- Need to check parent
+        END as resolved_visibility
       FROM "Item"
       WHERE id = ${itemId}
 
       UNION ALL
 
-      -- Recursively get all ancestors
-      SELECT i.id, i."parentId", i."isPublic"
+      -- Walk up the tree for items that inherit
+      SELECT
+        i.id,
+        i."parentId",
+        i."isPublic",
+        i."inheritVisibility",
+        CASE
+          WHEN i."inheritVisibility" = false THEN i."isPublic"
+          ELSE NULL  -- Keep walking up
+        END as resolved_visibility
       FROM "Item" i
-      INNER JOIN ancestors a ON i.id = a."parentId"
+      INNER JOIN visibility_chain vc ON i.id = vc."parentId"
+      WHERE vc.resolved_visibility IS NULL  -- Only continue if still inheriting
     )
-    SELECT NOT EXISTS (
-      SELECT 1 FROM ancestors WHERE "isPublic" = false
+    SELECT COALESCE(
+      -- Find the first resolved visibility in the chain
+      (SELECT resolved_visibility FROM visibility_chain WHERE resolved_visibility IS NOT NULL LIMIT 1),
+      -- If no explicit visibility found (all inherit up to root), default to false
+      false
     ) as is_fully_public
   `;
 
@@ -247,6 +268,7 @@ export async function getPublicItemsForUser(
     where: {
       userId,
       isPublic: true,
+      inheritVisibility: false, // Only explicitly public items on profile root
       depth: 0, // Only root items on profile
     },
     select: {
@@ -290,24 +312,38 @@ export async function getPublicItemsForUser(
 }
 
 /**
- * Fetches public child items of a parent item.
- * Only returns children that are public.
- * Caller must verify parent visibility first.
+ * Fetches effectively public child items of a parent item.
+ * Returns children that are:
+ * - Explicitly public (inheritVisibility=false, isPublic=true), OR
+ * - Inheriting visibility (inheritVisibility=true) - parent visibility already verified
+ *
+ * @precondition Caller MUST verify parent is public before calling (CR-2 security requirement)
  *
  * @param parentId - Parent item ID
  * @param limit - Maximum items to return
  * @param offset - Pagination offset
- * @returns Array of public child items
+ * @returns Array of effectively public child items
  */
 export async function getPublicChildItems(
   parentId: string,
   limit = 50,
   offset = 0
 ): Promise<PublicItem[]> {
+  // CR-2: Verify parent is actually public before returning inheriting children
+  const parentIsPublic = await isItemFullyPublic(parentId);
+  if (!parentIsPublic) {
+    return [];
+  }
+
   const items = await prisma.item.findMany({
     where: {
       parentId,
-      isPublic: true,
+      OR: [
+        // Explicitly public
+        { inheritVisibility: false, isPublic: true },
+        // Inheriting (parent verified public above)
+        { inheritVisibility: true },
+      ],
     },
     select: {
       id: true,
@@ -364,7 +400,7 @@ export async function getExploreItems(
   const items = await prisma.item.findMany({
     where: {
       isPublic: true,
-      depth: 0, // Only root items on explore
+      inheritVisibility: false, // Only explicitly public items (not inherited)
       user: {
         isPublic: true,
         username: { not: null },

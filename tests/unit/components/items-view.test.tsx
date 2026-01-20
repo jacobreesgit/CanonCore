@@ -68,7 +68,6 @@ vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: vi.fn() })),
 }));
 
-
 // Mock view mode hook - default to tree view
 vi.mock("@/components/items/view-toggle", () => ({
   useStoredViewMode: vi.fn(() => ["tree"]),
@@ -118,6 +117,8 @@ describe("ItemsView", () => {
     order: 0,
     depth: 0,
     pinnedOrder: null,
+    isPublic: false,
+    inheritVisibility: false,
     userId: "user-1",
     createdAt: new Date(),
     updatedAt: new Date(),

@@ -54,7 +54,15 @@ describe("ItemSettingsDialog", () => {
   const defaultProps = {
     open: true,
     onOpenChange: vi.fn(),
-    item: { id: "item-1", name: "Test Item", description: null },
+    item: {
+      id: "item-1",
+      name: "Test Item",
+      description: null,
+      isPublic: false,
+      inheritVisibility: false,
+      hasParent: false,
+      hasChildren: false,
+    },
     files: { media: [], artwork: [], subtitles: [] },
     hasDriveConnection: true,
   };
@@ -447,7 +455,15 @@ describe("ItemSettingsDialog", () => {
         <ItemSettingsDialog
           {...defaultProps}
           files={newFiles}
-          item={{ id: "item-1", name: "Test Item", description: null }}
+          item={{
+            id: "item-1",
+            name: "Test Item",
+            description: null,
+            isPublic: false,
+            inheritVisibility: false,
+            hasParent: false,
+            hasChildren: false,
+          }}
         />
       );
 

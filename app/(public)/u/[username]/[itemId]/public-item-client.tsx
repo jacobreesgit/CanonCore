@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ItemHero } from "@/components/items/item-hero";
 import { GridItem } from "@/components/sortable-grid/GridItem";
-import { Copy, Check, Loader2, ChevronRight, ArrowLeft } from "lucide-react";
+import { Copy, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { PublicProfile, PublicItem } from "@/lib/public-auth";
 import type { ForkInfo, ForkStatus } from "@/lib/fork-actions";
@@ -20,7 +20,6 @@ interface PublicItemClientProps {
   profile: PublicProfile;
   item: PublicItem;
   childItems: PublicItem[];
-  breadcrumb: Array<{ id: string; name: string }>;
   forkInfo: ForkInfo | null;
   forkStatus: ForkStatus | null;
   isAuthenticated: boolean;
@@ -119,7 +118,6 @@ export function PublicItemClient({
   profile,
   item,
   childItems,
-  breadcrumb,
   forkInfo,
   forkStatus,
   isAuthenticated,
@@ -165,31 +163,6 @@ export function PublicItemClient({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Navigation breadcrumb */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-sm">
-        <Link
-          href={`/u/${profile.username}`}
-          className="text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
-        >
-          <ArrowLeft className="size-3.5" />@{profile.username}
-        </Link>
-        {breadcrumb.slice(0, -1).map((crumb) => (
-          <div key={crumb.id} className="flex items-center gap-1">
-            <ChevronRight className="text-muted-foreground/40 size-3.5" />
-            <Link
-              href={`/u/${profile.username}/${crumb.id}`}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {crumb.name}
-            </Link>
-          </div>
-        ))}
-        <div className="flex items-center gap-1">
-          <ChevronRight className="text-muted-foreground/40 size-3.5" />
-          <span className="text-foreground font-medium">{item.name}</span>
-        </div>
-      </nav>
-
       {/* Hero banner - same component as private pages */}
       <ItemHero
         name={item.name}
