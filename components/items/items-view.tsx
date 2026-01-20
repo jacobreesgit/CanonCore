@@ -107,7 +107,15 @@ import { useHeroCollapse } from "@/hooks/use-hero-collapse";
 
 /** State for the settings dialog */
 interface SettingsDialogState {
-  item: { id: string; name: string; description: string | null };
+  item: {
+    id: string;
+    name: string;
+    description: string | null;
+    isPublic: boolean;
+    inheritVisibility: boolean;
+    hasParent: boolean;
+    hasChildren: boolean;
+  };
   files: {
     media: SerializedItemFile[];
     artwork: SerializedItemFile[];
@@ -307,7 +315,15 @@ export function ItemsView({
         : { media: [], artwork: [], subtitles: [] };
 
     setSettingsDialog({
-      item: { id: item.id, name: item.name, description: item.description },
+      item: {
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        isPublic: item.isPublic,
+        inheritVisibility: item.inheritVisibility,
+        hasParent: item.parentId !== null,
+        hasChildren: item.childCount > 0,
+      },
       files,
     });
   }, []);
@@ -810,7 +826,7 @@ export function ItemsView({
                 ? filesResult.data
                 : settingsDialog.files;
 
-            // Refetch item data from local state to get updated name/description
+            // Refetch item data from local state to get updated values
             const updatedItem = itemsRef.current.find(
               (i) => i.id === settingsDialog.item.id
             );
@@ -820,6 +836,10 @@ export function ItemsView({
                   id: updatedItem.id,
                   name: updatedItem.name,
                   description: updatedItem.description,
+                  isPublic: updatedItem.isPublic,
+                  inheritVisibility: updatedItem.inheritVisibility,
+                  hasParent: updatedItem.parentId !== null,
+                  hasChildren: updatedItem.childCount > 0,
                 },
                 files: updatedFiles,
               });

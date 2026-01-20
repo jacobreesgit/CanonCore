@@ -1,11 +1,22 @@
 /**
  * E2E tests for skip link accessibility feature.
  * Verifies keyboard users can bypass navigation to reach main content.
+ *
+ * Note: These tests are skipped on mobile - Tab keyboard navigation
+ * is primarily a desktop accessibility feature.
  */
 
 import { test, expect } from "@playwright/test";
 
 test.describe("Skip Link", () => {
+  // Skip on mobile - Tab keyboard navigation is desktop-focused
+  test.beforeEach(({}, testInfo) => {
+    test.skip(
+      testInfo.project.name.includes("mobile"),
+      "Skip link tests are for desktop keyboard navigation"
+    );
+  });
+
   test("skip link becomes visible on focus and navigates to main content", async ({
     page,
   }) => {

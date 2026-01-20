@@ -1,6 +1,6 @@
 {
   "name": "canoncore",
-  "version": "4.3.0",
+  "version": "4.4.0",
   "private": true,
   "scripts": {
     "build": "next build",
@@ -21,7 +21,12 @@
     "test:watch": "vitest --config tests/unit/vitest.config.ts",
     "test:coverage": "vitest run --coverage --config tests/unit/vitest.config.ts",
     "test:unit": "vitest run --config tests/unit/vitest.config.ts",
-    "test:integration": "vitest run --config tests/integration/vitest.config.ts"
+    "test:integration": "vitest run --config tests/integration/vitest.config.ts",
+    "setup:e2e": "tsx scripts/generate-refresh-token.ts --purpose=e2e",
+    "setup:seed": "tsx scripts/generate-refresh-token.ts --purpose=seed",
+    "setup:e2e-drive": "tsx scripts/setup-e2e-drive.ts",
+    "setup:verify": "tsx scripts/verify-drive-setup.ts",
+    "setup:all": "npm run setup:e2e && npm run setup:seed"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

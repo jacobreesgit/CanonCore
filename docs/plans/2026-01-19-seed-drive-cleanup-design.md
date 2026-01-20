@@ -175,15 +175,15 @@ import type { drive_v3 } from "googleapis";
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `prisma/seed.ts` | Add type import, `cleanupGoogleDrive()`, `verifyTrashEmpty()`, call before `cleanupSeedUsers()` |
-| `prisma/seed-config.ts` | Remove `PROTECTED_FOLDERS` export |
+| File                    | Changes                                                                                         |
+| ----------------------- | ----------------------------------------------------------------------------------------------- |
+| `prisma/seed.ts`        | Add type import, `cleanupGoogleDrive()`, `verifyTrashEmpty()`, call before `cleanupSeedUsers()` |
+| `prisma/seed-config.ts` | Remove `PROTECTED_FOLDERS` export                                                               |
 
 ## Files to Delete
 
-| File | Reason |
-|------|--------|
+| File                     | Reason                              |
+| ------------------------ | ----------------------------------- |
 | `prisma/seed-cleanup.ts` | Functionality merged into `seed.ts` |
 
 ## Testing Strategy
@@ -192,17 +192,17 @@ import type { drive_v3 } from "googleapis";
 
 **Tests to Add:**
 
-| Test | Description |
-|------|-------------|
-| `cleanupGoogleDrive deletes all items in root` | Mock Drive API, verify `batchDelete` called with all item IDs |
-| `cleanupGoogleDrive handles pagination for >1000 items` | Mock multiple pages with `nextPageToken`, verify all pages fetched |
-| `cleanupGoogleDrive uses batch delete for efficiency` | Verify `batchDelete` called instead of individual `permanentlyDeleteFile` calls |
-| `cleanupGoogleDrive empties trash` | Mock Drive API, verify `emptyTrash` called |
-| `cleanupGoogleDrive handles empty root folder` | Mock empty file list, verify no delete calls, trash still emptied |
-| `verifyTrashEmpty polls until empty` | Mock responses: non-empty → non-empty → empty, verify 3 calls with delays |
-| `verifyTrashEmpty times out after 30s` | Mock never-empty trash, verify throws error after timeout |
-| `cleanup failure aborts seed` | Mock Drive error, verify seed doesn't proceed to database operations |
-| `cleanup skipped when SEED_SKIP_DRIVE=true` | Verify no Drive calls when flag set |
+| Test                                                    | Description                                                                     |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `cleanupGoogleDrive deletes all items in root`          | Mock Drive API, verify `batchDelete` called with all item IDs                   |
+| `cleanupGoogleDrive handles pagination for >1000 items` | Mock multiple pages with `nextPageToken`, verify all pages fetched              |
+| `cleanupGoogleDrive uses batch delete for efficiency`   | Verify `batchDelete` called instead of individual `permanentlyDeleteFile` calls |
+| `cleanupGoogleDrive empties trash`                      | Mock Drive API, verify `emptyTrash` called                                      |
+| `cleanupGoogleDrive handles empty root folder`          | Mock empty file list, verify no delete calls, trash still emptied               |
+| `verifyTrashEmpty polls until empty`                    | Mock responses: non-empty → non-empty → empty, verify 3 calls with delays       |
+| `verifyTrashEmpty times out after 30s`                  | Mock never-empty trash, verify throws error after timeout                       |
+| `cleanup failure aborts seed`                           | Mock Drive error, verify seed doesn't proceed to database operations            |
+| `cleanup skipped when SEED_SKIP_DRIVE=true`             | Verify no Drive calls when flag set                                             |
 
 **Tests to Remove:**
 
@@ -212,10 +212,10 @@ import type { drive_v3 } from "googleapis";
 
 **Tests to Add:**
 
-| Test | Description |
-|------|-------------|
-| `database cleanup succeeds independently of Drive cleanup` | Verify DB operations work with mocked Drive |
-| `cleanup handles Drive API rate limiting` | Mock 429 response, verify appropriate retry/error handling |
+| Test                                                       | Description                                                |
+| ---------------------------------------------------------- | ---------------------------------------------------------- |
+| `database cleanup succeeds independently of Drive cleanup` | Verify DB operations work with mocked Drive                |
+| `cleanup handles Drive API rate limiting`                  | Mock 429 response, verify appropriate retry/error handling |
 
 **Tests to Remove:**
 
@@ -234,15 +234,15 @@ The seed script is a developer tool, not a user-facing feature. E2E coverage is 
 
 ## Error Handling
 
-| Scenario | Behavior |
-|----------|----------|
-| Drive credentials missing | Throw error, abort seed |
-| Failed to list items | Throw error, abort seed |
-| Failed to delete items (batch) | Throw error, abort seed |
-| Failed to empty trash | Throw error, abort seed |
-| Trash not empty after 30s | Throw error, abort seed |
-| `SEED_SKIP_DRIVE=true` | Skip all Drive cleanup, proceed with database-only seed |
-| Drive cleanup succeeds, DB cleanup fails | Drive is empty, DB has stale data. Re-run seed to fix. |
+| Scenario                                 | Behavior                                                |
+| ---------------------------------------- | ------------------------------------------------------- |
+| Drive credentials missing                | Throw error, abort seed                                 |
+| Failed to list items                     | Throw error, abort seed                                 |
+| Failed to delete items (batch)           | Throw error, abort seed                                 |
+| Failed to empty trash                    | Throw error, abort seed                                 |
+| Trash not empty after 30s                | Throw error, abort seed                                 |
+| `SEED_SKIP_DRIVE=true`                   | Skip all Drive cleanup, proceed with database-only seed |
+| Drive cleanup succeeds, DB cleanup fails | Drive is empty, DB has stale data. Re-run seed to fix.  |
 
 ## Cascading Delete Behavior
 
@@ -264,6 +264,7 @@ When deleting folders from Google Drive:
 ## Rollback Plan
 
 If issues arise, the previous behavior can be restored by:
+
 1. Reverting `prisma/seed.ts` changes
 2. Restoring `prisma/seed-cleanup.ts` from git
 3. Restoring `PROTECTED_FOLDERS` in `prisma/seed-config.ts`

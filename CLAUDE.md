@@ -102,13 +102,15 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── items-view.tsx            # Main view with tree/grid/edit/sort/filter
 │   │   ├── media-search-combobox.tsx # TMDB search with poster thumbnails
 │   │   ├── mobile-options-sheet.tsx  # Mobile drawer for Sort/Filter options
+│   │   ├── parent-privacy-warning-dialog.tsx  # Warning when making item public with private parent
 │   │   ├── poster-selection-step.tsx # Wizard step for poster selection
 │   │   ├── queued-file-thumbnail.tsx # Thumbnail preview for queued uploads
+│   │   ├── reparent-warning-dialog.tsx  # Warning when moving items affects visibility
 │   │   ├── sort-dropdown.tsx         # Sort option dropdown (name, date, custom)
 │   │   ├── sync-badge.tsx            # Google Drive sync status indicators
 │   │   ├── title-description-step.tsx # Wizard step for name/description options
 │   │   ├── view-toggle.tsx           # Tree/grid view switcher
-│   │   └── visibility-toggle.tsx     # Public/private toggle for items
+│   │   └── visibility-toggle.tsx     # Public/private toggle with inheritance support
 │   ├── media/                        # Media playback components
 │   │   ├── media-overlay.tsx         # Full-screen media viewer
 │   │   └── media-player.tsx          # Vidstack video player wrapper
@@ -176,6 +178,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── google-drive/             # Google Drive integration tests (batch operations)
 │   │   ├── items/                    # Items integration tests (CRUD, hierarchy)
 │   │   ├── public/                   # Public profile and fork integration tests
+│   │   ├── seed/                     # Seed system integration tests
 │   │   ├── user/                     # User profile integration tests
 │   │   ├── setup.ts                  # DB cleanup, env loading, rate-limit bypass
 │   │   └── vitest.config.ts
@@ -196,7 +199,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── use-tree-collapse.ts          # Shared tree collapse/expand state
 │   └── use-username-validation.ts    # Username availability check with debounce
 ├── content/
-│   └── docs/                         # MDX documentation pages (22 files)
+│   └── docs/                         # MDX documentation pages (28 files)
 ├── lib/
 │   ├── auth.ts                       # NextAuth config, extractSidebarUser helper
 │   ├── auth-actions.ts               # Auth server actions
@@ -219,7 +222,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── logger.ts                     # Pino structured logging with request context
 │   ├── prisma.ts                     # Prisma client singleton
 │   ├── progress-utils.ts             # Playback progress calculation (90% threshold), DFS traversal for first incomplete item
-│   ├── public-auth.ts                # Public profile/item auth utilities (isItemFullyPublic, getPublicItems)
+│   ├── public-auth.ts                # Public profile/item auth utilities (isItemFullyPublic, getPublicItems, getPublicChildItems)
 │   ├── queue-aware-actions.ts        # Actions that queue when offline
 │   ├── rate-limit.ts                 # Upstash Redis rate limiting
 │   ├── source.ts                     # Fumadocs source configuration
@@ -229,7 +232,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── sync-utils.ts                 # Shared sync types and utilities
 │   ├── tmdb-actions.ts               # TMDB metadata server actions
 │   ├── tmdb-client.ts                # TMDB API client for movie/TV metadata
-│   ├── types.ts                      # Shared types (Item, ItemFile, ItemProgress, PinnedItem, NextItem, PublicProfile, PublicItem, ForkStatus, ForkInfo, SortOption, FilterOption, ViewMode, QueuedFile, TMDBMetadataSelection, SyncLogEntry)
+│   ├── types.ts                      # Shared types (Item, ItemFile, ItemProgress, PinnedItem, NextItem, PublicProfile, PublicItem, ForkStatus, ForkInfo, SortOption, FilterOption, ViewMode, QueuedFile, TMDBMetadataSelection, SyncLogEntry, InheritVisibilityItem)
 │   ├── upload-utils.ts               # Browser-to-Drive upload utilities
 │   ├── user-actions.ts               # User profile server actions
 │   ├── utils.ts                      # cn() helper
@@ -237,9 +240,8 @@ pnpm run test:e2e:ui                        # UI mode
 ├── prisma/
 │   ├── migrations/                   # Database migrations
 │   ├── schema.prisma                 # User, PasswordReset, Item, ItemFile, GoogleDriveConnection, SyncLog, Fork
-│   ├── seed.ts                       # Database seeding with TMDB + Drive integration
-│   ├── seed-config.ts                # Seed configuration (movie/TV IDs, limits, playback simulation)
-│   └── seed-cleanup.ts               # Safe cleanup with protected folders
+│   ├── seed.ts                       # Database seeding with TMDB + Drive integration (auto-cleans Drive first)
+│   └── seed-config.ts                # Seed configuration (movie/TV IDs, limits, playback simulation)
 ├── proxy.ts                          # Next.js proxy for request ID injection
 ├── skills/                           # Claude Code skills
 │   ├── code-review-excellence/       # Code review best practices
@@ -248,11 +250,12 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── react-best-practices/         # React optimization rules (50+)
 │   └── web-design-guidelines/        # Frontend design principles
 ├── scripts/
-│   ├── generate-refresh-token.ts     # Google Drive token generator for E2E tests
+│   ├── generate-refresh-token.ts     # Google Drive token generator with --purpose flag
 │   ├── setup-e2e-drive.ts            # E2E Drive environment setup
+│   ├── verify-drive-setup.ts         # Validate Drive accounts are configured correctly
 │   └── verify-seed.ts                # Quick seed verification utility
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 4.3.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 4.4.0)
     └── plans/                        # Design documents and audit reports
 ```
 
@@ -279,7 +282,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Item has self-referential parent/child relationships for hierarchy
 - Item has optional `description` field (max 1000 chars) for TMDB overviews or notes
 - Item has optional `pinnedOrder` field for sidebar pinning (null = not pinned, 0+ = pinned with order)
-- Item has optional `isPublic` for visibility and `forkedFromId` for fork tracking
+- Item has optional `isPublic` for visibility, `inheritVisibility` for parent inheritance, and `forkedFromId` for fork tracking
 - Item has Google Drive fields: `driveFileId`, `driveModifiedAt`, `syncStatus`, `driveConnectionId`
 - Fork tracks item copies: `sourceItemId`, `targetItemId`, `userId` with unique constraint on source+user
 - ItemFile stores files per item: `filename`, `driveFileId`, `fileType`, `mimeType`, `playbackPosition`, `isPrimary`, `isHero`
@@ -301,7 +304,7 @@ pnpm run test:e2e:ui                        # UI mode
 - **View mode**: Full background artwork with dark overlay (Feature222 aesthetic)
 - **Edit mode**: Simplified icons with drag handles for reordering
 - **Add Item dialog**: Modal with TMDB search combobox for auto-filling metadata
-- **Server actions**: `createItem`, `updateItem`, `deleteItem`, `deleteItems`, `reorderItems`, `getSearchableItems`, `pinItem`, `unpinItem`, `getPinnedItems`, `getFirstIncompleteItem` in `lib/item-actions.ts` (parallel async for rate limit + auth)
+- **Server actions**: `createItem`, `updateItem`, `deleteItem`, `deleteItems`, `reorderItems`, `getSearchableItems`, `pinItem`, `unpinItem`, `getPinnedItems`, `getFirstIncompleteItem`, `updateVisibility`, `updateInheritVisibility` in `lib/item-actions.ts` (parallel async for rate limit + auth)
 - **Bulk delete**: Edit mode shows checkboxes for multi-select; select-all in toolbar; confirmation dialog before deletion
 - **Contextual empty states**: Different messages for first-time users, empty folders, and filter results with actionable buttons
 - **Breadcrumb navigation** for item drill-down
@@ -322,15 +325,16 @@ pnpm run test:e2e:ui                        # UI mode
 - **Public profiles**: Users can enable public visibility with unique username at `/u/[username]`
 - **Username validation**: 3-20 chars, alphanumeric + underscores, no leading numbers, case-insensitive uniqueness
 - **Item visibility**: Items can be made public/private independently via toggle in settings
-- **Fully public check**: Item is only viewable when profile AND all ancestor items are public
+- **Inherited visibility**: Items can inherit visibility from parent (`inheritVisibility: true`) - reduces Explore clutter while maintaining deep links
+- **Fully public check**: Item is only viewable when profile AND all ancestor items are public (handles inheritance)
+- **Explore page**: Shows only explicitly public items (not inheriting) at `/explore`
 - **Forking**: Copy public items to your library with `forkItem()` server action
-- **Fork rules**: Cannot fork own items, cannot fork same item twice, forked items start private
+- **Fork rules**: Cannot fork own items, cannot fork same item twice, forked items start private with `inheritVisibility: false`
 - **Fork destination dialog**: Choose root or any folder when forking, virtualized for large libraries
 - **Fork attribution**: Shows "Forked from [name] by @username" and fork count on public items
-- **Explore page**: Browse all public collections at `/explore`, shows item cards with owner username
 - **Sidebar navigation**: Explore link shown for both authenticated and guest users
 - **Server actions**: `forkItem()`, `getForkStatus()`, `getForkInfo()` in `lib/fork-actions.ts`
-- **Public auth utilities**: `getPublicProfile()`, `getPublicItems()`, `isItemFullyPublic()` in `lib/public-auth.ts` (React.cache() for request deduplication)
+- **Public auth utilities**: `getPublicProfile()`, `getPublicItems()`, `getPublicChildItems()`, `isItemFullyPublic()` in `lib/public-auth.ts` (React.cache() for request deduplication)
 
 ### TMDB Metadata Integration
 
@@ -396,7 +400,7 @@ pnpm run test:e2e:ui                        # UI mode
 ### User Documentation
 
 - **Fumadocs** for MDX-based documentation at `/docs`
-- **23 pages** covering getting started, account, files/folders, google-drive, views, and preferences
+- **28 pages** covering getting started, account, files/folders, google-drive, views, sharing, and preferences
 - **Unified layout** with context-aware sidebar navigation using app sidebar shell
 - **NavDocs component** renders Fumadocs page tree with collapsible folders
 - Content in `content/docs/` with `meta.json` for structure
@@ -425,7 +429,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 2100+ unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system, sync queue, sync history, image loading hooks, bulk selection, empty states, pinned items, progress tracking, public profiles, forking, username validation, rate limiting, error handling, tree utilities
+- 2300+ unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system, sync queue, sync history, image loading hooks, bulk selection, empty states, pinned items, progress tracking, public profiles, forking, username validation, rate limiting, error handling, tree utilities, visibility inheritance
 
 ### E2E Testing
 
@@ -441,9 +445,9 @@ pnpm run test:e2e:ui                        # UI mode
 | Test                             | File                         | Reason                                                                     |
 | -------------------------------- | ---------------------------- | -------------------------------------------------------------------------- |
 | Google Drive media tests (all 4) | `drive-media.spec.ts:23`     | Skipped on mobile - sync and media playback unreliable in mobile emulation |
-| Video playback test              | `drive-media.spec.ts:118`    | Dynamic skip if no video file in `E2E_GOOGLE_ROOT_FOLDER_ID/Breaking Bad/` |
+| Video playback test              | `drive-media.spec.ts:118`    | Dynamic skip if no video file in `GOOGLE_E2E_ROOT_FOLDER_ID/Breaking Bad/` |
 | Video seeking test               | `drive-media.spec.ts:169`    | Dynamic skip if no video file in test folder                               |
-| File Deletion tests (5)          | `items-settings.spec.ts:409` | Skipped if `E2E_GOOGLE_REFRESH_TOKEN` not set                              |
+| File Deletion tests (5)          | `items-settings.spec.ts:409` | Skipped if `GOOGLE_E2E_REFRESH_TOKEN` not set                              |
 
 ### Security
 
@@ -509,15 +513,44 @@ TMDB (optional - for metadata lookup):
 
 Seed (required for database seeding with Drive integration):
 
-- `GOOGLE_TEST_REFRESH_TOKEN` - Refresh token for seed Drive account (seed@canoncore.com)
-- `GOOGLE_TEST_ROOT_FOLDER_ID` - Folder ID where seed creates content
-- `GOOGLE_TEST_EMAIL` - Email of seed account (optional, for display)
+- `GOOGLE_SEED_REFRESH_TOKEN` - Refresh token for seed Drive account
+- `GOOGLE_SEED_ROOT_FOLDER_ID` - Folder ID where seed creates content
+- `GOOGLE_SEED_EMAIL` - Email of seed account (optional, for display)
 
 E2E Testing (optional - for Google Drive E2E tests):
 
-- `E2E_GOOGLE_REFRESH_TOKEN` - Refresh token for E2E test Drive account (jacobreesmedia@gmail.com)
-- `E2E_GOOGLE_ROOT_FOLDER_ID` - Folder ID where E2E tests create/delete items
-- `E2E_GOOGLE_EMAIL` - Email of E2E test account (optional, for display)
+- `GOOGLE_E2E_REFRESH_TOKEN` - Refresh token for E2E test Drive account
+- `GOOGLE_E2E_ROOT_FOLDER_ID` - Folder ID where E2E tests create/delete items
+- `GOOGLE_E2E_EMAIL` - Email of E2E test account (optional, for display)
+
+**Setup Scripts:**
+
+```bash
+pnpm run setup:e2e       # Setup E2E Drive account (interactive OAuth flow)
+pnpm run setup:seed      # Setup seed Drive account (interactive OAuth flow)
+pnpm run setup:e2e-drive # Setup E2E test data (wipe, upload video)
+pnpm run setup:verify    # Verify both accounts are configured correctly
+pnpm run setup:all       # Run both OAuth setups sequentially
+```
+
+**E2E Drive Setup Workflow:**
+
+1. **First-time setup** (run once, uploads 474MB video):
+   ```bash
+   pnpm run setup:e2e-drive
+   ```
+   - Wipes all contents in E2E folder
+   - Empties trash
+   - Creates "Breaking Bad" folder
+   - Uploads test video
+
+2. **Run E2E tests** (fast, just verifies):
+   ```bash
+   pnpm run test:e2e
+   ```
+   - Cleans test-created items (keeps "Breaking Bad")
+   - Verifies baseline data exists
+   - Runs tests
 
 ## Documentation Standards
 

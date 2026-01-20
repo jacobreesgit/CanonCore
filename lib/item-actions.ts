@@ -421,6 +421,8 @@ export async function getItems(
       order: item.order,
       depth: item.depth,
       pinnedOrder: item.pinnedOrder,
+      isPublic: item.isPublic,
+      inheritVisibility: item.inheritVisibility,
       userId: item.userId,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
@@ -533,6 +535,8 @@ export async function getAllItems(): Promise<ItemResult<ItemWithArtwork[]>> {
       order: item.order,
       depth: item.depth,
       pinnedOrder: item.pinnedOrder,
+      isPublic: item.isPublic,
+      inheritVisibility: item.inheritVisibility,
       userId: item.userId,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
@@ -669,6 +673,8 @@ export async function getDescendants(
       order: item.order,
       depth: item.depth,
       pinnedOrder: item.pinnedOrder,
+      isPublic: item.isPublic,
+      inheritVisibility: item.inheritVisibility,
       userId: item.userId,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
@@ -1780,4 +1786,106 @@ export async function getItemVisibility(
   }
 
   return { success: true, data: { isPublic: item.isPublic } };
+}
+
+/**
+ * Sets whether an item inherits visibility from its parent.
+ * Root items (parentId=null) cannot inherit.
+ *
+ * @param id - Item ID
+ * @param inheritVisibility - Whether to inherit visibility
+ * @returns Success or error
+ */
+export async function setInheritVisibility(
+  id: string,
+  inheritVisibility: boolean
+): Promise<ItemResult<void>> {
+  const [rateLimitResult, session] = await Promise.all([
+    checkRateLimit("itemUpdate"),
+    auth(),
+  ]);
+
+  if (rateLimitResult) {
+    return { error: rateLimitResult.error };
+  }
+
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  const item = await prisma.item.findUnique({
+    where: { id },
+    select: { userId: true, parentId: true, inheritVisibility: true },
+  });
+
+  if (!item) {
+    return { error: "Item not found" };
+  }
+
+  if (item.userId !== session.user.id) {
+    return { error: "Unauthorized" };
+  }
+
+  // Root items cannot inherit
+  if (inheritVisibility && item.parentId === null) {
+    return { error: "Root items cannot inherit visibility" };
+  }
+
+  // No change needed
+  if (item.inheritVisibility === inheritVisibility) {
+    return { success: true };
+  }
+
+  try {
+    await prisma.item.update({
+      where: { id },
+      data: { inheritVisibility },
+    });
+
+    logger.info(
+      { userId: session.user.id, itemId: id, inheritVisibility },
+      "Item inherit visibility updated"
+    );
+
+    return { success: true };
+  } catch (error) {
+    logger.error({ error, itemId: id }, "Failed to update inherit visibility");
+    const prismaError = handlePrismaError(error);
+    return prismaError ?? { error: "Failed to update visibility" };
+  }
+}
+
+/**
+ * Counts children that will be affected by making an item private.
+ * Only counts children that inherit visibility (inheritVisibility=true).
+ *
+ * @param itemId - Parent item ID
+ * @returns Count of inheriting children
+ */
+export async function countInheritingChildren(itemId: string): Promise<number> {
+  // Parallelize auth and item lookup (both independent)
+  const [session, item] = await Promise.all([
+    auth(),
+    prisma.item.findUnique({
+      where: { id: itemId },
+      select: { userId: true },
+    }),
+  ]);
+
+  if (!session?.user?.id) {
+    return 0;
+  }
+
+  if (!item || item.userId !== session.user.id) {
+    return 0;
+  }
+
+  const count = await prisma.item.count({
+    where: {
+      parentId: itemId,
+      inheritVisibility: true,
+    },
+  });
+
+  return count;
 }

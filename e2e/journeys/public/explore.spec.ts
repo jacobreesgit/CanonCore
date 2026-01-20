@@ -4,9 +4,16 @@
  */
 
 import { test, expect, prisma } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
+import {
+  generateUniqueEmail,
+  generateUniqueUsername,
+  TEST_PASSWORD,
+} from "../../helpers/test-user";
 
 test.describe("Explore Page Journey", () => {
+  // Run serially to avoid database conflicts with shared user state
+  test.describe.configure({ mode: "serial" });
+
   test.describe("browsing collections", () => {
     let ownerEmail: string;
     let ownerId: string;
@@ -16,7 +23,7 @@ test.describe("Explore Page Journey", () => {
     test.beforeEach(async () => {
       // Create owner with public profile and public item directly in DB
       ownerEmail = generateUniqueEmail("explore-owner");
-      ownerUsername = `exploreuser${Date.now()}`;
+      ownerUsername = generateUniqueUsername("ex");
 
       const { hash } = await import("bcryptjs");
       const passwordHash = await hash(TEST_PASSWORD, 10);
@@ -233,10 +240,14 @@ test.describe("Explore Page Journey", () => {
   test.describe("multiple owners", () => {
     let owner1Id: string;
     let owner2Id: string;
-    const owner1Username = `owner1_${Date.now()}`;
-    const owner2Username = `owner2_${Date.now()}`;
+    let owner1Username: string;
+    let owner2Username: string;
 
     test.beforeEach(async () => {
+      // Generate unique usernames for each test run
+      owner1Username = generateUniqueUsername("o1");
+      owner2Username = generateUniqueUsername("o2");
+
       const { hash } = await import("bcryptjs");
       const passwordHash = await hash(TEST_PASSWORD, 10);
 

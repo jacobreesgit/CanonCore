@@ -11,10 +11,21 @@ import {
   emptyTrash,
 } from "@/lib/google-drive-client";
 
+import {
+  E2E_DRIVE_USER_EMAIL,
+  E2E_DRIVE_USER_PASSWORD,
+} from "../helpers/test-user";
+
+export interface E2eDriveUser {
+  id: string;
+  email: string;
+  password: string;
+}
+
 export interface GoogleDriveFixture {
   /**
    * Set up a real Google Drive connection for the test user.
-   * Requires E2E_GOOGLE_REFRESH_TOKEN environment variable.
+   * Requires GOOGLE_E2E_REFRESH_TOKEN environment variable.
    */
   setupDriveConnection: (userId: string) => Promise<string>;
 
@@ -38,6 +49,12 @@ export interface GoogleDriveFixture {
    * Get the root folder ID for the test Drive account.
    */
   testRootFolderId: string;
+
+  /**
+   * Login as the pre-created E2E Drive user (created by setup:e2e-drive).
+   * This user already has "Breaking Bad" synced in the database.
+   */
+  e2eDriveUser: E2eDriveUser;
 }
 
 /**
@@ -46,19 +63,19 @@ export interface GoogleDriveFixture {
  * Uses E2E_GOOGLE_* vars (jacobreesmedia@gmail.com), separate from seed account.
  */
 function getRequiredEnvVars(): { refreshToken: string; rootFolderId: string } {
-  const refreshToken = process.env.E2E_GOOGLE_REFRESH_TOKEN;
-  const rootFolderId = process.env.E2E_GOOGLE_ROOT_FOLDER_ID;
+  const refreshToken = process.env.GOOGLE_E2E_REFRESH_TOKEN;
+  const rootFolderId = process.env.GOOGLE_E2E_ROOT_FOLDER_ID;
 
   if (!refreshToken) {
     throw new Error(
-      "E2E_GOOGLE_REFRESH_TOKEN is required for Google Drive E2E tests.\n" +
+      "GOOGLE_E2E_REFRESH_TOKEN is required for Google Drive E2E tests.\n" +
         "Run: npx tsx scripts/generate-refresh-token.ts"
     );
   }
 
   if (!rootFolderId) {
     throw new Error(
-      "E2E_GOOGLE_ROOT_FOLDER_ID is required for Google Drive E2E tests.\n" +
+      "GOOGLE_E2E_ROOT_FOLDER_ID is required for Google Drive E2E tests.\n" +
         "Create a test folder in Google Drive and set its ID in .env.local"
     );
   }
@@ -82,7 +99,7 @@ export const googleDriveFixture = testUserFixture.extend<GoogleDriveFixture>({
         where: { userId },
         update: {
           name: "E2E Test Google Drive",
-          email: process.env.E2E_GOOGLE_EMAIL || "e2e-test@example.com",
+          email: process.env.GOOGLE_E2E_EMAIL || "e2e-test@example.com",
           encryptedAccessToken: encryptCredential("pending-refresh"),
           encryptedRefreshToken: encryptCredential(refreshToken),
           accessTokenExpiry: new Date(0), // Force refresh on first use
@@ -94,7 +111,7 @@ export const googleDriveFixture = testUserFixture.extend<GoogleDriveFixture>({
         create: {
           userId,
           name: "E2E Test Google Drive",
-          email: process.env.E2E_GOOGLE_EMAIL || "e2e-test@example.com",
+          email: process.env.GOOGLE_E2E_EMAIL || "e2e-test@example.com",
           encryptedAccessToken: encryptCredential("pending-refresh"),
           encryptedRefreshToken: encryptCredential(refreshToken),
           accessTokenExpiry: new Date(0), // Force refresh on first use
@@ -197,6 +214,40 @@ export const googleDriveFixture = testUserFixture.extend<GoogleDriveFixture>({
       }
     };
     await use(cleanup);
+  },
+
+  e2eDriveUser: async ({ page }, use) => {
+    // Find the pre-created E2E Drive user (created by setup:e2e-drive)
+    const user = await prisma.user.findUnique({
+      where: { email: E2E_DRIVE_USER_EMAIL },
+    });
+
+    if (!user) {
+      throw new Error(
+        `E2E Drive user not found: ${E2E_DRIVE_USER_EMAIL}\n` +
+          "Run: pnpm run setup:e2e-drive"
+      );
+    }
+
+    const e2eDriveUser: E2eDriveUser = {
+      id: user.id,
+      email: E2E_DRIVE_USER_EMAIL,
+      password: E2E_DRIVE_USER_PASSWORD,
+    };
+
+    // Sign in the user via UI
+    await page.goto("/sign-in");
+    await page
+      .getByPlaceholder("Email")
+      .waitFor({ state: "visible", timeout: 15000 });
+    await page.getByPlaceholder("Email").fill(e2eDriveUser.email);
+    await page.getByPlaceholder("Password").fill(e2eDriveUser.password);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.waitForURL("/my-items", { timeout: 15000 });
+
+    await use(e2eDriveUser);
+
+    // No cleanup - this is a persistent user created by setup:e2e-drive
   },
 });
 
