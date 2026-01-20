@@ -91,11 +91,9 @@ export default async function PublicItemPage({ params }: PageProps) {
       ? forkStatusResult.data
       : null;
 
-  // Build breadcrumbs with hrefs for SiteHeader (includes current item)
-  const headerBreadcrumbs = [
-    ...(breadcrumb ?? []),
-    { id: item.id, name: item.name },
-  ].map((crumb) => ({
+  // Build breadcrumbs with hrefs for SiteHeader
+  // Note: breadcrumb already includes current item from getPublicBreadcrumb
+  const headerBreadcrumbs = (breadcrumb ?? []).map((crumb) => ({
     id: crumb.id,
     name: crumb.name,
     href: `/u/${profile.username}/${crumb.id}`,
