@@ -306,7 +306,7 @@ describe("Public Profile Integration", () => {
       }
     });
 
-    it("returns false when parent is private", async () => {
+    it("returns true for explicitly public child of private parent", async () => {
       const { user } = await createTestUser("private-parent");
 
       try {
@@ -316,40 +316,45 @@ describe("Public Profile Integration", () => {
             userId: user.id,
             name: "Private Parent",
             isPublic: false,
+            inheritVisibility: false,
             order: 0,
             depth: 0,
           },
         });
 
-        // Create public child
+        // Create explicitly public child (does NOT inherit)
         const child = await prisma.item.create({
           data: {
             userId: user.id,
-            name: "Public Child",
+            name: "Explicit Public Child",
             isPublic: true,
+            inheritVisibility: false,
             parentId: parent.id,
             order: 0,
             depth: 1,
           },
         });
 
+        // Explicitly public items ARE public regardless of parent
         const isFullyPublic = await isItemFullyPublic(child.id);
-        expect(isFullyPublic).toBe(false);
+        expect(isFullyPublic).toBe(true);
       } finally {
         await cleanupUser(user.id);
       }
     });
 
-    it("returns false when grandparent is private", async () => {
+    it("returns false for inheriting child of private grandparent", async () => {
       const { user } = await createTestUser("private-grandparent");
 
       try {
-        // Create hierarchy: Private > Public > Public
+        // Create hierarchy: Private > Inherit > Inherit
+        // The inheriting chain will resolve to the private grandparent
         const grandparent = await prisma.item.create({
           data: {
             userId: user.id,
             name: "Private Grandparent",
             isPublic: false,
+            inheritVisibility: false,
             order: 0,
             depth: 0,
           },
@@ -358,8 +363,9 @@ describe("Public Profile Integration", () => {
         const parent = await prisma.item.create({
           data: {
             userId: user.id,
-            name: "Public Parent",
-            isPublic: true,
+            name: "Inheriting Parent",
+            isPublic: false,
+            inheritVisibility: true,
             parentId: grandparent.id,
             order: 0,
             depth: 1,
@@ -369,11 +375,92 @@ describe("Public Profile Integration", () => {
         const child = await prisma.item.create({
           data: {
             userId: user.id,
-            name: "Public Child",
-            isPublic: true,
+            name: "Inheriting Child",
+            isPublic: false,
+            inheritVisibility: true,
             parentId: parent.id,
             order: 0,
             depth: 2,
+          },
+        });
+
+        // Inheriting items resolve to ancestor's visibility
+        const isFullyPublic = await isItemFullyPublic(child.id);
+        expect(isFullyPublic).toBe(false);
+      } finally {
+        await cleanupUser(user.id);
+      }
+    });
+
+    it("returns false for non-existent item", async () => {
+      // The recursive CTE returns false for non-existent items
+      // (COALESCE defaults to false when no rows match)
+      const isFullyPublic = await isItemFullyPublic("nonexistent-item-id");
+      expect(isFullyPublic).toBe(false);
+    });
+
+    it("returns true for item inheriting from public parent", async () => {
+      const { user } = await createTestUser("inherit-public");
+
+      try {
+        // Create public parent
+        const parent = await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Public Parent",
+            isPublic: true,
+            inheritVisibility: false,
+            order: 0,
+            depth: 0,
+          },
+        });
+
+        // Create inheriting child (isPublic: false, inheritVisibility: true)
+        const child = await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Inheriting Child",
+            isPublic: false,
+            inheritVisibility: true,
+            parentId: parent.id,
+            order: 0,
+            depth: 1,
+          },
+        });
+
+        const isFullyPublic = await isItemFullyPublic(child.id);
+        expect(isFullyPublic).toBe(true);
+      } finally {
+        await cleanupUser(user.id);
+      }
+    });
+
+    it("returns false for item inheriting from private parent", async () => {
+      const { user } = await createTestUser("inherit-private");
+
+      try {
+        // Create private parent
+        const parent = await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Private Parent",
+            isPublic: false,
+            inheritVisibility: false,
+            order: 0,
+            depth: 0,
+          },
+        });
+
+        // Create inheriting child
+        const child = await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Inheriting Child",
+            isPublic: false,
+            inheritVisibility: true,
+            parentId: parent.id,
+            order: 0,
+            depth: 1,
           },
         });
 
@@ -384,12 +471,63 @@ describe("Public Profile Integration", () => {
       }
     });
 
-    it("returns true for non-existent item (vacuous truth in SQL)", async () => {
-      // Note: The SQL query returns true when no rows match because
-      // NOT EXISTS of an empty set is true (vacuous truth).
-      // This is safe in practice because getPublicItem verifies item exists.
-      const isFullyPublic = await isItemFullyPublic("nonexistent-item-id");
-      expect(isFullyPublic).toBe(true);
+    it("returns true for deeply nested inheriting hierarchy", async () => {
+      const { user } = await createTestUser("inherit-deep");
+
+      try {
+        // Create: Public > Inherit > Inherit > Inherit
+        const root = await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Public Root",
+            isPublic: true,
+            inheritVisibility: false,
+            order: 0,
+            depth: 0,
+          },
+        });
+
+        const child1 = await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Inherit 1",
+            isPublic: false,
+            inheritVisibility: true,
+            parentId: root.id,
+            order: 0,
+            depth: 1,
+          },
+        });
+
+        const child2 = await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Inherit 2",
+            isPublic: false,
+            inheritVisibility: true,
+            parentId: child1.id,
+            order: 0,
+            depth: 2,
+          },
+        });
+
+        const deepChild = await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Inherit 3",
+            isPublic: false,
+            inheritVisibility: true,
+            parentId: child2.id,
+            order: 0,
+            depth: 3,
+          },
+        });
+
+        const isFullyPublic = await isItemFullyPublic(deepChild.id);
+        expect(isFullyPublic).toBe(true);
+      } finally {
+        await cleanupUser(user.id);
+      }
     });
   });
 
@@ -409,6 +547,7 @@ describe("Public Profile Integration", () => {
             userId: user.id,
             name: "Public Root",
             isPublic: true,
+            inheritVisibility: false,
             order: 0,
             depth: 0,
           },
@@ -420,6 +559,7 @@ describe("Public Profile Integration", () => {
             userId: user.id,
             name: "Private Root",
             isPublic: false,
+            inheritVisibility: false,
             order: 1,
             depth: 0,
           },
@@ -431,6 +571,7 @@ describe("Public Profile Integration", () => {
             userId: user.id,
             name: "Public Child",
             isPublic: true,
+            inheritVisibility: false,
             parentId: rootPublic.id,
             order: 0,
             depth: 1,
@@ -442,6 +583,48 @@ describe("Public Profile Integration", () => {
         expect(items).toHaveLength(1);
         expect(items[0].name).toBe("Public Root");
         expect(items[0].depth).toBe(0);
+      } finally {
+        await cleanupUser(user.id);
+      }
+    });
+
+    it("excludes items with inheritVisibility=true from Explore", async () => {
+      const { user } = await createTestUser("exclude-inherit");
+
+      try {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { isPublic: true, username: `inherit_${Date.now()}` },
+        });
+
+        // Create explicit public root item
+        await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Explicit Public",
+            isPublic: true,
+            inheritVisibility: false,
+            order: 0,
+            depth: 0,
+          },
+        });
+
+        // Create inheriting root item (should not appear in Explore)
+        await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Inheriting Item",
+            isPublic: false,
+            inheritVisibility: true,
+            order: 1,
+            depth: 0,
+          },
+        });
+
+        const items = await getPublicItemsForUser(user.id);
+
+        expect(items).toHaveLength(1);
+        expect(items[0].name).toBe("Explicit Public");
       } finally {
         await cleanupUser(user.id);
       }
@@ -481,6 +664,7 @@ describe("Public Profile Integration", () => {
             userId: user.id,
             name: "Parent",
             isPublic: true,
+            inheritVisibility: false,
             order: 0,
             depth: 0,
           },
@@ -492,6 +676,7 @@ describe("Public Profile Integration", () => {
             userId: user.id,
             name: "Public Child",
             isPublic: true,
+            inheritVisibility: false,
             parentId: parent.id,
             order: 0,
             depth: 1,
@@ -504,6 +689,7 @@ describe("Public Profile Integration", () => {
             userId: user.id,
             name: "Private Child",
             isPublic: false,
+            inheritVisibility: false,
             parentId: parent.id,
             order: 1,
             depth: 1,
@@ -514,6 +700,110 @@ describe("Public Profile Integration", () => {
 
         expect(children).toHaveLength(1);
         expect(children[0].name).toBe("Public Child");
+      } finally {
+        await cleanupUser(user.id);
+      }
+    });
+
+    it("returns inheriting children when parent is public", async () => {
+      const { user } = await createTestUser("inherit-children");
+
+      try {
+        // Create public parent
+        const parent = await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Public Parent",
+            isPublic: true,
+            inheritVisibility: false,
+            order: 0,
+            depth: 0,
+          },
+        });
+
+        // Create explicit public child
+        await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Explicit Public",
+            isPublic: true,
+            inheritVisibility: false,
+            parentId: parent.id,
+            order: 0,
+            depth: 1,
+          },
+        });
+
+        // Create inheriting child
+        await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Inheriting Child",
+            isPublic: false,
+            inheritVisibility: true,
+            parentId: parent.id,
+            order: 1,
+            depth: 1,
+          },
+        });
+
+        // Create private child
+        await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Private Child",
+            isPublic: false,
+            inheritVisibility: false,
+            parentId: parent.id,
+            order: 2,
+            depth: 1,
+          },
+        });
+
+        const children = await getPublicChildItems(parent.id);
+
+        // Should return both explicit public and inheriting children
+        expect(children).toHaveLength(2);
+        expect(children.map((c) => c.name)).toContain("Explicit Public");
+        expect(children.map((c) => c.name)).toContain("Inheriting Child");
+      } finally {
+        await cleanupUser(user.id);
+      }
+    });
+
+    it("excludes inheriting children when parent is private", async () => {
+      const { user } = await createTestUser("inherit-private-parent");
+
+      try {
+        // Create private parent
+        const parent = await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Private Parent",
+            isPublic: false,
+            inheritVisibility: false,
+            order: 0,
+            depth: 0,
+          },
+        });
+
+        // Create inheriting child
+        await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Inheriting Child",
+            isPublic: false,
+            inheritVisibility: true,
+            parentId: parent.id,
+            order: 0,
+            depth: 1,
+          },
+        });
+
+        const children = await getPublicChildItems(parent.id);
+
+        // Should return empty since parent is private
+        expect(children).toHaveLength(0);
       } finally {
         await cleanupUser(user.id);
       }

@@ -1,10 +1,11 @@
 /**
  * Public layout with sidebar for unauthenticated pages.
- * Used by homepage. Includes spotlight search for authenticated users.
+ * Used by homepage, explore, and public profiles.
+ * Includes spotlight search for authenticated users.
  */
 
 import { AppSidebar } from "@/components/app-sidebar";
-import { SiteHeader } from "@/components/site-header";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { auth, getExtendedSidebarUser } from "@/lib/auth";
 import { MyItemsProviders } from "@/components/my-items-providers";
@@ -39,8 +40,7 @@ export default async function PublicLayout({
           tabIndex={-1}
           className="@container/main flex min-h-full flex-col overflow-y-auto outline-none"
         >
-          <SiteHeader title="Home" titleHref="/" />
-          {children}
+          <ErrorBoundary>{children}</ErrorBoundary>
         </main>
       </SidebarInset>
     </SidebarProvider>

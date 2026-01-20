@@ -4,9 +4,16 @@
  */
 
 import { test, expect, prisma } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
+import {
+  generateUniqueEmail,
+  generateUniqueUsername,
+  TEST_PASSWORD,
+} from "../../helpers/test-user";
 
 test.describe("Public Profiles Journey", () => {
+  // Run serially to avoid database conflicts with shared user state
+  test.describe.configure({ mode: "serial" });
+
   // Owner user credentials - created fresh for each test
   let ownerEmail: string;
   let ownerId: string;
@@ -16,7 +23,7 @@ test.describe("Public Profiles Journey", () => {
   test.beforeEach(async ({ page, signUpPage }) => {
     // Create owner with public profile
     ownerEmail = generateUniqueEmail("public-owner");
-    ownerUsername = `tu${Date.now()}`;
+    ownerUsername = generateUniqueUsername("po");
 
     await signUpPage.goto();
     await signUpPage.signUp(ownerEmail, TEST_PASSWORD, TEST_PASSWORD);
@@ -142,7 +149,7 @@ test.describe("Public Profiles Journey", () => {
   }) => {
     // Create another user with no items
     const emptyUserEmail = generateUniqueEmail("empty-profile");
-    const emptyUsername = `empty${Date.now()}`;
+    const emptyUsername = generateUniqueUsername("em");
 
     // Sign out current user (handles mobile sidebar)
     await myItemsPage.signOut();
@@ -176,6 +183,9 @@ test.describe("Public Profiles Journey", () => {
 });
 
 test.describe("Public Profile Enablement Journey", () => {
+  // Run serially to avoid database conflicts with shared user state
+  test.describe.configure({ mode: "serial" });
+
   let userEmail: string;
   let userId: string;
 
@@ -205,7 +215,7 @@ test.describe("Public Profile Enablement Journey", () => {
     settingsPage,
     publicProfilePage,
   }) => {
-    const username = `tu${Date.now()}`;
+    const username = generateUniqueUsername();
 
     // Open settings
     await settingsPage.openFromNavUser();
@@ -224,6 +234,11 @@ test.describe("Public Profile Enablement Journey", () => {
     await settingsPage.saveChanges();
     await settingsPage.expectSettingsSavedToast();
 
+    // Wait for dialog to close and page to settle before navigating
+    await page.waitForLoadState("networkidle");
+    // Ensure settings dialog is fully closed before navigating
+    await expect(page.getByRole("dialog", { name: /settings/i })).not.toBeVisible({ timeout: 5000 });
+
     // Verify profile is accessible publicly
     await publicProfilePage.gotoProfile(username);
     await expect(page).toHaveURL(`/u/${username}`);
@@ -237,7 +252,7 @@ test.describe("Public Profile Enablement Journey", () => {
     await settingsPage.openFromNavUser();
 
     // Set a username first
-    const username = `confirm${Date.now()}`;
+    const username = generateUniqueUsername("cf");
     await settingsPage.setUsername(username);
     await settingsPage.waitForUsernameValidation();
 
@@ -261,7 +276,7 @@ test.describe("Public Profile Enablement Journey", () => {
 
   test("validates username availability", async ({ settingsPage }) => {
     // First create a user with an existing username
-    const existingUsername = `exist${Date.now()}`;
+    const existingUsername = generateUniqueUsername("ex");
     await prisma.user.create({
       data: {
         email: `existing-${Date.now()}@test.example.com`,
@@ -283,7 +298,7 @@ test.describe("Public Profile Enablement Journey", () => {
       expect(await settingsPage.isUsernameTaken()).toBe(true);
 
       // Change to available username
-      const availableUsername = `avail${Date.now()}`;
+      const availableUsername = generateUniqueUsername("av");
       await settingsPage.setUsername(availableUsername);
       await settingsPage.waitForUsernameValidation();
 
@@ -302,7 +317,7 @@ test.describe("Public Profile Enablement Journey", () => {
     await settingsPage.openFromNavUser();
 
     // Set username
-    const username = `preview${Date.now()}`;
+    const username = generateUniqueUsername("pv");
     await settingsPage.setUsername(username);
 
     // Verify URL preview updates
@@ -315,7 +330,7 @@ test.describe("Public Profile Enablement Journey", () => {
     settingsPage,
     publicProfilePage,
   }) => {
-    const username = `disable${Date.now()}`;
+    const username = generateUniqueUsername("ds");
 
     // First enable public profile via DB
     await prisma.user.update({
@@ -343,6 +358,9 @@ test.describe("Public Profile Enablement Journey", () => {
     await settingsPage.saveChanges();
     await settingsPage.expectSettingsSavedToast();
 
+    // Wait for settings dialog to close and page to settle
+    await page.waitForLoadState("networkidle");
+
     // Verify profile is no longer accessible (should show 404)
     await publicProfilePage.gotoProfile(username);
     // Private profile returns 404 - Next.js shows "This page could not be found"
@@ -355,6 +373,9 @@ test.describe("Public Profile Enablement Journey", () => {
 });
 
 test.describe("Fork Journey", () => {
+  // Run serially to avoid database conflicts with shared user state
+  test.describe.configure({ mode: "serial" });
+
   let ownerEmail: string;
   let ownerId: string;
   let ownerUsername: string;
@@ -363,7 +384,7 @@ test.describe("Fork Journey", () => {
   test.beforeEach(async () => {
     // Create owner with public profile directly in DB
     ownerEmail = generateUniqueEmail("fork-owner");
-    ownerUsername = `fork${Date.now()}`;
+    ownerUsername = generateUniqueUsername("fk");
 
     const { hash } = await import("bcryptjs");
     const passwordHash = await hash(TEST_PASSWORD, 10);

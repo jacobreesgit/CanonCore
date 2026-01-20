@@ -75,12 +75,14 @@ const mockItem = (overrides: {
   userId: string;
   artworkId?: string | null;
   isPublic?: boolean;
+  inheritVisibility?: boolean;
 }) => ({
   ...overrides,
   description: overrides.description ?? null,
   type: "FOLDER" as const,
   pinnedOrder: null,
   isPublic: overrides.isPublic ?? false,
+  inheritVisibility: overrides.inheritVisibility ?? false,
   tmdbId: null,
   tmdbType: null,
   forkedFromId: null,
@@ -1622,6 +1624,163 @@ describe("getItemVisibility", () => {
     if (result.success) {
       expect(result.data?.isPublic).toBe(false);
     }
+  });
+});
+
+describe("setInheritVisibility", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns error when not authenticated", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const { setInheritVisibility } = await import("@/lib/item-actions");
+    const result = await setInheritVisibility("item-1", true);
+
+    expect(result.error).toBe("Unauthorized");
+  });
+
+  it("returns error when item not found", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue(null);
+
+    const { setInheritVisibility } = await import("@/lib/item-actions");
+    const result = await setInheritVisibility("nonexistent", true);
+
+    expect(result.error).toBe("Item not found");
+  });
+
+  it("returns error when item belongs to another user", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      userId: "other-user",
+      parentId: "parent-1",
+      inheritVisibility: false,
+    } as never);
+
+    const { setInheritVisibility } = await import("@/lib/item-actions");
+    const result = await setInheritVisibility("item-1", true);
+
+    expect(result.error).toBe("Unauthorized");
+  });
+
+  it("rejects setting inherit on root item (no parent)", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      userId: "user-1",
+      parentId: null, // Root item
+      inheritVisibility: false,
+    } as never);
+
+    const { setInheritVisibility } = await import("@/lib/item-actions");
+    const result = await setInheritVisibility("root-1", true);
+
+    expect(result.success).toBeFalsy();
+    expect(result.error).toMatch(/root items cannot inherit/i);
+  });
+
+  it("sets inheritVisibility on item with parent", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      userId: "user-1",
+      parentId: "parent-1", // Has parent
+      inheritVisibility: false,
+    } as never);
+    vi.mocked(prisma.item.update).mockResolvedValue({ id: "item-1" } as never);
+
+    const { setInheritVisibility } = await import("@/lib/item-actions");
+    const result = await setInheritVisibility("item-1", true);
+
+    expect(result.success).toBe(true);
+    expect(prisma.item.update).toHaveBeenCalledWith({
+      where: { id: "item-1" },
+      data: { inheritVisibility: true },
+    });
+  });
+
+  it("returns success without update when value unchanged", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      userId: "user-1",
+      parentId: "parent-1",
+      inheritVisibility: true, // Already true
+    } as never);
+
+    const { setInheritVisibility } = await import("@/lib/item-actions");
+    const result = await setInheritVisibility("item-1", true);
+
+    expect(result.success).toBe(true);
+    expect(prisma.item.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("countInheritingChildren", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 0 when not authenticated", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const { countInheritingChildren } = await import("@/lib/item-actions");
+    const result = await countInheritingChildren("item-1");
+
+    expect(result).toBe(0);
+  });
+
+  it("returns 0 when item not found", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue(null);
+
+    const { countInheritingChildren } = await import("@/lib/item-actions");
+    const result = await countInheritingChildren("item-1");
+
+    expect(result).toBe(0);
+  });
+
+  it("returns 0 when user does not own item", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      userId: "other-user",
+    } as never);
+
+    const { countInheritingChildren } = await import("@/lib/item-actions");
+    const result = await countInheritingChildren("item-1");
+
+    expect(result).toBe(0);
+  });
+
+  it("returns count of inheriting children", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      userId: "user-1",
+    } as never);
+    vi.mocked(prisma.item.count).mockResolvedValue(3);
+
+    const { countInheritingChildren } = await import("@/lib/item-actions");
+    const result = await countInheritingChildren("item-1");
+
+    expect(result).toBe(3);
+    expect(prisma.item.count).toHaveBeenCalledWith({
+      where: {
+        parentId: "item-1",
+        inheritVisibility: true,
+      },
+    });
+  });
+
+  it("returns 0 when no inheriting children", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      userId: "user-1",
+    } as never);
+    vi.mocked(prisma.item.count).mockResolvedValue(0);
+
+    const { countInheritingChildren } = await import("@/lib/item-actions");
+    const result = await countInheritingChildren("item-1");
+
+    expect(result).toBe(0);
   });
 });
 

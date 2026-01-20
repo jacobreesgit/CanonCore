@@ -1,0 +1,78 @@
+---
+title: Item Visibility
+description: Control which items appear on your public profile
+---
+
+Make individual items public or private to control what others see on your profile. Items can be explicitly public, or inherit visibility from their parent.
+
+## Make an item public
+
+1. Right-click on any item and select **Settings**
+2. Find the **Public** toggle in the visibility section
+3. Switch it on - the change saves automatically
+
+Public items appear on your profile page and in Explore (if they're root-level).
+
+## Make an item private
+
+To hide an item from public view:
+
+1. Open the item's Settings
+2. Switch the **Public** toggle off - the change saves automatically
+
+Private items are only visible to you.
+
+## Inherit visibility from parent
+
+When you create child items inside a public folder, they can inherit their parent's visibility instead of needing explicit settings.
+
+1. Open the child item's Settings
+2. Enable the **Inherit from parent** toggle - the change saves automatically
+
+**How it works:**
+
+- When inherit is on, the item follows its parent's visibility automatically
+- The public toggle becomes disabled (it uses the parent's setting)
+- When inherit is off, the item uses its own public/private setting
+
+**Example:**
+
+```
+Breaking Bad/     (Public)
+├── Season 1      (Inherits from Breaking Bad → Public)
+│   └── Episode 1 (Inherits from Season 1 → Public)
+└── Season 2      (Inherits from Breaking Bad → Public)
+```
+
+All items are accessible via direct links and your profile, but only "Breaking Bad" appears in Explore.
+
+## Inherited items don't clutter Explore
+
+The Explore page shows only root-level items that are explicitly public (not inheriting). This keeps Explore focused on curated collections rather than showing every episode.
+
+Inherited items are still publicly accessible through:
+
+- Your profile page
+- Direct links
+- Navigating into a public parent item
+
+## Warnings when changing visibility
+
+CanonCore warns you when visibility changes might have unintended effects:
+
+**Making a parent item private:**
+When you make an item private and it has children that inherit visibility, you'll see a warning showing how many child items will be affected. Those children will become effectively private too.
+
+**Moving items between parents:**
+When you drag an item to a new location, you'll see a warning if the move would change its effective visibility (e.g., moving an inheriting item from a public folder to a private folder).
+
+## Best practices
+
+**Use inherited visibility for nested content:**
+Enable inherit for seasons, episodes, chapters, and other nested items. This keeps your Explore presence clean while making the full hierarchy accessible.
+
+**Keep organizational folders private:**
+Folders like "Movies" or "TV Shows" can stay private. Make the actual movies and shows public instead - they'll appear directly in Explore without the folder wrapper.
+
+**Check visibility before sharing links:**
+Items are only accessible when both your profile AND all ancestor items are public (or inheriting from public parents). Even if an item is set to public, it won't be viewable if any ancestor is private.

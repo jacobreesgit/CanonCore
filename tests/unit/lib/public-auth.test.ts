@@ -69,6 +69,7 @@ function mockItem(
     depth: number;
     userId: string;
     isPublic: boolean;
+    inheritVisibility: boolean;
     tmdbId: number | null;
     tmdbType: string | null;
     order: number;
@@ -86,6 +87,7 @@ function mockItem(
     depth: 0,
     userId: "user-1",
     isPublic: true,
+    inheritVisibility: false,
     tmdbId: null,
     tmdbType: null,
     order: 0,
@@ -218,6 +220,32 @@ describe("isItemFullyPublic", () => {
     // The query is a tagged template, so we verify it was called
     const call = mockQueryRaw.mock.calls[0];
     expect(call).toBeDefined();
+  });
+
+  it("returns true when item inherits from public ancestor", async () => {
+    // Item has inheritVisibility=true and ancestor is public
+    mockQueryRaw.mockResolvedValue([{ is_fully_public: true }]);
+
+    const result = await isItemFullyPublic("child-item");
+
+    expect(result).toBe(true);
+  });
+
+  it("returns false when inherit chain is broken by non-inheriting private item", async () => {
+    // Item inherits, but an ancestor has inheritVisibility=false and isPublic=false
+    mockQueryRaw.mockResolvedValue([{ is_fully_public: false }]);
+
+    const result = await isItemFullyPublic("deep-child");
+
+    expect(result).toBe(false);
+  });
+
+  it("returns true when item is explicitly public (inheritVisibility=false, isPublic=true)", async () => {
+    mockQueryRaw.mockResolvedValue([{ is_fully_public: true }]);
+
+    const result = await isItemFullyPublic("explicit-public-item");
+
+    expect(result).toBe(true);
   });
 });
 
@@ -364,7 +392,7 @@ describe("getPublicItemsForUser", () => {
     expect(result).toEqual([]);
   });
 
-  it("queries only root-level public items", async () => {
+  it("queries only root-level explicitly public items", async () => {
     mockItemFindMany.mockResolvedValue([]);
 
     await getPublicItemsForUser("user-1");
@@ -374,8 +402,31 @@ describe("getPublicItemsForUser", () => {
         where: {
           userId: "user-1",
           isPublic: true,
+          inheritVisibility: false, // Only explicitly public items on profile root
           depth: 0,
         },
+      })
+    );
+  });
+
+  it("returns explicitly public items for user profile", async () => {
+    mockItemFindMany.mockResolvedValue([
+      mockItem({
+        id: "movie",
+        name: "Shawshank",
+        isPublic: true,
+        inheritVisibility: false,
+      }),
+    ] as never);
+
+    await getPublicItemsForUser("user-1");
+
+    expect(mockItemFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          isPublic: true,
+          inheritVisibility: false,
+        }),
       })
     );
   });
@@ -439,6 +490,8 @@ describe("getPublicChildItems", () => {
   });
 
   it("returns empty array when parent has no public children", async () => {
+    // Parent is public
+    mockQueryRaw.mockResolvedValue([{ is_fully_public: true }]);
     mockItemFindMany.mockResolvedValue([]);
 
     const result = await getPublicChildItems("parent-1");
@@ -446,7 +499,9 @@ describe("getPublicChildItems", () => {
     expect(result).toEqual([]);
   });
 
-  it("queries children of specific parent", async () => {
+  it("queries children of specific parent with correct visibility filter", async () => {
+    // Parent is public
+    mockQueryRaw.mockResolvedValue([{ is_fully_public: true }]);
     mockItemFindMany.mockResolvedValue([]);
 
     await getPublicChildItems("parent-1");
@@ -455,13 +510,18 @@ describe("getPublicChildItems", () => {
       expect.objectContaining({
         where: {
           parentId: "parent-1",
-          isPublic: true,
+          OR: [
+            { inheritVisibility: false, isPublic: true },
+            { inheritVisibility: true },
+          ],
         },
       })
     );
   });
 
   it("orders children by order field", async () => {
+    // Parent is public
+    mockQueryRaw.mockResolvedValue([{ is_fully_public: true }]);
     mockItemFindMany.mockResolvedValue([]);
 
     await getPublicChildItems("parent-1");
@@ -474,6 +534,8 @@ describe("getPublicChildItems", () => {
   });
 
   it("returns mapped child items", async () => {
+    // Parent is public
+    mockQueryRaw.mockResolvedValue([{ is_fully_public: true }]);
     mockItemFindMany.mockResolvedValue([
       mockItem({
         id: "child-1",
@@ -498,6 +560,8 @@ describe("getPublicChildItems", () => {
   });
 
   it("applies pagination parameters", async () => {
+    // Parent is public
+    mockQueryRaw.mockResolvedValue([{ is_fully_public: true }]);
     mockItemFindMany.mockResolvedValue([]);
 
     await getPublicChildItems("parent-1", 25, 5);
@@ -508,6 +572,59 @@ describe("getPublicChildItems", () => {
         skip: 5,
       })
     );
+  });
+
+  it("returns children that inherit visibility from public parent", async () => {
+    // Parent is public
+    mockQueryRaw.mockResolvedValue([{ is_fully_public: true }]);
+    mockItemFindMany.mockResolvedValue([
+      mockItem({
+        id: "child-1",
+        name: "Inheriting Child",
+        parentId: "parent-1",
+        isPublic: false,
+        inheritVisibility: true,
+      }),
+    ] as never);
+
+    const result = await getPublicChildItems("parent-1");
+
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe("Inheriting Child");
+  });
+
+  it("returns empty array when parent is not public (CR-2 security check)", async () => {
+    // Parent is NOT public
+    mockQueryRaw.mockResolvedValue([{ is_fully_public: false }]);
+
+    const result = await getPublicChildItems("parent-1");
+
+    expect(result).toEqual([]);
+    // Should not query children when parent is not public
+    expect(mockItemFindMany).not.toHaveBeenCalled();
+  });
+
+  it("includes both explicit public and inheriting children", async () => {
+    // Parent is public
+    mockQueryRaw.mockResolvedValue([{ is_fully_public: true }]);
+    mockItemFindMany.mockResolvedValue([
+      mockItem({
+        id: "explicit-child",
+        name: "Explicit Public Child",
+        isPublic: true,
+        inheritVisibility: false,
+      }),
+      mockItem({
+        id: "inherit-child",
+        name: "Inheriting Child",
+        isPublic: false,
+        inheritVisibility: true,
+      }),
+    ] as never);
+
+    const result = await getPublicChildItems("parent-1");
+
+    expect(result).toHaveLength(2);
   });
 });
 
@@ -524,7 +641,7 @@ describe("getExploreItems", () => {
     expect(result).toEqual([]);
   });
 
-  it("queries public root items from public users with usernames", async () => {
+  it("queries explicitly public root items from public users with usernames", async () => {
     mockItemFindMany.mockResolvedValue([]);
 
     await getExploreItems();
@@ -533,6 +650,7 @@ describe("getExploreItems", () => {
       expect.objectContaining({
         where: {
           isPublic: true,
+          inheritVisibility: false, // Only explicitly public items
           depth: 0,
           user: {
             isPublic: true,
@@ -541,6 +659,24 @@ describe("getExploreItems", () => {
         },
       })
     );
+  });
+
+  it("excludes items that only inherit visibility", async () => {
+    mockItemFindMany.mockResolvedValue([
+      mockItem({
+        id: "explicit",
+        name: "Explicit Public",
+        isPublic: true,
+        inheritVisibility: false,
+        user: { username: "testuser" },
+      }),
+      // Note: Query should filter out inheritVisibility=true items
+    ] as never);
+
+    const result = await getExploreItems();
+
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe("Explicit Public");
   });
 
   it("orders by updatedAt descending", async () => {

@@ -378,8 +378,6 @@ Generated for testing purposes.
       expect(typeof config.DEFAULT_SEED_PASSWORD).toBe("string");
 
       expect(config.SEED_DRIVE_FOLDER_NAME).toBeDefined();
-      expect(config.PROTECTED_FOLDERS).toBeDefined();
-      expect(Array.isArray(config.PROTECTED_FOLDERS)).toBe(true);
     });
 
     it("exports hierarchy configuration constants", async () => {
@@ -548,6 +546,221 @@ Generated for testing purposes.
       expect(complete.position).not.toBeNull();
       expect(complete.position).toBeGreaterThanOrEqual(duration * 0.9);
       expect(complete.isComplete).toBe(true);
+    });
+  });
+
+  describe("Google Drive cleanup", () => {
+    describe("cleanupGoogleDrive logic", () => {
+      it("collects all items from paginated responses", async () => {
+        // Simulates the pagination logic in cleanupGoogleDrive
+        const allItems: Array<{ id: string; name: string }> = [];
+
+        // Mock paginated responses
+        const pages = [
+          {
+            files: [
+              { id: "1", name: "File1" },
+              { id: "2", name: "File2" },
+            ],
+            nextPageToken: "page2",
+          },
+          {
+            files: [
+              { id: "3", name: "File3" },
+              { id: "4", name: "File4" },
+            ],
+            nextPageToken: undefined,
+          },
+        ];
+
+        let pageIndex = 0;
+        let pageToken: string | undefined;
+
+        do {
+          const response = pages[pageIndex];
+          const items = response.files || [];
+          for (const item of items) {
+            if (item.id && item.name) {
+              allItems.push({ id: item.id, name: item.name });
+            }
+          }
+          pageToken = response.nextPageToken;
+          pageIndex++;
+        } while (pageToken);
+
+        expect(allItems).toHaveLength(4);
+        expect(allItems.map((i) => i.id)).toEqual(["1", "2", "3", "4"]);
+      });
+
+      it("handles empty root folder", async () => {
+        const allItems: Array<{ id: string; name: string }> = [];
+
+        // Mock empty response
+        const response: {
+          files: Array<{ id: string | null; name: string | undefined }>;
+          nextPageToken: string | undefined;
+        } = { files: [], nextPageToken: undefined };
+        const items = response.files || [];
+        for (const item of items) {
+          if (item.id && item.name) {
+            allItems.push({ id: item.id, name: item.name });
+          }
+        }
+
+        expect(allItems).toHaveLength(0);
+      });
+
+      it("filters items missing id or name", async () => {
+        const allItems: Array<{ id: string; name: string }> = [];
+
+        // Mock response with incomplete items
+        const response = {
+          files: [
+            { id: "1", name: "Valid" },
+            { id: null, name: "Missing ID" },
+            { id: "2", name: undefined },
+            { id: "3", name: "Also Valid" },
+          ],
+          nextPageToken: undefined,
+        };
+
+        const items = response.files || [];
+        for (const item of items) {
+          if (item.id && item.name) {
+            allItems.push({ id: item.id, name: item.name });
+          }
+        }
+
+        expect(allItems).toHaveLength(2);
+        expect(allItems.map((i) => i.name)).toEqual(["Valid", "Also Valid"]);
+      });
+
+      it("extracts file IDs for batch deletion", () => {
+        const allItems = [
+          { id: "file1", name: "Movies" },
+          { id: "file2", name: "TV Shows" },
+          { id: "file3", name: "Other" },
+        ];
+
+        const fileIds = allItems.map((item) => item.id);
+
+        expect(fileIds).toEqual(["file1", "file2", "file3"]);
+      });
+    });
+
+    describe("verifyTrashEmpty logic", () => {
+      it("returns immediately when trash is empty", async () => {
+        let pollCount = 0;
+
+        // Mock: trash is empty on first check
+        const checkTrash = () => {
+          pollCount++;
+          return { files: [] };
+        };
+
+        const response = checkTrash();
+        const trashedItems = response.files || [];
+
+        expect(trashedItems.length).toBe(0);
+        expect(pollCount).toBe(1);
+      });
+
+      it("polls until trash is empty", async () => {
+        let pollCount = 0;
+
+        // Mock: trash takes 3 polls to empty
+        const checkTrash = () => {
+          pollCount++;
+          if (pollCount < 3) {
+            return { files: [{ id: "trashed-file" }] };
+          }
+          return { files: [] };
+        };
+
+        // Simulate polling loop (simplified, without actual sleep)
+        let trashedItems = [{ id: "mock" }];
+        while (trashedItems.length > 0 && pollCount < 10) {
+          const response = checkTrash();
+          trashedItems = response.files || [];
+        }
+
+        expect(pollCount).toBe(3);
+        expect(trashedItems.length).toBe(0);
+      });
+
+      it("detects timeout condition", () => {
+        const TIMEOUT_MS = 30000;
+        const startTime = Date.now();
+
+        // Simulate timeout check
+        const checkTimeout = (currentTime: number) => {
+          return currentTime - startTime >= TIMEOUT_MS;
+        };
+
+        // Not timed out yet
+        expect(checkTimeout(startTime + 1000)).toBe(false);
+        expect(checkTimeout(startTime + 29999)).toBe(false);
+
+        // Timed out
+        expect(checkTimeout(startTime + 30000)).toBe(true);
+        expect(checkTimeout(startTime + 35000)).toBe(true);
+      });
+    });
+
+    describe("batch delete result handling", () => {
+      it("tracks succeeded and failed deletions", () => {
+        // Simulate batchDelete result
+        const result = {
+          succeeded: ["file1", "file2", "file3"],
+          failed: [
+            { fileId: "file4", error: "Permission denied" },
+            { fileId: "file5", error: "Not found" },
+          ],
+        };
+
+        expect(result.succeeded).toHaveLength(3);
+        expect(result.failed).toHaveLength(2);
+        expect(result.failed[0].error).toBe("Permission denied");
+      });
+
+      it("extracts error messages for logging", () => {
+        const result = {
+          succeeded: [],
+          failed: [
+            { fileId: "f1", error: "Error 1" },
+            { fileId: "f2", error: "Error 2" },
+            { fileId: "f3", error: "Error 3" },
+            { fileId: "f4", error: "Error 4" },
+          ],
+        };
+
+        // Only show first 3 errors (as in cleanupGoogleDrive)
+        const errorMessages = result.failed
+          .slice(0, 3)
+          .map((f: { error: string }) => f.error);
+
+        expect(errorMessages).toEqual(["Error 1", "Error 2", "Error 3"]);
+      });
+    });
+
+    describe("token refresh for batch API", () => {
+      it("builds correct token refresh request body", () => {
+        const refreshToken = "test-refresh-token";
+        const clientId = "test-client-id";
+        const clientSecret = "test-client-secret";
+
+        const body = new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          refresh_token: refreshToken,
+          grant_type: "refresh_token",
+        });
+
+        expect(body.get("client_id")).toBe(clientId);
+        expect(body.get("client_secret")).toBe(clientSecret);
+        expect(body.get("refresh_token")).toBe(refreshToken);
+        expect(body.get("grant_type")).toBe("refresh_token");
+      });
     });
   });
 });

@@ -36,7 +36,7 @@ test.describe("Navigation Active State", () => {
       await expect(myItemsNav).toHaveAttribute("data-active", "true");
     });
 
-    test("My Items nav is active on nested folder", async ({
+    test("My Items nav is inactive on nested folder (breadcrumbs provide context)", async ({
       page,
       itemsPage,
     }) => {
@@ -46,11 +46,11 @@ test.describe("Navigation Active State", () => {
 
       // Now open sidebar to check nav state
       await openSidebarIfMobile(page);
-      // Should still show My Items as active
+      // My Items should NOT be active on nested paths - pinned items handle that
       const myItemsNav = page.locator('[data-slot="sidebar-menu-button"]', {
         hasText: "My Items",
       });
-      await expect(myItemsNav).toHaveAttribute("data-active", "true");
+      await expect(myItemsNav).toHaveAttribute("data-active", "false");
     });
 
     // Note: /my-items/connections route was removed with SFTP-to-Google-Drive migration
@@ -106,6 +106,7 @@ test.describe("Navigation Active State", () => {
 
     test("Get Started nav is inactive on home page", async ({ page }) => {
       await page.goto("/");
+      await openSidebarIfMobile(page);
 
       const getStartedNav = page.locator('[data-slot="sidebar-menu-button"]', {
         hasText: "Get Started",

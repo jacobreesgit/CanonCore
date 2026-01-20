@@ -94,6 +94,10 @@ describe("ItemDetailClient", () => {
     description: "My movie collection",
     driveConnectionId: null,
     driveFileId: null,
+    isPublic: false,
+    inheritVisibility: false,
+    parentId: null,
+    childCount: 0,
   };
 
   const defaultChildItems = [
@@ -105,6 +109,8 @@ describe("ItemDetailClient", () => {
       order: 0,
       depth: 1,
       pinnedOrder: null,
+      isPublic: false,
+      inheritVisibility: false,
       userId: "user-1",
       createdAt: new Date(),
       updatedAt: new Date(),

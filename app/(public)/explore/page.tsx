@@ -5,6 +5,7 @@
 
 import { Metadata } from "next";
 import { getExploreItems } from "@/lib/public-auth";
+import { SiteHeader } from "@/components/site-header";
 import { ExploreClient } from "./explore-client";
 
 export const metadata: Metadata = {
@@ -26,5 +27,12 @@ export const metadata: Metadata = {
 export default async function ExplorePage() {
   const items = await getExploreItems(50, 0);
 
-  return <ExploreClient items={items} />;
+  return (
+    <>
+      <SiteHeader title="Explore" titleHref="/explore" />
+      <div className="flex flex-1 flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
+        <ExploreClient items={items} />
+      </div>
+    </>
+  );
 }

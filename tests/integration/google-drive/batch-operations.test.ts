@@ -2,14 +2,14 @@
  * Integration tests for Google Drive batch operations.
  * Tests real batch API behavior with test Drive account.
  *
- * Requires GOOGLE_TEST_REFRESH_TOKEN for real API calls.
+ * Requires GOOGLE_SEED_REFRESH_TOKEN for real API calls.
  */
 
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from "vitest";
 import { batchDelete, batchMove } from "@/lib/google-drive-client";
 
 // Skip tests if test account credentials not available
-const SKIP_INTEGRATION = !process.env.GOOGLE_TEST_REFRESH_TOKEN;
+const SKIP_INTEGRATION = !process.env.GOOGLE_SEED_REFRESH_TOKEN;
 
 // Module-level test folder ID (created if configured folder doesn't exist)
 let testFolderId: string | undefined;
@@ -27,7 +27,7 @@ async function getTestAccessToken(): Promise<string> {
     body: new URLSearchParams({
       client_id: process.env.GOOGLE_CLIENT_ID!,
       client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-      refresh_token: process.env.GOOGLE_TEST_REFRESH_TOKEN!,
+      refresh_token: process.env.GOOGLE_SEED_REFRESH_TOKEN!,
       grant_type: "refresh_token",
     }),
   });
@@ -72,7 +72,7 @@ async function folderExists(
  * @returns Folder ID to use for tests
  */
 async function ensureTestFolder(accessToken: string): Promise<string> {
-  const configuredId = process.env.GOOGLE_TEST_ROOT_FOLDER_ID;
+  const configuredId = process.env.GOOGLE_SEED_ROOT_FOLDER_ID;
 
   // Check if configured folder exists
   if (configuredId) {

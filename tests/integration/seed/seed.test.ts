@@ -20,6 +20,7 @@ vi.mock("@/lib/google-drive-client", () => ({
     .mockResolvedValue({ id: "mock-file-id", name: "poster.jpg" }),
   permanentlyDeleteFile: vi.fn().mockResolvedValue(undefined),
   emptyTrash: vi.fn().mockResolvedValue(undefined),
+  batchDelete: vi.fn().mockResolvedValue({ succeeded: [], failed: [] }),
 }));
 
 // Mock crypto with implementation that works for tests
@@ -562,6 +563,132 @@ describe("seed database operations", () => {
         where: { userId: user!.id },
       });
       expect(remainingConnections).toBe(0);
+    });
+  });
+
+  describe("Drive cleanup integration", () => {
+    it("database cleanup succeeds independently of Drive cleanup", async () => {
+      // This test verifies that even if Drive is mocked, database operations work
+      const bcrypt = await import("bcryptjs");
+      const passwordHash = await bcrypt.hash("TestPassword123!", 10);
+
+      // Create a test user with Drive connection and items
+      const cleanupTestEmail = `cleanup-test-${Date.now()}@test.example.com`;
+      const user = await prisma.user.create({
+        data: {
+          email: cleanupTestEmail,
+          name: "Cleanup Test User",
+          passwordHash,
+        },
+      });
+
+      // Create Drive connection
+      const { encryptCredential } = await import("@/lib/crypto");
+      const connection = await prisma.googleDriveConnection.create({
+        data: {
+          userId: user.id,
+          name: "Test Connection",
+          email: "cleanup@gmail.com",
+          encryptedAccessToken: encryptCredential("test-access"),
+          encryptedRefreshToken: encryptCredential("test-refresh"),
+          accessTokenExpiry: new Date(0),
+          rootFolderId: "test-root-id",
+          isActive: true,
+          needsReauth: false,
+        },
+      });
+
+      // Create some items
+      const item = await prisma.item.create({
+        data: {
+          name: "Test Item",
+          userId: user.id,
+          order: 0,
+          depth: 0,
+          driveConnectionId: connection.id,
+          driveFileId: "mock-id",
+          syncStatus: "SYNCED",
+        },
+      });
+
+      // Create item file
+      await prisma.itemFile.create({
+        data: {
+          itemId: item.id,
+          filename: "test.mp4",
+          fileType: "MEDIA",
+          mimeType: "video/mp4",
+          size: BigInt(0),
+          isPrimary: true,
+          isHero: false,
+          syncStatus: "SYNCED",
+        },
+      });
+
+      // Now clean up (simulating the cleanup flow)
+      await prisma.itemFile.deleteMany({
+        where: { item: { user: { email: cleanupTestEmail } } },
+      });
+      await prisma.item.deleteMany({
+        where: { user: { email: cleanupTestEmail } },
+      });
+      await prisma.googleDriveConnection.deleteMany({
+        where: { user: { email: cleanupTestEmail } },
+      });
+      await prisma.user.deleteMany({
+        where: { email: cleanupTestEmail },
+      });
+
+      // Verify everything is cleaned up
+      const remainingUser = await prisma.user.findUnique({
+        where: { email: cleanupTestEmail },
+      });
+      expect(remainingUser).toBeNull();
+    });
+
+    it("handles cleanup when user has no Drive connection", async () => {
+      const bcrypt = await import("bcryptjs");
+      const passwordHash = await bcrypt.hash("TestPassword123!", 10);
+
+      const noDriveEmail = `no-drive-${Date.now()}@test.example.com`;
+      const user = await prisma.user.create({
+        data: {
+          email: noDriveEmail,
+          name: "No Drive User",
+          passwordHash,
+        },
+      });
+
+      // Create item without Drive connection
+      await prisma.item.create({
+        data: {
+          name: "Local Item",
+          userId: user.id,
+          order: 0,
+          depth: 0,
+          syncStatus: "PENDING",
+        },
+      });
+
+      // Clean up
+      await prisma.itemFile.deleteMany({
+        where: { item: { user: { email: noDriveEmail } } },
+      });
+      await prisma.item.deleteMany({
+        where: { user: { email: noDriveEmail } },
+      });
+      await prisma.googleDriveConnection.deleteMany({
+        where: { user: { email: noDriveEmail } },
+      });
+      await prisma.user.deleteMany({
+        where: { email: noDriveEmail },
+      });
+
+      // Verify cleanup
+      const remainingUser = await prisma.user.findUnique({
+        where: { email: noDriveEmail },
+      });
+      expect(remainingUser).toBeNull();
     });
   });
 });

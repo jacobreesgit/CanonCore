@@ -2,6 +2,18 @@
  * Database seed script for populating demo content with optional Google Drive integration.
  * Fetches TMDB metadata, downloads posters, and optionally uploads to Google Drive.
  *
+ * The script guarantees a clean slate by automatically cleaning all Google Drive content
+ * and emptying trash before seeding (when Drive is enabled). The Google Drive account
+ * is dedicated to seeding, so all content can be safely deleted.
+ *
+ * Flow:
+ *   1. Validate environment (required vars, production DB check)
+ *   2. Clean Google Drive (delete all files/folders, empty trash, verify)
+ *   3. Cleanup seed users from database
+ *   4. Create seed users
+ *   5. Create Drive connection (if enabled)
+ *   6. Seed content (movies, TV shows with TMDB metadata)
+ *
  * Usage:
  *   ALLOW_SEEDING=true npx prisma db seed
  *   ALLOW_SEEDING=true SEED_SKIP_DRIVE=true npx prisma db seed  # Skip Drive
@@ -14,8 +26,8 @@
  *   - DATABASE_URL: Database connection string (must not be production)
  *
  * Google Drive Variables (required unless SEED_SKIP_DRIVE=true):
- *   - GOOGLE_TEST_REFRESH_TOKEN: Refresh token for Drive integration
- *   - GOOGLE_TEST_ROOT_FOLDER_ID: Root folder for Drive storage
+ *   - GOOGLE_SEED_REFRESH_TOKEN: Refresh token for Drive integration
+ *   - GOOGLE_SEED_ROOT_FOLDER_ID: Root folder for Drive storage
  *   - GOOGLE_CLIENT_ID: OAuth client ID
  *   - GOOGLE_CLIENT_SECRET: OAuth client secret
  *   - ENCRYPTION_KEY: For encrypting Drive tokens
@@ -51,6 +63,7 @@ import dotenv from "dotenv";
 import path from "path";
 dotenv.config({ path: path.resolve(__dirname, "../.env.local") });
 
+import type { drive_v3 } from "googleapis";
 import { FileType, SyncStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import {
@@ -68,9 +81,16 @@ import {
   getEffectiveMovieIds,
   getEffectiveTVShowIds,
   getEffectiveSeedUsers,
+  getEffectiveMovieIdsForUser,
+  getEffectiveTVShowIdsForUser,
   isDoctorWho,
   isClassicDoctorWho,
   MODERN_DOCTOR_WHO_ID,
+  USER_PROGRESS_RANGES,
+  AVATAR_SIZE,
+  HERO_SIZE,
+  buildPicsumUrl,
+  type SeedUserConfig,
 } from "./seed-config";
 
 // Prisma will be dynamically imported after env vars are loaded
@@ -130,7 +150,7 @@ interface DriveContext {
 async function getDriveClient() {
   const { getDriveClientFromRefreshToken } =
     await import("@/lib/google-drive-client");
-  const refreshToken = process.env.GOOGLE_TEST_REFRESH_TOKEN!;
+  const refreshToken = process.env.GOOGLE_SEED_REFRESH_TOKEN!;
   return getDriveClientFromRefreshToken(refreshToken);
 }
 
@@ -277,6 +297,142 @@ function log(message: string): void {
   }
 }
 
+/**
+ * Cleans all content from the seed Google Drive account.
+ * Deletes all files/folders in root, empties trash, and verifies empty.
+ *
+ * Note: Deleting a folder cascades to all nested contents (Google Drive behavior).
+ * We only need to delete items directly in the root folder.
+ *
+ * @throws Error if cleanup fails at any step (abort seed on failure)
+ */
+async function cleanupGoogleDrive(): Promise<void> {
+  const refreshToken = process.env.GOOGLE_SEED_REFRESH_TOKEN;
+  const rootFolderId = process.env.GOOGLE_SEED_ROOT_FOLDER_ID;
+
+  if (!refreshToken || !rootFolderId) {
+    throw new Error("Drive credentials required for cleanup");
+  }
+
+  const { getDriveClientFromRefreshToken, emptyTrash, batchDelete } =
+    await import("@/lib/google-drive-client");
+
+  const drive = await getDriveClientFromRefreshToken(refreshToken);
+
+  // 1. List ALL items in root folder with pagination
+  const allItems: Array<{ id: string; name: string }> = [];
+  let pageToken: string | undefined;
+
+  do {
+    const response = await drive.files.list({
+      q: `'${rootFolderId}' in parents and trashed = false`,
+      fields: "files(id, name), nextPageToken",
+      pageSize: 1000,
+      pageToken,
+    });
+
+    const items = response.data.files || [];
+    for (const item of items) {
+      if (item.id && item.name) {
+        allItems.push({ id: item.id, name: item.name });
+      }
+    }
+
+    pageToken = response.data.nextPageToken ?? undefined;
+  } while (pageToken);
+
+  console.log(`🗑️  Found ${allItems.length} items to delete`);
+
+  // 2. Batch delete items (moves to trash, 100 per batch for efficiency)
+  if (allItems.length > 0) {
+    const fileIds = allItems.map((item) => item.id);
+
+    // Get fresh access token for batch API
+    const accessToken = await getAccessTokenFromRefreshToken(refreshToken);
+
+    // batchDelete handles chunking into batches of 100
+    const result = await batchDelete(accessToken, fileIds);
+
+    if (result.failed.length > 0) {
+      console.warn(
+        `⚠️  Failed to delete ${result.failed.length} items:`,
+        result.failed.slice(0, 3).map((f: { error: string }) => f.error)
+      );
+    }
+
+    console.log(`🗑️  Moved ${result.succeeded.length} items to trash`);
+  }
+
+  // 3. Empty trash (catches any pre-existing trashed items)
+  console.log("🗑️  Emptying trash...");
+  await emptyTrash(drive);
+
+  // 4. Verify trash is empty (poll with timeout)
+  await verifyTrashEmpty(drive);
+}
+
+/**
+ * Gets an access token from a refresh token for batch API operations.
+ *
+ * @param refreshToken - The refresh token
+ * @returns The access token
+ * @throws Error if token refresh fails
+ */
+async function getAccessTokenFromRefreshToken(
+  refreshToken: string
+): Promise<string> {
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID!,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to refresh token for Drive cleanup");
+  }
+
+  const { access_token } = await response.json();
+  return access_token;
+}
+
+/**
+ * Polls Google Drive until trash is confirmed empty.
+ * Google Drive trash emptying can be async, so we verify completion.
+ *
+ * @param drive - Google Drive client instance
+ * @throws Error if trash not empty after 120 seconds
+ */
+async function verifyTrashEmpty(drive: drive_v3.Drive): Promise<void> {
+  const POLL_INTERVAL_MS = 3000;
+  const TIMEOUT_MS = 120000;
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < TIMEOUT_MS) {
+    const response = await drive.files.list({
+      q: "trashed = true",
+      fields: "files(id)",
+      pageSize: 1,
+    });
+
+    const trashedItems = response.data.files || [];
+    if (trashedItems.length === 0) {
+      console.log("✅ Trash verified empty");
+      return;
+    }
+
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    console.log(`  ⏳ Waiting for trash to empty... (${elapsed}s)`);
+    await sleep(POLL_INTERVAL_MS);
+  }
+
+  throw new Error("Timeout: Trash not empty after 120 seconds");
+}
+
 /** Progress tracking for seed operation. */
 interface SeedProgress {
   startTime: number;
@@ -359,6 +515,50 @@ async function downloadBackdrop(
   }
 }
 
+/** Downloaded image data with MIME type. */
+interface ImageData {
+  data: Uint8Array<ArrayBuffer>;
+  mime: string;
+}
+
+/**
+ * Downloads a profile image from Lorem Picsum.
+ * Returns Uint8Array and MIME type for database storage.
+ *
+ * @param url - Lorem Picsum URL
+ * @returns Image data and MIME type, or null on failure
+ */
+async function downloadProfileImage(url: string): Promise<ImageData | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TMDB_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      redirect: "follow",
+      signal: controller.signal,
+    });
+    if (!response.ok) return null;
+
+    const contentType = response.headers.get("content-type") || "image/jpeg";
+    const arrayBuffer = await response.arrayBuffer();
+    // Create Uint8Array with explicit ArrayBuffer type for Prisma Bytes compatibility
+    return {
+      data: new Uint8Array(arrayBuffer as ArrayBuffer),
+      mime: contentType,
+    };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/** Progress range for playback simulation. */
+interface ProgressRangeParam {
+  min: number;
+  max: number;
+}
+
 /**
  * Attaches files to an item.
  * - Artwork: Poster as primary, backdrop as hero image (movies/shows only)
@@ -366,6 +566,10 @@ async function downloadBackdrop(
  * - Media: Placeholder entries with null driveFileId (episodes/movies only)
  *
  * Respects SEED_SKIP_ARTWORK and SEED_SKIP_DRIVE flags.
+ *
+ * @param progressRange - Optional progress range for playback simulation (0-1).
+ *                        If provided, uses range to determine completion percentage.
+ *                        If not provided, uses default 4-bucket distribution.
  */
 async function attachRandomFiles(
   itemId: string,
@@ -374,7 +578,8 @@ async function attachRandomFiles(
   primaryImagePath: string | null,
   backdropPath: string | null,
   ctx: DriveContext | null,
-  driveFolderId: string | null
+  driveFolderId: string | null,
+  progressRange?: ProgressRangeParam
 ): Promise<void> {
   const subtitleCount = getRandomCount(1, 2);
   const mediaCount =
@@ -516,26 +721,41 @@ async function attachRandomFiles(
         durationRange.min + random() * (durationRange.max - durationRange.min)
       );
 
-      // Simulate varying watch states using seeded random
-      const watchState = random();
-      if (watchState < 0.25) {
-        // Unwatched (25%)
-        playbackPosition = null;
-      } else if (watchState < 0.5) {
-        // Partially watched 30-50% (25%)
-        playbackPosition = Math.floor(
-          playbackDuration * (0.3 + random() * 0.2)
-        );
-      } else if (watchState < 0.75) {
-        // Almost done 70-85%, below 90% threshold (25%)
-        playbackPosition = Math.floor(
-          playbackDuration * (0.7 + random() * 0.15)
-        );
+      // Use progress range if provided, otherwise use default 4-bucket distribution
+      if (progressRange) {
+        // Per-user progress range: generate random progress within the range
+        if (progressRange.min === 0 && progressRange.max === 0) {
+          // Special case: 0-0 means unwatched
+          playbackPosition = null;
+        } else {
+          // Generate progress within user's range
+          const progressPercent =
+            progressRange.min +
+            random() * (progressRange.max - progressRange.min);
+          playbackPosition = Math.floor(playbackDuration * progressPercent);
+        }
       } else {
-        // Complete 91-100% (25%)
-        playbackPosition = Math.floor(
-          playbackDuration * (0.91 + random() * 0.09)
-        );
+        // Default: simulate varying watch states using seeded random
+        const watchState = random();
+        if (watchState < 0.25) {
+          // Unwatched (25%)
+          playbackPosition = null;
+        } else if (watchState < 0.5) {
+          // Partially watched 30-50% (25%)
+          playbackPosition = Math.floor(
+            playbackDuration * (0.3 + random() * 0.2)
+          );
+        } else if (watchState < 0.75) {
+          // Almost done 70-85%, below 90% threshold (25%)
+          playbackPosition = Math.floor(
+            playbackDuration * (0.7 + random() * 0.15)
+          );
+        } else {
+          // Complete 91-100% (25%)
+          playbackPosition = Math.floor(
+            playbackDuration * (0.91 + random() * 0.09)
+          );
+        }
       }
     }
 
@@ -579,17 +799,17 @@ function validateEnvironment(): void {
 
   // Check Google Drive credentials (skip if SEED_SKIP_DRIVE is set)
   if (!SEED_SKIP_DRIVE) {
-    if (!process.env.GOOGLE_TEST_REFRESH_TOKEN) {
+    if (!process.env.GOOGLE_SEED_REFRESH_TOKEN) {
       console.error(
-        "❌ GOOGLE_TEST_REFRESH_TOKEN is required for Drive integration"
+        "❌ GOOGLE_SEED_REFRESH_TOKEN is required for Drive integration"
       );
       console.error("   Set SEED_SKIP_DRIVE=true to skip Drive operations");
       process.exit(1);
     }
 
-    if (!process.env.GOOGLE_TEST_ROOT_FOLDER_ID) {
+    if (!process.env.GOOGLE_SEED_ROOT_FOLDER_ID) {
       console.error(
-        "❌ GOOGLE_TEST_ROOT_FOLDER_ID is required for Drive integration"
+        "❌ GOOGLE_SEED_ROOT_FOLDER_ID is required for Drive integration"
       );
       console.error("   Set SEED_SKIP_DRIVE=true to skip Drive operations");
       process.exit(1);
@@ -700,28 +920,64 @@ async function cleanupSeedUsers(): Promise<void> {
 }
 
 /**
- * Creates seed users.
+ * Creates seed users with profile images and public profile settings.
  */
-async function createSeedUsers(): Promise<string[]> {
+async function createSeedUsers(): Promise<
+  Array<{ id: string; email: string; config: SeedUserConfig }>
+> {
   const password = process.env.SEED_PASSWORD || DEFAULT_SEED_PASSWORD;
   const passwordHash = await bcrypt.hash(password, 10);
   const seedUsers = getEffectiveSeedUsers();
 
-  const userIds: string[] = [];
+  const users: Array<{ id: string; email: string; config: SeedUserConfig }> =
+    [];
 
   for (const userData of seedUsers) {
+    // Download profile images if seeds are provided
+    let avatarData: ImageData | null = null;
+    let heroData: ImageData | null = null;
+
+    if (userData.avatarSeed) {
+      const avatarUrl = buildPicsumUrl(
+        userData.avatarSeed,
+        AVATAR_SIZE.width,
+        AVATAR_SIZE.height
+      );
+      log(`  📷 Downloading avatar for ${userData.email}...`);
+      avatarData = await downloadProfileImage(avatarUrl);
+    }
+
+    if (userData.heroSeed) {
+      const heroUrl = buildPicsumUrl(
+        userData.heroSeed,
+        HERO_SIZE.width,
+        HERO_SIZE.height
+      );
+      log(`  🖼️  Downloading hero for ${userData.email}...`);
+      heroData = await downloadProfileImage(heroUrl);
+    }
+
     const user = await prisma.user.create({
       data: {
         email: userData.email,
         name: userData.name,
+        username: userData.username,
+        isPublic: userData.isPublic ?? false,
+        // Store as Bytes with MIME type (schema requirement)
+        image: avatarData?.data ?? null,
+        imageMime: avatarData?.mime ?? null,
+        heroImage: heroData?.data ?? null,
+        heroImageMime: heroData?.mime ?? null,
         passwordHash,
       },
     });
-    userIds.push(user.id);
-    log(`👤 Created user: ${userData.email}`);
+
+    users.push({ id: user.id, email: user.email, config: userData });
+    const publicLabel = userData.isPublic ? " (public)" : "";
+    log(`👤 Created user: ${userData.email}${publicLabel}`);
   }
 
-  return userIds;
+  return users;
 }
 
 /**
@@ -730,15 +986,15 @@ async function createSeedUsers(): Promise<string[]> {
 async function createDriveConnection(userId: string): Promise<DriveContext> {
   const { encryptCredential } = await import("@/lib/crypto");
 
-  const refreshToken = process.env.GOOGLE_TEST_REFRESH_TOKEN!;
-  const rootFolderId = process.env.GOOGLE_TEST_ROOT_FOLDER_ID!;
+  const refreshToken = process.env.GOOGLE_SEED_REFRESH_TOKEN!;
+  const rootFolderId = process.env.GOOGLE_SEED_ROOT_FOLDER_ID!;
 
   // Create connection with encrypted tokens
   const connection = await prisma.googleDriveConnection.create({
     data: {
       userId,
       name: "Seed Demo Drive",
-      email: process.env.GOOGLE_TEST_EMAIL || "seed@canoncore.com",
+      email: process.env.GOOGLE_SEED_EMAIL || "seed@canoncore.com",
       encryptedAccessToken: encryptCredential("pending-refresh"),
       encryptedRefreshToken: encryptCredential(refreshToken),
       accessTokenExpiry: new Date(0), // Force refresh on first use
@@ -781,7 +1037,8 @@ interface ParentFolderInfo {
  * Creates parent folders (Movies, TV Shows) for grouped structure.
  * These folders are pinned to the sidebar for quick navigation.
  */
-async function createParentFolders(
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function _createParentFolders(
   userId: string,
   ctx: DriveContext | null
 ): Promise<{
@@ -823,6 +1080,7 @@ async function createParentFolders(
         order: 0,
         depth: 0,
         pinnedOrder: 0, // Pin Movies first
+        inheritVisibility: false, // Root items cannot inherit
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: moviesDriveFolderId,
         syncStatus: moviesDriveFolderId
@@ -864,6 +1122,117 @@ async function createParentFolders(
         order: 1,
         depth: 0,
         pinnedOrder: 1, // Pin TV Shows second
+        inheritVisibility: false, // Root items cannot inherit
+        driveConnectionId: ctx?.connectionId || null,
+        driveFileId: tvShowsDriveFolderId,
+        syncStatus: tvShowsDriveFolderId
+          ? SyncStatus.SYNCED
+          : SyncStatus.PENDING,
+      },
+    });
+
+    result.tvShows = {
+      itemId: tvShowsItem.id,
+      driveFolderId: tvShowsDriveFolderId,
+    };
+
+    log("📁 Created TV Shows folder (pinned)");
+  }
+
+  return result;
+}
+
+/**
+ * Creates parent folders (Movies, TV Shows) based on user's content distribution.
+ * Only creates folders for content types the user has.
+ * Parent folders are always private (organizational) - individual movies/shows are public.
+ */
+async function createParentFoldersForUser(
+  userId: string,
+  ctx: DriveContext | null,
+  movieIds: number[],
+  showIds: number[]
+): Promise<{
+  movies: ParentFolderInfo | null;
+  tvShows: ParentFolderInfo | null;
+}> {
+  const result: {
+    movies: ParentFolderInfo | null;
+    tvShows: ParentFolderInfo | null;
+  } = {
+    movies: null,
+    tvShows: null,
+  };
+
+  // Create Movies folder if user has movies
+  if (movieIds.length > 0) {
+    let moviesDriveFolderId: string | null = null;
+    if (!SEED_SKIP_DRIVE && ctx) {
+      try {
+        moviesDriveFolderId = await createDriveFolder(
+          ctx,
+          "Movies",
+          ctx.rootFolderId
+        );
+      } catch (error) {
+        console.error("❌ Failed to create Movies Drive folder:", error);
+      }
+    }
+
+    const moviesItem = await prisma.item.create({
+      data: {
+        name: "Movies",
+        description: "A collection of films from various genres and eras.",
+        userId,
+        parentId: null,
+        order: 0,
+        depth: 0,
+        pinnedOrder: 0,
+        isPublic: false, // Parent folders are always private (organizational)
+        inheritVisibility: false, // Root items cannot inherit
+        driveConnectionId: ctx?.connectionId || null,
+        driveFileId: moviesDriveFolderId,
+        syncStatus: moviesDriveFolderId
+          ? SyncStatus.SYNCED
+          : SyncStatus.PENDING,
+      },
+    });
+
+    result.movies = {
+      itemId: moviesItem.id,
+      driveFolderId: moviesDriveFolderId,
+    };
+
+    log("📁 Created Movies folder (pinned)");
+  }
+
+  // Create TV Shows folder if user has shows
+  if (showIds.length > 0) {
+    let tvShowsDriveFolderId: string | null = null;
+    if (!SEED_SKIP_DRIVE && ctx) {
+      try {
+        tvShowsDriveFolderId = await createDriveFolder(
+          ctx,
+          "TV Shows",
+          ctx.rootFolderId
+        );
+      } catch (error) {
+        console.error("❌ Failed to create TV Shows Drive folder:", error);
+      }
+    }
+
+    const tvShowsItem = await prisma.item.create({
+      data: {
+        name: "TV Shows",
+        description:
+          "A collection of television series spanning multiple genres.",
+        userId,
+        parentId: null,
+        order: 1,
+        depth: 0,
+        pinnedOrder: 1,
+        isPublic: false, // Parent folders are always private (organizational)
+        inheritVisibility: false, // Root items cannot inherit
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: tvShowsDriveFolderId,
         syncStatus: tvShowsDriveFolderId
@@ -903,7 +1272,8 @@ async function uploadToDrive(
  * Otherwise creates items at root level (flat structure).
  * Respects SEED_SKIP_DRIVE flag.
  */
-async function seedMovies(
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function _seedMovies(
   userId: string,
   ctx: DriveContext | null,
   startOrder: number,
@@ -961,6 +1331,7 @@ async function seedMovies(
         parentId,
         order: startOrder + i,
         depth: baseDepth,
+        inheritVisibility: false, // Movies are explicitly public/private
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: movieDriveFolderId,
         syncStatus: movieDriveFolderId ? SyncStatus.SYNCED : SyncStatus.PENDING,
@@ -987,10 +1358,107 @@ async function seedMovies(
 }
 
 /**
+ * Seeds movies for a user from a specific list of TMDB IDs.
+ * Used for per-user content distribution.
+ *
+ * @param progressRange - Progress range for playback simulation (0-1)
+ * @param isPublic - Whether items should be public (for public profiles)
+ */
+async function seedMoviesForUser(
+  userId: string,
+  ctx: DriveContext | null,
+  startOrder: number,
+  progress: SeedProgress,
+  movieIds: number[],
+  parentInfo?: ParentFolderInfo | null,
+  progressRange?: ProgressRangeParam,
+  isPublic = false
+): Promise<number> {
+  let count = 0;
+
+  // Determine parent folder context
+  const parentId = parentInfo?.itemId ?? null;
+  const parentDriveFolderId = parentInfo?.driveFolderId ?? ctx?.rootFolderId;
+  const baseDepth = parentInfo ? 1 : 0;
+
+  for (let i = 0; i < movieIds.length; i++) {
+    const movieId = movieIds[i];
+
+    // Rate limiting
+    await sleep(TMDB_API_DELAY_MS);
+
+    const movie = await tmdbFetch<TMDBMovie>(`/movie/${movieId}`);
+
+    if (!movie) {
+      console.warn(`⚠️  Failed to fetch movie ${movieId}`);
+      continue;
+    }
+
+    const year = extractYear(movie.release_date);
+    const name = sanitizeFolderName(
+      year ? `${movie.title} (${year})` : movie.title
+    );
+    const description = truncateOverview(movie.overview);
+
+    // Create folder for this movie in Drive (skip if SEED_SKIP_DRIVE)
+    let movieDriveFolderId: string | null = null;
+    if (!SEED_SKIP_DRIVE && ctx && parentDriveFolderId) {
+      try {
+        movieDriveFolderId = await createDriveFolder(
+          ctx,
+          name,
+          parentDriveFolderId
+        );
+      } catch (error) {
+        console.error(`❌ Failed to create Drive folder for ${name}:`, error);
+        continue;
+      }
+    }
+
+    // Create Item record (under parent if grouped, otherwise at root)
+    const item = await prisma.item.create({
+      data: {
+        name,
+        description: description || null,
+        userId,
+        parentId,
+        order: startOrder + i,
+        depth: baseDepth,
+        isPublic,
+        inheritVisibility: false, // Movies are explicitly public/private
+        driveConnectionId: ctx?.connectionId || null,
+        driveFileId: movieDriveFolderId,
+        syncStatus: movieDriveFolderId ? SyncStatus.SYNCED : SyncStatus.PENDING,
+      },
+    });
+
+    // Attach files (artwork, subtitles, media placeholders)
+    await attachRandomFiles(
+      item.id,
+      name,
+      "movie",
+      movie.poster_path,
+      movie.backdrop_path,
+      ctx,
+      movieDriveFolderId,
+      progressRange
+    );
+
+    count++;
+    progress.completedMovies++;
+    logProgress(progress, name);
+  }
+
+  return count;
+}
+
+/**
  * Seeds all episodes for a season.
  * Respects SEED_SKIP_DRIVE flag.
  *
  * @param depthOffset - Offset to add to base depth (0 for flat, 1 for grouped structure)
+ * @param progressRange - Progress range for playback simulation (0-1)
+ * @param isPublic - Whether items should be public (for public profiles)
  */
 async function seedEpisodes(
   episodes: TMDBEpisode[],
@@ -998,7 +1466,9 @@ async function seedEpisodes(
   seasonDriveFolderId: string | null,
   userId: string,
   ctx: DriveContext | null,
-  depthOffset = 0
+  depthOffset = 0,
+  progressRange?: ProgressRangeParam,
+  isPublic = false
 ): Promise<number> {
   let count = 0;
 
@@ -1044,6 +1514,8 @@ async function seedEpisodes(
         parentId: seasonItemId,
         order: i, // Array index, not episode_number
         depth: 2 + depthOffset,
+        isPublic,
+        inheritVisibility: true, // Episodes inherit from season
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: episodeDriveFolderId,
         syncStatus: episodeDriveFolderId
@@ -1060,7 +1532,8 @@ async function seedEpisodes(
       episode.still_path || null,
       null, // No backdrop for episodes
       ctx,
-      episodeDriveFolderId
+      episodeDriveFolderId,
+      progressRange
     );
 
     count++;
@@ -1079,6 +1552,8 @@ async function seedEpisodes(
  *
  * @param depthOffset - Offset to add to base depth (0 for flat, 1 for grouped structure)
  * @param seasonOrderOffset - Offset for season order (used when combining Classic/Modern Doctor Who)
+ * @param progressRange - Progress range for playback simulation (0-1)
+ * @param isPublic - Whether items should be public (for public profiles)
  */
 async function seedSeasons(
   tvId: number,
@@ -1089,7 +1564,9 @@ async function seedSeasons(
   userId: string,
   ctx: DriveContext | null,
   depthOffset = 0,
-  seasonOrderOffset = 0
+  seasonOrderOffset = 0,
+  progressRange?: ProgressRangeParam,
+  isPublic = false
 ): Promise<number> {
   let totalItems = 0;
 
@@ -1154,6 +1631,8 @@ async function seedSeasons(
         parentId: showItemId,
         order: seasonOrderOffset + seasonNum - 1, // 0-indexed order with optional offset
         depth: 1 + depthOffset,
+        isPublic,
+        inheritVisibility: true, // Seasons inherit from show
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: seasonDriveFolderId,
         syncStatus: seasonDriveFolderId
@@ -1170,7 +1649,8 @@ async function seedSeasons(
       season.poster_path,
       null, // No backdrop for seasons
       ctx,
-      seasonDriveFolderId
+      seasonDriveFolderId,
+      progressRange
     );
 
     // Seed episodes
@@ -1180,7 +1660,9 @@ async function seedSeasons(
       seasonDriveFolderId,
       userId,
       ctx,
-      depthOffset
+      depthOffset,
+      progressRange,
+      isPublic
     );
 
     totalItems += 1 + episodeCount;
@@ -1201,7 +1683,8 @@ async function seedSeasons(
  * - Creates single "Doctor Who" folder with seasons from both eras
  * - Classic seasons appear first, Modern seasons follow with offset
  */
-async function seedTVShows(
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function _seedTVShows(
   userId: string,
   ctx: DriveContext | null,
   startOrder: number,
@@ -1281,6 +1764,7 @@ async function seedTVShows(
         parentId,
         order: startOrder + i + orderOffset,
         depth: baseDepth,
+        inheritVisibility: false, // TV shows are explicitly public/private
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: showDriveFolderId,
         syncStatus: showDriveFolderId ? SyncStatus.SYNCED : SyncStatus.PENDING,
@@ -1368,6 +1852,194 @@ async function seedTVShows(
 }
 
 /**
+ * Seeds TV shows for a user from a specific list of TMDB IDs.
+ * Used for per-user content distribution.
+ *
+ * Special handling for Doctor Who:
+ * - Classic Doctor Who (ID 121) and Modern Doctor Who (ID 57243) are consolidated
+ * - Creates single "Doctor Who" folder with seasons from both eras
+ *
+ * @param progressRange - Progress range for playback simulation (0-1)
+ * @param isPublic - Whether items should be public (for public profiles)
+ */
+async function seedTVShowsForUser(
+  userId: string,
+  ctx: DriveContext | null,
+  startOrder: number,
+  progress: SeedProgress,
+  tvShowIds: number[],
+  parentInfo?: ParentFolderInfo | null,
+  progressRange?: ProgressRangeParam,
+  isPublic = false
+): Promise<number> {
+  let count = 0;
+
+  // Determine parent folder context
+  const parentId = parentInfo?.itemId ?? null;
+  const parentDriveFolderId = parentInfo?.driveFolderId ?? ctx?.rootFolderId;
+  const baseDepth = parentInfo ? 1 : 0;
+  const depthOffset = parentInfo ? 1 : 0;
+
+  // Track which Doctor Who has been processed (for consolidation)
+  let doctorWhoProcessed = false;
+  let orderOffset = 0;
+
+  for (let i = 0; i < tvShowIds.length; i++) {
+    const showId = tvShowIds[i];
+
+    // Special handling: Skip Modern Doctor Who if Classic was already processed
+    if (isDoctorWho(showId) && doctorWhoProcessed) {
+      orderOffset--;
+      continue;
+    }
+
+    // Rate limiting
+    await sleep(TMDB_API_DELAY_MS);
+
+    const show = await tmdbFetch<TMDBTVShow>(`/tv/${showId}`);
+
+    if (!show) {
+      console.warn(`⚠️  Failed to fetch TV show ${showId}`);
+      continue;
+    }
+
+    // Special handling for Doctor Who: Use unified name and description
+    let name: string;
+    let description: string;
+    if (isDoctorWho(showId)) {
+      name = "Doctor Who";
+      description = truncateOverview(
+        "The adventures of the Doctor, a Time Lord who travels through time and space " +
+          "in the TARDIS with various companions, battling evil and righting wrongs. " +
+          "Spanning from 1963 to the present day."
+      );
+    } else {
+      const year = extractYear(show.first_air_date);
+      name = sanitizeFolderName(year ? `${show.name} (${year})` : show.name);
+      description = truncateOverview(show.overview);
+    }
+
+    // Create folder for this show in Drive (skip if SEED_SKIP_DRIVE)
+    let showDriveFolderId: string | null = null;
+    if (!SEED_SKIP_DRIVE && ctx && parentDriveFolderId) {
+      try {
+        showDriveFolderId = await createDriveFolder(
+          ctx,
+          name,
+          parentDriveFolderId
+        );
+      } catch (error) {
+        console.error(`❌ Failed to create Drive folder for ${name}:`, error);
+        continue;
+      }
+    }
+
+    // Create Item record
+    const item = await prisma.item.create({
+      data: {
+        name,
+        description: description || null,
+        userId,
+        parentId,
+        order: startOrder + i + orderOffset,
+        depth: baseDepth,
+        isPublic,
+        inheritVisibility: false, // TV shows are explicitly public/private
+        driveConnectionId: ctx?.connectionId || null,
+        driveFileId: showDriveFolderId,
+        syncStatus: showDriveFolderId ? SyncStatus.SYNCED : SyncStatus.PENDING,
+      },
+    });
+
+    // Attach files (artwork, subtitles - no media for shows)
+    await attachRandomFiles(
+      item.id,
+      name,
+      "show",
+      show.poster_path,
+      show.backdrop_path,
+      ctx,
+      showDriveFolderId,
+      progressRange
+    );
+
+    // Seed seasons and episodes
+    let seasonItemCount: number;
+
+    if (isClassicDoctorWho(showId)) {
+      // Doctor Who: Seed Classic era seasons first
+      seasonItemCount = await seedSeasons(
+        showId,
+        item.id,
+        showDriveFolderId,
+        name,
+        show.number_of_seasons,
+        userId,
+        ctx,
+        depthOffset,
+        0,
+        progressRange,
+        isPublic
+      );
+
+      // Check if Modern Doctor Who is also in the user's list
+      if (tvShowIds.includes(MODERN_DOCTOR_WHO_ID)) {
+        await sleep(TMDB_API_DELAY_MS);
+        const modernShow = await tmdbFetch<TMDBTVShow>(
+          `/tv/${MODERN_DOCTOR_WHO_ID}`
+        );
+
+        if (modernShow) {
+          const classicSeasonCount =
+            MAX_SEASONS === 0
+              ? show.number_of_seasons
+              : Math.min(show.number_of_seasons, MAX_SEASONS);
+
+          const modernSeasonCount = await seedSeasons(
+            MODERN_DOCTOR_WHO_ID,
+            item.id,
+            showDriveFolderId,
+            name,
+            modernShow.number_of_seasons,
+            userId,
+            ctx,
+            depthOffset,
+            classicSeasonCount,
+            progressRange,
+            isPublic
+          );
+          seasonItemCount += modernSeasonCount;
+          log(`  🎬 Doctor Who (Modern era): ${modernSeasonCount} items`);
+        }
+      }
+
+      doctorWhoProcessed = true;
+    } else {
+      // Normal show: seed seasons normally
+      seasonItemCount = await seedSeasons(
+        showId,
+        item.id,
+        showDriveFolderId,
+        name,
+        show.number_of_seasons,
+        userId,
+        ctx,
+        depthOffset,
+        0,
+        progressRange,
+        isPublic
+      );
+    }
+
+    count += 1 + seasonItemCount;
+    progress.completedShows++;
+    logProgress(progress, name);
+  }
+
+  return count;
+}
+
+/**
  * Cleans up partially seeded data on failure.
  * Removes orphaned database records for the demo user.
  * Note: Drive folders are NOT deleted automatically and may need manual cleanup.
@@ -1402,8 +2074,9 @@ async function cleanupOnFailure(userId: string): Promise<void> {
       );
     }
 
-    console.log("⚠️  Database cleaned. Drive folders may need manual cleanup.");
-    console.log("   Run: ALLOW_SEEDING=true npx tsx prisma/seed-cleanup.ts");
+    console.log(
+      "⚠️  Database cleaned. Re-run seed to clean Drive and try again."
+    );
   } catch (cleanupError) {
     console.error("❌ Cleanup failed:", cleanupError);
   }
@@ -1428,89 +2101,141 @@ async function main(): Promise<void> {
   const prismaModule = await import("@/lib/prisma");
   prisma = prismaModule.prisma;
 
-  // Cleanup existing seed users
+  // Clean Google Drive first (unless skipping Drive)
+  // Note: If this succeeds but DB cleanup fails, re-running seed will fix it
+  if (!SEED_SKIP_DRIVE) {
+    console.log("\n🧹 Cleaning Google Drive...\n");
+    await cleanupGoogleDrive();
+  }
+
+  // Cleanup existing seed users from database
   await cleanupSeedUsers();
 
   // Create seed users
-  const userIds = await createSeedUsers();
+  const users = await createSeedUsers();
 
-  // Seed content for first user only (demo user)
-  const demoUserId = userIds[0];
-  if (demoUserId) {
-    log("\n📚 Seeding content for demo user...\n");
+  // Seed content for all users with their configured distribution
+  for (let userIndex = 0; userIndex < users.length; userIndex++) {
+    const { id: userId, email, config } = users[userIndex];
+    const isFirstUser = userIndex === 0;
+
+    // Get per-user content distribution
+    const userMovieIds = getEffectiveMovieIdsForUser(email);
+    const userShowIds = getEffectiveTVShowIdsForUser(email);
+
+    // Skip users with no content
+    if (userMovieIds.length === 0 && userShowIds.length === 0) {
+      log(`\n⏭️  Skipping ${email} (no content configured)`);
+      continue;
+    }
+
+    log(`\n📚 Seeding content for ${email}...`);
 
     try {
-      // Create Drive connection only if not skipping Drive
+      // Create Drive connection only for first user (demo user)
       let ctx: DriveContext | null = null;
-      if (!SEED_SKIP_DRIVE) {
-        ctx = await createDriveConnection(demoUserId);
+      if (!SEED_SKIP_DRIVE && isFirstUser) {
+        ctx = await createDriveConnection(userId);
       }
 
-      // Initialize progress tracking with effective IDs
-      const effectiveMovieIds = getEffectiveMovieIds();
-      const effectiveTVShowIds = getEffectiveTVShowIds();
+      // Initialize progress tracking with user-specific IDs
       const progress: SeedProgress = {
         startTime: Date.now(),
-        totalShows: effectiveTVShowIds.length,
+        totalShows: userShowIds.length,
         completedShows: 0,
-        totalMovies: effectiveMovieIds.length,
+        totalMovies: userMovieIds.length,
         completedMovies: 0,
       };
+
+      // Get per-user progress range for playback simulation
+      const progressRange = USER_PROGRESS_RANGES[email];
 
       let movieCount: number;
       let tvCount: number;
 
       if (SEED_GROUPED_STRUCTURE) {
         // Grouped structure: Create Movies and TV Shows parent folders with pinning
-        log("📁 Creating grouped folder structure with pinned folders...\n");
-        const parentFolders = await createParentFolders(demoUserId, ctx);
+        log("📁 Creating grouped folder structure...\n");
+        const parentFolders = await createParentFoldersForUser(
+          userId,
+          ctx,
+          userMovieIds,
+          userShowIds
+        );
 
         // Seed movies under Movies folder
-        movieCount = await seedMovies(
-          demoUserId,
+        movieCount = await seedMoviesForUser(
+          userId,
           ctx,
           0,
           progress,
-          parentFolders.movies
+          userMovieIds,
+          parentFolders.movies,
+          progressRange,
+          config.isPublic ?? false
         );
 
         // Seed TV shows under TV Shows folder
-        tvCount = await seedTVShows(
-          demoUserId,
+        tvCount = await seedTVShowsForUser(
+          userId,
           ctx,
           0,
           progress,
-          parentFolders.tvShows
+          userShowIds,
+          parentFolders.tvShows,
+          progressRange,
+          config.isPublic ?? false
         );
 
         // Add parent folder count to totals
         const parentFolderCount =
           (parentFolders.movies ? 1 : 0) + (parentFolders.tvShows ? 1 : 0);
-        log(
-          `\n📌 Created ${parentFolderCount} pinned parent folder(s): ${[
-            parentFolders.movies && "Movies",
-            parentFolders.tvShows && "TV Shows",
-          ]
-            .filter(Boolean)
-            .join(", ")}`
-        );
+        if (parentFolderCount > 0) {
+          log(
+            `\n📌 Created ${parentFolderCount} pinned parent folder(s): ${[
+              parentFolders.movies && "Movies",
+              parentFolders.tvShows && "TV Shows",
+            ]
+              .filter(Boolean)
+              .join(", ")}`
+          );
+        }
       } else {
         // Flat structure: Seed directly at root level
-        movieCount = await seedMovies(demoUserId, ctx, 0, progress);
-        tvCount = await seedTVShows(demoUserId, ctx, movieCount, progress);
+        movieCount = await seedMoviesForUser(
+          userId,
+          ctx,
+          0,
+          progress,
+          userMovieIds,
+          undefined,
+          progressRange,
+          config.isPublic ?? false
+        );
+        tvCount = await seedTVShowsForUser(
+          userId,
+          ctx,
+          movieCount,
+          progress,
+          userShowIds,
+          undefined,
+          progressRange,
+          config.isPublic ?? false
+        );
       }
 
       const totalTime = Math.round((Date.now() - progress.startTime) / 1000);
       log(
         `\n✅ Seeded ${movieCount} movies and ${tvCount} TV show items in ${totalTime}s`
       );
-      if (!SEED_SKIP_DRIVE) {
+
+      if (!SEED_SKIP_DRIVE && isFirstUser) {
         log(`   📁 Content synced to Google Drive`);
 
         // Run auto-sync to catch any pre-existing files and set changePageToken
         try {
           const { syncByUserId } = await import("@/lib/google-drive-sync");
-          const syncResult = await syncByUserId(demoUserId);
+          const syncResult = await syncByUserId(userId);
           if (syncResult.success) {
             const created = syncResult.itemsCreated ?? 0;
             const updated = syncResult.itemsUpdated ?? 0;
@@ -1534,20 +2259,23 @@ async function main(): Promise<void> {
           // Don't fail seed - user can sync manually later
         }
       }
-      if (SEED_GROUPED_STRUCTURE) {
+
+      if (SEED_GROUPED_STRUCTURE && (movieCount > 0 || tvCount > 0)) {
         log(`   📌 Movies and TV Shows folders pinned to sidebar`);
       }
     } catch (error) {
-      console.error("\n❌ Seed failed:", error);
-      await cleanupOnFailure(demoUserId);
+      console.error(`\n❌ Seed failed for ${email}:`, error);
+      await cleanupOnFailure(userId);
       throw error;
     }
   }
 
   log("\n🎉 Seeding complete!\n");
-  const seedUsers = getEffectiveSeedUsers();
-  log("Login credentials:");
-  log(`  Email: ${seedUsers[0]?.email || "demo@canoncore.com"}`);
+  log("Login credentials (all users have same password):");
+  for (const user of users) {
+    const publicLabel = user.config.isPublic ? " (public)" : "";
+    log(`  • ${user.email}${publicLabel}`);
+  }
   log(`  Password: ${process.env.SEED_PASSWORD || DEFAULT_SEED_PASSWORD}\n`);
 }
 

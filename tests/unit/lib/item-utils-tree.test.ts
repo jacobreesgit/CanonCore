@@ -22,6 +22,8 @@ function createItem(
     parentId: null,
     description: null,
     pinnedOrder: null,
+    isPublic: false,
+    inheritVisibility: false,
     driveFileId: null,
     driveModifiedAt: null,
     driveThumbnailUrl: null,
