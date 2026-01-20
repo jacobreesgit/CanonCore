@@ -164,26 +164,134 @@ export const TV_SHOW_IDS = [
   84958, // Loki
 ];
 
-/** Seed user configuration. */
-export const SEED_USERS = [
+/** User profile configuration for seeding. */
+export interface SeedUserConfig {
+  email: string;
+  name: string;
+  username?: string;
+  isPublic?: boolean;
+  /** Lorem Picsum seed for avatar image (null = no avatar). */
+  avatarSeed?: string | null;
+  /** Lorem Picsum seed for hero banner (null = no hero). */
+  heroSeed?: string | null;
+}
+
+/** Content distribution by user email. */
+export interface UserContentConfig {
+  movieIds: number[];
+  showIds: number[];
+}
+
+/** Progress simulation range (0-1). */
+export interface ProgressRange {
+  min: number;
+  max: number;
+}
+
+/** Avatar image dimensions. */
+export const AVATAR_SIZE = { width: 400, height: 400 };
+
+/** Hero banner dimensions. */
+export const HERO_SIZE = { width: 1920, height: 400 };
+
+/**
+ * Builds Lorem Picsum URL for reproducible images.
+ *
+ * @param seed - Seed string for reproducible image
+ * @param width - Image width in pixels
+ * @param height - Image height in pixels
+ * @returns Lorem Picsum URL
+ */
+export function buildPicsumUrl(
+  seed: string,
+  width: number,
+  height: number
+): string {
+  return `https://picsum.photos/seed/${seed}/${width}/${height}`;
+}
+
+/** Seed user configuration (5 users for Explore page variety). */
+export const SEED_USERS: SeedUserConfig[] = [
   {
     email: "demo@canoncore.com",
     name: "Demo User",
+    username: "demo",
+    isPublic: true,
+    avatarSeed: "demo-avatar",
+    heroSeed: "demo-hero",
+  },
+  {
+    email: "filmfan@canoncore.com",
+    name: "Sarah Mitchell",
+    username: "filmfan",
+    isPublic: true,
+    avatarSeed: "filmfan-avatar",
+    heroSeed: "filmfan-hero",
+  },
+  {
+    email: "bingewatcher@canoncore.com",
+    name: "Alex Chen",
+    username: "bingewatcher",
+    isPublic: true,
+    avatarSeed: "bingewatcher-avatar",
+    heroSeed: "bingewatcher-hero",
+  },
+  {
+    email: "scifi@canoncore.com",
+    name: "Jordan Taylor",
+    username: "scifi_jordan",
+    isPublic: true,
+    avatarSeed: "scifi-avatar",
+    heroSeed: "scifi-hero",
   },
   {
     email: "test@canoncore.com",
     name: "Test User",
+    username: "testuser",
+    isPublic: false,
+    avatarSeed: null,
+    heroSeed: null,
   },
 ];
+
+/** Content distribution per user for visual variety. */
+export const USER_CONTENT_DISTRIBUTION: Record<string, UserContentConfig> = {
+  "demo@canoncore.com": {
+    movieIds: MOVIE_IDS,
+    showIds: [1396, 66732, 84958], // Breaking Bad, Stranger Things, Loki
+  },
+  "filmfan@canoncore.com": {
+    movieIds: [278, 238, 240, 424, 389, 637], // Shawshank, Godfather I/II, Schindler's, 12 Angry Men, Life Is Beautiful
+    showIds: [],
+  },
+  "bingewatcher@canoncore.com": {
+    movieIds: [155, 129], // Dark Knight, Spirited Away
+    showIds: TV_SHOW_IDS,
+  },
+  "scifi@canoncore.com": {
+    movieIds: [],
+    showIds: [121, 57243, 71912, 66732], // Doctor Who x2, Witcher, Stranger Things
+  },
+  "test@canoncore.com": {
+    movieIds: [278, 155, 129], // Shawshank, Dark Knight, Spirited Away
+    showIds: [1396, 60625], // Breaking Bad, Rick and Morty
+  },
+};
+
+/** Progress simulation ranges per user for visual variety. */
+export const USER_PROGRESS_RANGES: Record<string, ProgressRange> = {
+  "demo@canoncore.com": { min: 0.25, max: 0.75 },
+  "filmfan@canoncore.com": { min: 0.8, max: 1.0 },
+  "bingewatcher@canoncore.com": { min: 0.1, max: 0.3 },
+  "scifi@canoncore.com": { min: 0.4, max: 0.6 },
+  "test@canoncore.com": { min: 0, max: 0 },
+};
 
 /** Default password for seed users (override with SEED_PASSWORD env var). */
 export const DEFAULT_SEED_PASSWORD = "SeedPassword123!";
 
 /** Folder name created in Google Drive for seeded content. */
 export const SEED_DRIVE_FOLDER_NAME = "CanonCore-Seed";
-
-/** Protected folders that should never be deleted during cleanup. */
-export const PROTECTED_FOLDERS = ["Breaking Bad", "CanonCore"];
 
 /**
  * Returns effective movie IDs based on flags.
@@ -217,14 +325,60 @@ export function getEffectiveTVShowIds(): number[] {
  *
  * @returns Array of user configurations to seed
  */
-export function getEffectiveSeedUsers(): typeof SEED_USERS {
+export function getEffectiveSeedUsers(): SeedUserConfig[] {
   if (SEED_USER_EMAIL) {
+    // Find the user in SEED_USERS or create a minimal config
+    const existingUser = SEED_USERS.find((u) => u.email === SEED_USER_EMAIL);
+    if (existingUser) {
+      return [existingUser];
+    }
     return [
       {
         email: SEED_USER_EMAIL,
         name: SEED_USER_EMAIL.split("@")[0],
+        isPublic: false,
+        avatarSeed: null,
+        heroSeed: null,
       },
     ];
   }
   return SEED_USERS;
+}
+
+/**
+ * Returns effective movie IDs for a specific user.
+ * Falls back to global effective IDs if user not in distribution config.
+ *
+ * @param email - User email to get movies for
+ * @returns Array of movie TMDB IDs
+ */
+export function getEffectiveMovieIdsForUser(email: string): number[] {
+  const userConfig = USER_CONTENT_DISTRIBUTION[email];
+  if (userConfig) {
+    // Apply global limits if set
+    if (SEED_MOVIE_COUNT > 0) {
+      return userConfig.movieIds.slice(0, SEED_MOVIE_COUNT);
+    }
+    return userConfig.movieIds;
+  }
+  return getEffectiveMovieIds();
+}
+
+/**
+ * Returns effective TV show IDs for a specific user.
+ * Falls back to global effective IDs if user not in distribution config.
+ *
+ * @param email - User email to get shows for
+ * @returns Array of TV show TMDB IDs
+ */
+export function getEffectiveTVShowIdsForUser(email: string): number[] {
+  const userConfig = USER_CONTENT_DISTRIBUTION[email];
+  if (userConfig) {
+    // Apply global limits if set
+    if (SEED_SHOW_COUNT > 0) {
+      return userConfig.showIds.slice(0, SEED_SHOW_COUNT);
+    }
+    return userConfig.showIds;
+  }
+  return getEffectiveTVShowIds();
 }

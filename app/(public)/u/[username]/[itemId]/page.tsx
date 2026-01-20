@@ -13,6 +13,7 @@ import {
 } from "@/lib/public-auth";
 import { getForkStatus, getForkInfo } from "@/lib/fork-actions";
 import { auth } from "@/lib/auth";
+import { SiteHeader } from "@/components/site-header";
 import { PublicItemClient } from "./public-item-client";
 
 interface PageProps {
@@ -90,16 +91,34 @@ export default async function PublicItemPage({ params }: PageProps) {
       ? forkStatusResult.data
       : null;
 
+  // Build breadcrumbs with hrefs for SiteHeader (includes current item)
+  const headerBreadcrumbs = [
+    ...(breadcrumb ?? []),
+    { id: item.id, name: item.name },
+  ].map((crumb) => ({
+    id: crumb.id,
+    name: crumb.name,
+    href: `/u/${profile.username}/${crumb.id}`,
+  }));
+
   return (
-    <PublicItemClient
-      profile={profile}
-      item={item}
-      childItems={childItems}
-      breadcrumb={breadcrumb ?? []}
-      forkInfo={"data" in forkInfo ? (forkInfo.data ?? null) : null}
-      forkStatus={forkStatus}
-      isAuthenticated={!!session?.user?.id}
-      isOwnItem={session?.user?.id === profile.id}
-    />
+    <>
+      <SiteHeader
+        title={`@${profile.username}`}
+        titleHref={`/u/${profile.username}`}
+        breadcrumbs={headerBreadcrumbs}
+      />
+      <div className="flex flex-1 flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
+        <PublicItemClient
+          profile={profile}
+          item={item}
+          childItems={childItems}
+          forkInfo={"data" in forkInfo ? (forkInfo.data ?? null) : null}
+          forkStatus={forkStatus}
+          isAuthenticated={!!session?.user?.id}
+          isOwnItem={session?.user?.id === profile.id}
+        />
+      </div>
+    </>
   );
 }

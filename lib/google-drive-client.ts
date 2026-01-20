@@ -720,7 +720,7 @@ export async function permanentlyDeleteFile(
  *
  * WARNING: This permanently deletes ALL trashed items in the entire Drive account,
  * not just items created by this application. Use only for E2E test cleanup with
- * a dedicated test account (E2E_GOOGLE_REFRESH_TOKEN).
+ * a dedicated test account (GOOGLE_E2E_REFRESH_TOKEN).
  *
  * @param drive - An authenticated Drive client
  */

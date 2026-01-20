@@ -24,6 +24,9 @@ export interface Item {
   depth: number;
   // Pinned to sidebar (null = not pinned, 0+ = pinned with order)
   pinnedOrder: number | null;
+  // Visibility
+  isPublic: boolean;
+  inheritVisibility: boolean;
   userId: string;
   createdAt: Date;
   updatedAt: Date;
@@ -68,6 +71,10 @@ export interface TreeItem {
   totalMediaCount?: number;
   /** Total number of items (item + descendants) for progress label */
   totalItems?: number;
+  /** Whether item is explicitly public */
+  isPublic?: boolean;
+  /** Whether item inherits visibility from parent */
+  inheritVisibility?: boolean;
 }
 
 export type TreeItems = TreeItem[];

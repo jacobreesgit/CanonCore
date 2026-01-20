@@ -5,7 +5,13 @@
 
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   Announcements,
@@ -44,6 +50,21 @@ import type { FlattenedItem, SensorContext, TreeItems } from "@/lib/types";
 import type { CreateItemResult } from "@/components/items/add-item-dialog";
 import { sortableTreeKeyboardCoordinates } from "./keyboardCoordinates";
 import { SortableTreeItem, TreeItem } from "./components";
+import { ReparentWarningDialog } from "@/components/items/reparent-warning-dialog";
+
+/** State for a pending drag-and-drop move that requires user confirmation. */
+interface PendingMoveState {
+  activeId: UniqueIdentifier;
+  overId: UniqueIdentifier;
+  depth: number;
+  parentId: UniqueIdentifier | null;
+  itemName: string;
+  oldParentName: string | null;
+  newParentName: string | null;
+  willBecomePublic: boolean;
+  willBecomePrivate: boolean;
+  clonedItems: FlattenedItem[];
+}
 
 const measuring = {
   droppable: {
@@ -146,6 +167,10 @@ export function SortableTree({
     overId: UniqueIdentifier;
   } | null>(null);
 
+  // State for reparent warning dialog
+  const [showReparentWarning, setShowReparentWarning] = useState(false);
+  const [pendingMove, setPendingMove] = useState<PendingMoveState | null>(null);
+
   // Sync with external items
   useEffect(() => {
     setItems(defaultItems);
@@ -210,6 +235,36 @@ export function SortableTree({
       offset: offsetLeft,
     };
   }, [flattenedItems, offsetLeft]);
+
+  /**
+   * Execute the pending move after user confirms via dialog.
+   */
+  const executePendingMove = useCallback(() => {
+    if (!pendingMove) return;
+
+    const { activeId, overId, depth, parentId, clonedItems } = pendingMove;
+    const overIndex = clonedItems.findIndex(({ id }) => id === overId);
+    const activeIndex = clonedItems.findIndex(({ id }) => id === activeId);
+    const activeTreeItem = clonedItems[activeIndex];
+
+    clonedItems[activeIndex] = { ...activeTreeItem, depth, parentId };
+
+    const sortedItems = arrayMove(clonedItems, activeIndex, overIndex);
+    const newItems = buildTree(sortedItems);
+
+    setItems(newItems);
+    onItemsChange?.(newItems);
+    setPendingMove(null);
+    setShowReparentWarning(false);
+  }, [pendingMove, onItemsChange]);
+
+  /**
+   * Cancel the pending move.
+   */
+  const cancelPendingMove = useCallback(() => {
+    setPendingMove(null);
+    setShowReparentWarning(false);
+  }, []);
 
   const announcements: Announcements = {
     onDragStart({ active }) {
@@ -317,6 +372,20 @@ export function SortableTree({
             document.body
           )}
       </SortableContext>
+
+      {/* Reparent warning dialog for inheriting items */}
+      <ReparentWarningDialog
+        open={showReparentWarning}
+        onOpenChange={(open) => {
+          if (!open) cancelPendingMove();
+        }}
+        itemName={pendingMove?.itemName ?? ""}
+        oldParentName={pendingMove?.oldParentName ?? null}
+        newParentName={pendingMove?.newParentName ?? null}
+        willBecomePublic={pendingMove?.willBecomePublic ?? false}
+        willBecomePrivate={pendingMove?.willBecomePrivate ?? false}
+        onConfirm={executePendingMove}
+      />
     </DndContext>
   );
 
@@ -356,6 +425,42 @@ export function SortableTree({
       const activeIndex = clonedItems.findIndex(({ id }) => id === active.id);
       const activeTreeItem = clonedItems[activeIndex];
 
+      // Check if an inheriting item is being reparented
+      const isReparenting = activeTreeItem.parentId !== parentId;
+      const inheritsVisibility = activeTreeItem.inheritVisibility === true;
+
+      if (isReparenting && inheritsVisibility) {
+        // Find parent names for the warning dialog
+        const oldParent = clonedItems.find(
+          (i) => i.id === activeTreeItem.parentId
+        );
+        const newParent = clonedItems.find((i) => i.id === parentId);
+
+        // Determine visibility change direction based on parent visibility
+        // If we can't determine, show generic warning
+        const oldParentIsPublic = oldParent?.isPublic ?? false;
+        const newParentIsPublic = newParent?.isPublic ?? false;
+        const willBecomePublic = !oldParentIsPublic && newParentIsPublic;
+        const willBecomePrivate = oldParentIsPublic && !newParentIsPublic;
+
+        // Store pending move and show warning dialog
+        setPendingMove({
+          activeId: active.id,
+          overId: over.id,
+          depth,
+          parentId,
+          itemName: activeTreeItem.name,
+          oldParentName: oldParent?.name ?? null,
+          newParentName: newParent?.name ?? null,
+          willBecomePublic,
+          willBecomePrivate,
+          clonedItems,
+        });
+        setShowReparentWarning(true);
+        return;
+      }
+
+      // Proceed with move
       clonedItems[activeIndex] = { ...activeTreeItem, depth, parentId };
 
       const sortedItems = arrayMove(clonedItems, activeIndex, overIndex);

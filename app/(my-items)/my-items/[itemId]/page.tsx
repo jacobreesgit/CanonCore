@@ -68,6 +68,10 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
             id: item.id,
             name: item.name,
             description: item.description,
+            isPublic: item.isPublic,
+            inheritVisibility: item.inheritVisibility,
+            parentId: item.parentId,
+            childCount: childItems.length,
           }}
           childItems={childItems}
           files={files}

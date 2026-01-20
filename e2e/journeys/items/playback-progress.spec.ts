@@ -436,7 +436,8 @@ test.describe("Playback Progress Journey", () => {
     });
 
     // Navigate back to root and return to item
-    await itemsPage.breadcrumbHome.click();
+    // Use page.goto instead of breadcrumb click for mobile reliability
+    await page.goto("/my-items");
     await itemsPage.waitForLoadingComplete();
     await itemsPage.gotoItemAndWaitForContent(parent.id);
 

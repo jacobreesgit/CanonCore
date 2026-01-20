@@ -55,10 +55,12 @@ export function NavMain({
             </SidebarMenuItem>
           )}
           {items.map((item) => {
-            // Active when on exact path OR any nested child path
-            // Trailing slash prevents false positives (e.g., /my-items-other won't match /my-items/)
+            // For /my-items, only match exact path (pinned items handle nested routes)
+            // For other routes, match exact path OR nested child paths
             const isActive =
-              pathname === item.url || pathname.startsWith(`${item.url}/`);
+              item.url === "/my-items"
+                ? pathname === item.url
+                : pathname === item.url || pathname.startsWith(`${item.url}/`);
             return (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton

@@ -11,7 +11,7 @@ import { ItemsPage } from "../../pages/items.page";
 
 test.describe("Video Seeking", () => {
   test.skip(
-    !process.env.E2E_GOOGLE_REFRESH_TOKEN,
+    !process.env.GOOGLE_E2E_REFRESH_TOKEN,
     "Requires Google Drive connection for media files"
   );
 

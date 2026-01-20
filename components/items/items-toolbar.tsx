@@ -59,6 +59,10 @@ interface ItemsToolbarProps {
     id: string;
     name: string;
     description: string | null;
+    isPublic: boolean;
+    inheritVisibility: boolean;
+    hasParent: boolean;
+    hasChildren: boolean;
   };
   /** Whether user has Google Drive connected (enables uploads in settings). */
   hasDriveConnection?: boolean;

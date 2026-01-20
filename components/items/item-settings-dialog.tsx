@@ -67,6 +67,7 @@ import type {
 import { toast } from "sonner";
 import type { SerializedItemFile, ArtworkSelectionSource } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { VisibilityToggle } from "@/components/items/visibility-toggle";
 
 /** Steps for item settings dialog navigation. */
 type ItemSettingsStep =
@@ -88,7 +89,15 @@ interface ItemSettingsDialogProps {
   /** Callback when dialog open state changes */
   onOpenChange: (open: boolean) => void;
   /** The item being configured */
-  item: { id: string; name: string; description: string | null };
+  item: {
+    id: string;
+    name: string;
+    description: string | null;
+    isPublic: boolean;
+    inheritVisibility: boolean;
+    hasParent: boolean;
+    hasChildren: boolean;
+  };
   /** Files attached to this item, grouped by type (serialized for client) */
   files: {
     media: SerializedItemFile[];
@@ -144,6 +153,10 @@ export function ItemSettingsDialog({
   // Form state
   const [name, setName] = useState(item.name);
   const [description, setDescription] = useState(item.description ?? "");
+  const [isPublic, setIsPublic] = useState(item.isPublic);
+  const [inheritVisibility, setInheritVisibility] = useState(
+    item.inheritVisibility
+  );
   const [primaryMediaId, setPrimaryMediaId] = useState<string | undefined>(
     findPrimaryFile(files.media)?.id
   );
@@ -261,11 +274,13 @@ export function ItemSettingsDialog({
     }
   }, [tmdbImages, posterValue, backdropValue, posterSkipped, backdropSkipped]);
 
-  // Sync name/description when item changes
+  // Sync form state when item changes
   useEffect(() => {
     setName(item.name);
     setDescription(item.description ?? "");
-  }, [item.name, item.description]);
+    setIsPublic(item.isPublic);
+    setInheritVisibility(item.inheritVisibility);
+  }, [item.name, item.description, item.isPublic, item.inheritVisibility]);
 
   // Sync file selections when files change
   useEffect(() => {
@@ -795,6 +810,37 @@ export function ItemSettingsDialog({
         <p className="text-muted-foreground text-xs tabular-nums">
           {description.length}/1000 characters
         </p>
+      </div>
+
+      {/* Visibility settings */}
+      <div className="space-y-2 pt-2">
+        <Label>Visibility</Label>
+        <VisibilityToggle
+          itemId={item.id}
+          itemName={name}
+          isPublic={isPublic}
+          inheritVisibility={inheritVisibility}
+          hasParent={item.hasParent}
+          hasChildren={item.hasChildren}
+          onVisibilityChange={(newIsPublic) => {
+            setIsPublic(newIsPublic);
+            onSettingsChange?.().catch((err) => {
+              console.warn(
+                "[ItemSettingsDialog] Refetch failed after visibility change:",
+                err
+              );
+            });
+          }}
+          onInheritChange={(newInherit) => {
+            setInheritVisibility(newInherit);
+            onSettingsChange?.().catch((err) => {
+              console.warn(
+                "[ItemSettingsDialog] Refetch failed after inherit change:",
+                err
+              );
+            });
+          }}
+        />
       </div>
     </div>
   );
