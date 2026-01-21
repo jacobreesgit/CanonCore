@@ -209,8 +209,20 @@ export function treeToItemUpdates(items: TreeItem[]): Array<{
 // Sorting and Filtering
 // =============================================================================
 
+/** Configuration for a sort option with value and display label. */
+export interface SortOptionConfig {
+  value: SortOption;
+  label: string;
+}
+
+/** Configuration for a filter option with value and display label. */
+export interface FilterOptionConfig {
+  value: FilterOption;
+  label: string;
+}
+
 /** Sort options with display labels. */
-export const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+export const SORT_OPTIONS: SortOptionConfig[] = [
   { value: "custom", label: "Custom Order" },
   { value: "name-asc", label: "Name A-Z" },
   { value: "name-desc", label: "Name Z-A" },
@@ -220,13 +232,25 @@ export const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 ];
 
 /** Filter options with display labels. */
-export const FILTER_OPTIONS: { value: FilterOption; label: string }[] = [
+export const FILTER_OPTIONS: FilterOptionConfig[] = [
   { value: "all", label: "All Items" },
   { value: "has-files", label: "Has Files" },
   { value: "no-files", label: "No Files" },
   { value: "synced", label: "Synced" },
   { value: "pending", label: "Pending Sync" },
   { value: "error", label: "Sync Error" },
+];
+
+/** Sort options for explore page (no custom ordering, no created-* since PublicItem lacks createdAt). */
+export const EXPLORE_SORT_OPTIONS: SortOptionConfig[] = [
+  { value: "updated-desc", label: "Recently Updated" },
+  { value: "name-asc", label: "Name A-Z" },
+  { value: "name-desc", label: "Name Z-A" },
+];
+
+/** Filter options for explore page (no sync-related filters). */
+export const EXPLORE_FILTER_OPTIONS: FilterOptionConfig[] = [
+  { value: "all", label: "All Collections" },
 ];
 
 /**
@@ -325,4 +349,36 @@ export function filterItems(
     default:
       return [...items];
   }
+}
+
+/**
+ * Sort items for public/explore pages.
+ * Uses toSorted() for immutability (Rule 7.12).
+ * Generic to work with any item type having name and updatedAt fields.
+ * Note: Only supports name-* and updated-* sorts since PublicItem lacks createdAt.
+ *
+ * @param items - Array of items with name and updatedAt fields
+ * @param sortBy - Sort option to apply
+ * @returns New sorted array (original unchanged)
+ *
+ * @example
+ * const sorted = sortPublicItems(publicItems, "name-asc");
+ * // Returns items sorted alphabetically by name
+ */
+export function sortPublicItems<
+  T extends { name: string; updatedAt: Date | string },
+>(items: T[], sortBy: SortOption): T[] {
+  return items.toSorted((a, b) => {
+    switch (sortBy) {
+      case "name-asc":
+        return a.name.localeCompare(b.name);
+      case "name-desc":
+        return b.name.localeCompare(a.name);
+      case "updated-desc":
+      default:
+        return (
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+    }
+  });
 }

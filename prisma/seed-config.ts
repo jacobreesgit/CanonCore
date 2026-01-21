@@ -2,13 +2,15 @@
  * Seed configuration for populating the database with demo content.
  * Uses TMDB IDs to fetch real movie and TV show metadata.
  *
+ * IMPORTANT: Google Drive is REQUIRED for seeding. Run setup first:
+ *   pnpm run setup:seed
+ *
  * Environment Variables:
  *   - SEED_MAX_SEASONS: Max seasons per show (0 = unlimited, default: 2)
  *   - SEED_MAX_EPISODES: Max episodes per season (0 = unlimited, default: 10)
  *   - SEED_RANDOM_SEED: Seed for reproducible random file counts (default: null = Math.random)
  *   - SEED_ONLY_MOVIES: Skip TV shows, seed only movies (default: false)
  *   - SEED_ONLY_SHOWS: Skip movies, seed only TV shows (default: false)
- *   - SEED_SKIP_DRIVE: Skip Google Drive uploads (default: false)
  *   - SEED_SKIP_ARTWORK: Skip downloading/uploading artwork (default: false)
  *   - SEED_QUIET: Suppress progress output (default: false)
  *   - SEED_MOVIE_COUNT: Limit number of movies (0 = all, default: 0)
@@ -49,9 +51,6 @@ export const SEED_ONLY_MOVIES = parseBooleanEnv(process.env.SEED_ONLY_MOVIES);
 
 /** Skip movies, seed only TV shows. */
 export const SEED_ONLY_SHOWS = parseBooleanEnv(process.env.SEED_ONLY_SHOWS);
-
-/** Skip Google Drive uploads. */
-export const SEED_SKIP_DRIVE = parseBooleanEnv(process.env.SEED_SKIP_DRIVE);
 
 /** Skip downloading/uploading artwork. */
 export const SEED_SKIP_ARTWORK = parseBooleanEnv(process.env.SEED_SKIP_ARTWORK);

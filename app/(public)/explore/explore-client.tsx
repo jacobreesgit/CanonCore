@@ -2,104 +2,129 @@
 
 /**
  * Client component for the explore page.
- * Uses same components as private pages: ItemHero + GridItem.
+ * Uses unified components: ItemHero, SortDropdown, GridItem, EmptyState.
+ * Uses shared sortPublicItems utility (DRY).
  */
 
+import { useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Folder } from "lucide-react";
 import { ItemHero } from "@/components/items/item-hero";
 import { GridItem } from "@/components/sortable-grid/GridItem";
+import { SortDropdown } from "@/components/items/sort-dropdown";
+import { MobileOptionsSheet } from "@/components/items/mobile-options-sheet";
+import { EmptyState } from "@/components/items/empty-state";
+import { useExploreSortFilter } from "@/hooks/use-explore-sort";
+import { EXPLORE_SORT_OPTIONS, sortPublicItems } from "@/lib/item-utils";
 import { cn } from "@/lib/utils";
 import type { PublicItem } from "@/lib/public-auth";
 
 interface ExploreClientProps {
   items: (PublicItem & { ownerUsername: string })[];
+  currentUserId: string | null;
 }
 
 /**
  * Main explore client component.
- * Structure matches My Items page: Hero -> Items count header -> Grid.
+ * Structure matches My Items page: Hero -> Toolbar -> Grid.
+ * Shows "You" for own items, clickable @username for others.
  */
-export function ExploreClient({ items }: ExploreClientProps) {
+export function ExploreClient({ items, currentUserId }: ExploreClientProps) {
   const router = useRouter();
+  const { sortBy, setSortBy } = useExploreSortFilter();
 
-  const handleItemClick = (item: PublicItem & { ownerUsername: string }) => {
-    router.push(`/u/${item.ownerUsername}/${item.id}`);
-  };
+  // Use shared sort utility (DRY - no duplicate sort function)
+  const sortedItems = useMemo(
+    () => sortPublicItems(items, sortBy),
+    [items, sortBy]
+  );
+
+  // Preload on hover for faster perceived navigation (Rule 2.5)
+  const handleMouseEnter = useCallback(
+    (item: PublicItem & { ownerUsername: string }) => {
+      router.prefetch(`/u/${item.ownerUsername}/${item.id}`);
+    },
+    [router]
+  );
+
+  const handleItemClick = useCallback(
+    (item: PublicItem & { ownerUsername: string }) => {
+      router.push(`/u/${item.ownerUsername}/${item.id}`);
+    },
+    [router]
+  );
+
+  const hasItems = items.length > 0;
 
   return (
-    <div className={cn("flex flex-col gap-6", items.length === 0 && "flex-1")}>
-      {/* Hero banner - same component as private pages */}
+    <div className={cn("flex flex-col gap-6", !hasItems && "flex-1")}>
+      {/* Hero banner */}
       <ItemHero
         name="Explore Collections"
         description="Discover curated media libraries from the community. Fork collections to build your own."
       />
 
-      {/* Items section */}
-      {items.length > 0 ? (
-        <div className="flex flex-col gap-4">
-          {/* Section header - matches private page style */}
-          <div className="flex items-center justify-between">
-            <h2 className="text-foreground text-lg font-semibold">
-              All Collections
-            </h2>
-            <span className="text-muted-foreground text-sm">
-              {items.length} {items.length === 1 ? "collection" : "collections"}
-            </span>
+      {/* Toolbar - Sort only (no filter, no view toggle) */}
+      <div className="flex items-center justify-between gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Mobile: Options sheet (sort only) */}
+          <div className="sm:hidden">
+            <MobileOptionsSheet
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              disabled={!hasItems}
+              sortOptions={EXPLORE_SORT_OPTIONS}
+              defaultSort="updated-desc"
+            />
           </div>
 
-          {/* Grid - same layout as private pages */}
-          <div
-            data-testid="items-grid-view"
-            className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
-          >
-            {items.map((item, index) => (
+          {/* Desktop: Sort dropdown */}
+          <div className="hidden items-center gap-3 sm:flex">
+            <SortDropdown
+              value={sortBy}
+              onChange={setSortBy}
+              disabled={!hasItems}
+              options={EXPLORE_SORT_OPTIONS}
+            />
+          </div>
+        </div>
+
+        {/* Right side: Collection count */}
+        {hasItems && (
+          <span className="text-muted-foreground text-sm">
+            {items.length} {items.length === 1 ? "collection" : "collections"}
+          </span>
+        )}
+      </div>
+
+      {/* Items grid or empty state */}
+      {hasItems ? (
+        <div
+          data-testid="items-grid-view"
+          className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
+        >
+          {sortedItems.map((item, index) => {
+            const isOwnItem = currentUserId === item.userId;
+            return (
               <GridItem
                 key={item.id}
                 id={item.id}
                 name={item.name}
-                description={`@${item.ownerUsername}`}
+                description={isOwnItem ? "You" : `@${item.ownerUsername}`}
+                descriptionHref={
+                  isOwnItem ? undefined : `/u/${item.ownerUsername}`
+                }
                 artworkId={item.artworkId}
                 onClick={() => handleItemClick(item)}
+                onMouseEnter={() => handleMouseEnter(item)}
                 showArtwork={true}
                 showDescription={true}
                 priority={index < 8}
               />
-            ))}
-          </div>
+            );
+          })}
         </div>
       ) : (
-        <div
-          className={cn(
-            "flex flex-1 flex-col items-center justify-center gap-5",
-            "border-border/40 rounded-xl border-2 border-dashed",
-            "from-muted/30 to-muted/10 bg-gradient-to-b",
-            "min-h-[280px] p-8"
-          )}
-        >
-          <div
-            className={cn(
-              "relative flex size-20 items-center justify-center rounded-2xl",
-              "from-muted/80 to-muted/40 bg-gradient-to-br",
-              "ring-border/50 shadow-sm ring-1"
-            )}
-          >
-            <Folder
-              className="text-muted-foreground/70 size-10"
-              strokeWidth={1.25}
-            />
-            <div className="from-foreground/5 absolute inset-0 rounded-2xl bg-gradient-to-t to-transparent" />
-          </div>
-          <div className="max-w-xs text-center">
-            <h3 className="text-foreground text-lg font-semibold tracking-tight">
-              Nothing here yet
-            </h3>
-            <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed">
-              Be the first to share your collection! Make your profile public to
-              have your items featured here.
-            </p>
-          </div>
-        </div>
+        <EmptyState variant="explore-empty" />
       )}
     </div>
   );

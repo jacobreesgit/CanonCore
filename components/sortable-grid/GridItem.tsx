@@ -7,6 +7,7 @@
 "use client";
 
 import React, { forwardRef, useCallback, HTMLAttributes } from "react";
+import Link from "next/link";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { Folder, GripVertical } from "lucide-react";
@@ -34,6 +35,8 @@ export interface GridItemProps extends Omit<
   showArtwork?: boolean;
   /** Whether to show description. Defaults to true. Hidden in edit mode. */
   showDescription?: boolean;
+  /** Optional URL to make description a clickable link. */
+  descriptionHref?: string;
   /** Sync status for displaying indicator. */
   syncStatus?: SyncStatus;
   /** Progress percentage (0-100) for item and descendants, null if no media files. */
@@ -67,6 +70,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       artworkId,
       showArtwork = true,
       showDescription = true,
+      descriptionHref,
       syncStatus,
       progressPercentage,
       watchedCount,
@@ -263,12 +267,21 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
             )}
           </div>
 
-          {/* Description */}
-          {shouldShowDescription && (
-            <p className="mt-1 line-clamp-2 text-sm text-white/80 drop-shadow-sm">
-              {description}
-            </p>
-          )}
+          {/* Description - renders as link when descriptionHref provided */}
+          {shouldShowDescription &&
+            (descriptionHref ? (
+              <Link
+                href={descriptionHref}
+                onClick={(e) => e.stopPropagation()}
+                className="mt-1 line-clamp-2 rounded text-sm text-white/80 drop-shadow-sm hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black/50 focus-visible:outline-none"
+              >
+                {description}
+              </Link>
+            ) : (
+              <p className="mt-1 line-clamp-2 text-sm text-white/80 drop-shadow-sm">
+                {description}
+              </p>
+            ))}
 
           {/* Watched count indicator */}
           {shouldShowWatched && (

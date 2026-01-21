@@ -233,7 +233,7 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
               </div>
             </CommandEmpty>
             {items.length > 0 && (
-              <CommandGroup heading="Items">
+              <CommandGroup>
                 {items.map((item) => (
                   <CommandItem
                     key={item.id}
