@@ -12,6 +12,7 @@ import {
   isItemFullyPublic,
   getPublicItemsForUser,
   getPublicChildItems,
+  getPublicDescendants,
 } from "@/lib/public-auth";
 import "../setup";
 
@@ -851,6 +852,270 @@ describe("Public Profile Integration", () => {
         expect(children).toHaveLength(2);
         expect(children[0].name).toBe("First");
         expect(children[1].name).toBe("Second");
+      } finally {
+        await cleanupUser(user.id);
+      }
+    });
+  });
+
+  describe("getPublicDescendants", () => {
+    it("returns all descendants in a public hierarchy", async () => {
+      const { user } = await createTestUser("descendants-all");
+
+      try {
+        // Create: Public Parent > Public Child > Public Grandchild
+        const parent = await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Parent",
+            isPublic: true,
+            inheritVisibility: false,
+            order: 0,
+            depth: 0,
+          },
+        });
+
+        const child = await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Child",
+            isPublic: true,
+            inheritVisibility: false,
+            parentId: parent.id,
+            order: 0,
+            depth: 1,
+          },
+        });
+
+        await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Grandchild",
+            isPublic: true,
+            inheritVisibility: false,
+            parentId: child.id,
+            order: 0,
+            depth: 2,
+          },
+        });
+
+        const descendants = await getPublicDescendants(parent.id);
+
+        expect(descendants).toHaveLength(2);
+        expect(descendants.map((d) => d.name)).toContain("Child");
+        expect(descendants.map((d) => d.name)).toContain("Grandchild");
+      } finally {
+        await cleanupUser(user.id);
+      }
+    });
+
+    it("excludes private branches from descendants", async () => {
+      const { user } = await createTestUser("descendants-private");
+
+      try {
+        const parent = await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Parent",
+            isPublic: true,
+            inheritVisibility: false,
+            order: 0,
+            depth: 0,
+          },
+        });
+
+        // Public child
+        await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Public Child",
+            isPublic: true,
+            inheritVisibility: false,
+            parentId: parent.id,
+            order: 0,
+            depth: 1,
+          },
+        });
+
+        // Private child (should be excluded along with its children)
+        const privateChild = await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Private Child",
+            isPublic: false,
+            inheritVisibility: false,
+            parentId: parent.id,
+            order: 1,
+            depth: 1,
+          },
+        });
+
+        // Grandchild under private (should be excluded)
+        await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Private Grandchild",
+            isPublic: true,
+            inheritVisibility: false,
+            parentId: privateChild.id,
+            order: 0,
+            depth: 2,
+          },
+        });
+
+        const descendants = await getPublicDescendants(parent.id);
+
+        expect(descendants).toHaveLength(1);
+        expect(descendants[0].name).toBe("Public Child");
+      } finally {
+        await cleanupUser(user.id);
+      }
+    });
+
+    it("includes inheriting descendants when chain is public", async () => {
+      const { user } = await createTestUser("descendants-inherit");
+
+      try {
+        const parent = await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Parent",
+            isPublic: true,
+            inheritVisibility: false,
+            order: 0,
+            depth: 0,
+          },
+        });
+
+        // Inheriting child (should inherit public from parent)
+        const child = await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Inheriting Child",
+            isPublic: false,
+            inheritVisibility: true,
+            parentId: parent.id,
+            order: 0,
+            depth: 1,
+          },
+        });
+
+        // Inheriting grandchild (should inherit from inheriting child)
+        await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Inheriting Grandchild",
+            isPublic: false,
+            inheritVisibility: true,
+            parentId: child.id,
+            order: 0,
+            depth: 2,
+          },
+        });
+
+        const descendants = await getPublicDescendants(parent.id);
+
+        expect(descendants).toHaveLength(2);
+        expect(descendants.map((d) => d.name)).toContain("Inheriting Child");
+        expect(descendants.map((d) => d.name)).toContain(
+          "Inheriting Grandchild"
+        );
+      } finally {
+        await cleanupUser(user.id);
+      }
+    });
+
+    it("returns empty array when parent is not public", async () => {
+      const { user } = await createTestUser("descendants-private-parent");
+
+      try {
+        const parent = await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Private Parent",
+            isPublic: false,
+            inheritVisibility: false,
+            order: 0,
+            depth: 0,
+          },
+        });
+
+        await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Child",
+            isPublic: true,
+            inheritVisibility: false,
+            parentId: parent.id,
+            order: 0,
+            depth: 1,
+          },
+        });
+
+        const descendants = await getPublicDescendants(parent.id);
+
+        expect(descendants).toHaveLength(0);
+      } finally {
+        await cleanupUser(user.id);
+      }
+    });
+
+    it("orders descendants by depth then order", async () => {
+      const { user } = await createTestUser("descendants-order");
+
+      try {
+        const parent = await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Parent",
+            isPublic: true,
+            order: 0,
+            depth: 0,
+          },
+        });
+
+        // Create in reverse order
+        const child2 = await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Second",
+            isPublic: true,
+            parentId: parent.id,
+            order: 1,
+            depth: 1,
+          },
+        });
+
+        await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "First",
+            isPublic: true,
+            parentId: parent.id,
+            order: 0,
+            depth: 1,
+          },
+        });
+
+        await prisma.item.create({
+          data: {
+            userId: user.id,
+            name: "Nested Under Second",
+            isPublic: true,
+            parentId: child2.id,
+            order: 0,
+            depth: 2,
+          },
+        });
+
+        const descendants = await getPublicDescendants(parent.id);
+
+        expect(descendants).toHaveLength(3);
+        // Depth 1 items first, in order
+        expect(descendants[0].name).toBe("First");
+        expect(descendants[1].name).toBe("Second");
+        // Then depth 2
+        expect(descendants[2].name).toBe("Nested Under Second");
       } finally {
         await cleanupUser(user.id);
       }

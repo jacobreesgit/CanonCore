@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useImageLoaded } from "@/hooks/use-image-loaded";
 import { useLazyImage } from "@/hooks/use-lazy-image";
 import { SyncIcon } from "@/components/items/sync-badge";
+import { UserThumbnail } from "@/components/search/user-thumbnail";
 import type { SyncStatus } from "@/lib/types";
 
 export interface GridItemProps extends Omit<
@@ -23,7 +24,7 @@ export interface GridItemProps extends Omit<
 > {
   id: UniqueIdentifier;
   name: string;
-  /** Optional short description (max 200 chars). */
+  /** Optional item description (TMDB overview, max 200 chars). */
   description?: string | null;
   isDragging?: boolean;
   isOverlay?: boolean;
@@ -35,8 +36,6 @@ export interface GridItemProps extends Omit<
   showArtwork?: boolean;
   /** Whether to show description. Defaults to true. Hidden in edit mode. */
   showDescription?: boolean;
-  /** Optional URL to make description a clickable link. */
-  descriptionHref?: string;
   /** Sync status for displaying indicator. */
   syncStatus?: SyncStatus;
   /** Progress percentage (0-100) for item and descendants, null if no media files. */
@@ -53,6 +52,14 @@ export interface GridItemProps extends Omit<
   isSelected?: boolean;
   /** Callback when selection state changes. */
   onSelectChange?: (selected: boolean) => void;
+  /** Owner label to display (e.g., "You" or "@username"). */
+  ownerLabel?: string;
+  /** Optional URL to make owner label a clickable link. */
+  ownerHref?: string;
+  /** Owner user ID for displaying profile thumbnail. */
+  ownerUserId?: string;
+  /** Owner display name for profile thumbnail initials. */
+  ownerName?: string | null;
 }
 
 export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
@@ -70,7 +77,6 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       artworkId,
       showArtwork = true,
       showDescription = true,
-      descriptionHref,
       syncStatus,
       progressPercentage,
       watchedCount,
@@ -79,6 +85,10 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       priority = false,
       isSelected,
       onSelectChange,
+      ownerLabel,
+      ownerHref,
+      ownerUserId,
+      ownerName,
       ...props
     },
     ref
@@ -267,20 +277,36 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
             )}
           </div>
 
-          {/* Description - renders as link when descriptionHref provided */}
-          {shouldShowDescription &&
-            (descriptionHref ? (
+          {/* Description - item's TMDB overview */}
+          {shouldShowDescription && description && (
+            <p className="mt-1 line-clamp-2 text-sm text-white/80 drop-shadow-sm">
+              {description}
+            </p>
+          )}
+
+          {/* Owner info - "You" or profile pic + @username */}
+          {ownerLabel &&
+            (ownerHref ? (
               <Link
-                href={descriptionHref}
+                href={ownerHref}
                 onClick={(e) => e.stopPropagation()}
-                className="mt-1 line-clamp-2 rounded text-sm text-white/80 drop-shadow-sm hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black/50 focus-visible:outline-none"
+                className="mt-1 flex items-center gap-1.5 rounded text-sm text-white/70 drop-shadow-sm hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black/50 focus-visible:outline-none"
               >
-                {description}
+                {ownerUserId && (
+                  <UserThumbnail
+                    userId={ownerUserId}
+                    name={ownerName ?? null}
+                    size="sm"
+                    showImage
+                    className="ring-1 ring-white/20"
+                  />
+                )}
+                <span className="truncate hover:underline">{ownerLabel}</span>
               </Link>
             ) : (
-              <p className="mt-1 line-clamp-2 text-sm text-white/80 drop-shadow-sm">
-                {description}
-              </p>
+              <span className="mt-1 text-sm text-white/70 drop-shadow-sm">
+                {ownerLabel}
+              </span>
             ))}
 
           {/* Watched count indicator */}

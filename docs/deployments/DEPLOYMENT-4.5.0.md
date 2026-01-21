@@ -143,12 +143,12 @@ e2e/journeys/media/video-seeking.spec.ts             # Consolidated into drive-m
 
 ## Test Coverage Impact
 
-| Area                       | Before | After | Change |
-| -------------------------- | ------ | ----- | ------ |
-| Drive verification tests   | 0      | 241   | +241   |
-| E2E setup unit tests       | 0      | 473   | +473   |
-| E2E auto-recovery tests    | 0      | 103   | +103   |
-| Artwork route tests        | ~100   | ~342  | +242   |
+| Area                     | Before | After | Change |
+| ------------------------ | ------ | ----- | ------ |
+| Drive verification tests | 0      | 241   | +241   |
+| E2E setup unit tests     | 0      | 473   | +473   |
+| E2E auto-recovery tests  | 0      | 103   | +103   |
+| Artwork route tests      | ~100   | ~342  | +242   |
 
 ## Breaking Changes
 

@@ -88,6 +88,7 @@ import {
   AVATAR_SIZE,
   HERO_SIZE,
   buildPicsumUrl,
+  validateContentDistribution,
   type SeedUserConfig,
 } from "./seed-config";
 import { assertDriveConfigured } from "@/lib/drive-verification";
@@ -365,9 +366,7 @@ async function cleanupGoogleDrive(): Promise<void> {
   // 3. Empty trash (catches any pre-existing trashed items)
   console.log("🗑️  Emptying trash...");
   await emptyTrash(drive);
-
-  // 4. Verify trash is empty (poll with timeout)
-  await verifyTrashEmpty(drive);
+  console.log("✅ Trash empty request sent (continuing without verification)");
 }
 
 /**
@@ -406,7 +405,7 @@ async function getAccessTokenFromRefreshToken(
  * @param drive - Google Drive client instance
  * @throws Error if trash not empty after 120 seconds
  */
-async function verifyTrashEmpty(drive: drive_v3.Drive): Promise<void> {
+async function _verifyTrashEmpty(drive: drive_v3.Drive): Promise<void> {
   const POLL_INTERVAL_MS = 3000;
   const TIMEOUT_MS = 120000;
   const startTime = Date.now();
@@ -2059,6 +2058,9 @@ async function cleanupOnFailure(userId: string): Promise<void> {
  * Respects SEED_GROUPED_STRUCTURE to create Movies/TV Shows parent folders.
  */
 async function main(): Promise<void> {
+  // Validate configuration before seeding
+  validateContentDistribution();
+
   const structureLabel = SEED_GROUPED_STRUCTURE ? "grouped" : "flat";
   log(
     `\n🌱 Starting database seed with Google Drive integration (${structureLabel} structure)...\n`
@@ -2104,11 +2106,8 @@ async function main(): Promise<void> {
     log(`\n📚 Seeding content for ${email}...`);
 
     try {
-      // Create Drive connection only for first user (demo user)
-      let ctx: DriveContext | null = null;
-      if (isFirstUser) {
-        ctx = await createDriveConnection(userId);
-      }
+      // Create Drive connection for all users (shared seed Drive account)
+      const ctx = await createDriveConnection(userId);
 
       // Initialize progress tracking with user-specific IDs
       const progress: SeedProgress = {

@@ -6,6 +6,7 @@
 import { describe, it, expect } from "vitest";
 import {
   itemsToTree,
+  publicItemsToTree,
   treeToItemUpdates,
   buildDescendantCounter,
   getMediaIconType,
@@ -613,5 +614,209 @@ describe("buildDescendantCounter", () => {
 
     expect(counter("root1")).toBe(1);
     expect(counter("root2")).toBe(0);
+  });
+});
+
+// Helper to create a PublicItem-like object for testing
+function createPublicItem(overrides: {
+  id: string;
+  name: string;
+  parentId?: string | null;
+  depth?: number;
+  order?: number;
+  description?: string | null;
+  artworkId?: string | null;
+}) {
+  return {
+    id: overrides.id,
+    name: overrides.name,
+    parentId: overrides.parentId ?? null,
+    depth: overrides.depth ?? 0,
+    order: overrides.order ?? 0,
+    description: overrides.description ?? null,
+    artworkId: overrides.artworkId ?? null,
+  };
+}
+
+describe("publicItemsToTree", () => {
+  it("returns empty array for empty input", () => {
+    expect(publicItemsToTree([], 0)).toEqual([]);
+  });
+
+  it("converts single child item with depth adjustment", () => {
+    const items = [createPublicItem({ id: "1", name: "Child", depth: 1 })];
+
+    // Parent is at depth 0, so child at depth 1 becomes tree depth 0
+    const tree = publicItemsToTree(items, 0);
+
+    expect(tree).toHaveLength(1);
+    expect(tree[0].id).toBe("1");
+    expect(tree[0].name).toBe("Child");
+    expect(tree[0].depth).toBe(0);
+  });
+
+  it("adjusts depth relative to parent", () => {
+    // Parent is at depth 2, children are at depth 3, grandchildren at depth 4
+    const items = [
+      createPublicItem({
+        id: "child",
+        name: "Child",
+        depth: 3,
+        parentId: "parent",
+      }),
+      createPublicItem({
+        id: "grandchild",
+        name: "Grandchild",
+        depth: 4,
+        parentId: "child",
+      }),
+    ];
+
+    const tree = publicItemsToTree(items, 2);
+
+    // Child: depth 3 - 2 - 1 = 0
+    expect(tree[0].depth).toBe(0);
+    // Grandchild: depth 4 - 2 - 1 = 1
+    expect(tree[0].children[0].depth).toBe(1);
+  });
+
+  it("builds parent-child relationships", () => {
+    const items = [
+      createPublicItem({ id: "child", name: "Child", depth: 1, order: 0 }),
+      createPublicItem({
+        id: "grandchild",
+        name: "Grandchild",
+        depth: 2,
+        parentId: "child",
+        order: 0,
+      }),
+    ];
+
+    const tree = publicItemsToTree(items, 0);
+
+    expect(tree).toHaveLength(1);
+    expect(tree[0].id).toBe("child");
+    expect(tree[0].children).toHaveLength(1);
+    expect(tree[0].children[0].id).toBe("grandchild");
+  });
+
+  it("sorts children by order at each level", () => {
+    const items = [
+      createPublicItem({
+        id: "child-b",
+        name: "Child B",
+        depth: 1,
+        order: 1,
+        parentId: "parent",
+      }),
+      createPublicItem({
+        id: "child-a",
+        name: "Child A",
+        depth: 1,
+        order: 0,
+        parentId: "parent",
+      }),
+      createPublicItem({
+        id: "child-c",
+        name: "Child C",
+        depth: 1,
+        order: 2,
+        parentId: "parent",
+      }),
+    ];
+
+    const tree = publicItemsToTree(items, 0);
+
+    expect(tree[0].name).toBe("Child A");
+    expect(tree[1].name).toBe("Child B");
+    expect(tree[2].name).toBe("Child C");
+  });
+
+  it("treats items with missing parent as roots", () => {
+    const items = [
+      createPublicItem({
+        id: "orphan",
+        name: "Orphan",
+        depth: 2,
+        parentId: "nonexistent",
+      }),
+    ];
+
+    const tree = publicItemsToTree(items, 1);
+
+    // Should be treated as root since parent is not in items
+    expect(tree).toHaveLength(1);
+    expect(tree[0].id).toBe("orphan");
+  });
+
+  it("preserves description field", () => {
+    const items = [
+      createPublicItem({
+        id: "1",
+        name: "Item",
+        depth: 1,
+        description: "Test description",
+      }),
+    ];
+
+    const tree = publicItemsToTree(items, 0);
+
+    expect(tree[0].description).toBe("Test description");
+  });
+
+  it("preserves artworkId field", () => {
+    const items = [
+      createPublicItem({
+        id: "1",
+        name: "Item",
+        depth: 1,
+        artworkId: "artwork-123",
+      }),
+    ];
+
+    const tree = publicItemsToTree(items, 0);
+
+    expect(tree[0].artworkId).toBe("artwork-123");
+  });
+
+  it("builds nested hierarchy (3 levels)", () => {
+    // Parent at depth 0, items at depths 1, 2, 3
+    const items = [
+      createPublicItem({ id: "l1", name: "Level 1", depth: 1 }),
+      createPublicItem({
+        id: "l2",
+        name: "Level 2",
+        depth: 2,
+        parentId: "l1",
+      }),
+      createPublicItem({
+        id: "l3",
+        name: "Level 3",
+        depth: 3,
+        parentId: "l2",
+      }),
+    ];
+
+    const tree = publicItemsToTree(items, 0);
+
+    expect(tree[0].id).toBe("l1");
+    expect(tree[0].depth).toBe(0);
+    expect(tree[0].children[0].id).toBe("l2");
+    expect(tree[0].children[0].depth).toBe(1);
+    expect(tree[0].children[0].children[0].id).toBe("l3");
+    expect(tree[0].children[0].children[0].depth).toBe(2);
+  });
+
+  it("handles items with null parentId as roots", () => {
+    const items = [
+      createPublicItem({ id: "root1", name: "Root 1", depth: 1, order: 0 }),
+      createPublicItem({ id: "root2", name: "Root 2", depth: 1, order: 1 }),
+    ];
+
+    const tree = publicItemsToTree(items, 0);
+
+    expect(tree).toHaveLength(2);
+    expect(tree[0].id).toBe("root1");
+    expect(tree[1].id).toBe("root2");
   });
 });

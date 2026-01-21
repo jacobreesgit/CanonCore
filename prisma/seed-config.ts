@@ -134,33 +134,60 @@ export function isDoctorWho(id: number): boolean {
   return isClassicDoctorWho(id) || isModernDoctorWho(id);
 }
 
-/** Movie TMDB IDs to seed. */
+/** Movie TMDB IDs to seed (superset of all user movies). */
 export const MOVIE_IDS = [
+  // demo - Classic Cinema Buff
   278, // The Shawshank Redemption
   238, // The Godfather
   240, // The Godfather Part II
   424, // Schindler's List
   389, // 12 Angry Men
+  680, // Pulp Fiction
+  13, // Forrest Gump
+  603, // The Matrix
+
+  // filmfan - International Film
   129, // Spirited Away
-  19404, // Dilwale Dulhania Le Jayenge
   496243, // Parasite
   637, // Life Is Beautiful
+  194, // Amélie
+  598, // City of God
+  1417, // Pan's Labyrinth
+
+  // bingewatcher - Peak TV
   155, // The Dark Knight
+  27205, // Inception
+  157336, // Interstellar
+
+  // scifi_jordan - Sci-Fi/Fantasy
+  78, // Blade Runner
+  438631, // Dune
+  329865, // Arrival
+  264660, // Ex Machina
+  286217, // The Martian
 ];
 
-/** TV Show TMDB IDs to seed. */
+/** TV Show TMDB IDs to seed (superset of all user shows). */
 export const TV_SHOW_IDS = [
+  // demo - Classic Cinema Buff
+  1396, // Breaking Bad
+  1398, // The Sopranos
+
+  // filmfan - International Film
+  93405, // Squid Game
+  70523, // Dark
+
+  // bingewatcher - Peak TV
+  1399, // Game of Thrones
+  66732, // Stranger Things
+  2316, // The Office
+  1668, // Friends
+
+  // scifi_jordan - Sci-Fi/Fantasy
   121, // Doctor Who (Classic, 1963-1989)
   57243, // Doctor Who (Modern, 2005+)
-  1396, // Breaking Bad
-  1399, // Game of Thrones
-  60625, // Rick and Morty
-  1418, // The Big Bang Theory
-  456, // The Simpsons
-  66732, // Stranger Things
-  1100, // How I Met Your Mother
-  71912, // The Witcher
-  84958, // Loki
+  63639, // The Expanse
+  42009, // Black Mirror
 ];
 
 /** User profile configuration for seeding. */
@@ -253,27 +280,36 @@ export const SEED_USERS: SeedUserConfig[] = [
   },
 ];
 
-/** Content distribution per user for visual variety. */
+/** Content distribution per user for visual variety (zero overlap). */
 export const USER_CONTENT_DISTRIBUTION: Record<string, UserContentConfig> = {
   "demo@canoncore.com": {
-    movieIds: MOVIE_IDS,
-    showIds: [1396, 66732, 84958], // Breaking Bad, Stranger Things, Loki
+    // Classic Cinema Buff - award-winning American classics
+    movieIds: [278, 238, 240, 424, 389, 680, 13, 603],
+    // Shawshank, Godfather I/II, Schindler's, 12 Angry Men, Pulp Fiction, Forrest Gump, Matrix
+    showIds: [1396, 1398], // Breaking Bad, The Sopranos
   },
   "filmfan@canoncore.com": {
-    movieIds: [278, 238, 240, 424, 389, 637], // Shawshank, Godfather I/II, Schindler's, 12 Angry Men, Life Is Beautiful
-    showIds: [],
+    // International Film Lover - foreign language masterpieces
+    movieIds: [129, 496243, 637, 194, 598, 1417],
+    // Spirited Away, Parasite, Life Is Beautiful, Amélie, City of God, Pan's Labyrinth
+    showIds: [93405, 70523], // Squid Game, Dark
   },
   "bingewatcher@canoncore.com": {
-    movieIds: [155, 129], // Dark Knight, Spirited Away
-    showIds: TV_SHOW_IDS,
+    // Peak TV Enthusiast - Christopher Nolan films + binge-worthy shows
+    movieIds: [155, 27205, 157336],
+    // Dark Knight, Inception, Interstellar
+    showIds: [1399, 66732, 2316, 1668], // Game of Thrones, Stranger Things, The Office, Friends
   },
   "scifi@canoncore.com": {
-    movieIds: [],
-    showIds: [121, 57243, 71912, 66732], // Doctor Who x2, Witcher, Stranger Things
+    // Sci-Fi/Fantasy Fan - science fiction films and shows
+    movieIds: [78, 438631, 329865, 264660, 286217],
+    // Blade Runner, Dune, Arrival, Ex Machina, The Martian
+    showIds: [121, 57243, 63639, 42009], // Doctor Who (Classic + Modern), The Expanse, Black Mirror
   },
   "test@canoncore.com": {
-    movieIds: [278, 155, 129], // Shawshank, Dark Knight, Spirited Away
-    showIds: [1396, 60625], // Breaking Bad, Rick and Morty
+    // Empty for E2E testing - start with clean slate
+    movieIds: [],
+    showIds: [],
   },
 };
 
@@ -380,4 +416,32 @@ export function getEffectiveTVShowIdsForUser(email: string): number[] {
     return userConfig.showIds;
   }
   return getEffectiveTVShowIds();
+}
+
+/**
+ * Validates that all user content IDs exist in the global ID arrays.
+ * Call during seed to catch configuration mismatches early.
+ *
+ * @throws Error if any user movie/show ID is missing from MOVIE_IDS/TV_SHOW_IDS
+ */
+export function validateContentDistribution(): void {
+  const movieIdSet = new Set(MOVIE_IDS);
+  const showIdSet = new Set(TV_SHOW_IDS);
+
+  for (const [email, config] of Object.entries(USER_CONTENT_DISTRIBUTION)) {
+    for (const movieId of config.movieIds) {
+      if (!movieIdSet.has(movieId)) {
+        throw new Error(
+          `Movie ID ${movieId} for ${email} not found in MOVIE_IDS`
+        );
+      }
+    }
+    for (const showId of config.showIds) {
+      if (!showIdSet.has(showId)) {
+        throw new Error(
+          `Show ID ${showId} for ${email} not found in TV_SHOW_IDS`
+        );
+      }
+    }
+  }
 }

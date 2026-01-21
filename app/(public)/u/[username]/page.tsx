@@ -72,7 +72,8 @@ export default async function PublicProfilePage({ params }: PageProps) {
     notFound();
   }
 
-  const items = await getPublicItemsForUser(profile.id, 50, 0);
+  const currentUserId = session?.user?.id ?? null;
+  const items = await getPublicItemsForUser(profile.id, 50, 0, currentUserId);
 
   return (
     <>
@@ -84,7 +85,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
         <PublicProfileClient
           profile={profile}
           items={items}
-          currentUserId={session?.user?.id ?? null}
+          currentUserId={currentUserId}
         />
       </div>
     </>
