@@ -610,8 +610,10 @@ describe("getProfile", () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data).toEqual({
+        id: mockUserId,
         name: "Test User",
         email: "test@example.com",
+        username: null,
         hasImage: true,
         hasHeroImage: false,
       });

@@ -9,6 +9,7 @@ import { SiteHeader } from "@/components/site-header";
 import { getItem, getDescendants, getItemProgress } from "@/lib/item-actions";
 import { getItemFiles } from "@/lib/item-file-actions";
 import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
+import { getProfile } from "@/lib/user-actions";
 
 interface ItemDetailPageProps {
   params: Promise<{ itemId: string }>;
@@ -39,14 +40,20 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
     })
   );
 
-  // Fetch descendants, attached files, progress, and Drive connection in parallel
-  const [childrenResult, filesResult, itemProgress, driveConnection] =
-    await Promise.all([
-      getDescendants(itemId),
-      getItemFiles(itemId),
-      getItemProgress(itemId),
-      getGoogleDriveConnection(),
-    ]);
+  // Fetch descendants, attached files, progress, Drive connection, and profile in parallel
+  const [
+    childrenResult,
+    filesResult,
+    itemProgress,
+    driveConnection,
+    profileResult,
+  ] = await Promise.all([
+    getDescendants(itemId),
+    getItemFiles(itemId),
+    getItemProgress(itemId),
+    getGoogleDriveConnection(),
+    getProfile(),
+  ]);
 
   const childItems = childrenResult.success ? (childrenResult.data ?? []) : [];
   const files =
@@ -54,6 +61,14 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
       ? filesResult.data
       : { media: [], artwork: [], subtitles: [] };
   const hasDriveConnection = Boolean(driveConnection);
+  const profile = profileResult.success ? profileResult.data : null;
+  const currentUser = profile
+    ? {
+        id: profile.id,
+        username: profile.username ?? null,
+        name: profile.name ?? null,
+      }
+    : null;
 
   return (
     <>
@@ -77,6 +92,7 @@ export default async function ItemDetailPage({ params }: ItemDetailPageProps) {
           files={files}
           itemProgress={itemProgress}
           hasDriveConnection={hasDriveConnection}
+          currentUser={currentUser}
         />
       </div>
     </>

@@ -20,7 +20,12 @@ import type { PublicProfile, PublicItem } from "@/lib/public-auth";
 
 interface PublicProfileClientProps {
   profile: PublicProfile;
-  items: PublicItem[];
+  items: (PublicItem & {
+    progressPercentage?: number | null;
+    watchedCount?: number;
+    totalMediaCount?: number;
+    totalItems?: number;
+  })[];
   currentUserId: string | null;
 }
 
@@ -119,6 +124,14 @@ export function PublicProfileClient({
               showArtwork={true}
               showDescription={true}
               priority={index < 8}
+              ownerLabel={isOwnProfile ? "You" : `@${profile.username}`}
+              ownerHref={`/u/${profile.username}`}
+              ownerUserId={isOwnProfile ? undefined : profile.id}
+              ownerName={isOwnProfile ? undefined : profile.name}
+              progressPercentage={isOwnProfile ? item.progressPercentage : null}
+              watchedCount={isOwnProfile ? item.watchedCount : undefined}
+              totalMediaCount={isOwnProfile ? item.totalMediaCount : undefined}
+              totalItems={isOwnProfile ? item.totalItems : undefined}
             />
           ))}
         </div>

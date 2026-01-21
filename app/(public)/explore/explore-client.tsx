@@ -18,9 +18,22 @@ import { EXPLORE_SORT_OPTIONS, sortPublicItems } from "@/lib/item-utils";
 import { cn } from "@/lib/utils";
 import type { PublicItem } from "@/lib/public-auth";
 
+interface CurrentUser {
+  id: string;
+  username: string | null;
+  name: string | null;
+}
+
 interface ExploreClientProps {
-  items: (PublicItem & { ownerUsername: string })[];
-  currentUserId: string | null;
+  items: (PublicItem & {
+    ownerUsername: string;
+    ownerName: string | null;
+    progressPercentage?: number | null;
+    watchedCount?: number;
+    totalMediaCount?: number;
+    totalItems?: number;
+  })[];
+  currentUser: CurrentUser | null;
 }
 
 /**
@@ -28,7 +41,7 @@ interface ExploreClientProps {
  * Structure matches My Items page: Hero -> Toolbar -> Grid.
  * Shows "You" for own items, clickable @username for others.
  */
-export function ExploreClient({ items, currentUserId }: ExploreClientProps) {
+export function ExploreClient({ items, currentUser }: ExploreClientProps) {
   const router = useRouter();
   const { sortBy, setSortBy } = useExploreSortFilter();
 
@@ -40,14 +53,14 @@ export function ExploreClient({ items, currentUserId }: ExploreClientProps) {
 
   // Preload on hover for faster perceived navigation (Rule 2.5)
   const handleMouseEnter = useCallback(
-    (item: PublicItem & { ownerUsername: string }) => {
+    (item: ExploreClientProps["items"][number]) => {
       router.prefetch(`/u/${item.ownerUsername}/${item.id}`);
     },
     [router]
   );
 
   const handleItemClick = useCallback(
-    (item: PublicItem & { ownerUsername: string }) => {
+    (item: ExploreClientProps["items"][number]) => {
       router.push(`/u/${item.ownerUsername}/${item.id}`);
     },
     [router]
@@ -103,22 +116,34 @@ export function ExploreClient({ items, currentUserId }: ExploreClientProps) {
           className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
         >
           {sortedItems.map((item, index) => {
-            const isOwnItem = currentUserId === item.userId;
+            const isOwnItem = currentUser?.id === item.userId;
+            // For own items: show "You" linked to your profile (no pic)
+            // For others: show profile pic + @username linked to their profile
+            const ownerHref = isOwnItem
+              ? currentUser?.username
+                ? `/u/${currentUser.username}`
+                : undefined
+              : `/u/${item.ownerUsername}`;
             return (
               <GridItem
                 key={item.id}
                 id={item.id}
                 name={item.name}
-                description={isOwnItem ? "You" : `@${item.ownerUsername}`}
-                descriptionHref={
-                  isOwnItem ? undefined : `/u/${item.ownerUsername}`
-                }
+                description={item.description}
                 artworkId={item.artworkId}
                 onClick={() => handleItemClick(item)}
                 onMouseEnter={() => handleMouseEnter(item)}
                 showArtwork={true}
                 showDescription={true}
                 priority={index < 8}
+                ownerLabel={isOwnItem ? "You" : `@${item.ownerUsername}`}
+                ownerHref={ownerHref}
+                ownerUserId={isOwnItem ? undefined : item.userId}
+                ownerName={isOwnItem ? undefined : item.ownerName}
+                progressPercentage={isOwnItem ? item.progressPercentage : null}
+                watchedCount={isOwnItem ? item.watchedCount : undefined}
+                totalMediaCount={isOwnItem ? item.totalMediaCount : undefined}
+                totalItems={isOwnItem ? item.totalItems : undefined}
               />
             );
           })}

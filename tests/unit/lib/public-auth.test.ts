@@ -12,6 +12,7 @@ import {
   getPublicItem,
   getPublicItemsForUser,
   getPublicChildItems,
+  getPublicDescendants,
   getExploreItems,
   getPublicBreadcrumb,
 } from "@/lib/public-auth";
@@ -360,6 +361,7 @@ describe("getPublicItem", () => {
       description: "A great movie",
       parentId: null,
       depth: 0,
+      order: 0,
       userId: "user-1",
       artworkId: "artwork-1",
       tmdbId: 12345,
@@ -402,8 +404,7 @@ describe("getPublicItemsForUser", () => {
         where: {
           userId: "user-1",
           isPublic: true,
-          inheritVisibility: false, // Only explicitly public items on profile root
-          depth: 0,
+          inheritVisibility: false, // Only explicitly public items (consistent with Explore)
         },
       })
     );
@@ -481,6 +482,78 @@ describe("getPublicItemsForUser", () => {
         skip: 0,
       })
     );
+  });
+
+  it("does not include progress when currentUserId not passed", async () => {
+    mockItemFindMany.mockResolvedValue([
+      mockItem({ id: "item-1", name: "Movie 1" }),
+    ] as never);
+
+    const result = await getPublicItemsForUser("user-1");
+
+    expect(result[0]).not.toHaveProperty("progressPercentage");
+    expect(result[0]).not.toHaveProperty("watchedCount");
+    expect(result[0]).not.toHaveProperty("totalMediaCount");
+    expect(result[0]).not.toHaveProperty("totalItems");
+    // Should not query for progress data
+    expect(mockQueryRaw).not.toHaveBeenCalled();
+  });
+
+  it("does not include progress when viewing another user's profile", async () => {
+    mockItemFindMany.mockResolvedValue([
+      mockItem({ id: "item-1", name: "Movie 1", userId: "owner-1" }),
+    ] as never);
+
+    const result = await getPublicItemsForUser("owner-1", 50, 0, "viewer-2");
+
+    expect(result[0]).not.toHaveProperty("progressPercentage");
+    expect(result[0]).not.toHaveProperty("watchedCount");
+    // Should not query for progress data
+    expect(mockQueryRaw).not.toHaveBeenCalled();
+  });
+
+  it("includes progress when viewing own profile", async () => {
+    mockItemFindMany.mockResolvedValue([
+      mockItem({ id: "item-1", name: "Movie 1", userId: "user-1" }),
+    ] as never);
+    // Mock progress query response
+    mockQueryRaw.mockResolvedValue([
+      {
+        rootItemId: "item-1",
+        totalItems: BigInt(5),
+        itemsWithMedia: BigInt(3),
+        watchedItems: BigInt(2),
+      },
+    ]);
+
+    const result = await getPublicItemsForUser("user-1", 50, 0, "user-1");
+
+    expect(result[0]).toHaveProperty("progressPercentage", 67); // 2/3 = 67%
+    expect(result[0]).toHaveProperty("watchedCount", 2);
+    expect(result[0]).toHaveProperty("totalMediaCount", 3);
+    expect(result[0]).toHaveProperty("totalItems", 5);
+    expect(mockQueryRaw).toHaveBeenCalled();
+  });
+
+  it("sets progressPercentage to null when no items have media", async () => {
+    mockItemFindMany.mockResolvedValue([
+      mockItem({ id: "item-1", name: "Empty Folder", userId: "user-1" }),
+    ] as never);
+    mockQueryRaw.mockResolvedValue([
+      {
+        rootItemId: "item-1",
+        totalItems: BigInt(1),
+        itemsWithMedia: BigInt(0),
+        watchedItems: BigInt(0),
+      },
+    ]);
+
+    const result = await getPublicItemsForUser("user-1", 50, 0, "user-1");
+
+    expect(result[0]).toHaveProperty("progressPercentage", null);
+    expect(result[0]).toHaveProperty("watchedCount", 0);
+    expect(result[0]).toHaveProperty("totalMediaCount", 0);
+    expect(result[0]).toHaveProperty("totalItems", 1);
   });
 });
 
@@ -737,6 +810,106 @@ describe("getExploreItems", () => {
         skip: 15,
       })
     );
+  });
+});
+
+describe("getPublicDescendants", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns empty array when parent is not public", async () => {
+    mockQueryRaw.mockResolvedValue([{ is_fully_public: false }]);
+
+    const result = await getPublicDescendants("parent-1");
+
+    expect(result).toEqual([]);
+    expect(mockItemFindMany).not.toHaveBeenCalled();
+  });
+
+  it("returns empty array when parent has no descendants", async () => {
+    // Parent is public
+    mockQueryRaw
+      .mockResolvedValueOnce([{ is_fully_public: true }]) // isItemFullyPublic
+      .mockResolvedValueOnce([]); // descendants CTE
+    mockItemFindUnique.mockResolvedValue({
+      userId: "user-1",
+      depth: 0,
+    } as never);
+    mockItemFindMany.mockResolvedValue([]);
+
+    const result = await getPublicDescendants("parent-1");
+
+    expect(result).toEqual([]);
+  });
+
+  it("returns all public descendants with correct structure", async () => {
+    // Parent is public
+    mockQueryRaw
+      .mockResolvedValueOnce([{ is_fully_public: true }]) // isItemFullyPublic
+      .mockResolvedValueOnce([{ id: "child-1" }, { id: "grandchild-1" }]); // descendants CTE
+
+    mockItemFindUnique.mockResolvedValue({
+      userId: "user-1",
+      depth: 0,
+    } as never);
+    mockItemFindMany.mockResolvedValue([
+      mockItem({
+        id: "child-1",
+        name: "Season 1",
+        parentId: "parent-1",
+        depth: 1,
+        order: 0,
+      }),
+      mockItem({
+        id: "grandchild-1",
+        name: "Episode 1",
+        parentId: "child-1",
+        depth: 2,
+        order: 0,
+      }),
+    ] as never);
+
+    const result = await getPublicDescendants("parent-1");
+
+    expect(result).toHaveLength(2);
+    expect(result[0].name).toBe("Season 1");
+    expect(result[0].parentId).toBe("parent-1");
+    expect(result[1].name).toBe("Episode 1");
+    expect(result[1].parentId).toBe("child-1");
+  });
+
+  it("orders descendants by depth then order", async () => {
+    mockQueryRaw
+      .mockResolvedValueOnce([{ is_fully_public: true }])
+      .mockResolvedValueOnce([{ id: "a" }, { id: "b" }, { id: "c" }]);
+
+    mockItemFindUnique.mockResolvedValue({
+      userId: "user-1",
+      depth: 0,
+    } as never);
+    mockItemFindMany.mockResolvedValue([
+      mockItem({ id: "a", name: "First", depth: 1, order: 0 }),
+      mockItem({ id: "b", name: "Second", depth: 1, order: 1 }),
+      mockItem({ id: "c", name: "Nested", depth: 2, order: 0 }),
+    ] as never);
+
+    await getPublicDescendants("parent-1");
+
+    expect(mockItemFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: [{ depth: "asc" }, { order: "asc" }],
+      })
+    );
+  });
+
+  it("returns empty array when parent not found", async () => {
+    mockQueryRaw.mockResolvedValueOnce([{ is_fully_public: true }]);
+    mockItemFindUnique.mockResolvedValue(null);
+
+    const result = await getPublicDescendants("nonexistent");
+
+    expect(result).toEqual([]);
   });
 });
 

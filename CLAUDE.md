@@ -120,7 +120,8 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   └── settings-dialog.tsx       # Tabbed settings with profile and preferences
 │   ├── search/                       # Spotlight search components
 │   │   ├── global-spotlight.tsx      # Wrapper that renders SpotlightSearch
-│   │   └── spotlight-search.tsx      # Main search dialog with fuzzy filtering
+│   │   ├── spotlight-search.tsx      # Main search dialog with fuzzy filtering
+│   │   └── user-thumbnail.tsx        # User avatar thumbnail with fallback
 │   ├── sortable-grid/                # Grid view with drag-drop
 │   │   ├── Grid.tsx                  # View-only grid (no dnd-kit)
 │   │   ├── GridItem.tsx              # Card display component
@@ -222,11 +223,11 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── google-drive-upload.ts        # Browser-to-Drive upload operations
 │   ├── item-actions.ts               # Item CRUD server actions
 │   ├── item-file-actions.ts          # ItemFile operations, playback progress
-│   ├── item-utils.ts                 # Tree/flat conversion, sortItems(), filterItems(), sortPublicItems(), EXPLORE_SORT_OPTIONS
+│   ├── item-utils.ts                 # Tree/flat conversion, sortItems(), filterItems(), sortPublicItems(), publicItemsToTree(), EXPLORE_SORT_OPTIONS
 │   ├── logger.ts                     # Pino structured logging with request context
 │   ├── prisma.ts                     # Prisma client singleton
 │   ├── progress-utils.ts             # Playback progress calculation (90% threshold), DFS traversal for first incomplete item
-│   ├── public-auth.ts                # Public profile/item auth utilities (isItemFullyPublic, getPublicItems, getPublicChildItems)
+│   ├── public-auth.ts                # Public profile/item auth utilities (isItemFullyPublic, getPublicItems, getPublicChildItems, searchPublicUsers, searchPublicItems)
 │   ├── queue-aware-actions.ts        # Actions that queue when offline
 │   ├── rate-limit.ts                 # Upstash Redis rate limiting
 │   ├── source.ts                     # Fumadocs source configuration
@@ -236,7 +237,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── sync-utils.ts                 # Shared sync types and utilities
 │   ├── tmdb-actions.ts               # TMDB metadata server actions
 │   ├── tmdb-client.ts                # TMDB API client for movie/TV metadata
-│   ├── types.ts                      # Shared types (Item, ItemFile, ItemProgress, PinnedItem, NextItem, PublicProfile, PublicItem, ForkStatus, ForkInfo, SortOption, FilterOption, ViewMode, QueuedFile, TMDBMetadataSelection, SyncLogEntry, InheritVisibilityItem)
+│   ├── types.ts                      # Shared types (Item, ItemFile, ItemProgress, PinnedItem, NextItem, PublicProfile, PublicItem, ForkStatus, ForkInfo, SortOption, FilterOption, ViewMode, QueuedFile, TMDBMetadataSelection, SyncLogEntry, InheritVisibilityItem, SearchableUser, SearchablePublicItem)
 │   ├── upload-utils.ts               # Browser-to-Drive upload utilities
 │   ├── user-actions.ts               # User profile server actions
 │   ├── utils.ts                      # cn() helper
@@ -259,7 +260,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── verify-drive-setup.ts         # Validate Drive accounts are configured correctly
 │   └── verify-seed.ts                # Quick seed verification utility
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 4.5.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 4.6.0)
     └── plans/                        # Design documents and audit reports
 ```
 
@@ -272,7 +273,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Protected routes use `await auth()` + redirect in server components
 - Password hashing with bcryptjs
 - Password reset emails via Resend (30 min expiry)
-- **Rate limiting**: Upstash Redis for auth (sign-in: 5/min, sign-up: 3/min, forgot: 2/min), items (create: 30/min, update: 60/min, delete: 30/min, pin: 30/min), and public features (fork: 10/min, username: 20/min)
+- **Rate limiting**: Upstash Redis for auth (sign-in: 5/min, sign-up: 3/min, forgot: 2/min), items (create: 30/min, update: 60/min, delete: 30/min, pin: 30/min), public features (fork: 10/min, username: 20/min), and search (userSearch: 60/min, publicItemSearch: 60/min)
 - **Validation**: Zod schemas for email/password (8+ chars, uppercase, lowercase, number)
 - **Security logging**: All auth events logged with IP and timestamp
 
@@ -338,7 +339,7 @@ pnpm run test:e2e:ui                        # UI mode
 - **Fork attribution**: Shows "Forked from [name] by @username" and fork count on public items
 - **Sidebar navigation**: Explore link shown for both authenticated and guest users
 - **Server actions**: `forkItem()`, `getForkStatus()`, `getForkInfo()` in `lib/fork-actions.ts`
-- **Public auth utilities**: `getPublicProfile()`, `getPublicItems()`, `getPublicChildItems()`, `isItemFullyPublic()` in `lib/public-auth.ts` (React.cache() for request deduplication)
+- **Public auth utilities**: `getPublicProfile()`, `getPublicItems()`, `getPublicChildItems()`, `isItemFullyPublic()`, `searchPublicUsers()`, `searchPublicItems()` in `lib/public-auth.ts` (React.cache() for request deduplication)
 
 ### TMDB Metadata Integration
 
@@ -359,14 +360,19 @@ pnpm run test:e2e:ui                        # UI mode
 
 - **Keyboard shortcut**: Press "/" to open search dialog from any page
 - **Search button**: Sidebar button with "/" keyboard hint for mouse users
+- **Three sections**: "Your Items" (own library), "Public Collections" (public items from others), "People" (public profiles)
 - **Fuzzy filtering**: cmdk library handles client-side fuzzy search
 - **Artwork thumbnails**: Search results display item artwork (primary first, then first available)
+- **User thumbnails**: People results show avatar or initials-based fallback
 - **Breadcrumb paths**: Nested items show parent hierarchy (e.g., "Movies / Star Wars")
-- **SWR-style caching**: Shows cached results immediately while fetching fresh data
+- **Owner attribution**: Public items show @username for context
+- **SWR-style caching**: 60-second TTL module-level cache for instant results
+- **Independent loading**: Each section loads and renders independently with skeletons
+- **Parallel fetching**: All three sections fetch concurrently
 - **Available everywhere**: Works on all pages for authenticated users (my-items, docs, homepage)
-- **Rate limiting**: Search requests limited to prevent abuse (itemSearch: 30/min)
+- **Rate limiting**: Search requests limited (itemSearch: 30/min, userSearch: 60/min, publicItemSearch: 60/min)
 - **Context**: `SpotlightProvider` manages dialog state and keyboard listener
-- **Components**: `SpotlightSearch` dialog, `GlobalSpotlight` wrapper, `Kbd` keyboard hint
+- **Components**: `SpotlightSearch` dialog, `GlobalSpotlight` wrapper, `UserThumbnail`, `Kbd` keyboard hint
 
 ### Google Drive Integration
 

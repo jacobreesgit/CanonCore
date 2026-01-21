@@ -262,4 +262,85 @@ describe("seed-config", () => {
       expect(config.TV_SHOW_IDS).toContain(57243); // Modern
     });
   });
+
+  describe("USER_CONTENT_DISTRIBUTION uniqueness", () => {
+    it("has no overlapping movie IDs between users", async () => {
+      const config = await import("@/prisma/seed-config");
+      const seen = new Set<number>();
+      const duplicates: number[] = [];
+
+      Object.values(config.USER_CONTENT_DISTRIBUTION).forEach((userConfig) => {
+        userConfig.movieIds.forEach((id) => {
+          if (seen.has(id)) {
+            duplicates.push(id);
+          }
+          seen.add(id);
+        });
+      });
+
+      expect(duplicates).toEqual([]);
+    });
+
+    it("has no overlapping show IDs between users", async () => {
+      const config = await import("@/prisma/seed-config");
+      const seen = new Set<number>();
+      const duplicates: number[] = [];
+
+      Object.values(config.USER_CONTENT_DISTRIBUTION).forEach((userConfig) => {
+        userConfig.showIds.forEach((id) => {
+          if (seen.has(id)) {
+            duplicates.push(id);
+          }
+          seen.add(id);
+        });
+      });
+
+      expect(duplicates).toEqual([]);
+    });
+
+    it("all user movie IDs exist in MOVIE_IDS", async () => {
+      const config = await import("@/prisma/seed-config");
+      const movieIdSet = new Set(config.MOVIE_IDS);
+      const missingIds: number[] = [];
+
+      Object.values(config.USER_CONTENT_DISTRIBUTION).forEach((userConfig) => {
+        userConfig.movieIds.forEach((id) => {
+          if (!movieIdSet.has(id)) {
+            missingIds.push(id);
+          }
+        });
+      });
+
+      expect(missingIds).toEqual([]);
+    });
+
+    it("all user show IDs exist in TV_SHOW_IDS", async () => {
+      const config = await import("@/prisma/seed-config");
+      const showIdSet = new Set(config.TV_SHOW_IDS);
+      const missingIds: number[] = [];
+
+      Object.values(config.USER_CONTENT_DISTRIBUTION).forEach((userConfig) => {
+        userConfig.showIds.forEach((id) => {
+          if (!showIdSet.has(id)) {
+            missingIds.push(id);
+          }
+        });
+      });
+
+      expect(missingIds).toEqual([]);
+    });
+
+    it("test user has empty content arrays", async () => {
+      const config = await import("@/prisma/seed-config");
+      const testConfig = config.USER_CONTENT_DISTRIBUTION["test@canoncore.com"];
+
+      expect(testConfig.movieIds).toEqual([]);
+      expect(testConfig.showIds).toEqual([]);
+    });
+
+    it("validateContentDistribution does not throw for valid config", async () => {
+      const config = await import("@/prisma/seed-config");
+      expect(() => config.validateContentDistribution()).not.toThrow();
+    });
+  });
 });

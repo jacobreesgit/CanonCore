@@ -1,6 +1,7 @@
 /**
  * Page object for public profile and item pages.
- * Provides helpers for viewing public profiles and forking items.
+ * Provides helpers for viewing public profiles, forking items,
+ * and testing view toggle and hero collapse functionality.
  */
 
 import type { Locator, Page } from "@playwright/test";
@@ -12,6 +13,7 @@ export class PublicProfilePage {
   readonly heroTitle: Locator;
   readonly heroDescription: Locator;
   readonly itemsGrid: Locator;
+  readonly itemsTree: Locator;
   readonly emptyState: Locator;
   readonly forkButton: Locator;
   readonly forkInLibraryButton: Locator;
@@ -19,6 +21,8 @@ export class PublicProfilePage {
   readonly forkDialogConfirm: Locator;
   readonly forkCount: Locator;
   readonly breadcrumb: Locator;
+  readonly viewToggleTree: Locator;
+  readonly viewToggleGrid: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -26,6 +30,7 @@ export class PublicProfilePage {
     this.heroTitle = this.heroSection.locator("h1");
     this.heroDescription = this.heroSection.locator("p").first();
     this.itemsGrid = page.getByTestId("items-grid-view");
+    this.itemsTree = page.getByTestId("items-tree-view");
     this.emptyState = page.getByText(/no public items yet|no child items/i);
     this.forkButton = page.getByRole("button", { name: /fork to library/i });
     this.forkInLibraryButton = page.getByRole("link", {
@@ -39,6 +44,9 @@ export class PublicProfilePage {
     // There are two breadcrumbs: header (Home) and content (username > item)
     // The content breadcrumb is the second/last one
     this.breadcrumb = page.getByLabel("Breadcrumb").last();
+    // View toggle buttons
+    this.viewToggleTree = page.getByRole("button", { name: /tree view/i });
+    this.viewToggleGrid = page.getByRole("button", { name: /grid view/i });
   }
 
   /** Navigate to a public profile */
@@ -69,7 +77,8 @@ export class PublicProfilePage {
 
   /** Expect items grid to contain an item */
   async expectItemVisible(name: string) {
-    await expect(this.itemsGrid.getByText(name)).toBeVisible();
+    // Use first() since grid items have name in both title and description
+    await expect(this.itemsGrid.getByText(name).first()).toBeVisible();
   }
 
   /** Expect empty state message */
@@ -79,7 +88,8 @@ export class PublicProfilePage {
 
   /** Click on an item in the grid */
   async clickItem(name: string) {
-    await this.itemsGrid.getByText(name).click();
+    // Use first() since grid items have name in both title and description
+    await this.itemsGrid.getByText(name).first().click();
   }
 
   /** Fork an item to root */
@@ -122,5 +132,47 @@ export class PublicProfilePage {
   /** Navigate via breadcrumb back arrow */
   async clickBreadcrumbBack() {
     await this.breadcrumb.getByRole("link").first().click();
+  }
+
+  /** Switch to tree view */
+  async switchToTreeView() {
+    await this.viewToggleTree.click();
+  }
+
+  /** Switch to grid view */
+  async switchToGridView() {
+    await this.viewToggleGrid.click();
+  }
+
+  /** Expect tree view to be visible */
+  async expectTreeViewVisible() {
+    await expect(this.itemsTree).toBeVisible();
+  }
+
+  /** Expect grid view to be visible */
+  async expectGridViewVisible() {
+    await expect(this.itemsGrid).toBeVisible();
+  }
+
+  /** Expect an item in tree view by name */
+  async expectItemInTree(name: string) {
+    await expect(
+      this.itemsTree.getByRole("listitem").filter({ hasText: name })
+    ).toBeVisible();
+  }
+
+  /** Collapse the hero section */
+  async collapseHero() {
+    await this.page.getByRole("button", { name: /collapse hero/i }).click();
+  }
+
+  /** Expand the hero section */
+  async expandHero() {
+    await this.page.getByRole("button", { name: /expand hero/i }).click();
+  }
+
+  /** Check if the hero is collapsed */
+  async isHeroCollapsed(): Promise<boolean> {
+    return this.page.getByRole("button", { name: /expand hero/i }).isVisible();
   }
 }

@@ -517,3 +517,176 @@ test.describe("Fork Journey", () => {
     await expect(publicProfilePage.forkInLibraryButton).not.toBeVisible();
   });
 });
+
+test.describe("Public Item View Toggle and Hero Collapse Journey", () => {
+  // Run serially to avoid database conflicts with shared user state
+  test.describe.configure({ mode: "serial" });
+
+  let ownerEmail: string;
+  let ownerId: string;
+  let ownerUsername: string;
+  let parentItemId: string;
+  let childItemId: string;
+
+  test.beforeEach(async () => {
+    // Create owner with public profile directly in DB
+    ownerEmail = generateUniqueEmail("view-toggle");
+    ownerUsername = generateUniqueUsername("vt");
+
+    const { hash } = await import("bcryptjs");
+    const passwordHash = await hash(TEST_PASSWORD, 10);
+
+    const owner = await prisma.user.create({
+      data: {
+        email: ownerEmail,
+        passwordHash,
+        isPublic: true,
+        username: ownerUsername,
+      },
+    });
+    ownerId = owner.id;
+
+    // Create a public parent item with a child
+    const parentItem = await prisma.item.create({
+      data: {
+        name: "Parent Collection",
+        description: "A parent collection for testing views",
+        userId: ownerId,
+        depth: 0,
+        order: 0,
+        isPublic: true,
+      },
+    });
+    parentItemId = parentItem.id;
+
+    // Create a public child item
+    const childItem = await prisma.item.create({
+      data: {
+        name: "Child Item",
+        description: "A child item for testing tree view",
+        userId: ownerId,
+        parentId: parentItemId,
+        depth: 1,
+        order: 0,
+        isPublic: true,
+      },
+    });
+    childItemId = childItem.id;
+  });
+
+  test.afterEach(async () => {
+    // Cleanup owner and their items
+    await prisma.item
+      .deleteMany({ where: { userId: ownerId } })
+      .catch(() => {});
+    await prisma.user.delete({ where: { id: ownerId } }).catch(() => {});
+  });
+
+  test("can switch between tree and grid views on public item", async ({
+    page,
+    publicProfilePage,
+  }) => {
+    // Visit public item (default is grid view from localStorage or default)
+    await publicProfilePage.gotoItem(ownerUsername, parentItemId);
+    await publicProfilePage.expectHeroVisible("Parent Collection");
+
+    // Initially grid view should be visible (default)
+    await publicProfilePage.expectGridViewVisible();
+
+    // Switch to tree view
+    await publicProfilePage.switchToTreeView();
+    await publicProfilePage.expectTreeViewVisible();
+
+    // Verify child item is visible in tree
+    await publicProfilePage.expectItemInTree("Child Item");
+
+    // Switch back to grid view
+    await publicProfilePage.switchToGridView();
+    await publicProfilePage.expectGridViewVisible();
+
+    // Verify child is visible in grid
+    await publicProfilePage.expectItemVisible("Child Item");
+  });
+
+  test("view toggle persists across page navigation", async ({
+    page,
+    publicProfilePage,
+  }) => {
+    // Visit public item
+    await publicProfilePage.gotoItem(ownerUsername, parentItemId);
+    await publicProfilePage.expectHeroVisible("Parent Collection");
+
+    // Switch to tree view
+    await publicProfilePage.switchToTreeView();
+    await publicProfilePage.expectTreeViewVisible();
+
+    // Navigate to child item and back
+    await publicProfilePage.gotoItem(ownerUsername, childItemId);
+    await publicProfilePage.expectHeroVisible("Child Item");
+
+    // Go back to parent
+    await publicProfilePage.gotoItem(ownerUsername, parentItemId);
+
+    // Tree view should still be selected (persisted in localStorage)
+    await publicProfilePage.expectTreeViewVisible();
+  });
+
+  test("can collapse and expand hero section", async ({
+    page,
+    publicProfilePage,
+  }) => {
+    // Visit public item
+    await publicProfilePage.gotoItem(ownerUsername, parentItemId);
+    await publicProfilePage.expectHeroVisible("Parent Collection");
+
+    // Hero should be expanded by default
+    expect(await publicProfilePage.isHeroCollapsed()).toBe(false);
+
+    // Collapse the hero
+    await publicProfilePage.collapseHero();
+    expect(await publicProfilePage.isHeroCollapsed()).toBe(true);
+
+    // Expand the hero
+    await publicProfilePage.expandHero();
+    expect(await publicProfilePage.isHeroCollapsed()).toBe(false);
+  });
+
+  test("hero collapse state persists across page navigation", async ({
+    page,
+    publicProfilePage,
+  }) => {
+    // Visit public item
+    await publicProfilePage.gotoItem(ownerUsername, parentItemId);
+    await publicProfilePage.expectHeroVisible("Parent Collection");
+
+    // Collapse the hero
+    await publicProfilePage.collapseHero();
+    expect(await publicProfilePage.isHeroCollapsed()).toBe(true);
+
+    // Navigate to child item
+    await publicProfilePage.gotoItem(ownerUsername, childItemId);
+    await publicProfilePage.expectHeroVisible("Child Item");
+
+    // Hero should still be collapsed (persisted in localStorage)
+    expect(await publicProfilePage.isHeroCollapsed()).toBe(true);
+
+    // Go back to parent
+    await publicProfilePage.gotoItem(ownerUsername, parentItemId);
+
+    // Hero should still be collapsed
+    expect(await publicProfilePage.isHeroCollapsed()).toBe(true);
+  });
+
+  test("view toggle is disabled when no children", async ({
+    page,
+    publicProfilePage,
+  }) => {
+    // Visit child item (which has no children)
+    await publicProfilePage.gotoItem(ownerUsername, childItemId);
+    await publicProfilePage.expectHeroVisible("Child Item");
+
+    // View toggle should be disabled
+    await expect(publicProfilePage.viewToggleTree).toBeDisabled();
+    await expect(publicProfilePage.viewToggleGrid).toBeDisabled();
+  });
+});

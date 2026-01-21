@@ -12,6 +12,12 @@ import { GridItem } from "./GridItem";
 import { ItemContextMenu } from "@/components/items/item-context-menu";
 import type { ItemWithArtwork } from "@/lib/types";
 
+interface CurrentUser {
+  id: string;
+  username: string | null;
+  name: string | null;
+}
+
 interface GridProps {
   /** Items to display in the grid. */
   items: ItemWithArtwork[];
@@ -27,6 +33,8 @@ interface GridProps {
   onPinItem?(id: string): Promise<void>;
   /** Callback to unpin an item from the sidebar. */
   onUnpinItem?(id: string): Promise<void>;
+  /** Current user info for owner display. */
+  currentUser?: CurrentUser | null;
 }
 
 /** Number of items to load with priority (above the fold). */
@@ -47,7 +55,12 @@ export function Grid({
   hasDriveConnection = false,
   onPinItem,
   onUnpinItem,
+  currentUser,
 }: GridProps) {
+  // Build owner href for "You" label - links to your profile if you have username
+  const ownerHref = currentUser?.username
+    ? `/u/${currentUser.username}`
+    : undefined;
   return (
     <div
       data-testid="items-grid-view"
@@ -81,6 +94,8 @@ export function Grid({
             showArtwork={true}
             showDescription={true}
             priority={index < PRIORITY_COUNT}
+            ownerLabel="You"
+            ownerHref={ownerHref}
           />
         </ItemContextMenu>
       ))}

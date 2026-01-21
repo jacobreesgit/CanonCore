@@ -129,6 +129,87 @@ export function itemsToTree(items: ItemInput[]): TreeItem[] {
 }
 
 /**
+ * Converts a flat array of public items to a hierarchical tree structure.
+ * Similar to itemsToTree but for PublicItem types.
+ * Adjusts depth relative to the parent item (tree depth 0 = first children level).
+ *
+ * @param items - Flat array of public items
+ * @param parentDepth - Depth of the parent item (for relative depth calculation)
+ * @returns Tree structure suitable for Tree component
+ */
+export function publicItemsToTree(
+  items: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    parentId: string | null;
+    depth: number;
+    order: number;
+    artworkId: string | null;
+    // Optional progress fields (only included for own items)
+    progressPercentage?: number | null;
+    watchedCount?: number;
+    totalMediaCount?: number;
+    totalItems?: number;
+  }>,
+  parentDepth: number
+): TreeItem[] {
+  const itemMap = new Map<string, TreeItem>();
+  const roots: TreeItem[] = [];
+
+  // First pass: create TreeItem nodes for all items
+  for (const item of items) {
+    itemMap.set(item.id, {
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      // Adjust depth relative to parent (children become depth 0, grandchildren depth 1, etc.)
+      depth: item.depth - parentDepth - 1,
+      order: item.order,
+      parentId: item.parentId,
+      children: [],
+      artworkId: item.artworkId,
+      // Include progress data if available (for own items)
+      progressPercentage: item.progressPercentage ?? null,
+      watchedCount: item.watchedCount,
+      totalMediaCount: item.totalMediaCount,
+      totalItems: item.totalItems,
+    });
+  }
+
+  // Second pass: build the tree structure
+  for (const item of items) {
+    const treeItem = itemMap.get(item.id);
+    if (!treeItem) continue;
+
+    if (item.parentId) {
+      const parent = itemMap.get(item.parentId);
+      if (parent) {
+        parent.children.push(treeItem);
+      } else {
+        // Parent not in items (it's the page's parent), treat as root
+        roots.push(treeItem);
+      }
+    } else {
+      roots.push(treeItem);
+    }
+  }
+
+  // Sort children by order at each level
+  function sortChildren(nodes: TreeItem[]): TreeItem[] {
+    nodes.sort((a, b) => a.order - b.order);
+    for (const node of nodes) {
+      if (node.children.length > 0) {
+        sortChildren(node.children);
+      }
+    }
+    return nodes;
+  }
+
+  return sortChildren(roots);
+}
+
+/**
  * Builds a map of item IDs to their descendant counts.
  * Used by getAllItems, getDescendants, and related functions.
  *
