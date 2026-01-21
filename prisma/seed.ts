@@ -1,22 +1,24 @@
 /**
- * Database seed script for populating demo content with optional Google Drive integration.
- * Fetches TMDB metadata, downloads posters, and optionally uploads to Google Drive.
+ * Database seed script for populating demo content with Google Drive integration.
+ * Fetches TMDB metadata, downloads posters, and uploads to Google Drive.
+ *
+ * IMPORTANT: Google Drive is REQUIRED for seeding. Run setup first:
+ *   pnpm run setup:seed
  *
  * The script guarantees a clean slate by automatically cleaning all Google Drive content
- * and emptying trash before seeding (when Drive is enabled). The Google Drive account
- * is dedicated to seeding, so all content can be safely deleted.
+ * and emptying trash before seeding. The Google Drive account is dedicated to seeding,
+ * so all content can be safely deleted.
  *
  * Flow:
- *   1. Validate environment (required vars, production DB check)
+ *   1. Validate environment (required vars, production DB check, Drive setup)
  *   2. Clean Google Drive (delete all files/folders, empty trash, verify)
  *   3. Cleanup seed users from database
  *   4. Create seed users
- *   5. Create Drive connection (if enabled)
+ *   5. Create Drive connection
  *   6. Seed content (movies, TV shows with TMDB metadata)
  *
  * Usage:
  *   ALLOW_SEEDING=true npx prisma db seed
- *   ALLOW_SEEDING=true SEED_SKIP_DRIVE=true npx prisma db seed  # Skip Drive
  *   ALLOW_SEEDING=true SEED_ONLY_MOVIES=true SEED_MOVIE_COUNT=3 npx prisma db seed
  *   ALLOW_SEEDING=true SEED_GROUPED_STRUCTURE=false npx prisma db seed  # Flat structure
  *
@@ -24,8 +26,6 @@
  *   - ALLOW_SEEDING: Must be "true" to run (prevents accidental seeding)
  *   - TMDB_API_KEY: Required for fetching metadata (v3 API key)
  *   - DATABASE_URL: Database connection string (must not be production)
- *
- * Google Drive Variables (required unless SEED_SKIP_DRIVE=true):
  *   - GOOGLE_SEED_REFRESH_TOKEN: Refresh token for Drive integration
  *   - GOOGLE_SEED_ROOT_FOLDER_ID: Root folder for Drive storage
  *   - GOOGLE_CLIENT_ID: OAuth client ID
@@ -36,7 +36,6 @@
  *   - SEED_PASSWORD: Password for seed users (default: SeedPassword123!)
  *   - SEED_ONLY_MOVIES: Skip TV shows, seed only movies (default: false)
  *   - SEED_ONLY_SHOWS: Skip movies, seed only TV shows (default: false)
- *   - SEED_SKIP_DRIVE: Skip Google Drive uploads (default: false)
  *   - SEED_SKIP_ARTWORK: Skip downloading/uploading artwork (default: false)
  *   - SEED_QUIET: Suppress progress output (default: false)
  *   - SEED_MOVIE_COUNT: Limit number of movies (0 = all, default: 0)
@@ -72,7 +71,6 @@ import {
   MAX_EPISODES,
   RANDOM_SEED,
   TMDB_API_DELAY_MS,
-  SEED_SKIP_DRIVE,
   SEED_SKIP_ARTWORK,
   SEED_QUIET,
   SEED_GROUPED_STRUCTURE,
@@ -92,6 +90,7 @@ import {
   buildPicsumUrl,
   type SeedUserConfig,
 } from "./seed-config";
+import { assertDriveConfigured } from "@/lib/drive-verification";
 
 // Prisma will be dynamically imported after env vars are loaded
 import type { PrismaClient } from "@prisma/client";
@@ -565,7 +564,7 @@ interface ProgressRangeParam {
  * - Subtitles: Generated placeholder SRT files
  * - Media: Placeholder entries with null driveFileId (episodes/movies only)
  *
- * Respects SEED_SKIP_ARTWORK and SEED_SKIP_DRIVE flags.
+ * Respects SEED_SKIP_ARTWORK flag.
  *
  * @param progressRange - Optional progress range for playback simulation (0-1).
  *                        If provided, uses range to determine completion percentage.
@@ -656,7 +655,7 @@ async function attachRandomFiles(
   }
 
   // --- SUBTITLES (skip if no Drive) ---
-  if (!SEED_SKIP_DRIVE && ctx && driveFolderId) {
+  if (ctx && driveFolderId) {
     // Shuffle using seeded random for reproducibility
     const shuffledLanguages = [...SUBTITLE_LANGUAGES].sort(
       () => random() - 0.5
@@ -797,40 +796,15 @@ function validateEnvironment(): void {
     process.exit(1);
   }
 
-  // Check Google Drive credentials (skip if SEED_SKIP_DRIVE is set)
-  if (!SEED_SKIP_DRIVE) {
-    if (!process.env.GOOGLE_SEED_REFRESH_TOKEN) {
-      console.error(
-        "❌ GOOGLE_SEED_REFRESH_TOKEN is required for Drive integration"
-      );
-      console.error("   Set SEED_SKIP_DRIVE=true to skip Drive operations");
-      process.exit(1);
-    }
-
-    if (!process.env.GOOGLE_SEED_ROOT_FOLDER_ID) {
-      console.error(
-        "❌ GOOGLE_SEED_ROOT_FOLDER_ID is required for Drive integration"
-      );
-      console.error("   Set SEED_SKIP_DRIVE=true to skip Drive operations");
-      process.exit(1);
-    }
-
-    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-      console.error(
-        "❌ GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are required"
-      );
-      console.error("   Set SEED_SKIP_DRIVE=true to skip Drive operations");
-      process.exit(1);
-    }
-
-    if (!process.env.ENCRYPTION_KEY) {
-      console.error("❌ ENCRYPTION_KEY is required for token encryption");
-      console.error("   Set SEED_SKIP_DRIVE=true to skip Drive operations");
-      process.exit(1);
-    }
-  } else {
-    log("⏭️  SEED_SKIP_DRIVE=true: Skipping Google Drive operations");
+  // Check ENCRYPTION_KEY (required for storing Drive tokens)
+  if (!process.env.ENCRYPTION_KEY) {
+    console.error("❌ ENCRYPTION_KEY is required for token encryption");
+    console.error("   Generate with: openssl rand -base64 32");
+    process.exit(1);
   }
+
+  // Note: Google Drive credentials are validated by assertDriveConfigured()
+  // which is called in main() before this function
 
   // Block production database - check against known production Neon endpoint
   const dbUrl = process.env.DATABASE_URL || "";
@@ -1037,7 +1011,6 @@ interface ParentFolderInfo {
  * Creates parent folders (Movies, TV Shows) for grouped structure.
  * These folders are pinned to the sidebar for quick navigation.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function _createParentFolders(
   userId: string,
   ctx: DriveContext | null
@@ -1059,7 +1032,7 @@ async function _createParentFolders(
   // Create Movies folder if we have movies to seed
   if (movieIds.length > 0) {
     let moviesDriveFolderId: string | null = null;
-    if (!SEED_SKIP_DRIVE && ctx) {
+    if (ctx) {
       try {
         moviesDriveFolderId = await createDriveFolder(
           ctx,
@@ -1100,7 +1073,7 @@ async function _createParentFolders(
   // Create TV Shows folder if we have shows to seed
   if (tvShowIds.length > 0) {
     let tvShowsDriveFolderId: string | null = null;
-    if (!SEED_SKIP_DRIVE && ctx) {
+    if (ctx) {
       try {
         tvShowsDriveFolderId = await createDriveFolder(
           ctx,
@@ -1167,7 +1140,7 @@ async function createParentFoldersForUser(
   // Create Movies folder if user has movies
   if (movieIds.length > 0) {
     let moviesDriveFolderId: string | null = null;
-    if (!SEED_SKIP_DRIVE && ctx) {
+    if (ctx) {
       try {
         moviesDriveFolderId = await createDriveFolder(
           ctx,
@@ -1209,7 +1182,7 @@ async function createParentFoldersForUser(
   // Create TV Shows folder if user has shows
   if (showIds.length > 0) {
     let tvShowsDriveFolderId: string | null = null;
-    if (!SEED_SKIP_DRIVE && ctx) {
+    if (ctx) {
       try {
         tvShowsDriveFolderId = await createDriveFolder(
           ctx,
@@ -1270,9 +1243,8 @@ async function uploadToDrive(
  * Seeds movies for a user with Drive integration.
  * When parentInfo is provided, creates items under the parent folder (grouped structure).
  * Otherwise creates items at root level (flat structure).
- * Respects SEED_SKIP_DRIVE flag.
+ * Creates Drive folders when ctx is provided (first user only).
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function _seedMovies(
   userId: string,
   ctx: DriveContext | null,
@@ -1307,9 +1279,9 @@ async function _seedMovies(
     );
     const description = truncateOverview(movie.overview);
 
-    // Create folder for this movie in Drive (skip if SEED_SKIP_DRIVE)
+    // Create folder for this movie in Drive
     let movieDriveFolderId: string | null = null;
-    if (!SEED_SKIP_DRIVE && ctx && parentDriveFolderId) {
+    if (ctx && parentDriveFolderId) {
       try {
         movieDriveFolderId = await createDriveFolder(
           ctx,
@@ -1400,9 +1372,9 @@ async function seedMoviesForUser(
     );
     const description = truncateOverview(movie.overview);
 
-    // Create folder for this movie in Drive (skip if SEED_SKIP_DRIVE)
+    // Create folder for this movie in Drive
     let movieDriveFolderId: string | null = null;
-    if (!SEED_SKIP_DRIVE && ctx && parentDriveFolderId) {
+    if (ctx && parentDriveFolderId) {
       try {
         movieDriveFolderId = await createDriveFolder(
           ctx,
@@ -1454,7 +1426,7 @@ async function seedMoviesForUser(
 
 /**
  * Seeds all episodes for a season.
- * Respects SEED_SKIP_DRIVE flag.
+ * Creates Drive folders when ctx is provided (first user only).
  *
  * @param depthOffset - Offset to add to base depth (0 for flat, 1 for grouped structure)
  * @param progressRange - Progress range for playback simulation (0-1)
@@ -1485,9 +1457,9 @@ async function seedEpisodes(
       `E${String(episode.episode_number).padStart(2, "0")} - ${episode.name}`
     );
 
-    // Create Drive folder for episode (skip if SEED_SKIP_DRIVE)
+    // Create Drive folder for episode
     let episodeDriveFolderId: string | null = null;
-    if (!SEED_SKIP_DRIVE && ctx && seasonDriveFolderId) {
+    if (ctx && seasonDriveFolderId) {
       try {
         episodeDriveFolderId = await createDriveFolder(
           ctx,
@@ -1544,7 +1516,7 @@ async function seedEpisodes(
 
 /**
  * Seeds all seasons for a TV show.
- * Respects SEED_SKIP_DRIVE flag.
+ * Creates Drive folders when ctx is provided (first user only).
  *
  * Note: Season 0 (specials) is intentionally skipped.
  * TMDB stores specials in Season 0, but they're often incomplete
@@ -1603,9 +1575,9 @@ async function seedSeasons(
 
     const seasonName = sanitizeFolderName(season.name || `Season ${seasonNum}`);
 
-    // Create Drive folder for season (skip if SEED_SKIP_DRIVE)
+    // Create Drive folder for season
     let seasonDriveFolderId: string | null = null;
-    if (!SEED_SKIP_DRIVE && ctx && showDriveFolderId) {
+    if (ctx && showDriveFolderId) {
       try {
         seasonDriveFolderId = await createDriveFolder(
           ctx,
@@ -1676,14 +1648,13 @@ async function seedSeasons(
  * Seeds TV shows for a user with Drive integration.
  * Creates hierarchical structure: Show → Seasons → Episodes.
  * When parentInfo is provided, creates items under the parent folder (grouped structure).
- * Respects SEED_SKIP_DRIVE flag.
+ * Creates Drive folders when ctx is provided (first user only).
  *
  * Special handling for Doctor Who:
  * - Classic Doctor Who (ID 121) and Modern Doctor Who (ID 57243) are consolidated
  * - Creates single "Doctor Who" folder with seasons from both eras
  * - Classic seasons appear first, Modern seasons follow with offset
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function _seedTVShows(
   userId: string,
   ctx: DriveContext | null,
@@ -1740,9 +1711,9 @@ async function _seedTVShows(
       description = truncateOverview(show.overview);
     }
 
-    // Create folder for this show in Drive (skip if SEED_SKIP_DRIVE)
+    // Create folder for this show in Drive
     let showDriveFolderId: string | null = null;
-    if (!SEED_SKIP_DRIVE && ctx && parentDriveFolderId) {
+    if (ctx && parentDriveFolderId) {
       try {
         showDriveFolderId = await createDriveFolder(
           ctx,
@@ -1919,9 +1890,9 @@ async function seedTVShowsForUser(
       description = truncateOverview(show.overview);
     }
 
-    // Create folder for this show in Drive (skip if SEED_SKIP_DRIVE)
+    // Create folder for this show in Drive
     let showDriveFolderId: string | null = null;
-    if (!SEED_SKIP_DRIVE && ctx && parentDriveFolderId) {
+    if (ctx && parentDriveFolderId) {
       try {
         showDriveFolderId = await createDriveFolder(
           ctx,
@@ -2084,29 +2055,30 @@ async function cleanupOnFailure(userId: string): Promise<void> {
 
 /**
  * Main seed function.
- * Respects SEED_SKIP_DRIVE to optionally skip Google Drive integration.
+ * Google Drive is REQUIRED - validates setup before proceeding.
  * Respects SEED_GROUPED_STRUCTURE to create Movies/TV Shows parent folders.
  */
 async function main(): Promise<void> {
-  const driveLabel = SEED_SKIP_DRIVE ? "without" : "with";
   const structureLabel = SEED_GROUPED_STRUCTURE ? "grouped" : "flat";
   log(
-    `\n🌱 Starting database seed ${driveLabel} Google Drive integration (${structureLabel} structure)...\n`
+    `\n🌱 Starting database seed with Google Drive integration (${structureLabel} structure)...\n`
   );
 
-  // Validate environment
+  // Pre-flight check: Drive is REQUIRED for seeding
+  // This will throw with clear instructions if not configured
+  await assertDriveConfigured("seed");
+
+  // Validate environment (ALLOW_SEEDING, TMDB_API_KEY, etc.)
   validateEnvironment();
 
   // Dynamic import of prisma after env vars are loaded
   const prismaModule = await import("@/lib/prisma");
   prisma = prismaModule.prisma;
 
-  // Clean Google Drive first (unless skipping Drive)
+  // Clean Google Drive first (guaranteed clean slate)
   // Note: If this succeeds but DB cleanup fails, re-running seed will fix it
-  if (!SEED_SKIP_DRIVE) {
-    console.log("\n🧹 Cleaning Google Drive...\n");
-    await cleanupGoogleDrive();
-  }
+  console.log("\n🧹 Cleaning Google Drive...\n");
+  await cleanupGoogleDrive();
 
   // Cleanup existing seed users from database
   await cleanupSeedUsers();
@@ -2134,7 +2106,7 @@ async function main(): Promise<void> {
     try {
       // Create Drive connection only for first user (demo user)
       let ctx: DriveContext | null = null;
-      if (!SEED_SKIP_DRIVE && isFirstUser) {
+      if (isFirstUser) {
         ctx = await createDriveConnection(userId);
       }
 
@@ -2229,7 +2201,7 @@ async function main(): Promise<void> {
         `\n✅ Seeded ${movieCount} movies and ${tvCount} TV show items in ${totalTime}s`
       );
 
-      if (!SEED_SKIP_DRIVE && isFirstUser) {
+      if (isFirstUser) {
         log(`   📁 Content synced to Google Drive`);
 
         // Run auto-sync to catch any pre-existing files and set changePageToken

@@ -4,6 +4,7 @@
  */
 
 import { Metadata } from "next";
+import { auth } from "@/lib/auth";
 import { getExploreItems } from "@/lib/public-auth";
 import { SiteHeader } from "@/components/site-header";
 import { ExploreClient } from "./explore-client";
@@ -25,13 +26,17 @@ export const metadata: Metadata = {
  * Fetches public items and renders the explore interface.
  */
 export default async function ExplorePage() {
-  const items = await getExploreItems(50, 0);
+  // Fetch items and session in parallel for performance
+  const [items, session] = await Promise.all([getExploreItems(50, 0), auth()]);
 
   return (
     <>
       <SiteHeader title="Explore" titleHref="/explore" />
       <div className="flex flex-1 flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
-        <ExploreClient items={items} />
+        <ExploreClient
+          items={items}
+          currentUserId={session?.user?.id ?? null}
+        />
       </div>
     </>
   );

@@ -641,7 +641,7 @@ describe("getExploreItems", () => {
     expect(result).toEqual([]);
   });
 
-  it("queries explicitly public root items from public users with usernames", async () => {
+  it("queries explicitly public items from public users with usernames", async () => {
     mockItemFindMany.mockResolvedValue([]);
 
     await getExploreItems();
@@ -651,7 +651,6 @@ describe("getExploreItems", () => {
         where: {
           isPublic: true,
           inheritVisibility: false, // Only explicitly public items
-          depth: 0,
           user: {
             isPublic: true,
             username: { not: null },

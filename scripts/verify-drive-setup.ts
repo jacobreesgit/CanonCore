@@ -76,7 +76,9 @@ async function fetchWithTimeout(
  * @param config - Account configuration to verify
  * @returns Verification result
  */
-async function verifyAccount(config: AccountConfig): Promise<VerificationResult> {
+async function verifyAccount(
+  config: AccountConfig
+): Promise<VerificationResult> {
   const result: VerificationResult = {
     account: config.name,
     tokenSet: false,
@@ -153,7 +155,8 @@ async function verifyAccount(config: AccountConfig): Promise<VerificationResult>
     if (err instanceof Error && err.name === "AbortError") {
       result.error = "Request timed out";
     } else {
-      result.error = err instanceof Error ? err.message : "Unknown error occurred";
+      result.error =
+        err instanceof Error ? err.message : "Unknown error occurred";
     }
   }
 
@@ -209,7 +212,9 @@ async function main() {
   console.log("\n🔐 Shared Credentials");
   console.log("─".repeat(40));
   console.log(`   GOOGLE_CLIENT_ID:     ${clientId ? "✅ Set" : "❌ Not set"}`);
-  console.log(`   GOOGLE_CLIENT_SECRET: ${clientSecret ? "✅ Set" : "❌ Not set"}`);
+  console.log(
+    `   GOOGLE_CLIENT_SECRET: ${clientSecret ? "✅ Set" : "❌ Not set"}`
+  );
 
   if (!clientId || !clientSecret) {
     console.log("\n❌ Cannot verify accounts without client credentials\n");
@@ -241,7 +246,9 @@ async function main() {
   } else {
     console.log("❌ Some checks failed. Run setup to fix:\n");
     console.log("   npx tsx scripts/generate-refresh-token.ts --purpose=e2e");
-    console.log("   npx tsx scripts/generate-refresh-token.ts --purpose=seed\n");
+    console.log(
+      "   npx tsx scripts/generate-refresh-token.ts --purpose=seed\n"
+    );
     process.exit(1);
   }
 }

@@ -26,12 +26,14 @@ TV Shows/         isPublic: false   (organizational folder, hidden)
 ```
 
 **Rules:**
+
 - `inheritVisibility: true` → Uses parent's effective visibility, toggle disabled in UI
 - `inheritVisibility: false` → Uses own `isPublic` value, toggle enabled
 - Explore shows only explicitly public items (not inheriting)
 - Direct links and profile pages work for all effectively-visible items
 
 **New components:**
+
 - `ParentPrivacyWarningDialog` - Warns when making item public if parent is private
 - `ReparentWarningDialog` - Warns when moving items that would change effective visibility
 
@@ -48,6 +50,7 @@ pnpm run setup:all       # Run both OAuth setups sequentially
 ```
 
 **Features:**
+
 - Auto-creates root folders during OAuth setup
 - Validates folder exists and is accessible
 - Clear error messages for common issues
@@ -148,19 +151,20 @@ ALTER TABLE "Item" ADD COLUMN "inheritVisibility" BOOLEAN NOT NULL DEFAULT false
 ```
 
 **Rollback (if needed):**
+
 ```sql
 ALTER TABLE "Item" DROP COLUMN "inheritVisibility";
 ```
 
 ## Test Coverage Impact
 
-| Area                      | Before | After  | Change   |
-| ------------------------- | ------ | ------ | -------- |
-| Visibility E2E tests      | 0      | 634    | +634     |
-| Public auth unit tests    | ~50    | ~194   | +144     |
-| Seed integration tests    | 0      | 127    | +127     |
-| Warning dialog tests      | 0      | 221    | +221     |
-| Item action tests         | ~100   | ~259   | +159     |
+| Area                   | Before | After | Change |
+| ---------------------- | ------ | ----- | ------ |
+| Visibility E2E tests   | 0      | 634   | +634   |
+| Public auth unit tests | ~50    | ~194  | +144   |
+| Seed integration tests | 0      | 127   | +127   |
+| Warning dialog tests   | 0      | 221   | +221   |
+| Item action tests      | ~100   | ~259  | +159   |
 
 ## Breaking Changes
 
@@ -181,6 +185,7 @@ E2E_GOOGLE_EMAIL → GOOGLE_E2E_EMAIL
 ## Migration Notes
 
 1. **Run database migration:**
+
    ```bash
    npx prisma migrate deploy
    ```

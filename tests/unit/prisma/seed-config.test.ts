@@ -28,12 +28,6 @@ describe("seed-config", () => {
     expect(config.SEED_ONLY_SHOWS).toBe(true);
   });
 
-  it("parses SEED_SKIP_DRIVE flag", async () => {
-    process.env.SEED_SKIP_DRIVE = "true";
-    const config = await import("@/prisma/seed-config");
-    expect(config.SEED_SKIP_DRIVE).toBe(true);
-  });
-
   it("parses SEED_SKIP_ARTWORK flag", async () => {
     process.env.SEED_SKIP_ARTWORK = "true";
     const config = await import("@/prisma/seed-config");
@@ -68,7 +62,6 @@ describe("seed-config", () => {
     const config = await import("@/prisma/seed-config");
     expect(config.SEED_ONLY_MOVIES).toBe(false);
     expect(config.SEED_ONLY_SHOWS).toBe(false);
-    expect(config.SEED_SKIP_DRIVE).toBe(false);
     expect(config.SEED_SKIP_ARTWORK).toBe(false);
     expect(config.SEED_QUIET).toBe(false);
   });

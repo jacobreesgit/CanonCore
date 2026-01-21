@@ -154,7 +154,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── docs/                     # Documentation E2E tests
 │   │   ├── google-drive/             # Google Drive integration tests
 │   │   ├── items/                    # Items E2E tests (CRUD, drag, views, rate-limit)
-│   │   ├── media/                    # Media playback tests (video seeking)
+│   │   ├── media/                    # Media playback tests
 │   │   ├── navigation/               # Sidebar navigation active state tests
 │   │   ├── profile/                  # Profile settings tests
 │   │   ├── public/                   # Public profiles and forking tests
@@ -175,6 +175,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   └── vitest.config.ts
 │   ├── integration/
 │   │   ├── auth/                     # Auth integration tests
+│   │   ├── e2e-setup/                # E2E auto-setup integration tests
 │   │   ├── google-drive/             # Google Drive integration tests (batch operations)
 │   │   ├── items/                    # Items integration tests (CRUD, hierarchy)
 │   │   ├── public/                   # Public profile and fork integration tests
@@ -189,6 +190,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── use-artwork-upload.ts         # Artwork upload flow with progress
 │   ├── use-bulk-selection.ts         # Bulk item selection with select-all/toggle
 │   ├── use-controllable-state.ts     # Controlled/uncontrolled component state
+│   ├── use-explore-sort.ts           # Explore page sort with localStorage persistence
 │   ├── use-go-to-item.ts             # Fetch first incomplete item and navigate for "Go to" button
 │   ├── use-hero-collapse.ts          # Hero section scroll-triggered collapse
 │   ├── use-image-loaded.ts           # Cached image detection for reliable loading
@@ -205,6 +207,8 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── auth-actions.ts               # Auth server actions
 │   ├── circuit-breaker.ts            # Circuit breaker for resilient external calls
 │   ├── crypto.ts                     # AES-256-GCM credential encryption
+│   ├── drive-verification.ts         # Drive credential validation for E2E/seed
+│   ├── e2e-setup.ts                  # Automatic E2E setup and recovery utilities
 │   ├── email.ts                      # Resend email helper
 │   ├── env.ts                        # Zod environment variable validation
 │   ├── errors.ts                     # Centralized Prisma error handling
@@ -218,7 +222,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── google-drive-upload.ts        # Browser-to-Drive upload operations
 │   ├── item-actions.ts               # Item CRUD server actions
 │   ├── item-file-actions.ts          # ItemFile operations, playback progress
-│   ├── item-utils.ts                 # Tree/flat conversion, sortItems(), filterItems(), descendant counter
+│   ├── item-utils.ts                 # Tree/flat conversion, sortItems(), filterItems(), sortPublicItems(), EXPLORE_SORT_OPTIONS
 │   ├── logger.ts                     # Pino structured logging with request context
 │   ├── prisma.ts                     # Prisma client singleton
 │   ├── progress-utils.ts             # Playback progress calculation (90% threshold), DFS traversal for first incomplete item
@@ -255,7 +259,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── verify-drive-setup.ts         # Validate Drive accounts are configured correctly
 │   └── verify-seed.ts                # Quick seed verification utility
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 4.4.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 4.5.0)
     └── plans/                        # Design documents and audit reports
 ```
 
@@ -446,7 +450,6 @@ pnpm run test:e2e:ui                        # UI mode
 | -------------------------------- | ---------------------------- | -------------------------------------------------------------------------- |
 | Google Drive media tests (all 4) | `drive-media.spec.ts:23`     | Skipped on mobile - sync and media playback unreliable in mobile emulation |
 | Video playback test              | `drive-media.spec.ts:118`    | Dynamic skip if no video file in `GOOGLE_E2E_ROOT_FOLDER_ID/Breaking Bad/` |
-| Video seeking test               | `drive-media.spec.ts:169`    | Dynamic skip if no video file in test folder                               |
 | File Deletion tests (5)          | `items-settings.spec.ts:409` | Skipped if `GOOGLE_E2E_REFRESH_TOKEN` not set                              |
 
 ### Security
@@ -536,18 +539,22 @@ pnpm run setup:all       # Run both OAuth setups sequentially
 **E2E Drive Setup Workflow:**
 
 1. **First-time setup** (run once, uploads 474MB video):
+
    ```bash
    pnpm run setup:e2e-drive
    ```
+
    - Wipes all contents in E2E folder
    - Empties trash
    - Creates "Breaking Bad" folder
    - Uploads test video
 
 2. **Run E2E tests** (fast, just verifies):
+
    ```bash
    pnpm run test:e2e
    ```
+
    - Cleans test-created items (keeps "Breaking Bad")
    - Verifies baseline data exists
    - Runs tests

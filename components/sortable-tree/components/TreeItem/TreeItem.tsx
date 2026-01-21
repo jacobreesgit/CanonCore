@@ -90,6 +90,10 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       totalItems,
       isSelected,
       onSelectChange,
+      // Destructure to prevent passing to DOM element via ...props
+      fileCounts: _fileCounts,
+      showStats: _showStats,
+      mediaIconType: _mediaIconType,
       ...props
     },
     ref

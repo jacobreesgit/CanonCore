@@ -1,18 +1,32 @@
 /**
  * Global setup for E2E tests.
- * Cleans Google Drive and sets up test folder structure before all tests.
+ * Automatically ensures all prerequisites exist, creating or restoring them as needed.
+ *
+ * Auto-recovery handles:
+ * - Root folder in trash -> restores it
+ * - "Breaking Bad" folder missing -> creates it
+ * - Video file missing -> uploads it (if local file exists)
+ * - E2E user missing -> creates it
+ * - Drive connection missing -> creates it
+ * - Database records missing -> creates them
+ *
+ * Only fails when issues are unrecoverable (e.g., permanently deleted folder, missing credentials).
  */
 
 import { test as setup } from "@playwright/test";
-import { google } from "googleapis";
+import { config } from "dotenv";
 import {
   getDriveClientFromRefreshToken,
   batchDelete,
   emptyTrash,
 } from "@/lib/google-drive-client";
+import { assertDriveConfigured } from "@/lib/drive-verification";
+import { runAutomaticSetup, TEST_FOLDER_NAME } from "@/lib/e2e-setup";
 
-const TEST_FOLDER_NAME = "Breaking Bad";
-// Protected folders are not deleted during cleanup (baseline test data)
+// Load environment variables
+config({ path: ".env.local" });
+
+/** Protected folders are not deleted during cleanup (baseline test data). */
 const PROTECTED_FOLDERS = [TEST_FOLDER_NAME];
 
 /**
@@ -49,17 +63,12 @@ async function getAccessTokenFromRefreshToken(
  * Skips protected folders (baseline test data like "Breaking Bad").
  */
 async function cleanupE2EDrive(): Promise<void> {
-  const refreshToken = process.env.GOOGLE_E2E_REFRESH_TOKEN;
-  const rootFolderId = process.env.GOOGLE_E2E_ROOT_FOLDER_ID;
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_E2E_REFRESH_TOKEN!;
+  const rootFolderId = process.env.GOOGLE_E2E_ROOT_FOLDER_ID!;
 
-  if (!refreshToken || !rootFolderId || !clientId || !clientSecret) {
-    console.log("[E2E Setup] Skipping Drive cleanup - missing credentials");
-    return;
-  }
-
-  console.log("[E2E Setup] Cleaning Google Drive (keeping protected folders)...");
+  console.log(
+    "[E2E Setup] Cleaning Google Drive (keeping protected folders)..."
+  );
 
   const drive = await getDriveClientFromRefreshToken(refreshToken);
 
@@ -125,102 +134,26 @@ async function cleanupE2EDrive(): Promise<void> {
   console.log("[E2E Setup] Drive cleanup complete");
 }
 
-/**
- * Verifies the Google Drive E2E test folder structure exists.
- * Does NOT upload - use `pnpm run setup:e2e-drive` for that.
- */
-async function setupE2EDrive(): Promise<void> {
-  const refreshToken = process.env.GOOGLE_E2E_REFRESH_TOKEN;
-  const rootFolderId = process.env.GOOGLE_E2E_ROOT_FOLDER_ID;
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-
-  // Skip if credentials not configured
-  if (!refreshToken || !rootFolderId || !clientId || !clientSecret) {
-    console.log(
-      "[E2E Setup] Skipping Drive verification - missing credentials"
-    );
-    return;
-  }
-
-  console.log("[E2E Setup] Verifying Google Drive test structure...");
-
-  // Set up OAuth client
-  const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
-  oauth2Client.setCredentials({ refresh_token: refreshToken });
-  const drive = google.drive({ version: "v3", auth: oauth2Client });
-
-  // Validate root folder exists
-  try {
-    const folderCheck = await drive.files.get({
-      fileId: rootFolderId,
-      fields: "name,trashed",
-    });
-
-    if (folderCheck.data.trashed) {
-      throw new Error(
-        "GOOGLE_E2E_ROOT_FOLDER_ID folder is in trash.\n" +
-          "Restore it or run: pnpm run setup:e2e"
-      );
-    }
-
-    console.log(`[E2E Setup] Root folder: ${folderCheck.data.name}`);
-  } catch (err: unknown) {
-    const error = err as { code?: number; message?: string };
-    if (error.code === 404) {
-      throw new Error(
-        "GOOGLE_E2E_ROOT_FOLDER_ID folder not found.\n" +
-          "Run: pnpm run setup:e2e"
-      );
-    }
-    throw err;
-  }
-
-  // Check for test folder
-  const folderRes = await drive.files.list({
-    q: `"${rootFolderId}" in parents and name = "${TEST_FOLDER_NAME}" and mimeType = "application/vnd.google-apps.folder" and trashed = false`,
-    fields: "files(id, name)",
-  });
-
-  if (!folderRes.data.files || folderRes.data.files.length === 0) {
-    console.warn(
-      `[E2E Setup] ⚠️  "${TEST_FOLDER_NAME}" folder not found - run: pnpm run setup:e2e-drive`
-    );
-    return;
-  }
-
-  const testFolderId = folderRes.data.files[0].id!;
-  console.log(`[E2E Setup] Found "${TEST_FOLDER_NAME}" folder`);
-
-  // Check for video file
-  const videoRes = await drive.files.list({
-    q: `"${testFolderId}" in parents and mimeType contains "video" and trashed = false`,
-    fields: "files(id, name)",
-  });
-
-  if (videoRes.data.files && videoRes.data.files.length > 0) {
-    console.log(`[E2E Setup] Found video: ${videoRes.data.files[0].name}`);
-  } else {
-    console.warn(
-      `[E2E Setup] ⚠️  No video file found - media tests will be skipped`
-    );
-    console.warn(`[E2E Setup]    Run: pnpm run setup:e2e-drive`);
-  }
-
-  console.log("[E2E Setup] Drive verification complete");
-}
-
 setup("global setup", async () => {
-  try {
-    await cleanupE2EDrive();
-    await setupE2EDrive();
-  } catch (err) {
-    // Log the error clearly
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(`[E2E Setup] ❌ Drive setup failed: ${message}`);
+  // Pre-flight check: Basic credentials must be configured
+  // This only checks that env vars exist, not that they're valid
+  await assertDriveConfigured("e2e");
 
-    // Always re-throw to signal setup failure
+  try {
+    // Clean up test-created content (keeps protected folders)
+    await cleanupE2EDrive();
+
+    // Run automatic setup - creates/restores any missing prerequisites
+    const result = await runAutomaticSetup();
+
+    if (!result.success) {
+      throw new Error(result.error || "Automatic setup failed");
+    }
+
+    console.log("[E2E Setup] ✅ All prerequisites verified - ready for tests");
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[E2E Setup] ❌ Setup failed: ${message}`);
     throw err;
   }
-  console.log("E2E test setup complete");
 });

@@ -1,6 +1,7 @@
 /**
  * Artwork streaming endpoint.
  * Fetches artwork from Google Drive.
+ * Supports both authenticated (owner) and public access for fully public items.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -8,6 +9,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getDriveClient, withRateLimit } from "@/lib/google-drive-client";
 import { logger } from "@/lib/logger";
+import { isItemFullyPublic } from "@/lib/public-auth";
 
 /** Cache artwork for 1 hour (immutable content) */
 const CACHE_MAX_AGE = 3600;
@@ -57,17 +59,16 @@ function nodeStreamToWeb(
 /**
  * Downloads artwork file via Google Drive and serves to client.
  * Returns image with appropriate caching headers.
+ * Allows public access for artwork belonging to fully public items.
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ fileId: string }> }
 ) {
   try {
-    // Start auth and params in parallel (async-api-routes pattern)
-    const [session, { fileId }] = await Promise.all([auth(), params]);
-    if (!session?.user?.id) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
+    // Start auth early but await late to prevent waterfall (async-api-routes pattern)
+    const sessionPromise = auth();
+    const { fileId } = await params;
 
     // Get ItemFile with Item and Drive connection
     const itemFile = await prisma.itemFile.findUnique({
@@ -85,9 +86,18 @@ export async function GET(
       return new NextResponse("File not found", { status: 404 });
     }
 
-    // Verify ownership
-    if (itemFile.item.userId !== session.user.id) {
-      return new NextResponse("Forbidden", { status: 403 });
+    // Check if item is fully public (allows unauthenticated access)
+    const isPublic = await isItemFullyPublic(itemFile.item.id);
+
+    if (!isPublic) {
+      // Not public: require authentication and ownership
+      const session = await sessionPromise;
+      if (!session?.user?.id) {
+        return new NextResponse("Unauthorized", { status: 401 });
+      }
+      if (itemFile.item.userId !== session.user.id) {
+        return new NextResponse("Forbidden", { status: 403 });
+      }
     }
 
     // Verify file is artwork type
@@ -126,7 +136,8 @@ export async function GET(
       return new NextResponse(webStream, {
         headers: {
           "Content-Type": itemFile.mimeType || "image/jpeg",
-          "Cache-Control": `private, max-age=${CACHE_MAX_AGE}`,
+          // Public items can be cached by CDN; private items are user-specific
+          "Cache-Control": `${isPublic ? "public" : "private"}, max-age=${CACHE_MAX_AGE}`,
         },
       });
     } catch (error) {
