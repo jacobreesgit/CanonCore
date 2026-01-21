@@ -23,6 +23,12 @@ import { useHeroCollapse } from "@/hooks/use-hero-collapse";
 import { useGoToItem } from "@/hooks/use-go-to-item";
 import { formatProgressLabel } from "@/lib/progress-utils";
 
+interface CurrentUser {
+  id: string;
+  username: string | null;
+  name: string | null;
+}
+
 interface ItemDetailClientProps {
   /** Current item being viewed. */
   item: {
@@ -48,6 +54,8 @@ interface ItemDetailClientProps {
   itemProgress?: ItemProgress | null;
   /** Whether user has Google Drive connected (shows Upload button). */
   hasDriveConnection?: boolean;
+  /** Current user info for owner display in grid items. */
+  currentUser?: CurrentUser | null;
 }
 
 /**
@@ -62,6 +70,7 @@ export function ItemDetailClient({
   artworkId,
   itemProgress,
   hasDriveConnection = false,
+  currentUser,
 }: ItemDetailClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -202,6 +211,7 @@ export function ItemDetailClient({
         addItemOpen={addItemOpen}
         onAddItemOpenChange={setAddItemOpen}
         hasDriveConnection={hasDriveConnection}
+        currentUser={currentUser}
       />
 
       {/* Media player overlay */}

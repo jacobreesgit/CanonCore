@@ -249,6 +249,41 @@ export interface SearchableItem {
 }
 
 /**
+ * Public user data for spotlight search display.
+ * Includes username and name for search matching.
+ * NOTE: Only includes fields needed for UI - no unnecessary metadata.
+ */
+export interface SearchableUser {
+  /** User ID */
+  id: string;
+  /** Public username (URL slug) */
+  username: string;
+  /** Display name (may be null) */
+  name: string | null;
+}
+
+/**
+ * Public item data for spotlight search display.
+ * Only includes explicitly public items (isPublic=true, inheritVisibility=false).
+ * Includes owner info for attribution.
+ * NOTE: Only includes fields needed for UI - no unnecessary metadata.
+ */
+export interface SearchablePublicItem {
+  /** Item ID */
+  id: string;
+  /** Item name */
+  name: string;
+  /** Item description */
+  description: string | null;
+  /** First artwork file ID for thumbnail */
+  artworkId: string | null;
+  /** Owner's username for attribution and navigation */
+  ownerUsername: string;
+  /** Owner's display name */
+  ownerName: string | null;
+}
+
+/**
  * Pinned item for sidebar navigation display.
  * Minimal data needed for rendering pinned items in the sidebar.
  */

@@ -447,8 +447,10 @@ export async function removeHeroImage(): Promise<ActionResult<void>> {
  */
 export async function getProfile(): Promise<
   ActionResult<{
+    id: string;
     name: string | null;
     email: string;
+    username: string | null;
     hasImage: boolean;
     hasHeroImage: boolean;
   }>
@@ -462,8 +464,10 @@ export async function getProfile(): Promise<
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
+        id: true,
         name: true,
         email: true,
+        username: true,
         image: true,
         heroImage: true,
       },
@@ -476,8 +480,10 @@ export async function getProfile(): Promise<
     return {
       success: true,
       data: {
+        id: user.id,
         name: user.name,
         email: user.email,
+        username: user.username,
         hasImage: user.image !== null,
         hasHeroImage: user.heroImage !== null,
       },

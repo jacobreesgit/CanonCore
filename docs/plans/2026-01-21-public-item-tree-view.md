@@ -14,15 +14,15 @@
 
 ## Summary of Changes
 
-| Type             | Action                                       | Location                                                    |
-| ---------------- | -------------------------------------------- | ----------------------------------------------------------- |
-| Backend          | Add `getPublicDescendants()` with cache()    | `lib/public-auth.ts`                                        |
-| Server           | Use descendants instead of children          | `app/(public)/u/[username]/[itemId]/page.tsx`               |
-| Client           | Add ViewToggle, Tree view, Hero collapse     | `app/(public)/u/[username]/[itemId]/public-item-client.tsx` |
-| Unit Test        | Add tests for `getPublicDescendants()`       | `tests/unit/lib/public-auth.test.ts`                        |
-| Unit Test        | Add tests for tree depth conversion          | `tests/unit/components/public-item-client.test.tsx`         |
-| Integration Test | Add descendants visibility tests             | `tests/integration/public/public-profile.test.ts`           |
-| E2E Test         | Add view toggle and hero collapse tests      | `e2e/journeys/public/public-profile.spec.ts`                |
+| Type             | Action                                    | Location                                                    |
+| ---------------- | ----------------------------------------- | ----------------------------------------------------------- |
+| Backend          | Add `getPublicDescendants()` with cache() | `lib/public-auth.ts`                                        |
+| Server           | Use descendants instead of children       | `app/(public)/u/[username]/[itemId]/page.tsx`               |
+| Client           | Add ViewToggle, Tree view, Hero collapse  | `app/(public)/u/[username]/[itemId]/public-item-client.tsx` |
+| Unit Test        | Add tests for `getPublicDescendants()`    | `tests/unit/lib/public-auth.test.ts`                        |
+| Unit Test        | Add tests for tree depth conversion       | `tests/unit/components/public-item-client.test.tsx`         |
+| Integration Test | Add descendants visibility tests          | `tests/integration/public/public-profile.test.ts`           |
+| E2E Test         | Add view toggle and hero collapse tests   | `e2e/journeys/public/public-profile.spec.ts`                |
 
 ---
 
@@ -1240,15 +1240,15 @@ EOF
 
 ### Unit Tests (Added/Modified)
 
-| Test                                                        | File                                                   | Description            |
-| ----------------------------------------------------------- | ------------------------------------------------------ | ---------------------- |
-| `getPublicDescendants returns empty when parent not public` | `tests/unit/lib/public-auth.test.ts`                   | Security check         |
-| `getPublicDescendants returns all public descendants`       | `tests/unit/lib/public-auth.test.ts`                   | Core functionality     |
-| `getPublicDescendants orders by depth then order`           | `tests/unit/lib/public-auth.test.ts`                   | Ordering               |
-| `treats direct children as roots (parentId becomes null)`   | `tests/unit/components/public-item-client.test.tsx`    | Tree conversion        |
-| `normalizes depth relative to parent item`                  | `tests/unit/components/public-item-client.test.tsx`    | Depth normalization    |
-| `preserves nested structure`                                | `tests/unit/components/public-item-client.test.tsx`    | Hierarchy preservation |
-| `handles multiple levels of nesting`                        | `tests/unit/components/public-item-client.test.tsx`    | Deep nesting           |
+| Test                                                        | File                                                | Description            |
+| ----------------------------------------------------------- | --------------------------------------------------- | ---------------------- |
+| `getPublicDescendants returns empty when parent not public` | `tests/unit/lib/public-auth.test.ts`                | Security check         |
+| `getPublicDescendants returns all public descendants`       | `tests/unit/lib/public-auth.test.ts`                | Core functionality     |
+| `getPublicDescendants orders by depth then order`           | `tests/unit/lib/public-auth.test.ts`                | Ordering               |
+| `treats direct children as roots (parentId becomes null)`   | `tests/unit/components/public-item-client.test.tsx` | Tree conversion        |
+| `normalizes depth relative to parent item`                  | `tests/unit/components/public-item-client.test.tsx` | Depth normalization    |
+| `preserves nested structure`                                | `tests/unit/components/public-item-client.test.tsx` | Hierarchy preservation |
+| `handles multiple levels of nesting`                        | `tests/unit/components/public-item-client.test.tsx` | Deep nesting           |
 
 ### Integration Tests (Added)
 

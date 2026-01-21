@@ -26,10 +26,17 @@ export default async function MyItemsPage() {
     ]);
 
   const items = itemsResult.success ? (itemsResult.data ?? []) : [];
-  const hasHeroImage =
-    profileResult.success && profileResult.data?.hasHeroImage;
+  const profile = profileResult.success ? profileResult.data : null;
+  const hasHeroImage = profile?.hasHeroImage ?? false;
   const hasDriveConnection =
     driveConnection !== null && !driveConnection.needsReauth;
+  const currentUser = profile
+    ? {
+        id: profile.id,
+        username: profile.username ?? null,
+        name: profile.name ?? null,
+      }
+    : null;
 
   return (
     <>
@@ -44,6 +51,7 @@ export default async function MyItemsPage() {
           heroBackgroundUrl={hasHeroImage ? "/api/user/hero" : undefined}
           heroProgress={libraryProgress}
           hasDriveConnection={hasDriveConnection}
+          currentUser={currentUser}
         />
       </div>
     </>

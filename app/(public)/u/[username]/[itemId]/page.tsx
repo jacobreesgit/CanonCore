@@ -8,7 +8,7 @@ import { Metadata } from "next";
 import {
   getPublicProfile,
   getPublicItem,
-  getPublicChildItems,
+  getPublicDescendants,
   getPublicBreadcrumb,
 } from "@/lib/public-auth";
 import { getForkStatus, getForkInfo } from "@/lib/fork-actions";
@@ -78,7 +78,7 @@ export default async function PublicItemPage({ params }: PageProps) {
   // Get additional data in parallel (including fork status for authenticated users)
   const [childItems, breadcrumb, forkInfo, session, forkStatusResult] =
     await Promise.all([
-      getPublicChildItems(itemId, 50, 0),
+      getPublicDescendants(itemId),
       getPublicBreadcrumb(itemId),
       getForkInfo(itemId),
       auth(),

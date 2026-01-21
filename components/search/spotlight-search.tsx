@@ -1,7 +1,15 @@
 /**
  * Spotlight search dialog component.
- * Provides macOS Spotlight-style search for items with fuzzy filtering.
- * Displays artwork thumbnails and breadcrumb paths for nested items.
+ * Provides macOS Spotlight-style search for:
+ * - User's own items
+ * - Public items from other users
+ * - Public user profiles
+ *
+ * Features:
+ * - Parallel data fetching with independent loading states
+ * - SWR-style caching with 60-second TTL
+ * - Section skeletons show while data loads
+ * - Aria-live announcements for screen readers
  */
 
 "use client";
@@ -11,10 +19,11 @@ import {
   useEffect,
   useCallback,
   useRef,
+  useMemo,
   type RefObject,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Loader2, Folder } from "lucide-react";
+import { Search, Folder, Globe } from "lucide-react";
 import { useImageLoaded } from "@/hooks/use-image-loaded";
 import { toast } from "sonner";
 import {
@@ -28,8 +37,17 @@ import {
 import { Kbd } from "@/components/ui/kbd";
 import { useSpotlight } from "@/contexts/spotlight-context";
 import { getSearchableItems } from "@/lib/item-actions";
+import { searchPublicUsers, searchPublicItems } from "@/lib/public-auth";
 import { cn } from "@/lib/utils";
-import type { SearchableItem } from "@/lib/types";
+import { UserThumbnail } from "./user-thumbnail";
+import type {
+  SearchableItem,
+  SearchableUser,
+  SearchablePublicItem,
+} from "@/lib/types";
+
+/** Cache TTL in milliseconds (60 seconds) */
+const CACHE_TTL = 60_000;
 
 /**
  * Resets scroll position to top when search value changes.
@@ -51,9 +69,9 @@ function useScrollReset(
 /**
  * Artwork thumbnail with load state tracking.
  * Shows folder icon until image loads, then fades in.
- * Uses useImageLoaded hook to handle cached images.
  *
- * @param artworkId - ID of the artwork to display
+ * @param props - Component props
+ * @param props.artworkId - ID of the artwork file to display
  */
 function ArtworkThumbnail({ artworkId }: { artworkId: string }) {
   const artworkSrc = `/api/artwork/${artworkId}`;
@@ -61,7 +79,6 @@ function ArtworkThumbnail({ artworkId }: { artworkId: string }) {
 
   return (
     <div className="bg-muted relative size-8 shrink-0 overflow-hidden rounded-md">
-      {/* Folder icon placeholder while loading */}
       {!loaded && (
         <div className="absolute inset-0 flex items-center justify-center">
           <Folder
@@ -87,22 +104,54 @@ function ArtworkThumbnail({ artworkId }: { artworkId: string }) {
   );
 }
 
+/**
+ * Skeleton loader for search result items.
+ * Displays animated placeholder while data loads.
+ */
+function ItemSkeleton() {
+  return (
+    <div className="flex animate-pulse items-center gap-3 px-3 py-2.5">
+      <div className="bg-muted size-8 shrink-0 rounded-md" />
+      <div className="flex flex-1 flex-col gap-1">
+        <div className="bg-muted h-4 w-32 rounded" />
+        <div className="bg-muted h-3 w-20 rounded" />
+      </div>
+    </div>
+  );
+}
+
 interface SpotlightSearchProps {
   /** For testing - force dialog open state */
   defaultOpen?: boolean;
 }
 
-/**
- * Module-level cache for SWR-style behavior.
- * Shows cached data immediately while fetching fresh data in background.
- */
-let cachedItems: SearchableItem[] | null = null;
+// Module-level cache for SWR-style behavior with TTL
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+let itemsCache: CacheEntry<SearchableItem[]> | null = null;
+let usersCache: CacheEntry<SearchableUser[]> | null = null;
+let publicItemsCache: CacheEntry<SearchablePublicItem[]> | null = null;
 
 /**
- * Clears the search cache. Used for testing.
+ * Checks if a cache entry is still valid based on TTL.
+ *
+ * @param cache - Cache entry to validate
+ * @returns True if cache is valid (not expired)
+ */
+function isCacheValid<T>(cache: CacheEntry<T> | null): cache is CacheEntry<T> {
+  return cache !== null && Date.now() - cache.timestamp < CACHE_TTL;
+}
+
+/**
+ * Clears all search caches. Used for testing.
  */
 export function clearSearchCache() {
-  cachedItems = null;
+  itemsCache = null;
+  usersCache = null;
+  publicItemsCache = null;
 }
 
 /**
@@ -110,76 +159,129 @@ export function clearSearchCache() {
  * Opens with "/" keyboard shortcut or sidebar button.
  * Uses SWR-style caching: shows cached data immediately while fetching fresh data.
  * cmdk handles fuzzy filtering client-side.
+ *
+ * @param props - Component props
+ * @param props.defaultOpen - Force dialog open (for testing)
  */
 export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
   const router = useRouter();
   const { isOpen, closeSpotlight } = useSpotlight();
+
+  // Independent loading states per section
   const [items, setItems] = useState<SearchableItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingItems, setIsLoadingItems] = useState(false);
+
+  const [users, setUsers] = useState<SearchableUser[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+
+  const [publicItems, setPublicItems] = useState<SearchablePublicItem[]>([]);
+  const [isLoadingPublicItems, setIsLoadingPublicItems] = useState(false);
+
   const [searchValue, setSearchValue] = useState("");
+  // Track whether initial fetch has completed (prevents flash of "No results")
+  const [hasInitialized, setHasInitialized] = useState(false);
   const prevOpenRef = useRef(false);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Reset scroll to top when search value changes
   useScrollReset(listRef, searchValue);
 
-  // Use defaultOpen for testing, otherwise use context
   const open = defaultOpen ?? isOpen;
 
-  // Fetch items and reset search when dialog opens (SWR-style)
+  // Reset initialization state when dialog closes
   useEffect(() => {
-    // Track previous open state with ref
+    if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on close
+      setHasInitialized(false);
+    }
+  }, [open]);
+
+  // Fetch all data when dialog opens - independent loading states
+  useEffect(() => {
     const wasOpen = prevOpenRef.current;
     prevOpenRef.current = open;
 
-    if (!open) {
-      // Dialog is closing, no action needed
-      return;
-    }
-
-    if (wasOpen) {
-      // Already open, no fetch needed
-      return;
-    }
+    if (!open || wasOpen) return;
 
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on open
+    setSearchValue("");
+    // Mark as initialized immediately to prevent "No results" flash
+    // Individual loading states handle skeleton display from here
+    setHasInitialized(true);
 
+    // Fetch own items
     const fetchItems = async () => {
-      // Reset search and show cached data immediately (SWR pattern)
-      setSearchValue("");
-      if (cachedItems !== null) {
-        setItems(cachedItems);
-      } else {
-        setIsLoading(true);
+      if (isCacheValid(itemsCache)) {
+        setItems(itemsCache.data);
+        return;
       }
 
+      setIsLoadingItems(true);
       const result = await getSearchableItems();
       if (!cancelled) {
         if (result.success) {
-          const freshItems = result.data ?? [];
-          cachedItems = freshItems;
-          setItems(freshItems);
+          const data = result.data ?? [];
+          itemsCache = { data, timestamp: Date.now() };
+          setItems(data);
         } else {
-          // On error, keep cached data if available, otherwise show empty
-          if (cachedItems === null) {
-            setItems([]);
-          }
-          toast.error("Failed to load items", {
-            description: result.error,
-          });
+          setItems([]);
+          toast.error("Failed to load items", { description: result.error });
         }
-        setIsLoading(false);
+        setIsLoadingItems(false);
       }
     };
 
-    fetchItems();
+    // Fetch public users
+    const fetchUsers = async () => {
+      if (isCacheValid(usersCache)) {
+        setUsers(usersCache.data);
+        return;
+      }
+
+      setIsLoadingUsers(true);
+      const result = await searchPublicUsers();
+      if (!cancelled) {
+        if (result.success) {
+          const data = result.data ?? [];
+          usersCache = { data, timestamp: Date.now() };
+          setUsers(data);
+        } else {
+          setUsers([]);
+        }
+        setIsLoadingUsers(false);
+      }
+    };
+
+    // Fetch public items
+    const fetchPublicItems = async () => {
+      if (isCacheValid(publicItemsCache)) {
+        setPublicItems(publicItemsCache.data);
+        return;
+      }
+
+      setIsLoadingPublicItems(true);
+      const result = await searchPublicItems();
+      if (!cancelled) {
+        if (result.success) {
+          const data = result.data ?? [];
+          publicItemsCache = { data, timestamp: Date.now() };
+          setPublicItems(data);
+        } else {
+          setPublicItems([]);
+        }
+        setIsLoadingPublicItems(false);
+      }
+    };
+
+    // Fetch all in parallel
+    void Promise.all([fetchItems(), fetchUsers(), fetchPublicItems()]);
 
     return () => {
       cancelled = true;
     };
   }, [open]);
 
-  const handleSelect = useCallback(
+  const handleSelectItem = useCallback(
     (itemId: string) => {
       closeSpotlight();
       router.push(`/my-items/${itemId}`);
@@ -187,88 +289,200 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
     [closeSpotlight, router]
   );
 
+  const handleSelectUser = useCallback(
+    (username: string) => {
+      closeSpotlight();
+      router.push(`/u/${username}`);
+    },
+    [closeSpotlight, router]
+  );
+
+  const handleSelectPublicItem = useCallback(
+    (itemId: string, ownerUsername: string) => {
+      closeSpotlight();
+      router.push(`/u/${ownerUsername}/${itemId}`);
+    },
+    [closeSpotlight, router]
+  );
+
   const handleOpenChange = useCallback(
     (open: boolean) => {
-      if (!open) {
-        closeSpotlight();
-      }
+      if (!open) closeSpotlight();
     },
     [closeSpotlight]
   );
 
+  // Memoize hasResults to avoid recalculation on every render
+  const hasResults = useMemo(
+    () => items.length > 0 || users.length > 0 || publicItems.length > 0,
+    [items.length, users.length, publicItems.length]
+  );
+
+  const isAnyLoading = isLoadingItems || isLoadingUsers || isLoadingPublicItems;
+
+  // Aria announcement that updates when search value or results change
+  const announcement = useMemo(() => {
+    if (isAnyLoading && !hasResults) {
+      return "Loading…";
+    }
+    if (!hasResults && searchValue) {
+      return `No results found for "${searchValue}"`;
+    }
+    if (!hasResults) {
+      return "No results found";
+    }
+    const parts: string[] = [];
+    if (items.length > 0) parts.push(`${items.length} of your items`);
+    if (publicItems.length > 0)
+      parts.push(`${publicItems.length} public collections`);
+    if (users.length > 0) parts.push(`${users.length} people`);
+    return parts.join(", ") + " available";
+  }, [
+    isAnyLoading,
+    hasResults,
+    searchValue,
+    items.length,
+    publicItems.length,
+    users.length,
+  ]);
+
   return (
     <CommandDialog open={open} onOpenChange={handleOpenChange}>
       <CommandInput
-        placeholder="Search items…"
+        placeholder="Search items, collections, and people…"
         className="border-none focus:ring-0"
         value={searchValue}
         onValueChange={setSearchValue}
       />
       <CommandList ref={listRef} className="max-h-[400px]">
-        {/* Screen reader announcement for search results */}
         <div aria-live="polite" aria-atomic="true" className="sr-only">
-          {isLoading
-            ? "Loading items…"
-            : items.length === 0
-              ? "No items found"
-              : `${items.length} ${items.length === 1 ? "item" : "items"} available`}
+          {announcement}
         </div>
-        {isLoading ? (
-          <div className="flex items-center justify-center gap-2 py-12">
-            <Loader2
-              aria-hidden="true"
-              className="text-muted-foreground size-4 animate-spin"
-            />
-            <span className="text-muted-foreground text-sm">Loading…</span>
-          </div>
-        ) : (
-          <>
-            <CommandEmpty className="py-12 text-center">
-              <div className="flex flex-col items-center gap-2">
-                <Search
-                  aria-hidden="true"
-                  className="text-muted-foreground/50 size-8"
-                />
-                <p className="text-muted-foreground text-sm">No items found.</p>
-              </div>
-            </CommandEmpty>
-            {items.length > 0 && (
-              <CommandGroup>
-                {items.map((item) => (
-                  <CommandItem
-                    key={item.id}
-                    value={`${item.name} ${item.description || ""} ${item.breadcrumb || ""}`}
-                    onSelect={() => handleSelect(item.id)}
-                    className="group cursor-pointer gap-3 px-3 py-2.5"
-                  >
-                    {/* Artwork thumbnail or folder icon */}
-                    {item.artworkId ? (
-                      <ArtworkThumbnail artworkId={item.artworkId} />
-                    ) : (
-                      <div className="bg-muted/50 text-muted-foreground group-aria-selected:bg-primary/10 group-aria-selected:text-primary flex size-8 shrink-0 items-center justify-center rounded-md transition-colors">
-                        <Folder aria-hidden="true" className="size-4" />
-                      </div>
-                    )}
-                    <div className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate font-medium">{item.name}</span>
-                      {/* Breadcrumb path for nested items */}
-                      {item.breadcrumb && (
-                        <span className="text-muted-foreground/70 truncate text-xs">
-                          {item.breadcrumb}
-                        </span>
-                      )}
-                      {/* Description if no breadcrumb, or show both */}
-                      {item.description && !item.breadcrumb && (
-                        <span className="text-muted-foreground truncate text-xs">
-                          {item.description}
-                        </span>
-                      )}
+
+        {/* Only show empty state after data has loaded - skeletons show during loading */}
+        {hasInitialized && !isAnyLoading && (
+          <CommandEmpty className="py-12 text-center">
+            <div className="flex flex-col items-center gap-2">
+              <Search
+                aria-hidden="true"
+                className="text-muted-foreground/50 size-8"
+              />
+              <p className="text-muted-foreground text-sm">No results found.</p>
+            </div>
+          </CommandEmpty>
+        )}
+
+        {/* User's Items - with distinct icon style (solid folder) */}
+        {(items.length > 0 || isLoadingItems || !hasInitialized) && (
+          <CommandGroup heading="Your Items">
+            {isLoadingItems || !hasInitialized ? (
+              <>
+                <ItemSkeleton />
+                <ItemSkeleton />
+                <ItemSkeleton />
+              </>
+            ) : (
+              items.map((item) => (
+                <CommandItem
+                  key={item.id}
+                  value={`item:${item.name} ${item.description || ""} ${item.breadcrumb || ""}`}
+                  onSelect={() => handleSelectItem(item.id)}
+                  className="group cursor-pointer gap-3 px-3 py-2.5"
+                >
+                  {item.artworkId ? (
+                    <ArtworkThumbnail artworkId={item.artworkId} />
+                  ) : (
+                    <div className="bg-muted/50 text-muted-foreground group-aria-selected:bg-primary/10 group-aria-selected:text-primary flex size-8 shrink-0 items-center justify-center rounded-md transition-colors">
+                      <Folder aria-hidden="true" className="size-4" />
                     </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
+                  )}
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate font-medium">{item.name}</span>
+                    {item.breadcrumb && (
+                      <span className="text-muted-foreground/70 truncate text-xs">
+                        {item.breadcrumb}
+                      </span>
+                    )}
+                    {item.description && !item.breadcrumb && (
+                      <span className="text-muted-foreground truncate text-xs">
+                        {item.description}
+                      </span>
+                    )}
+                  </div>
+                </CommandItem>
+              ))
             )}
-          </>
+          </CommandGroup>
+        )}
+
+        {/* Public Collections - with distinct icon style (globe) */}
+        {(publicItems.length > 0 || isLoadingPublicItems) && (
+          <CommandGroup heading="Public Collections">
+            {isLoadingPublicItems ? (
+              <>
+                <ItemSkeleton />
+                <ItemSkeleton />
+              </>
+            ) : (
+              publicItems.map((item) => (
+                <CommandItem
+                  key={item.id}
+                  value={`public:${item.name} ${item.description || ""} ${item.ownerUsername}`}
+                  onSelect={() =>
+                    handleSelectPublicItem(item.id, item.ownerUsername)
+                  }
+                  className="group cursor-pointer gap-3 px-3 py-2.5"
+                >
+                  {item.artworkId ? (
+                    <ArtworkThumbnail artworkId={item.artworkId} />
+                  ) : (
+                    <div className="bg-muted/50 text-muted-foreground group-aria-selected:bg-primary/10 group-aria-selected:text-primary flex size-8 shrink-0 items-center justify-center rounded-md transition-colors">
+                      <Globe aria-hidden="true" className="size-4" />
+                    </div>
+                  )}
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate font-medium">{item.name}</span>
+                    <span className="text-muted-foreground truncate text-xs">
+                      by @{item.ownerUsername}
+                    </span>
+                  </div>
+                </CommandItem>
+              ))
+            )}
+          </CommandGroup>
+        )}
+
+        {/* People - with distinct icon style (user circle) */}
+        {(users.length > 0 || isLoadingUsers) && (
+          <CommandGroup heading="People">
+            {isLoadingUsers ? (
+              <>
+                <ItemSkeleton />
+                <ItemSkeleton />
+              </>
+            ) : (
+              users.map((user) => (
+                <CommandItem
+                  key={user.id}
+                  value={`user:${user.username} ${user.name || ""}`}
+                  onSelect={() => handleSelectUser(user.username)}
+                  className="group cursor-pointer gap-3 px-3 py-2.5"
+                >
+                  <UserThumbnail userId={user.id} name={user.name} showImage />
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate font-medium">
+                      {user.name || user.username}
+                    </span>
+                    {user.name && (
+                      <span className="text-muted-foreground truncate text-xs">
+                        @{user.username}
+                      </span>
+                    )}
+                  </div>
+                </CommandItem>
+              ))
+            )}
+          </CommandGroup>
         )}
       </CommandList>
       <div className="flex items-center justify-start gap-3 border-t px-3 py-2">
