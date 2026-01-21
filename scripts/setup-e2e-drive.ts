@@ -93,7 +93,7 @@ async function main() {
   try {
     await drive.files.emptyTrash();
     console.log("   ✓ Trash emptied\n");
-  } catch (err) {
+  } catch {
     console.warn("   ⚠️  Failed to empty trash (may need permissions)\n");
   }
 

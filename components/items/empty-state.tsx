@@ -13,7 +13,10 @@ export type EmptyStateVariant =
   | "first-time"
   | "no-children"
   | "filter-empty"
-  | "search-empty";
+  | "search-empty"
+  | "public-profile-empty"
+  | "public-item-empty"
+  | "explore-empty";
 
 interface EmptyStateConfig {
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
@@ -53,6 +56,29 @@ const EMPTY_STATE_CONFIG: Record<EmptyStateVariant, EmptyStateConfig> = {
     description: "No items match your search. Try different keywords.",
     actionLabel: "Clear Search",
     actionIcon: X,
+  },
+  "public-profile-empty": {
+    icon: Folder,
+    title: "No public items yet",
+    description:
+      "This user hasn't shared any items publicly. Check back later!",
+    actionLabel: "",
+    actionIcon: Folder,
+  },
+  "public-item-empty": {
+    icon: FolderOpen,
+    title: "No child items",
+    description: "This collection doesn't have any child items.",
+    actionLabel: "",
+    actionIcon: FolderOpen,
+  },
+  "explore-empty": {
+    icon: Folder,
+    title: "Nothing here yet",
+    description:
+      "Be the first to share your collection! Make your profile public to have your items featured here.",
+    actionLabel: "",
+    actionIcon: Folder,
   },
 };
 
@@ -118,8 +144,8 @@ export function EmptyState({ variant, onAction, className }: EmptyStateProps) {
         </p>
       </div>
 
-      {/* Action button */}
-      {onAction && (
+      {/* Action button - only render when onAction provided AND actionLabel non-empty */}
+      {onAction && config.actionLabel && (
         <Button
           onClick={onAction}
           variant="outline"

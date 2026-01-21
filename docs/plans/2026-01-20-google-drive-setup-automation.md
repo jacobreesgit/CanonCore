@@ -13,6 +13,7 @@
 ## Background
 
 ### Current Problem
+
 - Root folders must be manually created in Google Drive web UI
 - If folders are deleted, tests fail with confusing "File not found" errors
 - E2E doesn't wipe Drive before setup (seed does)
@@ -20,16 +21,18 @@
 - Token script saves to BOTH accounts (confusing)
 
 ### Two Accounts
-| Purpose | Token Var | Folder Var | Email Var |
-|---------|-----------|------------|-----------|
-| Seed | `GOOGLE_SEED_REFRESH_TOKEN` | `GOOGLE_SEED_ROOT_FOLDER_ID` | `GOOGLE_SEED_EMAIL` |
-| E2E | `GOOGLE_E2E_REFRESH_TOKEN` | `GOOGLE_E2E_ROOT_FOLDER_ID` | `GOOGLE_E2E_EMAIL` |
+
+| Purpose | Token Var                   | Folder Var                   | Email Var           |
+| ------- | --------------------------- | ---------------------------- | ------------------- |
+| Seed    | `GOOGLE_SEED_REFRESH_TOKEN` | `GOOGLE_SEED_ROOT_FOLDER_ID` | `GOOGLE_SEED_EMAIL` |
+| E2E     | `GOOGLE_E2E_REFRESH_TOKEN`  | `GOOGLE_E2E_ROOT_FOLDER_ID`  | `GOOGLE_E2E_EMAIL`  |
 
 ---
 
 ## Task 0: Rename Environment Variables Across Codebase
 
 **Files:**
+
 - Modify: `prisma/seed.ts`
 - Modify: `e2e/fixtures/google-drive.fixture.ts`
 - Modify: `e2e/journeys/global.setup.ts`
@@ -50,6 +53,7 @@
 **Step 1: Update prisma/seed.ts**
 
 Search and replace:
+
 - `GOOGLE_TEST_REFRESH_TOKEN` → `GOOGLE_SEED_REFRESH_TOKEN`
 - `GOOGLE_TEST_ROOT_FOLDER_ID` → `GOOGLE_SEED_ROOT_FOLDER_ID`
 - `GOOGLE_TEST_EMAIL` → `GOOGLE_SEED_EMAIL`
@@ -57,18 +61,21 @@ Search and replace:
 **Step 2: Update e2e/fixtures/google-drive.fixture.ts**
 
 Search and replace:
+
 - `E2E_GOOGLE_REFRESH_TOKEN` → `GOOGLE_E2E_REFRESH_TOKEN`
 - `E2E_GOOGLE_ROOT_FOLDER_ID` → `GOOGLE_E2E_ROOT_FOLDER_ID`
 
 **Step 3: Update e2e/journeys/global.setup.ts**
 
 Search and replace:
+
 - `E2E_GOOGLE_REFRESH_TOKEN` → `GOOGLE_E2E_REFRESH_TOKEN`
 - `E2E_GOOGLE_ROOT_FOLDER_ID` → `GOOGLE_E2E_ROOT_FOLDER_ID`
 
 **Step 4: Update scripts/setup-e2e-drive.ts**
 
 Search and replace:
+
 - `E2E_GOOGLE_REFRESH_TOKEN` → `GOOGLE_E2E_REFRESH_TOKEN`
 - `E2E_GOOGLE_ROOT_FOLDER_ID` → `GOOGLE_E2E_ROOT_FOLDER_ID`
 
@@ -79,6 +86,7 @@ Update the Google Drive and E2E Testing sections to use new names.
 **Step 6: Update .env.local (manual reminder)**
 
 User must manually rename in `.env.local`:
+
 ```bash
 # Old → New
 GOOGLE_TEST_REFRESH_TOKEN → GOOGLE_SEED_REFRESH_TOKEN
@@ -111,6 +119,7 @@ All Google-related vars now use GOOGLE_ prefix with purpose suffix."
 ## Task 1: Add Purpose Flag and Folder Auto-Creation to Token Script
 
 **Files:**
+
 - Modify: `scripts/generate-refresh-token.ts`
 - Create: `tests/unit/scripts/generate-refresh-token.test.ts`
 
@@ -197,7 +206,9 @@ async function findExistingFolder(
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Failed to search for folder: ${response.status} ${errorText}`);
+    throw new Error(
+      `Failed to search for folder: ${response.status} ${errorText}`
+    );
   }
 
   const data = await response.json();
@@ -207,7 +218,9 @@ async function findExistingFolder(
   }
 
   if (data.files.length > 1) {
-    console.warn(`\n⚠️  Found ${data.files.length} folders named "${folderName}" - using first one`);
+    console.warn(
+      `\n⚠️  Found ${data.files.length} folders named "${folderName}" - using first one`
+    );
   }
 
   return data.files[0].id;
@@ -406,35 +419,35 @@ async function main() {
 Replace the try block inside the server callback (after validating token):
 
 ```typescript
-      // Validate the token
-      console.log("🔍 Validating token...");
-      const isValid = await validateToken(refreshToken, clientId, clientSecret);
+// Validate the token
+console.log("🔍 Validating token...");
+const isValid = await validateToken(refreshToken, clientId, clientSecret);
 
-      if (!isValid) {
-        throw new Error("Token validation failed");
-      }
-      console.log("✅ Token validated successfully!\n");
+if (!isValid) {
+  throw new Error("Token validation failed");
+}
+console.log("✅ Token validated successfully!\n");
 
-      // Get access token for folder operations
-      console.log("📁 Setting up root folder...");
-      const accessToken = await getAccessToken(refreshToken, clientId, clientSecret);
+// Get access token for folder operations
+console.log("📁 Setting up root folder...");
+const accessToken = await getAccessToken(refreshToken, clientId, clientSecret);
 
-      // Find or create root folder
-      const folderId = await findOrCreateRootFolder(accessToken, config.folderName);
+// Find or create root folder
+const folderId = await findOrCreateRootFolder(accessToken, config.folderName);
 
-      // Get user email
-      const userEmail = await getUserEmail(accessToken);
-      console.log(`📧 Account: ${userEmail}\n`);
+// Get user email
+const userEmail = await getUserEmail(accessToken);
+console.log(`📧 Account: ${userEmail}\n`);
 
-      // Save to .env.local
-      console.log("💾 Saving to .env.local...");
-      updateEnvFile(config.tokenVar, refreshToken);
-      updateEnvFile(config.folderVar, folderId);
-      updateEnvFile(config.emailVar, userEmail);
-      console.log("✅ Saved to .env.local!\n");
+// Save to .env.local
+console.log("💾 Saving to .env.local...");
+updateEnvFile(config.tokenVar, refreshToken);
+updateEnvFile(config.folderVar, folderId);
+updateEnvFile(config.emailVar, userEmail);
+console.log("✅ Saved to .env.local!\n");
 
-      res.writeHead(200, { "Content-Type": "text/html" });
-      res.end(`
+res.writeHead(200, { "Content-Type": "text/html" });
+res.end(`
         <html>
           <body style="font-family: system-ui; padding: 40px; text-align: center;">
             <h1>✅ Success!</h1>
@@ -447,12 +460,12 @@ Replace the try block inside the server callback (after validating token):
         </html>
       `);
 
-      console.log("─".repeat(60));
-      console.log(`✅ Setup complete for ${purpose.toUpperCase()}!\n`);
-      console.log(`   ${config.tokenVar}=<saved>`);
-      console.log(`   ${config.folderVar}=${folderId}`);
-      console.log(`   ${config.emailVar}=${userEmail}`);
-      console.log("─".repeat(60));
+console.log("─".repeat(60));
+console.log(`✅ Setup complete for ${purpose.toUpperCase()}!\n`);
+console.log(`   ${config.tokenVar}=<saved>`);
+console.log(`   ${config.folderVar}=${folderId}`);
+console.log(`   ${config.emailVar}=${userEmail}`);
+console.log("─".repeat(60));
 ```
 
 **Step 11: Run the script to verify it works**
@@ -475,6 +488,7 @@ git commit -m "feat(scripts): add --purpose flag and auto folder creation to tok
 ## Task 2: Create verify-drive-setup.ts Validation Script
 
 **Files:**
+
 - Create: `scripts/verify-drive-setup.ts`
 
 **Step 1: Create the verification script with parallel account checking**
@@ -550,7 +564,9 @@ async function fetchWithTimeout(
 /**
  * Verifies a single account's Drive configuration.
  */
-async function verifyAccount(config: AccountConfig): Promise<VerificationResult> {
+async function verifyAccount(
+  config: AccountConfig
+): Promise<VerificationResult> {
   const result: VerificationResult = {
     account: config.name,
     tokenSet: false,
@@ -627,7 +643,8 @@ async function verifyAccount(config: AccountConfig): Promise<VerificationResult>
     if (err instanceof Error && err.name === "AbortError") {
       result.error = "Request timed out";
     } else {
-      result.error = err instanceof Error ? err.message : "Unknown error occurred";
+      result.error =
+        err instanceof Error ? err.message : "Unknown error occurred";
     }
   }
 
@@ -681,7 +698,9 @@ async function main() {
   console.log("\n🔐 Shared Credentials");
   console.log("─".repeat(40));
   console.log(`   GOOGLE_CLIENT_ID:     ${clientId ? "✅ Set" : "❌ Not set"}`);
-  console.log(`   GOOGLE_CLIENT_SECRET: ${clientSecret ? "✅ Set" : "❌ Not set"}`);
+  console.log(
+    `   GOOGLE_CLIENT_SECRET: ${clientSecret ? "✅ Set" : "❌ Not set"}`
+  );
 
   if (!clientId || !clientSecret) {
     console.log("\n❌ Cannot verify accounts without client credentials\n");
@@ -689,9 +708,10 @@ async function main() {
   }
 
   // Determine which accounts to check
-  const accountsToCheck = purpose && ACCOUNTS[purpose]
-    ? [ACCOUNTS[purpose]]
-    : Object.values(ACCOUNTS);
+  const accountsToCheck =
+    purpose && ACCOUNTS[purpose]
+      ? [ACCOUNTS[purpose]]
+      : Object.values(ACCOUNTS);
 
   // Verify accounts in parallel
   const results = await Promise.all(
@@ -712,7 +732,9 @@ async function main() {
   } else {
     console.log("❌ Some checks failed. Run setup to fix:\n");
     console.log("   npx tsx scripts/generate-refresh-token.ts --purpose=e2e");
-    console.log("   npx tsx scripts/generate-refresh-token.ts --purpose=seed\n");
+    console.log(
+      "   npx tsx scripts/generate-refresh-token.ts --purpose=seed\n"
+    );
     process.exit(1);
   }
 }
@@ -740,6 +762,7 @@ git commit -m "feat(scripts): add verify-drive-setup.ts for Drive configuration 
 ## Task 3: Add Wipe/Cleanup to E2E Global Setup
 
 **Files:**
+
 - Modify: `e2e/journeys/global.setup.ts`
 
 **Step 1: Add imports for batch delete utility**
@@ -871,31 +894,31 @@ async function cleanupE2EDrive(): Promise<void> {
 Add at the beginning of `setupE2EDrive` after setting up the drive client:
 
 ```typescript
-  // Validate root folder exists
-  try {
-    const folderCheck = await drive.files.get({
-      fileId: rootFolderId,
-      fields: "name,trashed",
-    });
+// Validate root folder exists
+try {
+  const folderCheck = await drive.files.get({
+    fileId: rootFolderId,
+    fields: "name,trashed",
+  });
 
-    if (folderCheck.data.trashed) {
-      throw new Error(
-        "GOOGLE_E2E_ROOT_FOLDER_ID folder is in trash.\n" +
+  if (folderCheck.data.trashed) {
+    throw new Error(
+      "GOOGLE_E2E_ROOT_FOLDER_ID folder is in trash.\n" +
         "Restore it or run: npx tsx scripts/generate-refresh-token.ts --purpose=e2e"
-      );
-    }
-
-    console.log(`[E2E Setup] Using root folder: ${folderCheck.data.name}`);
-  } catch (err: unknown) {
-    const error = err as { code?: number; message?: string };
-    if (error.code === 404) {
-      throw new Error(
-        "GOOGLE_E2E_ROOT_FOLDER_ID folder not found (deleted?).\n" +
-        "Run: npx tsx scripts/generate-refresh-token.ts --purpose=e2e"
-      );
-    }
-    throw err;
+    );
   }
+
+  console.log(`[E2E Setup] Using root folder: ${folderCheck.data.name}`);
+} catch (err: unknown) {
+  const error = err as { code?: number; message?: string };
+  if (error.code === 404) {
+    throw new Error(
+      "GOOGLE_E2E_ROOT_FOLDER_ID folder not found (deleted?).\n" +
+        "Run: npx tsx scripts/generate-refresh-token.ts --purpose=e2e"
+    );
+  }
+  throw err;
+}
 ```
 
 **Step 5: Update the setup call to cleanup first and properly handle errors**
@@ -936,6 +959,7 @@ git commit -m "feat(e2e): add Drive cleanup before E2E setup using batchDelete, 
 ## Task 4: Add npm Scripts for Easy Setup
 
 **Files:**
+
 - Modify: `package.json`
 
 **Step 1: Add setup scripts to package.json**
@@ -970,13 +994,14 @@ git commit -m "feat(scripts): add npm scripts for Drive setup commands"
 ## Task 5: Update CLAUDE.md Documentation
 
 **Files:**
+
 - Modify: `CLAUDE.md`
 
 **Step 1: Add Google Drive Setup section**
 
 Add after the "Environment Variables" section:
 
-```markdown
+````markdown
 ## Google Drive Setup
 
 ### Quick Setup
@@ -991,10 +1016,12 @@ pnpm run setup:drive:seed
 # Verify setup is correct
 pnpm run setup:drive:verify
 ```
+````
 
 ### Setup Process
 
 The setup scripts automatically:
+
 1. Start OAuth flow in browser
 2. Create root folder in Google Drive (if missing)
 3. Save token and folder ID to `.env.local`
@@ -1002,14 +1029,15 @@ The setup scripts automatically:
 
 ### Two Separate Accounts
 
-| Purpose | Account | Variables |
-|---------|---------|-----------|
-| E2E Tests | jacobreesmedia@gmail.com | `GOOGLE_E2E_REFRESH_TOKEN`, `GOOGLE_E2E_ROOT_FOLDER_ID` |
-| Seeding | seed@canoncore.com | `GOOGLE_SEED_REFRESH_TOKEN`, `GOOGLE_SEED_ROOT_FOLDER_ID` |
+| Purpose   | Account                  | Variables                                                 |
+| --------- | ------------------------ | --------------------------------------------------------- |
+| E2E Tests | jacobreesmedia@gmail.com | `GOOGLE_E2E_REFRESH_TOKEN`, `GOOGLE_E2E_ROOT_FOLDER_ID`   |
+| Seeding   | seed@canoncore.com       | `GOOGLE_SEED_REFRESH_TOKEN`, `GOOGLE_SEED_ROOT_FOLDER_ID` |
 
 ### Troubleshooting
 
 **"File not found" errors:**
+
 ```bash
 pnpm run setup:drive:verify  # Check what's wrong
 pnpm run setup:drive:e2e     # Re-run setup for E2E
@@ -1017,19 +1045,22 @@ pnpm run setup:drive:seed    # Re-run setup for seed
 ```
 
 **E2E media tests skipped:**
+
 - Ensure `seed-media/The.Office.UK.S01E01.*.mp4` exists locally
 - Run `pnpm run setup:e2e-structure` to upload test video
 
 **Multiple folders with same name:**
+
 - If setup warns about multiple folders, delete duplicates in Google Drive
-```
+
+````
 
 **Step 2: Commit**
 
 ```bash
 git add CLAUDE.md
 git commit -m "docs: add Google Drive setup documentation"
-```
+````
 
 ---
 
@@ -1069,15 +1100,15 @@ git commit -m "feat: complete Google Drive setup automation
 
 ## Summary
 
-| Task | Description | Files |
-|------|-------------|-------|
-| 0 | Rename env vars for consistency | `prisma/seed.ts`, `e2e/fixtures/*`, `e2e/journeys/*`, `scripts/*`, `CLAUDE.md` |
-| 1 | Add purpose flag + folder auto-creation + timeout handling | `scripts/generate-refresh-token.ts` |
-| 2 | Create verification script with parallel checking | `scripts/verify-drive-setup.ts` |
-| 3 | Add cleanup to E2E setup using batchDelete | `e2e/journeys/global.setup.ts` |
-| 4 | Add npm scripts | `package.json` |
-| 5 | Update documentation | `CLAUDE.md` |
-| 6 | Integration testing | - |
+| Task | Description                                                | Files                                                                          |
+| ---- | ---------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 0    | Rename env vars for consistency                            | `prisma/seed.ts`, `e2e/fixtures/*`, `e2e/journeys/*`, `scripts/*`, `CLAUDE.md` |
+| 1    | Add purpose flag + folder auto-creation + timeout handling | `scripts/generate-refresh-token.ts`                                            |
+| 2    | Create verification script with parallel checking          | `scripts/verify-drive-setup.ts`                                                |
+| 3    | Add cleanup to E2E setup using batchDelete                 | `e2e/journeys/global.setup.ts`                                                 |
+| 4    | Add npm scripts                                            | `package.json`                                                                 |
+| 5    | Update documentation                                       | `CLAUDE.md`                                                                    |
+| 6    | Integration testing                                        | -                                                                              |
 
 ## Key Improvements from Review
 
