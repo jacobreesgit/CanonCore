@@ -2,115 +2,128 @@
 
 /**
  * Client component for public profile page.
- * Uses same components as private pages: ItemHero + GridItem.
+ * Uses unified components: ItemHero, SortDropdown, GridItem, EmptyState.
+ * Uses shared sortPublicItems utility (DRY).
  */
 
+import { useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Folder } from "lucide-react";
 import { ItemHero } from "@/components/items/item-hero";
 import { GridItem } from "@/components/sortable-grid/GridItem";
+import { SortDropdown } from "@/components/items/sort-dropdown";
+import { MobileOptionsSheet } from "@/components/items/mobile-options-sheet";
+import { EmptyState } from "@/components/items/empty-state";
+import { useExploreSortFilter } from "@/hooks/use-explore-sort";
+import { EXPLORE_SORT_OPTIONS, sortPublicItems } from "@/lib/item-utils";
 import { cn } from "@/lib/utils";
 import type { PublicProfile, PublicItem } from "@/lib/public-auth";
 
 interface PublicProfileClientProps {
   profile: PublicProfile;
   items: PublicItem[];
+  currentUserId: string | null;
 }
 
 /**
  * Main client component for public profile.
- * Structure matches My Items root page: Hero -> Items count header -> Grid.
+ * Structure matches private pages: Hero -> Toolbar -> Grid.
  */
 export function PublicProfileClient({
   profile,
   items,
+  currentUserId,
 }: PublicProfileClientProps) {
   const router = useRouter();
+  const { sortBy, setSortBy } = useExploreSortFilter();
   const displayName = profile.name ?? `@${profile.username}`;
+  const isOwnProfile = currentUserId === profile.id;
 
-  const handleItemClick = (id: string) => {
-    router.push(`/u/${profile.username}/${id}`);
-  };
+  // Use shared sort utility (DRY - no duplicate sort function)
+  const sortedItems = useMemo(
+    () => sortPublicItems(items, sortBy),
+    [items, sortBy]
+  );
+
+  // Preload on hover for faster perceived navigation (Rule 2.5)
+  const handleMouseEnter = useCallback(
+    (id: string) => {
+      router.prefetch(`/u/${profile.username}/${id}`);
+    },
+    [router, profile.username]
+  );
+
+  const handleItemClick = useCallback(
+    (id: string) => {
+      router.push(`/u/${profile.username}/${id}`);
+    },
+    [router, profile.username]
+  );
 
   // Build hero background URL if user has hero image
   const heroBackgroundUrl = profile.hasHeroImage
     ? `/api/user/hero?userId=${profile.id}`
     : undefined;
 
+  const hasItems = items.length > 0;
+
   return (
-    <div className={cn("flex flex-col gap-6", items.length === 0 && "flex-1")}>
-      {/* Hero banner - same component as private pages */}
+    <div className={cn("flex flex-col gap-6", !hasItems && "flex-1")}>
+      {/* Hero banner */}
       <ItemHero
         name={displayName}
-        description={`@${profile.username}`}
+        description={
+          isOwnProfile ? "Your public profile" : `@${profile.username}`
+        }
         backgroundUrl={heroBackgroundUrl}
       />
 
-      {/* Items section */}
-      {items.length > 0 ? (
-        <div className="flex flex-col gap-4">
-          {/* Section header - matches private page style */}
-          <div className="flex items-center justify-between">
-            <h2 className="text-foreground text-lg font-semibold">
-              Public Collection
-            </h2>
-            <span className="text-muted-foreground text-sm">
-              {items.length} {items.length === 1 ? "item" : "items"}
-            </span>
-          </div>
+      {/* Toolbar - Sort only */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Mobile: Options sheet */}
+        <div className="sm:hidden">
+          <MobileOptionsSheet
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            disabled={!hasItems}
+            sortOptions={EXPLORE_SORT_OPTIONS}
+            defaultSort="updated-desc"
+          />
+        </div>
 
-          {/* Grid - same layout as private pages */}
-          <div
-            data-testid="items-grid-view"
-            className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
-          >
-            {items.map((item, index) => (
-              <GridItem
-                key={item.id}
-                id={item.id}
-                name={item.name}
-                description={item.description}
-                artworkId={item.artworkId}
-                onClick={() => handleItemClick(item.id)}
-                showArtwork={true}
-                showDescription={true}
-                priority={index < 8}
-              />
-            ))}
-          </div>
+        {/* Desktop: Sort dropdown */}
+        <div className="hidden items-center gap-3 sm:flex">
+          <SortDropdown
+            value={sortBy}
+            onChange={setSortBy}
+            disabled={!hasItems}
+            options={EXPLORE_SORT_OPTIONS}
+          />
+        </div>
+      </div>
+
+      {/* Items grid or empty state */}
+      {hasItems ? (
+        <div
+          data-testid="items-grid-view"
+          className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
+        >
+          {sortedItems.map((item, index) => (
+            <GridItem
+              key={item.id}
+              id={item.id}
+              name={item.name}
+              description={item.description}
+              artworkId={item.artworkId}
+              onClick={() => handleItemClick(item.id)}
+              onMouseEnter={() => handleMouseEnter(item.id)}
+              showArtwork={true}
+              showDescription={true}
+              priority={index < 8}
+            />
+          ))}
         </div>
       ) : (
-        <div
-          className={cn(
-            "flex flex-1 flex-col items-center justify-center gap-5",
-            "border-border/40 rounded-xl border-2 border-dashed",
-            "from-muted/30 to-muted/10 bg-gradient-to-b",
-            "min-h-[280px] p-8"
-          )}
-        >
-          <div
-            className={cn(
-              "relative flex size-20 items-center justify-center rounded-2xl",
-              "from-muted/80 to-muted/40 bg-gradient-to-br",
-              "ring-border/50 shadow-sm ring-1"
-            )}
-          >
-            <Folder
-              className="text-muted-foreground/70 size-10"
-              strokeWidth={1.25}
-            />
-            <div className="from-foreground/5 absolute inset-0 rounded-2xl bg-gradient-to-t to-transparent" />
-          </div>
-          <div className="max-w-xs text-center">
-            <h3 className="text-foreground text-lg font-semibold tracking-tight">
-              No public items yet
-            </h3>
-            <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed">
-              {displayName} hasn&apos;t shared any items publicly. Check back
-              later!
-            </p>
-          </div>
-        </div>
+        <EmptyState variant="public-profile-empty" />
       )}
     </div>
   );

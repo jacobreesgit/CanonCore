@@ -145,8 +145,7 @@ export async function getItemFile(
       return { success: false, error: "Access denied" };
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { item, ...fileWithoutItem } = file;
+    const { item: _item, ...fileWithoutItem } = file;
     return { success: true, data: serializeItemFile(fileWithoutItem) };
   } catch {
     return { success: false, error: "Failed to load file" };

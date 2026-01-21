@@ -237,7 +237,9 @@ test.describe("Public Profile Enablement Journey", () => {
     // Wait for dialog to close and page to settle before navigating
     await page.waitForLoadState("networkidle");
     // Ensure settings dialog is fully closed before navigating
-    await expect(page.getByRole("dialog", { name: /settings/i })).not.toBeVisible({ timeout: 5000 });
+    await expect(
+      page.getByRole("dialog", { name: /settings/i })
+    ).not.toBeVisible({ timeout: 5000 });
 
     // Verify profile is accessible publicly
     await publicProfilePage.gotoProfile(username);

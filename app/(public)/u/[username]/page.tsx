@@ -5,6 +5,7 @@
 
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
+import { auth } from "@/lib/auth";
 import { getPublicProfile, getPublicItemsForUser } from "@/lib/public-auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { SiteHeader } from "@/components/site-header";
@@ -50,8 +51,13 @@ export async function generateMetadata({
 export default async function PublicProfilePage({ params }: PageProps) {
   const { username } = await params;
 
-  // Rate limit profile views
-  const rateLimitResult = await checkRateLimit("publicProfile");
+  // Rate limit and fetch profile in parallel
+  const [rateLimitResult, profile, session] = await Promise.all([
+    checkRateLimit("publicProfile"),
+    getPublicProfile(username),
+    auth(),
+  ]);
+
   if (rateLimitResult) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -61,8 +67,6 @@ export default async function PublicProfilePage({ params }: PageProps) {
       </div>
     );
   }
-
-  const profile = await getPublicProfile(username);
 
   if (!profile) {
     notFound();
@@ -77,7 +81,11 @@ export default async function PublicProfilePage({ params }: PageProps) {
         titleHref={`/u/${profile.username}`}
       />
       <div className="flex flex-1 flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
-        <PublicProfileClient profile={profile} items={items} />
+        <PublicProfileClient
+          profile={profile}
+          items={items}
+          currentUserId={session?.user?.id ?? null}
+        />
       </div>
     </>
   );

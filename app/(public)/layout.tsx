@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { auth, getExtendedSidebarUser } from "@/lib/auth";
+import { getPinnedItems } from "@/lib/item-actions";
 import { MyItemsProviders } from "@/components/my-items-providers";
 
 /**
@@ -21,7 +22,13 @@ export default async function PublicLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
-  const user = await getExtendedSidebarUser(session);
+  const [user, pinnedResult] = await Promise.all([
+    getExtendedSidebarUser(session),
+    session?.user
+      ? getPinnedItems()
+      : Promise.resolve({ success: true, data: [] }),
+  ]);
+  const pinnedItems = pinnedResult.success ? pinnedResult.data : [];
 
   const content = (
     <SidebarProvider
@@ -33,7 +40,12 @@ export default async function PublicLayout({
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" user={user} context="home" />
+      <AppSidebar
+        variant="inset"
+        user={user}
+        context="home"
+        pinnedItems={pinnedItems}
+      />
       <SidebarInset className="overflow-hidden">
         <main
           id="main-content"
