@@ -123,6 +123,12 @@ interface SettingsDialogState {
   };
 }
 
+interface CurrentUser {
+  id: string;
+  username: string | null;
+  name: string | null;
+}
+
 interface ItemsViewProps {
   items: ItemWithArtwork[];
   parentId?: string | null;
@@ -144,6 +150,8 @@ interface ItemsViewProps {
   heroProgress?: ItemProgress | null;
   /** Whether user has Google Drive connected (shows Sync button). */
   hasDriveConnection?: boolean;
+  /** Current user info for owner display in grid items. */
+  currentUser?: CurrentUser | null;
 }
 
 /**
@@ -174,6 +182,7 @@ export function ItemsView({
   heroBackgroundUrl,
   heroProgress,
   hasDriveConnection = false,
+  currentUser,
 }: ItemsViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -775,6 +784,7 @@ export function ItemsView({
             hasDriveConnection={hasDriveConnection}
             onPinItem={handlePinItem}
             onUnpinItem={handleUnpinItem}
+            currentUser={currentUser}
           />
         )
       ) : isEditing ? (

@@ -5,8 +5,18 @@
  * both generateMetadata and page components.
  */
 
+"use server";
+
 import { cache } from "react";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { COMPLETION_THRESHOLD } from "@/lib/progress-utils";
+import type {
+  ItemResult,
+  SearchableUser,
+  SearchablePublicItem,
+} from "@/lib/types";
 
 /**
  * Public profile data returned to unauthenticated users.
@@ -41,6 +51,8 @@ export interface PublicItem {
   parentId: string | null;
   /** Depth in hierarchy */
   depth: number;
+  /** Sort order within parent */
+  order: number;
   /** Owner user ID */
   userId: string;
   /** First artwork file ID for thumbnail */
@@ -214,6 +226,7 @@ export const getPublicItem = cache(
         description: true,
         parentId: true,
         depth: true,
+        order: true,
         userId: true,
         tmdbId: true,
         tmdbType: true,
@@ -240,6 +253,7 @@ export const getPublicItem = cache(
       description: item.description,
       parentId: item.parentId,
       depth: item.depth,
+      order: item.order,
       userId: item.userId,
       artworkId: item.files[0]?.id ?? null,
       tmdbId: item.tmdbId,
@@ -252,24 +266,33 @@ export const getPublicItem = cache(
 
 /**
  * Fetches all public items for a user's public profile.
- * Only returns root-level public items (depth 0) with fork counts.
+ * Only returns explicitly public items with fork counts.
+ * For own profile (currentUserId === userId), includes progress data.
  *
  * @param userId - User ID whose public items to fetch
  * @param limit - Maximum items to return (default 50)
  * @param offset - Pagination offset (default 0)
- * @returns Array of public items
+ * @param currentUserId - Current viewer's user ID (for progress calculation)
+ * @returns Array of public items with optional progress data
  */
 export async function getPublicItemsForUser(
   userId: string,
   limit = 50,
-  offset = 0
-): Promise<PublicItem[]> {
+  offset = 0,
+  currentUserId?: string | null
+): Promise<
+  (PublicItem & {
+    progressPercentage?: number | null;
+    watchedCount?: number;
+    totalMediaCount?: number;
+    totalItems?: number;
+  })[]
+> {
   const items = await prisma.item.findMany({
     where: {
       userId,
       isPublic: true,
-      inheritVisibility: false, // Only explicitly public items on profile root
-      depth: 0, // Only root items on profile
+      inheritVisibility: false, // Only explicitly public items (consistent with Explore)
     },
     select: {
       id: true,
@@ -277,6 +300,7 @@ export async function getPublicItemsForUser(
       description: true,
       parentId: true,
       depth: true,
+      order: true,
       userId: true,
       tmdbId: true,
       tmdbType: true,
@@ -296,19 +320,96 @@ export async function getPublicItemsForUser(
     skip: offset,
   });
 
-  return items.map((item) => ({
-    id: item.id,
-    name: item.name,
-    description: item.description,
-    parentId: item.parentId,
-    depth: item.depth,
-    userId: item.userId,
-    artworkId: item.files[0]?.id ?? null,
-    tmdbId: item.tmdbId,
-    tmdbType: item.tmdbType,
-    forkCount: item._count.sourceForks,
-    updatedAt: item.updatedAt,
-  }));
+  // Only calculate progress when viewing own profile
+  const isOwnProfile = currentUserId && currentUserId === userId;
+  interface ProgressData {
+    percentage: number | null;
+    watchedItems: number;
+    itemsWithMedia: number;
+    totalItems: number;
+  }
+  const progressMap = new Map<string, ProgressData>();
+
+  if (isOwnProfile && items.length > 0) {
+    const itemIds = items.map((i) => i.id);
+    const progressData = await prisma.$queryRaw<
+      Array<{
+        rootItemId: string;
+        totalItems: bigint;
+        itemsWithMedia: bigint;
+        watchedItems: bigint;
+      }>
+    >`
+      WITH RECURSIVE descendants AS (
+        -- Base: the items themselves
+        SELECT id, id as "rootItemId" FROM "Item"
+        WHERE id = ANY(${itemIds}) AND "userId" = ${currentUserId}
+        UNION ALL
+        -- Recursive: all descendants
+        SELECT i.id, d."rootItemId"
+        FROM "Item" i
+        INNER JOIN descendants d ON i."parentId" = d.id
+        WHERE i."userId" = ${currentUserId}
+      )
+      SELECT
+        d."rootItemId",
+        COUNT(DISTINCT d.id) as "totalItems",
+        COUNT(DISTINCT CASE WHEN f.id IS NOT NULL THEN d.id END) as "itemsWithMedia",
+        COUNT(DISTINCT CASE
+          WHEN f."playbackPosition" IS NOT NULL
+            AND f."playbackDuration" IS NOT NULL
+            AND f."playbackDuration" > 0
+            AND f."playbackPosition" >= f."playbackDuration" * ${COMPLETION_THRESHOLD}
+          THEN d.id
+        END) as "watchedItems"
+      FROM descendants d
+      LEFT JOIN "ItemFile" f ON f."itemId" = d.id
+        AND f."fileType" = 'MEDIA'
+        AND f."isPrimary" = true
+      GROUP BY d."rootItemId"
+    `;
+
+    for (const row of progressData) {
+      const totalItems = Number(row.totalItems);
+      const itemsWithMedia = Number(row.itemsWithMedia);
+      const watchedItems = Number(row.watchedItems);
+      const percentage =
+        itemsWithMedia > 0
+          ? Math.round((watchedItems / itemsWithMedia) * 100)
+          : null;
+      progressMap.set(row.rootItemId, {
+        percentage,
+        watchedItems,
+        itemsWithMedia,
+        totalItems,
+      });
+    }
+  }
+
+  return items.map((item) => {
+    const progress = isOwnProfile ? progressMap.get(item.id) : undefined;
+    return {
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      parentId: item.parentId,
+      depth: item.depth,
+      order: item.order,
+      userId: item.userId,
+      artworkId: item.files[0]?.id ?? null,
+      tmdbId: item.tmdbId,
+      tmdbType: item.tmdbType,
+      forkCount: item._count.sourceForks,
+      updatedAt: item.updatedAt,
+      // Only include progress for own profile
+      ...(isOwnProfile && {
+        progressPercentage: progress?.percentage ?? null,
+        watchedCount: progress?.watchedItems ?? 0,
+        totalMediaCount: progress?.itemsWithMedia ?? 0,
+        totalItems: progress?.totalItems ?? 0,
+      }),
+    };
+  });
 }
 
 /**
@@ -351,6 +452,7 @@ export async function getPublicChildItems(
       description: true,
       parentId: true,
       depth: true,
+      order: true,
       userId: true,
       tmdbId: true,
       tmdbType: true,
@@ -376,6 +478,7 @@ export async function getPublicChildItems(
     description: item.description,
     parentId: item.parentId,
     depth: item.depth,
+    order: item.order,
     userId: item.userId,
     artworkId: item.files[0]?.id ?? null,
     tmdbId: item.tmdbId,
@@ -386,17 +489,150 @@ export async function getPublicChildItems(
 }
 
 /**
+ * Maximum number of descendants to return (prevents large payloads).
+ * Public trees beyond this size should use pagination.
+ */
+const MAX_PUBLIC_DESCENDANTS = 500;
+
+/**
+ * Fetches all public descendants of a parent item.
+ * Returns children, grandchildren, etc. that are effectively public.
+ * Used for tree view on public item pages.
+ *
+ * Uses React.cache() for per-request deduplication (matches existing pattern).
+ * Limits results to MAX_PUBLIC_DESCENDANTS for performance.
+ *
+ * @param parentId - Parent item ID
+ * @returns Array of all public descendants ordered by depth then order
+ */
+export const getPublicDescendants = cache(
+  async (parentId: string): Promise<PublicItem[]> => {
+    // Fetch parent data and check visibility in parallel (avoid waterfall)
+    const [parentIsPublic, parent] = await Promise.all([
+      isItemFullyPublic(parentId),
+      prisma.item.findUnique({
+        where: { id: parentId },
+        select: { userId: true, depth: true },
+      }),
+    ]);
+
+    // Early return if not public or not found
+    if (!parentIsPublic || !parent) {
+      return [];
+    }
+
+    // Use recursive CTE to get all descendants that are effectively public
+    // Items are public if: explicit (inheritVisibility=false, isPublic=true)
+    // OR inheriting (inheritVisibility=true) from a public ancestor chain
+    // Includes depth limit (max 10 levels) for defense-in-depth
+    const descendants = await prisma.$queryRaw<{ id: string }[]>`
+      WITH RECURSIVE descendants AS (
+        -- Direct children that are effectively public
+        SELECT id, "parentId", depth
+        FROM "Item"
+        WHERE "parentId" = ${parentId}
+          AND "userId" = ${parent.userId}
+          AND depth <= ${parent.depth + 10}
+          AND (
+            -- Explicitly public
+            ("inheritVisibility" = false AND "isPublic" = true)
+            OR
+            -- Inheriting visibility (parent is verified public above)
+            "inheritVisibility" = true
+          )
+
+        UNION ALL
+
+        -- Recurse to children of public items
+        SELECT i.id, i."parentId", i.depth
+        FROM "Item" i
+        INNER JOIN descendants d ON i."parentId" = d.id
+        WHERE i."userId" = ${parent.userId}
+          AND i.depth <= ${parent.depth + 10}
+          AND (
+            ("inheritVisibility" = false AND "isPublic" = true)
+            OR
+            "inheritVisibility" = true
+          )
+      )
+      SELECT id FROM descendants
+      LIMIT ${MAX_PUBLIC_DESCENDANTS}
+    `;
+
+    const descendantIds = descendants.map((d) => d.id);
+
+    if (descendantIds.length === 0) {
+      return [];
+    }
+
+    // Fetch full item data
+    const items = await prisma.item.findMany({
+      where: { id: { in: descendantIds } },
+      orderBy: [{ depth: "asc" }, { order: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        parentId: true,
+        depth: true,
+        userId: true,
+        tmdbId: true,
+        tmdbType: true,
+        updatedAt: true,
+        order: true,
+        files: {
+          where: { fileType: "ARTWORK" },
+          select: { id: true },
+          take: 1,
+          orderBy: { isPrimary: "desc" },
+        },
+        _count: {
+          select: { sourceForks: true },
+        },
+      },
+    });
+
+    return items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      parentId: item.parentId,
+      depth: item.depth,
+      order: item.order,
+      userId: item.userId,
+      artworkId: item.files[0]?.id ?? null,
+      tmdbId: item.tmdbId,
+      tmdbType: item.tmdbType,
+      forkCount: item._count.sourceForks,
+      updatedAt: item.updatedAt,
+    }));
+  }
+);
+
+/**
  * Fetches recently updated public items for the explore page.
  * Returns items from all users, sorted by update time.
+ * For the current user's items, includes progress data.
  *
  * @param limit - Maximum items to return (default 50)
  * @param offset - Pagination offset (default 0)
- * @returns Array of public items with owner info
+ * @param currentUserId - Current user ID to calculate progress for own items
+ * @returns Array of public items with owner info and progress for own items
  */
 export async function getExploreItems(
   limit = 50,
-  offset = 0
-): Promise<(PublicItem & { ownerUsername: string })[]> {
+  offset = 0,
+  currentUserId?: string | null
+): Promise<
+  (PublicItem & {
+    ownerUsername: string;
+    ownerName: string | null;
+    progressPercentage?: number | null;
+    watchedCount?: number;
+    totalMediaCount?: number;
+    totalItems?: number;
+  })[]
+> {
   const items = await prisma.item.findMany({
     where: {
       isPublic: true,
@@ -412,6 +648,7 @@ export async function getExploreItems(
       description: true,
       parentId: true,
       depth: true,
+      order: true,
       userId: true,
       tmdbId: true,
       tmdbType: true,
@@ -426,7 +663,7 @@ export async function getExploreItems(
         select: { sourceForks: true },
       },
       user: {
-        select: { username: true },
+        select: { username: true, name: true, id: true },
       },
     },
     orderBy: { updatedAt: "desc" },
@@ -434,22 +671,103 @@ export async function getExploreItems(
     skip: offset,
   });
 
+  // Get IDs of current user's items to calculate progress
+  const ownItemIds = currentUserId
+    ? items.filter((i) => i.userId === currentUserId).map((i) => i.id)
+    : [];
+
+  // Calculate progress for own items using recursive CTE (same pattern as item-actions.ts)
+  interface ProgressData {
+    percentage: number | null;
+    watchedItems: number;
+    itemsWithMedia: number;
+    totalItems: number;
+  }
+  const progressMap = new Map<string, ProgressData>();
+  if (ownItemIds.length > 0 && currentUserId) {
+    const progressData = await prisma.$queryRaw<
+      Array<{
+        rootItemId: string;
+        totalItems: bigint;
+        itemsWithMedia: bigint;
+        watchedItems: bigint;
+      }>
+    >`
+      WITH RECURSIVE descendants AS (
+        -- Base: the items themselves
+        SELECT id, id as "rootItemId" FROM "Item"
+        WHERE id = ANY(${ownItemIds}) AND "userId" = ${currentUserId}
+        UNION ALL
+        -- Recursive: all descendants
+        SELECT i.id, d."rootItemId"
+        FROM "Item" i
+        INNER JOIN descendants d ON i."parentId" = d.id
+        WHERE i."userId" = ${currentUserId}
+      )
+      SELECT
+        d."rootItemId",
+        COUNT(DISTINCT d.id) as "totalItems",
+        COUNT(DISTINCT CASE WHEN f.id IS NOT NULL THEN d.id END) as "itemsWithMedia",
+        COUNT(DISTINCT CASE
+          WHEN f."playbackPosition" IS NOT NULL
+            AND f."playbackDuration" IS NOT NULL
+            AND f."playbackDuration" > 0
+            AND f."playbackPosition" >= f."playbackDuration" * ${COMPLETION_THRESHOLD}
+          THEN d.id
+        END) as "watchedItems"
+      FROM descendants d
+      LEFT JOIN "ItemFile" f ON f."itemId" = d.id
+        AND f."fileType" = 'MEDIA'
+        AND f."isPrimary" = true
+      GROUP BY d."rootItemId"
+    `;
+
+    for (const row of progressData) {
+      const totalItems = Number(row.totalItems);
+      const itemsWithMedia = Number(row.itemsWithMedia);
+      const watchedItems = Number(row.watchedItems);
+      const percentage =
+        itemsWithMedia > 0
+          ? Math.round((watchedItems / itemsWithMedia) * 100)
+          : null;
+      progressMap.set(row.rootItemId, {
+        percentage,
+        watchedItems,
+        itemsWithMedia,
+        totalItems,
+      });
+    }
+  }
+
   return items
     .filter((item) => item.user?.username !== null)
-    .map((item) => ({
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      parentId: item.parentId,
-      depth: item.depth,
-      userId: item.userId,
-      artworkId: item.files[0]?.id ?? null,
-      tmdbId: item.tmdbId,
-      tmdbType: item.tmdbType,
-      forkCount: item._count.sourceForks,
-      updatedAt: item.updatedAt,
-      ownerUsername: item.user.username!,
-    }));
+    .map((item) => {
+      const isOwnItem = currentUserId && item.userId === currentUserId;
+      const progress = isOwnItem ? progressMap.get(item.id) : undefined;
+      return {
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        parentId: item.parentId,
+        depth: item.depth,
+        order: item.order,
+        userId: item.userId,
+        artworkId: item.files[0]?.id ?? null,
+        tmdbId: item.tmdbId,
+        tmdbType: item.tmdbType,
+        forkCount: item._count.sourceForks,
+        updatedAt: item.updatedAt,
+        ownerUsername: item.user.username!,
+        ownerName: item.user.name,
+        // Only include progress for own items
+        ...(isOwnItem && {
+          progressPercentage: progress?.percentage ?? null,
+          watchedCount: progress?.watchedItems ?? 0,
+          totalMediaCount: progress?.itemsWithMedia ?? 0,
+          totalItems: progress?.totalItems ?? 0,
+        }),
+      };
+    });
 }
 
 /**
@@ -491,3 +809,139 @@ export async function getPublicBreadcrumb(
 
   return ancestors.map(({ id, name }) => ({ id, name }));
 }
+
+/**
+ * Searches for public users for spotlight search.
+ * Returns users with public profiles and usernames set.
+ * Excludes the current user from results.
+ * Wrapped with React.cache() for per-request deduplication.
+ *
+ * @returns Array of searchable public users
+ */
+export const searchPublicUsers = cache(
+  async (): Promise<ItemResult<SearchableUser[]>> => {
+    const [session, rateLimitResult] = await Promise.all([
+      auth(),
+      checkRateLimit("userSearch"),
+    ]);
+
+    if (!session?.user?.id) {
+      return { error: "Unauthorized" };
+    }
+
+    if (rateLimitResult) {
+      return rateLimitResult;
+    }
+
+    try {
+      const users = await prisma.user.findMany({
+        where: {
+          isPublic: true,
+          username: { not: null },
+          id: { not: session.user.id },
+        },
+        select: {
+          id: true,
+          username: true,
+          name: true,
+          // NOTE: createdAt intentionally NOT selected - not needed for UI
+        },
+        orderBy: { createdAt: "desc" },
+        take: 50, // Users: 50 limit (profiles change less frequently)
+      });
+
+      const searchableUsers: SearchableUser[] = users
+        .filter(
+          (u): u is typeof u & { username: string } => u.username !== null
+        )
+        .map((user) => ({
+          id: user.id,
+          username: user.username,
+          name: user.name,
+        }));
+
+      return { success: true, data: searchableUsers };
+    } catch {
+      return { error: "Failed to search users" };
+    }
+  }
+);
+
+/**
+ * Searches for explicitly public items for spotlight search.
+ * Only returns items where isPublic=true AND inheritVisibility=false.
+ * Items with inheritVisibility=true are NOT included (discoverable only via navigation).
+ * Excludes the current user's items.
+ * Wrapped with React.cache() for per-request deduplication.
+ *
+ * @returns Array of searchable public items with owner info
+ */
+export const searchPublicItems = cache(
+  async (): Promise<ItemResult<SearchablePublicItem[]>> => {
+    const [session, rateLimitResult] = await Promise.all([
+      auth(),
+      checkRateLimit("publicItemSearch"),
+    ]);
+
+    if (!session?.user?.id) {
+      return { error: "Unauthorized" };
+    }
+
+    if (rateLimitResult) {
+      return rateLimitResult;
+    }
+
+    try {
+      const items = await prisma.item.findMany({
+        where: {
+          // CRITICAL: Only explicitly public items
+          // Items with inheritVisibility=true are NOT searchable
+          isPublic: true,
+          inheritVisibility: false,
+          // Exclude current user's items
+          userId: { not: session.user.id },
+          // Owner must be public with username
+          user: {
+            isPublic: true,
+            username: { not: null },
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          // NOTE: updatedAt intentionally NOT selected - not needed for UI
+          files: {
+            where: { fileType: "ARTWORK" },
+            select: { id: true },
+            take: 1,
+            orderBy: { isPrimary: "desc" },
+          },
+          user: {
+            select: {
+              username: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 100, // Items: 100 limit (more variety in public collections)
+      });
+
+      const searchableItems: SearchablePublicItem[] = items
+        .filter((item) => item.user.username !== null)
+        .map((item) => ({
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          artworkId: item.files[0]?.id ?? null,
+          ownerUsername: item.user.username!,
+          ownerName: item.user.name,
+        }));
+
+      return { success: true, data: searchableItems };
+    } catch {
+      return { error: "Failed to search public items" };
+    }
+  }
+);
