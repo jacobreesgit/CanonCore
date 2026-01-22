@@ -4,7 +4,6 @@
  */
 
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
 // Helper to open sidebar on mobile (collapsed by default)
 async function openSidebarIfMobile(page: import("@playwright/test").Page) {
@@ -18,14 +17,14 @@ async function openSidebarIfMobile(page: import("@playwright/test").Page) {
 
 test.describe("Navigation Active State", () => {
   test.describe("authenticated user", () => {
-    test.beforeEach(async ({ page, signUpPage }) => {
-      const email = generateUniqueEmail("nav-active");
-      await signUpPage.goto();
-      await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-      await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+    test.beforeEach(async ({ page, testUser }) => {
+      // Use testUser fixture for consistent test setup (compatible with itemsPage)
+      await expect(page).toHaveURL(`/u/${testUser.username}`, {
+        timeout: 10000,
+      });
     });
 
-    test("My Items nav is active on /my-items", async ({ page }) => {
+    test("My Items nav is active on /u/[username]", async ({ page }) => {
       await openSidebarIfMobile(page);
 
       // Find the My Items nav button in sidebar
@@ -36,25 +35,7 @@ test.describe("Navigation Active State", () => {
       await expect(myItemsNav).toHaveAttribute("data-active", "true");
     });
 
-    test("My Items nav is inactive on nested folder (breadcrumbs provide context)", async ({
-      page,
-      itemsPage,
-    }) => {
-      // Create item first (sidebar covers content on mobile)
-      await itemsPage.createItem("Test Folder");
-      await itemsPage.clickItem("Test Folder");
-
-      // Now open sidebar to check nav state
-      await openSidebarIfMobile(page);
-      // My Items should NOT be active on nested paths - pinned items handle that
-      const myItemsNav = page.locator('[data-slot="sidebar-menu-button"]', {
-        hasText: "My Items",
-      });
-      await expect(myItemsNav).toHaveAttribute("data-active", "false");
-    });
-
-    // Note: /my-items/connections route was removed with SFTP-to-Google-Drive migration
-    // Google Drive connection is now managed through the Settings dialog
+    // Note: Google Drive connection is managed through the Settings dialog
 
     test("docs context shows docs tree navigation instead of footer nav", async ({
       page,
@@ -80,6 +61,32 @@ test.describe("Navigation Active State", () => {
       await expect(
         page.getByRole("link", { name: /back to my items/i })
       ).toBeVisible();
+    });
+  });
+
+  // Tests that use itemsPage fixture (requires testUser fixture, don't mix with signUpPage)
+  test.describe("authenticated user with items", () => {
+    test("My Items nav stays active on nested folder for section awareness", async ({
+      page,
+      testUser,
+      itemsPage,
+    }) => {
+      // testUser fixture already logged us in and navigated to /u/[username]
+      await expect(page).toHaveURL(`/u/${testUser.username}`, {
+        timeout: 10000,
+      });
+
+      // Create item first (sidebar covers content on mobile)
+      await itemsPage.createItem("Test Folder");
+      await itemsPage.clickItem("Test Folder");
+
+      // Now open sidebar to check nav state
+      await openSidebarIfMobile(page);
+      // My Items should be active throughout /u/[username]/* for section awareness
+      const myItemsNav = page.locator('[data-slot="sidebar-menu-button"]', {
+        hasText: "My Items",
+      });
+      await expect(myItemsNav).toHaveAttribute("data-active", "true");
     });
   });
 

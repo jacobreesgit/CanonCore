@@ -33,17 +33,24 @@ export interface TestUserWithId {
   id: string;
   email: string;
   password: string;
+  username: string;
 }
 
 /**
  * Generates unique test user credentials.
  */
-function generateTestUserData(): { email: string; password: string } {
+function generateTestUserData(): {
+  email: string;
+  password: string;
+  username: string;
+} {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 8);
   return {
     email: `test-${timestamp}-${random}@example.com`,
     password: "TestPassword123!",
+    // Username max is 20 chars, use short prefix with random suffix
+    username: `tu_${random}`,
   };
 }
 
@@ -64,11 +71,12 @@ export const testUserFixture = base.extend<{ testUser: TestUserWithId }>({
     const userData = generateTestUserData();
     const passwordHash = await hash(userData.password, 10);
 
-    // Create user in database
+    // Create user in database with username
     const user = await prisma.user.create({
       data: {
         email: userData.email,
         passwordHash,
+        username: userData.username,
       },
     });
 
@@ -76,18 +84,20 @@ export const testUserFixture = base.extend<{ testUser: TestUserWithId }>({
       id: user.id,
       email: userData.email,
       password: userData.password,
+      username: userData.username,
     };
 
     // Sign in the user via UI
     await page.goto("/sign-in");
-    // Wait for sign-in form to be fully loaded (uses placeholder, not label)
+    // Wait for sign-in form to be fully loaded
     await page
-      .getByPlaceholder("Email")
+      .getByLabel("Email")
       .waitFor({ state: "visible", timeout: 15000 });
-    await page.getByPlaceholder("Email").fill(testUser.email);
-    await page.getByPlaceholder("Password").fill(testUser.password);
+    await page.getByLabel("Email").fill(testUser.email);
+    await page.getByTestId("sign-in-password-input").fill(testUser.password);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await page.waitForURL("/my-items", { timeout: 15000 });
+    // Sign-in redirects to user's profile
+    await page.waitForURL(`/u/${testUser.username}`, { timeout: 15000 });
 
     await use(testUser);
 

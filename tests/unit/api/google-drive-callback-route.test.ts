@@ -16,6 +16,9 @@ vi.mock("@/lib/prisma", () => ({
     googleDriveConnection: {
       upsert: vi.fn(),
     },
+    user: {
+      findUnique: vi.fn(),
+    },
   },
 }));
 
@@ -64,6 +67,7 @@ import {
 
 const mockAuth = vi.mocked(auth);
 const mockUpsert = vi.mocked(prisma.googleDriveConnection.upsert);
+const mockUserFindUnique = vi.mocked(prisma.user.findUnique);
 const mockExchangeCode = vi.mocked(exchangeCodeForTokens);
 const mockGetUserEmail = vi.mocked(getUserEmail);
 const mockCreateRootFolder = vi.mocked(createRootFolder);
@@ -82,6 +86,8 @@ function createRequest(
 describe("GET /api/auth/callback/google-drive", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: user has a username
+    mockUserFindUnique.mockResolvedValue({ username: "testuser" } as never);
   });
 
   it("redirects to sign-in when not authenticated", async () => {
@@ -102,7 +108,7 @@ describe("GET /api/auth/callback/google-drive", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toContain(
-      "/my-items?error=access_denied"
+      "/u/testuser?error=access_denied"
     );
   });
 
@@ -113,7 +119,7 @@ describe("GET /api/auth/callback/google-drive", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toContain(
-      "/my-items?error=no_code"
+      "/u/testuser?error=no_code"
     );
   });
 
@@ -124,7 +130,7 @@ describe("GET /api/auth/callback/google-drive", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toContain(
-      "/my-items?error=no_state"
+      "/u/testuser?error=no_state"
     );
   });
 
@@ -138,7 +144,7 @@ describe("GET /api/auth/callback/google-drive", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toContain(
-      "/my-items?error=invalid_state"
+      "/u/testuser?error=invalid_state"
     );
     expect(mockVerifyState).toHaveBeenCalledWith("invalid-state");
   });
@@ -156,7 +162,7 @@ describe("GET /api/auth/callback/google-drive", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toContain(
-      "/my-items?error=state_mismatch"
+      "/u/testuser?error=state_mismatch"
     );
   });
 
@@ -184,7 +190,7 @@ describe("GET /api/auth/callback/google-drive", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toContain(
-      "/my-items?drive=connected"
+      "/u/testuser?drive=connected"
     );
     expect(mockExchangeCode).toHaveBeenCalledWith("test-code");
     expect(mockGetUserEmail).toHaveBeenCalledWith("access-token");
@@ -220,7 +226,7 @@ describe("GET /api/auth/callback/google-drive", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toContain(
-      "/my-items?error=Token%20exchange%20failed"
+      "/u/testuser?error=Token%20exchange%20failed"
     );
   });
 
@@ -243,7 +249,7 @@ describe("GET /api/auth/callback/google-drive", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toContain(
-      "/my-items?error=Failed%20to%20get%20email"
+      "/u/testuser?error=Failed%20to%20get%20email"
     );
   });
 
@@ -269,7 +275,7 @@ describe("GET /api/auth/callback/google-drive", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toContain(
-      "/my-items?error=Failed%20to%20create%20folder"
+      "/u/testuser?error=Failed%20to%20create%20folder"
     );
   });
 
@@ -287,7 +293,17 @@ describe("GET /api/auth/callback/google-drive", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toContain(
-      "/my-items?error=Unknown%20error"
+      "/u/testuser?error=Unknown%20error"
     );
+  });
+
+  it("redirects to / when user has no username", async () => {
+    mockAuth.mockResolvedValue({ user: { id: "user-1" } } as never);
+    mockUserFindUnique.mockResolvedValue({ username: null } as never);
+
+    const response = await GET(createRequest({ error: "access_denied" }));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toContain("/?error=access_denied");
   });
 });

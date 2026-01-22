@@ -6,7 +6,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { syncFromGoogleDrive } from "@/lib/google-drive-sync";
 
@@ -18,6 +18,7 @@ import { syncFromGoogleDrive } from "@/lib/google-drive-sync";
 export function OAuthToast() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
   const hasHandled = useRef(false);
 
   useEffect(() => {
@@ -80,15 +81,15 @@ export function OAuthToast() {
         toast.success("Connected to Google Drive.");
       }
 
-      // Clean up URL
-      router.replace("/my-items", { scroll: false });
+      // Clean up URL params while staying on current page
+      router.replace(pathname, { scroll: false });
     } else if (error) {
       hasHandled.current = true;
       toast.error(`Connection failed: ${error}`);
-      // Clean up URL
-      router.replace("/my-items", { scroll: false });
+      // Clean up URL params while staying on current page
+      router.replace(pathname, { scroll: false });
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, pathname]);
 
   return null;
 }

@@ -219,7 +219,45 @@ describe("useGoToItem", () => {
   });
 
   describe("goToNext", () => {
-    it("navigates to the item page", async () => {
+    it("navigates to the item page when username provided", async () => {
+      vi.mocked(getFirstIncompleteItem).mockResolvedValue({
+        success: true,
+        data: mockNextItem,
+      });
+
+      const { result } = renderHook(() =>
+        useGoToItem({ username: "testuser" })
+      );
+
+      await waitFor(() => {
+        expect(result.current.nextItem).toEqual(mockNextItem);
+      });
+
+      act(() => {
+        result.current.goToNext(mockNextItem);
+      });
+
+      expect(mockPush).toHaveBeenCalledWith("/u/testuser/item-1");
+    });
+
+    it("navigates to different items", () => {
+      vi.mocked(getFirstIncompleteItem).mockResolvedValue({
+        success: true,
+        data: null,
+      });
+
+      const { result } = renderHook(() =>
+        useGoToItem({ username: "testuser" })
+      );
+
+      act(() => {
+        result.current.goToNext({ id: "other-item", name: "Other" });
+      });
+
+      expect(mockPush).toHaveBeenCalledWith("/u/testuser/other-item");
+    });
+
+    it("does not navigate when username not provided", async () => {
       vi.mocked(getFirstIncompleteItem).mockResolvedValue({
         success: true,
         data: mockNextItem,
@@ -235,22 +273,7 @@ describe("useGoToItem", () => {
         result.current.goToNext(mockNextItem);
       });
 
-      expect(mockPush).toHaveBeenCalledWith("/my-items/item-1");
-    });
-
-    it("navigates to different items", () => {
-      vi.mocked(getFirstIncompleteItem).mockResolvedValue({
-        success: true,
-        data: null,
-      });
-
-      const { result } = renderHook(() => useGoToItem());
-
-      act(() => {
-        result.current.goToNext({ id: "other-item", name: "Other" });
-      });
-
-      expect(mockPush).toHaveBeenCalledWith("/my-items/other-item");
+      expect(mockPush).not.toHaveBeenCalled();
     });
   });
 

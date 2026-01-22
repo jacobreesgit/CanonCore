@@ -4,26 +4,29 @@
  *
  * Uses Playwright's dragTo() method for simulating drag-and-drop
  * on dnd-kit components with PointerSensor.
+ *
+ * Note: Tree view is only available on item detail pages (when viewing children).
  */
 
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
 test.describe("Items Tree Drag Journey", () => {
-  test.beforeEach(async ({ page, signUpPage, itemsPage }) => {
-    const email = generateUniqueEmail("items-tree-drag");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
-
-    // Create test items in order A, B, C
-    await itemsPage.createItem("Folder A");
-    await itemsPage.createItem("Folder B");
-    await itemsPage.createItem("Folder C");
+  // Use testUser fixture for consistent test setup (compatible with itemsPage)
+  test.beforeEach(async ({ page, testUser }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
   test("items are created in correct initial order", async ({ itemsPage }) => {
-    await itemsPage.goto();
+    // Create parent container and navigate into it (tree view only on item detail pages)
+    await itemsPage.createItem("Tree Container");
+    await itemsPage.waitForToastToDisappear();
+    await itemsPage.clickItem("Tree Container");
+
+    // Create test items in order A, B, C inside the container
+    await itemsPage.createItem("Folder A");
+    await itemsPage.createItem("Folder B");
+    await itemsPage.createItem("Folder C");
+    await itemsPage.waitForToastToDisappear();
 
     // Verify all items exist
     await itemsPage.expectItemVisible("Folder A");
@@ -35,7 +38,18 @@ test.describe("Items Tree Drag Journey", () => {
     page,
     itemsPage,
   }) => {
-    await itemsPage.goto();
+    // Create parent container and navigate into it (tree view only on item detail pages)
+    await itemsPage.createItem("Drag Container");
+    await itemsPage.waitForToastToDisappear();
+    await itemsPage.clickItem("Drag Container");
+
+    // Create test items inside the container
+    await itemsPage.createItem("Folder A");
+    await itemsPage.createItem("Folder B");
+    await itemsPage.createItem("Folder C");
+    await itemsPage.waitForToastToDisappear();
+
+    // Switch to tree view (available on item detail pages)
     await itemsPage.switchToTreeView();
 
     // Enter edit mode to enable dragging
@@ -57,7 +71,17 @@ test.describe("Items Tree Drag Journey", () => {
   test("drag handle is visible and interactive in edit mode", async ({
     itemsPage,
   }) => {
-    await itemsPage.goto();
+    // Create parent container and navigate into it (tree view only on item detail pages)
+    await itemsPage.createItem("Handle Container");
+    await itemsPage.waitForToastToDisappear();
+    await itemsPage.clickItem("Handle Container");
+
+    // Create test items inside the container
+    await itemsPage.createItem("Folder A");
+    await itemsPage.createItem("Folder B");
+    await itemsPage.waitForToastToDisappear();
+
+    // Switch to tree view (available on item detail pages)
     await itemsPage.switchToTreeView();
 
     // Enter edit mode to show drag handles
@@ -72,7 +96,17 @@ test.describe("Items Tree Drag Journey", () => {
   });
 
   test("dragged item shows visual feedback", async ({ page, itemsPage }) => {
-    await itemsPage.goto();
+    // Create parent container and navigate into it (tree view only on item detail pages)
+    await itemsPage.createItem("Feedback Container");
+    await itemsPage.waitForToastToDisappear();
+    await itemsPage.clickItem("Feedback Container");
+
+    // Create test items inside the container
+    await itemsPage.createItem("Folder A");
+    await itemsPage.createItem("Folder B");
+    await itemsPage.waitForToastToDisappear();
+
+    // Switch to tree view (available on item detail pages)
     await itemsPage.switchToTreeView();
 
     // Enter edit mode to enable dragging
@@ -96,7 +130,18 @@ test.describe("Items Tree Drag Journey", () => {
   });
 
   test("can drag items using drag handle", async ({ page, itemsPage }) => {
-    await itemsPage.goto();
+    // Create parent container and navigate into it (tree view only on item detail pages)
+    await itemsPage.createItem("Drag Handle Container");
+    await itemsPage.waitForToastToDisappear();
+    await itemsPage.clickItem("Drag Handle Container");
+
+    // Create test items inside the container
+    await itemsPage.createItem("Folder A");
+    await itemsPage.createItem("Folder B");
+    await itemsPage.createItem("Folder C");
+    await itemsPage.waitForToastToDisappear();
+
+    // Switch to tree view (available on item detail pages)
     await itemsPage.switchToTreeView();
 
     // Enter edit mode to enable dragging
@@ -114,7 +159,18 @@ test.describe("Items Tree Drag Journey", () => {
   });
 
   test("order persists after page refresh", async ({ page, itemsPage }) => {
-    await itemsPage.goto();
+    // Create parent container and navigate into it (tree view only on item detail pages)
+    await itemsPage.createItem("Persist Container");
+    await itemsPage.waitForToastToDisappear();
+    await itemsPage.clickItem("Persist Container");
+
+    // Create test items inside the container
+    await itemsPage.createItem("Folder A");
+    await itemsPage.createItem("Folder B");
+    await itemsPage.createItem("Folder C");
+    await itemsPage.waitForToastToDisappear();
+
+    // Switch to tree view (available on item detail pages)
     await itemsPage.switchToTreeView();
 
     // Enter edit mode to enable dragging

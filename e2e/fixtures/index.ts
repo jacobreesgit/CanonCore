@@ -63,17 +63,17 @@ const composedTest = googleDriveFixture.extend<PageObjectFixtures>({
   resetPasswordPage: async ({ page }, use) => {
     await use(new ResetPasswordPage(page));
   },
-  myItemsPage: async ({ page }, use) => {
-    await use(new MyItemsPage(page));
+  myItemsPage: async ({ page, testUser }, use) => {
+    await use(new MyItemsPage(page, testUser.username));
   },
-  itemsPage: async ({ page }, use) => {
-    await use(new ItemsPage(page));
+  itemsPage: async ({ page, testUser }, use) => {
+    await use(new ItemsPage(page, testUser.username));
   },
   docsPage: async ({ page }, use) => {
     await use(new DocsPage(page));
   },
-  mediaPage: async ({ page }, use) => {
-    await use(new MediaPage(page));
+  mediaPage: async ({ page, testUser }, use) => {
+    await use(new MediaPage(page, testUser.username));
   },
   settingsPage: async ({ page }, use) => {
     await use(new SettingsPage(page));

@@ -131,8 +131,8 @@ export class SettingsPage {
     // Radio buttons are labeled "Grid" and "Tree" in the UI
     const label = mode === "grid" ? "Grid" : "Tree";
     await this.page.getByRole("radio", { name: label }).click();
-    // Wait for auto-save to complete
-    await this.page.waitForLoadState("networkidle");
+    // Wait for auto-save toast to confirm save completed
+    await this.expectPreferencesSavedToast();
   }
 
   /**
@@ -155,8 +155,8 @@ export class SettingsPage {
     await this.page.getByRole("combobox").click();
     // Select the option
     await this.page.getByRole("option", { name: option }).click();
-    // Wait for auto-save to complete
-    await this.page.waitForLoadState("networkidle");
+    // Wait for auto-save toast to confirm save completed
+    await this.expectPreferencesSavedToast();
   }
 
   /**
@@ -185,7 +185,7 @@ export class SettingsPage {
    * @param username - The username to set
    */
   async setUsername(username: string): Promise<void> {
-    const input = this.page.locator("#settings-username");
+    const input = this.page.getByTestId("settings-username-input");
     await input.fill(username);
   }
 
@@ -193,20 +193,18 @@ export class SettingsPage {
    * Gets the current username value.
    */
   async getUsername(): Promise<string> {
-    const input = this.page.locator("#settings-username");
+    const input = this.page.getByTestId("settings-username-input");
     return (await input.inputValue()) ?? "";
   }
 
   /**
    * Waits for username validation to complete.
-   * Validation has a 500ms debounce, so we wait for the spinner to appear then disappear.
+   * Uses condition-based polling instead of arbitrary timeout.
    */
   async waitForUsernameValidation(): Promise<void> {
-    // Wait longer than the 500ms debounce delay for the API call to start
-    await this.page.waitForTimeout(600);
-    // Wait for the result text to appear (either "available" or "taken")
-    const resultText = this.page.locator(
-      "text=/username is (available|already taken)/i"
+    // Wait for validation result to appear (covers 500ms debounce + API call)
+    const resultText = this.page.getByText(
+      /username is (available|already taken)/i
     );
     await resultText
       .waitFor({ state: "visible", timeout: 5000 })
@@ -245,7 +243,7 @@ export class SettingsPage {
    * Toggles the public profile switch.
    */
   async togglePublicProfile(): Promise<void> {
-    const switchEl = this.page.locator("#settings-public");
+    const switchEl = this.page.getByTestId("settings-public-toggle");
     await switchEl.click();
   }
 
@@ -253,7 +251,7 @@ export class SettingsPage {
    * Checks if public profile is enabled.
    */
   async isPublicProfileEnabled(): Promise<boolean> {
-    const switchEl = this.page.locator("#settings-public");
+    const switchEl = this.page.getByTestId("settings-public-toggle");
     const checked = await switchEl.getAttribute("data-state");
     return checked === "checked";
   }
@@ -273,11 +271,12 @@ export class SettingsPage {
   }
 
   /**
-   * Clicks the Save Changes button.
+   * Clicks the Save Changes button and waits for confirmation.
    */
   async saveChanges(): Promise<void> {
     await this.page.getByRole("button", { name: "Save Changes" }).click();
-    await this.page.waitForLoadState("networkidle");
+    // Wait for the save to complete by checking for the success toast
+    await this.expectSettingsSavedToast();
   }
 
   /**

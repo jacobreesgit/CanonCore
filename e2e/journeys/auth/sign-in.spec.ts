@@ -33,27 +33,29 @@ test.describe("Sign In Journey", () => {
     page,
     signUpPage,
     signInPage,
-    myItemsPage,
   }) => {
-    // First create an account
+    // First create an account with a username
     const email = generateUniqueEmail("signin");
     const password = TEST_PASSWORD;
+    // Username max is 20 chars, so use a short random suffix
+    const username = `si_${Math.random().toString(36).slice(2, 10)}`;
 
     await signUpPage.goto();
-    await signUpPage.signUp(email, password, password);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+    await signUpPage.signUp(email, password, password, username);
+    await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+$/, { timeout: 10000 });
 
-    // Sign out by navigating to sign-in (or use sign out button if implemented)
+    // Sign out by clearing session cookies
+    await page.context().clearCookies();
     await page.goto("/sign-in");
 
     // Wait for sign-in page to be ready
-    await expect(signInPage.emailInput).toBeVisible();
+    await expect(signInPage.emailInput).toBeVisible({ timeout: 10000 });
 
     // Now sign in with the same credentials
     await signInPage.signIn(email, password);
 
-    // Should be on my-items
-    await myItemsPage.expectVisible();
+    // Should be on user's profile page (unified route)
+    await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+$/, { timeout: 15000 });
   });
 
   test("shows error with empty email", async ({ signInPage }) => {

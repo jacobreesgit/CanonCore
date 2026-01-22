@@ -4,7 +4,6 @@
  */
 
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
 // Helper to expand sidebar (collapsed by default on both mobile and desktop)
 async function expandSidebar(page: import("@playwright/test").Page) {
@@ -46,12 +45,9 @@ async function closeSidebarIfMobile(page: import("@playwright/test").Page) {
 }
 
 test.describe("Pinned Sidebar Items", () => {
-  test.beforeEach(async ({ page, signUpPage }) => {
-    // Create account and sign in
-    const email = generateUniqueEmail("pinned-items");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  test.beforeEach(async ({ page, testUser }) => {
+    // Use testUser fixture for consistent test setup (compatible with itemsPage)
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
   test("Pinned Items section is hidden when no items are pinned", async ({
@@ -68,8 +64,7 @@ test.describe("Pinned Sidebar Items", () => {
     await itemsPage.createItem("Movies");
     await itemsPage.waitForToastToDisappear();
 
-    // Switch to tree view for stable context menu
-    await itemsPage.switchToTreeView();
+    // Context menu works in grid view (tree view disabled at profile level)
     await itemsPage.pinItemViaContextMenu("Movies");
     await itemsPage.expectSuccessToast("Pinned to sidebar");
 
@@ -83,10 +78,7 @@ test.describe("Pinned Sidebar Items", () => {
     await itemsPage.createItem("TV Shows");
     await itemsPage.waitForToastToDisappear();
 
-    // Switch to tree view for stable context menu
-    await itemsPage.switchToTreeView();
-
-    // Pin first
+    // Pin first (context menu works in grid view)
     await itemsPage.pinItemViaContextMenu("TV Shows");
     await itemsPage.expectSuccessToast("Pinned to sidebar");
     await itemsPage.waitForToastToDisappear();
@@ -95,10 +87,10 @@ test.describe("Pinned Sidebar Items", () => {
     await expandSidebar(page);
     await itemsPage.expectItemPinnedInSidebar("TV Shows");
 
-    // Close sidebar before accessing tree view
+    // Close sidebar before accessing grid view
     await closeSidebarIfMobile(page);
 
-    // Wait for tree view to be ready
+    // Wait for item to be ready
     await itemsPage.expectItemVisible("TV Shows");
 
     // Unpin
@@ -118,10 +110,7 @@ test.describe("Pinned Sidebar Items", () => {
     await itemsPage.createItem("Music");
     await itemsPage.waitForToastToDisappear();
 
-    // Switch to tree view for stable context menu
-    await itemsPage.switchToTreeView();
-
-    // Pin the item
+    // Pin the item (context menu works in grid view)
     await itemsPage.pinItemViaContextMenu("Music");
     await itemsPage.expectSuccessToast("Pinned to sidebar");
     await itemsPage.waitForToastToDisappear();
@@ -130,10 +119,10 @@ test.describe("Pinned Sidebar Items", () => {
     await expandSidebar(page);
     await itemsPage.expectPinnedSectionVisible();
 
-    // Close sidebar before accessing tree view
+    // Close sidebar before accessing grid view
     await closeSidebarIfMobile(page);
 
-    // Wait for tree view to be ready
+    // Wait for item to be ready
     await itemsPage.expectItemVisible("Music");
 
     // Unpin the item
@@ -153,10 +142,7 @@ test.describe("Pinned Sidebar Items", () => {
     await itemsPage.createItem("TV Shows");
     await itemsPage.waitForToastToDisappear();
 
-    // Switch to tree view for stable context menu
-    await itemsPage.switchToTreeView();
-
-    // Pin both items
+    // Pin both items (context menu works in grid view)
     await itemsPage.pinItemViaContextMenu("Movies");
     await itemsPage.expectSuccessToast("Pinned to sidebar");
     await itemsPage.waitForToastToDisappear();
@@ -175,10 +161,7 @@ test.describe("Pinned Sidebar Items", () => {
     await itemsPage.createItem("Favorites");
     await itemsPage.waitForToastToDisappear();
 
-    // Switch to tree view for stable context menu
-    await itemsPage.switchToTreeView();
-
-    // Pin the item
+    // Pin the item (context menu works in grid view)
     await itemsPage.pinItemViaContextMenu("Favorites");
     await itemsPage.expectSuccessToast("Pinned to sidebar");
     await itemsPage.waitForToastToDisappear();
@@ -195,7 +178,7 @@ test.describe("Pinned Sidebar Items", () => {
     await closeSidebarIfMobile(page);
 
     // Should navigate to the item detail page
-    await expect(page).toHaveURL(/\/my-items\/[a-z0-9-]+$/);
+    await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+\/[a-z0-9-]+$/);
     // Hero should show item name
     await itemsPage.expectHeroVisible("Favorites");
   });
@@ -208,10 +191,7 @@ test.describe("Pinned Sidebar Items", () => {
     await itemsPage.createItem("Persistent Pin");
     await itemsPage.waitForToastToDisappear();
 
-    // Switch to tree view for stable context menu
-    await itemsPage.switchToTreeView();
-
-    // Pin the item
+    // Pin the item (context menu works in grid view)
     await itemsPage.pinItemViaContextMenu("Persistent Pin");
     await itemsPage.expectSuccessToast("Pinned to sidebar");
     await itemsPage.waitForToastToDisappear();

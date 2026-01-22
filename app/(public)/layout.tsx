@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { auth, getExtendedSidebarUser } from "@/lib/auth";
+import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
 import { getPinnedItems } from "@/lib/item-actions";
 import { MyItemsProviders } from "@/components/my-items-providers";
 
@@ -22,11 +23,12 @@ export default async function PublicLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
-  const [user, pinnedResult] = await Promise.all([
+  const [user, pinnedResult, driveConnection] = await Promise.all([
     getExtendedSidebarUser(session),
     session?.user
       ? getPinnedItems()
       : Promise.resolve({ success: true, data: [] }),
+    session?.user ? getGoogleDriveConnection() : Promise.resolve(null),
   ]);
   const pinnedItems = pinnedResult.success ? pinnedResult.data : [];
 
@@ -45,6 +47,7 @@ export default async function PublicLayout({
         user={user}
         context="home"
         pinnedItems={pinnedItems}
+        driveConnection={driveConnection}
       />
       <SidebarInset className="overflow-hidden">
         <main

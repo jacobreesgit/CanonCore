@@ -246,6 +246,8 @@ export interface SearchableItem {
   artworkId: string | null;
   /** Breadcrumb path like "Movies / Star Wars" for nested items */
   breadcrumb: string | null;
+  /** Owner's username for URL generation */
+  ownerUsername: string | null;
 }
 
 /**

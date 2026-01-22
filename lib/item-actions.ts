@@ -5,6 +5,7 @@
 
 "use server";
 
+import { cache } from "react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { itemNameSchema, itemDescriptionSchema } from "@/lib/validations";
@@ -34,6 +35,11 @@ import {
   findFirstIncompleteItem,
 } from "@/lib/progress-utils";
 import { MAX_ITEM_DEPTH } from "@/lib/config/items";
+import {
+  getPublicItemsForUser,
+  getPublicChildItems,
+  isItemFullyPublic,
+} from "@/lib/public-auth";
 
 /**
  * Builds a map of item IDs to their progress (self + all descendants).
@@ -1203,23 +1209,32 @@ export async function getSearchableItems(): Promise<
   }
 
   try {
-    const items = await prisma.item.findMany({
-      where: { userId: session.user.id },
-      select: {
-        id: true,
-        name: true,
-        parentId: true,
-        depth: true,
-        description: true,
-        files: {
-          where: { fileType: "ARTWORK" },
-          select: { id: true, isPrimary: true },
-          orderBy: { isPrimary: "desc" }, // Primary first, then others
+    // Fetch items and user's username in parallel
+    const [items, user] = await Promise.all([
+      prisma.item.findMany({
+        where: { userId: session.user.id },
+        select: {
+          id: true,
+          name: true,
+          parentId: true,
+          depth: true,
+          description: true,
+          files: {
+            where: { fileType: "ARTWORK" },
+            select: { id: true, isPrimary: true },
+            orderBy: { isPrimary: "desc" }, // Primary first, then others
+          },
         },
-      },
-      orderBy: { name: "asc" },
-      take: 500,
-    });
+        orderBy: { name: "asc" },
+        take: 500,
+      }),
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { username: true },
+      }),
+    ]);
+
+    const ownerUsername = user?.username ?? null;
 
     // Build a map for breadcrumb construction
     const itemMap = new Map<
@@ -1261,6 +1276,7 @@ export async function getSearchableItems(): Promise<
       description: item.description,
       artworkId: item.files[0]?.id ?? null,
       breadcrumb: buildBreadcrumb(item.parentId),
+      ownerUsername,
     }));
 
     return { success: true, data: searchableItems };
@@ -1889,3 +1905,436 @@ export async function countInheritingChildren(itemId: string): Promise<number> {
 
   return count;
 }
+
+// =============================================================================
+// Unified Profile Data Fetching
+// =============================================================================
+
+/**
+ * Profile data returned by getItemsForProfile.
+ */
+export interface ProfileItemsResult {
+  /** Items with artwork data */
+  items: ItemWithArtwork[];
+  /** Whether the viewer is the profile owner */
+  isOwner: boolean;
+  /** Profile information */
+  profile: {
+    id: string;
+    username: string;
+    name: string | null;
+    hasImage: boolean;
+    hasHeroImage: boolean;
+  };
+}
+
+/**
+ * Fetches items for a user's profile with owner/viewer mode detection.
+ * When viewer is the owner, returns all items with full data.
+ * When viewer is different user or guest, returns only public items.
+ *
+ * Uses React.cache() for per-request deduplication to avoid redundant DB calls
+ * when called from both generateMetadata and page components.
+ *
+ * @param profileUserId - User ID whose profile to fetch
+ * @param viewerUserId - User ID of viewer (null for guests)
+ * @returns Profile data with items and owner status
+ * @throws Error if profile not found or has no username
+ *
+ * @example
+ * // Owner viewing own profile
+ * const result = await getItemsForProfile(userId, userId);
+ * // result.isOwner === true, result.items includes all items
+ *
+ * @example
+ * // Guest viewing public profile
+ * const result = await getItemsForProfile(profileId, null);
+ * // result.isOwner === false, result.items includes only public items
+ */
+export const getItemsForProfile = cache(
+  async (
+    profileUserId: string,
+    viewerUserId: string | null
+  ): Promise<ProfileItemsResult> => {
+    const isOwner = viewerUserId === profileUserId;
+
+    // Fetch profile
+    const profile = await prisma.user.findUnique({
+      where: { id: profileUserId },
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        image: true,
+        heroImage: true,
+      },
+    });
+
+    if (!profile || !profile.username) {
+      throw new Error("Profile not found");
+    }
+
+    const profileData = {
+      id: profile.id,
+      username: profile.username,
+      name: profile.name,
+      hasImage: !!profile.image,
+      hasHeroImage: !!profile.heroImage,
+    };
+
+    if (isOwner) {
+      // Owner: fetch all items using existing getAllItems logic
+      // Reuse the same pattern but without auth check since we know ownership
+      const allItems = await prisma.item.findMany({
+        where: { userId: profileUserId },
+        select: { id: true, parentId: true },
+      });
+
+      const countDescendants = buildDescendantCounter(allItems);
+
+      const items = await prisma.item.findMany({
+        where: { userId: profileUserId },
+        orderBy: [{ depth: "asc" }, { order: "asc" }],
+        include: {
+          files: {
+            select: {
+              id: true,
+              fileType: true,
+              isPrimary: true,
+              filename: true,
+              mimeType: true,
+            },
+          },
+          driveConnection: {
+            select: { id: true },
+          },
+        },
+      });
+
+      // Build progress map for all items
+      const progressMap = await buildDescendantProgressMap(
+        profileUserId,
+        items.map((i) => i.id)
+      );
+
+      // Transform to ItemWithArtwork
+      const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => {
+        const primaryArtwork = item.files.find(
+          (f) => f.fileType === "ARTWORK" && f.isPrimary
+        );
+        const firstArtwork = item.files.find((f) => f.fileType === "ARTWORK");
+        const artworkId = primaryArtwork?.id ?? firstArtwork?.id ?? null;
+
+        const primaryMedia = item.files.find(
+          (f) => f.fileType === "MEDIA" && f.isPrimary
+        );
+        const firstMedia = item.files.find((f) => f.fileType === "MEDIA");
+        const resolvedPrimaryMedia = primaryMedia ?? firstMedia;
+        const primaryMediaName = resolvedPrimaryMedia?.filename ?? null;
+
+        const mediaFiles = item.files.filter((f) => f.fileType === "MEDIA");
+        const fileCounts = {
+          media: mediaFiles.length,
+          artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
+          subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
+        };
+
+        const mediaIconType = getMediaIconType(mediaFiles);
+        const itemProgress = progressMap.get(item.id);
+        const progress =
+          itemProgress && itemProgress.percentage !== null
+            ? itemProgress
+            : null;
+
+        return {
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          parentId: item.parentId,
+          order: item.order,
+          depth: item.depth,
+          pinnedOrder: item.pinnedOrder,
+          isPublic: item.isPublic,
+          inheritVisibility: item.inheritVisibility,
+          userId: item.userId,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+          driveFileId: item.driveFileId,
+          driveModifiedAt: item.driveModifiedAt,
+          driveThumbnailUrl: item.driveThumbnailUrl,
+          syncStatus: item.syncStatus,
+          syncError: item.syncError,
+          driveConnectionId: item.driveConnectionId,
+          artworkId,
+          fileCounts,
+          childCount: countDescendants(item.id),
+          primaryMediaName,
+          mediaIconType,
+          progress,
+        };
+      });
+
+      return {
+        items: itemsWithArtwork,
+        isOwner: true,
+        profile: profileData,
+      };
+    } else {
+      // Viewer: fetch only public items
+      const publicItems = await getPublicItemsForUser(
+        profileUserId,
+        200,
+        0,
+        viewerUserId
+      );
+
+      // Transform PublicItem to ItemWithArtwork shape
+      const items: ItemWithArtwork[] = publicItems.map((item) => ({
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        parentId: item.parentId,
+        order: item.order,
+        depth: item.depth,
+        userId: item.userId,
+        createdAt: new Date(), // Not returned by public API
+        updatedAt: item.updatedAt,
+        artworkId: item.artworkId,
+        // Read-only defaults for viewer
+        pinnedOrder: null,
+        isPublic: true,
+        inheritVisibility: false,
+        driveFileId: null,
+        driveModifiedAt: null,
+        driveThumbnailUrl: null,
+        syncStatus: "SYNCED" as const,
+        syncError: null,
+        driveConnectionId: null,
+        fileCounts: { media: 0, artwork: 0, subtitles: 0 },
+        childCount: 0,
+        primaryMediaName: null,
+        mediaIconType: null,
+        progress: null,
+      }));
+
+      return {
+        items,
+        isOwner: false,
+        profile: profileData,
+      };
+    }
+  }
+);
+
+/**
+ * Result type for getItemChildrenForProfile.
+ */
+export interface ProfileChildrenResult {
+  /** Child items with artwork data */
+  items: ItemWithArtwork[];
+  /** Whether the viewer is the item owner */
+  isOwner: boolean;
+  /** Parent item for breadcrumb navigation */
+  parent: {
+    id: string;
+    name: string;
+    parentId: string | null;
+  };
+}
+
+/**
+ * Fetches children of an item for profile view.
+ * When viewer is owner, returns all children with full data.
+ * When viewer is different user or guest, returns only public children.
+ *
+ * Uses React.cache() for per-request deduplication.
+ *
+ * @param parentId - Parent item ID to fetch children for
+ * @param viewerUserId - User ID of viewer (null for guests)
+ * @returns Item result with children and owner status
+ *
+ * @example
+ * // Owner viewing their item's children
+ * const result = await getItemChildrenForProfile(itemId, userId);
+ * // result.data.isOwner === true
+ *
+ * @example
+ * // Guest viewing public item children
+ * const result = await getItemChildrenForProfile(itemId, null);
+ * // result.data.isOwner === false
+ */
+export const getItemChildrenForProfile = cache(
+  async (
+    parentId: string,
+    viewerUserId: string | null
+  ): Promise<ItemResult<ProfileChildrenResult>> => {
+    // Fetch parent item to determine ownership and verify existence
+    const parent = await prisma.item.findUnique({
+      where: { id: parentId },
+      select: {
+        id: true,
+        name: true,
+        parentId: true,
+        userId: true,
+      },
+    });
+
+    if (!parent) {
+      return { error: "Item not found" };
+    }
+
+    const isOwner = viewerUserId === parent.userId;
+
+    const parentData = {
+      id: parent.id,
+      name: parent.name,
+      parentId: parent.parentId,
+    };
+
+    if (isOwner) {
+      // Owner: fetch all children using existing getItems logic
+      const allItems = await prisma.item.findMany({
+        where: { userId: parent.userId },
+        select: { id: true, parentId: true },
+      });
+
+      const countDescendants = buildDescendantCounter(allItems);
+
+      const children = await prisma.item.findMany({
+        where: { userId: parent.userId, parentId },
+        orderBy: { order: "asc" },
+        include: {
+          files: {
+            select: {
+              id: true,
+              fileType: true,
+              isPrimary: true,
+              filename: true,
+              mimeType: true,
+            },
+          },
+          driveConnection: {
+            select: { id: true },
+          },
+        },
+      });
+
+      // Build progress map
+      const progressMap = await buildDescendantProgressMap(
+        parent.userId,
+        children.map((i) => i.id)
+      );
+
+      // Transform to ItemWithArtwork
+      const items: ItemWithArtwork[] = children.map((item) => {
+        const primaryArtwork = item.files.find(
+          (f) => f.fileType === "ARTWORK" && f.isPrimary
+        );
+        const firstArtwork = item.files.find((f) => f.fileType === "ARTWORK");
+        const artworkId = primaryArtwork?.id ?? firstArtwork?.id ?? null;
+
+        const primaryMedia = item.files.find(
+          (f) => f.fileType === "MEDIA" && f.isPrimary
+        );
+        const firstMedia = item.files.find((f) => f.fileType === "MEDIA");
+        const resolvedPrimaryMedia = primaryMedia ?? firstMedia;
+        const primaryMediaName = resolvedPrimaryMedia?.filename ?? null;
+
+        const mediaFiles = item.files.filter((f) => f.fileType === "MEDIA");
+        const fileCounts = {
+          media: mediaFiles.length,
+          artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
+          subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
+        };
+
+        const mediaIconType = getMediaIconType(mediaFiles);
+        const itemProgress = progressMap.get(item.id);
+        const progress =
+          itemProgress && itemProgress.percentage !== null
+            ? itemProgress
+            : null;
+
+        return {
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          parentId: item.parentId,
+          order: item.order,
+          depth: item.depth,
+          pinnedOrder: item.pinnedOrder,
+          isPublic: item.isPublic,
+          inheritVisibility: item.inheritVisibility,
+          userId: item.userId,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+          driveFileId: item.driveFileId,
+          driveModifiedAt: item.driveModifiedAt,
+          driveThumbnailUrl: item.driveThumbnailUrl,
+          syncStatus: item.syncStatus,
+          syncError: item.syncError,
+          driveConnectionId: item.driveConnectionId,
+          artworkId,
+          fileCounts,
+          childCount: countDescendants(item.id),
+          primaryMediaName,
+          mediaIconType,
+          progress,
+        };
+      });
+
+      return {
+        success: true,
+        data: {
+          items,
+          isOwner: true,
+          parent: parentData,
+        },
+      };
+    } else {
+      // Non-owner: verify parent is public and fetch public children
+      const parentIsPublic = await isItemFullyPublic(parentId);
+      if (!parentIsPublic) {
+        return { error: "Item not found" };
+      }
+
+      const publicChildren = await getPublicChildItems(parentId, 200, 0);
+
+      // Transform to ItemWithArtwork shape
+      const items: ItemWithArtwork[] = publicChildren.map((item) => ({
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        parentId: item.parentId,
+        order: item.order,
+        depth: item.depth,
+        userId: item.userId,
+        createdAt: new Date(),
+        updatedAt: item.updatedAt,
+        artworkId: item.artworkId,
+        pinnedOrder: null,
+        isPublic: true,
+        inheritVisibility: false,
+        driveFileId: null,
+        driveModifiedAt: null,
+        driveThumbnailUrl: null,
+        syncStatus: "SYNCED" as const,
+        syncError: null,
+        driveConnectionId: null,
+        fileCounts: { media: 0, artwork: 0, subtitles: 0 },
+        childCount: 0,
+        primaryMediaName: null,
+        mediaIconType: null,
+        progress: null,
+      }));
+
+      return {
+        success: true,
+        data: {
+          items,
+          isOwner: false,
+          parent: parentData,
+        },
+      };
+    }
+  }
+);

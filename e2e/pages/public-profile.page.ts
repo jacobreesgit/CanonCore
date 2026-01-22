@@ -12,6 +12,8 @@ export class PublicProfilePage {
   readonly heroSection: Locator;
   readonly heroTitle: Locator;
   readonly heroDescription: Locator;
+  readonly profileHeroSection: Locator;
+  readonly profileHeroTitle: Locator;
   readonly itemsGrid: Locator;
   readonly itemsTree: Locator;
   readonly emptyState: Locator;
@@ -26,9 +28,13 @@ export class PublicProfilePage {
 
   constructor(page: Page) {
     this.page = page;
-    this.heroSection = page.getByTestId("item-hero");
+    // Item detail hero (hero-carousel)
+    this.heroSection = page.getByTestId("hero-carousel");
     this.heroTitle = this.heroSection.locator("h1");
     this.heroDescription = this.heroSection.locator("p").first();
+    // Profile hero (profile-hero)
+    this.profileHeroSection = page.getByTestId("profile-hero");
+    this.profileHeroTitle = this.profileHeroSection.locator("h1");
     this.itemsGrid = page.getByTestId("items-grid-view");
     this.itemsTree = page.getByTestId("items-tree-view");
     this.emptyState = page.getByText(/no public items yet|no child items/i);
@@ -64,10 +70,16 @@ export class PublicProfilePage {
     await this.page.goto("/explore");
   }
 
-  /** Expect hero section to be visible with title */
+  /** Expect item hero section (hero-carousel) to be visible with title */
   async expectHeroVisible(title: string) {
     await expect(this.heroSection).toBeVisible();
     await expect(this.heroTitle).toContainText(title);
+  }
+
+  /** Expect profile hero section (profile-hero) to be visible with username */
+  async expectProfileHeroVisible(username: string) {
+    await expect(this.profileHeroSection).toBeVisible();
+    await expect(this.profileHeroTitle).toContainText(`@${username}`);
   }
 
   /** Expect public profile to show username */
@@ -159,20 +171,5 @@ export class PublicProfilePage {
     await expect(
       this.itemsTree.getByRole("listitem").filter({ hasText: name })
     ).toBeVisible();
-  }
-
-  /** Collapse the hero section */
-  async collapseHero() {
-    await this.page.getByRole("button", { name: /collapse hero/i }).click();
-  }
-
-  /** Expand the hero section */
-  async expandHero() {
-    await this.page.getByRole("button", { name: /expand hero/i }).click();
-  }
-
-  /** Check if the hero is collapsed */
-  async isHeroCollapsed(): Promise<boolean> {
-    return this.page.getByRole("button", { name: /expand hero/i }).isVisible();
   }
 }

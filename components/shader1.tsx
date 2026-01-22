@@ -141,14 +141,14 @@ const Shader1 = ({
   // Show static gradient when reduced motion is preferred
   if (shouldReduceMotion) {
     return (
-      <section className={cn(className, "absolute inset-0 h-screen w-full")}>
+      <section className={cn("absolute inset-0", className)}>
         <div className="h-full w-full bg-gradient-to-br from-blue-900 via-purple-900 to-slate-900" />
       </section>
     );
   }
 
   return (
-    <section className={cn(className, "absolute inset-0 h-screen w-full")}>
+    <section className={cn("absolute inset-0", className)}>
       <Canvas>
         <ShaderPlane
           vertexShader={vertexShader}

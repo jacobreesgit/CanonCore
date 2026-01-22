@@ -23,19 +23,25 @@ export async function GET(request: NextRequest) {
   let userId: string;
 
   if (requestedUserId) {
-    // Public profile request - verify user is public
-    const publicUser = await prisma.user.findUnique({
-      where: { id: requestedUserId, isPublic: true },
-      select: { id: true },
-    });
+    // Check if user is requesting their own hero (for authenticated users)
+    const session = await auth();
+    const isOwnHero = session?.user?.id === requestedUserId;
 
-    if (!publicUser) {
-      return new Response(null, { status: 404 });
+    if (!isOwnHero) {
+      // Public profile request - verify user is public
+      const publicUser = await prisma.user.findUnique({
+        where: { id: requestedUserId, isPublic: true },
+        select: { id: true },
+      });
+
+      if (!publicUser) {
+        return new Response(null, { status: 404 });
+      }
     }
 
     userId = requestedUserId;
   } else {
-    // Authenticated user request
+    // Authenticated user request (legacy path without userId)
     const session = await auth();
     if (!session?.user?.id) {
       return new Response(null, { status: 401 });

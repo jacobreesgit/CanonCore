@@ -2028,3 +2028,324 @@ describe("getFirstIncompleteItem", () => {
     }
   });
 });
+
+describe("getItemsForProfile", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns all items when viewer is owner", async () => {
+    const userId = "user-1";
+    // Mock user lookup
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: userId,
+      username: "testuser",
+      name: "Test User",
+      image: null,
+      heroImage: null,
+    } as never);
+
+    // Mock items fetch - first for descendant count, second for actual items
+    vi.mocked(prisma.item.findMany)
+      .mockResolvedValueOnce([
+        { id: "item-1", parentId: null },
+        { id: "item-2", parentId: null },
+        { id: "item-3", parentId: null },
+      ] as never)
+      .mockResolvedValueOnce([
+        mockItem({
+          id: "item-1",
+          name: "Private Item",
+          parentId: null,
+          order: 0,
+          depth: 0,
+          userId,
+          isPublic: false,
+        }),
+        mockItem({
+          id: "item-2",
+          name: "Public Item",
+          parentId: null,
+          order: 1,
+          depth: 0,
+          userId,
+          isPublic: true,
+        }),
+        mockItem({
+          id: "item-3",
+          name: "Another Private",
+          parentId: null,
+          order: 2,
+          depth: 0,
+          userId,
+          isPublic: false,
+        }),
+      ] as never);
+
+    const { getItemsForProfile } = await import("@/lib/item-actions");
+    const result = await getItemsForProfile(userId, userId);
+
+    expect(result.items).toHaveLength(3);
+    expect(result.isOwner).toBe(true);
+    expect(result.profile.username).toBe("testuser");
+  });
+
+  it("returns only public items when viewer is different user", async () => {
+    const profileUserId = "user-1";
+    const viewerUserId = "user-2";
+
+    // Mock user lookup
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: profileUserId,
+      username: "testuser",
+      name: "Test User",
+      image: null,
+      heroImage: null,
+    } as never);
+
+    // Mock public items query
+    vi.mocked(prisma.item.findMany).mockResolvedValue([
+      {
+        id: "item-2",
+        name: "Public Item",
+        description: null,
+        parentId: null,
+        depth: 0,
+        order: 1,
+        userId: profileUserId,
+        tmdbId: null,
+        tmdbType: null,
+        updatedAt: new Date(),
+        files: [{ id: "art-1" }],
+        _count: { sourceForks: 0 },
+      },
+    ] as never);
+
+    const { getItemsForProfile } = await import("@/lib/item-actions");
+    const result = await getItemsForProfile(profileUserId, viewerUserId);
+
+    expect(result.items).toHaveLength(1);
+    expect(result.isOwner).toBe(false);
+    expect(result.items[0].name).toBe("Public Item");
+  });
+
+  it("returns only public items when viewer is null (guest)", async () => {
+    const profileUserId = "user-1";
+
+    // Mock user lookup
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: profileUserId,
+      username: "testuser",
+      name: "Test User",
+      image: null,
+      heroImage: null,
+    } as never);
+
+    // Mock public items query
+    vi.mocked(prisma.item.findMany).mockResolvedValue([
+      {
+        id: "item-2",
+        name: "Public Item",
+        description: null,
+        parentId: null,
+        depth: 0,
+        order: 1,
+        userId: profileUserId,
+        tmdbId: null,
+        tmdbType: null,
+        updatedAt: new Date(),
+        files: [],
+        _count: { sourceForks: 2 },
+      },
+    ] as never);
+
+    const { getItemsForProfile } = await import("@/lib/item-actions");
+    const result = await getItemsForProfile(profileUserId, null);
+
+    expect(result.items).toHaveLength(1);
+    expect(result.isOwner).toBe(false);
+  });
+
+  it("throws when profile not found", async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+
+    const { getItemsForProfile } = await import("@/lib/item-actions");
+
+    await expect(getItemsForProfile("nonexistent-id", null)).rejects.toThrow(
+      "Profile not found"
+    );
+  });
+
+  it("throws when profile has no username", async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: "user-1",
+      username: null,
+      name: "Test User",
+      image: null,
+      heroImage: null,
+    } as never);
+
+    const { getItemsForProfile } = await import("@/lib/item-actions");
+
+    await expect(getItemsForProfile("user-1", null)).rejects.toThrow(
+      "Profile not found"
+    );
+  });
+
+  it("handles empty items array", async () => {
+    const userId = "user-1";
+
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: userId,
+      username: "testuser",
+      name: "Test User",
+      image: null,
+      heroImage: null,
+    } as never);
+
+    vi.mocked(prisma.item.findMany)
+      .mockResolvedValueOnce([]) // descendant count
+      .mockResolvedValueOnce([]); // items
+
+    const { getItemsForProfile } = await import("@/lib/item-actions");
+    const result = await getItemsForProfile(userId, userId);
+
+    expect(result.items).toHaveLength(0);
+    expect(result.isOwner).toBe(true);
+  });
+});
+
+describe("getItemChildrenForProfile", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns all children when viewer is owner", async () => {
+    const userId = "user-1";
+    const parentId = "parent-1";
+    mockAuth.mockResolvedValue(mockSession(userId, "test@example.com"));
+
+    // Mock parent item ownership check
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: parentId,
+      userId,
+    } as never);
+
+    // Mock descendant count and actual items
+    vi.mocked(prisma.item.findMany)
+      .mockResolvedValueOnce([
+        { id: "child-1", parentId },
+        { id: "child-2", parentId },
+      ] as never)
+      .mockResolvedValueOnce([
+        mockItem({
+          id: "child-1",
+          name: "Private Child",
+          parentId,
+          order: 0,
+          depth: 1,
+          userId,
+          isPublic: false,
+        }),
+        mockItem({
+          id: "child-2",
+          name: "Public Child",
+          parentId,
+          order: 1,
+          depth: 1,
+          userId,
+          isPublic: true,
+        }),
+      ] as never);
+
+    const { getItemChildrenForProfile } = await import("@/lib/item-actions");
+    const result = await getItemChildrenForProfile(parentId, userId);
+
+    expect(result.success).toBe(true);
+    if (result.success && result.data) {
+      expect(result.data.items).toHaveLength(2);
+      expect(result.data.isOwner).toBe(true);
+    }
+  });
+
+  it("returns only public children for non-owner", async () => {
+    const ownerId = "user-1";
+    const viewerId = "user-2";
+    const parentId = "parent-1";
+    mockAuth.mockResolvedValue(mockSession(viewerId, "viewer@example.com"));
+
+    // Mock parent item (belongs to owner)
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: parentId,
+      name: "Parent Item",
+      parentId: null,
+      userId: ownerId,
+    } as never);
+
+    // Mock isItemFullyPublic returning true
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      { is_fully_public: true },
+    ] as never);
+
+    // Mock public children query via getPublicChildItems
+    vi.mocked(prisma.item.findMany).mockResolvedValue([
+      {
+        id: "child-2",
+        name: "Public Child",
+        description: null,
+        parentId,
+        depth: 1,
+        order: 1,
+        userId: ownerId,
+        tmdbId: null,
+        tmdbType: null,
+        updatedAt: new Date(),
+        files: [],
+        _count: { sourceForks: 0 },
+      },
+    ] as never);
+
+    const { getItemChildrenForProfile } = await import("@/lib/item-actions");
+    const result = await getItemChildrenForProfile(parentId, viewerId);
+
+    expect(result.success).toBe(true);
+    if (result.success && result.data) {
+      expect(result.data.items).toHaveLength(1);
+      expect(result.data.isOwner).toBe(false);
+    }
+  });
+
+  it("returns error when parent not found", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue(null);
+
+    const { getItemChildrenForProfile } = await import("@/lib/item-actions");
+    const result = await getItemChildrenForProfile("nonexistent", "user-1");
+
+    expect(result.error).toBe("Item not found");
+  });
+
+  it("handles empty children", async () => {
+    const userId = "user-1";
+    const parentId = "parent-1";
+    mockAuth.mockResolvedValue(mockSession(userId, "test@example.com"));
+
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: parentId,
+      userId,
+    } as never);
+
+    vi.mocked(prisma.item.findMany)
+      .mockResolvedValueOnce([]) // descendant count
+      .mockResolvedValueOnce([]); // items
+
+    const { getItemChildrenForProfile } = await import("@/lib/item-actions");
+    const result = await getItemChildrenForProfile(parentId, userId);
+
+    expect(result.success).toBe(true);
+    if (result.success && result.data) {
+      expect(result.data.items).toHaveLength(0);
+      expect(result.data.isOwner).toBe(true);
+    }
+  });
+});

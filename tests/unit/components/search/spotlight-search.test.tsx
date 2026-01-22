@@ -61,7 +61,7 @@ describe("SpotlightSearch", () => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
     });
     expect(
-      screen.getByPlaceholderText(/search items, collections, and people/i)
+      screen.getByPlaceholderText(/search items and people/i)
     ).toBeInTheDocument();
   });
 
@@ -87,6 +87,7 @@ describe("SpotlightSearch", () => {
           description: null,
           artworkId: null,
           breadcrumb: null,
+          ownerUsername: "testuser",
         },
       ],
     });
@@ -133,6 +134,7 @@ describe("SpotlightSearch", () => {
           description: null,
           artworkId: null,
           breadcrumb: null,
+          ownerUsername: "testuser",
         },
         {
           id: "item-2",
@@ -142,6 +144,7 @@ describe("SpotlightSearch", () => {
           description: null,
           artworkId: null,
           breadcrumb: null,
+          ownerUsername: "testuser",
         },
       ],
     });
@@ -171,6 +174,7 @@ describe("SpotlightSearch", () => {
           description: null,
           artworkId: null,
           breadcrumb: null,
+          ownerUsername: "testuser",
         },
       ],
     });
@@ -187,7 +191,7 @@ describe("SpotlightSearch", () => {
 
     await user.click(screen.getByText("My Movie"));
 
-    expect(mockPush).toHaveBeenCalledWith("/my-items/item-123");
+    expect(mockPush).toHaveBeenCalledWith("/u/testuser/item-123");
   });
 
   it("shows keyboard shortcut hint", async () => {
@@ -215,6 +219,7 @@ describe("SpotlightSearch", () => {
           description: "A great description",
           artworkId: null,
           breadcrumb: null,
+          ownerUsername: "testuser",
         },
       ],
     });
@@ -260,6 +265,7 @@ describe("SpotlightSearch", () => {
           description: null,
           artworkId: "artwork-123",
           breadcrumb: null,
+          ownerUsername: "testuser",
         },
       ],
     });
@@ -292,6 +298,7 @@ describe("SpotlightSearch", () => {
           description: null,
           artworkId: null,
           breadcrumb: "Movies / Star Wars",
+          ownerUsername: "testuser",
         },
       ],
     });
@@ -319,6 +326,7 @@ describe("SpotlightSearch", () => {
           description: "Extra footage",
           artworkId: null,
           breadcrumb: "Movies / Star Wars",
+          ownerUsername: "testuser",
         },
       ],
     });
@@ -348,6 +356,7 @@ describe("SpotlightSearch", () => {
           description: null,
           artworkId: null,
           breadcrumb: null,
+          ownerUsername: "testuser",
         },
       ],
     });
@@ -495,7 +504,7 @@ describe("SpotlightSearch - Public Item Search", () => {
     });
   });
 
-  it("displays public items in Public Collections section", async () => {
+  it("displays public items in Public Items section", async () => {
     vi.mocked(searchPublicItems).mockResolvedValue({
       success: true,
       data: [
@@ -517,7 +526,7 @@ describe("SpotlightSearch - Public Item Search", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Public Collections")).toBeInTheDocument();
+      expect(screen.getByText("Public Items")).toBeInTheDocument();
       expect(screen.getByText("Star Wars Collection")).toBeInTheDocument();
       expect(screen.getByText("by @johndoe")).toBeInTheDocument();
     });
@@ -658,6 +667,7 @@ describe("SpotlightSearch - Independent Loading States", () => {
           breadcrumb: null,
           parentId: null,
           depth: 0,
+          ownerUsername: "testuser",
         },
       ],
     });
@@ -693,6 +703,7 @@ describe("SpotlightSearch - Independent Loading States", () => {
         breadcrumb: null;
         parentId: null;
         depth: number;
+        ownerUsername: string | null;
       }>;
     }) => void;
 
@@ -706,6 +717,7 @@ describe("SpotlightSearch - Independent Loading States", () => {
         breadcrumb: null;
         parentId: null;
         depth: number;
+        ownerUsername: string | null;
       }>;
     }>((resolve) => {
       resolveItems = resolve;
@@ -740,6 +752,7 @@ describe("SpotlightSearch - Independent Loading States", () => {
           breadcrumb: null,
           parentId: null,
           depth: 0,
+          ownerUsername: "testuser",
         },
       ],
     });

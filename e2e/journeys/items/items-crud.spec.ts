@@ -4,52 +4,62 @@
  */
 
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
 test.describe("Items CRUD Journey", () => {
-  test.beforeEach(async ({ page, signUpPage }) => {
-    // Create account and sign in
-    const email = generateUniqueEmail("items-crud");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
-  });
+  // Tests use itemsPage fixture which depends on testUser fixture
+  // testUser fixture creates and logs in a user automatically
 
-  test("shows empty state when no items exist", async ({ itemsPage }) => {
+  test("shows empty state when no items exist", async ({
+    page,
+    testUser,
+    itemsPage,
+  }) => {
+    // Verify we're logged in as the test user
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
     await itemsPage.goto();
     await itemsPage.expectEmptyState();
   });
 
-  test("shows hero on root My Items page", async ({ itemsPage }) => {
-    await itemsPage.goto();
-    await itemsPage.expectHeroVisible("My Items");
+  test("shows hero on root My Items page", async ({
+    page,
+    testUser,
+    itemsPage,
+  }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
+    await itemsPage.expectHeroVisible(`@${testUser.username}`);
   });
 
-  test("can create a new item", async ({ itemsPage }) => {
-    await itemsPage.goto();
+  test("can create a new item", async ({ page, testUser, itemsPage }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
     await itemsPage.createItem("My First Folder");
     await itemsPage.expectItemVisible("My First Folder");
     await itemsPage.expectSuccessToast('Created "My First Folder"');
   });
 
-  test("can rename an item via context menu", async ({ itemsPage }) => {
-    await itemsPage.goto();
+  test("can rename an item via context menu", async ({
+    page,
+    testUser,
+    itemsPage,
+  }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
     await itemsPage.createItem("Original Name");
     await itemsPage.waitForToastToDisappear();
-    // Switch to tree view for stable context menu
-    await itemsPage.switchToTreeView();
+    // Root profile page uses grid view - context menu works on grid items
     await itemsPage.renameItemViaContextMenu("Original Name", "Renamed Folder");
     // Toast is verified in renameItemViaContextMenu, just verify UI state
     await itemsPage.expectItemVisible("Renamed Folder");
     await itemsPage.expectItemNotVisible("Original Name");
   });
 
-  test("can delete an item via context menu", async ({ itemsPage }) => {
-    await itemsPage.goto();
+  test("can delete an item via context menu", async ({
+    page,
+    testUser,
+    itemsPage,
+  }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
     await itemsPage.createItem("To Delete");
     await itemsPage.waitForToastToDisappear();
-    // Switch to tree view for stable context menu
-    await itemsPage.switchToTreeView();
+    // Root profile page uses grid view - context menu works on grid items
     await itemsPage.deleteItemViaContextMenu("To Delete");
     await itemsPage.expectItemNotVisible("To Delete");
     await itemsPage.expectSuccessToast("Deleted successfully");

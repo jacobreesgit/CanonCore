@@ -41,24 +41,34 @@ pnpm run test:e2e:ui                        # UI mode
 .
 ├── app/
 │   ├── (auth)/
-│   │   ├── forgot-password/page.tsx  # Request password reset email
-│   │   ├── reset-password/page.tsx   # Set new password from email link
-│   │   ├── sign-in/page.tsx          # Email/password sign in
-│   │   └── sign-up/page.tsx          # Account creation
-│   ├── (my-items)/
-│   │   ├── my-items/
-│   │   │   ├── [itemId]/page.tsx     # Item detail with children
-│   │   │   └── page.tsx              # Root items view
-│   │   └── layout.tsx                # Protected layout with sidebar
+│   │   ├── forgot-password/
+│   │   │   ├── forgot-password-form.tsx  # Client form component
+│   │   │   └── page.tsx                  # Request password reset email
+│   │   ├── reset-password/
+│   │   │   ├── reset-password-form.tsx   # Client form component
+│   │   │   └── page.tsx                  # Set new password from email link
+│   │   ├── sign-in/
+│   │   │   ├── sign-in-form.tsx          # Client form component
+│   │   │   └── page.tsx                  # Email/password sign in
+│   │   ├── sign-up/
+│   │   │   ├── sign-up-form.tsx          # Client form component
+│   │   │   └── page.tsx                  # Account creation
+│   │   └── layout.tsx                    # Auth redirect guard (redirects authenticated users)
 │   ├── (docs)/
 │   │   ├── docs/
 │   │   │   └── [[...slug]]/page.tsx  # Dynamic documentation pages
 │   │   └── layout.tsx                # Docs layout with sidebar navigation
 │   ├── (public)/
-│   │   ├── explore/page.tsx          # Browse public collections
-│   │   ├── u/[username]/page.tsx     # Public profile page
-│   │   ├── u/[username]/[itemId]/page.tsx  # Public item detail
-│   │   ├── layout.tsx                # Public layout with guest sidebar
+│   │   ├── explore/
+│   │   │   ├── explore-client.tsx    # Client component with HeroCarousel and grid
+│   │   │   └── page.tsx              # Browse public collections with featured carousel
+│   │   ├── u/[username]/
+│   │   │   ├── [itemId]/
+│   │   │   │   ├── public-item-client.tsx  # Public item detail with hero
+│   │   │   │   └── page.tsx                # Public item detail route
+│   │   │   ├── unified-profile-client.tsx  # Owner/viewer mode switching
+│   │   │   └── page.tsx                    # Unified profile (owner or viewer mode)
+│   │   ├── layout.tsx                # Public layout with context-aware sidebar
 │   │   └── page.tsx                  # Public landing page
 │   ├── api/
 │   │   ├── artwork/[fileId]/route.ts    # Google Drive artwork streaming
@@ -93,9 +103,8 @@ pnpm run test:e2e:ui                        # UI mode
 │   │   ├── hero-selection-step.tsx   # Wizard step for backdrop/hero selection
 │   │   ├── image-selection-grid.tsx  # Grid for selecting TMDB/existing artwork
 │   │   ├── item-context-menu.tsx     # Right-click actions menu
-│   │   ├── item-detail-client.tsx    # Client wrapper with hero and media player
+│   │   ├── item-detail-client.tsx    # Client wrapper with HeroCarousel and media player
 │   │   ├── item-dialog-tabs.tsx      # Tabbed interface for Add/Edit dialogs
-│   │   ├── item-hero.tsx             # Hero banner with artwork, title, play/go-to buttons, reduced motion support
 │   │   ├── item-settings-dialog.tsx  # Settings with file selection and upload
 │   │   ├── item-stats.tsx            # Reusable child/file count stats display
 │   │   ├── items-toolbar.tsx         # Unified toolbar for root and detail pages
@@ -117,7 +126,10 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── profile/                      # User profile components
 │   │   ├── index.ts                  # Barrel export for profile components
 │   │   ├── preferences-tab.tsx       # Preferences tab (default view mode, sort)
-│   │   └── settings-dialog.tsx       # Tabbed settings with profile and preferences
+│   │   ├── profile-hero.tsx          # Profile cover photo + avatar hero banner
+│   │   ├── settings-dialog.tsx       # Tabbed settings with profile and preferences
+│   │   └── unified-profile-client.tsx # Owner/viewer mode switching for /u/[username]
+│   ├── hero-carousel.tsx             # Hero226-based carousel (multi-slide for Explore, single-slide for detail pages)
 │   ├── search/                       # Spotlight search components
 │   │   ├── global-spotlight.tsx      # Wrapper that renders SpotlightSearch
 │   │   ├── spotlight-search.tsx      # Main search dialog with fuzzy filtering
@@ -136,14 +148,13 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── providers/
 │   │   └── theme-provider.tsx        # next-themes provider wrapper
 │   ├── deferred-analytics.tsx        # Deferred Vercel Analytics loader
-│   ├── ui/                           # shadcn/ui + animated-dialog-content.tsx, checkbox.tsx, command.tsx, drawer.tsx, dropzone.tsx, kbd.tsx, password-input.tsx, progress.tsx, radio-group.tsx, scroll-area.tsx, select.tsx, tabs.tsx
+│   ├── ui/                           # shadcn/ui + animated-dialog-content.tsx, carousel.tsx, checkbox.tsx, command.tsx, drawer.tsx, dropzone.tsx, kbd.tsx, password-input.tsx, progress.tsx, radio-group.tsx, scroll-area.tsx, select.tsx, tabs.tsx
 │   ├── app-sidebar.tsx               # Context-aware navigation sidebar
 │   ├── error-boundary.tsx            # React error boundary for graceful error handling
 │   ├── my-items-providers.tsx        # Client-side providers for protected routes
 │   ├── nav-docs.tsx                  # Docs tree navigation (Fumadocs)
 │   ├── nav-guest.tsx                 # Guest navigation with auth buttons
-│   ├── nav-main.tsx                  # Main navigation items
-│   ├── nav-pinned-items.tsx          # Pinned items sidebar section
+│   ├── nav-main.tsx                  # Main navigation items with prefix-based active state
 │   ├── nav-user.tsx                  # User dropdown menu
 │   ├── site-header.tsx               # Top header bar with breadcrumbs
 │   └── theme-toggle.tsx              # Dark/light mode toggle
@@ -193,7 +204,6 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── use-controllable-state.ts     # Controlled/uncontrolled component state
 │   ├── use-explore-sort.ts           # Explore page sort with localStorage persistence
 │   ├── use-go-to-item.ts             # Fetch first incomplete item and navigate for "Go to" button
-│   ├── use-hero-collapse.ts          # Hero section scroll-triggered collapse
 │   ├── use-image-loaded.ts           # Cached image detection for reliable loading
 │   ├── use-items-sort-filter.ts      # Sort/filter state with localStorage persistence
 │   ├── use-lazy-image.ts             # Intersection Observer lazy loading with priority
@@ -227,7 +237,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── logger.ts                     # Pino structured logging with request context
 │   ├── prisma.ts                     # Prisma client singleton
 │   ├── progress-utils.ts             # Playback progress calculation (90% threshold), DFS traversal for first incomplete item
-│   ├── public-auth.ts                # Public profile/item auth utilities (isItemFullyPublic, getPublicItems, getPublicChildItems, searchPublicUsers, searchPublicItems)
+│   ├── public-auth.ts                # Public profile/item auth utilities (isItemFullyPublic, getPublicItems, getPublicChildItems, searchPublicUsers, searchPublicItems, getFeaturedItems)
 │   ├── queue-aware-actions.ts        # Actions that queue when offline
 │   ├── rate-limit.ts                 # Upstash Redis rate limiting
 │   ├── source.ts                     # Fumadocs source configuration
@@ -237,7 +247,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── sync-utils.ts                 # Shared sync types and utilities
 │   ├── tmdb-actions.ts               # TMDB metadata server actions
 │   ├── tmdb-client.ts                # TMDB API client for movie/TV metadata
-│   ├── types.ts                      # Shared types (Item, ItemFile, ItemProgress, PinnedItem, NextItem, PublicProfile, PublicItem, ForkStatus, ForkInfo, SortOption, FilterOption, ViewMode, QueuedFile, TMDBMetadataSelection, SyncLogEntry, InheritVisibilityItem, SearchableUser, SearchablePublicItem)
+│   ├── types.ts                      # Shared types (Item, ItemFile, ItemProgress, PinnedItem, NextItem, PublicProfile, PublicItem, FeaturedItem, ForkStatus, ForkInfo, SortOption, FilterOption, ViewMode, QueuedFile, TMDBMetadataSelection, SyncLogEntry, InheritVisibilityItem, SearchableUser, SearchablePublicItem)
 │   ├── upload-utils.ts               # Browser-to-Drive upload utilities
 │   ├── user-actions.ts               # User profile server actions
 │   ├── utils.ts                      # cn() helper
@@ -260,7 +270,7 @@ pnpm run test:e2e:ui                        # UI mode
 │   ├── verify-drive-setup.ts         # Validate Drive accounts are configured correctly
 │   └── verify-seed.ts                # Quick seed verification utility
 └── docs/
-    ├── deployments/                  # Deployment summaries (0.2.0 - 4.6.0)
+    ├── deployments/                  # Deployment summaries (0.2.0 - 5.0.0)
     └── plans/                        # Design documents and audit reports
 ```
 
@@ -300,7 +310,7 @@ pnpm run test:e2e:ui                        # UI mode
 ### Items System
 
 - **Hierarchical items** with drag-and-drop reordering via dnd-kit
-- **Hero banners**: Item detail pages show cinematic hero with artwork, title, and play button
+- **HeroCarousel**: Item detail pages use HeroCarousel (single-slide mode) with artwork, title, play/go-to buttons, and progress bar. Explore page uses multi-slide carousel for featured items. Respects prefers-reduced-motion.
 - **Dual view modes**: Tree (hierarchical) and Grid (movie poster cards)
 - **Sort options**: Custom Order, Name A-Z/Z-A, Newest/Oldest, Recently Updated
 - **Filter options**: All Items, Has Files, No Files, Synced, Pending
@@ -327,19 +337,20 @@ pnpm run test:e2e:ui                        # UI mode
 
 ### Public Profiles & Forking
 
-- **Public profiles**: Users can enable public visibility with unique username at `/u/[username]`
+- **Unified profile route**: `/u/[username]` serves as canonical view - owners see full editing capabilities, viewers see read-only public items with fork option
 - **Username validation**: 3-20 chars, alphanumeric + underscores, no leading numbers, case-insensitive uniqueness
 - **Item visibility**: Items can be made public/private independently via toggle in settings
 - **Inherited visibility**: Items can inherit visibility from parent (`inheritVisibility: true`) - reduces Explore clutter while maintaining deep links
 - **Fully public check**: Item is only viewable when profile AND all ancestor items are public (handles inheritance)
-- **Explore page**: Shows only explicitly public items (not inheriting) at `/explore`
+- **Explore page**: Shows HeroCarousel with 5 featured items (most recently updated with artwork) plus grid of all explicitly public items
+- **Featured items**: `getFeaturedItems()` server action returns public items with artwork for carousel, uses `React.cache()` and graceful degradation
 - **Forking**: Copy public items to your library with `forkItem()` server action
 - **Fork rules**: Cannot fork own items, cannot fork same item twice, forked items start private with `inheritVisibility: false`
 - **Fork destination dialog**: Choose root or any folder when forking, virtualized for large libraries
 - **Fork attribution**: Shows "Forked from [name] by @username" and fork count on public items
-- **Sidebar navigation**: Explore link shown for both authenticated and guest users
+- **Sidebar navigation**: Explore link shown for both authenticated and guest users; My Items links to `/u/[username]` for users with username
 - **Server actions**: `forkItem()`, `getForkStatus()`, `getForkInfo()` in `lib/fork-actions.ts`
-- **Public auth utilities**: `getPublicProfile()`, `getPublicItems()`, `getPublicChildItems()`, `isItemFullyPublic()`, `searchPublicUsers()`, `searchPublicItems()` in `lib/public-auth.ts` (React.cache() for request deduplication)
+- **Public auth utilities**: `getPublicProfile()`, `getPublicItems()`, `getPublicChildItems()`, `isItemFullyPublic()`, `searchPublicUsers()`, `searchPublicItems()`, `getFeaturedItems()` in `lib/public-auth.ts` (React.cache() for request deduplication)
 
 ### TMDB Metadata Integration
 
@@ -428,10 +439,11 @@ pnpm run test:e2e:ui                        # UI mode
 
 - **Skip link**: "Skip to main content" for keyboard/screen reader navigation (WCAG 2.1 Level A)
 - **Reduced motion**: `@media (prefers-reduced-motion)` disables animations globally
-- **Component support**: `useReducedMotion` in item-hero and other animated components
+- **Component support**: `useReducedMotion` in HeroCarousel and other animated components; carousel autoplay disabled when reduced motion preferred
 - **Touch optimization**: 300ms tap delay removal, iOS highlight suppression
 - **Safe area support**: CSS variables for notched devices (iPhone X+)
 - **Decorative icons**: `aria-hidden="true"` on non-interactive icons
+- **Navigation a11y**: `aria-current="page"` on active sidebar items; carousel navigation dots use `role="tablist"` and `aria-current`
 
 ### Unit & Integration Testing
 
@@ -439,7 +451,7 @@ pnpm run test:e2e:ui                        # UI mode
 - Unit tests in `tests/unit/` - mock Prisma and email
 - Integration tests in `tests/integration/` - real database
 - Coverage configured for `lib/**`
-- 2300+ unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system, sync queue, sync history, image loading hooks, bulk selection, empty states, pinned items, progress tracking, public profiles, forking, username validation, rate limiting, error handling, tree utilities, visibility inheritance
+- 2300+ unit tests covering auth, items, Google Drive, crypto, API routes, media components, profile modals, dropzone, spotlight search, TMDB integration, sort/filter, seed system, sync queue, sync history, image loading hooks, bulk selection, empty states, progress tracking, public profiles, forking, username validation, rate limiting, error handling, tree utilities, visibility inheritance, hero carousel, featured items
 
 ### E2E Testing
 

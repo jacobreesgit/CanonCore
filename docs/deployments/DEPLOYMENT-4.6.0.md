@@ -45,11 +45,11 @@ Spotlight Search Dialog:
 
 **Search logic:**
 
-| Section | Data Source | Filter |
-| ------- | ----------- | ------ |
-| Your Items | `getSearchableItems()` | User's own items |
-| Public Collections | `searchPublicItems()` | Explicitly public items (`isPublic: true`, `inheritVisibility: false`) from other users |
-| People | `searchPublicUsers()` | Public profiles (`isPublic: true`) |
+| Section            | Data Source            | Filter                                                                                  |
+| ------------------ | ---------------------- | --------------------------------------------------------------------------------------- |
+| Your Items         | `getSearchableItems()` | User's own items                                                                        |
+| Public Collections | `searchPublicItems()`  | Explicitly public items (`isPublic: true`, `inheritVisibility: false`) from other users |
+| People             | `searchPublicUsers()`  | Public profiles (`isPublic: true`)                                                      |
 
 **Navigation:**
 
@@ -98,12 +98,12 @@ New `publicItemsToTree()` function for converting public items to hierarchical t
 
 Restructured seed user content for visual variety:
 
-| User | Theme | Movies | Shows |
-| ---- | ----- | ------ | ----- |
-| demo | Classic Cinema Buff | Shawshank, Godfather series, Matrix | Breaking Bad, Sopranos |
-| filmfan | International Film | Spirited Away, Parasite, Amélie | Squid Game, Dark |
-| bingewatcher | Peak TV | Dark Knight, Inception, Interstellar | Game of Thrones, Stranger Things, The Office |
-| scifi_jordan | Sci-Fi/Fantasy | Blade Runner, Dune, Arrival | Doctor Who, The Expanse, Black Mirror |
+| User         | Theme               | Movies                               | Shows                                        |
+| ------------ | ------------------- | ------------------------------------ | -------------------------------------------- |
+| demo         | Classic Cinema Buff | Shawshank, Godfather series, Matrix  | Breaking Bad, Sopranos                       |
+| filmfan      | International Film  | Spirited Away, Parasite, Amélie      | Squid Game, Dark                             |
+| bingewatcher | Peak TV             | Dark Knight, Inception, Interstellar | Game of Thrones, Stranger Things, The Office |
+| scifi_jordan | Sci-Fi/Fantasy      | Blade Runner, Dune, Arrival          | Doctor Who, The Expanse, Black Mirror        |
 
 **Key change**: Zero content overlap between users for distinct visual variety.
 
@@ -157,13 +157,13 @@ tests/unit/prisma/seed-config.test.ts         # Config tests
 
 ## Test Coverage Impact
 
-| Area | Before | After | Change |
-| ---- | ------ | ----- | ------ |
-| Spotlight search tests | ~150 | ~580 | +430 |
-| User thumbnail tests | 0 | ~53 | +53 |
-| Public auth search tests | 0 | ~291 | +291 |
-| Item utils tree tests | ~100 | ~305 | +205 |
-| Seed config tests | ~80 | ~161 | +81 |
+| Area                     | Before | After | Change |
+| ------------------------ | ------ | ----- | ------ |
+| Spotlight search tests   | ~150   | ~580  | +430   |
+| User thumbnail tests     | 0      | ~53   | +53    |
+| Public auth search tests | 0      | ~291  | +291   |
+| Item utils tree tests    | ~100   | ~305  | +205   |
+| Seed config tests        | ~80    | ~161  | +81    |
 
 ## Breaking Changes
 

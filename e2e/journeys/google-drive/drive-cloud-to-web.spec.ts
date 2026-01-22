@@ -26,7 +26,7 @@ test.describe("Google Drive: Cloud to Web Sync", () => {
       await cleanupTestDriveFolders();
 
       await setupDriveConnection(testUser.id);
-      itemsPage = new ItemsPage(page);
+      itemsPage = new ItemsPage(page, testUser.username);
       settingsPage = new SettingsPage(page);
     }
   );
@@ -96,7 +96,7 @@ test.describe("Google Drive: Cloud to Web Sync", () => {
     await itemsPage.createItem("Child Sync Test");
 
     // Go back to root and verify hierarchy
-    await page.goto("/my-items");
+    await itemsPage.goto();
     await itemsPage.waitForLoadingComplete();
     await itemsPage.clickItem("Parent Sync Test");
 

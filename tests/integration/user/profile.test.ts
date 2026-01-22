@@ -288,14 +288,16 @@ describe("getProfile integration", () => {
   });
 
   it("returns profile data from database", async () => {
-    const { email } = await createTestUser("get");
+    const { user, email } = await createTestUser("get");
 
     const result = await getProfile();
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data).toEqual({
+        id: user.id,
         name: "Test User",
         email,
+        username: null,
         hasImage: false,
         hasHeroImage: false,
       });

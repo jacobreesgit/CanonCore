@@ -1,24 +1,23 @@
 /**
  * E2E tests for hierarchical tree display.
  * Tests that full hierarchy is displayed with collapse/expand functionality.
+ * Note: Tree view is only on item detail pages (when viewing children).
  */
 
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
 test.describe("Items Hierarchy Journey", () => {
-  test.beforeEach(async ({ page, signUpPage }) => {
-    // Create account and sign in
-    const email = generateUniqueEmail("items-hierarchy");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  // Use testUser fixture for consistent test setup (compatible with itemsPage)
+  test.beforeEach(async ({ page, testUser }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
   test("displays full hierarchy in tree view", async ({ itemsPage }) => {
-    await itemsPage.goto();
+    // Create hierarchy: Top Level > Parent > Child > Grandchild
+    await itemsPage.createItem("Top Level");
+    await itemsPage.waitForToastToDisappear();
 
-    // Create hierarchy: Parent > Child > Grandchild
+    await itemsPage.clickItem("Top Level");
     await itemsPage.createItem("Parent");
     await itemsPage.waitForToastToDisappear();
 
@@ -30,19 +29,22 @@ test.describe("Items Hierarchy Journey", () => {
     await itemsPage.createItem("Grandchild");
     await itemsPage.waitForToastToDisappear();
 
-    // Navigate to root and verify all items visible
-    await itemsPage.goto();
+    // Navigate back to Top Level (tree view is on item detail pages)
+    await itemsPage.clickBreadcrumb("Top Level");
     await itemsPage.switchToTreeView();
 
-    // All three levels should be visible
+    // All descendants should be visible in tree view
     await itemsPage.expectItemVisible("Parent");
     await itemsPage.expectItemVisible("Child");
     await itemsPage.expectItemVisible("Grandchild");
   });
 
   test("can collapse and expand items in tree", async ({ itemsPage }) => {
-    await itemsPage.goto();
+    // Create Top Level container to view tree in
+    await itemsPage.createItem("Top Level");
+    await itemsPage.waitForToastToDisappear();
 
+    await itemsPage.clickItem("Top Level");
     // Create hierarchy: Parent > Child
     await itemsPage.createItem("Collapsible Parent");
     await itemsPage.waitForToastToDisappear();
@@ -51,11 +53,11 @@ test.describe("Items Hierarchy Journey", () => {
     await itemsPage.createItem("Nested Child");
     await itemsPage.waitForToastToDisappear();
 
-    // Navigate to root
-    await itemsPage.goto();
+    // Navigate back to Top Level to view tree
+    await itemsPage.clickBreadcrumb("Top Level");
     await itemsPage.switchToTreeView();
 
-    // Both items should be visible
+    // Both items should be visible in tree
     await itemsPage.expectItemVisible("Collapsible Parent");
     await itemsPage.expectItemVisible("Nested Child");
 

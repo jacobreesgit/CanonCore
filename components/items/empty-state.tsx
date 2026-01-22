@@ -68,7 +68,7 @@ const EMPTY_STATE_CONFIG: Record<EmptyStateVariant, EmptyStateConfig> = {
   "public-item-empty": {
     icon: FolderOpen,
     title: "No child items",
-    description: "This collection doesn't have any child items.",
+    description: "This item doesn't have any children.",
     actionLabel: "",
     actionIcon: FolderOpen,
   },
@@ -76,7 +76,7 @@ const EMPTY_STATE_CONFIG: Record<EmptyStateVariant, EmptyStateConfig> = {
     icon: Folder,
     title: "Nothing here yet",
     description:
-      "Be the first to share your collection! Make your profile public to have your items featured here.",
+      "Be the first to share your items! Make your profile public to have your items featured here.",
     actionLabel: "",
     actionIcon: Folder,
   },

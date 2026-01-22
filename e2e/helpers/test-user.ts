@@ -38,12 +38,13 @@ export function generateUniqueUsername(prefix = "tu"): string {
 }
 
 /**
- * Generates a complete test user object.
+ * Generates a complete test user object with username.
  */
 export function generateTestUserData() {
   return {
     email: generateUniqueEmail(),
     password: TEST_PASSWORD,
+    username: generateUniqueUsername(),
   };
 }
 

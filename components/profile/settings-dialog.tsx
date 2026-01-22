@@ -791,6 +791,7 @@ export function SettingsDialog({
                   <div className="relative">
                     <Input
                       id="settings-username"
+                      data-testid="settings-username-input"
                       name="username"
                       autoComplete="username"
                       spellCheck={false}
@@ -899,6 +900,7 @@ export function SettingsDialog({
                     </div>
                     <Switch
                       id="settings-public"
+                      data-testid="settings-public-toggle"
                       checked={isPublic}
                       onCheckedChange={handlePublicToggle}
                     />

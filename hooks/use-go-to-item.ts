@@ -13,6 +13,8 @@ interface UseGoToItemOptions {
   parentId?: string | null;
   /** Whether to enable fetching (default: true). */
   enabled?: boolean;
+  /** Username for URL generation (required for navigation). */
+  username?: string | null;
 }
 
 interface UseGoToItemReturn {
@@ -34,11 +36,12 @@ interface UseGoToItemReturn {
  *
  * @example
  * const { nextItem, goToNext } = useGoToItem({ parentId: item.id });
- * // Pass to ItemHero: nextItem={nextItem ?? null} onGoToNext={goToNext}
+ * // Pass to HeroCarousel: slides={[{ nextItem, ... }]} onGoToNext={goToNext}
  */
 export function useGoToItem({
   parentId,
   enabled = true,
+  username,
 }: UseGoToItemOptions = {}): UseGoToItemReturn {
   const router = useRouter();
   const [nextItem, setNextItem] = useState<NextItem | null | undefined>(
@@ -77,9 +80,11 @@ export function useGoToItem({
    */
   const goToNext = useCallback(
     (item: NextItem) => {
-      router.push(`/my-items/${item.id}`);
+      if (username) {
+        router.push(`/u/${username}/${item.id}`);
+      }
     },
-    [router]
+    [router, username]
   );
 
   return {

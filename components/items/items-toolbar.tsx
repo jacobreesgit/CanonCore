@@ -1,7 +1,7 @@
 /**
  * Unified toolbar for items views.
  * Handles content actions and view controls.
- * Used on both root /my-items and item detail pages for consistent UX.
+ * Used on both root profile and item detail pages for consistent UX.
  * Responsive: collapses secondary options into sheet on mobile.
  */
 
@@ -16,7 +16,7 @@ import { FilterDropdown } from "./filter-dropdown";
 import { MobileOptionsSheet } from "./mobile-options-sheet";
 import { ItemSettingsDialog } from "./item-settings-dialog";
 import type { SerializedItemFile, SortOption, FilterOption } from "@/lib/types";
-import { useState, useCallback, useTransition } from "react";
+import { useState, useCallback, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getItemFiles } from "@/lib/item-file-actions";
 import { syncFromGoogleDrive } from "@/lib/google-drive-sync";
@@ -66,6 +66,8 @@ interface ItemsToolbarProps {
   };
   /** Whether user has Google Drive connected (enables uploads in settings). */
   hasDriveConnection?: boolean;
+  /** Open settings dialog on mount (from URL query param). */
+  defaultSettingsOpen?: boolean;
 }
 
 /**
@@ -92,18 +94,30 @@ export function ItemsToolbar({
   onSyncComplete,
   item,
   hasDriveConnection = false,
+  defaultSettingsOpen = false,
 }: ItemsToolbarProps) {
   // Sort/filter are provided
   const hasSortFilter = sortBy !== undefined && onSortChange !== undefined;
   // Disable edit mode when not using custom sort (can't reorder non-custom sort)
   const isCustomSort = sortBy === "custom" || sortBy === undefined;
   const router = useRouter();
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(defaultSettingsOpen);
   const [files, setFiles] = useState(emptyFiles);
   const [isSyncing, startSyncTransition] = useTransition();
 
   // Item detail page context
   const isItemDetailPage = Boolean(item);
+
+  // Fetch files on mount when settings dialog should be open by default
+  useEffect(() => {
+    if (defaultSettingsOpen && item) {
+      getItemFiles(item.id).then((result) => {
+        if (result.success && result.data) {
+          setFiles(result.data);
+        }
+      });
+    }
+  }, [defaultSettingsOpen, item]);
 
   /**
    * Triggers a sync from Google Drive.

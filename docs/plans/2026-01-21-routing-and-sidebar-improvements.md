@@ -12,18 +12,19 @@
 
 ## Summary of Changes
 
-| Change | Files Affected | Tests Affected |
-|--------|----------------|----------------|
-| Fix My Items active state | `nav-main.tsx` | Unit: update expectations, E2E: update expectations |
-| Add aria-current accessibility | `nav-main.tsx`, `components/ui/sidebar.tsx` | Unit: add aria-current tests |
-| Add auth layout redirect | Create `(auth)/layout.tsx` | E2E: new (no unit test - server component) |
-| Clean up Explore active logic | `nav-main.tsx` | Unit: add /u/* coverage |
+| Change                         | Files Affected                              | Tests Affected                                      |
+| ------------------------------ | ------------------------------------------- | --------------------------------------------------- |
+| Fix My Items active state      | `nav-main.tsx`                              | Unit: update expectations, E2E: update expectations |
+| Add aria-current accessibility | `nav-main.tsx`, `components/ui/sidebar.tsx` | Unit: add aria-current tests                        |
+| Add auth layout redirect       | Create `(auth)/layout.tsx`                  | E2E: new (no unit test - server component)          |
+| Clean up Explore active logic  | `nav-main.tsx`                              | Unit: add /u/\* coverage                            |
 
 ---
 
 ## Task 1: Update NavMain Active State Logic
 
 **Files:**
+
 - Modify: `components/nav-main.tsx:60-63`
 - Modify: `components/ui/sidebar.tsx` (SidebarMenuButton)
 - Modify: `tests/unit/components/nav-main.test.tsx`
@@ -110,7 +111,7 @@ Run: `pnpm test tests/unit/components/nav-main.test.tsx`
 
 Expected: All PASS
 
-### Step 7: Add tests for Explore active on /u/* paths
+### Step 7: Add tests for Explore active on /u/\* paths
 
 ```typescript
 // Add to tests/unit/components/nav-main.test.tsx
@@ -254,6 +255,7 @@ EOF
 ## Task 2: Update E2E Tests for New Active State
 
 **Files:**
+
 - Modify: `e2e/journeys/navigation/nav-active-state.spec.ts:39-54`
 
 ### Step 1: Update E2E test expectation
@@ -296,7 +298,9 @@ test.describe("public profile navigation", () => {
     await expect(page).toHaveURL("/my-items", { timeout: 10000 });
   });
 
-  test("Explore nav is active when viewing public profile", async ({ page }) => {
+  test("Explore nav is active when viewing public profile", async ({
+    page,
+  }) => {
     // Enable public profile for current user
     await page.goto("/my-items");
     // Open settings and enable public profile
@@ -318,7 +322,10 @@ test.describe("public profile navigation", () => {
     await expect(exploreNav).toHaveAttribute("data-active", "true");
   });
 
-  test("Explore nav is active on nested public item page", async ({ page, itemsPage }) => {
+  test("Explore nav is active on nested public item page", async ({
+    page,
+    itemsPage,
+  }) => {
     // Enable public profile
     await page.goto("/my-items");
     await page.getByRole("button", { name: /settings/i }).click();
@@ -400,6 +407,7 @@ EOF
 ## Task 3: Add Auth Layout with Redirect Guard
 
 **Files:**
+
 - Create: `app/(auth)/layout.tsx`
 - Create: `e2e/journeys/auth/auth-redirect.spec.ts`
 
@@ -543,6 +551,7 @@ EOF
 ## Task 4: Run Full Test Suite and Type Check
 
 **Files:**
+
 - None (verification only)
 
 ### Step 1: Run type check
@@ -582,29 +591,29 @@ git commit -m "chore: formatting fixes from pnpm check" --allow-empty
 
 ### Unit Tests
 
-| File | Change |
-|------|--------|
+| File                                      | Change                                                                  |
+| ----------------------------------------- | ----------------------------------------------------------------------- |
 | `tests/unit/components/nav-main.test.tsx` | Update 2 tests, add 7 new tests (Explore + aria-current + deep nesting) |
 
 ### E2E Tests
 
-| File | Change |
-|------|--------|
+| File                                               | Change                                                          |
+| -------------------------------------------------- | --------------------------------------------------------------- |
 | `e2e/journeys/navigation/nav-active-state.spec.ts` | Update 1 test, add 3 new tests (public profile, nested, mobile) |
-| `e2e/journeys/auth/auth-redirect.spec.ts` | New file with 5 tests |
+| `e2e/journeys/auth/auth-redirect.spec.ts`          | New file with 5 tests                                           |
 
 ### Tests Removed
 
-| File | Test | Reason |
-|------|------|--------|
-| N/A | Auth layout unit test | Server components with redirect() throw during render; E2E provides better coverage |
+| File | Test                  | Reason                                                                              |
+| ---- | --------------------- | ----------------------------------------------------------------------------------- |
+| N/A  | Auth layout unit test | Server components with redirect() throw during render; E2E provides better coverage |
 
 ---
 
 ## Accessibility Improvements
 
-| Change | Benefit |
-|--------|---------|
+| Change                              | Benefit                                                          |
+| ----------------------------------- | ---------------------------------------------------------------- |
 | `aria-current="page"` on active nav | Screen readers announce current page location (WCAG 2.1 Level A) |
 
 ---
@@ -612,6 +621,7 @@ git commit -m "chore: formatting fixes from pnpm check" --allow-empty
 ## Rollback Plan
 
 If issues arise:
+
 1. Revert NavMain changes: `git revert <commit-hash>` for Task 1
 2. Delete auth layout: `rm app/(auth)/layout.tsx` and revert tests
 3. Run `pnpm test` to verify rollback

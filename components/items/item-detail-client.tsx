@@ -10,7 +10,7 @@ import { useState, useCallback, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ItemsToolbar } from "./items-toolbar";
 import { ItemsView } from "./items-view";
-import { ItemHero } from "./item-hero";
+import { HeroCarousel, type HeroSlide } from "@/components/hero-carousel";
 import { MediaOverlay } from "@/components/media/media-overlay";
 import { updatePlaybackPosition } from "@/lib/item-file-actions";
 import type {
@@ -18,8 +18,8 @@ import type {
   SerializedItemFile,
   ItemProgress,
 } from "@/lib/types";
+import { useItemsSortFilter } from "@/hooks/use-items-sort-filter";
 import { getItems } from "@/lib/item-actions";
-import { useHeroCollapse } from "@/hooks/use-hero-collapse";
 import { useGoToItem } from "@/hooks/use-go-to-item";
 import { formatProgressLabel } from "@/lib/progress-utils";
 
@@ -56,6 +56,8 @@ interface ItemDetailClientProps {
   hasDriveConnection?: boolean;
   /** Current user info for owner display in grid items. */
   currentUser?: CurrentUser | null;
+  /** Open settings dialog on mount (from URL query param). */
+  defaultSettingsOpen?: boolean;
 }
 
 /**
@@ -71,6 +73,7 @@ export function ItemDetailClient({
   itemProgress,
   hasDriveConnection = false,
   currentUser,
+  defaultSettingsOpen = false,
 }: ItemDetailClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -81,11 +84,14 @@ export function ItemDetailClient({
     null
   );
 
-  // Hero collapse state with localStorage persistence
-  const { isCollapsed, toggleCollapse } = useHeroCollapse();
+  // Sort/filter state (persisted to localStorage)
+  const { sortBy, setSortBy, filterBy, setFilterBy } = useItemsSortFilter();
 
   // First incomplete item for "Go to" button
-  const { nextItem, goToNext } = useGoToItem({ parentId: item.id });
+  const { nextItem, goToNext } = useGoToItem({
+    parentId: item.id,
+    username: currentUser?.username,
+  });
 
   // Resolve hero artwork using fallback chain: isHero -> isPrimary -> first
   const heroArtworkId = useMemo(() => {
@@ -116,6 +122,37 @@ export function ItemDetailClient({
   const primaryMedia = hasMedia
     ? files.media.find((f) => f.isPrimary) || files.media[0]
     : null;
+
+  // Create single slide for HeroCarousel
+  const heroSlide: HeroSlide = useMemo(
+    () => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      artworkId: heroArtworkId,
+      link: currentUser?.username
+        ? `/u/${currentUser.username}/${item.id}`
+        : `/u`, // Self-link (not used when isOwner=true)
+      hasMedia: hasMedia ?? false,
+      hasProgress: hasProgress ?? false,
+      primaryMediaName: primaryMedia?.filename ?? null,
+      progressPercentage: itemProgress?.percentage ?? null,
+      progressLabel: itemProgress ? formatProgressLabel(itemProgress) : null,
+      nextItem: nextItem ?? null,
+    }),
+    [
+      item.id,
+      item.name,
+      item.description,
+      heroArtworkId,
+      hasMedia,
+      hasProgress,
+      primaryMedia,
+      itemProgress,
+      nextItem,
+      currentUser?.username,
+    ]
+  );
 
   /**
    * Refetches child items from server.
@@ -163,6 +200,10 @@ export function ItemDetailClient({
     isEditing,
     onEditToggle: () => setIsEditing((prev) => !prev),
     onAddItem: () => setAddItemOpen(true),
+    sortBy,
+    onSortChange: setSortBy,
+    filterBy,
+    onFilterChange: setFilterBy,
     onSyncComplete: handleSyncComplete,
     item: {
       id: item.id,
@@ -175,27 +216,20 @@ export function ItemDetailClient({
     },
     childCount: childItems.length,
     hasDriveConnection,
+    defaultSettingsOpen,
   };
 
   return (
     <div
       className={`flex flex-col gap-6 ${!hasChildren ? "flex-1" : ""} ${isPending ? "opacity-70" : ""}`}
     >
-      {/* Hero banner */}
-      <ItemHero
-        name={item.name}
-        description={item.description}
-        artworkId={heroArtworkId}
-        hasMedia={hasMedia}
-        hasProgress={hasProgress}
-        primaryMediaName={primaryMedia?.filename ?? null}
-        progressPercentage={itemProgress?.percentage ?? null}
-        progressLabel={itemProgress ? formatProgressLabel(itemProgress) : null}
+      {/* Hero banner - single slide carousel for item detail */}
+      <HeroCarousel
+        slides={[heroSlide]}
+        showCta={false}
+        isOwner={true}
         onPlay={handlePlay}
-        nextItem={nextItem ?? null}
-        onGoToNext={goToNext}
-        isCollapsed={isCollapsed}
-        onCollapse={toggleCollapse}
+        onGoToNext={(itemId) => goToNext({ id: itemId, name: "" })}
       />
 
       {/* Toolbar - below hero */}
@@ -210,6 +244,11 @@ export function ItemDetailClient({
         onEditingChange={setIsEditing}
         addItemOpen={addItemOpen}
         onAddItemOpenChange={setAddItemOpen}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+        filterBy={filterBy}
+        onFilterChange={setFilterBy}
+        onItemsChange={setChildItems}
         hasDriveConnection={hasDriveConnection}
         currentUser={currentUser}
       />

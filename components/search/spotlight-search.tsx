@@ -282,9 +282,14 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
   }, [open]);
 
   const handleSelectItem = useCallback(
-    (itemId: string) => {
+    (itemId: string, ownerUsername: string | null) => {
       closeSpotlight();
-      router.push(`/my-items/${itemId}`);
+      if (ownerUsername) {
+        router.push(`/u/${ownerUsername}/${itemId}`);
+      } else {
+        // Fallback to explore if no username (shouldn't happen)
+        router.push("/explore");
+      }
     },
     [closeSpotlight, router]
   );
@@ -334,7 +339,7 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
     const parts: string[] = [];
     if (items.length > 0) parts.push(`${items.length} of your items`);
     if (publicItems.length > 0)
-      parts.push(`${publicItems.length} public collections`);
+      parts.push(`${publicItems.length} public items`);
     if (users.length > 0) parts.push(`${users.length} people`);
     return parts.join(", ") + " available";
   }, [
@@ -349,7 +354,7 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
   return (
     <CommandDialog open={open} onOpenChange={handleOpenChange}>
       <CommandInput
-        placeholder="Search items, collections, and people…"
+        placeholder="Search items and people…"
         className="border-none focus:ring-0"
         value={searchValue}
         onValueChange={setSearchValue}
@@ -386,7 +391,7 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
                 <CommandItem
                   key={item.id}
                   value={`item:${item.name} ${item.description || ""} ${item.breadcrumb || ""}`}
-                  onSelect={() => handleSelectItem(item.id)}
+                  onSelect={() => handleSelectItem(item.id, item.ownerUsername)}
                   className="group cursor-pointer gap-3 px-3 py-2.5"
                 >
                   {item.artworkId ? (
@@ -415,9 +420,9 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
           </CommandGroup>
         )}
 
-        {/* Public Collections - with distinct icon style (globe) */}
+        {/* Public Items - with distinct icon style (globe) */}
         {(publicItems.length > 0 || isLoadingPublicItems) && (
-          <CommandGroup heading="Public Collections">
+          <CommandGroup heading="Public Items">
             {isLoadingPublicItems ? (
               <>
                 <ItemSkeleton />
