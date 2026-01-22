@@ -1,22 +1,18 @@
 /**
  * E2E tests for items loading behavior.
  * Verifies that the loading spinner prevents view flash during hydration.
+ * Note: Root profile page is always grid view. Tree view is only on item detail pages.
  */
 
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
 test.describe("Items Loading Spinner", () => {
-  test.beforeEach(async ({ page, signUpPage }) => {
-    // Create account and sign in
-    const email = generateUniqueEmail("items-loading");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  // Use testUser fixture for consistent test setup (compatible with itemsPage)
+  test.beforeEach(async ({ page, testUser }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
   test("loading spinner clears before content renders", async ({
-    page,
     itemsPage,
   }) => {
     // Wait for loading to complete
@@ -24,27 +20,25 @@ test.describe("Items Loading Spinner", () => {
 
     // Verify spinner is hidden and content is visible
     await itemsPage.expectLoadingHidden();
+    // Root profile page shows grid view or empty state
     await expect(
-      itemsPage.emptyState.or(itemsPage.treeView).or(itemsPage.gridView).first()
+      itemsPage.emptyState.or(itemsPage.gridView).first()
     ).toBeVisible();
   });
 
   test("does not show both loading and view simultaneously", async ({
-    page,
     itemsPage,
   }) => {
     // Navigate to items page
     await itemsPage.goto();
 
-    // At any point, we should not see loading spinner AND tree/grid view together
+    // At any point, we should not see loading spinner AND view together
     // This verifies the loading state properly guards the content
     const spinnerVisible = await itemsPage.loadingSpinner.isVisible();
-    const treeVisible = await itemsPage.treeView.isVisible();
     const gridVisible = await itemsPage.gridView.isVisible();
 
-    // Either spinner is visible OR tree/grid is visible, but not both
+    // Either spinner is visible OR grid is visible, but not both
     if (spinnerVisible) {
-      expect(treeVisible).toBe(false);
       expect(gridVisible).toBe(false);
     }
 
@@ -52,50 +46,23 @@ test.describe("Items Loading Spinner", () => {
     await itemsPage.waitForLoadingComplete();
   });
 
-  test("tree view renders quickly after hydration (no preload delay)", async ({
-    page,
+  test("grid view renders after loading completes on root page", async ({
     itemsPage,
   }) => {
-    // Set localStorage to tree view before navigation
-    await page.evaluate(() => {
-      localStorage.setItem("items-view-mode", "tree");
-    });
-
-    // Navigate and verify tree view appears
-    await itemsPage.goto();
-    await itemsPage.waitForLoadingComplete();
-
-    // Tree view should be visible (or empty state)
-    await expect(
-      itemsPage.treeView.or(itemsPage.emptyState).first()
-    ).toBeVisible();
-  });
-
-  test("grid view renders after loading completes", async ({
-    page,
-    itemsPage,
-  }) => {
-    // Set localStorage to grid view before navigation
-    await page.evaluate(() => {
-      localStorage.setItem("items-view-mode", "grid");
-    });
-
     // Navigate and wait for loading
     await itemsPage.goto();
     await itemsPage.waitForLoadingComplete();
 
-    // Grid view should be visible (or empty state)
+    // Root page shows grid view or empty state
     await expect(
       itemsPage.gridView.or(itemsPage.emptyState).first()
     ).toBeVisible();
   });
 
   test("navigation to item detail shows loading then content", async ({
-    page,
     itemsPage,
   }) => {
     // Create a test item
-    await itemsPage.goto();
     await itemsPage.waitForLoadingComplete();
     await itemsPage.createItem("Loading Test Item");
     await itemsPage.waitForToastToDisappear();
@@ -108,28 +75,29 @@ test.describe("Items Loading Spinner", () => {
     await expect(itemsPage.heroSection).toBeVisible();
   });
 
-  test("switching view modes shows correct view after loading", async ({
+  test("switching view modes on item detail page", async ({
     page,
     itemsPage,
   }) => {
-    // Start in tree view
-    await page.evaluate(() => {
-      localStorage.setItem("items-view-mode", "tree");
-    });
+    // Create parent item and navigate to it (view toggle is on item detail pages)
+    await itemsPage.createItem("View Switch Parent");
+    await itemsPage.waitForToastToDisappear();
+    await itemsPage.clickItem("View Switch Parent");
 
-    // Create a test item to have content to display
-    await itemsPage.gotoAndWaitForContent();
-    await itemsPage.createItem("View Switch Item");
+    // Create children to display
+    await itemsPage.createItem("View Switch Child A");
+    await itemsPage.createItem("View Switch Child B");
     await itemsPage.waitForToastToDisappear();
 
-    await expect(itemsPage.treeView).toBeVisible();
-
-    // Switch to grid view
-    await itemsPage.switchToGridView();
+    // Start in grid view (default)
     await expect(itemsPage.gridView).toBeVisible();
 
-    // Switch back to tree view
+    // Switch to tree view
     await itemsPage.switchToTreeView();
     await expect(itemsPage.treeView).toBeVisible();
+
+    // Switch back to grid view
+    await itemsPage.switchToGridView();
+    await expect(itemsPage.gridView).toBeVisible();
   });
 });

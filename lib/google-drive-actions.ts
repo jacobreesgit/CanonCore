@@ -100,7 +100,7 @@ export async function disconnectGoogleDrive(): Promise<{
     where: { userId: session.user.id },
   });
 
-  revalidatePath("/my-items");
+  revalidatePath("/u", "layout");
 
   return { success: true };
 }
@@ -281,7 +281,7 @@ export async function createFolderInGoogleDrive(
       duration: timer(),
     });
 
-    revalidatePath("/my-items");
+    revalidatePath("/u", "layout");
     return { success: true, data: { itemId: item.id, driveFileId } };
   } catch (error) {
     // Check for user account deleted error first

@@ -14,7 +14,8 @@
   "ignoreDependencies": [
     "pino-pretty",
     "baseline-browser-mapping",
-    "@tanstack/react-virtual"
+    "@tanstack/react-virtual",
+    "framer-motion"
   ],
   "ignoreExportsUsedInFile": {
     "interface": true,

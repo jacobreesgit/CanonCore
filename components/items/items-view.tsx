@@ -61,7 +61,7 @@ import { FilterDropdown } from "./filter-dropdown";
 import { MobileOptionsSheet } from "./mobile-options-sheet";
 import { AddItemDialog } from "./add-item-dialog";
 import { ItemSettingsDialog } from "./item-settings-dialog";
-import { ItemHero } from "./item-hero";
+import { HeroCarousel, type HeroSlide } from "@/components/hero-carousel";
 import { EmptyState, type EmptyStateVariant } from "./empty-state";
 import { BulkActionsToolbar } from "./bulk-actions-toolbar";
 import { Button } from "@/components/ui/button";
@@ -80,6 +80,8 @@ import type {
   SerializedItemFile,
   TMDBMetadataSelection,
   ItemProgress,
+  SortOption,
+  FilterOption,
 } from "@/lib/types";
 import { formatProgressLabel } from "@/lib/progress-utils";
 import {
@@ -89,7 +91,6 @@ import {
   filterItems,
 } from "@/lib/item-utils";
 import { useItemsSortFilter } from "@/hooks/use-items-sort-filter";
-import { useGoToItem } from "@/hooks/use-go-to-item";
 import {
   createItem,
   createItemWithMetadata,
@@ -103,7 +104,6 @@ import {
 import { getItemFiles } from "@/lib/item-file-actions";
 import { syncFromGoogleDrive } from "@/lib/google-drive-sync";
 import { cn } from "@/lib/utils";
-import { useHeroCollapse } from "@/hooks/use-hero-collapse";
 
 /** State for the settings dialog */
 interface SettingsDialogState {
@@ -142,6 +142,16 @@ interface ItemsViewProps {
   addItemOpen?: boolean;
   /** Callback when add item dialog state changes (for external control). */
   onAddItemOpenChange?: (open: boolean) => void;
+  /** External sort control - when provided, overrides internal state. */
+  sortBy?: SortOption;
+  /** Callback when sort changes (for external control). */
+  onSortChange?: (sort: SortOption) => void;
+  /** External filter control - when provided, overrides internal state. */
+  filterBy?: FilterOption;
+  /** Callback when filter changes (for external control). */
+  onFilterChange?: (filter: FilterOption) => void;
+  /** Callback when items change (for parent state sync). */
+  onItemsChange?: (items: ItemWithArtwork[]) => void;
   /** Hero title (displays ItemHero after toolbar when provided). */
   heroTitle?: string;
   /** Background URL for hero (e.g., /api/user/hero for My Items page). */
@@ -152,6 +162,8 @@ interface ItemsViewProps {
   hasDriveConnection?: boolean;
   /** Current user info for owner display in grid items. */
   currentUser?: CurrentUser | null;
+  /** Disable tree view option (forces grid view, hides view toggle). */
+  disableTreeView?: boolean;
 }
 
 /**
@@ -178,11 +190,17 @@ export function ItemsView({
   onEditingChange,
   addItemOpen: externalAddItemOpen,
   onAddItemOpenChange,
+  sortBy: externalSortBy,
+  onSortChange,
+  filterBy: externalFilterBy,
+  onFilterChange,
+  onItemsChange,
   heroTitle,
   heroBackgroundUrl,
   heroProgress,
   hasDriveConnection = false,
   currentUser,
+  disableTreeView = false,
 }: ItemsViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -190,17 +208,9 @@ export function ItemsView({
   // Ref to always access latest items (avoids stale closure in callbacks)
   const itemsRef = useRef(items);
 
-  // Hero collapse state with localStorage persistence
-  const { isCollapsed, toggleCollapse } = useHeroCollapse();
-
-  // First incomplete item for "Go to" button (only when hero is shown)
-  const { nextItem, goToNext } = useGoToItem({
-    parentId: parentId ?? undefined,
-    enabled: !!heroTitle,
-  });
-
   /**
-   * Wrapper around setItems that also updates the ref synchronously.
+   * Wrapper around setItems that also updates the ref synchronously
+   * and notifies parent of changes.
    * This ensures handleOpenSettings always sees the latest items.
    */
   const setItems = useCallback(
@@ -212,23 +222,35 @@ export function ItemsView({
       setItemsState((prev) => {
         const next = typeof update === "function" ? update(prev) : update;
         itemsRef.current = next;
+        // Notify parent of item changes (async to avoid setState during render)
+        if (onItemsChange) {
+          queueMicrotask(() => onItemsChange(next));
+        }
         return next;
       });
     },
-    []
+    [onItemsChange]
   );
   // Single source of truth for view mode - hydration-safe via useSyncExternalStore
-  const [viewMode] = useStoredViewMode();
+  const [storedViewMode] = useStoredViewMode();
+  // Force grid view when tree is disabled
+  const viewMode = disableTreeView ? "grid" : storedViewMode;
 
   // Sort/filter state from hook (persisted to localStorage)
   const {
-    sortBy,
-    setSortBy,
-    filterBy,
-    setFilterBy,
-    isCustomSort,
-    hasActiveFilter,
+    sortBy: internalSortBy,
+    setSortBy: setInternalSortBy,
+    filterBy: internalFilterBy,
+    setFilterBy: setInternalFilterBy,
   } = useItemsSortFilter();
+
+  // Support external or internal control for sort/filter
+  const sortBy = externalSortBy ?? internalSortBy;
+  const setSortBy = onSortChange ?? setInternalSortBy;
+  const filterBy = externalFilterBy ?? internalFilterBy;
+  const setFilterBy = onFilterChange ?? setInternalFilterBy;
+  const isCustomSort = sortBy === "custom";
+  const hasActiveFilter = filterBy !== "all";
 
   // Edit mode state - supports external control or internal state via useControllableState
   const [isEditing, setIsEditing] = useControllableState({
@@ -340,9 +362,11 @@ export function ItemsView({
   // Handle item click - navigate to item detail
   const handleItemClick = useCallback(
     (id: UniqueIdentifier) => {
-      router.push(`/my-items/${id}`);
+      if (currentUser?.username) {
+        router.push(`/u/${currentUser.username}/${id}`);
+      }
     },
-    [router]
+    [router, currentUser?.username]
   );
 
   // Handle creating new item at root level
@@ -634,17 +658,21 @@ export function ItemsView({
     >
       {/* Hero section - shown when heroTitle provided */}
       {heroTitle && (
-        <ItemHero
-          name={heroTitle}
-          backgroundUrl={heroBackgroundUrl}
-          progressPercentage={heroProgress?.percentage ?? null}
-          progressLabel={
-            heroProgress ? formatProgressLabel(heroProgress) : null
-          }
-          nextItem={nextItem ?? null}
-          onGoToNext={goToNext}
-          isCollapsed={isCollapsed}
-          onCollapse={toggleCollapse}
+        <HeroCarousel
+          slides={[
+            {
+              id: "hero",
+              name: heroTitle,
+              backgroundUrl: heroBackgroundUrl,
+              link: currentUser?.username ? `/u/${currentUser.username}` : "/",
+              progressPercentage: heroProgress?.percentage ?? null,
+              progressLabel: heroProgress
+                ? formatProgressLabel(heroProgress)
+                : null,
+            } satisfies HeroSlide,
+          ]}
+          showCta={false}
+          isOwner={true}
         />
       )}
 
@@ -735,7 +763,7 @@ export function ItemsView({
                     : undefined
               }
             />
-            <ViewToggle disabled={items.length === 0} />
+            {!disableTreeView && <ViewToggle disabled={items.length === 0} />}
           </div>
         </div>
       )}

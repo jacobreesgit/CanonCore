@@ -179,15 +179,19 @@ async function main() {
     await prisma.user.delete({ where: { id: existingUser.id } });
   }
 
-  // Create E2E test user
+  // Create E2E test user with unique username
   const passwordHash = await hash(E2E_TEST_PASSWORD, 10);
+  const e2eUsername = "e2e_drive_user";
   const e2eUser = await prisma.user.create({
     data: {
       email: E2E_TEST_USER_EMAIL,
       passwordHash,
+      username: e2eUsername,
     },
   });
-  console.log(`   ✓ Created E2E test user: ${E2E_TEST_USER_EMAIL}`);
+  console.log(
+    `   ✓ Created E2E test user: ${E2E_TEST_USER_EMAIL} (@${e2eUsername})`
+  );
 
   // Create Google Drive connection with encrypted tokens
   const encryptedAccessToken = encryptCredential("placeholder-will-refresh");

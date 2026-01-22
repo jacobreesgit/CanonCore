@@ -241,13 +241,11 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
           </button>
         )}
 
-        {/* Bottom gradient for text legibility over artwork */}
-        {shouldShowArtwork && imageLoaded && (
-          <div
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-2/3 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
-            aria-hidden="true"
-          />
-        )}
+        {/* Bottom gradient for text legibility */}
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-2/3 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
+          aria-hidden="true"
+        />
 
         {/* Fallback gradient when no artwork */}
         {!shouldShowArtwork && (
@@ -266,31 +264,15 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
         )}
 
         {/* Content overlay - bottom */}
-        <div className="relative z-20 flex h-full flex-col justify-end p-4">
-          {/* Title with sync indicator */}
-          <div className="flex items-center gap-1.5">
-            <h3 className="min-w-0 truncate text-lg leading-tight font-semibold text-white drop-shadow-md md:text-xl">
-              {name}
-            </h3>
-            {syncStatus && syncStatus !== "SYNCED" && (
-              <SyncIcon syncStatus={syncStatus} className="flex-shrink-0" />
-            )}
-          </div>
-
-          {/* Description - item's TMDB overview */}
-          {shouldShowDescription && description && (
-            <p className="mt-1 line-clamp-2 text-sm text-white/80 drop-shadow-sm">
-              {description}
-            </p>
-          )}
-
+        <div className="relative z-20 flex h-full flex-col justify-end gap-2.5 p-4">
           {/* Owner info - "You" or profile pic + @username */}
           {ownerLabel &&
+            !handleProps &&
             (ownerHref ? (
               <Link
                 href={ownerHref}
                 onClick={(e) => e.stopPropagation()}
-                className="mt-1 flex items-center gap-1.5 rounded text-sm text-white/70 drop-shadow-sm hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black/50 focus-visible:outline-none"
+                className="flex items-center gap-1.5 rounded text-xs text-white/70 drop-shadow-sm hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black/50 focus-visible:outline-none"
               >
                 {ownerUserId && (
                   <UserThumbnail
@@ -304,34 +286,50 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
                 <span className="truncate hover:underline">{ownerLabel}</span>
               </Link>
             ) : (
-              <span className="mt-1 text-sm text-white/70 drop-shadow-sm">
+              <span className="text-xs text-white/70 drop-shadow-sm">
                 {ownerLabel}
               </span>
             ))}
 
-          {/* Watched count indicator */}
-          {shouldShowWatched && (
-            <span className="mt-1.5 text-sm text-white/60">
-              {watchedCount}/{totalMediaCount} watched
-              {totalItems !== undefined && totalItems > totalMediaCount && (
-                <>
-                  {" "}
-                  (of {totalItems} {totalItems === 1 ? "item" : "items"})
-                </>
+          {/* Title and description group */}
+          <div className="flex flex-col gap-1">
+            {/* Title with sync indicator */}
+            <div className="flex items-center gap-1.5">
+              <h3 className="min-w-0 truncate text-lg leading-tight font-semibold text-white drop-shadow-md md:text-xl">
+                {name}
+              </h3>
+              {syncStatus && syncStatus !== "SYNCED" && (
+                <SyncIcon syncStatus={syncStatus} className="flex-shrink-0" />
               )}
-            </span>
-          )}
+            </div>
 
-          {/* Progress bar - only in view mode (not in edit mode) */}
+            {/* Description - item's TMDB overview */}
+            {shouldShowDescription && description && (
+              <p className="line-clamp-2 text-sm leading-snug text-white/80 drop-shadow-sm">
+                {description}
+              </p>
+            )}
+          </div>
+
+          {/* Progress bar + label */}
           {progressPercentage !== null && !handleProps && (
-            <div className="mt-2">
-              <div className="h-1 w-full overflow-hidden rounded-full bg-white/20">
+            <div className="flex flex-col gap-1">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20 backdrop-blur-sm">
                 <div
                   data-testid="grid-item-progress-bar"
                   className="h-full rounded-full bg-white transition-[width] duration-300"
                   style={{ width: `${progressPercentage}%` }}
                 />
               </div>
+              {/* Watched count label */}
+              {shouldShowWatched && (
+                <span className="text-xs text-white/60 tabular-nums">
+                  {watchedCount}/{totalMediaCount} watched
+                  {totalItems !== undefined && totalItems > totalMediaCount && (
+                    <> (of {totalItems})</>
+                  )}
+                </span>
+              )}
             </div>
           )}
         </div>

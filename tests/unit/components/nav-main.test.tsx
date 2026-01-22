@@ -11,8 +11,10 @@ import { Folder } from "lucide-react";
 
 // Mock next/navigation
 const mockPathname = vi.fn();
+const mockRouter = { push: vi.fn(), refresh: vi.fn() };
 vi.mock("next/navigation", () => ({
   usePathname: () => mockPathname(),
+  useRouter: () => mockRouter,
 }));
 
 // Mock spotlight context
@@ -64,13 +66,18 @@ vi.mock("@/components/ui/sidebar", () => ({
       data-tooltip={tooltip}
       className={className}
       onClick={onClick}
+      aria-current={isActive ? "page" : undefined}
     >
       {children}
     </button>
   ),
 }));
 
-const testItems = [{ title: "My Items", url: "/my-items", icon: Folder }];
+// Test items with dynamic URL (simulating what app-sidebar builds)
+const testUsername = "testuser";
+const testItems = [
+  { title: "My Items", url: `/u/${testUsername}`, icon: Folder },
+];
 
 describe("NavMain", () => {
   beforeEach(() => {
@@ -79,33 +86,33 @@ describe("NavMain", () => {
     mockSpotlightContext.mockReturnValue(null);
   });
 
-  it("renders My Items button as active on /my-items", () => {
-    mockPathname.mockReturnValue("/my-items");
-    render(<NavMain items={testItems} />);
+  it("renders My Items button as active on /u/username", () => {
+    mockPathname.mockReturnValue("/u/testuser");
+    render(<NavMain items={testItems} username={testUsername} />);
 
     const button = screen.getByTestId("sidebar-menu-button");
     expect(button.getAttribute("data-active")).toBe("true");
   });
 
-  it("renders My Items button as inactive on nested path /my-items/123 (pinned items handle this)", () => {
-    mockPathname.mockReturnValue("/my-items/abc123");
-    render(<NavMain items={testItems} />);
+  it("renders My Items button as active on nested path /u/username/abc123", () => {
+    mockPathname.mockReturnValue("/u/testuser/abc123");
+    render(<NavMain items={testItems} username={testUsername} />);
 
     const button = screen.getByTestId("sidebar-menu-button");
-    expect(button.getAttribute("data-active")).toBe("false");
+    expect(button.getAttribute("data-active")).toBe("true");
   });
 
-  it("renders My Items button as inactive on /my-items/connections (pinned items handle this)", () => {
-    mockPathname.mockReturnValue("/my-items/connections");
-    render(<NavMain items={testItems} />);
+  it("renders My Items button as active on /u/username/connections", () => {
+    mockPathname.mockReturnValue("/u/testuser/connections");
+    render(<NavMain items={testItems} username={testUsername} />);
 
     const button = screen.getByTestId("sidebar-menu-button");
-    expect(button.getAttribute("data-active")).toBe("false");
+    expect(button.getAttribute("data-active")).toBe("true");
   });
 
   it("renders My Items button as inactive on /docs", () => {
     mockPathname.mockReturnValue("/docs");
-    render(<NavMain items={testItems} />);
+    render(<NavMain items={testItems} username={testUsername} />);
 
     const button = screen.getByTestId("sidebar-menu-button");
     expect(button.getAttribute("data-active")).toBe("false");
@@ -113,32 +120,39 @@ describe("NavMain", () => {
 
   it("renders My Items button as inactive on /", () => {
     mockPathname.mockReturnValue("/");
-    render(<NavMain items={testItems} />);
+    render(<NavMain items={testItems} username={testUsername} />);
 
     const button = screen.getByTestId("sidebar-menu-button");
     expect(button.getAttribute("data-active")).toBe("false");
   });
 
-  it("renders My Items button as inactive on /my-items-other (no false positive)", () => {
-    // Edge case: paths that START with /my-items but are NOT children
-    // The trailing slash in startsWith() prevents this false positive
-    mockPathname.mockReturnValue("/my-items-other");
-    render(<NavMain items={testItems} />);
+  it("renders My Items button as inactive on /u/otherusername (different user)", () => {
+    // Edge case: viewing another user's profile should not highlight My Items
+    mockPathname.mockReturnValue("/u/otherusername");
+    render(<NavMain items={testItems} username={testUsername} />);
 
     const button = screen.getByTestId("sidebar-menu-button");
     expect(button.getAttribute("data-active")).toBe("false");
+  });
+
+  it("renders My Items button as active on deeply nested path /u/username/abc/def/ghi", () => {
+    mockPathname.mockReturnValue("/u/testuser/abc/def/ghi");
+    render(<NavMain items={testItems} username={testUsername} />);
+
+    const button = screen.getByTestId("sidebar-menu-button");
+    expect(button.getAttribute("data-active")).toBe("true");
   });
 
   describe("Spotlight search button", () => {
     it("renders search button with keyboard shortcut when spotlight context available", () => {
-      mockPathname.mockReturnValue("/my-items");
+      mockPathname.mockReturnValue("/u/testuser");
       mockSpotlightContext.mockReturnValue({
         isOpen: false,
         openSpotlight: mockOpenSpotlight,
         closeSpotlight: vi.fn(),
       });
 
-      render(<NavMain items={testItems} />);
+      render(<NavMain items={testItems} username={testUsername} />);
 
       // Should have search button with "/" shortcut
       const buttons = screen.getAllByTestId("sidebar-menu-button");
@@ -150,10 +164,10 @@ describe("NavMain", () => {
     });
 
     it("does not render search button when outside spotlight context", () => {
-      mockPathname.mockReturnValue("/my-items");
+      mockPathname.mockReturnValue("/u/testuser");
       mockSpotlightContext.mockReturnValue(null);
 
-      render(<NavMain items={testItems} />);
+      render(<NavMain items={testItems} username={testUsername} />);
 
       const buttons = screen.getAllByTestId("sidebar-menu-button");
       const searchButton = buttons.find((btn) =>
@@ -164,14 +178,14 @@ describe("NavMain", () => {
 
     it("calls openSpotlight when search button clicked", async () => {
       const user = userEvent.setup();
-      mockPathname.mockReturnValue("/my-items");
+      mockPathname.mockReturnValue("/u/testuser");
       mockSpotlightContext.mockReturnValue({
         isOpen: false,
         openSpotlight: mockOpenSpotlight,
         closeSpotlight: vi.fn(),
       });
 
-      render(<NavMain items={testItems} />);
+      render(<NavMain items={testItems} username={testUsername} />);
 
       const buttons = screen.getAllByTestId("sidebar-menu-button");
       const searchButton = buttons.find((btn) =>
@@ -184,18 +198,82 @@ describe("NavMain", () => {
     });
 
     it("renders search button before other nav items", () => {
-      mockPathname.mockReturnValue("/my-items");
+      mockPathname.mockReturnValue("/u/testuser");
       mockSpotlightContext.mockReturnValue({
         isOpen: false,
         openSpotlight: mockOpenSpotlight,
         closeSpotlight: vi.fn(),
       });
 
-      render(<NavMain items={testItems} />);
+      render(<NavMain items={testItems} username={testUsername} />);
 
       const buttons = screen.getAllByTestId("sidebar-menu-button");
       expect(buttons[0].textContent).toContain("Search");
       expect(buttons[1].textContent).toContain("My Items");
+    });
+  });
+
+  describe("aria-current accessibility", () => {
+    it("sets aria-current='page' when active for accessibility", () => {
+      mockPathname.mockReturnValue("/u/testuser");
+      render(<NavMain items={testItems} username={testUsername} />);
+
+      const button = screen.getByTestId("sidebar-menu-button");
+      expect(button.getAttribute("aria-current")).toBe("page");
+    });
+
+    it("does not set aria-current when inactive", () => {
+      mockPathname.mockReturnValue("/docs");
+      render(<NavMain items={testItems} username={testUsername} />);
+
+      const button = screen.getByTestId("sidebar-menu-button");
+      expect(button.getAttribute("aria-current")).toBeNull();
+    });
+  });
+
+  describe("Explore navigation", () => {
+    const exploreItems = [{ title: "Explore", url: "/explore", icon: Folder }];
+
+    it("renders Explore button as active on /explore", () => {
+      mockPathname.mockReturnValue("/explore");
+      render(<NavMain items={exploreItems} />);
+
+      const button = screen.getByTestId("sidebar-menu-button");
+      expect(button.getAttribute("data-active")).toBe("true");
+    });
+
+    it("renders Explore button as active on /u/username when viewing others", () => {
+      // When no username prop (guest or viewing other users), /u paths highlight Explore
+      mockPathname.mockReturnValue("/u/john_doe");
+      render(<NavMain items={exploreItems} />);
+
+      const button = screen.getByTestId("sidebar-menu-button");
+      expect(button.getAttribute("data-active")).toBe("true");
+    });
+
+    it("renders Explore button as active on /u/username/itemId when viewing others", () => {
+      mockPathname.mockReturnValue("/u/john_doe/abc123");
+      render(<NavMain items={exploreItems} />);
+
+      const button = screen.getByTestId("sidebar-menu-button");
+      expect(button.getAttribute("data-active")).toBe("true");
+    });
+
+    it("renders Explore button as active on deeply nested /u/username/item/child/grandchild when viewing others", () => {
+      mockPathname.mockReturnValue("/u/john_doe/abc123/def456/ghi789");
+      render(<NavMain items={exploreItems} />);
+
+      const button = screen.getByTestId("sidebar-menu-button");
+      expect(button.getAttribute("data-active")).toBe("true");
+    });
+
+    it("renders Explore button as inactive on own profile /u/username", () => {
+      // When current user is viewing their own profile, Explore should not be highlighted
+      mockPathname.mockReturnValue("/u/testuser");
+      render(<NavMain items={exploreItems} username={testUsername} />);
+
+      const button = screen.getByTestId("sidebar-menu-button");
+      expect(button.getAttribute("data-active")).toBe("false");
     });
   });
 });

@@ -9,7 +9,7 @@ import { SiteHeader } from "@/components/site-header";
 
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/my-items",
+  usePathname: () => "/u/testuser",
 }));
 
 // Mock UI components that require context
@@ -28,17 +28,17 @@ describe("SiteHeader", () => {
     const link = screen.getByTestId("site-header-breadcrumb-root");
     expect(link).toBeDefined();
     expect(link.textContent).toBe("My Items");
-    expect(link.getAttribute("href")).toBe("/my-items");
+    expect(link.getAttribute("href")).toBe("/");
   });
 
   it("renders custom title and href", () => {
     render(
-      <SiteHeader title="Connections" titleHref="/my-items/connections" />
+      <SiteHeader title="Connections" titleHref="/u/testuser/connections" />
     );
 
     const link = screen.getByTestId("site-header-breadcrumb-root");
     expect(link.textContent).toBe("Connections");
-    expect(link.getAttribute("href")).toBe("/my-items/connections");
+    expect(link.getAttribute("href")).toBe("/u/testuser/connections");
   });
 
   it("renders title only when no breadcrumbs provided", () => {
@@ -57,8 +57,8 @@ describe("SiteHeader", () => {
 
   it("renders breadcrumb items when provided", () => {
     const breadcrumbs = [
-      { id: "1", name: "Movies", href: "/my-items/1" },
-      { id: "2", name: "Action", href: "/my-items/2" },
+      { id: "1", name: "Movies", href: "/u/testuser/1" },
+      { id: "2", name: "Action", href: "/u/testuser/2" },
     ];
 
     render(<SiteHeader title="My Items" breadcrumbs={breadcrumbs} />);
@@ -67,14 +67,14 @@ describe("SiteHeader", () => {
     expect(items.length).toBe(2);
 
     expect(items[0].textContent).toBe("Movies");
-    expect(items[0].getAttribute("href")).toBe("/my-items/1");
+    expect(items[0].getAttribute("href")).toBe("/u/testuser/1");
 
     expect(items[1].textContent).toBe("Action");
-    expect(items[1].getAttribute("href")).toBe("/my-items/2");
+    expect(items[1].getAttribute("href")).toBe("/u/testuser/2");
   });
 
   it("applies muted styling to root when breadcrumbs exist", () => {
-    const breadcrumbs = [{ id: "1", name: "Movies", href: "/my-items/1" }];
+    const breadcrumbs = [{ id: "1", name: "Movies", href: "/u/testuser/1" }];
 
     render(<SiteHeader title="My Items" breadcrumbs={breadcrumbs} />);
 
@@ -85,8 +85,8 @@ describe("SiteHeader", () => {
 
   it("applies current page styling to last breadcrumb", () => {
     const breadcrumbs = [
-      { id: "1", name: "Movies", href: "/my-items/1" },
-      { id: "2", name: "Action", href: "/my-items/2" },
+      { id: "1", name: "Movies", href: "/u/testuser/1" },
+      { id: "2", name: "Action", href: "/u/testuser/2" },
     ];
 
     render(<SiteHeader title="My Items" breadcrumbs={breadcrumbs} />);
@@ -108,8 +108,8 @@ describe("SiteHeader", () => {
 
   it("renders chevron separators between breadcrumb items", () => {
     const breadcrumbs = [
-      { id: "1", name: "Movies", href: "/my-items/1" },
-      { id: "2", name: "Action", href: "/my-items/2" },
+      { id: "1", name: "Movies", href: "/u/testuser/1" },
+      { id: "2", name: "Action", href: "/u/testuser/2" },
     ];
 
     render(<SiteHeader title="My Items" breadcrumbs={breadcrumbs} />);

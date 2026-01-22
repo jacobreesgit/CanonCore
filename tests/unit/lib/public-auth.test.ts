@@ -403,6 +403,7 @@ describe("getPublicItemsForUser", () => {
       expect.objectContaining({
         where: {
           userId: "user-1",
+          parentId: null, // Only root-level items for profile display
           isPublic: true,
           inheritVisibility: false, // Only explicitly public items (consistent with Explore)
         },

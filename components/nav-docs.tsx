@@ -42,6 +42,8 @@ interface NavDocsProps {
   tree: PageTreeRoot;
   /** Whether user is authenticated (determines back link destination) */
   isAuthenticated?: boolean;
+  /** Username for profile URL (when authenticated) */
+  username?: string | null;
 }
 
 /**
@@ -51,8 +53,8 @@ interface NavDocsProps {
  * @param tree - Fumadocs page tree structure
  * @param isAuthenticated - Whether user is logged in
  */
-export function NavDocs({ tree, isAuthenticated }: NavDocsProps) {
-  const backHref = isAuthenticated ? "/my-items" : "/";
+export function NavDocs({ tree, isAuthenticated, username }: NavDocsProps) {
+  const backHref = isAuthenticated && username ? `/u/${username}` : "/";
   const backLabel = isAuthenticated ? "Back to My Items" : "Back to Home";
 
   return (

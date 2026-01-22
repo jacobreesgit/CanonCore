@@ -337,8 +337,7 @@ export async function confirmUpload(
       },
     });
 
-    revalidatePath("/my-items");
-    revalidatePath(`/my-items/${payload.itemId}`);
+    revalidatePath("/u", "layout");
 
     return {
       success: true,

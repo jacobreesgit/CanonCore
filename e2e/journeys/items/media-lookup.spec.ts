@@ -10,7 +10,6 @@
  */
 
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
 /** Mock TMDB search response for "The Shawshank Redemption" */
 const mockShawshankResult = {
@@ -103,12 +102,9 @@ const mockTVShowResult = {
 };
 
 test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
-  test.beforeEach(async ({ page, signUpPage }) => {
-    // Create account and sign in
-    const email = generateUniqueEmail("media-lookup");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  test.beforeEach(async ({ page, testUser }) => {
+    // Use testUser fixture for consistent test setup (compatible with itemsPage)
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
     // Mock TMDB availability check
     await page.route("**/api/tmdb/available", (route) =>
@@ -161,7 +157,7 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       itemsPage,
     }) => {
       // Mock TMDB search action
-      await page.route("**/my-items*", async (route, request) => {
+      await page.route("**/u/**", async (route, request) => {
         if (request.method() === "POST") {
           const body = await request.postDataBuffer();
           if (body && body.toString().includes("searchMediaAction")) {
@@ -205,7 +201,7 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       itemsPage,
     }) => {
       // Mock empty search results
-      await page.route("**/my-items*", async (route, request) => {
+      await page.route("**/u/**", async (route, request) => {
         if (request.method() === "POST") {
           const body = await request.postDataBuffer();
           if (body && body.toString().includes("searchMediaAction")) {
@@ -341,9 +337,8 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Create an item first
       await itemsPage.createItem("Original Name");
       await itemsPage.waitForToastToDisappear();
-      await itemsPage.switchToTreeView();
 
-      // Rename via settings dialog
+      // Rename via settings dialog (context menu works in grid view)
       await itemsPage.renameItemViaContextMenu("Original Name", "Renamed Item");
 
       // Verify the rename worked
@@ -357,9 +352,8 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Create an item first
       await itemsPage.createItem("Desc Test");
       await itemsPage.waitForToastToDisappear();
-      await itemsPage.switchToTreeView();
 
-      // Open settings and update description manually
+      // Open settings and update description manually (context menu works in grid view)
       await itemsPage.openSettingsViaContextMenu("Desc Test");
 
       const descInput = page.getByLabel(/description/i);
@@ -380,9 +374,8 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Create an item
       await itemsPage.createItem("Check Name Display");
       await itemsPage.waitForToastToDisappear();
-      await itemsPage.switchToTreeView();
 
-      // Open settings
+      // Open settings (context menu works in grid view)
       await itemsPage.openSettingsViaContextMenu("Check Name Display");
 
       // Verify the name field shows current name
@@ -402,9 +395,8 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Create an item
       await itemsPage.createItem("No Changes Test");
       await itemsPage.waitForToastToDisappear();
-      await itemsPage.switchToTreeView();
 
-      // Open settings
+      // Open settings (context menu works in grid view)
       await itemsPage.openSettingsViaContextMenu("No Changes Test");
 
       // Save button should be disabled
@@ -433,9 +425,8 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Create an item
       await itemsPage.createItem("Empty Name Test");
       await itemsPage.waitForToastToDisappear();
-      await itemsPage.switchToTreeView();
 
-      // Open settings
+      // Open settings (context menu works in grid view)
       await itemsPage.openSettingsViaContextMenu("Empty Name Test");
 
       // Clear the name
@@ -461,7 +452,7 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       itemsPage,
     }) => {
       // Mock TMDB search action
-      await page.route("**/my-items*", async (route, request) => {
+      await page.route("**/u/**", async (route, request) => {
         if (request.method() === "POST") {
           const body = await request.postDataBuffer();
           if (body && body.toString().includes("searchMediaAction")) {
@@ -481,9 +472,8 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Create an item
       await itemsPage.createItem("TMDB Search Test");
       await itemsPage.waitForToastToDisappear();
-      await itemsPage.switchToTreeView();
 
-      // Open settings
+      // Open settings (context menu works in grid view)
       await itemsPage.openSettingsViaContextMenu("TMDB Search Test");
 
       // The name field should function as a TMDB search combobox
@@ -513,9 +503,8 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Create an item
       await itemsPage.createItem("Cancel Test");
       await itemsPage.waitForToastToDisappear();
-      await itemsPage.switchToTreeView();
 
-      // Open settings
+      // Open settings (context menu works in grid view)
       await itemsPage.openSettingsViaContextMenu("Cancel Test");
 
       // Make changes
@@ -549,9 +538,8 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Create an item
       await itemsPage.createItem("Tabs Test");
       await itemsPage.waitForToastToDisappear();
-      await itemsPage.switchToTreeView();
 
-      // Open settings
+      // Open settings (context menu works in grid view)
       await itemsPage.openSettingsViaContextMenu("Tabs Test");
 
       // Should start on Details tab
@@ -598,9 +586,8 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Create an item to test Edit dialog
       await itemsPage.createItem("Consistency Test");
       await itemsPage.waitForToastToDisappear();
-      await itemsPage.switchToTreeView();
 
-      // Check Edit dialog has same "Item name" label
+      // Check Edit dialog has same "Item name" label (context menu works in grid view)
       await itemsPage.openSettingsViaContextMenu("Consistency Test");
       const editNameInput = page.getByLabel(/item name/i);
       await expect(editNameInput).toBeVisible();
@@ -630,9 +617,8 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Create item for Edit dialog test
       await itemsPage.createItem("Combobox Test");
       await itemsPage.waitForToastToDisappear();
-      await itemsPage.switchToTreeView();
 
-      // Test Edit dialog has same combobox
+      // Test Edit dialog has same combobox (context menu works in grid view)
       await itemsPage.openSettingsViaContextMenu("Combobox Test");
 
       const editNameInput = page.getByLabel(/item name/i);

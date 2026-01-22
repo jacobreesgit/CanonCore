@@ -9,6 +9,8 @@ test.describe("Sign Up Journey", () => {
   }) => {
     const email = generateUniqueEmail("newuser");
     const password = TEST_PASSWORD;
+    // Username is required for profile page redirect
+    const username = `nu_${Math.random().toString(36).slice(2, 10)}`;
 
     // Start from landing page
     await landingPage.goto();
@@ -20,16 +22,16 @@ test.describe("Sign Up Journey", () => {
     await page.getByTestId("sign-in-sign-up-link").click();
     await expect(page).toHaveURL("/sign-up");
 
-    // Fill sign up form
-    await signUpPage.signUp(email, password, password);
+    // Fill sign up form with username
+    await signUpPage.signUp(email, password, password, username);
 
     // Wait for navigation away from sign-up page
     await page.waitForURL((url) => !url.pathname.includes("/sign-up"), {
       timeout: 15000,
     });
 
-    // Should be on my-items
-    await expect(page).toHaveURL("/my-items");
+    // Should be on user profile
+    await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+$/);
   });
 
   test("shows error for mismatched passwords", async ({ signUpPage }) => {

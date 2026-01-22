@@ -14,7 +14,6 @@ import type { SidebarUser } from "@/lib/auth";
 import type { GoogleDriveConnection, PinnedItem } from "@/lib/types";
 
 import { NavMain } from "@/components/nav-main";
-import { NavPinnedItems } from "@/components/nav-pinned-items";
 import { NavUser } from "@/components/nav-user";
 import { NavDocs } from "@/components/nav-docs";
 import { AuthButtons } from "@/components/nav-guest";
@@ -49,19 +48,27 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   pinnedItems?: PinnedItem[];
 }
 
-/** Navigation items for authenticated users. */
-const authNavItems = [
-  {
-    title: "My Items",
-    url: "/my-items",
-    icon: Folder,
-  },
-  {
-    title: "Explore",
-    url: "/explore",
-    icon: Compass,
-  },
-];
+/**
+ * Builds navigation items for authenticated users.
+ * Uses dynamic URL based on username.
+ *
+ * @param username - User's username for profile URL
+ * @returns Array of navigation items
+ */
+function getAuthNavItems(username: string | null | undefined) {
+  return [
+    {
+      title: "My Items",
+      url: username ? `/u/${username}` : "/sign-in",
+      icon: Folder,
+    },
+    {
+      title: "Explore",
+      url: "/explore",
+      icon: Compass,
+    },
+  ];
+}
 
 /** Navigation items for guests (unauthenticated). */
 const guestNavItems = [
@@ -125,16 +132,19 @@ export function AppSidebar({
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Show nav items based on auth state */}
-        <NavMain items={user ? authNavItems : guestNavItems} />
-
-        {/* Show pinned items for my-items context */}
-        {pinnedItems && pinnedItems.length > 0 && (
-          <NavPinnedItems items={pinnedItems} />
-        )}
+        {/* Show nav items based on auth state, with pinned items under My Items */}
+        <NavMain
+          items={user ? getAuthNavItems(user.username) : guestNavItems}
+          pinnedItems={user ? pinnedItems : undefined}
+          username={user?.username}
+        />
 
         {context === "docs" && docsTree && (
-          <NavDocs tree={docsTree} isAuthenticated={!!user} />
+          <NavDocs
+            tree={docsTree}
+            isAuthenticated={!!user}
+            username={user?.username}
+          />
         )}
       </SidebarContent>
 

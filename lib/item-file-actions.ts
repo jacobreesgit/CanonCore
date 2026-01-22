@@ -199,7 +199,7 @@ export async function setPrimaryFile(fileId: string): Promise<ItemFileResult> {
     ]);
 
     // Revalidate the page to reflect changes
-    revalidatePath("/my-items", "layout");
+    revalidatePath("/u", "layout");
 
     return { success: true };
   } catch {
@@ -438,7 +438,7 @@ export async function updateItemSettings(
     });
 
     // Revalidate pages to reflect changes
-    revalidatePath("/my-items", "layout");
+    revalidatePath("/u", "layout");
 
     return { success: true };
   } catch {
@@ -513,7 +513,7 @@ export async function deleteItemFile(fileId: string): Promise<ItemFileResult> {
     }
 
     // Revalidate to reflect changes
-    revalidatePath("/my-items", "layout");
+    revalidatePath("/u", "layout");
 
     return { success: true };
   } catch (err) {

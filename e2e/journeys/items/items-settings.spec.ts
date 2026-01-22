@@ -1,25 +1,25 @@
 /**
  * E2E tests for Item Settings dialog.
  * Tests opening settings, renaming items, and dialog interactions.
+ * Note: Context menu works on both tree and grid items. Tree view is only on item detail pages.
  */
 
 import { test, expect, prisma } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
 test.describe("Item Settings Dialog", () => {
-  test.beforeEach(async ({ page, signUpPage }) => {
-    // Create account and sign in
-    const email = generateUniqueEmail("items-settings");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  // Use testUser fixture for consistent test setup (compatible with itemsPage)
+  test.beforeEach(async ({ page, testUser, itemsPage }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
+    // Create parent item and navigate to it for tree view tests
+    await itemsPage.createItem("Settings Parent");
+    await itemsPage.waitForToastToDisappear();
+    await itemsPage.clickItem("Settings Parent");
   });
 
   test("opens settings dialog via context menu", async ({ itemsPage }) => {
-    await itemsPage.goto();
     await itemsPage.createItem("Settings Test Folder");
     await itemsPage.waitForToastToDisappear();
-    // Switch to tree view for stable context menu
+    // Switch to tree view on item detail page
     await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Settings Test Folder");
@@ -31,10 +31,8 @@ test.describe("Item Settings Dialog", () => {
   });
 
   test("shows current item name in settings dialog", async ({ itemsPage }) => {
-    await itemsPage.goto();
     await itemsPage.createItem("Current Name");
     await itemsPage.waitForToastToDisappear();
-    // Switch to tree view for stable context menu
     await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Current Name");
@@ -45,10 +43,8 @@ test.describe("Item Settings Dialog", () => {
   });
 
   test("can rename item via settings dialog", async ({ itemsPage }) => {
-    await itemsPage.goto();
     await itemsPage.createItem("Old Name");
     await itemsPage.waitForToastToDisappear();
-    // Switch to tree view for stable context menu
     await itemsPage.switchToTreeView();
 
     await itemsPage.renameItemViaContextMenu("Old Name", "New Name");
@@ -61,10 +57,8 @@ test.describe("Item Settings Dialog", () => {
   test("closes settings dialog when clicking close button", async ({
     itemsPage,
   }) => {
-    await itemsPage.goto();
     await itemsPage.createItem("Close Test");
     await itemsPage.waitForToastToDisappear();
-    // Switch to tree view for stable context menu
     await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Close Test");
@@ -75,10 +69,8 @@ test.describe("Item Settings Dialog", () => {
   });
 
   test("disables save button when name unchanged", async ({ itemsPage }) => {
-    await itemsPage.goto();
     await itemsPage.createItem("Unchanged Name");
     await itemsPage.waitForToastToDisappear();
-    // Switch to tree view for stable context menu
     await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Unchanged Name");
@@ -103,10 +95,8 @@ test.describe("Item Settings Dialog", () => {
   test("shows file summary counts in settings dialog", async ({
     itemsPage,
   }) => {
-    await itemsPage.goto();
     await itemsPage.createItem("Summary Test");
     await itemsPage.waitForToastToDisappear();
-    // Switch to tree view for stable context menu
     await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Summary Test");
@@ -120,10 +110,8 @@ test.describe("Item Settings Dialog", () => {
   });
 
   test("shows description field in settings dialog", async ({ itemsPage }) => {
-    await itemsPage.goto();
     await itemsPage.createItem("Description Field Test");
     await itemsPage.waitForToastToDisappear();
-    // Switch to tree view for stable context menu
     await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Description Field Test");
@@ -137,10 +125,8 @@ test.describe("Item Settings Dialog", () => {
   });
 
   test("can add description to item", async ({ itemsPage }) => {
-    await itemsPage.goto();
     await itemsPage.createItem("Add Description Test");
     await itemsPage.waitForToastToDisappear();
-    // Switch to tree view for stable context menu
     await itemsPage.switchToTreeView();
 
     await itemsPage.updateDescriptionViaContextMenu(
@@ -157,10 +143,8 @@ test.describe("Item Settings Dialog", () => {
   });
 
   test("can update description", async ({ itemsPage }) => {
-    await itemsPage.goto();
     await itemsPage.createItem("Update Description Test");
     await itemsPage.waitForToastToDisappear();
-    // Switch to tree view for stable context menu
     await itemsPage.switchToTreeView();
 
     // Add initial description
@@ -184,10 +168,8 @@ test.describe("Item Settings Dialog", () => {
   });
 
   test("can clear description", async ({ itemsPage }) => {
-    await itemsPage.goto();
     await itemsPage.createItem("Clear Description Test");
     await itemsPage.waitForToastToDisappear();
-    // Switch to tree view for stable context menu
     await itemsPage.switchToTreeView();
 
     // Add description first
@@ -211,10 +193,8 @@ test.describe("Item Settings Dialog", () => {
   });
 
   test("shows character count for description", async ({ itemsPage }) => {
-    await itemsPage.goto();
     await itemsPage.createItem("Char Count Test");
     await itemsPage.waitForToastToDisappear();
-    // Switch to tree view for stable context menu
     await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Char Count Test");
@@ -233,10 +213,8 @@ test.describe("Item Settings Dialog", () => {
   test("description save button disabled when unchanged", async ({
     itemsPage,
   }) => {
-    await itemsPage.goto();
     await itemsPage.createItem("Disabled Save Test");
     await itemsPage.waitForToastToDisappear();
-    // Switch to tree view for stable context menu
     await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Disabled Save Test");
@@ -260,20 +238,15 @@ test.describe("Item Settings Dialog", () => {
 });
 
 test.describe("Item Page Settings", () => {
-  test.beforeEach(async ({ page, signUpPage }) => {
-    // Create account and sign in
-    const email = generateUniqueEmail("page-settings");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  // Use testUser fixture for consistent test setup (compatible with itemsPage)
+  test.beforeEach(async ({ page, testUser }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
   test("should show Settings button on item detail page (no files)", async ({
     page,
     itemsPage,
   }) => {
-    await itemsPage.goto();
-
     // Create an item
     await itemsPage.createItem("Test Folder");
     await itemsPage.waitForToastToDisappear();
@@ -293,14 +266,12 @@ test.describe("Item Page Settings", () => {
     page,
     itemsPage,
   }) => {
-    await itemsPage.goto();
-
     // Create an item but stay on root
     await itemsPage.createItem("Root Item");
     await itemsPage.waitForToastToDisappear();
 
     // Stay on root page - verify URL
-    await expect(page).toHaveURL("/my-items");
+    await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+$/);
 
     // Verify Settings button is NOT visible
     const settingsButton = page.getByRole("button", { name: /item settings/i });
@@ -311,8 +282,6 @@ test.describe("Item Page Settings", () => {
     page,
     itemsPage,
   }) => {
-    await itemsPage.goto();
-
     // Create an item with specific name
     await itemsPage.createItem("My Test Item");
     await itemsPage.waitForToastToDisappear();
@@ -337,8 +306,6 @@ test.describe("Item Page Settings", () => {
     page,
     itemsPage,
   }) => {
-    await itemsPage.goto();
-
     // Create an item with original name
     await itemsPage.createItem("Original Name");
     await itemsPage.waitForToastToDisappear();
@@ -373,8 +340,6 @@ test.describe("Item Page Settings", () => {
   });
 
   test("should update item description", async ({ page, itemsPage }) => {
-    await itemsPage.goto();
-
     // Create an item
     await itemsPage.createItem("Description Test");
     await itemsPage.waitForToastToDisappear();
@@ -411,11 +376,9 @@ test.describe("File Deletion", () => {
     "Requires Google Drive test credentials"
   );
 
-  test.beforeEach(async ({ page, signUpPage }) => {
-    const email = generateUniqueEmail("file-delete");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  // Use testUser fixture for consistent test setup (compatible with itemsPage)
+  test.beforeEach(async ({ page, testUser }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
   test("should show delete button on non-selected files", async ({

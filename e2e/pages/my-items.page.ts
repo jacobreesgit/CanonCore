@@ -1,5 +1,5 @@
 /**
- * Page object for my-items page.
+ * Page object for user profile page.
  * Provides methods for user menu interactions and sign-out.
  */
 
@@ -8,14 +8,16 @@ import { expect } from "@playwright/test";
 
 export class MyItemsPage {
   readonly page: Page;
+  private username: string;
   readonly welcomeMessage: Locator;
   readonly userMenu: Locator;
   readonly signOutButton: Locator;
   readonly profileSettingsButton: Locator;
   readonly sidebarTrigger: Locator;
 
-  constructor(page: Page) {
+  constructor(page: Page, username: string) {
     this.page = page;
+    this.username = username;
     this.welcomeMessage = page.getByTestId("my-items-welcome-message");
     this.userMenu = page.getByTestId("my-items-user-menu");
     this.signOutButton = page.getByTestId("my-items-sign-out-button");
@@ -24,7 +26,7 @@ export class MyItemsPage {
   }
 
   async goto() {
-    await this.page.goto("/my-items");
+    await this.page.goto(`/u/${this.username}`);
   }
 
   async openUserMenu() {
@@ -50,6 +52,6 @@ export class MyItemsPage {
   }
 
   async expectVisible() {
-    await expect(this.page).toHaveURL("/my-items");
+    await expect(this.page).toHaveURL(`/u/${this.username}`);
   }
 }

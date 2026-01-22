@@ -137,6 +137,8 @@ export const { handlers, auth } = NextAuth({
           name: user.name,
           // Return avatar URL if user has image, otherwise null
           image: user.image ? "/api/user/avatar" : null,
+          // Include username for profile redirect
+          username: user.username,
         };
       },
     }),
@@ -145,12 +147,14 @@ export const { handlers, auth } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.username = user.username;
       }
       return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id as string;
+        session.user.username = token.username as string | null;
       }
       return session;
     },

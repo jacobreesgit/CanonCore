@@ -112,8 +112,8 @@ describe("AppSidebar footer active state", () => {
       expect(getHelpButton.getAttribute("data-active")).toBe("true");
     });
 
-    it("renders Get Help as inactive on /my-items", () => {
-      mockPathname.mockReturnValue("/my-items");
+    it("renders Get Help as inactive on /u/testuser", () => {
+      mockPathname.mockReturnValue("/u/testuser");
       render(<AppSidebar user={mockUser} context="my-items" />);
 
       const footer = screen.getByTestId("sidebar-footer");
