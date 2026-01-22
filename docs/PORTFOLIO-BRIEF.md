@@ -5,6 +5,7 @@
 1. **This file** - `docs/PORTFOLIO-BRIEF.md`
 2. **CLAUDE.md** - Technical architecture and codebase patterns
 3. **All deployment docs** - `docs/deployments/DEPLOYMENT-*.md` (shows project evolution from v0.2.0 to v5.0.0)
+4. **Handbook files** - Portfolio writing guidelines and style references (attached separately)
 
 ---
 
