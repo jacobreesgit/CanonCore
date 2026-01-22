@@ -4,19 +4,16 @@
  */
 
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
+import { TEST_PASSWORD } from "../../helpers/test-user";
 
 // Helper to get the profile dialog (excludes mobile sidebar which is also a dialog)
 const getProfileDialog = (page: import("@playwright/test").Page) =>
   page.locator('[data-slot="dialog-content"]').first();
 
 test.describe("Profile Settings Journey", () => {
-  test.beforeEach(async ({ page, signUpPage }) => {
-    // Create a fresh user for each test
-    const email = generateUniqueEmail("profile");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  test.beforeEach(async ({ page, testUser }) => {
+    // Use testUser fixture for consistent test setup (compatible with itemsPage)
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
   test("can open profile settings from user dropdown", async ({
@@ -124,7 +121,7 @@ test.describe("Profile Settings Journey", () => {
     await myItemsPage.goto();
 
     // Should see the hero section (with shader fallback since no hero image)
-    await expect(page.getByTestId("item-hero")).toBeVisible();
+    await expect(page.getByTestId("hero-carousel")).toBeVisible();
 
     // For new user without hero image, fallback should be present
     await expect(page.getByTestId("hero-fallback")).toBeVisible();
@@ -132,11 +129,9 @@ test.describe("Profile Settings Journey", () => {
 });
 
 test.describe("Change Password Step", () => {
-  test.beforeEach(async ({ page, signUpPage }) => {
-    const email = generateUniqueEmail("password");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  test.beforeEach(async ({ page, testUser }) => {
+    // Use testUser fixture for consistent test setup (compatible with itemsPage)
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
   test("opens change password step from settings", async ({
@@ -263,18 +258,15 @@ test.describe("Change Password Step", () => {
 });
 
 test.describe("Change Email Step", () => {
-  let testEmail: string;
-
-  test.beforeEach(async ({ page, signUpPage }) => {
-    testEmail = generateUniqueEmail("email");
-    await signUpPage.goto();
-    await signUpPage.signUp(testEmail, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  test.beforeEach(async ({ page, testUser }) => {
+    // Use testUser fixture for consistent test setup (compatible with itemsPage)
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
   test("opens change email step from settings", async ({
     page,
     myItemsPage,
+    testUser,
   }) => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
@@ -286,7 +278,7 @@ test.describe("Change Email Step", () => {
     await expect(
       page.getByRole("heading", { name: /change email/i })
     ).toBeVisible();
-    await expect(page.getByLabel(/new email/i)).toHaveValue(testEmail);
+    await expect(page.getByLabel(/new email/i)).toHaveValue(testUser.email);
     await expect(page.getByLabel("Current Password")).toBeVisible();
   });
 
@@ -350,7 +342,7 @@ test.describe("Change Email Step", () => {
       page.getByRole("heading", { name: /change email/i })
     ).toBeVisible();
 
-    const newEmail = generateUniqueEmail("changed");
+    const newEmail = `changed_${Date.now()}@test.local`;
 
     // Fill correct values
     await page.getByLabel(/new email/i).clear();

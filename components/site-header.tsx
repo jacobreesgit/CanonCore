@@ -5,8 +5,10 @@
  * @example
  * ```tsx
  * <SiteHeader
+ *   title="My Items"
+ *   titleHref="/u/johndoe"
  *   breadcrumbs={[
- *     { id: "1", name: "Projects", href: "/my-items/1" },
+ *     { id: "1", name: "Projects", href: "/u/johndoe/1" },
  *   ]}
  *   currentItemId="1"
  *   onRename={() => openRenameDialog()}
@@ -66,7 +68,7 @@ interface SiteHeaderProps {
  */
 export function SiteHeader({
   title = "My Items",
-  titleHref = "/my-items",
+  titleHref = "/",
   breadcrumbs = [],
   currentItemId,
   onRename,

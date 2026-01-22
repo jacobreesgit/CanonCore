@@ -6,7 +6,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { LogOut, MoreVertical, Settings, User } from "lucide-react";
+import { LogOut, MoreVertical, Settings } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -134,15 +134,6 @@ export function NavUser({ user, driveConnection }: NavUserProps) {
               </div>
             )}
             <DropdownMenuSeparator />
-            {user.username && (
-              <DropdownMenuItem
-                onClick={() => router.push(`/u/${user.username}`)}
-                data-testid="my-items-profile-button"
-              >
-                <User aria-hidden="true" />
-                Your Profile
-              </DropdownMenuItem>
-            )}
             <DropdownMenuItem
               onClick={() => setProfileDialogOpen(true)}
               data-testid="my-items-settings-button"

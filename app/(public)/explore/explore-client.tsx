@@ -2,21 +2,23 @@
 
 /**
  * Client component for the explore page.
- * Uses unified components: ItemHero, SortDropdown, GridItem, EmptyState.
- * Uses shared sortPublicItems utility (DRY).
+ * Features HeroCarousel for featured items and grid for all public items.
  */
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ItemHero } from "@/components/items/item-hero";
+import { toast } from "sonner";
+import { HeroCarousel, type HeroSlide } from "@/components/hero-carousel";
 import { GridItem } from "@/components/sortable-grid/GridItem";
+import { ItemContextMenu } from "@/components/items/item-context-menu";
 import { SortDropdown } from "@/components/items/sort-dropdown";
 import { MobileOptionsSheet } from "@/components/items/mobile-options-sheet";
 import { EmptyState } from "@/components/items/empty-state";
 import { useExploreSortFilter } from "@/hooks/use-explore-sort";
 import { EXPLORE_SORT_OPTIONS, sortPublicItems } from "@/lib/item-utils";
+import { deleteItem, pinItem, unpinItem } from "@/lib/item-actions";
 import { cn } from "@/lib/utils";
-import type { PublicItem } from "@/lib/public-auth";
+import type { PublicItem, FeaturedItem } from "@/lib/public-auth";
 
 interface CurrentUser {
   id: string;
@@ -32,26 +34,103 @@ interface ExploreClientProps {
     watchedCount?: number;
     totalMediaCount?: number;
     totalItems?: number;
+    pinnedOrder?: number | null;
   })[];
+  featuredItems: FeaturedItem[];
   currentUser: CurrentUser | null;
 }
 
 /**
  * Main explore client component.
- * Structure matches My Items page: Hero -> Toolbar -> Grid.
+ * Structure: HeroCarousel -> Toolbar -> Grid.
  * Shows "You" for own items, clickable @username for others.
  */
-export function ExploreClient({ items, currentUser }: ExploreClientProps) {
+export function ExploreClient({
+  items,
+  featuredItems,
+  currentUser,
+}: ExploreClientProps) {
   const router = useRouter();
   const { sortBy, setSortBy } = useExploreSortFilter();
-
-  // Use shared sort utility (DRY - no duplicate sort function)
-  const sortedItems = useMemo(
-    () => sortPublicItems(items, sortBy),
-    [items, sortBy]
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  const [pinnedIds, setPinnedIds] = useState<Set<string>>(
+    () => new Set(items.filter((i) => i.pinnedOrder != null).map((i) => i.id))
   );
 
-  // Preload on hover for faster perceived navigation (Rule 2.5)
+  // Handle delete for own items
+  const handleDelete = useCallback(async (itemId: string) => {
+    const result = await deleteItem(itemId);
+    if (result.success) {
+      setDeletedIds((prev) => new Set(prev).add(itemId));
+      toast.success("Item deleted");
+    } else {
+      toast.error(result.error ?? "Failed to delete item");
+    }
+  }, []);
+
+  // Handle pin for own items
+  const handlePin = useCallback(async (itemId: string) => {
+    const result = await pinItem(itemId);
+    if (result.success) {
+      setPinnedIds((prev) => new Set(prev).add(itemId));
+      toast.success("Item pinned to sidebar");
+    } else {
+      toast.error(result.error ?? "Failed to pin item");
+    }
+  }, []);
+
+  // Handle unpin for own items
+  const handleUnpin = useCallback(async (itemId: string) => {
+    const result = await unpinItem(itemId);
+    if (result.success) {
+      setPinnedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+      toast.success("Item unpinned from sidebar");
+    } else {
+      toast.error(result.error ?? "Failed to unpin item");
+    }
+  }, []);
+
+  // Navigate to settings in user's library
+  const handleOpenSettings = useCallback(
+    (itemId: string) => {
+      if (currentUser?.username) {
+        router.push(`/u/${currentUser.username}/${itemId}?settings=true`);
+      }
+    },
+    [currentUser, router]
+  );
+
+  // Convert featured items to carousel slides
+  const carouselSlides: HeroSlide[] = useMemo(
+    () =>
+      featuredItems.map((item) => ({
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        artworkId: item.artworkId,
+        link: item.link,
+        ownerUsername: item.ownerUsername,
+        ownerName: item.ownerName,
+      })),
+    [featuredItems]
+  );
+
+  // Use shared sort utility (DRY - no duplicate sort function)
+  // Filter out deleted items
+  const sortedItems = useMemo(
+    () =>
+      sortPublicItems(
+        items.filter((i) => !deletedIds.has(i.id)),
+        sortBy
+      ),
+    [items, sortBy, deletedIds]
+  );
+
+  // Preload on hover for faster perceived navigation
   const handleMouseEnter = useCallback(
     (item: ExploreClientProps["items"][number]) => {
       router.prefetch(`/u/${item.ownerUsername}/${item.id}`);
@@ -67,14 +146,12 @@ export function ExploreClient({ items, currentUser }: ExploreClientProps) {
   );
 
   const hasItems = items.length > 0;
+  const hasFeatured = carouselSlides.length > 0;
 
   return (
     <div className={cn("flex flex-col gap-6", !hasItems && "flex-1")}>
-      {/* Hero banner */}
-      <ItemHero
-        name="Explore Collections"
-        description="Discover curated media libraries from the community. Fork collections to build your own."
-      />
+      {/* Hero Carousel - Featured Items */}
+      {hasFeatured && <HeroCarousel slides={carouselSlides} />}
 
       {/* Toolbar - Sort only (no filter, no view toggle) */}
       <div className="flex items-center justify-between gap-2 sm:gap-3">
@@ -100,13 +177,6 @@ export function ExploreClient({ items, currentUser }: ExploreClientProps) {
             />
           </div>
         </div>
-
-        {/* Right side: Collection count */}
-        {hasItems && (
-          <span className="text-muted-foreground text-sm">
-            {items.length} {items.length === 1 ? "collection" : "collections"}
-          </span>
-        )}
       </div>
 
       {/* Items grid or empty state */}
@@ -124,9 +194,9 @@ export function ExploreClient({ items, currentUser }: ExploreClientProps) {
                 ? `/u/${currentUser.username}`
                 : undefined
               : `/u/${item.ownerUsername}`;
-            return (
+
+            const gridItem = (
               <GridItem
-                key={item.id}
                 id={item.id}
                 name={item.name}
                 description={item.description}
@@ -138,14 +208,34 @@ export function ExploreClient({ items, currentUser }: ExploreClientProps) {
                 priority={index < 8}
                 ownerLabel={isOwnItem ? "You" : `@${item.ownerUsername}`}
                 ownerHref={ownerHref}
-                ownerUserId={isOwnItem ? undefined : item.userId}
-                ownerName={isOwnItem ? undefined : item.ownerName}
+                ownerUserId={isOwnItem ? currentUser?.id : item.userId}
+                ownerName={isOwnItem ? currentUser?.name : item.ownerName}
                 progressPercentage={isOwnItem ? item.progressPercentage : null}
                 watchedCount={isOwnItem ? item.watchedCount : undefined}
                 totalMediaCount={isOwnItem ? item.totalMediaCount : undefined}
                 totalItems={isOwnItem ? item.totalItems : undefined}
               />
             );
+
+            // Wrap own items with context menu for settings/delete/pin
+            if (isOwnItem) {
+              return (
+                <ItemContextMenu
+                  key={item.id}
+                  itemName={item.name}
+                  showAddChild={false}
+                  isPinned={pinnedIds.has(item.id)}
+                  onSettings={() => handleOpenSettings(item.id)}
+                  onDelete={() => handleDelete(item.id)}
+                  onPin={() => handlePin(item.id)}
+                  onUnpin={() => handleUnpin(item.id)}
+                >
+                  {gridItem}
+                </ItemContextMenu>
+              );
+            }
+
+            return <div key={item.id}>{gridItem}</div>;
           })}
         </div>
       ) : (

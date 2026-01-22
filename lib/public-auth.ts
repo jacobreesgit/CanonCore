@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { COMPLETION_THRESHOLD } from "@/lib/progress-utils";
+import { logger } from "@/lib/logger";
 import type {
   ItemResult,
   SearchableUser,
@@ -84,6 +85,48 @@ export const getPublicProfile = cache(
           mode: "insensitive",
         },
         isPublic: true,
+      },
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        image: true,
+        heroImage: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user || !user.username) {
+      return null;
+    }
+
+    return {
+      id: user.id,
+      username: user.username,
+      name: user.name,
+      hasImage: user.image !== null,
+      hasHeroImage: user.heroImage !== null,
+      createdAt: user.createdAt,
+    };
+  }
+);
+
+/**
+ * Fetches a user profile by username without requiring isPublic.
+ * Used when the owner is viewing their own profile (determined by session).
+ * Does NOT expose data to unauthorized users - caller must verify ownership.
+ *
+ * @param username - Username to look up (case-insensitive)
+ * @returns Profile data or null if not found
+ */
+export const getProfileByIdOrUsername = cache(
+  async (username: string): Promise<PublicProfile | null> => {
+    const user = await prisma.user.findFirst({
+      where: {
+        username: {
+          equals: username,
+          mode: "insensitive",
+        },
       },
       select: {
         id: true,
@@ -291,6 +334,7 @@ export async function getPublicItemsForUser(
   const items = await prisma.item.findMany({
     where: {
       userId,
+      parentId: null, // Only root-level items for profile display
       isPublic: true,
       inheritVisibility: false, // Only explicitly public items (consistent with Explore)
     },
@@ -942,6 +986,97 @@ export const searchPublicItems = cache(
       return { success: true, data: searchableItems };
     } catch {
       return { error: "Failed to search public items" };
+    }
+  }
+);
+
+/**
+ * Featured item with artwork for carousel display.
+ */
+export interface FeaturedItem {
+  /** Item ID */
+  id: string;
+  /** Item name */
+  name: string;
+  /** Item description */
+  description: string | null;
+  /** Artwork file ID for background image */
+  artworkId: string;
+  /** Owner username for attribution */
+  ownerUsername: string;
+  /** Owner display name */
+  ownerName: string | null;
+  /** Owner user ID */
+  ownerUserId: string;
+  /** Link to item page */
+  link: string;
+}
+
+/**
+ * Fetches featured public items for the Explore carousel.
+ * Returns items with artwork, ordered by most recently updated.
+ * Uses React.cache() for request deduplication within a single request.
+ * Gracefully returns empty array on errors to prevent page crashes.
+ *
+ * @param limit - Maximum number of items to return (default: 5)
+ * @returns Array of featured items with artwork and owner info
+ */
+export const getFeaturedItems = cache(
+  async (limit = 5): Promise<FeaturedItem[]> => {
+    try {
+      const items = await prisma.item.findMany({
+        where: {
+          isPublic: true,
+          inheritVisibility: false,
+          // Must have artwork for carousel display
+          files: {
+            some: { fileType: "ARTWORK" },
+          },
+          user: {
+            isPublic: true,
+            username: { not: null },
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          userId: true,
+          files: {
+            where: { fileType: "ARTWORK" },
+            select: { id: true },
+            take: 1,
+            orderBy: [{ isHero: "desc" }, { isPrimary: "desc" }],
+          },
+          user: {
+            select: {
+              username: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: { updatedAt: "desc" },
+        take: limit,
+      });
+
+      // Filter out items without valid artwork ID (prevents /api/artwork/ invalid calls)
+      // Also filter out items where username is null (stricter than query allows)
+      return items
+        .filter((item) => item.files[0]?.id && item.user.username)
+        .map((item) => ({
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          artworkId: item.files[0].id, // Safe due to filter above
+          ownerUsername: item.user.username as string, // Safe due to filter
+          ownerName: item.user.name,
+          ownerUserId: item.userId,
+          link: `/u/${item.user.username}/${item.id}`,
+        }));
+    } catch (error) {
+      // Graceful degradation - return empty array instead of crashing page
+      logger.error({ error, limit }, "Failed to fetch featured items");
+      return [];
     }
   }
 );

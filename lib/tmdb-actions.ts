@@ -321,8 +321,7 @@ export async function applyMetadataAction(
       }
     }
 
-    revalidatePath("/my-items");
-    revalidatePath(`/my-items/${itemId}`);
+    revalidatePath("/u", "layout");
 
     return { success: true };
   } catch (error) {

@@ -55,7 +55,7 @@ interface SyncItemFileResult {
 interface SyncOptions {
   /** Whether to fetch and update storage quota (default: false). */
   fetchQuota?: boolean;
-  /** Whether to revalidate the /my-items path after sync (default: false). */
+  /** Whether to revalidate the /u layout after sync (default: false). */
   revalidate?: boolean;
 }
 
@@ -238,7 +238,7 @@ async function syncForConnection(
 
     // Optionally revalidate path
     if (revalidate) {
-      revalidatePath("/my-items");
+      revalidatePath("/u", "layout");
     }
 
     // Log successful sync operation

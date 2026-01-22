@@ -3,17 +3,10 @@
  */
 
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
 test.describe("Edit Mode", () => {
-  test.beforeEach(async ({ page, signUpPage, itemsPage }) => {
-    // Create account and sign in
-    const email = generateUniqueEmail("edit-mode");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
-
-    await itemsPage.goto();
+  test.beforeEach(async ({ page, testUser, itemsPage }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
     await itemsPage.createItem("Test Folder 1");
     await itemsPage.createItem("Test Folder 2");
   });
@@ -44,11 +37,21 @@ test.describe("Edit Mode", () => {
   test("should exit edit mode when switching view modes", async ({
     itemsPage,
   }) => {
+    // Navigate into folder where tree view exists
+    await itemsPage.clickItem("Test Folder 1");
+
+    // Create children so edit mode can be enabled
+    await itemsPage.createItem("Child 1");
+    await itemsPage.createItem("Child 2");
+
+    // Ensure Custom Order sort (required for edit mode)
+    await itemsPage.selectSortOption("Custom Order");
+
     // Enter edit mode
     await itemsPage.enterEditMode();
     expect(await itemsPage.isInEditMode()).toBe(true);
 
-    // Switch to tree view (different from current grid view - grid is default)
+    // Switch to tree view (exists on item detail pages)
     await itemsPage.switchToTreeView();
 
     // Should exit edit mode - wait for the button to appear
@@ -62,11 +65,9 @@ test.describe("Edit Mode", () => {
     itemsPage,
     page,
   }) => {
-    // Switch to tree view for more stable context menu
-    await itemsPage.switchToTreeView();
-
-    // Delete all items
+    // Delete all items via grid context menu (root page is grid view)
     await itemsPage.deleteItemViaContextMenu("Test Folder 1");
+    await itemsPage.waitForToastToDisappear();
     await itemsPage.deleteItemViaContextMenu("Test Folder 2");
 
     // Edit button should be disabled when no items

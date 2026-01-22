@@ -20,6 +20,7 @@ export interface E2eDriveUser {
   id: string;
   email: string;
   password: string;
+  username: string;
 }
 
 export interface GoogleDriveFixture {
@@ -229,21 +230,31 @@ export const googleDriveFixture = testUserFixture.extend<GoogleDriveFixture>({
       );
     }
 
+    if (!user.username) {
+      throw new Error(
+        `E2E Drive user missing username: ${E2E_DRIVE_USER_EMAIL}\n` +
+          "Run: pnpm run setup:e2e-drive (which should assign a username)"
+      );
+    }
+
     const e2eDriveUser: E2eDriveUser = {
       id: user.id,
       email: E2E_DRIVE_USER_EMAIL,
       password: E2E_DRIVE_USER_PASSWORD,
+      username: user.username,
     };
 
     // Sign in the user via UI
     await page.goto("/sign-in");
     await page
-      .getByPlaceholder("Email")
+      .getByLabel("Email")
       .waitFor({ state: "visible", timeout: 15000 });
-    await page.getByPlaceholder("Email").fill(e2eDriveUser.email);
-    await page.getByPlaceholder("Password").fill(e2eDriveUser.password);
+    await page.getByLabel("Email").fill(e2eDriveUser.email);
+    await page
+      .getByTestId("sign-in-password-input")
+      .fill(e2eDriveUser.password);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await page.waitForURL("/my-items", { timeout: 15000 });
+    await page.waitForURL(`/u/${e2eDriveUser.username}`, { timeout: 15000 });
 
     await use(e2eDriveUser);
 

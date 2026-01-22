@@ -19,6 +19,7 @@ const TOAST_DISMISS_TIMEOUT = 5000;
 
 export class ItemsPage {
   readonly page: Page;
+  private username: string;
   readonly viewToggleTree: Locator;
   readonly viewToggleGrid: Locator;
   readonly addFolderButton: Locator;
@@ -37,8 +38,9 @@ export class ItemsPage {
   readonly filterDropdown: Locator;
   readonly editModeButton: Locator;
 
-  constructor(page: Page) {
+  constructor(page: Page, username: string) {
     this.page = page;
+    this.username = username;
     this.viewToggleTree = page.getByRole("button", { name: /tree view/i });
     this.viewToggleGrid = page.getByRole("button", { name: /grid view/i });
     // Use .first() to avoid strict mode violation when both toolbar and empty state buttons are visible
@@ -58,7 +60,7 @@ export class ItemsPage {
     this.breadcrumbHome = page
       .getByLabel("Breadcrumb")
       .getByRole("link", { name: /my items/i });
-    this.heroSection = page.getByTestId("item-hero");
+    this.heroSection = page.getByTestId("hero-carousel");
     this.loadingSpinner = page.getByTestId("items-loading");
     // Sort dropdown shows current sort option (Custom Order, Name A-Z, etc.)
     this.sortDropdown = page
@@ -76,15 +78,15 @@ export class ItemsPage {
   }
 
   async goto() {
-    await this.page.goto("/my-items");
+    await this.page.goto(`/u/${this.username}`);
   }
 
   async gotoItem(itemId: string) {
-    await this.page.goto(`/my-items/${itemId}`);
+    await this.page.goto(`/u/${this.username}/${itemId}`);
   }
 
   async expectVisible() {
-    await expect(this.page).toHaveURL(/\/my-items/);
+    await expect(this.page).toHaveURL(new RegExp(`/u/${this.username}`));
   }
 
   async switchToTreeView() {
@@ -738,27 +740,6 @@ export class ItemsPage {
   }
 
   /**
-   * Collapses the hero section.
-   */
-  async collapseHero(): Promise<void> {
-    await this.page.getByRole("button", { name: /collapse hero/i }).click();
-  }
-
-  /**
-   * Expands the hero section.
-   */
-  async expandHero(): Promise<void> {
-    await this.page.getByRole("button", { name: /expand hero/i }).click();
-  }
-
-  /**
-   * Checks if the hero is currently collapsed.
-   */
-  async isHeroCollapsed(): Promise<boolean> {
-    return this.page.getByRole("button", { name: /expand hero/i }).isVisible();
-  }
-
-  /**
    * Opens the sort dropdown and selects a sort option.
    * Handles both desktop dropdown and mobile Options sheet.
    *
@@ -1002,6 +983,22 @@ export class ItemsPage {
   // ==================== Pin/Unpin Methods ====================
 
   /**
+   * Ensures the sidebar is open. On mobile, the sidebar may be collapsed by default.
+   */
+  private async ensureSidebarOpen(): Promise<void> {
+    const sidebar = this.page.locator('[data-sidebar="sidebar"]');
+    const isVisible = await sidebar.isVisible().catch(() => false);
+
+    if (!isVisible) {
+      const trigger = this.page.getByTestId("sidebar-trigger");
+      if (await trigger.isVisible()) {
+        await trigger.click();
+        await expect(sidebar).toBeVisible({ timeout: 5000 });
+      }
+    }
+  }
+
+  /**
    * Pins an item to the sidebar via context menu.
    *
    * @param name - Name of the item to pin
@@ -1026,70 +1023,92 @@ export class ItemsPage {
   }
 
   /**
-   * Checks if an item appears in the Pinned section of the sidebar.
+   * Checks if an item appears as a pinned sub-item under My Items in the sidebar.
+   * Pinned items are rendered as SidebarMenuSubButton inside the My Items collapsible.
+   * The My Items section auto-expands when there are pinned items.
    *
    * @param name - Name of the item to look for
    */
   async expectItemPinnedInSidebar(name: string): Promise<void> {
-    // Pinned section has a group label
-    const pinnedSection = this.page.locator(
-      '[data-slot="sidebar-group-label"]',
-      { hasText: "Pinned" }
-    );
-    await expect(pinnedSection).toBeVisible({ timeout: 5000 });
+    // Ensure sidebar is visible
+    await this.ensureSidebarOpen();
 
-    // Item should appear in the pinned section
-    const pinnedItem = this.page.locator('[data-slot="sidebar-menu-button"]', {
-      hasText: name,
-    });
-    await expect(pinnedItem).toBeVisible();
+    // Item should appear as a sub-item (SidebarMenuSubButton) under My Items
+    // The section auto-expands when there are active pinned items
+    const pinnedItem = this.page.locator(
+      '[data-slot="sidebar-menu-sub-button"]',
+      {
+        hasText: name,
+      }
+    );
+    await expect(pinnedItem).toBeVisible({ timeout: 5000 });
   }
 
   /**
-   * Checks that an item is NOT in the Pinned Items section of the sidebar.
+   * Checks that an item is NOT pinned in the sidebar (not a sub-item under My Items).
    *
    * @param name - Name of the item that should not be pinned
    */
   async expectItemNotPinnedInSidebar(name: string): Promise<void> {
-    // Find buttons in sidebar with this name (should only be in pinned section if pinned)
-    const pinnedItem = this.page.locator('[data-slot="sidebar-menu-button"]', {
-      hasText: name,
-    });
+    // Ensure sidebar is visible
+    await this.ensureSidebarOpen();
+
+    // Find sub-buttons in sidebar with this name
+    const pinnedItem = this.page.locator(
+      '[data-slot="sidebar-menu-sub-button"]',
+      {
+        hasText: name,
+      }
+    );
     // Should not be visible as a pinned item
     await expect(pinnedItem).not.toBeVisible();
   }
 
   /**
-   * Checks that the Pinned section is visible in the sidebar.
+   * Checks that there are pinned items visible under My Items.
    */
   async expectPinnedSectionVisible(): Promise<void> {
-    const pinnedSection = this.page.locator(
-      '[data-slot="sidebar-group-label"]',
-      { hasText: "Pinned" }
+    // Ensure sidebar is visible
+    await this.ensureSidebarOpen();
+
+    // Check for any sub-items (pinned items) - section auto-expands when items exist
+    const pinnedItems = this.page.locator(
+      '[data-slot="sidebar-menu-sub-button"]'
     );
-    await expect(pinnedSection).toBeVisible();
+    await expect(pinnedItems.first()).toBeVisible({ timeout: 5000 });
   }
 
   /**
-   * Checks that the Pinned section is not visible in the sidebar.
+   * Checks that there are no pinned items under My Items.
    */
   async expectPinnedSectionNotVisible(): Promise<void> {
-    const pinnedSection = this.page.locator(
-      '[data-slot="sidebar-group-label"]',
-      { hasText: "Pinned" }
+    // Ensure sidebar is visible
+    await this.ensureSidebarOpen();
+
+    // There should be no sub-items under My Items
+    const pinnedItems = this.page.locator(
+      '[data-slot="sidebar-menu-sub-button"]'
     );
-    await expect(pinnedSection).not.toBeVisible();
+    await expect(pinnedItems).not.toBeVisible();
   }
 
   /**
    * Clicks on a pinned item in the sidebar to navigate to it.
+   * Pinned items are rendered as SidebarMenuSubButton inside the My Items collapsible.
    *
    * @param name - Name of the pinned item to click
    */
   async clickPinnedItem(name: string): Promise<void> {
-    const pinnedItem = this.page.locator('[data-slot="sidebar-menu-button"]', {
-      hasText: name,
-    });
+    // Ensure sidebar is visible
+    await this.ensureSidebarOpen();
+
+    // Click the pinned item (sub-button) - section auto-expands when items exist
+    const pinnedItem = this.page.locator(
+      '[data-slot="sidebar-menu-sub-button"]',
+      {
+        hasText: name,
+      }
+    );
     await pinnedItem.click();
     await this.page.waitForLoadState("networkidle");
   }

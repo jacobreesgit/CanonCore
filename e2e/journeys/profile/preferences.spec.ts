@@ -3,32 +3,12 @@
  * Tests default view mode, default sort, and preference persistence.
  */
 
-import { test, expect, prisma } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
+import { test, expect } from "../../fixtures";
 
 test.describe("User Preferences Journey", () => {
-  let userEmail: string;
-  let userId: string;
-
-  test.beforeEach(async ({ page, signUpPage }) => {
-    // Create a new user for each test
-    userEmail = generateUniqueEmail("prefs");
-
-    await signUpPage.goto();
-    await signUpPage.signUp(userEmail, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
-
-    // Get user ID for cleanup
-    const user = await prisma.user.findUnique({
-      where: { email: userEmail },
-    });
-    userId = user!.id;
-  });
-
-  test.afterEach(async () => {
-    // Cleanup
-    await prisma.item.deleteMany({ where: { userId } }).catch(() => {});
-    await prisma.user.delete({ where: { id: userId } }).catch(() => {});
+  test.beforeEach(async ({ page, testUser }) => {
+    // Use testUser fixture for consistent test setup (compatible with itemsPage)
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
   test("should set and persist default view mode", async ({
@@ -104,14 +84,22 @@ test.describe("User Preferences Journey", () => {
     page,
     itemsPage,
   }) => {
-    // Create some items first
-    await itemsPage.createItem("Test Item A");
-    await itemsPage.createItem("Test Item B");
+    // Create parent container and navigate into it (tree view only on item detail pages)
+    await itemsPage.createItem("Parent Item");
     await itemsPage.waitForToastToDisappear();
+    await itemsPage.clickItem("Parent Item");
+
+    // Create children inside the parent
+    await itemsPage.createItem("Child Item A");
+    await itemsPage.createItem("Child Item B");
+    await itemsPage.waitForToastToDisappear();
+
+    // Wait for grid view items to be visible (ensures toolbar is loaded)
+    await expect(itemsPage.gridView).toBeVisible({ timeout: 10000 });
 
     // View mode is stored in localStorage via the view toggle
     // Click the tree view button to change from default grid
-    await page.getByRole("button", { name: "Tree view" }).click();
+    await itemsPage.switchToTreeView();
 
     // Verify tree view is now active
     await expect(itemsPage.treeView).toBeVisible({ timeout: 10000 });
@@ -119,7 +107,12 @@ test.describe("User Preferences Journey", () => {
 
     // Navigate away and back - localStorage should persist
     await page.goto("/docs");
-    await page.goto("/my-items");
+    await page.waitForLoadState("networkidle");
+
+    // Navigate back to the item detail page (tree view is only on detail pages)
+    await itemsPage.goto();
+    await itemsPage.waitForLoadingComplete();
+    await itemsPage.clickItem("Parent Item");
     await itemsPage.waitForLoadingComplete();
 
     // Tree view should still be applied (persisted in localStorage)

@@ -4,15 +4,11 @@
  */
 
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
 test.describe("Sticky Dialog Footer", () => {
-  test.beforeEach(async ({ page, signUpPage }) => {
-    // Create account and sign in
-    const email = generateUniqueEmail("sticky-footer");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  test.beforeEach(async ({ page, testUser }) => {
+    // Use testUser fixture for consistent test setup (compatible with itemsPage)
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
   test("settings dialog footer remains visible when content overflows", async ({
@@ -20,6 +16,9 @@ test.describe("Sticky Dialog Footer", () => {
     page,
   }) => {
     await itemsPage.goto();
+    // Create parent item and navigate into it (tree view is only available on item detail pages)
+    await itemsPage.createItem("Parent Folder");
+    await itemsPage.clickItem("Parent Folder");
     await itemsPage.createItem("Sticky Footer Test");
     await itemsPage.waitForToastToDisappear();
     await itemsPage.switchToTreeView();
@@ -56,8 +55,8 @@ test.describe("Sticky Dialog Footer", () => {
     page,
   }) => {
     // Navigate to my-items first
-    await page.goto("/my-items");
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+    await myItemsPage.goto();
+    await page.waitForLoadState("networkidle");
 
     // Open profile settings using page object
     await myItemsPage.openProfileSettings();

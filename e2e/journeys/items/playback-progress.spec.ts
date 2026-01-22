@@ -4,45 +4,23 @@
  */
 
 import { test, expect, prisma } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
 test.describe("Playback Progress Journey", () => {
-  let userEmail: string;
-  let userId: string;
-
-  test.beforeEach(async ({ page, signUpPage }) => {
-    // Create a new user for each test
-    userEmail = generateUniqueEmail("progress");
-
-    await signUpPage.goto();
-    await signUpPage.signUp(userEmail, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
-
-    // Get user ID for seeding and cleanup
-    const user = await prisma.user.findUnique({
-      where: { email: userEmail },
-    });
-    userId = user!.id;
-  });
-
-  test.afterEach(async () => {
-    // Cleanup - delete items first (includes ItemFiles via cascade)
-    await prisma.itemFile
-      .deleteMany({ where: { item: { userId } } })
-      .catch(() => {});
-    await prisma.item.deleteMany({ where: { userId } }).catch(() => {});
-    await prisma.user.delete({ where: { id: userId } }).catch(() => {});
+  test.beforeEach(async ({ page, testUser }) => {
+    // Use testUser fixture for consistent test setup (compatible with itemsPage)
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
   test("displays progress bar for parent with watched children", async ({
     page,
     itemsPage,
+    testUser,
   }) => {
     // Create parent item with children that have media files with progress
     const parent = await prisma.item.create({
       data: {
         name: "TV Show",
-        userId,
+        userId: testUser.id,
         order: 0,
         depth: 0,
       },
@@ -52,7 +30,7 @@ test.describe("Playback Progress Journey", () => {
     const episode1 = await prisma.item.create({
       data: {
         name: "Episode 1",
-        userId,
+        userId: testUser.id,
         parentId: parent.id,
         order: 0,
         depth: 1,
@@ -74,7 +52,7 @@ test.describe("Playback Progress Journey", () => {
     const episode2 = await prisma.item.create({
       data: {
         name: "Episode 2",
-        userId,
+        userId: testUser.id,
         parentId: parent.id,
         order: 1,
         depth: 1,
@@ -96,7 +74,7 @@ test.describe("Playback Progress Journey", () => {
     const episode3 = await prisma.item.create({
       data: {
         name: "Episode 3",
-        userId,
+        userId: testUser.id,
         parentId: parent.id,
         order: 2,
         depth: 1,
@@ -129,12 +107,13 @@ test.describe("Playback Progress Journey", () => {
   test("shows Go to button for next incomplete item", async ({
     page,
     itemsPage,
+    testUser,
   }) => {
     // Create parent with one complete and one incomplete episode
     const parent = await prisma.item.create({
       data: {
         name: "Series",
-        userId,
+        userId: testUser.id,
         order: 0,
         depth: 0,
       },
@@ -144,7 +123,7 @@ test.describe("Playback Progress Journey", () => {
     const ep1 = await prisma.item.create({
       data: {
         name: "S01E01",
-        userId,
+        userId: testUser.id,
         parentId: parent.id,
         order: 0,
         depth: 1,
@@ -167,7 +146,7 @@ test.describe("Playback Progress Journey", () => {
     const ep2 = await prisma.item.create({
       data: {
         name: "S01E02",
-        userId,
+        userId: testUser.id,
         parentId: parent.id,
         order: 1,
         depth: 1,
@@ -191,20 +170,21 @@ test.describe("Playback Progress Journey", () => {
     await itemsPage.expectHeroVisible("Series");
 
     // Go to button should be visible with next incomplete item name
-    const gotoButton = page.getByTestId("item-hero-goto");
+    const gotoButton = page.getByTestId("hero-goto-button");
     await expect(gotoButton).toBeVisible();
-    await expect(gotoButton).toContainText("Go to S01E02");
+    await expect(gotoButton).toContainText("Next Up: S01E02");
   });
 
   test("Go to button navigates to first incomplete item", async ({
     page,
     itemsPage,
+    testUser,
   }) => {
     // Create a series with episodes
     const parent = await prisma.item.create({
       data: {
         name: "My Series",
-        userId,
+        userId: testUser.id,
         order: 0,
         depth: 0,
       },
@@ -214,7 +194,7 @@ test.describe("Playback Progress Journey", () => {
     const ep1 = await prisma.item.create({
       data: {
         name: "First Episode",
-        userId,
+        userId: testUser.id,
         parentId: parent.id,
         order: 0,
         depth: 1,
@@ -237,7 +217,7 @@ test.describe("Playback Progress Journey", () => {
     const ep2 = await prisma.item.create({
       data: {
         name: "Second Episode",
-        userId,
+        userId: testUser.id,
         parentId: parent.id,
         order: 1,
         depth: 1,
@@ -261,23 +241,24 @@ test.describe("Playback Progress Journey", () => {
     await itemsPage.expectHeroVisible("My Series");
 
     // Click Go to button
-    const gotoButton = page.getByTestId("item-hero-goto");
+    const gotoButton = page.getByTestId("hero-goto-button");
     await gotoButton.click();
 
     // Should navigate to the incomplete episode
-    await expect(page).toHaveURL(new RegExp(`/my-items/${ep2.id}`));
+    await expect(page).toHaveURL(new RegExp(`/u/[a-zA-Z0-9_]+/${ep2.id}`));
     await itemsPage.expectHeroVisible("Second Episode");
   });
 
   test("no Go to button when all items are complete", async ({
     page,
     itemsPage,
+    testUser,
   }) => {
     // Create parent with all complete episodes
     const parent = await prisma.item.create({
       data: {
         name: "Finished Series",
-        userId,
+        userId: testUser.id,
         order: 0,
         depth: 0,
       },
@@ -286,7 +267,7 @@ test.describe("Playback Progress Journey", () => {
     const ep1 = await prisma.item.create({
       data: {
         name: "Episode 1",
-        userId,
+        userId: testUser.id,
         parentId: parent.id,
         order: 0,
         depth: 1,
@@ -308,7 +289,7 @@ test.describe("Playback Progress Journey", () => {
     const ep2 = await prisma.item.create({
       data: {
         name: "Episode 2",
-        userId,
+        userId: testUser.id,
         parentId: parent.id,
         order: 1,
         depth: 1,
@@ -332,7 +313,7 @@ test.describe("Playback Progress Journey", () => {
     await itemsPage.expectHeroVisible("Finished Series");
 
     // Go to button should not be visible (all complete)
-    await expect(page.getByTestId("item-hero-goto")).not.toBeVisible();
+    await expect(page.getByTestId("hero-goto-button")).not.toBeVisible();
 
     // Progress should show 100% (2/2 watched)
     await expect(page.getByTestId("hero-progress-label")).toContainText(
@@ -343,12 +324,13 @@ test.describe("Playback Progress Journey", () => {
   test("no progress bar for items without media children", async ({
     page,
     itemsPage,
+    testUser,
   }) => {
     // Create parent with children but no media files
     const parent = await prisma.item.create({
       data: {
         name: "Empty Folder",
-        userId,
+        userId: testUser.id,
         order: 0,
         depth: 0,
       },
@@ -357,7 +339,7 @@ test.describe("Playback Progress Journey", () => {
     await prisma.item.create({
       data: {
         name: "Child 1",
-        userId,
+        userId: testUser.id,
         parentId: parent.id,
         order: 0,
         depth: 1,
@@ -367,7 +349,7 @@ test.describe("Playback Progress Journey", () => {
     await prisma.item.create({
       data: {
         name: "Child 2",
-        userId,
+        userId: testUser.id,
         parentId: parent.id,
         order: 1,
         depth: 1,
@@ -381,18 +363,19 @@ test.describe("Playback Progress Journey", () => {
     // Progress bar should not be visible (no media files)
     await expect(page.getByTestId("hero-progress-bar")).not.toBeVisible();
     await expect(page.getByTestId("hero-progress-label")).not.toBeVisible();
-    await expect(page.getByTestId("item-hero-goto")).not.toBeVisible();
+    await expect(page.getByTestId("hero-goto-button")).not.toBeVisible();
   });
 
   test("progress updates correctly after navigating back", async ({
     page,
     itemsPage,
+    testUser,
   }) => {
     // Create series with one incomplete episode
     const parent = await prisma.item.create({
       data: {
         name: "Test Series",
-        userId,
+        userId: testUser.id,
         order: 0,
         depth: 0,
       },
@@ -401,7 +384,7 @@ test.describe("Playback Progress Journey", () => {
     const ep1 = await prisma.item.create({
       data: {
         name: "Test Episode",
-        userId,
+        userId: testUser.id,
         parentId: parent.id,
         order: 0,
         depth: 1,
@@ -436,8 +419,8 @@ test.describe("Playback Progress Journey", () => {
     });
 
     // Navigate back to root and return to item
-    // Use page.goto instead of breadcrumb click for mobile reliability
-    await page.goto("/my-items");
+    // Use itemsPage.goto instead of breadcrumb click for mobile reliability
+    await itemsPage.goto();
     await itemsPage.waitForLoadingComplete();
     await itemsPage.gotoItemAndWaitForContent(parent.id);
 

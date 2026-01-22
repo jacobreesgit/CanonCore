@@ -1,23 +1,14 @@
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
 test.describe("Sign Out Journey", () => {
   test("user can sign out from my-items", async ({
     page,
-    signUpPage,
+    testUser,
     myItemsPage,
   }) => {
-    const email = generateUniqueEmail("signout");
-    const password = TEST_PASSWORD;
-
-    // Create account
-    await signUpPage.goto();
-    await signUpPage.signUp(email, password, password);
-
-    // Wait for navigation to my-items
-    await page.waitForURL((url) => url.pathname.includes("/my-items"), {
-      timeout: 15000,
-    });
+    // testUser fixture already logged us in
+    // Verify we're on the user profile
+    await expect(page).toHaveURL(`/u/${testUser.username}`);
 
     // Sign out
     await myItemsPage.signOut();
@@ -28,29 +19,22 @@ test.describe("Sign Out Journey", () => {
 
   test("after sign out, accessing my-items redirects to sign in", async ({
     page,
-    signUpPage,
+    testUser,
     myItemsPage,
   }) => {
-    const email = generateUniqueEmail("signout-redirect");
-    const password = TEST_PASSWORD;
-
-    // Create account
-    await signUpPage.goto();
-    await signUpPage.signUp(email, password, password);
-
-    // Wait for navigation to my-items
-    await page.waitForURL((url) => url.pathname.includes("/my-items"), {
-      timeout: 15000,
-    });
+    // testUser fixture already logged us in
+    const username = testUser.username;
 
     // Sign out
     await myItemsPage.signOut();
     await expect(page).toHaveURL("/", { timeout: 10000 });
 
-    // Try to access my-items directly
-    await page.goto("/my-items");
-
-    // Should be redirected to sign-in (protected route)
-    await expect(page).toHaveURL("/sign-in", { timeout: 10000 });
+    // Try to access user profile directly after sign out
+    // The profile should show 404 since user is not public (isPublic: false by default)
+    await page.goto(`/u/${username}`);
+    // Should show 404 since profile is private
+    await expect(page.locator("h1").filter({ hasText: "404" })).toBeVisible({
+      timeout: 5000,
+    });
   });
 });

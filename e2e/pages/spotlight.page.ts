@@ -57,6 +57,6 @@ export class SpotlightPage {
 
   /** Verify empty state is shown */
   async expectNoResults() {
-    await expect(this.page.getByText(/no items found/i)).toBeVisible();
+    await expect(this.page.getByText(/no results found/i)).toBeVisible();
   }
 }

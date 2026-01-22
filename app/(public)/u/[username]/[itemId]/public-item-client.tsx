@@ -2,9 +2,7 @@
 
 /**
  * Client component for public item detail page.
- * Uses unified components: ItemHero, SortDropdown, GridItem, Tree, EmptyState.
- * Matches private item pages with hero collapse and view toggle.
- * Uses shared sortPublicItems utility (DRY).
+ * Uses unified components: HeroCarousel, SortDropdown, GridItem, Tree, EmptyState.
  * Includes fork functionality in toolbar.
  */
 
@@ -12,20 +10,16 @@ import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ItemHero } from "@/components/items/item-hero";
+import { HeroCarousel, type HeroSlide } from "@/components/hero-carousel";
 import { GridItem } from "@/components/sortable-grid";
 import { Tree } from "@/components/sortable-tree";
 import { SortDropdown } from "@/components/items/sort-dropdown";
+import { FilterDropdown } from "@/components/items/filter-dropdown";
 import { ViewToggle, useStoredViewMode } from "@/components/items/view-toggle";
 import { MobileOptionsSheet } from "@/components/items/mobile-options-sheet";
 import { EmptyState } from "@/components/items/empty-state";
-import { useExploreSortFilter } from "@/hooks/use-explore-sort";
-import { useHeroCollapse } from "@/hooks/use-hero-collapse";
-import {
-  EXPLORE_SORT_OPTIONS,
-  sortPublicItems,
-  publicItemsToTree,
-} from "@/lib/item-utils";
+import { useItemsSortFilter } from "@/hooks/use-items-sort-filter";
+import { sortItems, filterItems, publicItemsToTree } from "@/lib/item-utils";
 import { Copy, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -46,6 +40,8 @@ interface PublicItemClientProps {
   forkStatus: ForkStatus | null;
   isAuthenticated: boolean;
   isOwnItem: boolean;
+  /** Current user's username for navigation after forking. */
+  currentUserUsername?: string | null;
 }
 
 /**
@@ -82,28 +78,53 @@ export function PublicItemClient({
   forkStatus,
   isAuthenticated,
   isOwnItem,
+  currentUserUsername,
 }: PublicItemClientProps) {
   const router = useRouter();
-  const { sortBy, setSortBy } = useExploreSortFilter();
   const [isForking, setIsForking] = useState(false);
+
+  // Sort/filter state (same as private item pages)
+  const { sortBy, setSortBy, filterBy, setFilterBy } = useItemsSortFilter();
 
   // View mode state (persisted to localStorage)
   const [viewMode] = useStoredViewMode();
 
-  // Hero collapse state with localStorage persistence
-  const { isCollapsed, toggleCollapse } = useHeroCollapse();
-
-  // Filter to get only direct children of this item
-  const directChildren = useMemo(
-    () => childItems.filter((child) => child.parentId === item.id),
-    [childItems, item.id]
+  // Create single slide for HeroCarousel
+  const heroSlide: HeroSlide = useMemo(
+    () => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      artworkId: item.artworkId,
+      link: `/u/${profile.username}/${item.id}`,
+      ownerUsername: profile.username,
+      ownerName: profile.name,
+    }),
+    [
+      item.id,
+      item.name,
+      item.description,
+      item.artworkId,
+      profile.username,
+      profile.name,
+    ]
   );
 
-  // Use shared sort utility (DRY - no duplicate sort function)
-  const sortedChildItems = useMemo(
-    () => sortPublicItems(directChildren, sortBy),
-    [directChildren, sortBy]
-  );
+  // Filter to get only direct children of this item, then apply sort and filter
+  type ChildItem = (typeof childItems)[number];
+  const directChildren = useMemo(() => {
+    const children = childItems.filter((child) => child.parentId === item.id);
+    // sortItems/filterItems expect ItemWithArtwork but work on any item with name/order/updatedAt
+    // Cast through unknown to preserve ChildItem type while using shared sort/filter logic
+    const sortedChildren = sortItems(
+      children as unknown as Parameters<typeof sortItems>[0],
+      sortBy
+    ) as unknown as ChildItem[];
+    return filterItems(
+      sortedChildren as unknown as Parameters<typeof filterItems>[0],
+      filterBy
+    ) as unknown as ChildItem[];
+  }, [childItems, item.id, sortBy, filterBy]);
 
   // Convert to tree structure for Tree component (includes all descendants)
   // Only include progress data for own items
@@ -147,10 +168,13 @@ export function PublicItemClient({
 
       toast.success("Added to your library!", {
         description: `${item.name} has been forked to your library.`,
-        action: {
-          label: "View",
-          onClick: () => router.push(`/my-items/${data.itemId}`),
-        },
+        action: currentUserUsername
+          ? {
+              label: "View",
+              onClick: () =>
+                router.push(`/u/${currentUserUsername}/${data.itemId}`),
+            }
+          : undefined,
       });
 
       router.refresh();
@@ -166,35 +190,35 @@ export function PublicItemClient({
 
   return (
     <div className={cn("flex flex-col gap-6", !hasChildren && "flex-1")}>
-      {/* Hero banner with collapse support */}
-      <ItemHero
-        name={item.name}
-        description={item.description}
-        artworkId={item.artworkId}
-        isCollapsed={isCollapsed}
-        onCollapse={toggleCollapse}
-      />
+      {/* Hero banner - single slide carousel */}
+      <HeroCarousel slides={[heroSlide]} showCta={false} isOwner={false} />
 
-      {/* Toolbar - Sort + View Toggle + Fork */}
+      {/* Toolbar - Sort/Filter + View Toggle + Fork */}
       <div className="flex items-center justify-between gap-2 sm:gap-3">
-        {/* Left side: Sort */}
+        {/* Left side: Sort/Filter */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Mobile: Options sheet */}
           <div className="sm:hidden">
             <MobileOptionsSheet
               sortBy={sortBy}
               onSortChange={setSortBy}
+              filterBy={filterBy}
+              onFilterChange={setFilterBy}
               disabled={!hasChildren}
-              sortOptions={EXPLORE_SORT_OPTIONS}
-              defaultSort="updated-desc"
             />
           </div>
 
+          {/* Desktop: Sort/Filter dropdowns */}
           <div className="hidden items-center gap-3 sm:flex">
             <SortDropdown
               value={sortBy}
               onChange={setSortBy}
               disabled={!hasChildren}
-              options={EXPLORE_SORT_OPTIONS}
+            />
+            <FilterDropdown
+              value={filterBy}
+              onChange={setFilterBy}
+              disabled={!hasChildren}
             />
           </div>
         </div>
@@ -217,7 +241,11 @@ export function PublicItemClient({
             (forkStatus?.hasForked ? (
               <Button variant="outline" size="sm" asChild>
                 <Link
-                  href={`/my-items/${forkStatus.forkedItemId}`}
+                  href={
+                    currentUserUsername
+                      ? `/u/${currentUserUsername}/${forkStatus.forkedItemId}`
+                      : "#"
+                  }
                   aria-label="In Your Library"
                 >
                   <Check className="mr-2 size-4 text-green-500" />
@@ -284,7 +312,7 @@ export function PublicItemClient({
             data-testid="items-grid-view"
             className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
           >
-            {sortedChildItems.map((child, index) => (
+            {directChildren.map((child, index) => (
               <GridItem
                 key={child.id}
                 id={child.id}

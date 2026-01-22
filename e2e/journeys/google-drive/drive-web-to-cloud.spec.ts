@@ -20,7 +20,7 @@ test.describe("Google Drive: Web to Cloud Sync", () => {
       await cleanupTestDriveFolders();
 
       await setupDriveConnection(testUser.id);
-      itemsPage = new ItemsPage(page);
+      itemsPage = new ItemsPage(page, testUser.username);
       await itemsPage.goto();
     }
   );
@@ -40,10 +40,8 @@ test.describe("Google Drive: Web to Cloud Sync", () => {
     // Create item first
     await itemsPage.createItem("Rename Test Item");
     await itemsPage.waitForToastToDisappear();
-    // Switch to tree view for stable context menu
-    await itemsPage.switchToTreeView();
 
-    // Open settings and rename
+    // Open settings and rename (grid view context menu works on root page)
     await itemsPage.openSettingsViaContextMenu("Rename Test Item");
     await page.getByLabel(/item name/i).fill("Renamed Item");
     await page.getByRole("button", { name: /save changes/i }).click();
@@ -62,10 +60,8 @@ test.describe("Google Drive: Web to Cloud Sync", () => {
     // Create item first
     await itemsPage.createItem("Delete Test Item");
     await itemsPage.waitForToastToDisappear();
-    // Switch to tree view for stable context menu
-    await itemsPage.switchToTreeView();
 
-    // Delete via context menu
+    // Delete via context menu (grid view works on root page)
     await itemsPage.deleteItemViaContextMenu("Delete Test Item");
 
     // Verify removed from web
@@ -100,10 +96,8 @@ test.describe("Google Drive: Web to Cloud Sync", () => {
       select: { id: true, driveFileId: true },
     });
     const originalDriveId = itemBefore!.driveFileId;
-    // Switch to tree view for stable context menu
-    await itemsPage.switchToTreeView();
 
-    // Rename the item
+    // Rename the item (grid view context menu works on root page)
     await itemsPage.openSettingsViaContextMenu("Stable ID Test");
     await page.getByLabel(/item name/i).fill("Renamed Stable ID");
     await page.getByRole("button", { name: /save changes/i }).click();

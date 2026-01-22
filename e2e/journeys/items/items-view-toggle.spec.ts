@@ -1,33 +1,33 @@
 /**
  * E2E tests for items view toggle.
  * Tests switching between tree and grid views.
+ *
+ * Note: Tree view is only available on item detail pages (when viewing children).
  */
 
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
 test.describe("Items View Toggle Journey", () => {
-  test.beforeEach(async ({ page, signUpPage, itemsPage }) => {
-    const email = generateUniqueEmail("items-view");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
-
-    // Create some test items
-    await itemsPage.createItem("Folder A");
-    await itemsPage.createItem("Folder B");
-
-    // Wait for toasts to clear before tests proceed
-    await itemsPage.waitForToastToDisappear();
+  // Use testUser fixture for consistent test setup (compatible with itemsPage)
+  test.beforeEach(async ({ page, testUser }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
   test("can switch between tree and grid view", async ({ itemsPage }) => {
-    await itemsPage.goto();
+    // Create parent container and navigate into it (tree view only on item detail pages)
+    await itemsPage.createItem("View Container");
+    await itemsPage.waitForToastToDisappear();
+    await itemsPage.clickItem("View Container");
 
-    // Default is grid view
+    // Create some test items inside the container
+    await itemsPage.createItem("Folder A");
+    await itemsPage.createItem("Folder B");
+    await itemsPage.waitForToastToDisappear();
+
+    // Default is grid view on item detail pages
     await expect(itemsPage.gridView).toBeVisible();
 
-    // Switch to tree
+    // Switch to tree (available on item detail pages)
     await itemsPage.switchToTreeView();
     await expect(itemsPage.treeView).toBeVisible();
 
@@ -40,7 +40,15 @@ test.describe("Items View Toggle Journey", () => {
     page,
     itemsPage,
   }) => {
-    await itemsPage.goto();
+    // Create parent container and navigate into it (tree view only on item detail pages)
+    await itemsPage.createItem("Persist Container");
+    await itemsPage.waitForToastToDisappear();
+    await itemsPage.clickItem("Persist Container");
+
+    // Create some test items inside the container
+    await itemsPage.createItem("Folder A");
+    await itemsPage.createItem("Folder B");
+    await itemsPage.waitForToastToDisappear();
     await page.waitForLoadState("networkidle");
 
     // Switch to grid
@@ -48,19 +56,27 @@ test.describe("Items View Toggle Journey", () => {
     await expect(itemsPage.gridView).toBeVisible();
 
     // Navigate away and back (wait for full page load)
-    await page.goto("/my-items");
+    await page.reload();
     await page.waitForLoadState("networkidle");
     await expect(itemsPage.gridView).toBeVisible();
   });
 
   test("items visible in both views", async ({ itemsPage }) => {
-    await itemsPage.goto();
+    // Create parent container and navigate into it (tree view only on item detail pages)
+    await itemsPage.createItem("Visibility Container");
+    await itemsPage.waitForToastToDisappear();
+    await itemsPage.clickItem("Visibility Container");
 
-    // Check grid view (default)
+    // Create some test items inside the container
+    await itemsPage.createItem("Folder A");
+    await itemsPage.createItem("Folder B");
+    await itemsPage.waitForToastToDisappear();
+
+    // Check grid view (default on item detail pages)
     await itemsPage.expectItemVisible("Folder A");
     await itemsPage.expectItemVisible("Folder B");
 
-    // Check tree view
+    // Check tree view (available on item detail pages)
     await itemsPage.switchToTreeView();
     await itemsPage.expectItemVisible("Folder A");
     await itemsPage.expectItemVisible("Folder B");

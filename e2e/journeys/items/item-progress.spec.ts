@@ -1,33 +1,44 @@
 /**
  * E2E tests for item progress bars.
  * Tests progress bar visibility and behavior in grid, tree, and hero views.
+ * Note: Tree view only exists on item detail pages (when viewing children).
  */
 
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
 test.describe("Item Progress Bars", () => {
-  test.beforeEach(async ({ page, signUpPage }) => {
-    const email = generateUniqueEmail("item-progress");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  // Use testUser fixture for consistent test setup (compatible with itemsPage)
+  test.beforeEach(async ({ page, testUser }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
-  test("hides progress bar when item has no media files", async ({
+  test("hides progress bar when item has no media files (grid view)", async ({
     page,
     itemsPage,
   }) => {
-    // Create empty folder
+    // Create empty folder on root profile page
     await itemsPage.createItem("Empty Folder");
 
-    // Should not show progress bar in grid view (default)
+    // Should not show progress bar in grid view (default on profile page)
     await expect(page.getByTestId("grid-item-progress-bar")).not.toBeVisible();
+  });
 
-    // Switch to tree view and verify no progress bar there either
+  test("hides progress bar when item has no media files (tree view)", async ({
+    page,
+    itemsPage,
+  }) => {
+    // Create parent folder and navigate to it (tree view is on item detail pages)
+    await itemsPage.createItem("Parent Folder");
+    await itemsPage.clickItem("Parent Folder");
+
+    // Create child items
+    await itemsPage.createItem("Child A");
+    await itemsPage.createItem("Child B");
+    await itemsPage.waitForToastToDisappear();
+
+    // Switch to tree view on item detail page
     await itemsPage.switchToTreeView();
     await expect(page.getByTestId("tree-item-progress-bar")).not.toBeVisible();
-    // Note: No cleanup needed - each test uses a fresh user
   });
 
   test("hides progress bar in edit mode (grid view)", async ({
@@ -48,15 +59,22 @@ test.describe("Item Progress Bars", () => {
 
     // Exit edit mode
     await itemsPage.exitEditMode();
-    // Note: No cleanup needed - each test uses a fresh user
   });
 
   test("hides progress bar in edit mode (tree view)", async ({
     page,
     itemsPage,
   }) => {
-    // Create item and switch to tree view
-    await itemsPage.createItem("Tree Test Item");
+    // Create parent and navigate to it (tree view is on item detail pages)
+    await itemsPage.createItem("Tree Parent");
+    await itemsPage.clickItem("Tree Parent");
+
+    // Create child items
+    await itemsPage.createItem("Tree Child A");
+    await itemsPage.createItem("Tree Child B");
+    await itemsPage.waitForToastToDisappear();
+
+    // Switch to tree view
     await itemsPage.switchToTreeView();
 
     // Set sort to Custom Order (required for edit mode)
@@ -70,7 +88,6 @@ test.describe("Item Progress Bars", () => {
 
     // Exit edit mode
     await itemsPage.exitEditMode();
-    // Note: No cleanup needed - each test uses a fresh user
   });
 
   test("shows hero section on item detail page", async ({
@@ -84,24 +101,25 @@ test.describe("Item Progress Bars", () => {
     await itemsPage.clickItem("Hero Test");
 
     // Verify hero is visible
-    const hero = page.getByTestId("item-hero");
+    const hero = page.getByTestId("hero-carousel");
     await expect(hero).toBeVisible();
 
     // Hero progress bar should not be visible (no media files)
     await expect(page.getByTestId("hero-progress-bar")).not.toBeVisible();
-    // Note: No cleanup needed - each test uses a fresh user
   });
 
   test("navigates between views without progress bar errors", async ({
     page,
     itemsPage,
   }) => {
-    // Create a few items
+    // Create parent and navigate to it (view toggle is on item detail pages)
+    await itemsPage.createItem("View Toggle Parent");
+    await itemsPage.clickItem("View Toggle Parent");
+
+    // Create child items
     await itemsPage.createItem("Progress Item A");
     await itemsPage.createItem("Progress Item B");
-
-    // Wait for toast to disappear before switching views
-    await page.waitForTimeout(1000);
+    await itemsPage.waitForToastToDisappear();
 
     // Switch between views multiple times
     await itemsPage.switchToTreeView();
@@ -116,6 +134,5 @@ test.describe("Item Progress Bars", () => {
 
     // No errors should occur - page should remain stable
     await expect(page.getByTestId("items-grid-view")).toBeVisible();
-    // Note: No cleanup needed - each test uses a fresh user
   });
 });

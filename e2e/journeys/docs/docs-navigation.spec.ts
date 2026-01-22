@@ -4,17 +4,13 @@
  */
 
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 import { toggleTheme, expectDarkMode } from "../../helpers/theme-helpers";
 import { openSidebarIfClosed } from "../../helpers/sidebar-helpers";
 
 test.describe("Documentation Navigation", () => {
-  test.beforeEach(async ({ page, signUpPage }) => {
-    // Create account and sign in
-    const email = generateUniqueEmail("docs");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  test.beforeEach(async ({ page, testUser }) => {
+    // Use testUser fixture for consistent test setup (compatible with itemsPage)
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
   test("can navigate to docs via Get Help link", async ({ page }) => {
@@ -52,8 +48,8 @@ test.describe("Documentation Navigation", () => {
     const backLink = page.getByRole("link", { name: "Back to My Items" });
     await backLink.click();
 
-    // Should be on my items page
-    await expect(page).toHaveURL("/my-items");
+    // Should be on user profile page
+    await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+$/);
   });
 
   test("docs respects dark mode setting", async ({ page, docsPage }) => {

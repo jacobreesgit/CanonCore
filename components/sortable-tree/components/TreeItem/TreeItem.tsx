@@ -252,7 +252,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                   {/* Progress bar - only in view mode */}
                   {progressPercentage !== null && (
                     <div className="mt-1">
-                      <div className="bg-muted-foreground/20 h-1 w-full overflow-hidden rounded-full">
+                      <div className="bg-muted-foreground/20 h-1.5 w-full overflow-hidden rounded-full">
                         <div
                           data-testid="tree-item-progress-bar"
                           className="bg-primary h-full rounded-full transition-[width] duration-300"
