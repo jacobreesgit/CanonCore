@@ -66,8 +66,12 @@ test.describe("Explore Page Journey", () => {
     }) => {
       await publicProfilePage.gotoExplore();
 
-      // Hero should show explore title
-      await publicProfilePage.expectHeroVisible("Explore Collections");
+      // Page should load with header showing "Explore"
+      await expect(
+        page
+          .getByTestId("site-header-breadcrumb-root")
+          .filter({ hasText: "Explore" })
+      ).toBeVisible();
 
       // Should see the public item (use .first() since multiple items may have same name in grid)
       await expect(
@@ -99,13 +103,6 @@ test.describe("Explore Page Journey", () => {
       await publicProfilePage.expectHeroVisible("Public Explore Collection");
     });
 
-    test("shows collection count", async ({ page, publicProfilePage }) => {
-      await publicProfilePage.gotoExplore();
-
-      // Should show collection count (at least 1)
-      await expect(page.getByText(/\d+ collections?/)).toBeVisible();
-    });
-
     test("accessible as unauthenticated user", async ({
       page,
       publicProfilePage,
@@ -113,8 +110,12 @@ test.describe("Explore Page Journey", () => {
       // Navigate directly without signing in
       await publicProfilePage.gotoExplore();
 
-      // Should see the explore page
-      await publicProfilePage.expectHeroVisible("Explore Collections");
+      // Page should load with header showing "Explore"
+      await expect(
+        page
+          .getByTestId("site-header-breadcrumb-root")
+          .filter({ hasText: "Explore" })
+      ).toBeVisible();
       await expect(
         page
           .getByTestId("items-grid-view")
@@ -125,34 +126,29 @@ test.describe("Explore Page Journey", () => {
 
     test("accessible as authenticated user", async ({
       page,
-      signUpPage,
+      testUser,
       publicProfilePage,
     }) => {
-      // Create and sign in as a viewer
-      const viewerEmail = generateUniqueEmail("explore-viewer");
-      await signUpPage.goto();
-      await signUpPage.signUp(viewerEmail, TEST_PASSWORD, TEST_PASSWORD);
-      await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+      // Use testUser fixture for consistent test setup (compatible with itemsPage)
+      await expect(page).toHaveURL(`/u/${testUser.username}`, {
+        timeout: 10000,
+      });
 
       // Navigate to explore
       await publicProfilePage.gotoExplore();
 
-      // Should see the explore page
-      await publicProfilePage.expectHeroVisible("Explore Collections");
+      // Page should load with header showing "Explore"
+      await expect(
+        page
+          .getByTestId("site-header-breadcrumb-root")
+          .filter({ hasText: "Explore" })
+      ).toBeVisible();
       await expect(
         page
           .getByTestId("items-grid-view")
           .getByText("Public Explore Collection")
           .first()
       ).toBeVisible();
-
-      // Cleanup viewer
-      const viewer = await prisma.user.findUnique({
-        where: { email: viewerEmail },
-      });
-      if (viewer) {
-        await prisma.user.delete({ where: { id: viewer.id } }).catch(() => {});
-      }
     });
   });
 
@@ -167,8 +163,12 @@ test.describe("Explore Page Journey", () => {
 
       await publicProfilePage.gotoExplore();
 
-      // The hero should always be visible
-      await publicProfilePage.expectHeroVisible("Explore Collections");
+      // Page should load with header showing "Explore"
+      await expect(
+        page
+          .getByTestId("site-header-breadcrumb-root")
+          .filter({ hasText: "Explore" })
+      ).toBeVisible();
 
       // Either shows items grid OR empty state
       const hasItems = await page.getByTestId("items-grid-view").isVisible();
@@ -177,22 +177,18 @@ test.describe("Explore Page Journey", () => {
         // Empty state should show message
         await expect(page.getByText("Nothing here yet")).toBeVisible();
         await expect(
-          page.getByText(/be the first to share your collection/i)
+          page.getByText(/be the first to share your items/i)
         ).toBeVisible();
       }
     });
   });
 
   test.describe("sidebar navigation", () => {
-    test("can navigate to explore from sidebar", async ({
-      page,
-      signUpPage,
-    }) => {
-      // Create user first
-      const userEmail = generateUniqueEmail("sidebar-nav");
-      await signUpPage.goto();
-      await signUpPage.signUp(userEmail, TEST_PASSWORD, TEST_PASSWORD);
-      await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+    test("can navigate to explore from sidebar", async ({ page, testUser }) => {
+      // Use testUser fixture for consistent test setup (compatible with itemsPage)
+      await expect(page).toHaveURL(`/u/${testUser.username}`, {
+        timeout: 10000,
+      });
 
       // Find and click Explore in sidebar
       const sidebarTrigger = page.getByTestId("sidebar-trigger");
@@ -207,14 +203,6 @@ test.describe("Explore Page Journey", () => {
 
       await page.getByRole("link", { name: /explore/i }).click();
       await expect(page).toHaveURL("/explore");
-
-      // Cleanup
-      const user = await prisma.user.findUnique({
-        where: { email: userEmail },
-      });
-      if (user) {
-        await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
-      }
     });
 
     test("explore link visible to unauthenticated users", async ({ page }) => {

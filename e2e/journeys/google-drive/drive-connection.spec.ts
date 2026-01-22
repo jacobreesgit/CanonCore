@@ -11,9 +11,9 @@ import { encryptCredential } from "@/lib/crypto";
 test.describe("Google Drive: OAuth Connection", () => {
   let settingsPage: SettingsPage;
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, testUser }) => {
     settingsPage = new SettingsPage(page);
-    await page.goto("/my-items");
+    await page.goto(`/u/${testUser.username}`);
   });
 
   test("shows Connect button when not connected", async ({
@@ -168,7 +168,7 @@ test.describe("Google Drive: OAuth Connection", () => {
     page,
     testUser,
   }) => {
-    const itemsPage = new ItemsPage(page);
+    const itemsPage = new ItemsPage(page, testUser.username);
     await itemsPage.goto();
 
     // Create an item

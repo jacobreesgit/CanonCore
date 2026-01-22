@@ -4,26 +4,22 @@
  */
 
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
 test.describe("Bulk Delete", () => {
-  test.beforeEach(async ({ page, signUpPage, itemsPage }) => {
-    // Create account and sign in
-    const email = generateUniqueEmail("bulk-delete");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  // Uses testUser fixture (via itemsPage dependency) for automatic login
 
-    await itemsPage.goto();
+  test("should show bulk actions toolbar in edit mode", async ({
+    page,
+    testUser,
+    itemsPage,
+  }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
+
     // Create test items
     await itemsPage.createItem("Folder A");
     await itemsPage.createItem("Folder B");
     await itemsPage.createItem("Folder C");
-  });
 
-  test("should show bulk actions toolbar in edit mode", async ({
-    itemsPage,
-  }) => {
     // Enter edit mode
     await itemsPage.enterEditMode();
 
@@ -36,8 +32,17 @@ test.describe("Bulk Delete", () => {
   });
 
   test("should select individual items with checkbox", async ({
+    page,
+    testUser,
     itemsPage,
   }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
+
+    // Create test items
+    await itemsPage.createItem("Folder A");
+    await itemsPage.createItem("Folder B");
+    await itemsPage.createItem("Folder C");
+
     await itemsPage.enterEditMode();
 
     // Select first item
@@ -52,8 +57,17 @@ test.describe("Bulk Delete", () => {
   });
 
   test("should select all items with select-all checkbox", async ({
+    page,
+    testUser,
     itemsPage,
   }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
+
+    // Create test items
+    await itemsPage.createItem("Folder A");
+    await itemsPage.createItem("Folder B");
+    await itemsPage.createItem("Folder C");
+
     await itemsPage.enterEditMode();
 
     // Click select all
@@ -67,7 +81,18 @@ test.describe("Bulk Delete", () => {
     await itemsPage.expectNoBulkDeleteButton();
   });
 
-  test("should delete selected items", async ({ itemsPage, page }) => {
+  test("should delete selected items", async ({
+    page,
+    testUser,
+    itemsPage,
+  }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
+
+    // Create test items
+    await itemsPage.createItem("Folder A");
+    await itemsPage.createItem("Folder B");
+    await itemsPage.createItem("Folder C");
+
     await itemsPage.enterEditMode();
 
     // Select two items
@@ -87,7 +112,18 @@ test.describe("Bulk Delete", () => {
     await itemsPage.expectItemVisible("Folder C");
   });
 
-  test("should delete all items with select-all", async ({ itemsPage }) => {
+  test("should delete all items with select-all", async ({
+    page,
+    testUser,
+    itemsPage,
+  }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
+
+    // Create test items
+    await itemsPage.createItem("Folder A");
+    await itemsPage.createItem("Folder B");
+    await itemsPage.createItem("Folder C");
+
     await itemsPage.enterEditMode();
 
     // Select all
@@ -107,8 +143,17 @@ test.describe("Bulk Delete", () => {
   });
 
   test("should clear selection when exiting edit mode", async ({
+    page,
+    testUser,
     itemsPage,
   }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
+
+    // Create test items
+    await itemsPage.createItem("Folder A");
+    await itemsPage.createItem("Folder B");
+    await itemsPage.createItem("Folder C");
+
     await itemsPage.enterEditMode();
 
     // Select items
@@ -127,9 +172,15 @@ test.describe("Bulk Delete", () => {
     await itemsPage.expectNoBulkDeleteButton();
   });
 
-  test("should work in grid view", async ({ itemsPage }) => {
-    // Switch to grid view
-    await itemsPage.switchToGridView();
+  test("should work in grid view", async ({ page, testUser, itemsPage }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
+
+    // Create test items
+    await itemsPage.createItem("Folder A");
+    await itemsPage.createItem("Folder B");
+    await itemsPage.createItem("Folder C");
+
+    // Root profile page is already in grid view
     await itemsPage.enterEditMode();
 
     // Select items in grid view

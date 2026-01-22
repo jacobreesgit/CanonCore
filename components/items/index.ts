@@ -4,7 +4,6 @@ export { FilesSection } from "./files-section";
 export { FileTypeCombobox } from "./file-type-combobox";
 export { ItemContextMenu } from "./item-context-menu";
 export { ItemDetailClient } from "./item-detail-client";
-export { ItemHero } from "./item-hero";
 export { ItemSettingsDialog } from "./item-settings-dialog";
 export { ItemStats } from "./item-stats";
 export { ItemsToolbar } from "./items-toolbar";

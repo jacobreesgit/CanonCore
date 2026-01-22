@@ -28,8 +28,8 @@ test.describe("Google Drive: Auto-Sync Operations", () => {
       await cleanupTestDriveFolders();
 
       await setupDriveConnection(testUser.id);
-      itemsPage = new ItemsPage(page);
-      await page.goto("/my-items");
+      itemsPage = new ItemsPage(page, testUser.username);
+      await page.goto(`/u/${testUser.username}`);
     }
   );
 
@@ -166,7 +166,7 @@ test.describe("Google Drive: Auto-Sync Operations", () => {
 
     // Navigate back to root
     await itemsPage.clickBreadcrumb("My Items");
-    await page.waitForURL(/\/my-items$/);
+    await page.waitForURL(/\/u\/[a-zA-Z0-9_]+$/);
     await itemsPage.waitForLoadingComplete();
     await itemsPage.expectItemVisible("Batch Delete Parent");
 

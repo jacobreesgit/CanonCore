@@ -37,6 +37,7 @@ const prisma = getPrismaClient();
 export interface TestUser {
   email: string;
   password: string;
+  username: string;
 }
 
 /**

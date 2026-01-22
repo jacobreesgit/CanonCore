@@ -7,22 +7,17 @@
  */
 
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
 test.describe("Items Max Depth Journey", () => {
   test("cannot create item beyond max depth via UI", async ({
     page,
-    signUpPage,
+    testUser,
     itemsPage,
   }) => {
     // This test creates 10 levels of nesting - allow extra time
     test.setTimeout(120000);
 
-    const email = generateUniqueEmail("items-max-depth");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
-    await itemsPage.goto();
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
     // Create 9 levels of nesting (depth 0-8)
     // Each iteration creates an item and navigates into it
@@ -31,7 +26,9 @@ test.describe("Items Max Depth Journey", () => {
       await itemsPage.createItem(`Folder-${i}`);
       await itemsPage.waitForToastToDisappear();
       await itemsPage.clickItem(`Folder-${i}`);
-      await expect(page).toHaveURL(/\/my-items\/[\w-]+/, { timeout: 10000 });
+      await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+\/[\w-]+/, {
+        timeout: 10000,
+      });
     }
 
     // Now inside Folder-9 (depth 8), create item at depth 9 (max allowed)
@@ -39,7 +36,9 @@ test.describe("Items Max Depth Journey", () => {
     await itemsPage.waitForToastToDisappear();
     await itemsPage.expectItemVisible("Deepest");
     await itemsPage.clickItem("Deepest");
-    await expect(page).toHaveURL(/\/my-items\/[\w-]+/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+\/[\w-]+/, {
+      timeout: 10000,
+    });
 
     // Now inside "Deepest" at depth 9 (max), try to create child
     // This should fail with an error toast
@@ -56,7 +55,7 @@ test.describe("Items Max Depth Journey", () => {
 
   test("breadcrumbs show full hierarchy path", async ({
     page,
-    signUpPage,
+    testUser,
     itemsPage,
   }) => {
     // Allow extra time for nested operations
@@ -65,11 +64,7 @@ test.describe("Items Max Depth Journey", () => {
       type: "flaky",
       description: "Parallel execution timing",
     });
-    const email = generateUniqueEmail("items-breadcrumb-depth");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
-    await itemsPage.goto();
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
     // Create a 3-level hierarchy with toast waits for stability
     await itemsPage.createItem("Grandparent");
@@ -96,15 +91,11 @@ test.describe("Items Max Depth Journey", () => {
 
   test("can navigate to any level via breadcrumbs", async ({
     page,
-    signUpPage,
+    testUser,
     itemsPage,
   }) => {
     test.setTimeout(60000); // Increase timeout for nested navigation
-    const email = generateUniqueEmail("items-breadcrumb-nav");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
-    await itemsPage.goto();
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
     // Create a 3-level hierarchy with toast waits
     await itemsPage.createItem("Level A");
@@ -121,7 +112,7 @@ test.describe("Items Max Depth Journey", () => {
 
     // Navigate back to Level A via breadcrumb
     await itemsPage.clickBreadcrumb("Level A");
-    await expect(page).toHaveURL(/\/my-items\/[\w-]+/);
+    await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+\/[\w-]+/);
 
     // Should see Level B in the list
     await itemsPage.expectItemVisible("Level B");
@@ -129,15 +120,11 @@ test.describe("Items Max Depth Journey", () => {
 
   test("deeply nested item shows correct depth in ancestors", async ({
     page,
-    signUpPage,
+    testUser,
     itemsPage,
   }) => {
     test.setTimeout(60000); // Increase timeout for deep nesting
-    const email = generateUniqueEmail("items-deep-ancestors");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
-    await itemsPage.goto();
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
     // Create 5 levels with toast waits for stability
     const levels = ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"];

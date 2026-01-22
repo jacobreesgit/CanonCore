@@ -1,22 +1,27 @@
 /**
- * Public profile page displaying a user's public items.
- * Features cinematic hero section with staggered poster grid.
+ * Unified profile page displaying a user's items.
+ * Shows full editing for owners, read-only view for visitors.
+ * Features cinematic hero section with poster grid.
  */
 
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { auth } from "@/lib/auth";
-import { getPublicProfile, getPublicItemsForUser } from "@/lib/public-auth";
+import { getPublicProfile, getProfileByIdOrUsername } from "@/lib/public-auth";
+import { getItemsForProfile, getLibraryProgress } from "@/lib/item-actions";
+import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { SiteHeader } from "@/components/site-header";
-import { PublicProfileClient } from "./public-profile-client";
+import { UnifiedProfileClient } from "@/components/profile";
+import { OAuthToast } from "@/components/google-drive";
 
 interface PageProps {
   params: Promise<{ username: string }>;
 }
 
 /**
- * Generates metadata for the public profile page.
+ * Generates metadata for the profile page.
  */
 export async function generateMetadata({
   params,
@@ -34,10 +39,10 @@ export async function generateMetadata({
 
   return {
     title: `${displayName} | CanonCore`,
-    description: `View ${displayName}'s public media collection on CanonCore.`,
+    description: `View ${displayName}'s media library on CanonCore.`,
     openGraph: {
       title: `${displayName} | CanonCore`,
-      description: `View ${displayName}'s public media collection on CanonCore.`,
+      description: `View ${displayName}'s media library on CanonCore.`,
       type: "profile",
       username: profile.username,
     },
@@ -45,18 +50,14 @@ export async function generateMetadata({
 }
 
 /**
- * Public profile page server component.
- * Fetches profile and items data, renders client component.
+ * Unified profile page server component.
+ * Fetches profile and items based on viewer/owner mode.
  */
-export default async function PublicProfilePage({ params }: PageProps) {
+export default async function ProfilePage({ params }: PageProps) {
   const { username } = await params;
 
-  // Rate limit and fetch profile in parallel
-  const [rateLimitResult, profile, session] = await Promise.all([
-    checkRateLimit("publicProfile"),
-    getPublicProfile(username),
-    auth(),
-  ]);
+  // Rate limit first
+  const rateLimitResult = await checkRateLimit("publicProfile");
 
   if (rateLimitResult) {
     return (
@@ -68,24 +69,68 @@ export default async function PublicProfilePage({ params }: PageProps) {
     );
   }
 
+  // Get session to check if viewer might be the owner
+  const session = await auth();
+  const sessionUsername = session?.user?.username;
+
+  // Check if this is the owner viewing their own profile (case-insensitive)
+  const isOwnerByUsername =
+    sessionUsername && sessionUsername.toLowerCase() === username.toLowerCase();
+
+  // For owners, we fetch profile directly without requiring isPublic
+  // For visitors, we use getPublicProfile which requires isPublic: true
+  const profile = isOwnerByUsername
+    ? await getProfileByIdOrUsername(username)
+    : await getPublicProfile(username);
+
   if (!profile) {
     notFound();
   }
 
   const currentUserId = session?.user?.id ?? null;
-  const items = await getPublicItemsForUser(profile.id, 50, 0, currentUserId);
+  const isOwner = currentUserId === profile.id;
+
+  // Fetch items using unified function (handles owner/viewer mode internally)
+  const profileData = await getItemsForProfile(profile.id, currentUserId);
+
+  // For owners, also fetch Drive connection and library progress
+  let hasDriveConnection = false;
+  let libraryProgress = null;
+
+  if (isOwner) {
+    const [driveConnection, progress] = await Promise.all([
+      getGoogleDriveConnection(),
+      getLibraryProgress(),
+    ]);
+    hasDriveConnection =
+      driveConnection !== null && !driveConnection.needsReauth;
+    libraryProgress = progress;
+  }
 
   return (
     <>
+      {isOwner && (
+        <Suspense fallback={null}>
+          <OAuthToast />
+        </Suspense>
+      )}
       <SiteHeader
-        title={`@${profile.username}`}
+        title={isOwner ? "My Items" : `@${profile.username}`}
         titleHref={`/u/${profile.username}`}
       />
       <div className="flex flex-1 flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
-        <PublicProfileClient
-          profile={profile}
-          items={items}
-          currentUserId={currentUserId}
+        <UnifiedProfileClient
+          profile={{
+            id: profileData.profile.id,
+            username: profileData.profile.username,
+            name: profileData.profile.name,
+            hasImage: profileData.profile.hasImage,
+            hasHeroImage: profileData.profile.hasHeroImage,
+          }}
+          items={profileData.items}
+          isOwner={isOwner}
+          hasDriveConnection={hasDriveConnection}
+          libraryProgress={libraryProgress}
         />
       </div>
     </>

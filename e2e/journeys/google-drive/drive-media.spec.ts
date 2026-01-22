@@ -27,7 +27,7 @@ test.describe("Google Drive: Media Playback", () => {
     await cleanupTestDriveFolders();
 
     // e2eDriveUser fixture logs us in - "Breaking Bad" is already in the database
-    itemsPage = new ItemsPage(page);
+    itemsPage = new ItemsPage(page, e2eDriveUser.username);
 
     // Navigate to items page with fresh state (closes any modals from previous tests)
     await itemsPage.goto();
@@ -60,7 +60,7 @@ test.describe("Google Drive: Media Playback", () => {
     await itemsPage.clickItem(TEST_ITEM_NAME);
 
     // Check for hero artwork (may not exist without actual media files)
-    const heroArtwork = page.locator("[data-testid='item-hero-artwork']");
+    const heroArtwork = page.locator("[data-testid='hero-carousel-artwork']");
     const hasHeroArtwork = await heroArtwork.count();
 
     if (hasHeroArtwork > 0) {

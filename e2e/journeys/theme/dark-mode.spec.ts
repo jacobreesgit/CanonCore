@@ -4,7 +4,6 @@
  */
 
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 import {
   toggleTheme,
   expectDarkMode,
@@ -12,12 +11,9 @@ import {
 } from "../../helpers/theme-helpers";
 
 test.describe("Dark Mode Theme Toggle", () => {
-  test.beforeEach(async ({ page, signUpPage }) => {
-    // Create account and sign in
-    const email = generateUniqueEmail("theme");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  test.beforeEach(async ({ page, testUser }) => {
+    // Use testUser fixture for consistent test setup (compatible with itemsPage)
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
   test("theme toggle button is visible in sidebar", async ({ page }) => {

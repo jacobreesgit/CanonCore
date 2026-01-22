@@ -25,6 +25,13 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // Get the user's username for redirect
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { username: true },
+  });
+  const profilePath = user?.username ? `/u/${user.username}` : "/";
+
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get("code");
   const state = searchParams.get("state");
@@ -34,20 +41,20 @@ export async function GET(request: NextRequest) {
   if (error) {
     logger.error({ error }, "[GoogleDrive] OAuth error from provider");
     return NextResponse.redirect(
-      new URL(`/my-items?error=${encodeURIComponent(error)}`, request.url)
+      new URL(`${profilePath}?error=${encodeURIComponent(error)}`, request.url)
     );
   }
 
   // Validate required parameters
   if (!code) {
     return NextResponse.redirect(
-      new URL("/my-items?error=no_code", request.url)
+      new URL(`${profilePath}?error=no_code`, request.url)
     );
   }
 
   if (!state) {
     return NextResponse.redirect(
-      new URL("/my-items?error=no_state", request.url)
+      new URL(`${profilePath}?error=no_state`, request.url)
     );
   }
 
@@ -56,7 +63,7 @@ export async function GET(request: NextRequest) {
   if (!stateData) {
     logger.warn("[GoogleDrive] Invalid or expired OAuth state");
     return NextResponse.redirect(
-      new URL("/my-items?error=invalid_state", request.url)
+      new URL(`${profilePath}?error=invalid_state`, request.url)
     );
   }
 
@@ -67,7 +74,7 @@ export async function GET(request: NextRequest) {
       "[GoogleDrive] OAuth state userId mismatch"
     );
     return NextResponse.redirect(
-      new URL("/my-items?error=state_mismatch", request.url)
+      new URL(`${profilePath}?error=state_mismatch`, request.url)
     );
   }
 
@@ -115,7 +122,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Redirect with existing flag so client can auto-sync existing content
-    const redirectUrl = new URL("/my-items", request.url);
+    const redirectUrl = new URL(profilePath, request.url);
     redirectUrl.searchParams.set("drive", "connected");
     if (rootFolder.wasExisting) {
       redirectUrl.searchParams.set("existing", "true");
@@ -127,7 +134,10 @@ export async function GET(request: NextRequest) {
     logger.error({ err }, "[GoogleDrive] OAuth callback error");
 
     return NextResponse.redirect(
-      new URL(`/my-items?error=${encodeURIComponent(message)}`, request.url)
+      new URL(
+        `${profilePath}?error=${encodeURIComponent(message)}`,
+        request.url
+      )
     );
   }
 }

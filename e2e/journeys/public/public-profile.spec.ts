@@ -15,32 +15,23 @@ test.describe("Public Profiles Journey", () => {
   test.describe.configure({ mode: "serial" });
 
   // Owner user credentials - created fresh for each test
-  let ownerEmail: string;
   let ownerId: string;
   let ownerUsername: string;
   let publicItemId: string;
 
-  test.beforeEach(async ({ page, signUpPage }) => {
-    // Create owner with public profile
-    ownerEmail = generateUniqueEmail("public-owner");
-    ownerUsername = generateUniqueUsername("po");
+  test.beforeEach(async ({ page, testUser }) => {
+    // Use testUser fixture for consistent test setup (compatible with itemsPage)
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
-    await signUpPage.goto();
-    await signUpPage.signUp(ownerEmail, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+    // Store testUser info for tests
+    ownerId = testUser.id;
+    ownerUsername = testUser.username;
 
-    // Get owner ID and set public profile via database
-    const owner = await prisma.user.findUnique({
-      where: { email: ownerEmail },
-    });
-    ownerId = owner!.id;
-
-    // Make profile public with username
+    // Make profile public
     await prisma.user.update({
       where: { id: ownerId },
       data: {
         isPublic: true,
-        username: ownerUsername,
       },
     });
 
@@ -59,11 +50,10 @@ test.describe("Public Profiles Journey", () => {
   });
 
   test.afterEach(async () => {
-    // Cleanup
+    // Cleanup items created in test (testUser fixture handles user cleanup)
     await prisma.item
       .deleteMany({ where: { userId: ownerId } })
       .catch(() => {});
-    await prisma.user.delete({ where: { id: ownerId } }).catch(() => {});
   });
 
   test("can view public profile as unauthenticated user", async ({
@@ -77,7 +67,7 @@ test.describe("Public Profiles Journey", () => {
 
     // Visit public profile
     await publicProfilePage.gotoProfile(ownerUsername);
-    await publicProfilePage.expectHeroVisible(ownerUsername);
+    await publicProfilePage.expectProfileHeroVisible(ownerUsername);
     await publicProfilePage.expectItemVisible("Public Test Collection");
   });
 
@@ -143,33 +133,26 @@ test.describe("Public Profiles Journey", () => {
 
   test("shows empty state when profile has no public items", async ({
     page,
-    signUpPage,
     publicProfilePage,
     myItemsPage,
   }) => {
-    // Create another user with no items
+    // Create another user with no items directly in DB
     const emptyUserEmail = generateUniqueEmail("empty-profile");
     const emptyUsername = generateUniqueUsername("em");
 
+    const { hash } = await import("bcryptjs");
+    const passwordHash = await hash(TEST_PASSWORD, 10);
+
+    const emptyUser = await prisma.user.create({
+      data: {
+        email: emptyUserEmail,
+        passwordHash,
+        isPublic: true,
+        username: emptyUsername,
+      },
+    });
+
     // Sign out current user (handles mobile sidebar)
-    await myItemsPage.signOut();
-    await page.waitForURL("/", { timeout: 10000 });
-
-    // Create empty user via sign up
-    await signUpPage.goto();
-    await signUpPage.signUp(emptyUserEmail, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
-
-    // Get empty user ID and make public
-    const emptyUser = await prisma.user.findUnique({
-      where: { email: emptyUserEmail },
-    });
-    await prisma.user.update({
-      where: { id: emptyUser!.id },
-      data: { isPublic: true, username: emptyUsername },
-    });
-
-    // Sign out (handles mobile sidebar)
     await myItemsPage.signOut();
     await page.waitForURL("/", { timeout: 10000 });
 
@@ -178,7 +161,7 @@ test.describe("Public Profiles Journey", () => {
     await publicProfilePage.expectEmptyState();
 
     // Cleanup
-    await prisma.user.delete({ where: { id: emptyUser!.id } }).catch(() => {});
+    await prisma.user.delete({ where: { id: emptyUser.id } }).catch(() => {});
   });
 });
 
@@ -186,28 +169,19 @@ test.describe("Public Profile Enablement Journey", () => {
   // Run serially to avoid database conflicts with shared user state
   test.describe.configure({ mode: "serial" });
 
-  let userEmail: string;
   let userId: string;
 
-  test.beforeEach(async ({ page, signUpPage }) => {
-    // Create a new user for each test
-    userEmail = generateUniqueEmail("enablement");
+  test.beforeEach(async ({ page, testUser }) => {
+    // Use testUser fixture for consistent test setup (compatible with itemsPage)
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
-    await signUpPage.goto();
-    await signUpPage.signUp(userEmail, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
-
-    // Get user ID for cleanup
-    const user = await prisma.user.findUnique({
-      where: { email: userEmail },
-    });
-    userId = user!.id;
+    // Store user ID for tests
+    userId = testUser.id;
   });
 
   test.afterEach(async () => {
-    // Cleanup
+    // Cleanup items created in test (testUser fixture handles user cleanup)
     await prisma.item.deleteMany({ where: { userId } }).catch(() => {});
-    await prisma.user.delete({ where: { id: userId } }).catch(() => {});
   });
 
   test("can enable public profile via settings", async ({
@@ -230,12 +204,9 @@ test.describe("Public Profile Enablement Journey", () => {
     await settingsPage.confirmMakePublic();
     expect(await settingsPage.isPublicProfileEnabled()).toBe(true);
 
-    // Save changes
+    // Save changes (waits for toast confirmation internally)
     await settingsPage.saveChanges();
-    await settingsPage.expectSettingsSavedToast();
 
-    // Wait for dialog to close and page to settle before navigating
-    await page.waitForLoadState("networkidle");
     // Ensure settings dialog is fully closed before navigating
     await expect(
       page.getByRole("dialog", { name: /settings/i })
@@ -347,8 +318,8 @@ test.describe("Public Profile Enablement Journey", () => {
     await publicProfilePage.gotoProfile(username);
     await expect(page).toHaveURL(`/u/${username}`);
 
-    // Go back to my items
-    await page.goto("/my-items");
+    // Go back to user's profile page
+    await page.goto(`/u/${username}`);
 
     // Open settings and disable
     await settingsPage.openFromNavUser();
@@ -357,11 +328,8 @@ test.describe("Public Profile Enablement Journey", () => {
     await settingsPage.togglePublicProfile();
     expect(await settingsPage.isPublicProfileEnabled()).toBe(false);
 
+    // Save changes (waits for toast confirmation internally)
     await settingsPage.saveChanges();
-    await settingsPage.expectSettingsSavedToast();
-
-    // Wait for settings dialog to close and page to settle
-    await page.waitForLoadState("networkidle");
 
     // Verify profile is no longer accessible (should show 404)
     await publicProfilePage.gotoProfile(username);
@@ -425,14 +393,11 @@ test.describe("Fork Journey", () => {
 
   test("can fork item as authenticated user", async ({
     page,
-    signUpPage,
+    testUser,
     publicProfilePage,
   }) => {
-    // Create forker user via sign up
-    const forkerEmail = generateUniqueEmail("forker");
-    await signUpPage.goto();
-    await signUpPage.signUp(forkerEmail, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+    // Use testUser fixture for consistent test setup (compatible with itemsPage)
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
     // Visit public item
     await publicProfilePage.gotoItem(ownerUsername, publicItemId);
@@ -450,29 +415,20 @@ test.describe("Fork Journey", () => {
     // Button should change to "In Your Library"
     await publicProfilePage.expectAlreadyForked();
 
-    // Cleanup forker
-    const forker = await prisma.user.findUnique({
-      where: { email: forkerEmail },
-    });
-    if (forker) {
-      await prisma.item
-        .deleteMany({ where: { userId: forker.id } })
-        .catch(() => {});
-      await prisma.user.delete({ where: { id: forker.id } }).catch(() => {});
-    }
+    // Cleanup forked items (testUser fixture handles user cleanup)
+    await prisma.item
+      .deleteMany({ where: { userId: testUser.id } })
+      .catch(() => {});
   });
 
   test("forked item appears in user library", async ({
     page,
-    signUpPage,
+    testUser,
     publicProfilePage,
     itemsPage,
   }) => {
-    // Create forker user via sign up
-    const forkerEmail = generateUniqueEmail("forker-lib");
-    await signUpPage.goto();
-    await signUpPage.signUp(forkerEmail, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+    // Use testUser fixture for consistent test setup (compatible with itemsPage)
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
     // Visit and fork
     await publicProfilePage.gotoItem(ownerUsername, publicItemId);
@@ -486,16 +442,10 @@ test.describe("Fork Journey", () => {
     // Forked item should appear
     await itemsPage.expectItemVisible("Forkable Collection");
 
-    // Cleanup forker
-    const forker = await prisma.user.findUnique({
-      where: { email: forkerEmail },
-    });
-    if (forker) {
-      await prisma.item
-        .deleteMany({ where: { userId: forker.id } })
-        .catch(() => {});
-      await prisma.user.delete({ where: { id: forker.id } }).catch(() => {});
-    }
+    // Cleanup forked items (testUser fixture handles user cleanup)
+    await prisma.item
+      .deleteMany({ where: { userId: testUser.id } })
+      .catch(() => {});
   });
 
   test("cannot fork own item", async ({
@@ -506,7 +456,7 @@ test.describe("Fork Journey", () => {
     // Sign in as owner
     await signInPage.goto();
     await signInPage.signIn(ownerEmail, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+    await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+$/, { timeout: 10000 });
 
     // Visit own public item
     await publicProfilePage.gotoItem(ownerUsername, publicItemId);
@@ -629,52 +579,6 @@ test.describe("Public Item View Toggle and Hero Collapse Journey", () => {
 
     // Tree view should still be selected (persisted in localStorage)
     await publicProfilePage.expectTreeViewVisible();
-  });
-
-  test("can collapse and expand hero section", async ({
-    page,
-    publicProfilePage,
-  }) => {
-    // Visit public item
-    await publicProfilePage.gotoItem(ownerUsername, parentItemId);
-    await publicProfilePage.expectHeroVisible("Parent Collection");
-
-    // Hero should be expanded by default
-    expect(await publicProfilePage.isHeroCollapsed()).toBe(false);
-
-    // Collapse the hero
-    await publicProfilePage.collapseHero();
-    expect(await publicProfilePage.isHeroCollapsed()).toBe(true);
-
-    // Expand the hero
-    await publicProfilePage.expandHero();
-    expect(await publicProfilePage.isHeroCollapsed()).toBe(false);
-  });
-
-  test("hero collapse state persists across page navigation", async ({
-    page,
-    publicProfilePage,
-  }) => {
-    // Visit public item
-    await publicProfilePage.gotoItem(ownerUsername, parentItemId);
-    await publicProfilePage.expectHeroVisible("Parent Collection");
-
-    // Collapse the hero
-    await publicProfilePage.collapseHero();
-    expect(await publicProfilePage.isHeroCollapsed()).toBe(true);
-
-    // Navigate to child item
-    await publicProfilePage.gotoItem(ownerUsername, childItemId);
-    await publicProfilePage.expectHeroVisible("Child Item");
-
-    // Hero should still be collapsed (persisted in localStorage)
-    expect(await publicProfilePage.isHeroCollapsed()).toBe(true);
-
-    // Go back to parent
-    await publicProfilePage.gotoItem(ownerUsername, parentItemId);
-
-    // Hero should still be collapsed
-    expect(await publicProfilePage.isHeroCollapsed()).toBe(true);
   });
 
   test("view toggle is disabled when no children", async ({

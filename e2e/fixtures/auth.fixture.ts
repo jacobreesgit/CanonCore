@@ -6,6 +6,7 @@ import { generateTestUser } from "./db.fixture";
 
 /**
  * Creates a new test user account via the sign-up UI.
+ * Returns user data including the generated username.
  */
 export async function createTestUserViaUI(page: Page): Promise<TestUser> {
   const testUser = generateTestUser();
@@ -14,14 +15,17 @@ export async function createTestUserViaUI(page: Page): Promise<TestUser> {
   await signUpPage.goto();
   await signUpPage.signUp(testUser.email, testUser.password, testUser.password);
 
-  // Wait for redirect to my-items
-  await page.waitForURL("/my-items", { timeout: 10000 });
+  // Wait for redirect to user profile (URL pattern matches /u/{username})
+  await page.waitForURL(/\/u\/[a-zA-Z0-9_]+$/, { timeout: 10000 });
 
   return testUser;
 }
 
 /**
  * Signs in an existing test user via the UI.
+ *
+ * @param page - Playwright page
+ * @param testUser - Test user credentials (must include username for redirect verification)
  */
 export async function signInTestUser(
   page: Page,
@@ -32,8 +36,8 @@ export async function signInTestUser(
   await signInPage.goto();
   await signInPage.signIn(testUser.email, testUser.password);
 
-  // Wait for redirect to my-items
-  await page.waitForURL("/my-items", { timeout: 10000 });
+  // Wait for redirect to user profile
+  await page.waitForURL(/\/u\/[a-zA-Z0-9_]+$/, { timeout: 10000 });
 }
 
 /**

@@ -4,14 +4,11 @@
  */
 
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 
 test.describe("Items Sort/Filter Journey", () => {
-  test.beforeEach(async ({ page, signUpPage, itemsPage }) => {
-    const email = generateUniqueEmail("items-sort-filter");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  // Use testUser fixture for consistent test setup (compatible with itemsPage)
+  test.beforeEach(async ({ page, testUser, itemsPage }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
     // Create test items with different names for sorting tests
     await itemsPage.createItem("Alpha Item");
@@ -23,8 +20,6 @@ test.describe("Items Sort/Filter Journey", () => {
   });
 
   test("sort dropdown changes item order", async ({ itemsPage }) => {
-    await itemsPage.goto();
-
     // Default is Custom Order, items should be in creation order
     await itemsPage.expectItemOrder([
       "Alpha Item",
@@ -52,8 +47,6 @@ test.describe("Items Sort/Filter Journey", () => {
   test("edit mode disabled when not using custom sort", async ({
     itemsPage,
   }) => {
-    await itemsPage.goto();
-
     // With custom sort, edit mode should be enabled
     const customSortEditDisabled = await itemsPage.isEditModeDisabled();
     expect(customSortEditDisabled).toBe(false);
@@ -77,8 +70,6 @@ test.describe("Items Sort/Filter Journey", () => {
     page,
     itemsPage,
   }) => {
-    await itemsPage.goto();
-
     // Change sort to Name Z-A
     await itemsPage.selectSortOption("Name Z-A");
 
@@ -99,8 +90,6 @@ test.describe("Items Sort/Filter Journey", () => {
   });
 
   test("filter dropdown filters visible items", async ({ itemsPage }) => {
-    await itemsPage.goto();
-
     // All items visible by default
     await itemsPage.expectItemVisible("Alpha Item");
     await itemsPage.expectItemVisible("Beta Item");
@@ -135,8 +124,6 @@ test.describe("Items Sort/Filter Journey", () => {
     page,
     itemsPage,
   }) => {
-    await itemsPage.goto();
-
     // Change filter to No Files
     await itemsPage.selectFilterOption("No Files");
 
@@ -150,8 +137,6 @@ test.describe("Items Sort/Filter Journey", () => {
   });
 
   test("sort and filter work together", async ({ itemsPage }) => {
-    await itemsPage.goto();
-
     // Sort by Name Z-A
     await itemsPage.selectSortOption("Name Z-A");
 

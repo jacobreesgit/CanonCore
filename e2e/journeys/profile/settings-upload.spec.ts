@@ -4,7 +4,6 @@
  */
 
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 import path from "path";
 
 // Helper to get the profile dialog
@@ -12,11 +11,9 @@ const getProfileDialog = (page: import("@playwright/test").Page) =>
   page.locator('[data-slot="dialog-content"]').first();
 
 test.describe("Profile Picture Upload", () => {
-  test.beforeEach(async ({ page, signUpPage }) => {
-    const email = generateUniqueEmail("upload");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  test.beforeEach(async ({ page, testUser }) => {
+    // Use testUser fixture for consistent test setup (compatible with itemsPage)
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
   test("can upload profile picture via dropzone", async ({
@@ -84,11 +81,9 @@ test.describe("Profile Picture Upload", () => {
 });
 
 test.describe("Hero Banner Upload", () => {
-  test.beforeEach(async ({ page, signUpPage }) => {
-    const email = generateUniqueEmail("hero");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  test.beforeEach(async ({ page, testUser }) => {
+    // Use testUser fixture for consistent test setup (compatible with itemsPage)
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
   test("can upload hero banner via dropzone", async ({ page, myItemsPage }) => {
@@ -149,11 +144,9 @@ test.describe("Hero Banner Upload", () => {
 });
 
 test.describe("Upload and Save Flow", () => {
-  test.beforeEach(async ({ page, signUpPage }) => {
-    const email = generateUniqueEmail("save");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  test.beforeEach(async ({ page, testUser }) => {
+    // Use testUser fixture for consistent test setup (compatible with itemsPage)
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
   test("can upload profile picture and save", async ({ page, myItemsPage }) => {

@@ -4,7 +4,11 @@
  */
 
 import { test, expect, prisma } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
+import {
+  generateUniqueEmail,
+  generateUniqueUsername,
+  TEST_PASSWORD,
+} from "../../helpers/test-user";
 
 // Owner with public profile for visibility tests
 let ownerId: string;
@@ -12,6 +16,9 @@ let ownerEmail: string;
 let ownerUsername: string;
 
 test.describe("Item Visibility", () => {
+  // Run serially to avoid issues with shared state (module-level variables, session cookies)
+  test.describe.configure({ mode: "serial" });
+
   test.beforeAll(async () => {
     const { hash } = await import("bcryptjs");
     const passwordHash = await hash(TEST_PASSWORD, 10);
@@ -393,16 +400,19 @@ test.describe("Item Visibility", () => {
   test.describe("Fork Visibility Behavior", () => {
     let forkerId: string;
     let forkerEmail: string;
+    let forkerUsername: string;
 
     test.beforeAll(async () => {
       const { hash } = await import("bcryptjs");
       const passwordHash = await hash(TEST_PASSWORD, 10);
       forkerEmail = generateUniqueEmail("vis-forker");
+      forkerUsername = generateUniqueUsername("fk");
 
       const forker = await prisma.user.create({
         data: {
           email: forkerEmail,
           passwordHash,
+          username: forkerUsername,
         },
       });
       forkerId = forker.id;
@@ -443,10 +453,13 @@ test.describe("Item Visibility", () => {
         },
       });
 
+      // Clear cookies to ensure fresh sign-in (avoid redirect from previous session)
+      await page.context().clearCookies();
+
       // Sign in as forker
       await signInPage.goto();
       await signInPage.signIn(forkerEmail, TEST_PASSWORD);
-      await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+      await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+$/, { timeout: 10000 });
 
       // Fork the item
       await publicProfilePage.gotoItem(ownerUsername, source.id);
@@ -482,10 +495,13 @@ test.describe("Item Visibility", () => {
         },
       });
 
+      // Clear cookies to ensure fresh sign-in (avoid redirect from previous session)
+      await page.context().clearCookies();
+
       // Sign in as forker
       await signInPage.goto();
       await signInPage.signIn(forkerEmail, TEST_PASSWORD);
-      await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+      await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+$/, { timeout: 10000 });
 
       // Fork the item
       await publicProfilePage.gotoItem(ownerUsername, source.id);
@@ -527,10 +543,13 @@ test.describe("Item Visibility", () => {
         },
       });
 
+      // Clear cookies to ensure fresh sign-in (avoid redirect from previous session)
+      await page.context().clearCookies();
+
       // Sign in as owner
       await signInPage.goto();
       await signInPage.signIn(ownerEmail, TEST_PASSWORD);
-      await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+      await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+$/, { timeout: 10000 });
 
       // Open settings via context menu
       await itemsPage.openSettingsViaContextMenu("Toggle To Public");
@@ -561,7 +580,6 @@ test.describe("Item Visibility", () => {
     test("inherit option shown for non-root items", async ({
       page,
       signInPage,
-      itemsPage,
     }) => {
       // Create parent and child
       const parent = await prisma.item.create({
@@ -575,7 +593,7 @@ test.describe("Item Visibility", () => {
         },
       });
 
-      await prisma.item.create({
+      const child = await prisma.item.create({
         data: {
           name: "Child For Inherit Test",
           userId: ownerId,
@@ -587,17 +605,23 @@ test.describe("Item Visibility", () => {
         },
       });
 
+      // Clear cookies to ensure fresh sign-in (avoid redirect from previous session)
+      await page.context().clearCookies();
+
       // Sign in as owner
       await signInPage.goto();
       await signInPage.signIn(ownerEmail, TEST_PASSWORD);
-      await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+      await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+$/, { timeout: 10000 });
 
-      // Navigate to parent
-      await page.goto(`/my-items/${parent.id}`);
-      await itemsPage.waitForLoadingComplete();
+      // Navigate directly to child item's detail page
+      await page.goto(`/u/${ownerUsername}/${child.id}`);
+      await page.waitForLoadState("networkidle");
 
-      // Open child settings
-      await itemsPage.openSettingsViaContextMenu("Child For Inherit Test");
+      // Click the Settings button in the toolbar
+      await page.getByRole("button", { name: /settings/i }).click();
+
+      // Wait for dialog to open
+      await expect(page.getByRole("dialog")).toBeVisible({ timeout: 5000 });
 
       // Verify inherit option is visible for non-root item
       await expect(page.getByText(/inherit from parent/i)).toBeVisible();
@@ -606,9 +630,8 @@ test.describe("Item Visibility", () => {
     test("inherit option NOT shown for root items", async ({
       page,
       signInPage,
-      itemsPage,
     }) => {
-      await prisma.item.create({
+      const rootItem = await prisma.item.create({
         data: {
           name: "Root No Inherit",
           userId: ownerId,
@@ -619,13 +642,23 @@ test.describe("Item Visibility", () => {
         },
       });
 
+      // Clear cookies to ensure fresh sign-in (avoid redirect from previous session)
+      await page.context().clearCookies();
+
       // Sign in as owner
       await signInPage.goto();
       await signInPage.signIn(ownerEmail, TEST_PASSWORD);
-      await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+      await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+$/, { timeout: 10000 });
 
-      // Open settings for root item
-      await itemsPage.openSettingsViaContextMenu("Root No Inherit");
+      // Navigate directly to the root item's detail page
+      await page.goto(`/u/${ownerUsername}/${rootItem.id}`);
+      await page.waitForLoadState("networkidle");
+
+      // Click the Settings button in the toolbar
+      await page.getByRole("button", { name: /settings/i }).click();
+
+      // Wait for dialog to open
+      await expect(page.getByRole("dialog")).toBeVisible({ timeout: 5000 });
 
       // Verify inherit option is NOT visible for root item
       await expect(page.getByText(/inherit from parent/i)).not.toBeVisible();

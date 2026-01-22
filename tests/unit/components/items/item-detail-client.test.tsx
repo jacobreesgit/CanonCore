@@ -67,12 +67,43 @@ vi.mock("@/components/items/items-view", () => ({
   ),
 }));
 
-vi.mock("@/components/items/item-hero", () => ({
-  ItemHero: ({ name, hasMedia }: { name: string; hasMedia?: boolean }) => (
-    <div data-testid="item-hero" data-name={name} data-has-media={hasMedia}>
-      {name} hero
-    </div>
-  ),
+vi.mock("@/components/hero-carousel", () => ({
+  HeroCarousel: ({
+    slides,
+    isOwner,
+    onPlay,
+    onGoToNext,
+  }: {
+    slides: Array<{ id: string; name: string; hasMedia?: boolean }>;
+    isOwner?: boolean;
+    onPlay?: () => void;
+    onGoToNext?: (itemId: string) => void;
+  }) => {
+    const slide = slides[0];
+    return (
+      <div
+        data-testid="hero-carousel"
+        data-name={slide?.name}
+        data-has-media={slide?.hasMedia}
+        data-is-owner={isOwner}
+      >
+        {slide?.name} hero
+        {onPlay && (
+          <button data-testid="hero-play" onClick={onPlay}>
+            Play
+          </button>
+        )}
+        {onGoToNext && (
+          <button
+            data-testid="hero-goto"
+            onClick={() => onGoToNext("next-item")}
+          >
+            Go to
+          </button>
+        )}
+      </div>
+    );
+  },
 }));
 
 vi.mock("@/components/media/media-overlay", () => ({
@@ -154,7 +185,7 @@ describe("ItemDetailClient", () => {
       render(<ItemDetailClient item={defaultItem} childItems={[]} />);
       await waitForLoading();
 
-      expect(screen.getByTestId("item-hero")).toBeInTheDocument();
+      expect(screen.getByTestId("hero-carousel")).toBeInTheDocument();
       expect(screen.getByTestId("items-toolbar")).toBeInTheDocument();
       expect(screen.getByTestId("items-view")).toBeInTheDocument();
     });
@@ -162,13 +193,13 @@ describe("ItemDetailClient", () => {
     it("should always render hero regardless of files/children", async () => {
       render(<ItemDetailClient item={defaultItem} childItems={[]} />);
       await waitForLoading();
-      expect(screen.getByTestId("item-hero")).toBeInTheDocument();
+      expect(screen.getByTestId("hero-carousel")).toBeInTheDocument();
     });
 
     it("should pass item name to hero", async () => {
       render(<ItemDetailClient item={defaultItem} childItems={[]} />);
       await waitForLoading();
-      expect(screen.getByTestId("item-hero")).toHaveAttribute(
+      expect(screen.getByTestId("hero-carousel")).toHaveAttribute(
         "data-name",
         "Movies"
       );
@@ -241,7 +272,7 @@ describe("ItemDetailClient", () => {
       );
       await waitForLoading();
 
-      expect(screen.getByTestId("item-hero")).toHaveAttribute(
+      expect(screen.getByTestId("hero-carousel")).toHaveAttribute(
         "data-has-media",
         "true"
       );
@@ -257,7 +288,7 @@ describe("ItemDetailClient", () => {
       );
       await waitForLoading();
 
-      expect(screen.getByTestId("item-hero")).toBeInTheDocument();
+      expect(screen.getByTestId("hero-carousel")).toBeInTheDocument();
       // No file cards - MediaOverlay only appears when playing
       expect(screen.queryByTestId("media-overlay")).not.toBeInTheDocument();
     });
@@ -299,7 +330,7 @@ describe("ItemDetailClient", () => {
       await waitForLoading();
 
       const toolbar = screen.getByTestId("items-toolbar");
-      const hero = screen.getByTestId("item-hero");
+      const hero = screen.getByTestId("hero-carousel");
 
       // Toolbar should come after hero in DOM order
       expect(toolbar.compareDocumentPosition(hero)).toBe(

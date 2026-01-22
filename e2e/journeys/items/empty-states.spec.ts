@@ -4,20 +4,26 @@
  */
 
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
+import {
+  generateUniqueEmail,
+  generateUniqueUsername,
+  TEST_PASSWORD,
+} from "../../helpers/test-user";
 
 test.describe("Empty States", () => {
   test.describe("First-time User", () => {
+    // These tests need a fresh user with no items, so we use signUpPage directly
+    // and don't use itemsPage fixture (which would auto-create a testUser)
     test("should show first-time empty state when no items exist", async ({
       page,
       signUpPage,
-      itemsPage,
     }) => {
-      // Create new account (no items yet)
+      // Create new account with username (required for profile redirect)
       const email = generateUniqueEmail("empty-first");
+      const username = generateUniqueUsername();
       await signUpPage.goto();
-      await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-      await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+      await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD, username);
+      await expect(page).toHaveURL(`/u/${username}`, { timeout: 10000 });
 
       // Wait for page to fully load
       await page.waitForLoadState("networkidle");
@@ -38,12 +44,12 @@ test.describe("Empty States", () => {
     test("should open add item dialog from empty state action", async ({
       page,
       signUpPage,
-      itemsPage,
     }) => {
       const email = generateUniqueEmail("empty-action");
+      const username = generateUniqueUsername();
       await signUpPage.goto();
-      await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-      await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+      await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD, username);
+      await expect(page).toHaveURL(`/u/${username}`, { timeout: 10000 });
 
       // Wait for page to fully load
       await page.waitForLoadState("networkidle");
@@ -65,14 +71,12 @@ test.describe("Empty States", () => {
   });
 
   test.describe("No Children", () => {
-    test.beforeEach(async ({ page, signUpPage, itemsPage }) => {
-      const email = generateUniqueEmail("empty-children");
-      await signUpPage.goto();
-      await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-      await expect(page).toHaveURL("/my-items", { timeout: 10000 });
-
+    // Use testUser fixture for consistent test setup
+    test.beforeEach(async ({ page, testUser, itemsPage }) => {
+      await expect(page).toHaveURL(`/u/${testUser.username}`, {
+        timeout: 10000,
+      });
       // Create a parent item with no children
-      await itemsPage.goto();
       await itemsPage.createItem("Empty Parent");
     });
 
@@ -110,14 +114,12 @@ test.describe("Empty States", () => {
   });
 
   test.describe("Filter Empty", () => {
-    test.beforeEach(async ({ page, signUpPage, itemsPage }) => {
-      const email = generateUniqueEmail("empty-filter");
-      await signUpPage.goto();
-      await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-      await expect(page).toHaveURL("/my-items", { timeout: 10000 });
-
+    // Use testUser fixture for consistent test setup
+    test.beforeEach(async ({ page, testUser, itemsPage }) => {
+      await expect(page).toHaveURL(`/u/${testUser.username}`, {
+        timeout: 10000,
+      });
       // Create items without files
-      await itemsPage.goto();
       await itemsPage.createItem("Item Without Files");
     });
 

@@ -3,17 +3,14 @@
  */
 
 import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
 import { SpotlightPage } from "../../pages/spotlight.page";
 
 test.describe("Spotlight Search Journey", () => {
   let spotlightPage: SpotlightPage;
 
-  test.beforeEach(async ({ page, signUpPage, itemsPage }) => {
-    const email = generateUniqueEmail("spotlight");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  test.beforeEach(async ({ page, testUser, itemsPage }) => {
+    // Use testUser fixture for consistent test setup (compatible with itemsPage)
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
     // Create test items for searching
     await itemsPage.createItem("Star Wars");
@@ -34,7 +31,8 @@ test.describe("Spotlight Search Journey", () => {
     const searchButton = page.getByRole("button", { name: /search/i }).first();
     if (!(await searchButton.isVisible())) {
       await page.getByRole("button", { name: "Toggle Sidebar" }).click();
-      await page.waitForTimeout(300);
+      // Wait for sidebar to open and search button to be visible
+      await searchButton.waitFor({ state: "visible", timeout: 5000 });
     }
 
     await spotlightPage.openViaSidebar();
@@ -87,7 +85,7 @@ test.describe("Spotlight Search Journey", () => {
     await spotlightPage.selectResult("Empire Strikes Back");
 
     // Should navigate to item detail page
-    await expect(page).toHaveURL(/\/my-items\/[a-z0-9-]+/);
+    await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+\/[a-z0-9-]+/);
     // Check hero heading which shows item name
     await itemsPage.expectHeroVisible("Empire Strikes Back");
   });
@@ -107,17 +105,18 @@ test.describe("Spotlight Search Journey", () => {
   test("keyboard navigation through results", async ({ page }) => {
     await spotlightPage.openWithKeyboard();
     await spotlightPage.expectOpen();
-    await spotlightPage.search("Star");
+    // Search for unique item name to avoid matching seed data users/public items
+    await spotlightPage.search("Empire Strikes Back");
 
     // Wait for results to appear
-    await spotlightPage.expectResultVisible("Star Wars");
+    await spotlightPage.expectResultVisible("Empire Strikes Back");
 
     // Use arrow keys to navigate and select
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Enter");
 
     // Should navigate to selected item
-    await expect(page).toHaveURL(/\/my-items\/[a-z0-9-]+/);
+    await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+\/[a-z0-9-]+/);
   });
 
   test("shows keyboard shortcut hint", async ({ page }) => {
@@ -139,7 +138,7 @@ test.describe("Spotlight Search Journey", () => {
     await itemsPage.createItem("Nested Item");
 
     // Go back to root and open spotlight
-    await page.goto("/my-items");
+    await itemsPage.goto();
     await spotlightPage.openWithKeyboard();
     await spotlightPage.expectOpen();
 
@@ -155,11 +154,9 @@ test.describe("Spotlight Search Journey", () => {
 test.describe("Spotlight Search - Mobile", () => {
   test.use({ viewport: { width: 375, height: 667 } });
 
-  test("spotlight works on mobile", async ({ page, signUpPage }) => {
-    const email = generateUniqueEmail("spotlight-mobile");
-    await signUpPage.goto();
-    await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD);
-    await expect(page).toHaveURL("/my-items", { timeout: 10000 });
+  test("spotlight works on mobile", async ({ page, testUser }) => {
+    // Use testUser fixture for consistent test setup (compatible with itemsPage)
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
     const spotlightPage = new SpotlightPage(page);
 

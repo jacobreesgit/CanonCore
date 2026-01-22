@@ -3,10 +3,17 @@
  * Displays hero section with background pattern and call-to-action.
  */
 
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "CanonCore - Media Library Management",
+  description:
+    "Your all-in-one platform for managing and streaming your media library. Organize movies, TV shows, and music with powerful item hierarchies and Google Drive integration.",
+};
 import { ArrowRight } from "lucide-react";
 
-import { auth } from "@/lib/auth";
+import { auth, getExtendedSidebarUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/site-header";
 
@@ -16,7 +23,9 @@ import { SiteHeader } from "@/components/site-header";
  */
 export default async function LandingPage() {
   const session = await auth();
-  const isAuthenticated = !!session?.user;
+  const user = await getExtendedSidebarUser(session);
+  const isAuthenticated = !!user;
+  const profileUrl = user?.username ? `/u/${user.username}` : "/explore";
 
   return (
     <>
@@ -52,8 +61,8 @@ export default async function LandingPage() {
               </div>
 
               <Button asChild data-testid="landing-cta-button">
-                <Link href={isAuthenticated ? "/my-items" : "/sign-in"}>
-                  {isAuthenticated ? "Go to My Items" : "Get Started"}
+                <Link href={isAuthenticated ? profileUrl : "/sign-in"}>
+                  {isAuthenticated ? "Go to Library" : "Get Started"}
                   <ArrowRight className="ml-2 h-4" />
                 </Link>
               </Button>

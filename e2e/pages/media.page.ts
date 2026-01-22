@@ -9,6 +9,7 @@ import { expect } from "@playwright/test";
 
 export class MediaPage {
   readonly page: Page;
+  private username: string;
   readonly heroSection: Locator;
   readonly heroTitle: Locator;
   readonly heroStats: Locator;
@@ -17,13 +18,14 @@ export class MediaPage {
   readonly videoPlayer: Locator;
   readonly closeOverlayButton: Locator;
 
-  constructor(page: Page) {
+  constructor(page: Page, username: string) {
     this.page = page;
-    // Hero section with artwork (uses data-testid from ItemHero)
-    this.heroSection = page.getByTestId("item-hero");
+    this.username = username;
+    // Hero section with artwork (uses data-testid from HeroCarousel)
+    this.heroSection = page.getByTestId("hero-carousel");
     this.heroTitle = page.getByRole("heading", { level: 1 });
     // Hero stats row showing file counts (uses data-testid for resilience)
-    this.heroStats = page.getByTestId("item-hero-stats");
+    this.heroStats = page.getByTestId("hero-stats");
     this.emptyState = page.getByText("No items yet");
     // Media overlay components
     this.mediaOverlay = page.getByRole("dialog");
@@ -39,20 +41,7 @@ export class MediaPage {
    * @param itemId - The item ID to view
    */
   async gotoItem(itemId: string): Promise<void> {
-    await this.page.goto(`/my-items/${itemId}`);
-  }
-
-  /**
-   * Navigates to a connection item detail page.
-   *
-   * @param connectionId - The connection ID
-   * @param itemId - The item ID to view
-   */
-  async gotoConnectionItem(
-    connectionId: string,
-    itemId: string
-  ): Promise<void> {
-    await this.page.goto(`/my-items/connections/${connectionId}/${itemId}`);
+    await this.page.goto(`/u/${this.username}/${itemId}`);
   }
 
   /**
