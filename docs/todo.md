@@ -10,4 +10,4 @@
 - ask what else plex and jellyfin does
 - tags?
 
-- ios: https://github.com/heroui-inc/heroui-native
+- ios: https://github.com/heroui-inc/heroui-native or/and expo
