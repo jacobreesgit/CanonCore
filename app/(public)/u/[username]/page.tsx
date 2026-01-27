@@ -118,7 +118,7 @@ export default async function ProfilePage({ params }: PageProps) {
         title={isOwner ? "My Items" : `@${profile.username}`}
         titleHref={`/u/${profile.username}`}
       />
-      <div className="flex flex-1 flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
+      <div className="flex flex-1 flex-col gap-4 py-6">
         <UnifiedProfileClient
           profile={{
             id: profileData.profile.id,

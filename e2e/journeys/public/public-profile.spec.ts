@@ -194,10 +194,22 @@ test.describe("Public Profile Enablement Journey", () => {
     // Open settings
     await settingsPage.openFromNavUser();
 
-    // Set username
-    await settingsPage.setUsername(username);
+    // Navigate to Account tab (username change is in Account tab now)
+    await settingsPage.goToAccountTab();
+
+    // Open Change Username step
+    await settingsPage.openChangeUsername();
+
+    // Set username and password
+    await settingsPage.setUsername(username, TEST_PASSWORD);
     await settingsPage.waitForUsernameValidation();
     expect(await settingsPage.isUsernameAvailable()).toBe(true);
+
+    // Submit username change
+    await settingsPage.submitUsernameChange();
+
+    // Now back to main settings - go to Profile tab
+    await settingsPage.goToProfileTab();
 
     // Enable public profile
     await settingsPage.togglePublicProfile();
@@ -224,10 +236,22 @@ test.describe("Public Profile Enablement Journey", () => {
     // Open settings
     await settingsPage.openFromNavUser();
 
+    // Navigate to Account tab (username change is in Account tab now)
+    await settingsPage.goToAccountTab();
+
+    // Open Change Username step
+    await settingsPage.openChangeUsername();
+
     // Set a username first
     const username = generateUniqueUsername("cf");
-    await settingsPage.setUsername(username);
+    await settingsPage.setUsername(username, TEST_PASSWORD);
     await settingsPage.waitForUsernameValidation();
+
+    // Submit username change
+    await settingsPage.submitUsernameChange();
+
+    // Now back to main settings - go to Profile tab
+    await settingsPage.goToProfileTab();
 
     // Toggle public - should show confirmation
     await settingsPage.togglePublicProfile();
@@ -263,6 +287,12 @@ test.describe("Public Profile Enablement Journey", () => {
       // Open settings
       await settingsPage.openFromNavUser();
 
+      // Navigate to Account tab (username change is in Account tab now)
+      await settingsPage.goToAccountTab();
+
+      // Open Change Username step
+      await settingsPage.openChangeUsername();
+
       // Try to use existing username
       await settingsPage.setUsername(existingUsername);
       await settingsPage.waitForUsernameValidation();
@@ -285,17 +315,33 @@ test.describe("Public Profile Enablement Journey", () => {
     }
   });
 
-  test("shows public profile URL preview", async ({ settingsPage }) => {
+  test("displays updated username after change", async ({
+    page,
+    settingsPage,
+  }) => {
     // Open settings
     await settingsPage.openFromNavUser();
 
-    // Set username
-    const username = generateUniqueUsername("pv");
-    await settingsPage.setUsername(username);
+    // Navigate to Account tab
+    await settingsPage.goToAccountTab();
 
-    // Verify URL preview updates
-    const preview = await settingsPage.getPublicUrlPreview();
-    expect(preview).toContain(`canoncore.com/u/${username}`);
+    // Open Change Username step
+    await settingsPage.openChangeUsername();
+
+    // Set username and submit
+    const username = generateUniqueUsername("pv");
+    await settingsPage.setUsername(username, TEST_PASSWORD);
+    await settingsPage.waitForUsernameValidation();
+    expect(await settingsPage.isUsernameAvailable()).toBe(true);
+
+    // Submit the change
+    await settingsPage.submitUsernameChange();
+
+    // Navigate back to Account tab to see the updated username
+    await settingsPage.goToAccountTab();
+
+    // Verify username displays correctly
+    await expect(page.getByText(`@${username}`)).toBeVisible();
   });
 
   test("can disable public profile", async ({
@@ -409,10 +455,7 @@ test.describe("Fork Journey", () => {
     // Fork the item
     await publicProfilePage.forkItem();
 
-    // Should show success toast
-    await publicProfilePage.expectSuccessToast(/added to your library/i);
-
-    // Button should change to "In Your Library"
+    // Button should change to "In Your Library" (confirms fork succeeded)
     await publicProfilePage.expectAlreadyForked();
 
     // Cleanup forked items (testUser fixture handles user cleanup)
@@ -433,8 +476,9 @@ test.describe("Fork Journey", () => {
     // Visit and fork
     await publicProfilePage.gotoItem(ownerUsername, publicItemId);
     await publicProfilePage.forkItem();
-    await publicProfilePage.expectSuccessToast(/added to your library/i);
-    await publicProfilePage.waitForToastToDisappear();
+
+    // Wait for fork to complete by checking button changed to "In Your Library"
+    await publicProfilePage.expectAlreadyForked();
 
     // Go to my items
     await itemsPage.goto();

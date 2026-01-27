@@ -254,7 +254,7 @@ export function ForkDestinationDialog({
                 <div
                   ref={scrollContainerRef}
                   className={cn(
-                    "h-48 overflow-auto rounded-lg border",
+                    "flex h-48 flex-col overflow-auto rounded-lg border",
                     isForking && "pointer-events-none opacity-50"
                   )}
                 >
@@ -284,9 +284,15 @@ export function ForkDestinationDialog({
                       })}
                     </div>
                   ) : (
-                    <p className="text-muted-foreground py-4 text-center text-sm">
-                      No folders match &ldquo;{searchQuery}&rdquo;
-                    </p>
+                    <div className="flex flex-1 flex-col items-center gap-2 py-12">
+                      <Search
+                        aria-hidden="true"
+                        className="text-muted-foreground/50 size-8"
+                      />
+                      <p className="text-muted-foreground text-sm">
+                        No results found.
+                      </p>
+                    </div>
                   )}
                 </div>
               )}

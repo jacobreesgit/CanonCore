@@ -784,7 +784,7 @@ export async function getExploreItems(
   }
 
   return items
-    .filter((item) => item.user?.username !== null)
+    .filter((item) => item.user && item.user.username != null)
     .map((item) => {
       const isOwnItem = currentUserId && item.userId === currentUserId;
       const progress = isOwnItem ? progressMap.get(item.id) : undefined;
@@ -973,7 +973,7 @@ export const searchPublicItems = cache(
       });
 
       const searchableItems: SearchablePublicItem[] = items
-        .filter((item) => item.user.username !== null)
+        .filter((item) => item.user && item.user.username != null)
         .map((item) => ({
           id: item.id,
           name: item.name,
@@ -1008,6 +1008,8 @@ export interface FeaturedItem {
   ownerName: string | null;
   /** Owner user ID */
   ownerUserId: string;
+  /** Whether owner has uploaded profile image */
+  ownerHasImage: boolean;
   /** Link to item page */
   link: string;
 }
@@ -1052,6 +1054,7 @@ export const getFeaturedItems = cache(
             select: {
               username: true,
               name: true,
+              image: true,
             },
           },
         },
@@ -1071,6 +1074,7 @@ export const getFeaturedItems = cache(
           ownerUsername: item.user.username as string, // Safe due to filter
           ownerName: item.user.name,
           ownerUserId: item.userId,
+          ownerHasImage: item.user.image !== null,
           link: `/u/${item.user.username}/${item.id}`,
         }));
     } catch (error) {

@@ -13,7 +13,7 @@ import {
   type LucideIcon,
   Search,
   ChevronRight,
-  Folder,
+  Pin,
   PinOff,
   Settings,
   Trash2,
@@ -244,7 +244,7 @@ export function NavMain({ items, pinnedItems = [], username }: NavMainProps) {
                                         isActive={isPinnedActive}
                                       >
                                         <Link href={href}>
-                                          <Folder
+                                          <Pin
                                             className="size-4"
                                             aria-hidden="true"
                                           />

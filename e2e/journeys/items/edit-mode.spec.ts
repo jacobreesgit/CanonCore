@@ -67,7 +67,6 @@ test.describe("Edit Mode", () => {
   }) => {
     // Delete all items via grid context menu (root page is grid view)
     await itemsPage.deleteItemViaContextMenu("Test Folder 1");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.deleteItemViaContextMenu("Test Folder 2");
 
     // Edit button should be disabled when no items

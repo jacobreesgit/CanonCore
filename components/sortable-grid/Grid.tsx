@@ -55,16 +55,12 @@ export function Grid({
   hasDriveConnection = false,
   onPinItem,
   onUnpinItem,
-  currentUser,
+  currentUser: _currentUser,
 }: GridProps) {
-  // Build owner href for "You" label - links to your profile if you have username
-  const ownerHref = currentUser?.username
-    ? `/u/${currentUser.username}`
-    : undefined;
   return (
     <div
       data-testid="items-grid-view"
-      className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
+      className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5"
     >
       {items.map((item, index) => (
         <ItemContextMenu
@@ -94,8 +90,6 @@ export function Grid({
             showArtwork={true}
             showDescription={true}
             priority={index < PRIORITY_COUNT}
-            ownerLabel="You"
-            ownerHref={ownerHref}
           />
         </ItemContextMenu>
       ))}

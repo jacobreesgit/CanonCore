@@ -329,7 +329,7 @@ describe("ItemsView", () => {
       await user.click(selectAllButton);
 
       // Click delete button
-      const deleteButton = screen.getByRole("button", { name: /delete 2/i });
+      const deleteButton = screen.getByRole("button", { name: /delete/i });
       await user.click(deleteButton);
 
       // Confirmation dialog should appear
@@ -347,7 +347,7 @@ describe("ItemsView", () => {
 
       // Select all and click delete
       await user.click(screen.getByRole("button", { name: /select all/i }));
-      await user.click(screen.getByRole("button", { name: /delete 2/i }));
+      await user.click(screen.getByRole("button", { name: /delete/i }));
 
       // Wait for dialog
       await waitFor(() => {
@@ -370,7 +370,7 @@ describe("ItemsView", () => {
 
       // Select all and click delete
       await user.click(screen.getByRole("button", { name: /select all/i }));
-      await user.click(screen.getByRole("button", { name: /delete 2/i }));
+      await user.click(screen.getByRole("button", { name: /delete/i }));
 
       // Wait for dialog and confirm
       await waitFor(() => {

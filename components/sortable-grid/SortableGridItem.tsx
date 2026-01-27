@@ -1,7 +1,6 @@
 /**
  * Sortable wrapper for GridItem with dnd-kit integration.
  * Includes context menu for settings and delete actions.
- * Edit mode: simplified visuals (no artwork).
  */
 
 "use client";
@@ -100,7 +99,7 @@ export function SortableGridItem({
           ...listeners,
         }}
         artworkId={artworkId}
-        showArtwork={false}
+        showArtwork={true}
         isSelected={isSelected}
         onSelectChange={onSelectChange}
         {...props}

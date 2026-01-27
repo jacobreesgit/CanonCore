@@ -44,6 +44,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Dropzone } from "@/components/ui/dropzone";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Switch } from "@/components/ui/switch";
@@ -68,7 +75,7 @@ import { cn } from "@/lib/utils";
 import type { GoogleDriveConnection } from "@/lib/types";
 
 /** Steps for settings dialog navigation. */
-type SettingsStep = "main" | "password" | "email";
+type SettingsStep = "main" | "password" | "email" | "username";
 
 interface SettingsDialogProps {
   /** Whether the dialog is open */
@@ -125,16 +132,20 @@ export function SettingsDialog({
   const [emailPassword, setEmailPassword] = useState("");
   const [isEmailSaving, setIsEmailSaving] = useState(false);
 
+  // Username step state
+  const [newUsername, setNewUsername] = useState(user.username ?? "");
+  const [usernamePassword, setUsernamePassword] = useState("");
+  const [isUsernameSaving, setIsUsernameSaving] = useState(false);
+
   // Main step state
   const [name, setName] = useState(user.name ?? "");
-  const [username, setUsername] = useState(user.username ?? "");
   const [isPublic, setIsPublic] = useState(user.isPublic);
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [heroImage, setHeroImage] = useState<File | null>(null);
   const [showPublicConfirm, setShowPublicConfirm] = useState(false);
 
-  // Username validation
-  const usernameValidation = useUsernameValidation(username, user.username);
+  // Username validation (for username change modal)
+  const usernameValidation = useUsernameValidation(newUsername, user.username);
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(
     null
   );
@@ -147,30 +158,25 @@ export function SettingsDialog({
   const originalValues = useMemo(
     () => ({
       name: user.name ?? "",
-      email: user.email,
-      username: user.username ?? "",
       isPublic: user.isPublic,
     }),
-    [user.name, user.email, user.username, user.isPublic]
+    [user.name, user.isPublic]
   );
 
   // Dirty state detection for main step
   const isDirty = useMemo(() => {
     const nameChanged = name !== originalValues.name;
-    const usernameChanged = username !== originalValues.username;
     const isPublicChanged = isPublic !== originalValues.isPublic;
     const profileImageChanging = profileImage !== null || removeProfile;
     const heroImageChanging = heroImage !== null || removeHero;
     return (
       nameChanged ||
-      usernameChanged ||
       isPublicChanged ||
       profileImageChanging ||
       heroImageChanging
     );
   }, [
     name,
-    username,
     isPublic,
     profileImage,
     heroImage,
@@ -192,9 +198,12 @@ export function SettingsDialog({
       setNewEmail(user.email);
       setEmailPassword("");
       setIsEmailSaving(false);
+      // Reset username state
+      setNewUsername(user.username ?? "");
+      setUsernamePassword("");
+      setIsUsernameSaving(false);
       // Reset main state
       setName(user.name ?? "");
-      setUsername(user.username ?? "");
       setIsPublic(user.isPublic);
       setProfileImage(null);
       setHeroImage(null);
@@ -295,6 +304,55 @@ export function SettingsDialog({
     }
   }, [newEmail, emailPassword, user.email, onProfileChange]);
 
+  // Username handlers
+  const handleUsernameSubmit = useCallback(async () => {
+    if (!newUsername || !usernamePassword) {
+      toast.error("All fields are required");
+      return;
+    }
+
+    if (!usernameValidation.isValidFormat) {
+      toast.error(usernameValidation.error || "Invalid username format");
+      return;
+    }
+
+    if (usernameValidation.isAvailable === false) {
+      toast.error("Username is already taken");
+      return;
+    }
+
+    if (newUsername === user.username) {
+      toast.error("New username must be different from current username");
+      return;
+    }
+
+    setIsUsernameSaving(true);
+    try {
+      const result = await updateProfile({
+        username: newUsername || null,
+        currentPassword: usernamePassword,
+      });
+
+      if (result.success) {
+        toast.success("Username changed successfully");
+        await onProfileChange?.();
+        setCurrentStep("main");
+      } else {
+        toast.error(result.error);
+      }
+    } catch {
+      toast.error("Failed to change username");
+    } finally {
+      setIsUsernameSaving(false);
+    }
+  }, [
+    newUsername,
+    usernamePassword,
+    usernameValidation,
+    user.username,
+    onProfileChange,
+  ]);
+
   // Main handlers
   const handleProfileImageDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -348,7 +406,6 @@ export function SettingsDialog({
 
   const handleMainCancel = useCallback(() => {
     setName(originalValues.name);
-    setUsername(originalValues.username);
     setIsPublic(originalValues.isPublic);
     setProfileImage(null);
     setHeroImage(null);
@@ -365,36 +422,17 @@ export function SettingsDialog({
       let hasError = false;
 
       const nameChanged = name !== originalValues.name;
-      const usernameChanged = username !== originalValues.username;
       const isPublicChanged = isPublic !== originalValues.isPublic;
 
-      // Validate username before saving if changed
-      if (usernameChanged && username) {
-        if (!usernameValidation.isValidFormat) {
-          toast.error(usernameValidation.error || "Invalid username format");
-          setIsMainSaving(false);
-          return;
-        }
-        if (usernameValidation.isAvailable === false) {
-          toast.error("Username is already taken");
-          setIsMainSaving(false);
-          return;
-        }
-      }
-
       // Update profile fields if any changed
-      if ((nameChanged || usernameChanged || isPublicChanged) && !hasError) {
+      if ((nameChanged || isPublicChanged) && !hasError) {
         const updateData: {
           name?: string;
-          username?: string | null;
           isPublic?: boolean;
         } = {};
 
         if (nameChanged) {
           updateData.name = name;
-        }
-        if (usernameChanged) {
-          updateData.username = username || null;
         }
         if (isPublicChanged) {
           updateData.isPublic = isPublic;
@@ -454,9 +492,7 @@ export function SettingsDialog({
     }
   }, [
     name,
-    username,
     isPublic,
-    usernameValidation,
     profileImage,
     heroImage,
     removeProfile,
@@ -568,6 +604,37 @@ export function SettingsDialog({
             </div>
           </DialogHeader>
         );
+      case "username":
+        return (
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleBack}
+                disabled={isUsernameSaving}
+                className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                aria-label="Back"
+              >
+                <ChevronLeft aria-hidden="true" className="size-5" />
+              </Button>
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                  "bg-primary/10 ring-primary/20 ring-1"
+                )}
+              >
+                <AtSign aria-hidden="true" className="text-primary size-5" />
+              </div>
+              <div className="min-w-0">
+                <DialogTitle className="text-lg">Change Username</DialogTitle>
+                <DialogDescription className="text-sm">
+                  Enter your new username and verify with your password
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        );
       default:
         return null;
     }
@@ -648,6 +715,28 @@ export function SettingsDialog({
             </Button>
           </DialogFooter>
         );
+      case "username":
+        return (
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleBack}
+              disabled={isUsernameSaving}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleUsernameSubmit} disabled={isUsernameSaving}>
+              {isUsernameSaving ? (
+                <>
+                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                  Changing…
+                </>
+              ) : (
+                "Change Username"
+              )}
+            </Button>
+          </DialogFooter>
+        );
       default:
         return null;
     }
@@ -662,22 +751,16 @@ export function SettingsDialog({
       case "main":
         return (
           <Tabs defaultValue="profile" className="w-full">
-            <TabsList className="mb-4 grid w-full grid-cols-3">
+            <TabsList className="mb-4 grid w-full grid-cols-5">
               <TabsTrigger value="profile">Profile</TabsTrigger>
+              <TabsTrigger value="account">Account</TabsTrigger>
+              <TabsTrigger value="connections">Connections</TabsTrigger>
               <TabsTrigger value="preferences">Preferences</TabsTrigger>
               <TabsTrigger value="activity">Activity</TabsTrigger>
             </TabsList>
 
             <TabsContent value="profile" className="mt-0">
               <div className="min-w-0 space-y-6">
-                {/* Google Drive Section */}
-                <GoogleDriveSettingsSection
-                  connection={googleDriveConnection}
-                  onConnectionChange={onProfileChange}
-                />
-
-                <Separator />
-
                 {/* Profile Picture Section */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
@@ -767,103 +850,6 @@ export function SettingsDialog({
                   />
                 </div>
 
-                {/* Username Section */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={cn(
-                        "flex size-7 items-center justify-center rounded-lg",
-                        "bg-primary/10"
-                      )}
-                    >
-                      <AtSign
-                        aria-hidden="true"
-                        className="text-primary size-3.5"
-                      />
-                    </div>
-                    <Label
-                      htmlFor="settings-username"
-                      className="text-sm font-medium"
-                    >
-                      Username
-                    </Label>
-                  </div>
-                  <div className="relative">
-                    <Input
-                      id="settings-username"
-                      data-testid="settings-username-input"
-                      name="username"
-                      autoComplete="username"
-                      spellCheck={false}
-                      value={username}
-                      onChange={(e) =>
-                        setUsername(
-                          e.target.value
-                            .toLowerCase()
-                            .replace(/[^a-z0-9_]/g, "")
-                        )
-                      }
-                      placeholder="your_username"
-                      className={cn(
-                        "h-10 pr-10",
-                        username &&
-                          usernameValidation.isValidFormat &&
-                          usernameValidation.isAvailable === true &&
-                          "border-green-500 focus-visible:ring-green-500/20",
-                        username &&
-                          (usernameValidation.error ||
-                            usernameValidation.isAvailable === false) &&
-                          "border-destructive focus-visible:ring-destructive/20"
-                      )}
-                    />
-                    {username && (
-                      <div className="absolute top-1/2 right-3 -translate-y-1/2">
-                        {usernameValidation.isValidating ? (
-                          <Loader2
-                            aria-hidden="true"
-                            className="text-muted-foreground size-4 animate-spin"
-                          />
-                        ) : usernameValidation.isValidFormat &&
-                          usernameValidation.isAvailable === true ? (
-                          <Check
-                            aria-hidden="true"
-                            className="size-4 text-green-500"
-                          />
-                        ) : usernameValidation.error ||
-                          usernameValidation.isAvailable === false ? (
-                          <X
-                            aria-hidden="true"
-                            className="text-destructive size-4"
-                          />
-                        ) : null}
-                      </div>
-                    )}
-                  </div>
-                  {username && usernameValidation.error && (
-                    <p className="text-destructive text-xs">
-                      {usernameValidation.error}
-                    </p>
-                  )}
-                  {username &&
-                    usernameValidation.isAvailable === false &&
-                    !usernameValidation.error && (
-                      <p className="text-destructive text-xs">
-                        Username is already taken
-                      </p>
-                    )}
-                  {username &&
-                    usernameValidation.isValidFormat &&
-                    usernameValidation.isAvailable === true && (
-                      <p className="text-xs text-green-600 dark:text-green-500">
-                        Username is available
-                      </p>
-                    )}
-                  <p className="text-muted-foreground text-xs">
-                    Used for your public profile URL: canoncore.com/u/
-                    {username || "username"}
-                  </p>
-                </div>
-
                 {/* Public Profile Toggle */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between rounded-lg border p-4">
@@ -908,40 +894,9 @@ export function SettingsDialog({
                   <p className="text-muted-foreground text-xs">
                     When enabled, others can view your public items at your
                     profile URL.
-                    {!username &&
-                      " Set a username above to enable your public profile."}
+                    {!user.username &&
+                      " Set a username in the Account tab to enable your public profile."}
                   </p>
-                </div>
-
-                {/* Email Section */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={cn(
-                        "flex size-7 items-center justify-center rounded-lg",
-                        "bg-primary/10"
-                      )}
-                    >
-                      <Mail
-                        aria-hidden="true"
-                        className="text-primary size-3.5"
-                      />
-                    </div>
-                    <Label className="text-sm font-medium">Email</Label>
-                  </div>
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-muted-foreground truncate text-sm">
-                      {user.email}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentStep("email")}
-                    >
-                      Change Email
-                    </Button>
-                  </div>
                 </div>
 
                 <Separator />
@@ -1015,38 +970,99 @@ export function SettingsDialog({
                     Wide format recommended. Max 2MB.
                   </p>
                 </div>
+              </div>
+            </TabsContent>
 
-                <Separator />
-
-                {/* Password Section */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={cn(
-                        "flex size-7 items-center justify-center rounded-lg",
-                        "bg-primary/10"
-                      )}
-                    >
-                      <Lock
-                        aria-hidden="true"
-                        className="text-primary size-3.5"
-                      />
+            <TabsContent value="account" className="mt-0">
+              <div className="min-w-0 space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Username</CardTitle>
+                    <CardDescription>
+                      Your unique identifier for your public profile URL
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-muted-foreground truncate text-sm">
+                        {user.username
+                          ? `@${user.username}`
+                          : "No username set"}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentStep("username")}
+                      >
+                        Change Username
+                      </Button>
                     </div>
-                    <Label className="text-sm font-medium">Password</Label>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setCurrentStep("password")}
-                    className="w-full"
-                  >
-                    <Lock aria-hidden="true" className="mr-2 size-4" />
-                    Change Password
-                  </Button>
-                  <p className="text-muted-foreground text-xs">
-                    Update your password to keep your account secure.
-                  </p>
-                </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Email Address</CardTitle>
+                    <CardDescription>
+                      Your email for account access and notifications
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-muted-foreground truncate text-sm">
+                        {user.email}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentStep("email")}
+                      >
+                        Change Email
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Password</CardTitle>
+                    <CardDescription>
+                      Keep your account secure with a strong password
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setCurrentStep("password")}
+                      className="w-full"
+                    >
+                      <Lock aria-hidden="true" className="mr-2 size-4" />
+                      Change Password
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="connections" className="mt-0">
+              <div className="min-w-0 space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Google Drive</CardTitle>
+                    <CardDescription>
+                      Sync your media files with Google Drive
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <GoogleDriveSettingsSection
+                      connection={googleDriveConnection}
+                      onConnectionChange={onProfileChange}
+                    />
+                  </CardContent>
+                </Card>
               </div>
             </TabsContent>
 
@@ -1178,6 +1194,109 @@ export function SettingsDialog({
             </div>
           </div>
         );
+      case "username":
+        return (
+          <div
+            className="space-y-4 py-4"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !isUsernameSaving) {
+                e.preventDefault();
+                handleUsernameSubmit();
+              }
+            }}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="change-new-username">New Username</Label>
+              <div className="relative">
+                <Input
+                  id="change-new-username"
+                  name="username"
+                  autoComplete="username"
+                  spellCheck={false}
+                  value={newUsername}
+                  onChange={(e) =>
+                    setNewUsername(
+                      e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "")
+                    )
+                  }
+                  placeholder="Enter new username"
+                  className={cn(
+                    "h-10 pr-10",
+                    newUsername &&
+                      usernameValidation.isValidFormat &&
+                      usernameValidation.isAvailable === true &&
+                      "border-green-500 focus-visible:ring-green-500/20",
+                    newUsername &&
+                      (usernameValidation.error ||
+                        usernameValidation.isAvailable === false) &&
+                      "border-destructive focus-visible:ring-destructive/20"
+                  )}
+                />
+                {newUsername && (
+                  <div className="absolute top-1/2 right-3 -translate-y-1/2">
+                    {usernameValidation.isValidating ? (
+                      <Loader2
+                        aria-hidden="true"
+                        className="text-muted-foreground size-4 animate-spin"
+                      />
+                    ) : usernameValidation.isValidFormat &&
+                      usernameValidation.isAvailable === true ? (
+                      <Check
+                        aria-hidden="true"
+                        className="size-4 text-green-500"
+                      />
+                    ) : usernameValidation.error ||
+                      usernameValidation.isAvailable === false ? (
+                      <X
+                        aria-hidden="true"
+                        className="text-destructive size-4"
+                      />
+                    ) : null}
+                  </div>
+                )}
+              </div>
+              {newUsername && usernameValidation.error && (
+                <p className="text-destructive text-xs">
+                  {usernameValidation.error}
+                </p>
+              )}
+              {newUsername &&
+                usernameValidation.isAvailable === false &&
+                !usernameValidation.error && (
+                  <p className="text-destructive text-xs">
+                    Username is already taken
+                  </p>
+                )}
+              {newUsername &&
+                usernameValidation.isValidFormat &&
+                usernameValidation.isAvailable === true && (
+                  <p className="text-xs text-green-600 dark:text-green-500">
+                    Username is available
+                  </p>
+                )}
+              <p className="text-muted-foreground text-xs">
+                3-20 characters. Lowercase letters, numbers, and underscores
+                only.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="change-username-password">Current Password</Label>
+              <PasswordInput
+                id="change-username-password"
+                name="current-password"
+                autoComplete="current-password"
+                value={usernamePassword}
+                onChange={(e) => setUsernamePassword(e.target.value)}
+                placeholder="Verify with your password"
+                className="h-10"
+              />
+              <p className="text-muted-foreground text-xs">
+                Password required to confirm this change.
+              </p>
+            </div>
+          </div>
+        );
       default:
         return null;
     }
@@ -1188,7 +1307,7 @@ export function SettingsDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <AnimatedDialogContent
           stepKey={currentStep}
-          className="max-h-[90vh]"
+          className="max-h-[90vh] sm:max-w-2xl"
           header={getStepHeader()}
           footer={getStepFooter()}
         >

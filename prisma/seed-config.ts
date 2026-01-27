@@ -1,3 +1,5 @@
+import crypto from "crypto";
+
 /**
  * Seed configuration for populating the database with demo content.
  * Uses TMDB IDs to fetch real movie and TV show metadata.
@@ -19,6 +21,7 @@
  *   - SEED_SHOW_IDS: Comma-separated TMDB show IDs to seed (overrides default list)
  *   - SEED_USER_EMAIL: Override to seed single user only (default: null)
  *   - SEED_GROUPED_STRUCTURE: Create Movies/TV Shows parent folders (default: true)
+ *   - SEED_INCREMENTAL: Enable incremental mode (default: true, set to "false" for clean slate)
  *   - TMDB_API_DELAY_MS is hardcoded at 100ms for rate limiting
  */
 
@@ -80,9 +83,18 @@ export const SEED_SHOW_IDS = process.env.SEED_SHOW_IDS
   ? process.env.SEED_SHOW_IDS.split(",").map((id) => parseInt(id.trim(), 10))
   : null;
 
-/** Enable grouped folder structure (Movies/, TV Shows/) instead of flat. */
+/** Enable grouped folder structure (Movies/, TV Shows/) instead of flat. Default: true. */
 export const SEED_GROUPED_STRUCTURE =
   process.env.SEED_GROUPED_STRUCTURE?.toLowerCase() !== "false";
+
+/**
+ * Enable incremental seeding mode.
+ * When true: only re-seed users whose content hash has changed.
+ * When false: clean slate seeding (legacy behavior).
+ * Default: true
+ */
+export const SEED_INCREMENTAL =
+  process.env.SEED_INCREMENTAL?.toLowerCase() !== "false";
 
 /** Enable playback progress simulation for progress bar testing. */
 export const SEED_SIMULATE_PLAYBACK =
@@ -198,8 +210,10 @@ export interface SeedUserConfig {
   isPublic?: boolean;
   /** Lorem Picsum seed for avatar image (null = no avatar). */
   avatarSeed?: string | null;
-  /** Lorem Picsum seed for hero banner (null = no hero). */
+  /** Lorem Picsum seed for hero banner fallback (used if Unsplash unavailable). */
   heroSeed?: string | null;
+  /** Direct URL for hero banner (takes precedence over heroSeed). */
+  heroUrl?: string | null;
 }
 
 /** Content distribution by user email. */
@@ -245,6 +259,9 @@ export const SEED_USERS: SeedUserConfig[] = [
     isPublic: true,
     avatarSeed: "demo-avatar",
     heroSeed: "demo-hero",
+    // Walking Dead DVD collection - cinematic hero banner
+    heroUrl:
+      "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1920&h=400&fit=crop",
   },
   {
     email: "filmfan@canoncore.com",
@@ -279,6 +296,9 @@ export const SEED_USERS: SeedUserConfig[] = [
     heroSeed: null,
   },
 ];
+
+/** Demo user email - first user in SEED_USERS, used for special handling like real video upload. */
+export const DEMO_USER_EMAIL = SEED_USERS[0].email;
 
 /** Content distribution per user for visual variety (zero overlap). */
 export const USER_CONTENT_DISTRIBUTION: Record<string, UserContentConfig> = {
@@ -315,11 +335,23 @@ export const USER_CONTENT_DISTRIBUTION: Record<string, UserContentConfig> = {
 
 /** Progress simulation ranges per user for visual variety. */
 export const USER_PROGRESS_RANGES: Record<string, ProgressRange> = {
-  "demo@canoncore.com": { min: 0.25, max: 0.75 },
+  "demo@canoncore.com": { min: 0.25, max: 0.95 },
   "filmfan@canoncore.com": { min: 0.8, max: 1.0 },
-  "bingewatcher@canoncore.com": { min: 0.1, max: 0.3 },
-  "scifi@canoncore.com": { min: 0.4, max: 0.6 },
+  "bingewatcher@canoncore.com": { min: 0.1, max: 0.95 },
+  "scifi@canoncore.com": { min: 0.4, max: 0.95 },
   "test@canoncore.com": { min: 0, max: 0 },
+};
+
+/**
+ * TMDB IDs to pin for each user (flat structure only).
+ * These items will have pinnedOrder set (0, 1, 2...) for sidebar display.
+ */
+export const USER_PINNED_ITEMS: Record<string, number[]> = {
+  "demo@canoncore.com": [1396, 603, 238], // Breaking Bad, The Matrix, The Godfather
+  "filmfan@canoncore.com": [129, 496243], // Spirited Away, Parasite
+  "bingewatcher@canoncore.com": [66732, 1399], // Stranger Things, Game of Thrones
+  "scifi@canoncore.com": [438631, 57243], // Dune, Doctor Who (Modern)
+  "test@canoncore.com": [],
 };
 
 /** Default password for seed users (override with SEED_PASSWORD env var). */
@@ -444,4 +476,74 @@ export function validateContentDistribution(): void {
       }
     }
   }
+}
+
+// =============================================================================
+// Incremental Seeding
+// =============================================================================
+
+/** Hash version prefix - increment when changing hash algorithm or included fields. */
+const HASH_VERSION = "v3"; // Bumped for episode hero images (still_path as isHero)
+
+/**
+ * Computes a content hash for a user's seed configuration.
+ * Changes to any of these trigger a re-seed for that user:
+ * - Movie IDs
+ * - Show IDs
+ * - Progress range
+ * - Pinned items
+ * - User profile (name, username, isPublic, avatar/hero seeds)
+ *
+ * @param email - User email to compute hash for
+ * @returns Versioned SHA-256 hash of user's content configuration (e.g., "v1:abc123...")
+ */
+export function computeUserContentHash(email: string): string {
+  const userConfig = SEED_USERS.find((u) => u.email === email);
+  const contentConfig = USER_CONTENT_DISTRIBUTION[email];
+  const progressConfig = USER_PROGRESS_RANGES[email];
+  const pinnedConfig = USER_PINNED_ITEMS[email];
+
+  if (!userConfig || !contentConfig) {
+    return "";
+  }
+
+  // Use .toSorted() to avoid mutating original arrays
+  const hashInput = JSON.stringify({
+    // User profile
+    name: userConfig.name,
+    username: userConfig.username,
+    isPublic: userConfig.isPublic,
+    avatarSeed: userConfig.avatarSeed,
+    heroSeed: userConfig.heroSeed,
+    heroUrl: userConfig.heroUrl,
+    // Content (sorted for determinism, using immutable toSorted)
+    movieIds: contentConfig.movieIds.toSorted((a, b) => a - b),
+    showIds: contentConfig.showIds.toSorted((a, b) => a - b),
+    // Progress
+    progressRange: progressConfig,
+    // Pinned (sorted for determinism)
+    pinnedItems: pinnedConfig?.toSorted((a, b) => a - b) ?? [],
+    // Global settings that affect output
+    maxSeasons: MAX_SEASONS,
+    maxEpisodes: MAX_EPISODES,
+    groupedStructure: SEED_GROUPED_STRUCTURE,
+    simulatePlayback: SEED_SIMULATE_PLAYBACK,
+  });
+
+  // Use full SHA-256 hash (64 chars) with version prefix for future-proofing
+  const hash = crypto.createHash("sha256").update(hashInput).digest("hex");
+  return `${HASH_VERSION}:${hash}`;
+}
+
+/**
+ * Computes hashes for all seed users.
+ *
+ * @returns Map of email to content hash
+ */
+export function computeAllUserHashes(): Map<string, string> {
+  const hashes = new Map<string, string>();
+  for (const user of SEED_USERS) {
+    hashes.set(user.email, computeUserContentHash(user.email));
+  }
+  return hashes;
 }
