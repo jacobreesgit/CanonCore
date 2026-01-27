@@ -6,6 +6,10 @@
 
 - manual status
 
+- better vidstack ison
+
+- spotlight search for mobile. actually, think about mobile in general
+
 - Task 8: URL-Based State Management
 - that design skill tweet - upload bit
 - that different auth pge

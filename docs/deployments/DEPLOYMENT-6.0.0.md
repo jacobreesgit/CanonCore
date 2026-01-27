@@ -22,6 +22,7 @@ pnpm run screenshots
 ```
 
 **Screenshot coverage**:
+
 - 9 main features (grid, tree, video player, TMDB wizard, progress tracking, Drive sync, explore, spotlight, edit mode)
 - 4 example libraries (filmfan, bingewatcher, scifi_jordan)
 - 4 dark mode variants
@@ -29,6 +30,7 @@ pnpm run screenshots
 - 13 UI states (empty state, bulk selection, context menu, filters, sorts, progress states, public profile, fork dialog, settings)
 
 **Implementation**:
+
 - `e2e/screenshots/portfolio.spec.ts` - 35 test cases with viewport/state management
 - `e2e/screenshots/utils.ts` - Reusable helpers for login, navigation, theme switching
 - `e2e/screenshots/playwright.config.ts` - Dedicated config with 1920x1080 viewport
@@ -49,23 +51,27 @@ pnpm run seed:full
 ```
 
 **How it works**:
+
 1. Hash each user's seed configuration (items, files, content)
 2. Compare hashes against `User.seedContentHash` in database
 3. Skip unchanged users, rebuild only modified ones
 4. Store new hash after successful seed
 
 **Performance**:
+
 - Full seed (4 users): ~2-3 minutes
 - Incremental seed (0 changes): ~5 seconds
 - Incremental seed (1 user changed): ~30-45 seconds
 
 **Implementation**:
+
 - `prisma/seed.ts` - Refactored with hash-based change detection (1,473 lines, +800 from v5.0.0)
 - `prisma/seed-config.ts` - Centralized config with user definitions, item trees, file metadata
 - `prisma/schema.prisma` - Added `User.seedContentHash` (String?, nullable)
 - `tests/unit/lib/seed-hash.test.ts` - Hash generation and comparison tests
 
 **Environment variable**:
+
 ```bash
 SEED_INCREMENTAL=false  # Set to force full rebuild (default: true)
 ```
@@ -73,6 +79,7 @@ SEED_INCREMENTAL=false  # Set to force full rebuild (default: true)
 ### UI/UX Improvements
 
 **Floating Bulk Actions Toolbar**:
+
 - Complete redesign as fixed bottom toolbar with glass morphism effect
 - Smooth slide-up animation when items are selected (respects `prefers-reduced-motion`)
 - Larger, more prominent selection count badge with animated number updates
@@ -81,12 +88,14 @@ SEED_INCREMENTAL=false  # Set to force full rebuild (default: true)
 - Maximum width constraint (max-w-2xl) for better large screen UX
 
 **Cascading Tree Selection**:
+
 - Selecting a parent item now automatically selects all child items
 - Deselecting a parent deselects all children
 - Provides more intuitive bulk operations on nested hierarchies
 - Works recursively through unlimited depth
 
 **One-Click Forking from Explore**:
+
 - Fork button now available directly in explore page carousel
 - Click fork → choose destination → done (no need to visit item detail page)
 - Shows fork dialog with folder picker for authenticated users
@@ -94,12 +103,14 @@ SEED_INCREMENTAL=false  # Set to force full rebuild (default: true)
 - Improves discoverability and reduces friction
 
 **Higher Quality TMDB Images**:
+
 - Backdrop downloads now use "original" size instead of w1280
 - Provides maximum quality for hero images and artwork
 - Better visual fidelity on high-DPI displays
 - ~30-50% larger file sizes but significantly better clarity
 
 **Redesigned Tree Items**:
+
 - Cleaner, more compact layout with inline progress indicators
 - Removed description field from tree view (kept in grid view)
 - Watched count now inline with title: "Breaking Bad • 15/20 watched"
@@ -109,35 +120,41 @@ SEED_INCREMENTAL=false  # Set to force full rebuild (default: true)
 - Border on focus for better accessibility
 
 **Grid Layout Optimization**:
+
 - Large breakpoint (lg) now shows 5 columns instead of 4
 - Makes better use of wide screens (1440px+)
 - Consistent across all grid views (profile, explore, items)
 - Maintains 2 columns (mobile) and 3 columns (tablet)
 
 **Profile Hero Refinements**:
+
 - Removed avatar glow effect for cleaner aesthetic
 - Removed inner ring on avatar for simplified styling
 - Better gradient fallbacks when no profile image
 - Consistent initials display based on name or username
 
 **Better Empty States**:
+
 - Fork destination dialog shows icon and message when search has no results
 - Spotlight search properly centers empty state with flex layout
 - Improved visual hierarchy in empty state messaging
 
 **Component-Level Padding Architecture**:
+
 - Moved responsive padding from page-level to component-level
 - Better control over spacing on profile pages
 - Consistent 4/6/8 padding scale across breakpoints
 - Improves flexibility for future layouts
 
 **Dialog Animation Fixes**:
+
 - Removed absolute positioning from animated dialog content
 - Fixes content clipping in tab views and scrollable areas
 - Smoother height transitions between dialog steps
 - Better reduced motion support
 
 **Docs Layout Consistency**:
+
 - Always wrap content in providers for consistent component tree depth
 - Prevents hydration mismatches between authenticated and guest states
 - Spotlight search visibility still controlled by authentication state
@@ -145,36 +162,42 @@ SEED_INCREMENTAL=false  # Set to force full rebuild (default: true)
 ### Component Refactors
 
 **HeroCarousel** (441 line changes):
+
 - Enhanced single-slide mode with progress tracking
 - Multi-slide autoplay respects `prefers-reduced-motion`
 - Improved loading states and error handling
 - Better TypeScript types with `FeaturedItem` interface
 
 **SettingsDialog** (527 line changes):
+
 - Reorganized tabs for clearer navigation
 - Enhanced Google Drive connection UI
 - Improved form validation and error states
 - Better mobile responsive layout
 
 **ItemsView** (170 line changes):
+
 - Simplified view mode logic
 - Enhanced empty state handling
 - Improved drag-drop feedback
 - Better loading skeleton states
 
 **BulkActionsToolbar** (141 line changes):
+
 - Clearer selection count display
 - Improved accessibility labels
 - Better keyboard navigation
 - Enhanced error handling
 
 **AnimatedDialogContent** (72 line changes):
+
 - Smoother animation transitions
 - Better reduced motion support
 - Fixed focus trap issues
 - Improved z-index management
 
 **TreeItem** (74 line changes):
+
 - Enhanced drag handle visibility
 - Better context menu positioning
 - Improved folder/item icon logic
@@ -183,22 +206,26 @@ SEED_INCREMENTAL=false  # Set to force full rebuild (default: true)
 ### Documentation Improvements
 
 **New documentation**:
+
 - `docs/SCREENSHOT-PLAN.md` - Portfolio screenshot checklist with login credentials and routes
 - `docs/TOAST-AUDIT.md` - Comprehensive audit of toast/notification usage across codebase
 - `docs/plans/2026-01-24-incremental-seed.md` - Technical design document for seeding system
 - `docs/plans/2026-01-24-screenshot-automation.md` - Technical design document for screenshot infrastructure
 
 **Updated documentation**:
+
 - `CLAUDE.md` - Reorganized commands section, updated seeding docs, added screenshot automation docs
 - `portfolio.md` - Streamlined content, removed redundant sections
 
 ### E2E Test Improvements
 
 **Page Object Models**:
+
 - `e2e/pages/items.page.ts` - Added methods for bulk actions, context menus, filters
 - `e2e/pages/settings.page.ts` - Enhanced Drive connection helpers, tab navigation
 
 **Test suite updates**:
+
 - Removed redundant waits and delays across 20+ test files
 - Added explicit assertions for state changes
 - Improved test reliability with better selectors
@@ -207,15 +234,18 @@ SEED_INCREMENTAL=false  # Set to force full rebuild (default: true)
 ### Other Improvements
 
 **Gitignore updates**:
+
 - Added `public/portfolio/*.png` (generated screenshots)
 - Added `e2e/screenshots/test-results/` (Playwright artifacts)
 - Added `.DS_Store` (macOS)
 
 **Vercel ignore updates**:
+
 - Exclude `docs/**` from deployments
 - Exclude `e2e/**` from deployments
 
 **Library updates**:
+
 - Various minor bug fixes in `lib/google-drive-sync.ts`, `lib/tmdb-client.ts`, `lib/public-auth.ts`
 - Improved error handling and logging
 
@@ -301,21 +331,23 @@ Net: +4,909 lines
 
 ## Test Coverage Impact
 
-| Area                    | Before | After | Change | Notes                            |
-| ----------------------- | ------ | ----- | ------ | -------------------------------- |
-| Portfolio screenshots   | 0      | 35    | +35    | E2E screenshot generation        |
-| Seed hash tests         | 0      | ~15   | +15    | Hash generation and comparison   |
-| Component unit tests    | ~120   | ~135  | +15    | Updated for refactored components|
-| E2E test reliability    | ~85%   | ~95%  | +10%   | Removed flaky waits, better assertions |
+| Area                  | Before | After | Change | Notes                                  |
+| --------------------- | ------ | ----- | ------ | -------------------------------------- |
+| Portfolio screenshots | 0      | 35    | +35    | E2E screenshot generation              |
+| Seed hash tests       | 0      | ~15   | +15    | Hash generation and comparison         |
+| Component unit tests  | ~120   | ~135  | +15    | Updated for refactored components      |
+| E2E test reliability  | ~85%   | ~95%  | +10%   | Removed flaky waits, better assertions |
 
 **Net change**: +65 tests, significantly improved E2E reliability.
 
 ## Migration Notes
 
 1. **Database migration required**:
+
    ```bash
    npx prisma migrate dev
    ```
+
    This adds the `User.seedContentHash` field (nullable, safe to run on production).
 
 2. **No code changes required** - all updates are backward compatible.
@@ -326,9 +358,11 @@ Net: +4,909 lines
    - Set `SEED_INCREMENTAL=false` environment variable to force full rebuild
 
 4. **Screenshot generation** (optional):
+
    ```bash
    pnpm run screenshots
    ```
+
    Generates portfolio screenshots in `public/portfolio/`. Run after UI changes for updated marketing assets.
 
 5. **Git LFS recommended** (optional):
