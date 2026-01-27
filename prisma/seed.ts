@@ -5,22 +5,28 @@
  * IMPORTANT: Google Drive is REQUIRED for seeding. Run setup first:
  *   pnpm run setup:seed
  *
- * The script guarantees a clean slate by automatically cleaning all Google Drive content
- * and emptying trash before seeding. The Google Drive account is dedicated to seeding,
- * so all content can be safely deleted.
+ * MODES:
+ *   - Incremental (default): Only re-seeds users whose config has changed
+ *   - Clean Slate: Wipes everything and recreates (SEED_INCREMENTAL=false)
  *
- * Flow:
+ * Flow (Incremental):
  *   1. Validate environment (required vars, production DB check, Drive setup)
- *   2. Clean Google Drive (delete all files/folders, empty trash, verify)
- *   3. Cleanup seed users from database
- *   4. Create seed users
- *   5. Create Drive connection
- *   6. Seed content (movies, TV shows with TMDB metadata)
+ *   2. Compare content hashes to find changed users
+ *   3. Clean only affected users (Drive + DB)
+ *   4. Recreate affected users with content
+ *   5. Save content hash for next run
+ *
+ * Flow (Clean Slate):
+ *   1. Validate environment
+ *   2. Clean ALL Google Drive content (delete files, empty trash)
+ *   3. Cleanup ALL seed users from database
+ *   4. Create all seed users with content
  *
  * Usage:
- *   ALLOW_SEEDING=true npx prisma db seed
- *   ALLOW_SEEDING=true SEED_ONLY_MOVIES=true SEED_MOVIE_COUNT=3 npx prisma db seed
- *   ALLOW_SEEDING=true SEED_GROUPED_STRUCTURE=false npx prisma db seed  # Flat structure
+ *   pnpm seed:quick                    # Incremental - fast when unchanged
+ *   pnpm seed:full                     # Clean slate - full rebuild
+ *   ALLOW_SEEDING=true npx prisma db seed  # Default incremental
+ *   SEED_INCREMENTAL=false ALLOW_SEEDING=true npx prisma db seed  # Force clean
  *
  * Required Environment Variables:
  *   - ALLOW_SEEDING: Must be "true" to run (prevents accidental seeding)
@@ -46,6 +52,7 @@
  *   - SEED_RANDOM_SEED: Seed for reproducible random file counts (default: random)
  *   - SEED_GROUPED_STRUCTURE: Create Movies/TV Shows parent folders (default: true)
  *   - SEED_SIMULATE_PLAYBACK: Generate playback progress data (default: true)
+ *   - SEED_INCREMENTAL: Enable incremental mode (default: true, set to "false" for clean slate)
  *
  * Grouped Structure (default):
  *   When SEED_GROUPED_STRUCTURE=true (default), creates pinned parent folders:
@@ -60,6 +67,7 @@
 // Load environment variables before any other imports
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs";
 dotenv.config({ path: path.resolve(__dirname, "../.env.local") });
 
 import type { drive_v3 } from "googleapis";
@@ -75,6 +83,7 @@ import {
   SEED_QUIET,
   SEED_GROUPED_STRUCTURE,
   SEED_SIMULATE_PLAYBACK,
+  SEED_INCREMENTAL,
   PLAYBACK_DURATIONS,
   getEffectiveMovieIds,
   getEffectiveTVShowIds,
@@ -85,22 +94,34 @@ import {
   isClassicDoctorWho,
   MODERN_DOCTOR_WHO_ID,
   USER_PROGRESS_RANGES,
+  USER_PINNED_ITEMS,
   AVATAR_SIZE,
   HERO_SIZE,
   buildPicsumUrl,
   validateContentDistribution,
+  computeUserContentHash,
+  DEMO_USER_EMAIL,
   type SeedUserConfig,
 } from "./seed-config";
 import { assertDriveConfigured } from "@/lib/drive-verification";
 
 // Prisma will be dynamically imported after env vars are loaded
 import type { PrismaClient } from "@prisma/client";
+import { SyncLogAction, SyncLogStatus } from "@prisma/client";
 let prisma: PrismaClient;
 
 // TMDB API configuration
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p";
 const TMDB_TIMEOUT_MS = 10000;
+
+// Local media files for Breaking Bad S1E1 (optional - for video player screenshots)
+const BREAKING_BAD_TMDB_ID = 1396;
+const LOCAL_VIDEO_PATH = path.resolve(
+  __dirname,
+  "../Breaking.Bad.S01E01.1080p.BluRay.x265-RARBG.mp4"
+);
+const LOCAL_SUBTITLE_PATH = path.resolve(__dirname, "../3_English.srt");
 
 interface TMDBMovie {
   id: number;
@@ -128,6 +149,17 @@ interface TMDBSeasonDetail {
   overview: string;
   poster_path: string | null;
   episodes: TMDBEpisode[];
+}
+
+interface TMDBSeasonImages {
+  backdrops: Array<{
+    file_path: string;
+    vote_average: number;
+  }>;
+  posters: Array<{
+    file_path: string;
+    vote_average: number;
+  }>;
 }
 
 interface TMDBEpisode {
@@ -199,14 +231,14 @@ async function tmdbFetch<T>(endpoint: string): Promise<T | null> {
 }
 
 /**
- * Downloads a poster image from TMDB.
+ * Downloads a poster image from TMDB at original quality.
  */
 async function downloadPoster(
   posterPath: string | null
 ): Promise<Buffer | null> {
   if (!posterPath) return null;
 
-  const url = `${TMDB_IMAGE_BASE}/w500${posterPath}`;
+  const url = `${TMDB_IMAGE_BASE}/original${posterPath}`;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TMDB_TIMEOUT_MS);
 
@@ -306,7 +338,11 @@ function log(message: string): void {
  *
  * @throws Error if cleanup fails at any step (abort seed on failure)
  */
-async function cleanupGoogleDrive(): Promise<void> {
+/**
+ * Legacy cleanup - wipes ALL Google Drive content.
+ * Only used when SEED_INCREMENTAL=false (clean slate mode).
+ */
+async function cleanupAllGoogleDrive(): Promise<void> {
   const refreshToken = process.env.GOOGLE_SEED_REFRESH_TOKEN;
   const rootFolderId = process.env.GOOGLE_SEED_ROOT_FOLDER_ID;
 
@@ -488,15 +524,14 @@ Generated for testing purposes.
 }
 
 /**
- * Downloads a backdrop image from TMDB.
- * Uses w1280 size for high-quality hero images.
+ * Downloads a backdrop image from TMDB at original quality.
  */
 async function downloadBackdrop(
   backdropPath: string | null
 ): Promise<Buffer | null> {
   if (!backdropPath) return null;
 
-  const url = `${TMDB_IMAGE_BASE}/w1280${backdropPath}`;
+  const url = `${TMDB_IMAGE_BASE}/original${backdropPath}`;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TMDB_TIMEOUT_MS);
 
@@ -513,10 +548,133 @@ async function downloadBackdrop(
   }
 }
 
+/**
+ * Fetches season images from TMDB and returns the highest-rated backdrop.
+ * Returns null if no backdrops are available.
+ */
+async function fetchSeasonBackdrop(
+  tvId: number,
+  seasonNumber: number
+): Promise<string | null> {
+  const images = await tmdbFetch<TMDBSeasonImages>(
+    `/tv/${tvId}/season/${seasonNumber}/images`
+  );
+
+  if (!images || !images.backdrops || images.backdrops.length === 0) {
+    return null;
+  }
+
+  // Sort by vote_average descending and return the highest-rated backdrop
+  const sortedBackdrops = images.backdrops.sort(
+    (a, b) => b.vote_average - a.vote_average
+  );
+
+  return sortedBackdrops[0].file_path;
+}
+
 /** Downloaded image data with MIME type. */
 interface ImageData {
   data: Uint8Array<ArrayBuffer>;
   mime: string;
+}
+
+/** Unsplash photo response structure. */
+interface UnsplashPhoto {
+  id: string;
+  urls: {
+    raw: string;
+    full: string;
+    regular: string;
+  };
+  user: {
+    name: string;
+  };
+}
+
+/** Cached popular Unsplash photos for hero images. */
+let cachedUnsplashPhotos: UnsplashPhoto[] | null = null;
+
+/**
+ * Fetches popular landscape photos from Unsplash.
+ * Caches results for reuse across multiple users.
+ *
+ * @returns Array of popular Unsplash photos, or empty array on failure
+ */
+async function fetchPopularUnsplashPhotos(): Promise<UnsplashPhoto[]> {
+  if (cachedUnsplashPhotos) return cachedUnsplashPhotos;
+
+  const accessKey = process.env.UNSPLASH_ACCESS_KEY;
+  if (!accessKey) {
+    log("  ⚠️  UNSPLASH_ACCESS_KEY not set, falling back to Picsum");
+    return [];
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TMDB_TIMEOUT_MS);
+
+  try {
+    const url =
+      "https://api.unsplash.com/photos?order_by=popular&per_page=10&orientation=landscape";
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Client-ID ${accessKey}`,
+      },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      log(`  ⚠️  Unsplash API error: ${response.status}`);
+      return [];
+    }
+
+    const photos = (await response.json()) as UnsplashPhoto[];
+    cachedUnsplashPhotos = photos;
+    log(`  📸 Fetched ${photos.length} popular photos from Unsplash`);
+    return photos;
+  } catch (error) {
+    log(`  ⚠️  Unsplash fetch failed: ${error}`);
+    return [];
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Downloads a hero image from Unsplash with custom dimensions.
+ *
+ * @param photo - Unsplash photo object
+ * @param width - Desired width
+ * @param height - Desired height
+ * @returns Image data and MIME type, or null on failure
+ */
+async function downloadUnsplashHero(
+  photo: UnsplashPhoto,
+  width: number,
+  height: number
+): Promise<ImageData | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TMDB_TIMEOUT_MS);
+
+  try {
+    // Construct sized URL from raw URL
+    const sizedUrl = `${photo.urls.raw}&w=${width}&h=${height}&fit=crop&q=80`;
+    const response = await fetch(sizedUrl, {
+      signal: controller.signal,
+    });
+
+    if (!response.ok) return null;
+
+    const contentType = response.headers.get("content-type") || "image/jpeg";
+    const arrayBuffer = await response.arrayBuffer();
+    return {
+      data: new Uint8Array(arrayBuffer as ArrayBuffer),
+      mime: contentType,
+    };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 /**
@@ -558,6 +716,53 @@ interface ProgressRangeParam {
 }
 
 /**
+ * Context for ordered progress simulation in TV shows.
+ * Enables realistic viewing order where earlier episodes are complete.
+ */
+interface OrderedProgressContext {
+  /** Current episode index (0-based, across all seasons). */
+  episodeIndex: number;
+  /** Total number of episodes in the show. */
+  totalEpisodes: number;
+  /** Episode index where user is currently watching (calculated from progress range). */
+  watchPoint: number;
+  /** Progress percentage for the episode AT the watch point (0-1). */
+  watchPointProgress: number;
+}
+
+/**
+ * Calculates watch point and progress for ordered TV show viewing.
+ * - Episodes before watch point: 100% complete
+ * - Episode at watch point: partial progress
+ * - Episodes after watch point: unwatched
+ *
+ * @param totalEpisodes - Total episodes in the show
+ * @param progressRange - User's progress range (0-1)
+ * @returns Watch point and progress for the current episode
+ */
+function calculateWatchPoint(
+  totalEpisodes: number,
+  progressRange: ProgressRangeParam
+): { watchPoint: number; watchPointProgress: number } {
+  if (progressRange.min === 0 && progressRange.max === 0) {
+    // Unwatched
+    return { watchPoint: -1, watchPointProgress: 0 };
+  }
+
+  // Calculate overall progress through the show (average of min/max)
+  const overallProgress = (progressRange.min + progressRange.max) / 2;
+
+  // Watch point is the episode the user is currently on
+  const watchPoint = Math.floor(overallProgress * totalEpisodes);
+
+  // Progress within the current episode (random within user's range)
+  const watchPointProgress =
+    progressRange.min + Math.random() * (progressRange.max - progressRange.min);
+
+  return { watchPoint, watchPointProgress };
+}
+
+/**
  * Attaches files to an item.
  * - Artwork: Poster as primary, backdrop as hero image (movies/shows only)
  * - Subtitles: Generated placeholder SRT files
@@ -568,6 +773,8 @@ interface ProgressRangeParam {
  * @param progressRange - Optional progress range for playback simulation (0-1).
  *                        If provided, uses range to determine completion percentage.
  *                        If not provided, uses default 4-bucket distribution.
+ * @param orderedProgress - Optional context for ordered TV show progress simulation.
+ *                          When provided, uses realistic watch order logic.
  */
 async function attachRandomFiles(
   itemId: string,
@@ -577,14 +784,21 @@ async function attachRandomFiles(
   backdropPath: string | null,
   ctx: DriveContext | null,
   driveFolderId: string | null,
-  progressRange?: ProgressRangeParam
+  progressRange?: ProgressRangeParam,
+  orderedProgress?: OrderedProgressContext
 ): Promise<void> {
   const subtitleCount = getRandomCount(1, 2);
   const mediaCount =
     level === "episode" || level === "movie" ? getRandomCount(1, 2) : 0;
 
-  // --- PRIMARY ARTWORK (poster) ---
-  if (!SEED_SKIP_ARTWORK && primaryImagePath && ctx && driveFolderId) {
+  // --- PRIMARY ARTWORK (poster) - movies and shows only ---
+  if (
+    !SEED_SKIP_ARTWORK &&
+    primaryImagePath &&
+    level !== "episode" &&
+    ctx &&
+    driveFolderId
+  ) {
     const posterBuffer = await downloadPoster(primaryImagePath);
     if (posterBuffer) {
       try {
@@ -615,21 +829,30 @@ async function attachRandomFiles(
     }
   }
 
-  // --- HERO IMAGE (backdrop) - movies and shows only ---
-  if (
-    !SEED_SKIP_ARTWORK &&
-    backdropPath &&
-    (level === "movie" || level === "show") &&
-    ctx &&
-    driveFolderId
-  ) {
-    const backdropBuffer = await downloadBackdrop(backdropPath);
-    if (backdropBuffer) {
+  // --- HERO IMAGE (backdrop for movies/shows/seasons, still for episodes) ---
+  if (!SEED_SKIP_ARTWORK && ctx && driveFolderId) {
+    let heroBuffer: Buffer | null = null;
+    let filename: string | null = null;
+
+    if (level === "episode" && primaryImagePath) {
+      // Episodes use still_path as hero image
+      heroBuffer = await downloadPoster(primaryImagePath);
+      filename = "still.jpg";
+    } else if (
+      backdropPath &&
+      (level === "movie" || level === "show" || level === "season")
+    ) {
+      // Movies, shows, and seasons use backdrop as hero image
+      heroBuffer = await downloadBackdrop(backdropPath);
+      filename = "backdrop.jpg";
+    }
+
+    if (heroBuffer && filename) {
       try {
         const uploaded = await uploadToDrive(
           ctx,
-          "backdrop.jpg",
-          backdropBuffer,
+          filename,
+          heroBuffer,
           "image/jpeg",
           driveFolderId
         );
@@ -637,11 +860,11 @@ async function attachRandomFiles(
         await prisma.itemFile.create({
           data: {
             itemId,
-            filename: "backdrop.jpg",
+            filename,
             driveFileId: uploaded.id,
             fileType: FileType.ARTWORK,
             mimeType: "image/jpeg",
-            size: BigInt(backdropBuffer.length),
+            size: BigInt(heroBuffer.length),
             isPrimary: false,
             isHero: true,
             syncStatus: SyncStatus.SYNCED,
@@ -719,9 +942,28 @@ async function attachRandomFiles(
         durationRange.min + random() * (durationRange.max - durationRange.min)
       );
 
-      // Use progress range if provided, otherwise use default 4-bucket distribution
-      if (progressRange) {
-        // Per-user progress range: generate random progress within the range
+      // Use ordered progress for TV episodes (realistic viewing order)
+      if (orderedProgress && level === "episode") {
+        const { episodeIndex, watchPoint, watchPointProgress } =
+          orderedProgress;
+
+        if (watchPoint < 0) {
+          // Show is unwatched
+          playbackPosition = null;
+        } else if (episodeIndex < watchPoint) {
+          // Episodes before current: fully watched (95-100%)
+          playbackPosition = Math.floor(
+            playbackDuration * (0.95 + random() * 0.05)
+          );
+        } else if (episodeIndex === watchPoint) {
+          // Current episode: partial progress based on user's range
+          playbackPosition = Math.floor(playbackDuration * watchPointProgress);
+        } else {
+          // Episodes after current: unwatched
+          playbackPosition = null;
+        }
+      } else if (progressRange) {
+        // Per-user progress range for movies: generate random progress within the range
         if (progressRange.min === 0 && progressRange.max === 0) {
           // Special case: 0-0 means unwatched
           playbackPosition = null;
@@ -893,7 +1135,175 @@ async function cleanupSeedUsers(): Promise<void> {
 }
 
 /**
+ * Cleans up specific seed users from database.
+ * Deletes users and all related data (items, files, connections).
+ *
+ * @param emails - Array of user emails to clean up
+ */
+async function cleanupSpecificSeedUsers(emails: string[]): Promise<void> {
+  if (emails.length === 0) return;
+
+  const seedUserEmails = getEffectiveSeedUsers().map((u) => u.email);
+  const toDelete = emails.filter((e) => seedUserEmails.includes(e));
+
+  if (toDelete.length === 0) return;
+
+  // Delete ItemFiles first
+  await prisma.itemFile.deleteMany({
+    where: {
+      item: {
+        user: {
+          email: { in: toDelete },
+        },
+      },
+    },
+  });
+
+  // Delete Items
+  await prisma.item.deleteMany({
+    where: {
+      user: {
+        email: { in: toDelete },
+      },
+    },
+  });
+
+  // Delete GoogleDriveConnections
+  await prisma.googleDriveConnection.deleteMany({
+    where: {
+      user: {
+        email: { in: toDelete },
+      },
+    },
+  });
+
+  // Delete users
+  await prisma.user.deleteMany({
+    where: { email: { in: toDelete } },
+  });
+
+  console.log(`🗑️  Cleaned up ${toDelete.length} seed user(s)`);
+}
+
+/**
+ * Determines which users need to be seeded based on content hash comparison.
+ * In incremental mode, only returns users whose config has changed.
+ * Uses batch query (findMany) to avoid N+1 database calls.
+ *
+ * @returns Object with usersToSeed array and skippedUsers list
+ */
+async function getUsersToSeed(): Promise<{
+  usersToSeed: SeedUserConfig[];
+  skippedUsers: string[];
+}> {
+  const effectiveUsers = getEffectiveSeedUsers();
+
+  if (!SEED_INCREMENTAL) {
+    // Legacy mode: seed all users
+    return { usersToSeed: effectiveUsers, skippedUsers: [] };
+  }
+
+  // Batch query: fetch all existing users in one DB call (avoids N+1)
+  const emails = effectiveUsers.map((u) => u.email);
+  const existingUsers = await prisma.user.findMany({
+    where: { email: { in: emails } },
+    select: { email: true, seedContentHash: true },
+  });
+
+  // Build lookup map for O(1) access
+  const hashMap = new Map(
+    existingUsers.map((u) => [u.email, u.seedContentHash])
+  );
+
+  const usersToSeed: SeedUserConfig[] = [];
+  const skippedUsers: string[] = [];
+
+  for (const userConfig of effectiveUsers) {
+    const newHash = computeUserContentHash(userConfig.email);
+    const existingHash = hashMap.get(userConfig.email);
+
+    if (existingHash === newHash) {
+      skippedUsers.push(userConfig.email);
+    } else {
+      usersToSeed.push(userConfig);
+    }
+  }
+
+  return { usersToSeed, skippedUsers };
+}
+
+/**
+ * Cleans up Google Drive content for a specific user.
+ * Finds and deletes the user's content folder (by email prefix) in the root folder.
+ * Gracefully handles errors to allow seed to continue with database-only cleanup.
+ *
+ * @param userEmail - Email of user whose content to clean
+ */
+async function cleanupGoogleDriveForUser(userEmail: string): Promise<void> {
+  const refreshToken = process.env.GOOGLE_SEED_REFRESH_TOKEN;
+  const rootFolderId = process.env.GOOGLE_SEED_ROOT_FOLDER_ID;
+  const username = userEmail.split("@")[0];
+
+  if (!refreshToken || !rootFolderId) {
+    console.warn(
+      `  ⚠️  Drive credentials not configured, skipping Drive cleanup for ${username}`
+    );
+    return;
+  }
+
+  try {
+    const { batchDelete } = await import("@/lib/google-drive-client");
+
+    // Find items that belong to this user
+    const user = await prisma.user.findUnique({
+      where: { email: userEmail },
+      include: {
+        items: {
+          where: { driveFileId: { not: null } },
+          select: { driveFileId: true },
+        },
+      },
+    });
+
+    if (!user) {
+      console.log(`  ℹ️  No existing user ${username} to clean`);
+      return;
+    }
+
+    const driveFileIds = user.items
+      .map((item) => item.driveFileId)
+      .filter((id): id is string => id !== null);
+
+    if (driveFileIds.length === 0) {
+      console.log(`  ℹ️  No Drive content for ${username}`);
+      return;
+    }
+
+    console.log(
+      `  🗑️  Cleaning ${driveFileIds.length} Drive items for ${username}`
+    );
+
+    const accessToken = await getAccessTokenFromRefreshToken(refreshToken);
+    const result = await batchDelete(accessToken, driveFileIds);
+
+    if (result.failed.length > 0) {
+      console.warn(
+        `  ⚠️  Failed to delete ${result.failed.length} items for ${username}`
+      );
+    }
+
+    console.log(`  ✅ Cleaned ${result.succeeded.length} Drive items`);
+  } catch (error) {
+    // Graceful failure - log warning but continue with database cleanup
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`  ⚠️  Failed to cleanup Drive for ${username}: ${message}`);
+    console.warn(`     Proceeding with database cleanup only`);
+  }
+}
+
+/**
  * Creates seed users with profile images and public profile settings.
+ * Uses Unsplash popular photos for heroes (different photo per user).
  */
 async function createSeedUsers(): Promise<
   Array<{ id: string; email: string; config: SeedUserConfig }>
@@ -902,10 +1312,14 @@ async function createSeedUsers(): Promise<
   const passwordHash = await bcrypt.hash(password, 10);
   const seedUsers = getEffectiveSeedUsers();
 
+  // Fetch popular Unsplash photos for hero images (each user gets different one)
+  const unsplashPhotos = await fetchPopularUnsplashPhotos();
+
   const users: Array<{ id: string; email: string; config: SeedUserConfig }> =
     [];
 
-  for (const userData of seedUsers) {
+  for (let i = 0; i < seedUsers.length; i++) {
+    const userData = seedUsers[i];
     // Download profile images if seeds are provided
     let avatarData: ImageData | null = null;
     let heroData: ImageData | null = null;
@@ -920,13 +1334,121 @@ async function createSeedUsers(): Promise<
       avatarData = await downloadProfileImage(avatarUrl);
     }
 
-    if (userData.heroSeed) {
+    // Try direct heroUrl first (takes precedence over Unsplash/Picsum)
+    if (userData.heroUrl) {
+      log(`  🖼️  Downloading custom hero for ${userData.email}...`);
+      heroData = await downloadProfileImage(userData.heroUrl);
+    }
+
+    // Try Unsplash if no direct URL (each user gets a different popular photo)
+    if (!heroData && unsplashPhotos.length > 0 && i < unsplashPhotos.length) {
+      const photo = unsplashPhotos[i];
+      log(
+        `  🖼️  Downloading Unsplash hero for ${userData.email} (by ${photo.user.name})...`
+      );
+      heroData = await downloadUnsplashHero(
+        photo,
+        HERO_SIZE.width,
+        HERO_SIZE.height
+      );
+    }
+
+    // Fallback to Picsum if Unsplash failed or unavailable
+    if (!heroData && userData.heroSeed) {
       const heroUrl = buildPicsumUrl(
         userData.heroSeed,
         HERO_SIZE.width,
         HERO_SIZE.height
       );
-      log(`  🖼️  Downloading hero for ${userData.email}...`);
+      log(`  🖼️  Downloading Picsum hero for ${userData.email}...`);
+      heroData = await downloadProfileImage(heroUrl);
+    }
+
+    const user = await prisma.user.create({
+      data: {
+        email: userData.email,
+        name: userData.name,
+        username: userData.username,
+        isPublic: userData.isPublic ?? false,
+        // Store as Bytes with MIME type (schema requirement)
+        image: avatarData?.data ?? null,
+        imageMime: avatarData?.mime ?? null,
+        heroImage: heroData?.data ?? null,
+        heroImageMime: heroData?.mime ?? null,
+        passwordHash,
+      },
+    });
+
+    users.push({ id: user.id, email: user.email, config: userData });
+    const publicLabel = userData.isPublic ? " (public)" : "";
+    log(`👤 Created user: ${userData.email}${publicLabel}`);
+  }
+
+  return users;
+}
+
+/**
+ * Creates seed users from a filtered list (for incremental seeding).
+ * Only creates users in the provided list, with profile images.
+ *
+ * @param usersToCreate - Array of user configs to create
+ * @returns Created user records with IDs
+ */
+async function createSeedUsersFiltered(
+  usersToCreate: SeedUserConfig[]
+): Promise<Array<{ id: string; email: string; config: SeedUserConfig }>> {
+  const password = process.env.SEED_PASSWORD || DEFAULT_SEED_PASSWORD;
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  // Fetch popular Unsplash photos for hero images (each user gets different one)
+  const unsplashPhotos = await fetchPopularUnsplashPhotos();
+
+  const users: Array<{ id: string; email: string; config: SeedUserConfig }> =
+    [];
+
+  for (let i = 0; i < usersToCreate.length; i++) {
+    const userData = usersToCreate[i];
+    // Download profile images if seeds are provided
+    let avatarData: ImageData | null = null;
+    let heroData: ImageData | null = null;
+
+    if (userData.avatarSeed) {
+      const avatarUrl = buildPicsumUrl(
+        userData.avatarSeed,
+        AVATAR_SIZE.width,
+        AVATAR_SIZE.height
+      );
+      log(`  📷 Downloading avatar for ${userData.email}...`);
+      avatarData = await downloadProfileImage(avatarUrl);
+    }
+
+    // Try direct heroUrl first (takes precedence over Unsplash/Picsum)
+    if (userData.heroUrl) {
+      log(`  🖼️  Downloading custom hero for ${userData.email}...`);
+      heroData = await downloadProfileImage(userData.heroUrl);
+    }
+
+    // Try Unsplash if no direct URL (each user gets a different popular photo)
+    if (!heroData && unsplashPhotos.length > 0 && i < unsplashPhotos.length) {
+      const photo = unsplashPhotos[i];
+      log(
+        `  🖼️  Downloading Unsplash hero for ${userData.email} (by ${photo.user.name})...`
+      );
+      heroData = await downloadUnsplashHero(
+        photo,
+        HERO_SIZE.width,
+        HERO_SIZE.height
+      );
+    }
+
+    // Fallback to Picsum if Unsplash failed or unavailable
+    if (!heroData && userData.heroSeed) {
+      const heroUrl = buildPicsumUrl(
+        userData.heroSeed,
+        HERO_SIZE.width,
+        HERO_SIZE.height
+      );
+      log(`  🖼️  Downloading Picsum hero for ${userData.email}...`);
       heroData = await downloadProfileImage(heroUrl);
     }
 
@@ -1239,6 +1761,101 @@ async function uploadToDrive(
 }
 
 /**
+ * Checks if local Breaking Bad media files exist for seeding.
+ *
+ * @returns Object with video and subtitle availability
+ */
+function checkLocalMediaFiles(): { hasVideo: boolean; hasSubtitle: boolean } {
+  const hasVideo = fs.existsSync(LOCAL_VIDEO_PATH);
+  const hasSubtitle = fs.existsSync(LOCAL_SUBTITLE_PATH);
+
+  console.log("🔍 Checking for local Breaking Bad S1E1 media files:");
+  console.log(
+    `   Video: ${hasVideo ? "✅ FOUND" : "❌ NOT FOUND"} at ${LOCAL_VIDEO_PATH}`
+  );
+  console.log(
+    `   Subtitle: ${hasSubtitle ? "✅ FOUND" : "❌ NOT FOUND"} at ${LOCAL_SUBTITLE_PATH}`
+  );
+
+  return { hasVideo, hasSubtitle };
+}
+
+/**
+ * Uploads local Breaking Bad S1E1 video to Google Drive.
+ * Used for demo user to enable video player screenshots.
+ *
+ * @param ctx - Google Drive context
+ * @param parentId - Parent folder ID in Drive
+ * @returns Upload result with file ID, or null on failure
+ */
+async function uploadLocalVideo(
+  ctx: DriveContext,
+  parentId: string
+): Promise<{ id: string; size: number } | null> {
+  if (!fs.existsSync(LOCAL_VIDEO_PATH)) {
+    return null;
+  }
+
+  try {
+    log(
+      "      📹 Uploading Breaking Bad S1E1 video (this may take a while)..."
+    );
+    const videoBuffer = fs.readFileSync(LOCAL_VIDEO_PATH);
+    const filename = path.basename(LOCAL_VIDEO_PATH);
+
+    const result = await uploadToDrive(
+      ctx,
+      filename,
+      videoBuffer,
+      "video/mp4",
+      parentId
+    );
+
+    log(
+      `      ✅ Video uploaded: ${filename} (${(videoBuffer.length / 1024 / 1024).toFixed(1)} MB)`
+    );
+    return { id: result.id, size: videoBuffer.length };
+  } catch (error) {
+    console.error("      ❌ Failed to upload video:", error);
+    return null;
+  }
+}
+
+/**
+ * Uploads local Breaking Bad S1E1 subtitle to Google Drive.
+ *
+ * @param ctx - Google Drive context
+ * @param parentId - Parent folder ID in Drive
+ * @returns Upload result with file ID, or null on failure
+ */
+async function uploadLocalSubtitle(
+  ctx: DriveContext,
+  parentId: string
+): Promise<{ id: string; size: number } | null> {
+  if (!fs.existsSync(LOCAL_SUBTITLE_PATH)) {
+    return null;
+  }
+
+  try {
+    log("      📄 Uploading Breaking Bad S1E1 subtitle...");
+    const subtitleBuffer = fs.readFileSync(LOCAL_SUBTITLE_PATH);
+    const result = await uploadToDrive(
+      ctx,
+      "English.srt",
+      subtitleBuffer,
+      "application/x-subrip",
+      parentId
+    );
+
+    log("      ✅ Subtitle uploaded: English.srt");
+    return { id: result.id, size: subtitleBuffer.length };
+  } catch (error) {
+    console.error("      ❌ Failed to upload subtitle:", error);
+    return null;
+  }
+}
+
+/**
  * Seeds movies for a user with Drive integration.
  * When parentInfo is provided, creates items under the parent folder (grouped structure).
  * Otherwise creates items at root level (flat structure).
@@ -1427,9 +2044,18 @@ async function seedMoviesForUser(
  * Seeds all episodes for a season.
  * Creates Drive folders when ctx is provided (first user only).
  *
+ * For Breaking Bad S1E1 with demo user, uploads actual video file if available locally.
+ * This enables video player screenshots for portfolio.
+ *
  * @param depthOffset - Offset to add to base depth (0 for flat, 1 for grouped structure)
  * @param progressRange - Progress range for playback simulation (0-1)
  * @param isPublic - Whether items should be public (for public profiles)
+ * @param showTmdbId - TMDB ID of the parent show (for Breaking Bad detection)
+ * @param seasonNumber - Season number (for S1 detection)
+ * @param userEmail - User email (for demo user detection)
+ * @param episodeStartIndex - Starting index for ordered progress tracking
+ * @param orderedProgressBase - Base context for ordered progress (totalEpisodes, watchPoint)
+ * @returns Object with count of items created and next episode index
  */
 async function seedEpisodes(
   episodes: TMDBEpisode[],
@@ -1439,9 +2065,19 @@ async function seedEpisodes(
   ctx: DriveContext | null,
   depthOffset = 0,
   progressRange?: ProgressRangeParam,
-  isPublic = false
-): Promise<number> {
+  isPublic = false,
+  showTmdbId?: number,
+  seasonNumber?: number,
+  userEmail?: string,
+  episodeStartIndex = 0,
+  orderedProgressBase?: {
+    totalEpisodes: number;
+    watchPoint: number;
+    watchPointProgress: number;
+  }
+): Promise<{ count: number; nextIndex: number }> {
   let count = 0;
+  let currentEpisodeIndex = episodeStartIndex;
 
   // Apply episode limit (0 = unlimited)
   const maxEpisodes =
@@ -1455,6 +2091,17 @@ async function seedEpisodes(
     const episodeName = sanitizeFolderName(
       `E${String(episode.episode_number).padStart(2, "0")} - ${episode.name}`
     );
+
+    // Build ordered progress context for this episode
+    const orderedProgress: OrderedProgressContext | undefined =
+      orderedProgressBase
+        ? {
+            episodeIndex: currentEpisodeIndex,
+            totalEpisodes: orderedProgressBase.totalEpisodes,
+            watchPoint: orderedProgressBase.watchPoint,
+            watchPointProgress: orderedProgressBase.watchPointProgress,
+          }
+        : undefined;
 
     // Create Drive folder for episode
     let episodeDriveFolderId: string | null = null;
@@ -1495,22 +2142,153 @@ async function seedEpisodes(
       },
     });
 
-    // Attach files (artwork from still, subtitles, media placeholders)
-    await attachRandomFiles(
-      episodeItem.id,
-      episodeName,
-      "episode",
-      episode.still_path || null,
-      null, // No backdrop for episodes
-      ctx,
-      episodeDriveFolderId,
-      progressRange
-    );
+    // Check if this is Breaking Bad S1E1 for demo user - upload real video if available
+    const isBreakingBadS1E1 =
+      showTmdbId === BREAKING_BAD_TMDB_ID &&
+      seasonNumber === 1 &&
+      episode.episode_number === 1 &&
+      userEmail === DEMO_USER_EMAIL;
+
+    if (isBreakingBadS1E1) {
+      console.log(`\n🎯 Breaking Bad S1E1 detected for demo user!`);
+      console.log(
+        `   Show TMDB ID: ${showTmdbId} (expected: ${BREAKING_BAD_TMDB_ID})`
+      );
+      console.log(
+        `   Season: ${seasonNumber}, Episode: ${episode.episode_number}`
+      );
+      console.log(`   User: ${userEmail} (expected: ${DEMO_USER_EMAIL})`);
+      console.log(`   Drive context: ${ctx ? "✅ Available" : "❌ Missing"}`);
+      console.log(
+        `   Episode folder ID: ${episodeDriveFolderId || "❌ Missing"}\n`
+      );
+    }
+
+    if (isBreakingBadS1E1 && ctx && episodeDriveFolderId) {
+      const localMedia = checkLocalMediaFiles();
+
+      if (localMedia.hasVideo || localMedia.hasSubtitle) {
+        log(
+          "    🎬 Breaking Bad S1E1 detected - uploading real media files..."
+        );
+
+        // Upload artwork first (still image as hero banner)
+        if (!SEED_SKIP_ARTWORK && episode.still_path) {
+          const stillBuffer = await downloadPoster(episode.still_path);
+          if (stillBuffer) {
+            try {
+              const uploaded = await uploadToDrive(
+                ctx,
+                "still.jpg",
+                stillBuffer,
+                "image/jpeg",
+                episodeDriveFolderId
+              );
+              await prisma.itemFile.create({
+                data: {
+                  itemId: episodeItem.id,
+                  filename: "still.jpg",
+                  driveFileId: uploaded.id,
+                  fileType: FileType.ARTWORK,
+                  mimeType: "image/jpeg",
+                  size: BigInt(stillBuffer.length),
+                  isPrimary: false,
+                  isHero: true,
+                  syncStatus: SyncStatus.SYNCED,
+                },
+              });
+            } catch {
+              // Continue even if upload fails
+            }
+          }
+        }
+
+        // Upload real subtitle if available
+        if (localMedia.hasSubtitle) {
+          const subtitleResult = await uploadLocalSubtitle(
+            ctx,
+            episodeDriveFolderId
+          );
+          if (subtitleResult) {
+            await prisma.itemFile.create({
+              data: {
+                itemId: episodeItem.id,
+                filename: "English.srt",
+                driveFileId: subtitleResult.id,
+                fileType: FileType.SUBTITLE,
+                mimeType: "application/x-subrip",
+                size: BigInt(subtitleResult.size),
+                isPrimary: true,
+                isHero: false,
+                syncStatus: SyncStatus.SYNCED,
+              },
+            });
+            log(`      ✅ Subtitle file attached to episode`);
+          }
+        }
+
+        // Upload real video if available
+        if (localMedia.hasVideo) {
+          const videoResult = await uploadLocalVideo(ctx, episodeDriveFolderId);
+          if (videoResult) {
+            // Get video duration (approximate - 58 minutes for pilot)
+            const playbackDuration = 58 * 60; // 58 minutes in seconds
+            const playbackPosition = Math.floor(playbackDuration * 0.99); // 99% watched
+
+            await prisma.itemFile.create({
+              data: {
+                itemId: episodeItem.id,
+                filename: path.basename(LOCAL_VIDEO_PATH),
+                driveFileId: videoResult.id,
+                fileType: FileType.MEDIA,
+                mimeType: "video/mp4",
+                size: BigInt(videoResult.size),
+                isPrimary: true,
+                isHero: false,
+                syncStatus: SyncStatus.SYNCED,
+                playbackDuration,
+                playbackPosition,
+              },
+            });
+            log(
+              `      ✅ Video file attached to episode (duration: ${Math.floor(playbackDuration / 60)}min, position: ${Math.floor((playbackPosition / playbackDuration) * 100)}%)`
+            );
+          }
+        }
+      } else {
+        // No local files, fall back to placeholders
+        await attachRandomFiles(
+          episodeItem.id,
+          episodeName,
+          "episode",
+          episode.still_path || null,
+          null,
+          ctx,
+          episodeDriveFolderId,
+          progressRange,
+          orderedProgress
+        );
+      }
+    } else {
+      // Regular episode - use placeholder files
+      await attachRandomFiles(
+        episodeItem.id,
+        episodeName,
+        "episode",
+        episode.still_path || null,
+        null, // No backdrop for episodes
+        ctx,
+        episodeDriveFolderId,
+        progressRange,
+        orderedProgress
+      );
+    }
 
     count++;
+    currentEpisodeIndex++;
   }
 
-  return count;
+  return { count, nextIndex: currentEpisodeIndex };
 }
 
 /**
@@ -1525,6 +2303,9 @@ async function seedEpisodes(
  * @param seasonOrderOffset - Offset for season order (used when combining Classic/Modern Doctor Who)
  * @param progressRange - Progress range for playback simulation (0-1)
  * @param isPublic - Whether items should be public (for public profiles)
+ * @param userEmail - User email (passed to seedEpisodes for demo user detection)
+ * @param episodeStartIndex - Starting episode index for ordered progress (default 0)
+ * @returns Object with total items created and next episode index
  */
 async function seedSeasons(
   tvId: number,
@@ -1537,9 +2318,12 @@ async function seedSeasons(
   depthOffset = 0,
   seasonOrderOffset = 0,
   progressRange?: ProgressRangeParam,
-  isPublic = false
-): Promise<number> {
+  isPublic = false,
+  userEmail?: string,
+  episodeStartIndex = 0
+): Promise<{ totalItems: number; nextIndex: number }> {
   let totalItems = 0;
+  let currentEpisodeIndex = episodeStartIndex;
 
   // Apply season limit (0 = unlimited)
   const maxSeasons =
@@ -1547,32 +2331,56 @@ async function seedSeasons(
       ? numberOfSeasons
       : Math.min(numberOfSeasons, MAX_SEASONS);
 
-  // Start at 1 to skip Season 0 (specials)
+  // PHASE 1: Fetch all season metadata to get actual episode counts from TMDB
+  log(`    ⏳ Fetching ${maxSeasons} seasons from TMDB...`);
+  const seasonDetails: TMDBSeasonDetail[] = [];
+  let actualTotalEpisodes = 0;
+
   for (let seasonNum = 1; seasonNum <= maxSeasons; seasonNum++) {
-    // Progress logging
-    log(`    ⏳ Fetching season ${seasonNum}/${maxSeasons}...`);
-
-    // Rate limiting
     await sleep(TMDB_API_DELAY_MS);
-
     const season = await tmdbFetch<TMDBSeasonDetail>(
       `/tv/${tvId}/season/${seasonNum}`
     );
 
-    if (!season) {
-      console.warn(
-        `    ⚠️  Failed to fetch season ${seasonNum} for ${showName}`
-      );
-      continue;
+    if (season && season.episodes && season.episodes.length > 0) {
+      // Apply episode limit per season
+      const episodeCount =
+        MAX_EPISODES === 0
+          ? season.episodes.length
+          : Math.min(season.episodes.length, MAX_EPISODES);
+      actualTotalEpisodes += episodeCount;
+      seasonDetails.push(season);
     }
+  }
 
-    // Empty season guard
-    if (!season.episodes || season.episodes.length === 0) {
-      console.warn(`    ⚠️  Season ${seasonNum} has no episodes, skipping`);
-      continue;
-    }
+  // Calculate watch point for ordered progress using actual TMDB data
+  let orderedProgressBase:
+    | { totalEpisodes: number; watchPoint: number; watchPointProgress: number }
+    | undefined;
+  if (progressRange && SEED_SIMULATE_PLAYBACK && actualTotalEpisodes > 0) {
+    const { watchPoint, watchPointProgress } = calculateWatchPoint(
+      actualTotalEpisodes,
+      progressRange
+    );
+    orderedProgressBase = {
+      totalEpisodes: actualTotalEpisodes,
+      watchPoint,
+      watchPointProgress,
+    };
+    log(
+      `    📊 Progress: ${actualTotalEpisodes} episodes, watch point at episode ${watchPoint + 1}`
+    );
+  }
 
+  // PHASE 2: Seed each season with the pre-fetched data
+  for (let i = 0; i < seasonDetails.length; i++) {
+    const season = seasonDetails[i];
+    const seasonNum = season.season_number;
     const seasonName = sanitizeFolderName(season.name || `Season ${seasonNum}`);
+
+    // Fetch season-specific backdrop
+    await sleep(TMDB_API_DELAY_MS);
+    const seasonBackdrop = await fetchSeasonBackdrop(tvId, seasonNum);
 
     // Create Drive folder for season
     let seasonDriveFolderId: string | null = null;
@@ -1618,14 +2426,14 @@ async function seedSeasons(
       seasonName,
       "season",
       season.poster_path,
-      null, // No backdrop for seasons
+      seasonBackdrop, // Use season-specific backdrop
       ctx,
       seasonDriveFolderId,
       progressRange
     );
 
-    // Seed episodes
-    const episodeCount = await seedEpisodes(
+    // Seed episodes with ordered progress tracking
+    const episodeResult = await seedEpisodes(
       season.episodes,
       seasonItem.id,
       seasonDriveFolderId,
@@ -1633,192 +2441,20 @@ async function seedSeasons(
       ctx,
       depthOffset,
       progressRange,
-      isPublic
+      isPublic,
+      tvId,
+      seasonNum,
+      userEmail,
+      currentEpisodeIndex,
+      orderedProgressBase
     );
 
-    totalItems += 1 + episodeCount;
-    log(`    📁 ${seasonName} (${episodeCount} episodes)`);
+    totalItems += 1 + episodeResult.count;
+    currentEpisodeIndex = episodeResult.nextIndex;
+    log(`    📁 ${seasonName} (${episodeResult.count} episodes)`);
   }
 
-  return totalItems;
-}
-
-/**
- * Seeds TV shows for a user with Drive integration.
- * Creates hierarchical structure: Show → Seasons → Episodes.
- * When parentInfo is provided, creates items under the parent folder (grouped structure).
- * Creates Drive folders when ctx is provided (first user only).
- *
- * Special handling for Doctor Who:
- * - Classic Doctor Who (ID 121) and Modern Doctor Who (ID 57243) are consolidated
- * - Creates single "Doctor Who" folder with seasons from both eras
- * - Classic seasons appear first, Modern seasons follow with offset
- */
-async function _seedTVShows(
-  userId: string,
-  ctx: DriveContext | null,
-  startOrder: number,
-  progress: SeedProgress,
-  parentInfo?: ParentFolderInfo | null
-): Promise<number> {
-  let count = 0;
-  const tvShowIds = getEffectiveTVShowIds();
-
-  // Determine parent folder context
-  const parentId = parentInfo?.itemId ?? null;
-  const parentDriveFolderId = parentInfo?.driveFolderId ?? ctx?.rootFolderId;
-  const baseDepth = parentInfo ? 1 : 0;
-  const depthOffset = parentInfo ? 1 : 0;
-
-  // Track which Doctor Who has been processed (for consolidation)
-  let doctorWhoProcessed = false;
-  let orderOffset = 0; // Adjust order when Doctor Who eras are consolidated
-
-  for (let i = 0; i < tvShowIds.length; i++) {
-    const showId = tvShowIds[i];
-
-    // Special handling: Skip Modern Doctor Who if Classic was already processed
-    // (they're consolidated into a single "Doctor Who" folder)
-    if (isDoctorWho(showId) && doctorWhoProcessed) {
-      orderOffset--; // Compensate for skipped show
-      continue;
-    }
-
-    // Rate limiting
-    await sleep(TMDB_API_DELAY_MS);
-
-    const show = await tmdbFetch<TMDBTVShow>(`/tv/${showId}`);
-
-    if (!show) {
-      console.warn(`⚠️  Failed to fetch TV show ${showId}`);
-      continue;
-    }
-
-    // Special handling for Doctor Who: Use unified name and description
-    let name: string;
-    let description: string;
-    if (isDoctorWho(showId)) {
-      name = "Doctor Who";
-      description = truncateOverview(
-        "The adventures of the Doctor, a Time Lord who travels through time and space " +
-          "in the TARDIS with various companions, battling evil and righting wrongs. " +
-          "Spanning from 1963 to the present day."
-      );
-    } else {
-      const year = extractYear(show.first_air_date);
-      name = sanitizeFolderName(year ? `${show.name} (${year})` : show.name);
-      description = truncateOverview(show.overview);
-    }
-
-    // Create folder for this show in Drive
-    let showDriveFolderId: string | null = null;
-    if (ctx && parentDriveFolderId) {
-      try {
-        showDriveFolderId = await createDriveFolder(
-          ctx,
-          name,
-          parentDriveFolderId
-        );
-      } catch (error) {
-        console.error(`❌ Failed to create Drive folder for ${name}:`, error);
-        continue;
-      }
-    }
-
-    // Create Item record (under parent if grouped, otherwise at root)
-    const item = await prisma.item.create({
-      data: {
-        name,
-        description: description || null,
-        userId,
-        parentId,
-        order: startOrder + i + orderOffset,
-        depth: baseDepth,
-        inheritVisibility: false, // TV shows are explicitly public/private
-        driveConnectionId: ctx?.connectionId || null,
-        driveFileId: showDriveFolderId,
-        syncStatus: showDriveFolderId ? SyncStatus.SYNCED : SyncStatus.PENDING,
-      },
-    });
-
-    // Attach files (artwork, subtitles - no media for shows)
-    await attachRandomFiles(
-      item.id,
-      name,
-      "show",
-      show.poster_path,
-      show.backdrop_path,
-      ctx,
-      showDriveFolderId
-    );
-
-    // Seed seasons and episodes
-    let seasonItemCount: number;
-
-    if (isClassicDoctorWho(showId)) {
-      // Doctor Who: Seed Classic era seasons first
-      seasonItemCount = await seedSeasons(
-        showId,
-        item.id,
-        showDriveFolderId,
-        name,
-        show.number_of_seasons,
-        userId,
-        ctx,
-        depthOffset,
-        0 // Start at order 0
-      );
-
-      // Then seed Modern era seasons with offset
-      // Fetch Modern Doctor Who metadata
-      await sleep(TMDB_API_DELAY_MS);
-      const modernShow = await tmdbFetch<TMDBTVShow>(
-        `/tv/${MODERN_DOCTOR_WHO_ID}`
-      );
-
-      if (modernShow) {
-        // Apply same MAX_SEASONS limit to get the actual classic season count
-        const classicSeasonCount =
-          MAX_SEASONS === 0
-            ? show.number_of_seasons
-            : Math.min(show.number_of_seasons, MAX_SEASONS);
-
-        const modernSeasonCount = await seedSeasons(
-          MODERN_DOCTOR_WHO_ID,
-          item.id,
-          showDriveFolderId,
-          name,
-          modernShow.number_of_seasons,
-          userId,
-          ctx,
-          depthOffset,
-          classicSeasonCount // Offset Modern seasons after Classic
-        );
-        seasonItemCount += modernSeasonCount;
-        log(`  🎬 Doctor Who (Modern era): ${modernSeasonCount} items`);
-      }
-
-      doctorWhoProcessed = true;
-    } else {
-      // Normal show: seed seasons normally
-      seasonItemCount = await seedSeasons(
-        showId,
-        item.id,
-        showDriveFolderId,
-        name,
-        show.number_of_seasons,
-        userId,
-        ctx,
-        depthOffset
-      );
-    }
-
-    count += 1 + seasonItemCount;
-    progress.completedShows++;
-    logProgress(progress, name);
-  }
-
-  return count;
+  return { totalItems, nextIndex: currentEpisodeIndex };
 }
 
 /**
@@ -1831,6 +2467,7 @@ async function _seedTVShows(
  *
  * @param progressRange - Progress range for playback simulation (0-1)
  * @param isPublic - Whether items should be public (for public profiles)
+ * @param userEmail - User email (for demo user detection in Breaking Bad S1E1)
  */
 async function seedTVShowsForUser(
   userId: string,
@@ -1840,7 +2477,8 @@ async function seedTVShowsForUser(
   tvShowIds: number[],
   parentInfo?: ParentFolderInfo | null,
   progressRange?: ProgressRangeParam,
-  isPublic = false
+  isPublic = false,
+  userEmail?: string
 ): Promise<number> {
   let count = 0;
 
@@ -1934,11 +2572,11 @@ async function seedTVShowsForUser(
     );
 
     // Seed seasons and episodes
-    let seasonItemCount: number;
+    let seasonItemCount = 0;
 
     if (isClassicDoctorWho(showId)) {
       // Doctor Who: Seed Classic era seasons first
-      seasonItemCount = await seedSeasons(
+      const classicResult = await seedSeasons(
         showId,
         item.id,
         showDriveFolderId,
@@ -1949,8 +2587,11 @@ async function seedTVShowsForUser(
         depthOffset,
         0,
         progressRange,
-        isPublic
+        isPublic,
+        userEmail,
+        0 // Start episode index at 0
       );
+      seasonItemCount = classicResult.totalItems;
 
       // Check if Modern Doctor Who is also in the user's list
       if (tvShowIds.includes(MODERN_DOCTOR_WHO_ID)) {
@@ -1965,7 +2606,7 @@ async function seedTVShowsForUser(
               ? show.number_of_seasons
               : Math.min(show.number_of_seasons, MAX_SEASONS);
 
-          const modernSeasonCount = await seedSeasons(
+          const modernResult = await seedSeasons(
             MODERN_DOCTOR_WHO_ID,
             item.id,
             showDriveFolderId,
@@ -1976,17 +2617,19 @@ async function seedTVShowsForUser(
             depthOffset,
             classicSeasonCount,
             progressRange,
-            isPublic
+            isPublic,
+            userEmail,
+            classicResult.nextIndex // Continue episode index from classic era
           );
-          seasonItemCount += modernSeasonCount;
-          log(`  🎬 Doctor Who (Modern era): ${modernSeasonCount} items`);
+          seasonItemCount += modernResult.totalItems;
+          log(`  🎬 Doctor Who (Modern era): ${modernResult.totalItems} items`);
         }
       }
 
       doctorWhoProcessed = true;
     } else {
       // Normal show: seed seasons normally
-      seasonItemCount = await seedSeasons(
+      const result = await seedSeasons(
         showId,
         item.id,
         showDriveFolderId,
@@ -1997,8 +2640,10 @@ async function seedTVShowsForUser(
         depthOffset,
         0,
         progressRange,
-        isPublic
+        isPublic,
+        userEmail
       );
+      seasonItemCount = result.totalItems;
     }
 
     count += 1 + seasonItemCount;
@@ -2053,6 +2698,176 @@ async function cleanupOnFailure(userId: string): Promise<void> {
 }
 
 /**
+ * Pins specific items for a user based on USER_PINNED_ITEMS config.
+ * Only used in flat structure mode. Fetches TMDB titles to match items by name.
+ *
+ * @param userId - User's database ID
+ * @param email - User's email for config lookup
+ */
+async function pinItemsForUser(userId: string, email: string): Promise<void> {
+  const pinnedTmdbIds = USER_PINNED_ITEMS[email] || [];
+  if (pinnedTmdbIds.length === 0) return;
+
+  const pinnedItems: { name: string; order: number }[] = [];
+
+  for (let i = 0; i < pinnedTmdbIds.length; i++) {
+    const tmdbId = pinnedTmdbIds[i];
+
+    // Try movie first, then TV show
+    let title: string | null = null;
+    let year: string | null = null;
+
+    // Check if it's a movie
+    const movie = await tmdbFetch<TMDBMovie>(`/movie/${tmdbId}`);
+    if (movie) {
+      title = movie.title;
+      year = extractYear(movie.release_date);
+    } else {
+      // Try TV show
+      const show = await tmdbFetch<TMDBTVShow>(`/tv/${tmdbId}`);
+      if (show) {
+        title = show.name;
+        year = extractYear(show.first_air_date);
+      }
+    }
+
+    if (title) {
+      const name = year ? `${title} (${year})` : title;
+      pinnedItems.push({ name, order: i });
+    }
+
+    await sleep(TMDB_API_DELAY_MS);
+  }
+
+  // Update pinnedOrder for matching items
+  for (const { name, order } of pinnedItems) {
+    await prisma.item.updateMany({
+      where: {
+        userId,
+        name,
+        parentId: null, // Only root-level items
+      },
+      data: {
+        pinnedOrder: order,
+      },
+    });
+  }
+
+  if (pinnedItems.length > 0) {
+    log(`   📌 Pinned ${pinnedItems.length} items to sidebar`);
+  }
+}
+
+/**
+ * Generates realistic sync activity log entries for a user.
+ * Creates a variety of sync actions to populate the Activity tab.
+ *
+ * @param userId - User ID to create sync logs for
+ */
+async function generateSyncActivityLogs(userId: string): Promise<void> {
+  // Get some items for the user to reference in logs
+  const items = await prisma.item.findMany({
+    where: { userId },
+    take: 20,
+    include: { files: { take: 1 } },
+  });
+
+  if (items.length === 0) return;
+
+  const syncLogs: Array<{
+    userId: string;
+    action: SyncLogAction;
+    itemId?: string;
+    itemName?: string;
+    fileId?: string;
+    fileName?: string;
+    status: SyncLogStatus;
+    duration?: number;
+    createdAt: Date;
+  }> = [];
+
+  const now = new Date();
+
+  // Generate varied sync activity over the past 7 days
+  const actions: Array<{
+    action: SyncLogAction;
+    weight: number;
+    hasFile: boolean;
+  }> = [
+    { action: SyncLogAction.SYNC, weight: 30, hasFile: false },
+    { action: SyncLogAction.UPLOAD, weight: 25, hasFile: true },
+    { action: SyncLogAction.CREATE, weight: 20, hasFile: false },
+    { action: SyncLogAction.DOWNLOAD, weight: 10, hasFile: true },
+    { action: SyncLogAction.RENAME, weight: 8, hasFile: false },
+    { action: SyncLogAction.MOVE, weight: 5, hasFile: false },
+    { action: SyncLogAction.DELETE, weight: 2, hasFile: false },
+  ];
+
+  // Create 25-40 log entries spread over the past week
+  const logCount = 25 + Math.floor(Math.random() * 16);
+
+  for (let i = 0; i < logCount; i++) {
+    // Pick a random item
+    const item = items[Math.floor(Math.random() * items.length)];
+
+    // Pick a weighted random action
+    const totalWeight = actions.reduce((sum, a) => sum + a.weight, 0);
+    let randomWeight = Math.random() * totalWeight;
+    let selectedAction = actions[0];
+    for (const action of actions) {
+      randomWeight -= action.weight;
+      if (randomWeight <= 0) {
+        selectedAction = action;
+        break;
+      }
+    }
+
+    // Random time in past 7 days (more recent entries more likely)
+    const hoursAgo = Math.pow(Math.random(), 2) * 168; // 0-168 hours (7 days)
+    const createdAt = new Date(now.getTime() - hoursAgo * 60 * 60 * 1000);
+
+    // Most entries are successful, occasional failures
+    const status =
+      Math.random() > 0.05 ? SyncLogStatus.SUCCESS : SyncLogStatus.FAILED;
+
+    // Duration varies by action type (ms)
+    const baseDuration =
+      selectedAction.action === SyncLogAction.UPLOAD
+        ? 2000
+        : selectedAction.action === SyncLogAction.DOWNLOAD
+          ? 1500
+          : selectedAction.action === SyncLogAction.SYNC
+            ? 500
+            : 200;
+    const duration = Math.round(baseDuration * (0.5 + Math.random()));
+
+    const file = selectedAction.hasFile ? item.files[0] : null;
+
+    syncLogs.push({
+      userId,
+      action: selectedAction.action,
+      itemId: item.id,
+      itemName: item.name,
+      fileId: file?.id,
+      fileName: file?.filename,
+      status,
+      duration,
+      createdAt,
+      ...(status === SyncLogStatus.FAILED && {
+        error: "Network timeout - will retry",
+      }),
+    });
+  }
+
+  // Batch insert all logs
+  await prisma.syncLog.createMany({
+    data: syncLogs,
+  });
+
+  log(`   📊 Created ${syncLogs.length} sync activity log entries`);
+}
+
+/**
  * Main seed function.
  * Google Drive is REQUIRED - validates setup before proceeding.
  * Respects SEED_GROUPED_STRUCTURE to create Movies/TV Shows parent folders.
@@ -2077,16 +2892,48 @@ async function main(): Promise<void> {
   const prismaModule = await import("@/lib/prisma");
   prisma = prismaModule.prisma;
 
-  // Clean Google Drive first (guaranteed clean slate)
-  // Note: If this succeeds but DB cleanup fails, re-running seed will fix it
-  console.log("\n🧹 Cleaning Google Drive...\n");
-  await cleanupGoogleDrive();
+  let users: Array<{ id: string; email: string; config: SeedUserConfig }>;
 
-  // Cleanup existing seed users from database
-  await cleanupSeedUsers();
+  if (SEED_INCREMENTAL) {
+    console.log("📊 Incremental mode: checking for changes...\n");
 
-  // Create seed users
-  const users = await createSeedUsers();
+    const { usersToSeed, skippedUsers } = await getUsersToSeed();
+
+    if (skippedUsers.length > 0) {
+      console.log(
+        `⏭️  Skipping ${skippedUsers.length} unchanged user(s): ${skippedUsers.join(", ")}`
+      );
+    }
+
+    if (usersToSeed.length === 0) {
+      console.log("\n✅ All users up to date. Nothing to seed.\n");
+      return;
+    }
+
+    console.log(
+      `🔄 Seeding ${usersToSeed.length} user(s): ${usersToSeed.map((u) => u.email).join(", ")}\n`
+    );
+
+    // Clean affected users in parallel (Drive + DB cleanup per user)
+    console.log("🧹 Cleaning up affected users...\n");
+    await Promise.all(
+      usersToSeed.map(async (userConfig) => {
+        await cleanupGoogleDriveForUser(userConfig.email);
+        await cleanupSpecificSeedUsers([userConfig.email]);
+      })
+    );
+
+    // Create seed users (only the ones we're reseeding)
+    users = await createSeedUsersFiltered(usersToSeed);
+  } else {
+    // Legacy clean-slate mode
+    console.log("🧹 Clean slate mode: wiping all content...\n");
+    await cleanupAllGoogleDrive();
+    await cleanupSeedUsers();
+
+    // Create all seed users
+    users = await createSeedUsers();
+  }
 
   // Seed content for all users with their configured distribution
   for (let userIndex = 0; userIndex < users.length; userIndex++) {
@@ -2155,7 +3002,8 @@ async function main(): Promise<void> {
           userShowIds,
           parentFolders.tvShows,
           progressRange,
-          config.isPublic ?? false
+          config.isPublic ?? false,
+          config.email
         );
 
         // Add parent folder count to totals
@@ -2191,8 +3039,12 @@ async function main(): Promise<void> {
           userShowIds,
           undefined,
           progressRange,
-          config.isPublic ?? false
+          config.isPublic ?? false,
+          config.email
         );
+
+        // Pin specific items for flat structure
+        await pinItemsForUser(userId, config.email);
       }
 
       const totalTime = Math.round((Date.now() - progress.startTime) / 1000);
@@ -2203,10 +3055,10 @@ async function main(): Promise<void> {
       if (isFirstUser) {
         log(`   📁 Content synced to Google Drive`);
 
-        // Run auto-sync to catch any pre-existing files and set changePageToken
+        // Run auto-sync to catch any pre-existing files, set changePageToken, and fetch quota
         try {
           const { syncByUserId } = await import("@/lib/google-drive-sync");
-          const syncResult = await syncByUserId(userId);
+          const syncResult = await syncByUserId(userId, { fetchQuota: true });
           if (syncResult.success) {
             const created = syncResult.itemsCreated ?? 0;
             const updated = syncResult.itemsUpdated ?? 0;
@@ -2229,11 +3081,22 @@ async function main(): Promise<void> {
           );
           // Don't fail seed - user can sync manually later
         }
+
+        // Generate sync activity logs for demo user to populate Activity tab
+        await generateSyncActivityLogs(userId);
       }
 
       if (SEED_GROUPED_STRUCTURE && (movieCount > 0 || tvCount > 0)) {
         log(`   📌 Movies and TV Shows folders pinned to sidebar`);
       }
+
+      // Save content hash for incremental seeding
+      const contentHash = computeUserContentHash(email);
+      await prisma.user.update({
+        where: { id: userId },
+        data: { seedContentHash: contentHash },
+      });
+      log(`   🔐 Content hash saved for incremental seeding`);
     } catch (error) {
       console.error(`\n❌ Seed failed for ${email}:`, error);
       await cleanupOnFailure(userId);

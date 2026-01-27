@@ -67,6 +67,7 @@ vi.mock("next/image", () => ({
     onLoad?: () => void;
     onError?: () => void;
   }) => (
+    // eslint-disable-next-line @next/next/no-img-element
     <img src={src} alt={alt} data-testid="hero-carousel-artwork" {...props} />
   ),
 }));

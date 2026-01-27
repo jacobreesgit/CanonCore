@@ -359,14 +359,14 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
         value={searchValue}
         onValueChange={setSearchValue}
       />
-      <CommandList ref={listRef} className="max-h-[400px]">
+      <CommandList ref={listRef} className="flex max-h-[400px] flex-col">
         <div aria-live="polite" aria-atomic="true" className="sr-only">
           {announcement}
         </div>
 
         {/* Only show empty state after data has loaded - skeletons show during loading */}
         {hasInitialized && !isAnyLoading && (
-          <CommandEmpty className="py-12 text-center">
+          <CommandEmpty className="flex-1 py-12 text-center">
             <div className="flex flex-col items-center gap-2">
               <Search
                 aria-hidden="true"

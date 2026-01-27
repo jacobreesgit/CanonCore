@@ -1,11 +1,12 @@
 /**
- * Base tree item component with drag handle, collapse toggle, and actions.
- * Features refined micro-interactions and subtle visual feedback.
+ * Compact tree item component with clear visual hierarchy.
+ * Features bordered cards for contrast, medium typography, and inline progress displays.
+ * Refined micro-interactions without position shifts on hover.
  */
 
 "use client";
 
-import React, { forwardRef, HTMLAttributes } from "react";
+import { forwardRef, HTMLAttributes } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { ChevronRight, GripVertical } from "lucide-react";
@@ -81,8 +82,6 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       style,
       className,
       showDragHandle = true,
-      description,
-      showDescription = true,
       syncStatus,
       progressPercentage,
       watchedCount,
@@ -91,6 +90,8 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       isSelected,
       onSelectChange,
       // Destructure to prevent passing to DOM element via ...props
+      description: _description,
+      showDescription: _showDescription,
       fileCounts: _fileCounts,
       showStats: _showStats,
       mediaIconType: _mediaIconType,
@@ -98,7 +99,6 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
     },
     ref
   ) {
-    const shouldShowDescription = showDescription && description;
     const shouldShowCheckbox = showDragHandle && onSelectChange;
     const shouldShowWatched =
       watchedCount !== undefined &&
@@ -134,9 +134,9 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
           ref={ref}
           onClick={handleClick}
           className={cn(
-            "group bg-card relative flex items-center gap-2 rounded-lg border px-2 py-1.5",
+            "group bg-card relative flex items-center gap-2 rounded-lg border px-3 py-1.5",
             "transition-colors duration-200 ease-out",
-            "hover:bg-accent/50 hover:border-accent-foreground/20",
+            "hover:bg-muted/50 hover:border-muted-foreground/20",
             "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
             clone && [
               "ring-primary/50 shadow-xl ring-2 shadow-black/20",
@@ -145,7 +145,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
             ],
             ghost &&
               indicator && [
-                "border-primary bg-primary/20 h-1.5 px-0 py-0",
+                "border-primary bg-primary/20 h-1.5 rounded-full px-0 py-0",
                 "before:absolute before:top-1/2 before:-left-1.5 before:-translate-y-1/2",
                 "before:border-primary before:bg-background before:size-2.5 before:rounded-full before:border-2",
               ],
@@ -161,7 +161,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
               }}
               onClick={(e) => e.stopPropagation()}
               aria-label={`Select ${value}`}
-              className="data-[state=checked]:bg-primary data-[state=checked]:border-primary flex-shrink-0"
+              className="data-[state=checked]:bg-primary data-[state=checked]:border-primary size-4 flex-shrink-0"
             />
           )}
 
@@ -194,7 +194,8 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                 onCollapse();
               }}
               className={cn(
-                "flex-shrink-0 cursor-pointer rounded p-0.5",
+                "flex-shrink-0 cursor-pointer rounded",
+                "flex size-5 items-center justify-center",
                 "text-muted-foreground transition-colors duration-200",
                 "hover:text-foreground hover:bg-muted/50",
                 "focus-visible:ring-ring focus-visible:ring-1 focus-visible:outline-none"
@@ -210,13 +211,13 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
             </button>
           )}
 
-          {/* Item Name and Description */}
+          {/* Item Name and Progress */}
           {!ghost && (
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <span
                   className={cn(
-                    "block truncate text-sm font-medium",
+                    "truncate text-sm font-medium",
                     "text-foreground/90 group-hover:text-foreground",
                     "transition-colors duration-150"
                   )}
@@ -226,18 +227,11 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                 {syncStatus && syncStatus !== "SYNCED" && (
                   <SyncIcon syncStatus={syncStatus} className="flex-shrink-0" />
                 )}
-              </div>
-              {/* Description, primary media, and stats - only in view mode */}
-              {!showDragHandle && (
-                <>
-                  {shouldShowDescription && (
-                    <span className="text-muted-foreground block truncate text-xs">
-                      {description}
-                    </span>
-                  )}
-                  {/* Watched count indicator */}
-                  {shouldShowWatched && (
-                    <span className="text-muted-foreground mt-0.5 text-xs">
+                {/* Watched count indicator - inline with title */}
+                {!showDragHandle && shouldShowWatched && (
+                  <>
+                    <span className="text-muted-foreground text-xs">•</span>
+                    <span className="text-muted-foreground text-xs whitespace-nowrap">
                       {watchedCount}/{totalMediaCount} watched
                       {totalItems !== undefined &&
                         totalItems > totalMediaCount && (
@@ -248,20 +242,20 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                           </>
                         )}
                     </span>
-                  )}
-                  {/* Progress bar - only in view mode */}
-                  {progressPercentage !== null && (
-                    <div className="mt-1">
-                      <div className="bg-muted-foreground/20 h-1.5 w-full overflow-hidden rounded-full">
-                        <div
-                          data-testid="tree-item-progress-bar"
-                          className="bg-primary h-full rounded-full transition-[width] duration-300"
-                          style={{ width: `${progressPercentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </>
+                  </>
+                )}
+              </div>
+              {/* Progress bar - only in view mode */}
+              {!showDragHandle && progressPercentage !== null && (
+                <div className="mt-1.5">
+                  <div className="bg-muted-foreground/20 h-1.5 w-full overflow-hidden rounded-full">
+                    <div
+                      data-testid="tree-item-progress-bar"
+                      className="bg-primary h-full rounded-full transition-[width] duration-300"
+                      style={{ width: `${progressPercentage}%` }}
+                    />
+                  </div>
+                </div>
               )}
             </div>
           )}

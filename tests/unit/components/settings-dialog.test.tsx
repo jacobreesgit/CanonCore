@@ -59,8 +59,12 @@ describe("SettingsDialog", () => {
   });
 
   describe("Main Settings View", () => {
-    it("shows Change Password button instead of inline password fields", () => {
+    it("shows Change Password button instead of inline password fields", async () => {
       render(<SettingsDialog {...defaultProps} />);
+      const user = userEvent.setup();
+
+      // Navigate to Account tab
+      await user.click(screen.getByRole("tab", { name: /account/i }));
 
       expect(
         screen.getByRole("button", { name: /change password/i })
@@ -71,22 +75,34 @@ describe("SettingsDialog", () => {
       expect(screen.queryByLabelText(/new password/i)).not.toBeInTheDocument();
     });
 
-    it("shows Change Email button instead of inline email field", () => {
+    it("shows Change Email button instead of inline email field", async () => {
       render(<SettingsDialog {...defaultProps} />);
+      const user = userEvent.setup();
+
+      // Navigate to Account tab
+      await user.click(screen.getByRole("tab", { name: /account/i }));
 
       expect(
         screen.getByRole("button", { name: /change email/i })
       ).toBeInTheDocument();
     });
 
-    it("displays current email as read-only text", () => {
+    it("displays current email as read-only text", async () => {
       render(<SettingsDialog {...defaultProps} />);
+      const user = userEvent.setup();
+
+      // Navigate to Account tab
+      await user.click(screen.getByRole("tab", { name: /account/i }));
 
       expect(screen.getByText("test@example.com")).toBeInTheDocument();
     });
 
-    it("shows Google Drive section", () => {
+    it("shows Google Drive section", async () => {
       render(<SettingsDialog {...defaultProps} />);
+      const user = userEvent.setup();
+
+      // Navigate to Connections tab
+      await user.click(screen.getByRole("tab", { name: /connections/i }));
 
       expect(screen.getByTestId("google-drive-section")).toBeInTheDocument();
     });
@@ -96,6 +112,9 @@ describe("SettingsDialog", () => {
     it("navigates to password form when clicking Change Password", async () => {
       render(<SettingsDialog {...defaultProps} />);
       const user = userEvent.setup();
+
+      // Navigate to Account tab first
+      await user.click(screen.getByRole("tab", { name: /account/i }));
 
       await user.click(
         screen.getByRole("button", { name: /change password/i })
@@ -112,21 +131,28 @@ describe("SettingsDialog", () => {
       expect(
         screen.getByLabelText(/confirm new password/i)
       ).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /back/i })).toBeInTheDocument();
+      expect(
+        screen.getByLabelText(/back/i, { selector: "button" })
+      ).toBeInTheDocument();
     });
 
     it("returns to main view when clicking Back from password step", async () => {
       render(<SettingsDialog {...defaultProps} />);
       const user = userEvent.setup();
 
+      // Navigate to Account tab first
+      await user.click(screen.getByRole("tab", { name: /account/i }));
+
       await user.click(
         screen.getByRole("button", { name: /change password/i })
       );
-      await user.click(screen.getByRole("button", { name: /back/i }));
+      await user.click(screen.getByLabelText(/back/i, { selector: "button" }));
 
-      // Should return to main view
+      // Should return to main view (tabs should be visible again)
       await waitFor(() => {
-        expect(screen.getByTestId("google-drive-section")).toBeInTheDocument();
+        expect(
+          screen.getByRole("tab", { name: /account/i })
+        ).toBeInTheDocument();
       });
     });
   });
@@ -135,6 +161,9 @@ describe("SettingsDialog", () => {
     it("navigates to email form when clicking Change Email", async () => {
       render(<SettingsDialog {...defaultProps} />);
       const user = userEvent.setup();
+
+      // Navigate to Account tab first
+      await user.click(screen.getByRole("tab", { name: /account/i }));
 
       await user.click(screen.getByRole("button", { name: /change email/i }));
 
@@ -146,19 +175,26 @@ describe("SettingsDialog", () => {
       });
       expect(screen.getByLabelText(/new email/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/current password/i)).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /back/i })).toBeInTheDocument();
+      expect(
+        screen.getByLabelText(/back/i, { selector: "button" })
+      ).toBeInTheDocument();
     });
 
     it("returns to main view when clicking Back from email step", async () => {
       render(<SettingsDialog {...defaultProps} />);
       const user = userEvent.setup();
 
-      await user.click(screen.getByRole("button", { name: /change email/i }));
-      await user.click(screen.getByRole("button", { name: /back/i }));
+      // Navigate to Account tab first
+      await user.click(screen.getByRole("tab", { name: /account/i }));
 
-      // Should return to main view
+      await user.click(screen.getByRole("button", { name: /change email/i }));
+      await user.click(screen.getByLabelText(/back/i, { selector: "button" }));
+
+      // Should return to main view (tabs should be visible again)
       await waitFor(() => {
-        expect(screen.getByTestId("google-drive-section")).toBeInTheDocument();
+        expect(
+          screen.getByRole("tab", { name: /account/i })
+        ).toBeInTheDocument();
       });
     });
   });
@@ -168,7 +204,8 @@ describe("SettingsDialog", () => {
       const { rerender } = render(<SettingsDialog {...defaultProps} />);
       const user = userEvent.setup();
 
-      // Navigate to password step
+      // Navigate to Account tab and then password step
+      await user.click(screen.getByRole("tab", { name: /account/i }));
       await user.click(
         screen.getByRole("button", { name: /change password/i })
       );
@@ -182,9 +219,14 @@ describe("SettingsDialog", () => {
       rerender(<SettingsDialog {...defaultProps} open={false} />);
       rerender(<SettingsDialog {...defaultProps} open={true} />);
 
-      // Should be back on main step
+      // Should be back on main step (Profile tab is default)
       await waitFor(() => {
-        expect(screen.getByTestId("google-drive-section")).toBeInTheDocument();
+        expect(
+          screen.getByRole("tab", { name: /profile/i })
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole("tab", { name: /account/i })
+        ).toBeInTheDocument();
       });
     });
   });

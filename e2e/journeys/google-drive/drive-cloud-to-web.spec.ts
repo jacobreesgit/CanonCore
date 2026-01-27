@@ -76,6 +76,7 @@ test.describe("Google Drive: Cloud to Web Sync", () => {
 
     await itemsPage.goto();
     await settingsPage.openFromNavUser();
+    await settingsPage.goToConnectionsTab();
 
     // Should show reconnect badge or reconnect button (use .first() since both may be visible)
     await expect(

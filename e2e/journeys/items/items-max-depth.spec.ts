@@ -24,7 +24,6 @@ test.describe("Items Max Depth Journey", () => {
     // Use unique names to avoid selector confusion
     for (let i = 1; i <= 9; i++) {
       await itemsPage.createItem(`Folder-${i}`);
-      await itemsPage.waitForToastToDisappear();
       await itemsPage.clickItem(`Folder-${i}`);
       await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+\/[\w-]+/, {
         timeout: 10000,
@@ -33,7 +32,6 @@ test.describe("Items Max Depth Journey", () => {
 
     // Now inside Folder-9 (depth 8), create item at depth 9 (max allowed)
     await itemsPage.createItem("Deepest");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.expectItemVisible("Deepest");
     await itemsPage.clickItem("Deepest");
     await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+\/[\w-]+/, {
@@ -68,19 +66,16 @@ test.describe("Items Max Depth Journey", () => {
 
     // Create a 3-level hierarchy with toast waits for stability
     await itemsPage.createItem("Grandparent");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("Grandparent");
     // Wait for empty state to disappear and Add button to be stable
     await page.waitForTimeout(500);
 
     await itemsPage.createItem("Parent");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("Parent");
     // Wait for empty state to disappear and Add button to be stable
     await page.waitForTimeout(500);
 
     await itemsPage.createItem("Child");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("Child");
 
     // Verify breadcrumb trail shows all ancestors
@@ -99,15 +94,12 @@ test.describe("Items Max Depth Journey", () => {
 
     // Create a 3-level hierarchy with toast waits
     await itemsPage.createItem("Level A");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("Level A");
 
     await itemsPage.createItem("Level B");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("Level B");
 
     await itemsPage.createItem("Level C");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("Level C");
 
     // Navigate back to Level A via breadcrumb
@@ -130,7 +122,6 @@ test.describe("Items Max Depth Journey", () => {
     const levels = ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"];
     for (const level of levels) {
       await itemsPage.createItem(level);
-      await itemsPage.waitForToastToDisappear();
       await itemsPage.clickItem(level);
     }
 

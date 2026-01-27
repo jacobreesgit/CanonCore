@@ -72,6 +72,7 @@ const securityHeaders = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  devIndicators: false,
   experimental: {
     // Tree-shake barrel imports for these packages to reduce bundle size
     optimizePackageImports: ["lucide-react", "date-fns"],

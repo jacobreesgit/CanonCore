@@ -19,14 +19,12 @@ test.describe("Items Tree Drag Journey", () => {
   test("items are created in correct initial order", async ({ itemsPage }) => {
     // Create parent container and navigate into it (tree view only on item detail pages)
     await itemsPage.createItem("Tree Container");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("Tree Container");
 
     // Create test items in order A, B, C inside the container
     await itemsPage.createItem("Folder A");
     await itemsPage.createItem("Folder B");
     await itemsPage.createItem("Folder C");
-    await itemsPage.waitForToastToDisappear();
 
     // Verify all items exist
     await itemsPage.expectItemVisible("Folder A");
@@ -40,14 +38,12 @@ test.describe("Items Tree Drag Journey", () => {
   }) => {
     // Create parent container and navigate into it (tree view only on item detail pages)
     await itemsPage.createItem("Drag Container");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("Drag Container");
 
     // Create test items inside the container
     await itemsPage.createItem("Folder A");
     await itemsPage.createItem("Folder B");
     await itemsPage.createItem("Folder C");
-    await itemsPage.waitForToastToDisappear();
 
     // Switch to tree view (available on item detail pages)
     await itemsPage.switchToTreeView();
@@ -73,13 +69,11 @@ test.describe("Items Tree Drag Journey", () => {
   }) => {
     // Create parent container and navigate into it (tree view only on item detail pages)
     await itemsPage.createItem("Handle Container");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("Handle Container");
 
     // Create test items inside the container
     await itemsPage.createItem("Folder A");
     await itemsPage.createItem("Folder B");
-    await itemsPage.waitForToastToDisappear();
 
     // Switch to tree view (available on item detail pages)
     await itemsPage.switchToTreeView();
@@ -98,13 +92,11 @@ test.describe("Items Tree Drag Journey", () => {
   test("dragged item shows visual feedback", async ({ page, itemsPage }) => {
     // Create parent container and navigate into it (tree view only on item detail pages)
     await itemsPage.createItem("Feedback Container");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("Feedback Container");
 
     // Create test items inside the container
     await itemsPage.createItem("Folder A");
     await itemsPage.createItem("Folder B");
-    await itemsPage.waitForToastToDisappear();
 
     // Switch to tree view (available on item detail pages)
     await itemsPage.switchToTreeView();
@@ -132,14 +124,12 @@ test.describe("Items Tree Drag Journey", () => {
   test("can drag items using drag handle", async ({ page, itemsPage }) => {
     // Create parent container and navigate into it (tree view only on item detail pages)
     await itemsPage.createItem("Drag Handle Container");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("Drag Handle Container");
 
     // Create test items inside the container
     await itemsPage.createItem("Folder A");
     await itemsPage.createItem("Folder B");
     await itemsPage.createItem("Folder C");
-    await itemsPage.waitForToastToDisappear();
 
     // Switch to tree view (available on item detail pages)
     await itemsPage.switchToTreeView();
@@ -161,14 +151,12 @@ test.describe("Items Tree Drag Journey", () => {
   test("order persists after page refresh", async ({ page, itemsPage }) => {
     // Create parent container and navigate into it (tree view only on item detail pages)
     await itemsPage.createItem("Persist Container");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("Persist Container");
 
     // Create test items inside the container
     await itemsPage.createItem("Folder A");
     await itemsPage.createItem("Folder B");
     await itemsPage.createItem("Folder C");
-    await itemsPage.waitForToastToDisappear();
 
     // Switch to tree view (available on item detail pages)
     await itemsPage.switchToTreeView();

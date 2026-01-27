@@ -15,19 +15,15 @@ test.describe("Items Hierarchy Journey", () => {
   test("displays full hierarchy in tree view", async ({ itemsPage }) => {
     // Create hierarchy: Top Level > Parent > Child > Grandchild
     await itemsPage.createItem("Top Level");
-    await itemsPage.waitForToastToDisappear();
 
     await itemsPage.clickItem("Top Level");
     await itemsPage.createItem("Parent");
-    await itemsPage.waitForToastToDisappear();
 
     await itemsPage.clickItem("Parent");
     await itemsPage.createItem("Child");
-    await itemsPage.waitForToastToDisappear();
 
     await itemsPage.clickItem("Child");
     await itemsPage.createItem("Grandchild");
-    await itemsPage.waitForToastToDisappear();
 
     // Navigate back to Top Level (tree view is on item detail pages)
     await itemsPage.clickBreadcrumb("Top Level");
@@ -42,16 +38,13 @@ test.describe("Items Hierarchy Journey", () => {
   test("can collapse and expand items in tree", async ({ itemsPage }) => {
     // Create Top Level container to view tree in
     await itemsPage.createItem("Top Level");
-    await itemsPage.waitForToastToDisappear();
 
     await itemsPage.clickItem("Top Level");
     // Create hierarchy: Parent > Child
     await itemsPage.createItem("Collapsible Parent");
-    await itemsPage.waitForToastToDisappear();
 
     await itemsPage.clickItem("Collapsible Parent");
     await itemsPage.createItem("Nested Child");
-    await itemsPage.waitForToastToDisappear();
 
     // Navigate back to Top Level to view tree
     await itemsPage.clickBreadcrumb("Top Level");
