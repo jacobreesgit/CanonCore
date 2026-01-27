@@ -27,6 +27,7 @@ test.describe("Google Drive: OAuth Connection", () => {
 
     await page.reload();
     await settingsPage.openFromNavUser();
+    await settingsPage.goToConnectionsTab();
 
     // Should show connect button
     await expect(
@@ -46,6 +47,7 @@ test.describe("Google Drive: OAuth Connection", () => {
     await page.reload();
 
     await settingsPage.openFromNavUser();
+    await settingsPage.goToConnectionsTab();
 
     // Should show connected badge
     await expect(page.getByText("Connected")).toBeVisible();
@@ -80,6 +82,7 @@ test.describe("Google Drive: OAuth Connection", () => {
     await page.reload();
 
     await settingsPage.openFromNavUser();
+    await settingsPage.goToConnectionsTab();
 
     // Click disconnect (trash icon)
     await settingsPage.clickDisconnect();
@@ -123,6 +126,7 @@ test.describe("Google Drive: OAuth Connection", () => {
 
     await page.reload();
     await settingsPage.openFromNavUser();
+    await settingsPage.goToConnectionsTab();
 
     // Should show reconnect badge (using locator for the badge specifically)
     await expect(
@@ -153,6 +157,7 @@ test.describe("Google Drive: OAuth Connection", () => {
     await page.reload();
 
     await settingsPage.openFromNavUser();
+    await settingsPage.goToConnectionsTab();
 
     // Should see the Drive link in settings (rootFolderId set in setupDriveConnection)
     const driveLink = page.getByRole("link", { name: /^drive$/i });
@@ -173,7 +178,6 @@ test.describe("Google Drive: OAuth Connection", () => {
 
     // Create an item
     await itemsPage.createItem("Drive Context Menu Test");
-    await itemsPage.waitForToastToDisappear();
 
     // Manually set driveFileId on the item (simulating sync completion)
     await prisma.item.updateMany({
@@ -238,6 +242,7 @@ test.describe("Google Drive: OAuth Connection", () => {
 
     await page.reload();
     await settingsPage.openFromNavUser();
+    await settingsPage.goToConnectionsTab();
 
     // Should show trashed folder warning
     await expect(page.getByText("CanonCore folder is in Trash")).toBeVisible();
@@ -284,6 +289,7 @@ test.describe("Google Drive: OAuth Connection", () => {
 
     await page.reload();
     await settingsPage.openFromNavUser();
+    await settingsPage.goToConnectionsTab();
 
     // Should show deleted folder warning
     await expect(page.getByText("CanonCore folder was deleted")).toBeVisible();
@@ -333,6 +339,7 @@ test.describe("Google Drive: OAuth Connection", () => {
 
     await page.reload();
     await settingsPage.openFromNavUser();
+    await settingsPage.goToConnectionsTab();
 
     // Wait for storage label to be visible (AnimatedDialogContent needs time to render)
     await expect(page.getByText("Storage", { exact: true })).toBeVisible();
@@ -381,6 +388,7 @@ test.describe("Google Drive: OAuth Connection", () => {
 
     await page.reload();
     await settingsPage.openFromNavUser();
+    await settingsPage.goToConnectionsTab();
 
     // Wait for storage label to be visible (AnimatedDialogContent needs time to render)
     await expect(page.getByText("Storage", { exact: true })).toBeVisible();

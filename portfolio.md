@@ -1,437 +1,154 @@
-# Portfolio Seeding Plan
+# CanonCore
 
-## Overview
+**Google Drive meets Netflix. Visual browsing, drag-and-drop organisation, watch progress, collections others can fork.**
 
-This document details the seeding modifications needed to capture compelling portfolio screenshots for CanonCore. The goal is to showcase all features with realistic data across multiple users.
+Next.js 16 · React 19 · PostgreSQL · TypeScript
 
-## Current State Analysis
-
-### Existing Seed Configuration
-
-- **Users**: 2 (demo@canoncore.com, test@canoncore.com)
-- **Movies**: 10 (Shawshank, Godfather I/II, Schindler's List, 12 Angry Men, Spirited Away, DDLJ, Parasite, Life Is Beautiful, Dark Knight)
-- **TV Shows**: 11 (Doctor Who Classic/Modern, Breaking Bad, Game of Thrones, Rick and Morty, Big Bang Theory, Simpsons, Stranger Things, HIMYM, Witcher, Loki)
-- **Profile Pictures**: None
-- **Public Profiles**: No configuration
-- **Usernames**: Not set
-
-### Missing for Portfolio
-
-1. No user profile pictures (avatars)
-2. No public profile configuration (usernames, public flags)
-3. Only 2 users - insufficient for Explore page variety
-4. No user hero/banner images
-5. Content not distributed for visual variety in screenshots
-
-> **Schema Note**: The User model does NOT have a `bio` field. This plan excludes bio text. If bios are desired, a migration would be needed to add `bio String?` to the User model.
+[Live Demo](https://canoncore.com) · [Source](https://github.com/jacobreesgit/canoncore-v2)
 
 ---
 
-## Required Seed Modifications
+## The Product
 
-### 1. User Configuration Updates
+CanonCore turns Google Drive into a fully featured media library: visual browsing, metadata enrichment, progress tracking, and public sharing, without moving or duplicating your files. Create folder structures for movies and TV shows, reorganise with drag and drop, enrich items from TMDB, track what you've watched, and share collections publicly. Your files live in your storage, not ours.
 
-**New SEED_USERS array** (5 users for Explore page variety):
-
-```typescript
-export const SEED_USERS = [
-  {
-    email: "demo@canoncore.com",
-    name: "Demo User",
-    username: "demo",
-    isPublic: true,
-    // Images downloaded at seed time and stored as Bytes
-    avatarSeed: "demo-avatar", // Lorem Picsum seed for reproducibility
-    heroSeed: "demo-hero",
-  },
-  {
-    email: "filmfan@canoncore.com",
-    name: "Sarah Mitchell",
-    username: "filmfan",
-    isPublic: true,
-    avatarSeed: "filmfan-avatar",
-    heroSeed: "filmfan-hero",
-  },
-  {
-    email: "bingewatcher@canoncore.com",
-    name: "Alex Chen",
-    username: "bingewatcher",
-    isPublic: true,
-    avatarSeed: "bingewatcher-avatar",
-    heroSeed: "bingewatcher-hero",
-  },
-  {
-    email: "scifi@canoncore.com",
-    name: "Jordan Taylor",
-    username: "scifi_jordan",
-    isPublic: true,
-    avatarSeed: "scifi-avatar",
-    heroSeed: "scifi-hero",
-  },
-  {
-    email: "test@canoncore.com",
-    name: "Test User",
-    username: "testuser",
-    isPublic: false, // Private for testing
-    avatarSeed: null,
-    heroSeed: null,
-  },
-];
-```
-
-### 2. Content Distribution Per User
-
-To make the Explore page visually interesting with varied collections:
-
-| User         | Movies                                                                       | TV Shows                                    | Theme             |
-| ------------ | ---------------------------------------------------------------------------- | ------------------------------------------- | ----------------- |
-| demo         | All 10                                                                       | Breaking Bad, Stranger Things, Loki         | Varied mainstream |
-| filmfan      | Shawshank, Godfather I/II, Schindler's List, 12 Angry Men, Life Is Beautiful | None                                        | Classic drama     |
-| bingewatcher | Dark Knight, Spirited Away                                                   | All 11 shows                                | TV-focused        |
-| scifi_jordan | None                                                                         | Doctor Who (both), Witcher, Stranger Things | Sci-fi/Fantasy    |
-| testuser     | 3 random                                                                     | 2 random                                    | Minimal (testing) |
-
-**New config options**:
-
-```typescript
-export const USER_CONTENT_DISTRIBUTION = {
-  "demo@canoncore.com": {
-    movieIds: MOVIE_IDS,
-    showIds: [1396, 66732, 84958], // Breaking Bad, Stranger Things, Loki
-  },
-  "filmfan@canoncore.com": {
-    movieIds: [278, 238, 240, 424, 389, 637], // Shawshank, Godfather I/II, Schindler's, 12 Angry Men, Life Is Beautiful
-    showIds: [],
-  },
-  "bingewatcher@canoncore.com": {
-    movieIds: [155, 129], // Dark Knight, Spirited Away
-    showIds: TV_SHOW_IDS,
-  },
-  "scifi@canoncore.com": {
-    movieIds: [],
-    showIds: [121, 57243, 71912, 66732], // Doctor Who x2, Witcher, Stranger Things
-  },
-  "test@canoncore.com": {
-    movieIds: [278, 155, 129], // Shawshank, Dark Knight, Spirited Away
-    showIds: [1396, 60625], // Breaking Bad, Rick and Morty
-  },
-};
-```
-
-### 3. Progress Simulation Per User
-
-Different progress states for visual variety:
-
-| User         | Progress State | Purpose                       |
-| ------------ | -------------- | ----------------------------- |
-| demo         | Mixed (25-75%) | Shows progress bars in action |
-| filmfan      | High (80-100%) | Shows completed collections   |
-| bingewatcher | Low (10-30%)   | Shows "Continue Watching"     |
-| scifi_jordan | Mid (40-60%)   | Shows mid-progress            |
-| testuser     | None (0%)      | Fresh library                 |
-
-**New config**:
-
-```typescript
-export const USER_PROGRESS_RANGES = {
-  "demo@canoncore.com": { min: 0.25, max: 0.75 },
-  "filmfan@canoncore.com": { min: 0.8, max: 1.0 },
-  "bingewatcher@canoncore.com": { min: 0.1, max: 0.3 },
-  "scifi@canoncore.com": { min: 0.4, max: 0.6 },
-  "test@canoncore.com": { min: 0, max: 0 },
-};
-```
-
-### 4. Seed Assets - Lorem Picsum
-
-User profile images sourced from Lorem Picsum API. Uses seeded URLs for reproducible, consistent images across seed runs.
-
-> **Note**: Unsplash Source (`source.unsplash.com`) was deprecated in 2021 and has been sunset. Lorem Picsum provides a simple, reliable alternative with seed-based consistency.
-
-**Lorem Picsum URLs**:
-
-```typescript
-// Avatars - square photos with seed for consistency
-// Format: https://picsum.photos/seed/{seed}/{width}/{height}
-const AVATAR_URLS = {
-  "demo@canoncore.com": "https://picsum.photos/seed/demo-avatar/400/400",
-  "filmfan@canoncore.com": "https://picsum.photos/seed/filmfan-avatar/400/400",
-  "bingewatcher@canoncore.com":
-    "https://picsum.photos/seed/bingewatcher-avatar/400/400",
-  "scifi@canoncore.com": "https://picsum.photos/seed/scifi-avatar/400/400",
-};
-
-// Heroes - wide landscape photos for banner
-const HERO_URLS = {
-  "demo@canoncore.com": "https://picsum.photos/seed/demo-hero/1920/400",
-  "filmfan@canoncore.com": "https://picsum.photos/seed/filmfan-hero/1920/400",
-  "bingewatcher@canoncore.com":
-    "https://picsum.photos/seed/bingewatcher-hero/1920/400",
-  "scifi@canoncore.com": "https://picsum.photos/seed/scifi-hero/1920/400",
-};
-```
-
-**Implementation**: Download images during seed and store as `Bytes` in User record (schema uses binary storage, not URLs). The seed parameter ensures identical images across seed runs.
-
-```typescript
-/**
- * Downloads image from Lorem Picsum and returns as Buffer.
- */
-async function downloadProfileImage(url: string): Promise<Buffer | null> {
-  try {
-    const response = await fetch(url, { redirect: "follow" });
-    if (!response.ok) return null;
-    const arrayBuffer = await response.arrayBuffer();
-    return Buffer.from(arrayBuffer);
-  } catch {
-    return null;
-  }
-}
-```
-
-### 5. Folder Structure Per User
-
-Each user gets the same hierarchical structure but with their assigned content:
-
-```
-[User's Library]
-├── Movies/
-│   ├── [Movie 1]/
-│   │   └── [movie file placeholder]
-│   ├── [Movie 2]/
-│   └── ...
-└── TV Shows/
-    ├── [Show 1]/
-    │   ├── Season 1/
-    │   │   ├── Episode 1/
-    │   │   └── ...
-    │   └── Season 2/
-    └── ...
-```
-
-### 6. Required Code Changes
-
-#### seed-config.ts additions:
-
-```typescript
-// Add to existing file
-
-/** User profile configuration for seeding. */
-export interface SeedUserConfig {
-  email: string;
-  name: string;
-  username?: string;
-  isPublic?: boolean;
-  /** Lorem Picsum seed for avatar image (null = no avatar). */
-  avatarSeed?: string | null;
-  /** Lorem Picsum seed for hero banner (null = no hero). */
-  heroSeed?: string | null;
-}
-
-/** Content distribution by user email. */
-export interface UserContentConfig {
-  movieIds: number[];
-  showIds: number[];
-}
-
-/** Progress simulation range (0-1). */
-export interface ProgressRange {
-  min: number;
-  max: number;
-}
-
-/** Avatar image dimensions. */
-export const AVATAR_SIZE = { width: 400, height: 400 };
-
-/** Hero banner dimensions. */
-export const HERO_SIZE = { width: 1920, height: 400 };
-
-/**
- * Builds Lorem Picsum URL for reproducible images.
- */
-export function buildPicsumUrl(
-  seed: string,
-  width: number,
-  height: number
-): string {
-  return `https://picsum.photos/seed/${seed}/${width}/${height}`;
-}
-
-export const SEED_USERS: SeedUserConfig[] = [
-  // ... as defined above
-];
-
-export const USER_CONTENT_DISTRIBUTION: Record<string, UserContentConfig> = {
-  // ... as defined above
-};
-
-export const USER_PROGRESS_RANGES: Record<string, ProgressRange> = {
-  // ... as defined above
-};
-```
-
-#### seed.ts modifications:
-
-1. **Add image download helper**:
-
-```typescript
-/**
- * Downloads image from URL and returns as Buffer with MIME type.
- */
-async function downloadImage(
-  url: string
-): Promise<{ buffer: Buffer; mime: string } | null> {
-  try {
-    const response = await fetch(url, { redirect: "follow" });
-    if (!response.ok) return null;
-    const contentType = response.headers.get("content-type") || "image/jpeg";
-    const arrayBuffer = await response.arrayBuffer();
-    return { buffer: Buffer.from(arrayBuffer), mime: contentType };
-  } catch {
-    return null;
-  }
-}
-```
-
-2. **Update user creation** to include new fields (schema uses Bytes, not URLs):
-
-```typescript
-// Download profile images if seeds are provided
-let avatarData: { buffer: Buffer; mime: string } | null = null;
-let heroData: { buffer: Buffer; mime: string } | null = null;
-
-if (user.avatarSeed) {
-  const avatarUrl = buildPicsumUrl(
-    user.avatarSeed,
-    AVATAR_SIZE.width,
-    AVATAR_SIZE.height
-  );
-  avatarData = await downloadImage(avatarUrl);
-}
-
-if (user.heroSeed) {
-  const heroUrl = buildPicsumUrl(
-    user.heroSeed,
-    HERO_SIZE.width,
-    HERO_SIZE.height
-  );
-  heroData = await downloadImage(heroUrl);
-}
-
-await prisma.user.upsert({
-  where: { email: user.email },
-  update: {},
-  create: {
-    email: user.email,
-    name: user.name,
-    username: user.username,
-    isPublic: user.isPublic ?? false,
-    // Store as Bytes with MIME type (schema requirement)
-    image: avatarData?.buffer ?? null,
-    imageMime: avatarData?.mime ?? null,
-    heroImage: heroData?.buffer ?? null,
-    heroImageMime: heroData?.mime ?? null,
-    passwordHash: hashedPassword,
-  },
-});
-```
-
-3. **Filter content per user** using `USER_CONTENT_DISTRIBUTION`:
-
-```typescript
-const userConfig = USER_CONTENT_DISTRIBUTION[user.email];
-const movieIds = userConfig?.movieIds ?? getEffectiveMovieIds();
-const showIds = userConfig?.showIds ?? getEffectiveTVShowIds();
-```
-
-4. **Apply progress ranges** using `USER_PROGRESS_RANGES`:
-
-```typescript
-const progressRange = USER_PROGRESS_RANGES[user.email];
-const progress = progressRange
-  ? progressRange.min + Math.random() * (progressRange.max - progressRange.min)
-  : Math.random();
-```
+`[HERO SCREENSHOT: library grid view with posters]`
 
 ---
 
-## Screenshot Capture Sequence
+## Features
 
-After seeding, the Playwright script should capture in this order:
+### Browsing & Organisation
 
-| #   | Screenshot         | User    | View/State                    |
-| --- | ------------------ | ------- | ----------------------------- |
-| 1   | hero.png           | demo    | Grid view, all items visible  |
-| 2   | tree-view.png      | demo    | Tree view expanded            |
-| 3   | item-detail.png    | demo    | Dark Knight detail page       |
-| 4   | spotlight.png      | demo    | Search "dark" results         |
-| 5   | tmdb-wizard.png    | demo    | Add item, search "inception"  |
-| 6   | settings.png       | demo    | Google Drive tab              |
-| 7   | grid-view.png      | demo    | Inside Movies folder          |
-| 8   | mobile-view.png    | demo    | 390x844 viewport              |
-| 9   | explore.png        | (none)  | All 4 public profiles visible |
-| 10  | public-profile.png | filmfan | Classic cinema collection     |
-| 11  | media-player.png   | demo    | Video playing                 |
+Two views: Grid is Netflix-style with poster cards and progress bars. Tree is file explorer-style showing all descendants at once. Every item page has a hero banner.
+
+Edit mode enables drag-and-drop, bulk selection, and full keyboard navigation with screen reader announcements. Pinned items (max 10) appear in the sidebar for quick access. dnd-kit only loads in edit mode to keep browsing fast.
+
+`[SCREENSHOT: grid view]`
+
+`[SCREENSHOT: tree view]`
 
 ---
 
-## Implementation Checklist
+### Public Profiles
 
-### Phase 1: Config Updates
+Two ways to discover public content: user profiles at `/u/username` show one person's public items, the explore page shows public items from everyone with a featured banner carousel. Visitors can navigate the full hierarchy of any public collection. Other users can fork your organisational structure into their own library. Forking copies names, descriptions, artwork, and hierarchy. Media files and subtitles stay private in your Drive. Think of it like sharing a Spotify playlist: the structure is public, the files aren't.
 
-- [ ] Add `SeedUserConfig` interface to seed-config.ts
-- [ ] Update `SEED_USERS` array with 5 users
-- [ ] Add `USER_CONTENT_DISTRIBUTION` mapping
-- [ ] Add `USER_PROGRESS_RANGES` mapping
-- [ ] Add `buildPicsumUrl` helper and size constants
+Visibility inherits through the hierarchy. Items can be public, private, or inherit from a parent. A public item with a private ancestor stays inaccessible. Moving a public item into a private folder triggers a confirmation dialogue.
 
-### Phase 2: Multi-User Drive Strategy
-
-- [ ] Decide on Drive approach (see notes below)
-- [ ] Option A: Shared test account - all users share same Drive connection
-- [ ] Option B: Demo user only - only demo@canoncore.com gets Drive sync
-- [ ] Update seed logic based on chosen approach
-
-> **Note**: Current seed creates ONE Drive connection for demo user only. For portfolio screenshots, Option B (demo user only) is simplest and matches current behavior. Other users can have content without Drive sync.
-
-### Phase 3: Seed Script Updates
-
-- [ ] Add `downloadImage()` helper function
-- [ ] Update user creation to download and store images as Bytes
-- [ ] Include `imageMime` and `heroImageMime` fields
-- [ ] Add content filtering per user
-- [ ] Add progress range application per user
-
-### Phase 4: Database Schema Check
-
-- [ ] Verify User model has: username, isPublic, image, imageMime, heroImage, heroImageMime
-- [ ] All fields exist in current schema - no migration needed
-
-### Phase 5: Testing
-
-- [ ] Run seed with new config
-- [ ] Verify 5 users created with correct profiles
-- [ ] Verify avatars/heroes display correctly (check /api/user/avatar, /api/user/hero)
-- [ ] Verify content distributed correctly
-- [ ] Verify progress bars show varied states
-- [ ] Verify Explore page shows 4 public profiles
-
-### Phase 6: Screenshots
-
-- [ ] Run Playwright capture script
-- [ ] Review all 11 screenshots
-- [ ] Move to public/images/projects/canoncore/
-
-> **Note on media-player.png**: Screenshot #11 requires a real video file in Google Drive. The seed creates placeholder media files with `driveFileId: null`. Either upload a test video to the demo user's Drive folder manually, or skip this screenshot.
+`[SCREENSHOT: public profile view]`
 
 ---
 
-## Notes
+### Media Playback
 
-- The test user remains private to ensure only 4 profiles appear on Explore
-- Progress simulation uses random within ranges for natural variation
-- Avatar/hero images are downloaded from Lorem Picsum at seed time and stored as binary (`Bytes`) in the database
-- TMDB metadata (posters, backdrops) is fetched automatically - only profile images need sourcing
-- Lorem Picsum seed strings ensure reproducible images across seed runs
-- Schema stores images as `Bytes` with separate MIME type fields (`imageMime`, `heroImageMime`)
-- Only demo user gets Google Drive sync; other users have local-only content (sufficient for screenshots)
+Vidstack-powered player streams media directly from Google Drive via HTTP range requests. Playback position auto-saves and resumes where you left off. Supports SRT, VTT, SUB, and ASS subtitle tracks.
+
+`[SCREENSHOT: video player]`
+
+---
+
+### One-Click Metadata
+
+You can enrich movies and TV shows with TMDB metadata. A three-step wizard lets you search for a title, select from multiple poster options, and choose a backdrop image for hero banners.
+
+`[SCREENSHOT: TMDB search wizard with poster selection]`
+
+---
+
+### Progress Tracking
+
+I track watch progress at every level of the hierarchy. Folders display watched and total counts for themselves and all descendant items, using a 90 percent completion threshold to account for credit skipping.
+
+The "Go to next" action performs a depth-first traversal of the tree to locate your first incomplete item automatically.
+
+`[SCREENSHOT: folder with progress bar and "Go to next" button]`
+
+---
+
+### Google Drive Sync
+
+All your media files stay in your Drive. I use Google's Changes API for incremental syncs, fetching only changed items since the last update. If incremental sync returns no results, a verification step triggers a full sync.
+
+Conflict detection compares timestamps bidirectionally: if Drive's modifiedTime is newer than our stored value, local changes are rejected with a notification. Errors are isolated per file, so individual failures don't interrupt the overall process.
+
+`[SCREENSHOT: sync panel or Drive connection UI]`
+
+---
+
+### Spotlight Search
+
+Press `/` to open Spotlight Search anywhere in the app. Results load in parallel across three sections: Your Items, Public Collections, and People. A module-level cache with a 60-second TTL gives you instant responses on repeat searches. Breadcrumb paths reveal each item's full hierarchy.
+
+`[SCREENSHOT: spotlight search modal]`
+
+---
+
+## How It's Built
+
+### Architecture Decisions
+
+**Google Drive migration:** I originally built this on SFTP, but path-based matching meant every rename or move created duplicates. No stable IDs, no change detection API, read-only from the web. Google Drive solved all of it: permanent file IDs survive renames and moves, Changes API for incremental sync, full read/write access so users can create folders directly from CanonCore.
+
+**Stack Auth → NextAuth.js v5:** I started with managed auth, then migrated to self-hosted JWT sessions after hitting rate limits. I added 15+ rate limiters via Upstash Redis with different thresholds per action (strict for auth, generous for browsing).
+
+---
+
+### Security & Resilience
+
+**OAuth Token Encryption:** AES-256-GCM with random IVs per encryption.
+
+**Upload Security:** HMAC-SHA256 signed session tokens with timing-safe comparison, token expiry validation, and filename sanitisation.
+
+**Circuit Breaker:** I wrapped TMDB and Google Drive calls in a custom circuit breaker that opens after consecutive failures and tests recovery in half-open state.
+
+**Security Headers:** OWASP-compliant headers including HSTS with preload, CSP with trusted sources, and X-Frame-Options: DENY.
+
+**CSRF Protection:** Signed OAuth state parameter to prevent authorization code interception.
+
+---
+
+### Performance
+
+**Edit Mode Separation:** I extracted a view-only Grid from SortableGrid to avoid dnd-kit overhead in browse mode.
+
+**Bulk Delete:** Recursive CTE for deleting nested hierarchies in a single query.
+
+**Lazy Loading:** Intersection Observer with 200px preload margin and priority mode for above-fold images.
+
+**Request Deduplication:** React.cache() on the server, module-level caching on client for search results.
+
+**Offline Queue:** Actions queue to IndexedDB when offline, replay on reconnect with exponential backoff and jitter.
+
+**Structured Logging:** Pino with request ID injection for distributed tracing.
+
+**Batch API:** Google Drive operations batched up to 100 per request. Reduced sync time for large folders from ~45s to ~3s.
+
+---
+
+### Accessibility
+
+WCAG 2.1 AA compliant throughout. Reduced motion support via a custom hook that disables carousel autoplay and animations. Skip link to main content. ARIA live regions for drag-and-drop announcements.
+
+---
+
+### Testing
+
+Over 2,300 unit tests with Vitest cover auth, items, Google Drive sync, and crypto operations. Integration tests run against real PostgreSQL. E2E tests with Playwright use the Page Object Model pattern and test against a real Google Drive account, not mocked. Tests automatically create missing fixtures for self-healing reliability.
+
+---
+
+## Tech Stack
+
+**Front End:** Next.js 16, React 19, TypeScript, Tailwind CSS 4, shadcn/ui, Vidstack, dnd-kit, cmdk
+
+**Back End:** Prisma 7, NextAuth.js v5, Server Actions
+
+**APIs:** Google Drive (OAuth 2.0, Changes API), TMDB
+
+**Infrastructure:** Vercel, Neon PostgreSQL (serverless branching), Upstash Redis
+
+---
+
+**Live:** [canoncore.com](https://canoncore.com)
+**Source:** [github.com/jacobreesgit/canoncore-v2](https://github.com/jacobreesgit/canoncore-v2)

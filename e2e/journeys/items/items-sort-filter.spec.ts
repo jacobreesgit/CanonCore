@@ -16,7 +16,6 @@ test.describe("Items Sort/Filter Journey", () => {
     await itemsPage.createItem("Charlie Item");
 
     // Wait for toasts to clear
-    await itemsPage.waitForToastToDisappear();
   });
 
   test("sort dropdown changes item order", async ({ itemsPage }) => {

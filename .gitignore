@@ -46,6 +46,11 @@ coverage/
 
 # Seed media files (large video files for seeding)
 seed-media/
+*.mp4
+*.srt
 
 # Personal notes
 Handbook/
+
+# Portfolio screenshots should be committed
+!public/portfolio/

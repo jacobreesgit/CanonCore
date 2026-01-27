@@ -14,9 +14,11 @@ import { ItemContextMenu } from "@/components/items/item-context-menu";
 import { SortDropdown } from "@/components/items/sort-dropdown";
 import { MobileOptionsSheet } from "@/components/items/mobile-options-sheet";
 import { EmptyState } from "@/components/items/empty-state";
+import { ForkDestinationDialog } from "@/components/items/fork-destination-dialog";
 import { useExploreSortFilter } from "@/hooks/use-explore-sort";
 import { EXPLORE_SORT_OPTIONS, sortPublicItems } from "@/lib/item-utils";
 import { deleteItem, pinItem, unpinItem } from "@/lib/item-actions";
+import { forkItem } from "@/lib/fork-actions";
 import { cn } from "@/lib/utils";
 import type { PublicItem, FeaturedItem } from "@/lib/public-auth";
 
@@ -56,6 +58,12 @@ export function ExploreClient({
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(
     () => new Set(items.filter((i) => i.pinnedOrder != null).map((i) => i.id))
   );
+
+  // Fork dialog state
+  const [forkDialogOpen, setForkDialogOpen] = useState(false);
+  const [forkingItemId, setForkingItemId] = useState<string | null>(null);
+  const [forkingItemName, setForkingItemName] = useState<string>("");
+  const [isForking, setIsForking] = useState(false);
 
   // Handle delete for own items
   const handleDelete = useCallback(async (itemId: string) => {
@@ -104,6 +112,55 @@ export function ExploreClient({
     [currentUser, router]
   );
 
+  // Open fork dialog from carousel
+  const handleForkClick = useCallback(
+    (slideId: string) => {
+      const item = featuredItems.find((i) => i.id === slideId);
+      if (item) {
+        setForkingItemId(slideId);
+        setForkingItemName(item.name);
+        setForkDialogOpen(true);
+      }
+    },
+    [featuredItems]
+  );
+
+  // Execute fork with destination
+  const handleForkConfirm = useCallback(
+    async (parentId: string | null) => {
+      if (!forkingItemId) return;
+
+      setIsForking(true);
+      try {
+        const result = await forkItem(forkingItemId, parentId);
+        if (result.success) {
+          toast.success("Added to your library!", {
+            description: `${forkingItemName} has been forked to your library.`,
+            action:
+              currentUser?.username && result.data
+                ? {
+                    label: "View",
+                    onClick: () =>
+                      router.push(
+                        `/u/${currentUser.username}/${result.data?.itemId}`
+                      ),
+                  }
+                : undefined,
+          });
+          setForkDialogOpen(false);
+          router.refresh();
+        } else {
+          toast.error(result.error ?? "Failed to fork item");
+        }
+      } catch {
+        toast.error("Failed to fork item");
+      } finally {
+        setIsForking(false);
+      }
+    },
+    [forkingItemId, forkingItemName, currentUser, router]
+  );
+
   // Convert featured items to carousel slides
   const carouselSlides: HeroSlide[] = useMemo(
     () =>
@@ -115,6 +172,9 @@ export function ExploreClient({
         link: item.link,
         ownerUsername: item.ownerUsername,
         ownerName: item.ownerName,
+        ownerUserId: item.ownerUserId,
+        profileId: item.ownerUserId,
+        profileHasImage: item.ownerHasImage,
       })),
     [featuredItems]
   );
@@ -151,10 +211,16 @@ export function ExploreClient({
   return (
     <div className={cn("flex flex-col gap-6", !hasItems && "flex-1")}>
       {/* Hero Carousel - Featured Items */}
-      {hasFeatured && <HeroCarousel slides={carouselSlides} />}
+      {hasFeatured && (
+        <HeroCarousel
+          slides={carouselSlides}
+          currentUserId={currentUser?.id}
+          onFork={currentUser ? handleForkClick : undefined}
+        />
+      )}
 
       {/* Toolbar - Sort only (no filter, no view toggle) */}
-      <div className="flex items-center justify-between gap-2 sm:gap-3">
+      <div className="flex items-center justify-between gap-2 px-4 sm:gap-3 md:px-6 lg:px-8">
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Mobile: Options sheet (sort only) */}
           <div className="sm:hidden">
@@ -183,7 +249,7 @@ export function ExploreClient({
       {hasItems ? (
         <div
           data-testid="items-grid-view"
-          className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
+          className="grid grid-cols-2 gap-4 px-4 md:grid-cols-3 md:px-6 lg:grid-cols-5 lg:px-8"
         >
           {sortedItems.map((item, index) => {
             const isOwnItem = currentUser?.id === item.userId;
@@ -239,8 +305,19 @@ export function ExploreClient({
           })}
         </div>
       ) : (
-        <EmptyState variant="explore-empty" />
+        <div className="flex flex-1 flex-col px-4 md:px-6 lg:px-8">
+          <EmptyState variant="explore-empty" />
+        </div>
       )}
+
+      {/* Fork destination dialog */}
+      <ForkDestinationDialog
+        open={forkDialogOpen}
+        onOpenChange={setForkDialogOpen}
+        itemName={forkingItemName}
+        onConfirm={handleForkConfirm}
+        isForking={isForking}
+      />
     </div>
   );
 }

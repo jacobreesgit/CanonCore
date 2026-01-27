@@ -62,11 +62,9 @@ test.describe("Pinned Sidebar Items", () => {
   test("can pin an item via context menu", async ({ page, itemsPage }) => {
     await itemsPage.goto();
     await itemsPage.createItem("Movies");
-    await itemsPage.waitForToastToDisappear();
 
     // Context menu works in grid view (tree view disabled at profile level)
     await itemsPage.pinItemViaContextMenu("Movies");
-    await itemsPage.expectSuccessToast("Pinned to sidebar");
 
     // Check item appears in sidebar
     await expandSidebar(page);
@@ -76,12 +74,9 @@ test.describe("Pinned Sidebar Items", () => {
   test("can unpin an item via context menu", async ({ page, itemsPage }) => {
     await itemsPage.goto();
     await itemsPage.createItem("TV Shows");
-    await itemsPage.waitForToastToDisappear();
 
     // Pin first (context menu works in grid view)
     await itemsPage.pinItemViaContextMenu("TV Shows");
-    await itemsPage.expectSuccessToast("Pinned to sidebar");
-    await itemsPage.waitForToastToDisappear();
 
     // Verify it's pinned
     await expandSidebar(page);
@@ -95,7 +90,6 @@ test.describe("Pinned Sidebar Items", () => {
 
     // Unpin
     await itemsPage.unpinItemViaContextMenu("TV Shows");
-    await itemsPage.expectSuccessToast("Unpinned from sidebar");
 
     // Check item no longer in sidebar
     await expandSidebar(page);
@@ -108,12 +102,9 @@ test.describe("Pinned Sidebar Items", () => {
   }) => {
     await itemsPage.goto();
     await itemsPage.createItem("Music");
-    await itemsPage.waitForToastToDisappear();
 
     // Pin the item (context menu works in grid view)
     await itemsPage.pinItemViaContextMenu("Music");
-    await itemsPage.expectSuccessToast("Pinned to sidebar");
-    await itemsPage.waitForToastToDisappear();
 
     // Verify pinned section is visible
     await expandSidebar(page);
@@ -127,8 +118,6 @@ test.describe("Pinned Sidebar Items", () => {
 
     // Unpin the item
     await itemsPage.unpinItemViaContextMenu("Music");
-    await itemsPage.expectSuccessToast("Unpinned from sidebar");
-    await itemsPage.waitForToastToDisappear();
 
     // Pinned section should be gone
     await expandSidebar(page);
@@ -138,17 +127,11 @@ test.describe("Pinned Sidebar Items", () => {
   test("can pin multiple items", async ({ page, itemsPage }) => {
     await itemsPage.goto();
     await itemsPage.createItem("Movies");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.createItem("TV Shows");
-    await itemsPage.waitForToastToDisappear();
 
     // Pin both items (context menu works in grid view)
     await itemsPage.pinItemViaContextMenu("Movies");
-    await itemsPage.expectSuccessToast("Pinned to sidebar");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.pinItemViaContextMenu("TV Shows");
-    await itemsPage.expectSuccessToast("Pinned to sidebar");
-    await itemsPage.waitForToastToDisappear();
 
     // Check both appear in sidebar
     await expandSidebar(page);
@@ -159,12 +142,9 @@ test.describe("Pinned Sidebar Items", () => {
   test("clicking pinned item navigates to it", async ({ page, itemsPage }) => {
     await itemsPage.goto();
     await itemsPage.createItem("Favorites");
-    await itemsPage.waitForToastToDisappear();
 
     // Pin the item (context menu works in grid view)
     await itemsPage.pinItemViaContextMenu("Favorites");
-    await itemsPage.expectSuccessToast("Pinned to sidebar");
-    await itemsPage.waitForToastToDisappear();
 
     // Click the pinned item in sidebar
     await expandSidebar(page);
@@ -189,18 +169,19 @@ test.describe("Pinned Sidebar Items", () => {
   }) => {
     await itemsPage.goto();
     await itemsPage.createItem("Persistent Pin");
-    await itemsPage.waitForToastToDisappear();
 
     // Pin the item (context menu works in grid view)
     await itemsPage.pinItemViaContextMenu("Persistent Pin");
-    await itemsPage.expectSuccessToast("Pinned to sidebar");
-    await itemsPage.waitForToastToDisappear();
+
+    // Verify it's pinned (confirms operation completed)
+    await expandSidebar(page);
+    await itemsPage.expectItemPinnedInSidebar("Persistent Pin");
 
     // Refresh the page
     await page.reload();
     await itemsPage.waitForLoadingComplete();
 
-    // Item should still be pinned
+    // Item should still be pinned after refresh
     await expandSidebar(page);
     await itemsPage.expectItemPinnedInSidebar("Persistent Pin");
   });

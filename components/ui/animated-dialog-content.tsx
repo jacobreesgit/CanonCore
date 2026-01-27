@@ -1,7 +1,7 @@
 /**
  * Animated dialog content with smooth height transitions between steps.
  * Uses slot-based API: header and footer are fixed, only body animates.
- * Technique inspired by react-bits Stepper: measure content, animate container.
+ * Follows Motion best practices: content flows normally, container animates height.
  * Respects prefers-reduced-motion for accessibility.
  *
  * Note: Child components with their own ScrollArea (like image-selection-grid)
@@ -42,8 +42,6 @@ interface BodyContentProps {
   stepKey: string;
   /** Callback to report measured height. */
   onHeightReady: (height: number) => void;
-  /** Whether to skip all motion (first render). */
-  skipMotion: boolean;
   /** Whether to reduce motion. */
   reduceMotion: boolean;
   /** Content to render. */
@@ -52,13 +50,12 @@ interface BodyContentProps {
 
 /**
  * Inner body wrapper that measures its height and reports it.
- * Positioned absolutely so it doesn't affect container height directly.
+ * Content flows normally - no absolute positioning to avoid clipping.
  * Uses ResizeObserver for dynamic height detection (e.g., tab switches).
  */
 function BodyContent({
   stepKey,
   onHeightReady,
-  skipMotion,
   reduceMotion,
   children,
 }: BodyContentProps) {
@@ -86,20 +83,10 @@ function BodyContent({
     return () => observer.disconnect();
   }, [onHeightReady]);
 
-  // On first render, skip all motion
-  if (skipMotion) {
-    return (
-      <div ref={ref} className="absolute inset-x-0 top-0">
-        {children}
-      </div>
-    );
-  }
-
   return (
     <motion.div
       ref={ref}
       key={stepKey}
-      className="absolute inset-x-0 top-0"
       initial={reduceMotion ? false : { opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -10 }}
@@ -133,10 +120,7 @@ function AnimatedDialogContent({
 }: AnimatedDialogContentProps) {
   const shouldReduceMotion = useReducedMotion() ?? false;
   const bodyRef = useRef<HTMLDivElement>(null);
-  const [state, setState] = useState({
-    height: 0,
-    isFirstRender: true,
-  });
+  const [height, setHeight] = useState<number | "auto">("auto");
 
   // Reset scroll position when step changes
   useEffect(() => {
@@ -145,10 +129,7 @@ function AnimatedDialogContent({
 
   // Stable callback for height updates
   const handleHeightReady = useCallback((newHeight: number) => {
-    setState((prev) => ({
-      height: newHeight,
-      isFirstRender: prev.isFirstRender && prev.height === 0,
-    }));
+    setHeight(newHeight);
   }, []);
 
   const dialogContent = (
@@ -164,47 +145,28 @@ function AnimatedDialogContent({
       <div
         ref={bodyRef}
         data-slot="dialog-body"
-        className="min-h-0 flex-1 overflow-y-auto"
+        className="-mx-6 min-h-0 flex-1 overflow-y-auto px-6"
       >
-        {state.isFirstRender ? (
-          // First render: no motion wrapper
-          <div className="relative">
+        <motion.div
+          animate={{ height }}
+          initial={false}
+          transition={
+            shouldReduceMotion
+              ? { duration: 0 }
+              : { type: "spring", stiffness: 400, damping: 35 }
+          }
+        >
+          <AnimatePresence mode="sync" initial={false}>
             <BodyContent
               key={stepKey}
               stepKey={stepKey}
               onHeightReady={handleHeightReady}
-              skipMotion={true}
               reduceMotion={shouldReduceMotion}
             >
               {children}
             </BodyContent>
-          </div>
-        ) : (
-          // Subsequent renders: animated height container
-          <motion.div
-            className="relative"
-            style={{ clipPath: "inset(0 -8px)" }}
-            animate={{ height: state.height }}
-            initial={false}
-            transition={
-              shouldReduceMotion
-                ? { duration: 0 }
-                : { type: "spring", stiffness: 400, damping: 35 }
-            }
-          >
-            <AnimatePresence mode="sync" initial={false}>
-              <BodyContent
-                key={stepKey}
-                stepKey={stepKey}
-                onHeightReady={handleHeightReady}
-                skipMotion={false}
-                reduceMotion={shouldReduceMotion}
-              >
-                {children}
-              </BodyContent>
-            </AnimatePresence>
-          </motion.div>
-        )}
+          </AnimatePresence>
+        </motion.div>
       </div>
 
       {/* Fixed Footer */}

@@ -12,13 +12,11 @@ test.describe("Item Settings Dialog", () => {
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
     // Create parent item and navigate to it for tree view tests
     await itemsPage.createItem("Settings Parent");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("Settings Parent");
   });
 
   test("opens settings dialog via context menu", async ({ itemsPage }) => {
     await itemsPage.createItem("Settings Test Folder");
-    await itemsPage.waitForToastToDisappear();
     // Switch to tree view on item detail page
     await itemsPage.switchToTreeView();
 
@@ -32,7 +30,6 @@ test.describe("Item Settings Dialog", () => {
 
   test("shows current item name in settings dialog", async ({ itemsPage }) => {
     await itemsPage.createItem("Current Name");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Current Name");
@@ -44,7 +41,6 @@ test.describe("Item Settings Dialog", () => {
 
   test("can rename item via settings dialog", async ({ itemsPage }) => {
     await itemsPage.createItem("Old Name");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.switchToTreeView();
 
     await itemsPage.renameItemViaContextMenu("Old Name", "New Name");
@@ -58,7 +54,6 @@ test.describe("Item Settings Dialog", () => {
     itemsPage,
   }) => {
     await itemsPage.createItem("Close Test");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Close Test");
@@ -70,7 +65,6 @@ test.describe("Item Settings Dialog", () => {
 
   test("disables save button when name unchanged", async ({ itemsPage }) => {
     await itemsPage.createItem("Unchanged Name");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Unchanged Name");
@@ -96,7 +90,6 @@ test.describe("Item Settings Dialog", () => {
     itemsPage,
   }) => {
     await itemsPage.createItem("Summary Test");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Summary Test");
@@ -111,7 +104,6 @@ test.describe("Item Settings Dialog", () => {
 
   test("shows description field in settings dialog", async ({ itemsPage }) => {
     await itemsPage.createItem("Description Field Test");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Description Field Test");
@@ -126,7 +118,6 @@ test.describe("Item Settings Dialog", () => {
 
   test("can add description to item", async ({ itemsPage }) => {
     await itemsPage.createItem("Add Description Test");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.switchToTreeView();
 
     await itemsPage.updateDescriptionViaContextMenu(
@@ -144,7 +135,6 @@ test.describe("Item Settings Dialog", () => {
 
   test("can update description", async ({ itemsPage }) => {
     await itemsPage.createItem("Update Description Test");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.switchToTreeView();
 
     // Add initial description
@@ -169,7 +159,6 @@ test.describe("Item Settings Dialog", () => {
 
   test("can clear description", async ({ itemsPage }) => {
     await itemsPage.createItem("Clear Description Test");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.switchToTreeView();
 
     // Add description first
@@ -194,7 +183,6 @@ test.describe("Item Settings Dialog", () => {
 
   test("shows character count for description", async ({ itemsPage }) => {
     await itemsPage.createItem("Char Count Test");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Char Count Test");
@@ -214,7 +202,6 @@ test.describe("Item Settings Dialog", () => {
     itemsPage,
   }) => {
     await itemsPage.createItem("Disabled Save Test");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Disabled Save Test");
@@ -249,7 +236,6 @@ test.describe("Item Page Settings", () => {
   }) => {
     // Create an item
     await itemsPage.createItem("Test Folder");
-    await itemsPage.waitForToastToDisappear();
 
     // Click into the item to navigate to detail page
     await itemsPage.clickItem("Test Folder");
@@ -268,7 +254,6 @@ test.describe("Item Page Settings", () => {
   }) => {
     // Create an item but stay on root
     await itemsPage.createItem("Root Item");
-    await itemsPage.waitForToastToDisappear();
 
     // Stay on root page - verify URL
     await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+$/);
@@ -284,7 +269,6 @@ test.describe("Item Page Settings", () => {
   }) => {
     // Create an item with specific name
     await itemsPage.createItem("My Test Item");
-    await itemsPage.waitForToastToDisappear();
 
     // Navigate to item detail page
     await itemsPage.clickItem("My Test Item");
@@ -308,7 +292,6 @@ test.describe("Item Page Settings", () => {
   }) => {
     // Create an item with original name
     await itemsPage.createItem("Original Name");
-    await itemsPage.waitForToastToDisappear();
 
     // Navigate to item detail page
     await itemsPage.clickItem("Original Name");
@@ -329,20 +312,16 @@ test.describe("Item Page Settings", () => {
     // Click "Save Changes" button
     await page.getByRole("button", { name: /save changes/i }).click();
 
-    // Verify success toast
-    await itemsPage.expectSuccessToast("Settings saved");
-
     // Dialog closes automatically on success
     await expect(settingsDialog).not.toBeVisible({ timeout: 5000 });
 
-    // Verify breadcrumb is updated
+    // Verify breadcrumb is updated (confirms save succeeded)
     await itemsPage.expectBreadcrumb("Updated Name");
   });
 
   test("should update item description", async ({ page, itemsPage }) => {
     // Create an item
     await itemsPage.createItem("Description Test");
-    await itemsPage.waitForToastToDisappear();
 
     // Navigate to item detail page
     await itemsPage.clickItem("Description Test");
@@ -362,11 +341,15 @@ test.describe("Item Page Settings", () => {
     // Click "Save Changes" button
     await page.getByRole("button", { name: /save changes/i }).click();
 
-    // Verify success toast
-    await itemsPage.expectSuccessToast("Settings saved");
-
-    // Dialog closes automatically on success
+    // Dialog closes automatically on success (confirms save succeeded)
     await expect(settingsDialog).not.toBeVisible({ timeout: 5000 });
+
+    // Re-open settings to verify description was saved
+    await page.getByRole("button", { name: /item settings/i }).click();
+    await expect(settingsDialog).toBeVisible({ timeout: 5000 });
+    await expect(page.getByLabel(/description/i)).toHaveValue(
+      "This is a test description"
+    );
   });
 });
 
@@ -392,7 +375,6 @@ test.describe("File Deletion", () => {
 
     await itemsPage.goto();
     await itemsPage.createItem("Delete Test");
-    await itemsPage.waitForToastToDisappear();
 
     // Navigate to item and open settings
     await itemsPage.clickItem("Delete Test");
@@ -423,7 +405,6 @@ test.describe("File Deletion", () => {
 
     await itemsPage.goto();
     await itemsPage.createItem("Confirm Delete Test");
-    await itemsPage.waitForToastToDisappear();
 
     // Navigate to item and open settings
     await itemsPage.clickItem("Confirm Delete Test");
@@ -452,7 +433,6 @@ test.describe("File Deletion", () => {
 
     await itemsPage.goto();
     await itemsPage.createItem("Cancel Delete Test");
-    await itemsPage.waitForToastToDisappear();
 
     // Get the item for later verification
     const item = await prisma.item.findFirst({
@@ -489,7 +469,6 @@ test.describe("File Deletion", () => {
 
     await itemsPage.goto();
     await itemsPage.createItem("Upload Delete Flow");
-    await itemsPage.waitForToastToDisappear();
 
     // Wait for sync to complete
     await expect(async () => {

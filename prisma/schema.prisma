@@ -25,6 +25,9 @@ model User {
   heroImage       Bytes?           // Hero banner image (max 2MB)
   heroImageMime   String?          // MIME type for hero
 
+  /// Hash of seed configuration for incremental seeding (null for non-seeded users)
+  seedContentHash String?
+
   // User preferences (nullable = use defaults)
   // Note: Using String? instead of enums for flexibility - allows adding new options without migrations
   defaultViewMode   String?   // "grid" | "tree"

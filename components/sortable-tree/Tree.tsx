@@ -76,7 +76,7 @@ export function Tree({
   }, [items, isCollapsed]);
 
   return (
-    <ul data-testid="items-tree-view" className="space-y-0.5">
+    <ul data-testid="items-tree-view" className="space-y-1">
       {flattenedItems.map(
         ({
           id,

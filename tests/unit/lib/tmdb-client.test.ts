@@ -416,9 +416,9 @@ describe("tmdb-client", () => {
   });
 
   describe("getBackdropUrl", () => {
-    it("returns full URL for valid path", () => {
+    it("returns full URL for valid path with original size by default", () => {
       const url = getBackdropUrl("/abc123.jpg");
-      expect(url).toBe("https://image.tmdb.org/t/p/w1280/abc123.jpg");
+      expect(url).toBe("https://image.tmdb.org/t/p/original/abc123.jpg");
     });
 
     it("returns null for null path", () => {

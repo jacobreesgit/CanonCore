@@ -61,6 +61,7 @@ export default async function PublicLayout({
     </SidebarProvider>
   );
 
-  // Wrap with spotlight provider for authenticated users
-  return user ? <MyItemsProviders>{content}</MyItemsProviders> : content;
+  // Always wrap to maintain consistent component tree depth
+  // Spotlight search only shows for authenticated users via context
+  return <MyItemsProviders>{content}</MyItemsProviders>;
 }

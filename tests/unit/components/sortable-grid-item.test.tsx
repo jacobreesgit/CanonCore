@@ -102,6 +102,9 @@ describe("SortableGridItem", () => {
       <SortableGridItem id="item-1" name="Test" artworkId="art-123" />
     );
     // In edit mode (SortableGridItem), showArtwork is false
-    expect(container.querySelector("img")).not.toBeInTheDocument();
+    // The image is still rendered but hidden with opacity-0
+    const img = container.querySelector("img");
+    expect(img).toBeInTheDocument();
+    expect(img?.className).toContain("opacity-0");
   });
 });

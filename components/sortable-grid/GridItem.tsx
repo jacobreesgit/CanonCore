@@ -313,7 +313,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
 
           {/* Progress bar + label */}
           {progressPercentage !== null && !handleProps && (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1.5">
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20 backdrop-blur-sm">
                 <div
                   data-testid="grid-item-progress-bar"

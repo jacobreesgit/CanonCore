@@ -34,7 +34,6 @@ test.describe("Item Progress Bars", () => {
     // Create child items
     await itemsPage.createItem("Child A");
     await itemsPage.createItem("Child B");
-    await itemsPage.waitForToastToDisappear();
 
     // Switch to tree view on item detail page
     await itemsPage.switchToTreeView();
@@ -72,7 +71,6 @@ test.describe("Item Progress Bars", () => {
     // Create child items
     await itemsPage.createItem("Tree Child A");
     await itemsPage.createItem("Tree Child B");
-    await itemsPage.waitForToastToDisappear();
 
     // Switch to tree view
     await itemsPage.switchToTreeView();
@@ -119,7 +117,6 @@ test.describe("Item Progress Bars", () => {
     // Create child items
     await itemsPage.createItem("Progress Item A");
     await itemsPage.createItem("Progress Item B");
-    await itemsPage.waitForToastToDisappear();
 
     // Switch between views multiple times
     await itemsPage.switchToTreeView();
