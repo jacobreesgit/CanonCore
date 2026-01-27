@@ -22,8 +22,11 @@ import { SiteHeader } from "@/components/site-header";
  * Shows different CTAs based on authentication state.
  */
 export default async function LandingPage() {
-  const session = await auth();
-  const user = await getExtendedSidebarUser(session);
+  // Parallelize auth and user lookup to avoid waterfall
+  const [_session, user] = await Promise.all([
+    auth(),
+    auth().then((s) => getExtendedSidebarUser(s)),
+  ]);
   const isAuthenticated = !!user;
   const profileUrl = user?.username ? `/u/${user.username}` : "/explore";
 

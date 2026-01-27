@@ -6,6 +6,7 @@
 
 "use client";
 
+import { memo } from "react";
 import { Loader2, Trash2 } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ interface BulkActionsToolbarProps {
 /**
  * Floating toolbar at bottom of screen with glass morphism effect.
  * Slides up when items are selected, providing quick access to bulk actions.
+ * Memoized to prevent unnecessary re-renders when parent state changes.
  *
  * @param selectionCount - Number of currently selected items
  * @param isAllSelected - True when all items are selected
@@ -40,7 +42,7 @@ interface BulkActionsToolbarProps {
  * @param isDeleting - Shows loading state when true
  * @param className - Additional CSS classes
  */
-export function BulkActionsToolbar({
+export const BulkActionsToolbar = memo(function BulkActionsToolbar({
   selectionCount,
   isAllSelected,
   onSelectAll,
@@ -151,4 +153,4 @@ export function BulkActionsToolbar({
       </div>
     </motion.div>
   );
-}
+});

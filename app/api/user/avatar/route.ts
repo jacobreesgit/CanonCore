@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
     userId = session.user.id;
   }
 
+  // Fetch user image data
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { image: true, imageMime: true },

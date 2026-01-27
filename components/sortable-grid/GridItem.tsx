@@ -152,9 +152,9 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
         aria-label={name}
         onKeyDown={handleKeyDown}
         className={cn(
-          // Base styles - Feature222 sizing
+          // Base styles - Feature222 sizing - square on mobile for compactness
           "group relative w-full cursor-pointer overflow-hidden rounded-lg",
-          "aspect-[2/3] sm:aspect-square md:aspect-[2/3]",
+          "aspect-square md:aspect-[2/3]",
           // Background color (shown until image loads)
           "bg-muted",
           // Overlay pseudo-element
@@ -263,8 +263,8 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
           </div>
         )}
 
-        {/* Content overlay - bottom */}
-        <div className="relative z-20 flex h-full flex-col justify-end gap-2.5 p-4">
+        {/* Content overlay - bottom - more compact padding on mobile */}
+        <div className="relative z-20 flex h-full flex-col justify-end gap-1.5 p-3 sm:gap-2.5 sm:p-4">
           {/* Owner info - "You" or profile pic + @username */}
           {ownerLabel &&
             !handleProps &&
@@ -291,11 +291,11 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
               </span>
             ))}
 
-          {/* Title and description group */}
-          <div className="flex flex-col gap-1">
-            {/* Title with sync indicator */}
+          {/* Title and description group - tighter on mobile */}
+          <div className="flex flex-col gap-0.5 sm:gap-1">
+            {/* Title with sync indicator - smaller text on mobile */}
             <div className="flex items-center gap-1.5">
-              <h3 className="min-w-0 truncate text-lg leading-tight font-semibold text-white drop-shadow-md md:text-xl">
+              <h3 className="min-w-0 truncate text-base leading-tight font-semibold text-white drop-shadow-md sm:text-lg md:text-xl">
                 {name}
               </h3>
               {syncStatus && syncStatus !== "SYNCED" && (
@@ -303,17 +303,17 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
               )}
             </div>
 
-            {/* Description - item's TMDB overview */}
+            {/* Description - item's TMDB overview - smaller and single line on mobile */}
             {shouldShowDescription && description && (
-              <p className="line-clamp-2 text-sm leading-snug text-white/80 drop-shadow-sm">
+              <p className="line-clamp-1 text-xs leading-snug text-white/80 drop-shadow-sm sm:line-clamp-2 sm:text-sm">
                 {description}
               </p>
             )}
           </div>
 
-          {/* Progress bar + label */}
+          {/* Progress bar + label - tighter on mobile */}
           {progressPercentage !== null && !handleProps && (
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1 sm:gap-1.5">
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20 backdrop-blur-sm">
                 <div
                   data-testid="grid-item-progress-bar"

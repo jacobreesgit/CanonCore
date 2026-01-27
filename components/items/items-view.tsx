@@ -5,7 +5,14 @@
 
 "use client";
 
-import { useState, useTransition, useEffect, useRef, useCallback } from "react";
+import {
+  useState,
+  useTransition,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Loader2, Plus, RefreshCw } from "lucide-react";
@@ -36,7 +43,7 @@ function TreeSkeleton() {
  */
 function GridSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-5">
       {Array.from({ length: 8 }).map((_, i) => (
         <Skeleton key={i} className="aspect-[2/3] w-full rounded-lg" />
       ))}
@@ -54,13 +61,31 @@ const SortableGrid = dynamic(
   () => import("@/components/sortable-grid").then((mod) => mod.SortableGrid),
   { loading: () => <GridSkeleton />, ssr: false }
 );
+
+// Dynamic imports for heavy dialogs (loaded on demand when user opens them)
+const AddItemDialog = dynamic(
+  () =>
+    import("./add-item-dialog").then((mod) => ({ default: mod.AddItemDialog })),
+  {
+    ssr: false,
+  }
+);
+
+const ItemSettingsDialog = dynamic(
+  () =>
+    import("./item-settings-dialog").then((mod) => ({
+      default: mod.ItemSettingsDialog,
+    })),
+  {
+    ssr: false,
+  }
+);
+
 import { EditModeToggle } from "./edit-mode-toggle";
 import { ViewToggle, useStoredViewMode } from "./view-toggle";
 import { SortDropdown } from "./sort-dropdown";
 import { FilterDropdown } from "./filter-dropdown";
 import { MobileOptionsSheet } from "./mobile-options-sheet";
-import { AddItemDialog } from "./add-item-dialog";
-import { ItemSettingsDialog } from "./item-settings-dialog";
 import { HeroCarousel, type HeroSlide } from "@/components/hero-carousel";
 import { EmptyState, type EmptyStateVariant } from "./empty-state";
 import { BulkActionsToolbar } from "./bulk-actions-toolbar";
@@ -585,15 +610,25 @@ export function ItemsView({
   );
 
   // Apply sort and filter to items (sort first, then filter)
-  const sortedItems = sortItems(items, sortBy);
-  const processedItems = filterItems(sortedItems, filterBy);
+  // Memoized to avoid recalculating on every render (rerender-memo, rerender-derived-state)
+  const sortedItems = useMemo(() => sortItems(items, sortBy), [items, sortBy]);
+  const processedItems = useMemo(
+    () => filterItems(sortedItems, filterBy),
+    [sortedItems, filterBy]
+  );
 
   // Convert flat items to tree structure for SortableTree (uses processed items)
-  const treeItemsProcessed = itemsToTree(processedItems);
+  // Memoized to avoid rebuilding tree on every render
+  const treeItemsProcessed = useMemo(
+    () => itemsToTree(processedItems),
+    [processedItems]
+  );
 
   // Filter items for current level (grid view shows only current level)
-  const currentLevelItems = processedItems.filter(
-    (item) => item.parentId === parentId
+  // Memoized to avoid refiltering on every render
+  const currentLevelItems = useMemo(
+    () => processedItems.filter((item) => item.parentId === parentId),
+    [processedItems, parentId]
   );
 
   // Bulk selection for edit mode operations

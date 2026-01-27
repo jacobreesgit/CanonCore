@@ -359,7 +359,7 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
         value={searchValue}
         onValueChange={setSearchValue}
       />
-      <CommandList ref={listRef} className="flex max-h-[400px] flex-col">
+      <CommandList ref={listRef} className="flex max-h-[60vh] flex-col sm:max-h-[400px]">
         <div aria-live="polite" aria-atomic="true" className="sr-only">
           {announcement}
         </div>
