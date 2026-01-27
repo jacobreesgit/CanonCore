@@ -66,6 +66,7 @@ commit-history.md
 
 # AI/Claude Code files
 .claude/
+CLAUDE.md
 
 # Internal development docs (not for portfolio)
 docs/
