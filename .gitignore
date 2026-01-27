@@ -51,11 +51,21 @@ seed-media/
 
 # Personal notes
 Handbook/
+todo.md
+*.todo
+notes.md
+*-portfolio.md
+commit-history.md
 
-# AI/Claude Code files (development only)
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+
+# AI/Claude Code files
 .claude/
-skills/
-CLAUDE.md
 
 # Internal development docs (not for portfolio)
 docs/
