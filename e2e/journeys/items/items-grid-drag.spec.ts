@@ -21,7 +21,6 @@ test.describe("Items Grid Drag Journey", () => {
     await itemsPage.createItem("Grid Item 3");
 
     // Wait for toasts to disappear
-    await itemsPage.waitForToastToDisappear();
   });
 
   test("items display correctly in grid view", async ({ itemsPage }) => {

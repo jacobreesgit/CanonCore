@@ -53,7 +53,7 @@ export default async function ExplorePage() {
   return (
     <>
       <SiteHeader title="Explore" titleHref="/explore" />
-      <div className="flex flex-1 flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
+      <div className="flex flex-1 flex-col gap-4 py-6">
         <ExploreClient
           items={itemsWithProgress}
           featuredItems={featuredItems}

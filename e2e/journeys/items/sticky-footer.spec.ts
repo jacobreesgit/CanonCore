@@ -20,7 +20,6 @@ test.describe("Sticky Dialog Footer", () => {
     await itemsPage.createItem("Parent Folder");
     await itemsPage.clickItem("Parent Folder");
     await itemsPage.createItem("Sticky Footer Test");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Sticky Footer Test");

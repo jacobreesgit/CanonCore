@@ -33,13 +33,11 @@ test.describe("Google Drive: Web to Cloud Sync", () => {
     await itemsPage.expectItemVisible("E2E Test Folder");
 
     // Verify sync completed (item should have driveFileId)
-    await itemsPage.waitForToastToDisappear();
   });
 
   test("renames folder in Drive when item renamed", async ({ page }) => {
     // Create item first
     await itemsPage.createItem("Rename Test Item");
-    await itemsPage.waitForToastToDisappear();
 
     // Open settings and rename (grid view context menu works on root page)
     await itemsPage.openSettingsViaContextMenu("Rename Test Item");
@@ -59,7 +57,6 @@ test.describe("Google Drive: Web to Cloud Sync", () => {
   test("deletes folder in Drive when item deleted", async ({ page }) => {
     // Create item first
     await itemsPage.createItem("Delete Test Item");
-    await itemsPage.waitForToastToDisappear();
 
     // Delete via context menu (grid view works on root page)
     await itemsPage.deleteItemViaContextMenu("Delete Test Item");

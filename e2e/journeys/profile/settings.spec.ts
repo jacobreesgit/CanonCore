@@ -34,11 +34,15 @@ test.describe("Profile Settings Journey", () => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
 
-    // Check all sections are visible
+    // Check Profile tab sections
     await expect(page.getByText("Profile Picture")).toBeVisible();
     await expect(page.getByLabel("Display Name")).toBeVisible();
     await expect(page.getByText("Hero Banner")).toBeVisible();
-    // Password and Email should be buttons now, not form fields
+
+    // Navigate to Account tab to check password/email buttons
+    await page.getByRole("tab", { name: "Account" }).click();
+
+    // Password and Email should be buttons in Account tab
     await expect(
       page.getByRole("button", { name: /change password/i })
     ).toBeVisible();
@@ -141,6 +145,9 @@ test.describe("Change Password Step", () => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
 
+    // Navigate to Account tab first (Change Password is in Account tab now)
+    await page.getByRole("tab", { name: "Account" }).click();
+
     // Click Change Password button in main settings
     await page.getByRole("button", { name: /change password/i }).click();
 
@@ -156,6 +163,9 @@ test.describe("Change Password Step", () => {
   test("password mismatch shows error", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+
+    // Navigate to Account tab first
+    await page.getByRole("tab", { name: "Account" }).click();
 
     // Navigate to change password step
     await page.getByRole("button", { name: /change password/i }).click();
@@ -185,6 +195,9 @@ test.describe("Change Password Step", () => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
 
+    // Navigate to Account tab first
+    await page.getByRole("tab", { name: "Account" }).click();
+
     // Navigate to change password step
     await page.getByRole("button", { name: /change password/i }).click();
     await expect(
@@ -209,6 +222,9 @@ test.describe("Change Password Step", () => {
   test("can change password successfully", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+
+    // Navigate to Account tab first
+    await page.getByRole("tab", { name: "Account" }).click();
 
     // Navigate to change password step
     await page.getByRole("button", { name: /change password/i }).click();
@@ -235,6 +251,9 @@ test.describe("Change Password Step", () => {
   test("cancel returns to main settings", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+
+    // Navigate to Account tab first
+    await page.getByRole("tab", { name: "Account" }).click();
 
     // Navigate to change password step
     await page.getByRole("button", { name: /change password/i }).click();
@@ -271,6 +290,9 @@ test.describe("Change Email Step", () => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
 
+    // Navigate to Account tab first
+    await page.getByRole("tab", { name: "Account" }).click();
+
     // Click Change Email button in main settings
     await page.getByRole("button", { name: /change email/i }).click();
 
@@ -285,6 +307,9 @@ test.describe("Change Email Step", () => {
   test("shows error when email unchanged", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+
+    // Navigate to Account tab first
+    await page.getByRole("tab", { name: "Account" }).click();
 
     // Navigate to change email step
     await page.getByRole("button", { name: /change email/i }).click();
@@ -311,6 +336,9 @@ test.describe("Change Email Step", () => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
 
+    // Navigate to Account tab first
+    await page.getByRole("tab", { name: "Account" }).click();
+
     // Navigate to change email step
     await page.getByRole("button", { name: /change email/i }).click();
     await expect(
@@ -335,6 +363,9 @@ test.describe("Change Email Step", () => {
   test("can change email successfully", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+
+    // Navigate to Account tab first
+    await page.getByRole("tab", { name: "Account" }).click();
 
     // Navigate to change email step
     await page.getByRole("button", { name: /change email/i }).click();
@@ -363,6 +394,9 @@ test.describe("Change Email Step", () => {
   test("cancel returns to main settings", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+
+    // Navigate to Account tab first
+    await page.getByRole("tab", { name: "Account" }).click();
 
     // Navigate to change email step
     await page.getByRole("button", { name: /change email/i }).click();

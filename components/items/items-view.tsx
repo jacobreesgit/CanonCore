@@ -36,7 +36,7 @@ function TreeSkeleton() {
  */
 function GridSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
       {Array.from({ length: 8 }).map((_, i) => (
         <Skeleton key={i} className="aspect-[2/3] w-full rounded-lg" />
       ))}
@@ -158,12 +158,22 @@ interface ItemsViewProps {
   heroBackgroundUrl?: string;
   /** Progress data for hero display (library-wide progress for My Items). */
   heroProgress?: ItemProgress | null;
+  /** Profile data for avatar in hero carousel (single-slide mode). */
+  heroProfile?: {
+    id: string;
+    username: string;
+    name: string | null;
+    hasImage: boolean;
+    hasHeroImage: boolean;
+  };
   /** Whether user has Google Drive connected (shows Sync button). */
   hasDriveConnection?: boolean;
   /** Current user info for owner display in grid items. */
   currentUser?: CurrentUser | null;
   /** Disable tree view option (forces grid view, hides view toggle). */
   disableTreeView?: boolean;
+  /** Add responsive padding to grid/tree container (for profile pages). */
+  addContainerPadding?: boolean;
 }
 
 /**
@@ -198,9 +208,11 @@ export function ItemsView({
   heroTitle,
   heroBackgroundUrl,
   heroProgress,
+  heroProfile,
   hasDriveConnection = false,
   currentUser,
   disableTreeView = false,
+  addContainerPadding = false,
 }: ItemsViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -585,7 +597,10 @@ export function ItemsView({
   );
 
   // Bulk selection for edit mode operations
-  const bulkSelection = useBulkSelection(currentLevelItems);
+  // In tree view, include all items for cascading selection; in grid view, only current level
+  const selectionItems =
+    viewMode === "tree" ? processedItems : currentLevelItems;
+  const bulkSelection = useBulkSelection(selectionItems);
 
   // Clear selection when exiting edit mode
   useEffect(() => {
@@ -594,6 +609,49 @@ export function ItemsView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Only trigger on edit mode change
   }, [isEditing]);
+
+  /**
+   * Gets all descendant IDs for a given item (recursive).
+   * Used for cascading selection in tree view.
+   */
+  const getDescendantIds = useCallback(
+    (itemId: string): string[] => {
+      const descendants: string[] = [];
+      const children = processedItems.filter((i) => i.parentId === itemId);
+      for (const child of children) {
+        descendants.push(child.id);
+        descendants.push(...getDescendantIds(child.id));
+      }
+      return descendants;
+    },
+    [processedItems]
+  );
+
+  /**
+   * Handles item selection with cascading to descendants in tree view.
+   * When selecting a parent, all children are also selected.
+   * When deselecting a parent, all children are also deselected.
+   */
+  const handleItemSelectionChange = useCallback(
+    (id: string, selected: boolean) => {
+      if (selected !== bulkSelection.isSelected(id)) {
+        // Toggle the item itself
+        bulkSelection.toggleItem(id);
+
+        // In tree view, also toggle all descendants
+        if (viewMode === "tree") {
+          const descendantIds = getDescendantIds(id);
+          for (const descendantId of descendantIds) {
+            // Only toggle if the current state doesn't match desired state
+            if (selected !== bulkSelection.isSelected(descendantId)) {
+              bulkSelection.toggleItem(descendantId);
+            }
+          }
+        }
+      }
+    },
+    [bulkSelection, viewMode, getDescendantIds]
+  );
 
   /**
    * Handles bulk deletion of selected items.
@@ -669,16 +727,22 @@ export function ItemsView({
               progressLabel: heroProgress
                 ? formatProgressLabel(heroProgress)
                 : null,
+              // Profile data for avatar display in single-slide mode
+              profileId: heroProfile?.id,
+              profileUsername: heroProfile?.username,
+              profileName: heroProfile?.name,
+              profileHasImage: heroProfile?.hasImage,
             } satisfies HeroSlide,
           ]}
           showCta={false}
           isOwner={true}
+          addContainerPadding={addContainerPadding}
         />
       )}
 
       {/* Toolbar - always visible, buttons disabled when not applicable */}
       {!hideToolbar && (
-        <div className="flex items-center justify-between gap-2 sm:gap-3">
+        <div className="flex items-center justify-between gap-2 px-4 sm:gap-3 md:px-6 lg:px-8">
           {/* Left side: Mobile options sheet OR Desktop sync + dropdowns */}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Mobile: Sync button + Options sheet */}
@@ -781,71 +845,73 @@ export function ItemsView({
       )}
 
       {/* Items display */}
-      {currentLevelItems.length === 0 ? (
-        <EmptyState
-          variant={getEmptyStateVariant()}
-          onAction={handleEmptyStateAction}
-        />
-      ) : viewMode === "grid" ? (
-        isEditing ? (
-          <SortableGrid
-            items={currentLevelItems}
-            onItemsChange={handleGridItemsChange}
+      <div
+        className={cn(
+          addContainerPadding && "px-4 md:px-6 lg:px-8",
+          currentLevelItems.length === 0 && "flex flex-1 flex-col"
+        )}
+      >
+        {currentLevelItems.length === 0 ? (
+          <EmptyState
+            variant={getEmptyStateVariant()}
+            onAction={handleEmptyStateAction}
+          />
+        ) : viewMode === "grid" ? (
+          isEditing ? (
+            <SortableGrid
+              items={currentLevelItems}
+              onItemsChange={handleGridItemsChange}
+              onItemClick={handleItemClick}
+              onOpenSettings={handleOpenSettings}
+              onDeleteItem={handleDeleteItem}
+              hasDriveConnection={hasDriveConnection}
+              onPinItem={handlePinItem}
+              onUnpinItem={handleUnpinItem}
+              isItemSelected={bulkSelection.isSelected}
+              onItemSelectChange={handleItemSelectionChange}
+              currentUser={currentUser}
+            />
+          ) : (
+            <Grid
+              items={currentLevelItems}
+              onItemClick={handleItemClick}
+              onOpenSettings={handleOpenSettings}
+              onDeleteItem={handleDeleteItem}
+              hasDriveConnection={hasDriveConnection}
+              onPinItem={handlePinItem}
+              onUnpinItem={handleUnpinItem}
+              currentUser={currentUser}
+            />
+          )
+        ) : isEditing ? (
+          <SortableTree
+            items={treeItemsProcessed}
+            onItemsChange={handleTreeItemsChange}
             onItemClick={handleItemClick}
             onOpenSettings={handleOpenSettings}
             onDeleteItem={handleDeleteItem}
+            onAddChild={handleAddChild}
+            onAddChildComplete={refetchItems}
             hasDriveConnection={hasDriveConnection}
             onPinItem={handlePinItem}
             onUnpinItem={handleUnpinItem}
             isItemSelected={bulkSelection.isSelected}
-            onItemSelectChange={(id, selected) =>
-              selected !== bulkSelection.isSelected(id) &&
-              bulkSelection.toggleItem(id)
-            }
+            onItemSelectChange={handleItemSelectionChange}
           />
         ) : (
-          <Grid
-            items={currentLevelItems}
+          <Tree
+            items={treeItemsProcessed}
             onItemClick={handleItemClick}
             onOpenSettings={handleOpenSettings}
             onDeleteItem={handleDeleteItem}
+            onAddChild={handleAddChild}
+            onAddChildComplete={refetchItems}
             hasDriveConnection={hasDriveConnection}
             onPinItem={handlePinItem}
             onUnpinItem={handleUnpinItem}
-            currentUser={currentUser}
           />
-        )
-      ) : isEditing ? (
-        <SortableTree
-          items={treeItemsProcessed}
-          onItemsChange={handleTreeItemsChange}
-          onItemClick={handleItemClick}
-          onOpenSettings={handleOpenSettings}
-          onDeleteItem={handleDeleteItem}
-          onAddChild={handleAddChild}
-          onAddChildComplete={refetchItems}
-          hasDriveConnection={hasDriveConnection}
-          onPinItem={handlePinItem}
-          onUnpinItem={handleUnpinItem}
-          isItemSelected={bulkSelection.isSelected}
-          onItemSelectChange={(id, selected) =>
-            selected !== bulkSelection.isSelected(id) &&
-            bulkSelection.toggleItem(id)
-          }
-        />
-      ) : (
-        <Tree
-          items={treeItemsProcessed}
-          onItemClick={handleItemClick}
-          onOpenSettings={handleOpenSettings}
-          onDeleteItem={handleDeleteItem}
-          onAddChild={handleAddChild}
-          onAddChildComplete={refetchItems}
-          hasDriveConnection={hasDriveConnection}
-          onPinItem={handlePinItem}
-          onUnpinItem={handleUnpinItem}
-        />
-      )}
+        )}
+      </div>
 
       {/* Item Settings Dialog */}
       {settingsDialog && (

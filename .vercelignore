@@ -13,3 +13,5 @@ docs/
 
 # Seed media files
 seed-media/
+*.mp4
+*.srt

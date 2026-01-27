@@ -65,7 +65,6 @@ test.describe("Items Loading Spinner", () => {
     // Create a test item
     await itemsPage.waitForLoadingComplete();
     await itemsPage.createItem("Loading Test Item");
-    await itemsPage.waitForToastToDisappear();
 
     // Navigate to item detail
     await itemsPage.clickItem("Loading Test Item");
@@ -81,13 +80,11 @@ test.describe("Items Loading Spinner", () => {
   }) => {
     // Create parent item and navigate to it (view toggle is on item detail pages)
     await itemsPage.createItem("View Switch Parent");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("View Switch Parent");
 
     // Create children to display
     await itemsPage.createItem("View Switch Child A");
     await itemsPage.createItem("View Switch Child B");
-    await itemsPage.waitForToastToDisappear();
 
     // Start in grid view (default)
     await expect(itemsPage.gridView).toBeVisible();

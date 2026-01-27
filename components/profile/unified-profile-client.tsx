@@ -115,6 +115,9 @@ export function UnifiedProfileClient({
         hasDriveConnection={hasDriveConnection}
         currentUser={currentUser}
         disableTreeView
+        addContainerPadding
+        // Pass profile data for avatar in hero carousel
+        heroProfile={publicProfile}
       />
     );
   }
@@ -177,10 +180,10 @@ function ViewerModeContent({
   return (
     <div className={cn("flex flex-col gap-6", !hasItems && "flex-1")}>
       {/* Profile hero with cover photo and avatar */}
-      <ProfileHero profile={profile} isOwnProfile={false} />
+      <ProfileHero profile={profile} isOwnProfile={false} addContainerPadding />
 
       {/* Toolbar - Sort only */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-2 px-4 sm:gap-3 md:px-6 lg:px-8">
         {/* Mobile: Options sheet */}
         <div className="sm:hidden">
           <MobileOptionsSheet
@@ -207,7 +210,7 @@ function ViewerModeContent({
       {hasItems ? (
         <div
           data-testid="items-grid-view"
-          className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
+          className="grid grid-cols-2 gap-4 px-4 md:grid-cols-3 md:px-6 lg:grid-cols-5 lg:px-8"
         >
           {sortableItems.map((item, index) => {
             // Find original item for full data
@@ -233,7 +236,9 @@ function ViewerModeContent({
           })}
         </div>
       ) : (
-        <EmptyState variant="public-profile-empty" />
+        <div className="flex flex-1 flex-col px-4 md:px-6 lg:px-8">
+          <EmptyState variant="public-profile-empty" />
+        </div>
       )}
     </div>
   );

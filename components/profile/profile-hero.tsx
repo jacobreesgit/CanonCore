@@ -21,6 +21,8 @@ interface ProfileHeroProps {
   isOwnProfile?: boolean;
   /** Additional CSS classes */
   className?: string;
+  /** Add responsive padding to hero container (for profile pages) */
+  addContainerPadding?: boolean;
 }
 
 /**
@@ -60,6 +62,7 @@ export function ProfileHero({
   profile,
   isOwnProfile = false,
   className,
+  addContainerPadding = false,
 }: ProfileHeroProps) {
   const prefersReducedMotion = useReducedMotion();
   const [coverLoaded, setCoverLoaded] = useState(false);
@@ -120,7 +123,14 @@ export function ProfileHero({
   const TextWrapper = prefersReducedMotion ? "div" : motion.div;
 
   return (
-    <section data-testid="profile-hero" className={cn("relative", className)}>
+    <section
+      data-testid="profile-hero"
+      className={cn(
+        "relative",
+        addContainerPadding && "px-4 md:px-6 lg:px-8",
+        className
+      )}
+    >
       <Wrapper {...containerVariants}>
         <div className="p-1">
           {/* Main hero container */}
@@ -171,8 +181,7 @@ export function ProfileHero({
                 <div
                   className={cn(
                     "relative h-32 w-32 overflow-hidden rounded-full md:h-44 md:w-44 lg:h-52 lg:w-52",
-                    "ring-background shadow-2xl ring-4",
-                    "after:absolute after:inset-0 after:rounded-full after:ring-2 after:ring-white/20 after:ring-inset"
+                    "ring-background shadow-2xl ring-4"
                   )}
                 >
                   {avatarUrl && !avatarError ? (
@@ -207,12 +216,6 @@ export function ProfileHero({
                     </div>
                   )}
                 </div>
-
-                {/* Subtle glow effect behind avatar */}
-                <div
-                  className="absolute -inset-2 -z-10 rounded-full opacity-40 blur-xl"
-                  style={{ background: initialsGradient }}
-                />
               </AvatarWrapper>
 
               {/* Name and username */}

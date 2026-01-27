@@ -436,12 +436,12 @@ export function isValidImagePath(imagePath: string | null): boolean {
  * Constructs full backdrop image URL from TMDB path.
  *
  * @param backdropPath - TMDB backdrop path (e.g., "/abc123.jpg")
- * @param size - Image size (default: w1280 for hero images)
+ * @param size - Image size (default: original for hero images)
  * @returns Full image URL or null if invalid path
  */
 export function getBackdropUrl(
   backdropPath: string | null,
-  size: BackdropSize = "w1280"
+  size: BackdropSize = "original"
 ): string | null {
   if (!backdropPath || !isValidImagePath(backdropPath)) return null;
   return `${TMDB_IMAGE_BASE}/${size}${backdropPath}`;
@@ -449,6 +449,7 @@ export function getBackdropUrl(
 
 /**
  * Downloads backdrop image as Buffer.
+ * Uses original size for maximum quality.
  *
  * @param backdropPath - TMDB backdrop path
  * @returns Image buffer or null on error
@@ -456,7 +457,7 @@ export function getBackdropUrl(
 export async function downloadBackdrop(
   backdropPath: string | null
 ): Promise<Buffer | null> {
-  const url = getBackdropUrl(backdropPath);
+  const url = getBackdropUrl(backdropPath, "original");
   if (!url) return null;
 
   const controller = new AbortController();

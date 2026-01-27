@@ -26,6 +26,13 @@ export class SettingsPage {
     await userMenu.click();
     await this.page.getByTestId("my-items-settings-button").click();
     await this.page.getByRole("dialog").waitFor({ state: "visible" });
+
+    // Wait for AnimatedDialogContent animation to complete (250ms fade-in)
+    // The Profile tab is the default tab
+    await this.page.getByRole("tab", { name: "Profile" }).waitFor({
+      state: "visible",
+      timeout: 1000,
+    });
   }
 
   /**
@@ -104,6 +111,35 @@ export class SettingsPage {
    */
   async goToProfileTab(): Promise<void> {
     await this.page.getByRole("tab", { name: "Profile" }).click();
+    // Wait for Profile tab content to be visible (Display Name is always in Profile tab)
+    await this.page.getByLabel("Display Name").waitFor({
+      state: "visible",
+      timeout: 5000,
+    });
+  }
+
+  /**
+   * Switches to the Account tab.
+   */
+  async goToAccountTab(): Promise<void> {
+    await this.page.getByRole("tab", { name: "Account" }).click();
+    // Wait for "Change Username" button to be visible (indicates tab content loaded)
+    await this.page.getByRole("button", { name: /change username/i }).waitFor({
+      state: "visible",
+      timeout: 5000,
+    });
+  }
+
+  /**
+   * Switches to the Connections tab.
+   */
+  async goToConnectionsTab(): Promise<void> {
+    await this.page.getByRole("tab", { name: "Connections" }).click();
+    // Wait for Google Drive section to be visible (using label which contains the text)
+    await this.page.getByText("Google Drive").first().waitFor({
+      state: "visible",
+      timeout: 3000,
+    });
   }
 
   /**
@@ -180,13 +216,62 @@ export class SettingsPage {
   // ==================== Profile Tab Methods ====================
 
   /**
-   * Sets the username in the profile settings.
+   * Opens the Change Username step from the Account tab.
+   */
+  async openChangeUsername(): Promise<void> {
+    await this.page.getByRole("button", { name: /change username/i }).click();
+    // Wait for step to open
+    await this.page.getByRole("heading", { name: /change username/i }).waitFor({
+      state: "visible",
+      timeout: 5000,
+    });
+  }
+
+  /**
+   * Sets the username in the username change step.
    *
    * @param username - The username to set
+   * @param password - The current password for verification
    */
-  async setUsername(username: string): Promise<void> {
-    const input = this.page.getByTestId("settings-username-input");
-    await input.fill(username);
+  async setUsername(username: string, password?: string): Promise<void> {
+    // Fill new username
+    const usernameInput = this.page.getByLabel("New Username");
+    await usernameInput.fill(username);
+
+    // Fill password if provided
+    if (password) {
+      const passwordInput = this.page.getByLabel("Current Password");
+      await passwordInput.fill(password);
+    }
+  }
+
+  /**
+   * Submits the username change form.
+   */
+  async submitUsernameChange(): Promise<void> {
+    await this.page
+      .locator('[data-slot="dialog-footer"]')
+      .getByRole("button", { name: /change username/i })
+      .click();
+
+    // Wait for success toast
+    await this.page.getByText(/username changed successfully/i).waitFor({
+      state: "visible",
+      timeout: 5000,
+    });
+
+    // Wait for username step to close and return to main settings
+    // Check that the "Change Username" heading is no longer visible
+    await this.page.getByRole("heading", { name: /change username/i }).waitFor({
+      state: "hidden",
+      timeout: 5000,
+    });
+
+    // Wait for main settings to be stable (tabs should be visible)
+    await this.page.getByRole("tab", { name: "Profile" }).waitFor({
+      state: "visible",
+      timeout: 5000,
+    });
   }
 
   /**
@@ -244,6 +329,9 @@ export class SettingsPage {
    */
   async togglePublicProfile(): Promise<void> {
     const switchEl = this.page.getByTestId("settings-public-toggle");
+    // Wait for the switch to be visible before clicking
+    // Playwright's click() automatically waits for actionable state
+    await switchEl.waitFor({ state: "visible", timeout: 5000 });
     await switchEl.click();
   }
 

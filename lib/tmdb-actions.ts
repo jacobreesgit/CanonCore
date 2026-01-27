@@ -396,7 +396,7 @@ export async function getMetadataPreviewAction(
         name,
         description,
         posterUrl: getPosterUrl(posterPath, "w342"),
-        backdropUrl: getBackdropUrl(backdropPath, "w780"),
+        backdropUrl: getBackdropUrl(backdropPath, "w780"), // Preview thumbnail, not final download
         posterPath,
         backdropPath,
       },

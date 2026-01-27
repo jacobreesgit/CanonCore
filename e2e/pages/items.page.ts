@@ -882,6 +882,7 @@ export class ItemsPage {
    * Gets the select-all button in the bulk actions toolbar.
    */
   getSelectAllButton(): Locator {
+    // Button is now visible on all viewports
     return this.page.getByRole("button", {
       name: /^(select all|deselect all)$/i,
     });
@@ -891,7 +892,12 @@ export class ItemsPage {
    * Gets the bulk delete button.
    */
   getBulkDeleteButton(): Locator {
-    return this.page.getByRole("button", { name: /delete \d+/i });
+    // New UI: Button text is hidden on mobile (sm:inline)
+    // Find by destructive button in the fixed bottom toolbar
+    // Use the presence of the shadow-2xl class (unique to bulk toolbar) to scope
+    return this.page
+      .locator('[class*="shadow-2xl"]') // Bulk actions toolbar container
+      .locator('button[class*="bg-destructive"]'); // Destructive variant button
   }
 
   /**
@@ -953,11 +959,14 @@ export class ItemsPage {
    * @param count - Expected number of selected items
    */
   async expectSelectionCount(count: number): Promise<void> {
-    if (count === 0) {
-      await expect(this.page.getByText(/select items/i)).toBeVisible();
-    } else {
-      await expect(this.page.getByText(`${count} selected`)).toBeVisible();
-    }
+    // New UI shows count in a badge (always visible on both desktop and mobile)
+    const badge = this.page
+      .locator('[class*="rounded-full"][class*="tabular-nums"]')
+      .filter({ hasText: new RegExp(`^${count}$`) });
+    await expect(badge).toBeVisible({ timeout: 5000 });
+
+    // Note: Text labels are hidden on mobile (sm:inline class), so we only check the badge
+    // which is always visible and contains the actual count
   }
 
   /**
@@ -966,18 +975,17 @@ export class ItemsPage {
    * @param count - Number of items to be deleted
    */
   async expectBulkDeleteButton(count: number): Promise<void> {
-    await expect(
-      this.page.getByRole("button", { name: `Delete ${count}` })
-    ).toBeVisible();
+    // New UI: Delete button no longer shows count in text (just "Delete")
+    await expect(this.getBulkDeleteButton()).toBeVisible();
+    await expect(this.getBulkDeleteButton()).toBeEnabled();
   }
 
   /**
    * Expects the bulk delete button to not be visible (no items selected).
    */
   async expectNoBulkDeleteButton(): Promise<void> {
-    await expect(
-      this.page.getByRole("button", { name: /delete \d+/i })
-    ).not.toBeVisible();
+    // New UI: Button is always visible but disabled when count is 0
+    await expect(this.getBulkDeleteButton()).toBeDisabled();
   }
 
   // ==================== Pin/Unpin Methods ====================

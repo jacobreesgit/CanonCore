@@ -99,6 +99,9 @@ export function PublicItemClient({
       link: `/u/${profile.username}/${item.id}`,
       ownerUsername: profile.username,
       ownerName: profile.name,
+      ownerUserId: profile.id,
+      profileId: profile.id,
+      profileHasImage: profile.hasImage,
     }),
     [
       item.id,
@@ -107,6 +110,8 @@ export function PublicItemClient({
       item.artworkId,
       profile.username,
       profile.name,
+      profile.id,
+      profile.hasImage,
     ]
   );
 
@@ -191,7 +196,7 @@ export function PublicItemClient({
   return (
     <div className={cn("flex flex-col gap-6", !hasChildren && "flex-1")}>
       {/* Hero banner - single slide carousel */}
-      <HeroCarousel slides={[heroSlide]} showCta={false} isOwner={false} />
+      <HeroCarousel slides={[heroSlide]} showCta={false} isOwner={isOwnItem} />
 
       {/* Toolbar - Sort/Filter + View Toggle + Fork */}
       <div className="flex items-center justify-between gap-2 sm:gap-3">
@@ -310,7 +315,7 @@ export function PublicItemClient({
         viewMode === "grid" ? (
           <div
             data-testid="items-grid-view"
-            className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
+            className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5"
           >
             {directChildren.map((child, index) => (
               <GridItem
@@ -339,7 +344,9 @@ export function PublicItemClient({
           <Tree items={treeItems} onItemClick={handleItemClick} />
         )
       ) : (
-        <EmptyState variant="public-item-empty" />
+        <div className="flex flex-1 flex-col px-4 md:px-6 lg:px-8">
+          <EmptyState variant="public-item-empty" />
+        </div>
       )}
     </div>
   );

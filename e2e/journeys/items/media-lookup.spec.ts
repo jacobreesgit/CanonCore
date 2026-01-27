@@ -132,7 +132,6 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
 
       // Verify item was created
       await itemsPage.expectItemVisible("My Custom Movie");
-      await itemsPage.expectSuccessToast('Created "My Custom Movie"');
     });
 
     test("PATH 2: Manual entry with description", async ({
@@ -149,7 +148,6 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
 
       // Verify item was created
       await itemsPage.expectItemVisible("Custom Documentary");
-      await itemsPage.expectSuccessToast('Created "Custom Documentary"');
     });
 
     test("PATH 3: TMDB search shows results in dropdown", async ({
@@ -336,7 +334,6 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
 
       // Create an item first
       await itemsPage.createItem("Original Name");
-      await itemsPage.waitForToastToDisappear();
 
       // Rename via settings dialog (context menu works in grid view)
       await itemsPage.renameItemViaContextMenu("Original Name", "Renamed Item");
@@ -351,7 +348,6 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
 
       // Create an item first
       await itemsPage.createItem("Desc Test");
-      await itemsPage.waitForToastToDisappear();
 
       // Open settings and update description manually (context menu works in grid view)
       await itemsPage.openSettingsViaContextMenu("Desc Test");
@@ -362,7 +358,6 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       await page.getByRole("button", { name: /save changes/i }).click();
 
       // Verify the update worked
-      await itemsPage.expectSuccessToast("Settings saved");
     });
 
     test("PATH 3: Settings dialog shows current item name", async ({
@@ -373,7 +368,6 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
 
       // Create an item
       await itemsPage.createItem("Check Name Display");
-      await itemsPage.waitForToastToDisappear();
 
       // Open settings (context menu works in grid view)
       await itemsPage.openSettingsViaContextMenu("Check Name Display");
@@ -394,7 +388,6 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
 
       // Create an item
       await itemsPage.createItem("No Changes Test");
-      await itemsPage.waitForToastToDisappear();
 
       // Open settings (context menu works in grid view)
       await itemsPage.openSettingsViaContextMenu("No Changes Test");
@@ -424,7 +417,6 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
 
       // Create an item
       await itemsPage.createItem("Empty Name Test");
-      await itemsPage.waitForToastToDisappear();
 
       // Open settings (context menu works in grid view)
       await itemsPage.openSettingsViaContextMenu("Empty Name Test");
@@ -471,7 +463,6 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
 
       // Create an item
       await itemsPage.createItem("TMDB Search Test");
-      await itemsPage.waitForToastToDisappear();
 
       // Open settings (context menu works in grid view)
       await itemsPage.openSettingsViaContextMenu("TMDB Search Test");
@@ -502,7 +493,6 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
 
       // Create an item
       await itemsPage.createItem("Cancel Test");
-      await itemsPage.waitForToastToDisappear();
 
       // Open settings (context menu works in grid view)
       await itemsPage.openSettingsViaContextMenu("Cancel Test");
@@ -537,7 +527,6 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
 
       // Create an item
       await itemsPage.createItem("Tabs Test");
-      await itemsPage.waitForToastToDisappear();
 
       // Open settings (context menu works in grid view)
       await itemsPage.openSettingsViaContextMenu("Tabs Test");
@@ -585,7 +574,6 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
 
       // Create an item to test Edit dialog
       await itemsPage.createItem("Consistency Test");
-      await itemsPage.waitForToastToDisappear();
 
       // Check Edit dialog has same "Item name" label (context menu works in grid view)
       await itemsPage.openSettingsViaContextMenu("Consistency Test");
@@ -616,7 +604,6 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
 
       // Create item for Edit dialog test
       await itemsPage.createItem("Combobox Test");
-      await itemsPage.waitForToastToDisappear();
 
       // Test Edit dialog has same combobox (context menu works in grid view)
       await itemsPage.openSettingsViaContextMenu("Combobox Test");

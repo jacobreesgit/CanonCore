@@ -86,13 +86,11 @@ test.describe("User Preferences Journey", () => {
   }) => {
     // Create parent container and navigate into it (tree view only on item detail pages)
     await itemsPage.createItem("Parent Item");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("Parent Item");
 
     // Create children inside the parent
     await itemsPage.createItem("Child Item A");
     await itemsPage.createItem("Child Item B");
-    await itemsPage.waitForToastToDisappear();
 
     // Wait for grid view items to be visible (ensures toolbar is loaded)
     await expect(itemsPage.gridView).toBeVisible({ timeout: 10000 });
@@ -126,8 +124,10 @@ test.describe("User Preferences Journey", () => {
   }) => {
     await settingsPage.openFromNavUser();
 
-    // Should start on Profile tab
-    await expect(page.getByRole("tabpanel")).toContainText(/email|username/i);
+    // Should start on Profile tab (has Display Name, Profile Picture, Hero Banner)
+    await expect(page.getByRole("tabpanel")).toContainText(
+      /display name|profile picture/i
+    );
 
     // Switch to Preferences tab
     await settingsPage.goToPreferencesTab();
@@ -139,7 +139,9 @@ test.describe("User Preferences Journey", () => {
 
     // Switch back to Profile tab
     await settingsPage.goToProfileTab();
-    await expect(page.getByRole("tabpanel")).toContainText(/email|username/i);
+    await expect(page.getByRole("tabpanel")).toContainText(
+      /display name|profile picture/i
+    );
   });
 
   test("should show toast notification on preference save", async ({

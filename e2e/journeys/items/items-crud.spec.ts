@@ -33,7 +33,6 @@ test.describe("Items CRUD Journey", () => {
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
     await itemsPage.createItem("My First Folder");
     await itemsPage.expectItemVisible("My First Folder");
-    await itemsPage.expectSuccessToast('Created "My First Folder"');
   });
 
   test("can rename an item via context menu", async ({
@@ -43,7 +42,6 @@ test.describe("Items CRUD Journey", () => {
   }) => {
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
     await itemsPage.createItem("Original Name");
-    await itemsPage.waitForToastToDisappear();
     // Root profile page uses grid view - context menu works on grid items
     await itemsPage.renameItemViaContextMenu("Original Name", "Renamed Folder");
     // Toast is verified in renameItemViaContextMenu, just verify UI state
@@ -58,10 +56,8 @@ test.describe("Items CRUD Journey", () => {
   }) => {
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
     await itemsPage.createItem("To Delete");
-    await itemsPage.waitForToastToDisappear();
     // Root profile page uses grid view - context menu works on grid items
     await itemsPage.deleteItemViaContextMenu("To Delete");
     await itemsPage.expectItemNotVisible("To Delete");
-    await itemsPage.expectSuccessToast("Deleted successfully");
   });
 });

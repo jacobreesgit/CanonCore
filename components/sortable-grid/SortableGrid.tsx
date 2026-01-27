@@ -29,6 +29,12 @@ import { SortableGridItem } from "./SortableGridItem";
 import { GridItem } from "./GridItem";
 import type { ItemWithArtwork } from "@/lib/types";
 
+interface CurrentUser {
+  id: string;
+  username: string | null;
+  name: string | null;
+}
+
 interface SortableGridProps {
   items: ItemWithArtwork[];
   onItemsChange?(items: ItemWithArtwork[]): void;
@@ -46,6 +52,8 @@ interface SortableGridProps {
   isItemSelected?: (id: string) => boolean;
   /** Callback when an item's selection state changes. */
   onItemSelectChange?: (id: string, selected: boolean) => void;
+  /** Current user info for owner display. */
+  currentUser?: CurrentUser | null;
 }
 
 /**
@@ -69,6 +77,7 @@ export function SortableGrid({
   onUnpinItem,
   isItemSelected,
   onItemSelectChange,
+  currentUser: _currentUser,
 }: SortableGridProps) {
   const [items, setItems] = useState(defaultItems);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
@@ -127,7 +136,7 @@ export function SortableGrid({
       >
         <div
           data-testid="items-grid-view"
-          className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
+          className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5"
         >
           {items.map((item) => (
             <SortableGridItem

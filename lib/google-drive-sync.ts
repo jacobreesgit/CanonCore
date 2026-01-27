@@ -988,12 +988,15 @@ async function handleFileChanged(
 /**
  * Syncs items from Google Drive for a specific user by ID.
  * Used by seed script and other contexts where auth session is unavailable.
- * Does not fetch quota or revalidate paths (use syncFromGoogleDrive for that).
  *
  * @param userId - The user ID to sync for
+ * @param options - Optional sync options (fetchQuota, revalidate)
  * @returns Object with success status, sync stats, and any errors
  */
-export async function syncByUserId(userId: string): Promise<SyncResult> {
+export async function syncByUserId(
+  userId: string,
+  options?: SyncOptions
+): Promise<SyncResult> {
   const connection = await prisma.googleDriveConnection.findUnique({
     where: { userId },
   });
@@ -1006,5 +1009,5 @@ export async function syncByUserId(userId: string): Promise<SyncResult> {
     return { success: false, error: "Please reconnect your Google Drive" };
   }
 
-  return syncForConnection(connection);
+  return syncForConnection(connection, options);
 }

@@ -20,7 +20,8 @@ describe("BulkActionsToolbar", () => {
   it("renders selection count when items selected", () => {
     render(<BulkActionsToolbar {...defaultProps} selectionCount={5} />);
 
-    expect(screen.getByText("5 selected")).toBeInTheDocument();
+    expect(screen.getByText("5")).toBeInTheDocument();
+    expect(screen.getByText("items selected")).toBeInTheDocument();
   });
 
   it("renders 'Select items' when no items selected", () => {
@@ -74,12 +75,12 @@ describe("BulkActionsToolbar", () => {
     expect(onDeselectAll).toHaveBeenCalled();
   });
 
-  it("renders delete button with count when items selected", () => {
+  it("renders delete button when items selected", () => {
     render(<BulkActionsToolbar {...defaultProps} selectionCount={3} />);
 
-    expect(
-      screen.getByRole("button", { name: /delete 3/i })
-    ).toBeInTheDocument();
+    const deleteButton = screen.getByRole("button", { name: /delete/i });
+    expect(deleteButton).toBeInTheDocument();
+    expect(deleteButton).not.toBeDisabled();
   });
 
   it("disables delete button when no items selected", () => {
@@ -99,7 +100,7 @@ describe("BulkActionsToolbar", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: /delete 2/i }));
+    await user.click(screen.getByRole("button", { name: /delete/i }));
 
     expect(onDelete).toHaveBeenCalled();
   });

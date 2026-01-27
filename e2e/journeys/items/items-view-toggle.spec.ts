@@ -16,13 +16,11 @@ test.describe("Items View Toggle Journey", () => {
   test("can switch between tree and grid view", async ({ itemsPage }) => {
     // Create parent container and navigate into it (tree view only on item detail pages)
     await itemsPage.createItem("View Container");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("View Container");
 
     // Create some test items inside the container
     await itemsPage.createItem("Folder A");
     await itemsPage.createItem("Folder B");
-    await itemsPage.waitForToastToDisappear();
 
     // Default is grid view on item detail pages
     await expect(itemsPage.gridView).toBeVisible();
@@ -42,13 +40,11 @@ test.describe("Items View Toggle Journey", () => {
   }) => {
     // Create parent container and navigate into it (tree view only on item detail pages)
     await itemsPage.createItem("Persist Container");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("Persist Container");
 
     // Create some test items inside the container
     await itemsPage.createItem("Folder A");
     await itemsPage.createItem("Folder B");
-    await itemsPage.waitForToastToDisappear();
     await page.waitForLoadState("networkidle");
 
     // Switch to grid
@@ -64,13 +60,11 @@ test.describe("Items View Toggle Journey", () => {
   test("items visible in both views", async ({ itemsPage }) => {
     // Create parent container and navigate into it (tree view only on item detail pages)
     await itemsPage.createItem("Visibility Container");
-    await itemsPage.waitForToastToDisappear();
     await itemsPage.clickItem("Visibility Container");
 
     // Create some test items inside the container
     await itemsPage.createItem("Folder A");
     await itemsPage.createItem("Folder B");
-    await itemsPage.waitForToastToDisappear();
 
     // Check grid view (default on item detail pages)
     await itemsPage.expectItemVisible("Folder A");
