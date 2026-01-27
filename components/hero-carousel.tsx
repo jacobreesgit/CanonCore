@@ -284,7 +284,7 @@ export function HeroCarousel({
                   <div>
                     <div
                       className={cn(
-                        "bg-muted relative flex h-[max(280px,35dvh)] flex-col justify-between gap-4 overflow-hidden rounded-xl p-8",
+                        "bg-muted relative flex h-[max(280px,35dvh)] flex-col justify-between gap-4 overflow-hidden rounded-xl p-4 sm:p-6 md:p-8",
                         textAlignClass
                       )}
                     >
@@ -333,14 +333,14 @@ export function HeroCarousel({
                         )}
                       </div>
 
-                      {/* Content - horizontal layout with avatar (single-slide) or vertical (multi-slide) */}
+                      {/* Content - vertical on mobile, horizontal on desktop (single-slide with avatar) */}
                       <div
                         className={cn(
-                          "z-10 mt-auto flex w-full gap-5 text-white md:gap-6",
+                          "z-10 mt-auto flex w-full text-white",
                           isSingleSlide &&
                             slide.profileId &&
                             slide.profileUsername
-                            ? "items-end text-left" // Horizontal layout with avatar - content at bottom
+                            ? "flex-col items-center gap-4 text-center sm:flex-row sm:items-end sm:gap-5 sm:text-left md:gap-6" // Vertical on mobile, horizontal on desktop
                             : cn("flex-col gap-4", textAlignClass) // Vertical layout without avatar
                         )}
                       >
@@ -351,8 +351,8 @@ export function HeroCarousel({
                             <div className="group/avatar relative shrink-0">
                               <div
                                 className={cn(
-                                  "relative h-32 w-32 overflow-hidden rounded-full md:h-44 md:w-44 lg:h-52 lg:w-52",
-                                  "ring-background shadow-2xl ring-4"
+                                  "relative h-20 w-20 overflow-hidden rounded-full sm:h-32 sm:w-32 md:h-44 md:w-44 lg:h-52 lg:w-52",
+                                  "ring-background shadow-2xl ring-2 sm:ring-4"
                                 )}
                               >
                                 {slide.profileHasImage &&
@@ -366,7 +366,7 @@ export function HeroCarousel({
                                       src={`/api/user/avatar?userId=${slide.profileId}`}
                                       alt={slide.name}
                                       fill
-                                      sizes="(max-width: 768px) 128px, (max-width: 1024px) 176px, 208px"
+                                      sizes="(max-width: 640px) 80px, (max-width: 768px) 128px, (max-width: 1024px) 176px, 208px"
                                       className={cn(
                                         "object-cover transition-opacity duration-300",
                                         avatarLoaded[slide.id]
@@ -390,7 +390,7 @@ export function HeroCarousel({
                                       ),
                                     }}
                                   >
-                                    <span className="text-3xl font-bold text-white md:text-4xl">
+                                    <span className="text-xl font-bold text-white sm:text-3xl md:text-4xl">
                                       {getInitials(
                                         slide.profileName ?? null,
                                         slide.profileUsername
@@ -402,17 +402,17 @@ export function HeroCarousel({
                             </div>
                           )}
 
-                        {/* Content stack - everything to the right of avatar */}
-                        <div className="flex w-full min-w-0 flex-col justify-end pb-1">
+                        {/* Content stack - everything to the right of avatar (or below on mobile) */}
+                        <div className="flex w-full min-w-0 flex-col items-center justify-end pb-1 sm:items-start">
                           {/* Title and description */}
-                          <div>
+                          <div className="flex w-full flex-col items-center sm:items-start">
                             {/* User Attribution Badge - shown when viewer doesn't own the content */}
                             {!isOwner &&
                               slide.ownerUsername &&
                               slide.profileId && (
                                 <Link
                                   href={`/u/${slide.ownerUsername}`}
-                                  className="group/badge bg-background/20 hover:bg-background/30 mb-2 inline-flex items-center gap-2 rounded-full border-0 px-2.5 py-1.5 backdrop-blur-sm transition-all"
+                                  className="group/badge bg-background/20 hover:bg-background/30 mb-2 inline-flex items-center justify-center gap-2 rounded-full border-0 px-2.5 py-1.5 backdrop-blur-sm transition-all sm:justify-start"
                                   data-testid="hero-carousel-attribution"
                                 >
                                   {/* Avatar */}
@@ -470,11 +470,11 @@ export function HeroCarousel({
                                 </Link>
                               )}
 
-                            <h1 className="w-full truncate text-3xl font-bold tracking-tight text-white md:text-4xl lg:text-5xl">
+                            <h1 className="w-full truncate text-center text-2xl font-bold tracking-tight text-white sm:text-left sm:text-3xl md:text-4xl lg:text-5xl">
                               {slide.name}
                             </h1>
                             {slide.description && (
-                              <p className="mt-1 line-clamp-2 w-full text-base text-white/60 md:text-lg">
+                              <p className="mt-1 line-clamp-2 w-full text-center text-sm text-white/60 sm:text-left sm:text-base md:text-lg">
                                 {slide.description}
                               </p>
                             )}
@@ -482,7 +482,7 @@ export function HeroCarousel({
 
                           {/* Progress bar */}
                           {isOwner && slide.progressPercentage != null && (
-                            <div className="mt-2 flex w-full flex-col items-start gap-2">
+                            <div className="mt-2 flex w-full flex-col items-center gap-2 sm:items-start">
                               <div className="h-2.5 w-full overflow-hidden rounded-full bg-white/20 backdrop-blur-sm">
                                 <motion.div
                                   data-testid="hero-progress-bar"
@@ -508,7 +508,7 @@ export function HeroCarousel({
                               <span
                                 data-testid="hero-progress-label"
                                 className={cn(
-                                  "truncate text-sm tracking-wide text-white/60 tabular-nums",
+                                  "truncate text-center text-sm tracking-wide text-white/60 tabular-nums sm:text-left",
                                   !slide.progressLabel && "invisible"
                                 )}
                               >
@@ -520,16 +520,21 @@ export function HeroCarousel({
                           {/* Action buttons row */}
                           <div
                             className={cn(
-                              "mt-2 flex w-full flex-wrap items-center gap-3",
+                              "mt-2 flex w-full flex-wrap items-center gap-2 sm:gap-3",
                               // Only reserve space (min-h) when NOT in single-slide profile mode
                               !(
                                 isSingleSlide &&
                                 slide.profileId &&
                                 slide.profileUsername
                               ) && "min-h-[2.75rem]",
-                              textAlign === "right"
-                                ? "justify-start"
-                                : "justify-end"
+                              // Center buttons on mobile when in single-slide profile mode
+                              isSingleSlide &&
+                              slide.profileId &&
+                              slide.profileUsername
+                                ? "justify-center sm:justify-start"
+                                : textAlign === "right"
+                                  ? "justify-start"
+                                  : "justify-end"
                             )}
                           >
                             {/* Play button - only shown when isOwner and has media */}
@@ -538,7 +543,7 @@ export function HeroCarousel({
                                 size="lg"
                                 variant="glass"
                                 onClick={() => onPlay(slide.id)}
-                                className="group text-md rounded-full"
+                                className="group rounded-full text-sm sm:text-base"
                                 data-testid="hero-play-button"
                               >
                                 <span className="truncate">
@@ -556,7 +561,7 @@ export function HeroCarousel({
                                 size="lg"
                                 variant="glass"
                                 onClick={() => onGoToNext(slide.nextItem!.id)}
-                                className="group text-md rounded-full"
+                                className="group rounded-full text-sm sm:text-base"
                                 data-testid="hero-goto-button"
                               >
                                 <span className="truncate">
@@ -572,7 +577,7 @@ export function HeroCarousel({
                                 <Button
                                   size="lg"
                                   variant="glass"
-                                  className="group text-md rounded-full"
+                                  className="group rounded-full text-sm sm:text-base"
                                 >
                                   {ctaText}
                                   <ArrowRight className="size-4 -rotate-45 transition-all ease-out group-hover:ml-1 group-hover:rotate-0" />
@@ -589,7 +594,7 @@ export function HeroCarousel({
                                   size="lg"
                                   variant="glass"
                                   onClick={() => onFork(slide.id)}
-                                  className="group text-md rounded-full"
+                                  className="group rounded-full text-sm sm:text-base"
                                   data-testid="hero-fork-button"
                                 >
                                   <span>Fork</span>
