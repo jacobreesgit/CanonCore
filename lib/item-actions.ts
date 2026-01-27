@@ -336,11 +336,12 @@ export async function getFirstIncompleteItem(
  * Fetches items for a given parent with artwork thumbnails.
  * Returns root items if parentId is null.
  * Includes the first artwork file ID for each item for thumbnail display.
+ * Uses React.cache() for per-request deduplication when called from multiple Server Components.
  *
  * @param parentId - Parent item ID or null for root
  * @returns Items array with artworkId or error
  */
-export async function getItems(
+export const getItems = cache(async function getItems(
   parentId: string | null
 ): Promise<ItemResult<ItemWithArtwork[]>> {
   const session = await auth();
@@ -449,16 +450,19 @@ export async function getItems(
   });
 
   return { success: true, data: itemsWithArtwork };
-}
+});
 
 /**
  * Fetches ALL items for the current user with artwork thumbnails.
  * Returns full hierarchy (all levels) for inline tree display.
  * Items are ordered by depth then order for proper tree building.
+ * Uses React.cache() for per-request deduplication when called from multiple Server Components.
  *
  * @returns All items array with artworkId or error
  */
-export async function getAllItems(): Promise<ItemResult<ItemWithArtwork[]>> {
+export const getAllItems = cache(async function getAllItems(): Promise<
+  ItemResult<ItemWithArtwork[]>
+> {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "Unauthorized" };
@@ -563,16 +567,17 @@ export async function getAllItems(): Promise<ItemResult<ItemWithArtwork[]>> {
   });
 
   return { success: true, data: itemsWithArtwork };
-}
+});
 
 /**
  * Fetches all descendants of an item (children, grandchildren, etc.).
  * Used for displaying full subtree on item detail pages.
+ * Uses React.cache() for per-request deduplication when called from multiple Server Components.
  *
  * @param parentId - Parent item ID
  * @returns All descendant items with artworkId or error
  */
-export async function getDescendants(
+export const getDescendants = cache(async function getDescendants(
   parentId: string
 ): Promise<ItemResult<ItemWithArtwork[]>> {
   const session = await auth();
@@ -701,7 +706,7 @@ export async function getDescendants(
   });
 
   return { success: true, data: itemsWithArtwork };
-}
+});
 
 /**
  * Fetches a single item with its ancestors for breadcrumbs.

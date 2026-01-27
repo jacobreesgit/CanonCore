@@ -144,6 +144,7 @@ export function VideoPlayer({
         icons={defaultLayoutIcons}
         colorScheme="dark"
         noScrubGesture={false}
+        smallLayoutWhen={false}
       />
     </MediaPlayer>
   );

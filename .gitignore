@@ -52,5 +52,17 @@ seed-media/
 # Personal notes
 Handbook/
 
+# AI/Claude Code files (development only)
+.claude/
+skills/
+CLAUDE.md
+
+# Internal development docs (not for portfolio)
+docs/
+
+# Portfolio documents (personal use only)
+CV.md
+portfolio.md
+
 # Portfolio screenshots should be committed
 !public/portfolio/
