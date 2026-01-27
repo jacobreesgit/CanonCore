@@ -55,6 +55,7 @@ todo.md
 *.todo
 notes.md
 *-portfolio.md
+commit-history.md
 
 # IDE files
 .vscode/
