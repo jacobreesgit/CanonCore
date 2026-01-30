@@ -184,31 +184,6 @@ describe("seed-config", () => {
     });
   });
 
-  describe("SEED_GROUPED_STRUCTURE", () => {
-    it("defaults to true when not set", async () => {
-      const config = await import("@/prisma/seed-config");
-      expect(config.SEED_GROUPED_STRUCTURE).toBe(true);
-    });
-
-    it("parses SEED_GROUPED_STRUCTURE=false", async () => {
-      process.env.SEED_GROUPED_STRUCTURE = "false";
-      const config = await import("@/prisma/seed-config");
-      expect(config.SEED_GROUPED_STRUCTURE).toBe(false);
-    });
-
-    it("parses SEED_GROUPED_STRUCTURE=FALSE (case insensitive)", async () => {
-      process.env.SEED_GROUPED_STRUCTURE = "FALSE";
-      const config = await import("@/prisma/seed-config");
-      expect(config.SEED_GROUPED_STRUCTURE).toBe(false);
-    });
-
-    it("treats any non-false value as true", async () => {
-      process.env.SEED_GROUPED_STRUCTURE = "true";
-      const config = await import("@/prisma/seed-config");
-      expect(config.SEED_GROUPED_STRUCTURE).toBe(true);
-    });
-  });
-
   describe("Doctor Who constants and helpers", () => {
     it("exports CLASSIC_DOCTOR_WHO_ID", async () => {
       const config = await import("@/prisma/seed-config");

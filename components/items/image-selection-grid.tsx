@@ -62,7 +62,7 @@ interface ImageSelectionGridProps {
  * @param isSkipped - Whether selection is skipped
  * @param onSkipChange - Skip state change callback
  * @param disabled - Whether grid is disabled
- * @param initialLimit - Max images to show initially (default 8)
+ * @param initialLimit - Max images to show initially (default 9)
  * @param showTabs - Whether to show tabs (default true)
  */
 export function ImageSelectionGrid({
@@ -74,9 +74,10 @@ export function ImageSelectionGrid({
   isSkipped = false,
   onSkipChange,
   disabled = false,
-  initialLimit = 8,
+  initialLimit = 9,
   showTabs = true,
 }: ImageSelectionGridProps) {
+  // Use initialLimit directly for all viewports (CSS grid handles responsive columns)
   const [displayCount, setDisplayCount] = useState(initialLimit);
   const [activeTab, setActiveTab] = useState<"tmdb" | "existing">("tmdb");
 

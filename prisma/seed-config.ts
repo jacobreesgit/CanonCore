@@ -20,7 +20,6 @@ import crypto from "crypto";
  *   - SEED_MOVIE_IDS: Comma-separated TMDB movie IDs to seed (overrides default list)
  *   - SEED_SHOW_IDS: Comma-separated TMDB show IDs to seed (overrides default list)
  *   - SEED_USER_EMAIL: Override to seed single user only (default: null)
- *   - SEED_GROUPED_STRUCTURE: Create Movies/TV Shows parent folders (default: true)
  *   - SEED_INCREMENTAL: Enable incremental mode (default: true, set to "false" for clean slate)
  *   - TMDB_API_DELAY_MS is hardcoded at 100ms for rate limiting
  */
@@ -36,7 +35,7 @@ function parseBooleanEnv(value: string | undefined): boolean {
 }
 
 /** Maximum seasons to seed per TV show (0 = unlimited). */
-export const MAX_SEASONS = parseInt(process.env.SEED_MAX_SEASONS || "2", 10);
+export const MAX_SEASONS = parseInt(process.env.SEED_MAX_SEASONS || "5", 10);
 
 /** Maximum episodes to seed per season (0 = unlimited). */
 export const MAX_EPISODES = parseInt(process.env.SEED_MAX_EPISODES || "10", 10);
@@ -82,10 +81,6 @@ export const SEED_MOVIE_IDS = process.env.SEED_MOVIE_IDS
 export const SEED_SHOW_IDS = process.env.SEED_SHOW_IDS
   ? process.env.SEED_SHOW_IDS.split(",").map((id) => parseInt(id.trim(), 10))
   : null;
-
-/** Enable grouped folder structure (Movies/, TV Shows/) instead of flat. Default: true. */
-export const SEED_GROUPED_STRUCTURE =
-  process.env.SEED_GROUPED_STRUCTURE?.toLowerCase() !== "false";
 
 /**
  * Enable incremental seeding mode.
@@ -420,6 +415,10 @@ export function getEffectiveSeedUsers(): SeedUserConfig[] {
  * @returns Array of movie TMDB IDs
  */
 export function getEffectiveMovieIdsForUser(email: string): number[] {
+  // If global overrides are set, use them instead of user config
+  if (SEED_ONLY_SHOWS) return [];
+  if (SEED_MOVIE_IDS) return SEED_MOVIE_IDS;
+
   const userConfig = USER_CONTENT_DISTRIBUTION[email];
   if (userConfig) {
     // Apply global limits if set
@@ -439,6 +438,10 @@ export function getEffectiveMovieIdsForUser(email: string): number[] {
  * @returns Array of TV show TMDB IDs
  */
 export function getEffectiveTVShowIdsForUser(email: string): number[] {
+  // If global overrides are set, use them instead of user config
+  if (SEED_ONLY_MOVIES) return [];
+  if (SEED_SHOW_IDS) return SEED_SHOW_IDS;
+
   const userConfig = USER_CONTENT_DISTRIBUTION[email];
   if (userConfig) {
     // Apply global limits if set
@@ -526,7 +529,6 @@ export function computeUserContentHash(email: string): string {
     // Global settings that affect output
     maxSeasons: MAX_SEASONS,
     maxEpisodes: MAX_EPISODES,
-    groupedStructure: SEED_GROUPED_STRUCTURE,
     simulatePlayback: SEED_SIMULATE_PLAYBACK,
   });
 
