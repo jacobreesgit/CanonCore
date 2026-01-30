@@ -1,6 +1,6 @@
 /**
  * Playwright config for screenshot automation.
- * Optimized for capturing portfolio images at 1920x1080.
+ * Desktop: 3456x2234, Mobile: 1170x2532
  */
 
 import { defineConfig, devices } from "@playwright/test";
@@ -11,9 +11,9 @@ config({ path: ".env.local" });
 
 export default defineConfig({
   testDir: "./",
-  timeout: 60000,
+  timeout: 180000, // Increased timeout for high-res screenshots
   expect: {
-    timeout: 10000,
+    timeout: 20000,
   },
   fullyParallel: false, // Run serially for consistent login state
   forbidOnly: !!process.env.CI,
@@ -33,7 +33,18 @@ export default defineConfig({
       name: "Desktop Chrome",
       use: {
         ...devices["Desktop Chrome"],
-        viewport: { width: 1920, height: 1080 },
+        viewport: { width: 1920, height: 1241 }, // Laptop size with 3456:2234 aspect ratio
+        deviceScaleFactor: 3, // 3x for maximum quality (1920x3=5760, 1241x3=3723)
+      },
+    },
+    {
+      name: "Mobile Chrome",
+      use: {
+        ...devices["Pixel 5"],
+        viewport: { width: 390, height: 844 }, // Below 768px to trigger mobile layout
+        deviceScaleFactor: 3, // 3x for high quality (390x3=1170, 844x3=2532)
+        isMobile: true,
+        hasTouch: true,
       },
     },
   ],

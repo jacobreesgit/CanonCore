@@ -278,7 +278,7 @@ export function HeroCarousel({
                   key={slide.id}
                   className={cn(
                     "w-full pl-4",
-                    isSingleSlide ? "basis-full" : "basis-[91%]"
+                    isSingleSlide ? "basis-full" : "basis-full sm:basis-[91%]"
                   )}
                 >
                   <div>
@@ -529,8 +529,8 @@ export function HeroCarousel({
                               ) && "min-h-[2.75rem]",
                               // Center buttons on mobile when in single-slide profile mode
                               isSingleSlide &&
-                              slide.profileId &&
-                              slide.profileUsername
+                                slide.profileId &&
+                                slide.profileUsername
                                 ? "justify-center sm:justify-start"
                                 : textAlign === "right"
                                   ? "justify-start"
@@ -543,7 +543,7 @@ export function HeroCarousel({
                                 size="lg"
                                 variant="glass"
                                 onClick={() => onPlay(slide.id)}
-                                className="group rounded-full text-sm sm:text-base"
+                                className="group min-w-0 rounded-full text-sm max-md:w-full md:text-base"
                                 data-testid="hero-play-button"
                               >
                                 <span className="truncate">
@@ -561,7 +561,7 @@ export function HeroCarousel({
                                 size="lg"
                                 variant="glass"
                                 onClick={() => onGoToNext(slide.nextItem!.id)}
-                                className="group rounded-full text-sm sm:text-base"
+                                className="group min-w-0 rounded-full text-sm max-md:w-full md:text-base"
                                 data-testid="hero-goto-button"
                               >
                                 <span className="truncate">
@@ -573,13 +573,13 @@ export function HeroCarousel({
 
                             {/* CTA Button - for non-owners or explore page */}
                             {showCta && (
-                              <Link href={slide.link}>
+                              <Link href={slide.link} className="max-md:w-full">
                                 <Button
                                   size="lg"
                                   variant="glass"
-                                  className="group rounded-full text-sm sm:text-base"
+                                  className="group w-full rounded-full text-sm md:text-base"
                                 >
-                                  {ctaText}
+                                  <span className="truncate">{ctaText}</span>
                                   <ArrowRight className="size-4 -rotate-45 transition-all ease-out group-hover:ml-1 group-hover:rotate-0" />
                                 </Button>
                               </Link>
@@ -594,10 +594,10 @@ export function HeroCarousel({
                                   size="lg"
                                   variant="glass"
                                   onClick={() => onFork(slide.id)}
-                                  className="group rounded-full text-sm sm:text-base"
+                                  className="group min-w-0 rounded-full text-sm max-md:w-full md:text-base"
                                   data-testid="hero-fork-button"
                                 >
-                                  <span>Fork</span>
+                                  <span className="truncate">Fork</span>
                                   <Copy className="size-4" />
                                 </Button>
                               )}

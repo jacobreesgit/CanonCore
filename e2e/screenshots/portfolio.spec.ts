@@ -27,11 +27,6 @@ import {
   SCREENSHOT_DIR,
 } from "./utils";
 
-// Configure for 1920x1080 desktop viewport
-test.use({
-  viewport: { width: 1920, height: 1080 },
-});
-
 // Run tests serially to maintain login state between related screenshots
 test.describe.configure({ mode: "serial" });
 
@@ -236,7 +231,7 @@ test.describe("Portfolio Screenshots", () => {
     });
 
     test("07 - Explore Page", async ({ page }) => {
-      await setupForScreenshot(page, USERS.demo, "light");
+      await setupForScreenshot(page, USERS.filmfan, "light");
       await page.goto("/explore");
       await waitForHero(page);
 
@@ -254,7 +249,6 @@ test.describe("Portfolio Screenshots", () => {
     test("08 - Spotlight Search", async ({ page }) => {
       await setupForScreenshot(page, USERS.demo, "light");
       await openSpotlight(page);
-      await page.waitForLoadState("networkidle");
       await captureScreenshot(page, "08-spotlight-search");
     });
 
@@ -339,21 +333,48 @@ test.describe("Portfolio Screenshots", () => {
       await setupForScreenshot(page, USERS.demo, "dark");
       // Root page defaults to grid view
       await waitForHero(page);
-      await captureScreenshot(page, "14-grid-dark");
+      await captureScreenshot(page, "01-library-grid-dark");
     });
 
     test("15 - Tree View (Dark)", async ({ page }) => {
-      await setupForScreenshot(page, USERS.scifi, "dark");
-      await clickItem(page, "Doctor Who");
+      await setupForScreenshot(page, USERS.demo, "dark");
+      // Navigate to Breaking Bad to show tree view with hierarchical structure
+      await clickItem(page, "Breaking Bad (2008)");
       await switchToTreeView(page);
-      await captureScreenshot(page, "15-tree-dark");
+      await page.waitForTimeout(500);
+
+      // Collapse Seasons 1, 2, 3
+      for (const seasonNum of [1, 2, 3]) {
+        const item = page
+          .getByRole("listitem")
+          .filter({ hasText: `Season ${seasonNum}` });
+        const collapseButton = item.getByRole("button", {
+          name: /collapse item/i,
+        });
+        if (await collapseButton.isVisible()) {
+          await collapseButton.click();
+          await page.waitForTimeout(200);
+        }
+      }
+
+      // Expand Season 4
+      const season4Item = page
+        .getByRole("listitem")
+        .filter({ hasText: "Season 4" });
+      const expandButton = season4Item.getByRole("button", {
+        name: /expand item/i,
+      });
+      if (await expandButton.isVisible()) {
+        await expandButton.click();
+        await page.waitForTimeout(300);
+      }
+      await captureScreenshot(page, "02-tree-view-dark");
     });
 
     test("16 - Spotlight Search (Dark)", async ({ page }) => {
       await setupForScreenshot(page, USERS.demo, "dark");
       await openSpotlight(page);
-      await page.waitForLoadState("networkidle");
-      await captureScreenshot(page, "16-spotlight-dark");
+      await captureScreenshot(page, "08-spotlight-search-dark");
     });
 
     test("17 - Public Profile (Dark)", async ({ page }) => {
@@ -370,6 +391,94 @@ test.describe("Portfolio Screenshots", () => {
       await openSettings(page);
       // Profile tab is the default, no need to click
       await captureScreenshot(page, "18-settings-dark");
+    });
+
+    test("07 - Explore Page (Dark)", async ({ page }) => {
+      await setupForScreenshot(page, USERS.filmfan, "dark");
+      await page.goto("/explore");
+      await waitForHero(page);
+
+      // Wait for carousel to load
+      await page.waitForTimeout(1000);
+
+      // Navigate to Black Mirror slide (index 1)
+      const dots = page.locator('button[aria-label^="Go to slide"]');
+      await dots.nth(1).click();
+      await page.waitForTimeout(1500);
+
+      await captureScreenshot(page, "07-explore-page-dark");
+    });
+
+    test("32 - Fork Dialog (Dark)", async ({ page }) => {
+      await setupForScreenshot(page, USERS.demo, "dark");
+      // Go to explore page where fork buttons are visible
+      await page.goto("/explore");
+      await page.waitForLoadState("networkidle");
+
+      // Wait for page to fully load
+      await page.waitForTimeout(2000);
+
+      // Scroll down to see grid items (carousel is at top)
+      await page.evaluate(() => window.scrollBy(0, 400));
+      await page.waitForTimeout(500);
+
+      // Find and click a Fork button on any grid item
+      const forkButton = page.getByRole("button", { name: /fork/i }).first();
+      await forkButton.waitFor({ state: "visible", timeout: 10000 });
+      await forkButton.click();
+
+      // Wait for the fork dialog to open
+      await page.waitForSelector('[role="dialog"]', {
+        state: "visible",
+        timeout: 5000,
+      });
+
+      // Wait for dialog content to render
+      await page.waitForTimeout(1500);
+
+      await captureScreenshot(page, "32-fork-dialog-dark");
+    });
+
+    test("04 - TMDB Wizard (Dark)", async ({ page }) => {
+      await setupForScreenshot(page, USERS.demo, "dark");
+      // Open Add Item dialog
+      const addButton = page.getByRole("button", { name: /add/i });
+      await addButton.click();
+      await page.waitForSelector('[role="dialog"]', { timeout: 5000 });
+      // Search for a movie
+      const searchInput = page.getByPlaceholder(/search/i);
+      await searchInput.fill("Dune");
+      await page.waitForTimeout(1000);
+      // Select a result to get to step 2 (poster selection)
+      const result = page.getByRole("option").first();
+      if (await result.isVisible()) {
+        await result.click();
+        await page.waitForTimeout(500);
+        // Click next to get to poster selection
+        const nextButton = page.getByRole("button", {
+          name: "Next",
+          exact: true,
+        });
+        if (await nextButton.isVisible()) {
+          await nextButton.click();
+          await page.waitForTimeout(1000);
+        }
+      }
+      await captureScreenshot(page, "04-tmdb-wizard-dark");
+    });
+
+    test("05 - Item Settings (Dark)", async ({ page }) => {
+      await setupForScreenshot(page, USERS.demo, "dark");
+      // Navigate to Breaking Bad and open settings
+      await clickItem(page, "Breaking Bad (2008)");
+      await page.waitForLoadState("networkidle");
+
+      // Click the Settings button
+      const settingsButton = page.getByRole("button", { name: /settings/i });
+      await settingsButton.click();
+      await page.waitForTimeout(500);
+
+      await captureScreenshot(page, "05-progress-tracking-dark");
     });
   });
 
@@ -558,11 +667,7 @@ test.describe("Portfolio Screenshots", () => {
       // Wait for dialog content to render
       await page.waitForTimeout(1500);
 
-      // Take screenshot directly without waiting for all images (dialog may have many folder icons)
-      await page.screenshot({
-        path: path.join(SCREENSHOT_DIR, "32-fork-dialog.png"),
-        fullPage: false,
-      });
+      await captureScreenshot(page, "32-fork-dialog");
     });
 
     test("33 - Settings - Connections Tab (Light)", async ({ page }) => {

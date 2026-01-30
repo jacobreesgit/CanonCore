@@ -24,21 +24,24 @@ const NETWORK_SETTLE_MS = 500;
 /** All valid screenshot names for compile-time validation. */
 export const SCREENSHOT_NAMES = [
   "01-library-grid",
+  "01-library-grid-dark",
   "02-tree-view",
+  "02-tree-view-dark",
   "03-video-player",
   "04-tmdb-wizard",
+  "04-tmdb-wizard-dark",
   "05-progress-tracking",
+  "05-progress-tracking-dark",
   "06-google-drive-sync",
   "07-explore-page",
+  "07-explore-page-dark",
   "08-spotlight-search",
+  "08-spotlight-search-dark",
   "09-edit-mode",
   "10-filmfan-grid",
   "11-bingewatcher-grid",
   "12-scifi-grid",
   "13-scifi-tree",
-  "14-grid-dark",
-  "15-tree-dark",
-  "16-spotlight-dark",
   "17-public-dark",
   "18-settings-dark",
   "19-matrix-detail",
@@ -55,6 +58,7 @@ export const SCREENSHOT_NAMES = [
   "30-progress-mid",
   "31-public-profile",
   "32-fork-dialog",
+  "32-fork-dialog-dark",
   "33-settings-connections",
   "34-multi-carousel",
   "35-single-hero",
@@ -142,8 +146,15 @@ export async function captureScreenshot(
   });
 
   await page.waitForTimeout(NETWORK_SETTLE_MS);
+
+  // Detect desktop vs mobile based on viewport width
+  const viewport = page.viewportSize();
+  const isDesktop = viewport && viewport.width === 1920;
+  const isMobile = viewport && viewport.width === 390;
+  const suffix = isDesktop ? "-desktop" : isMobile ? "-mobile" : "";
+
   await page.screenshot({
-    path: path.join(SCREENSHOT_DIR, `${name}.png`),
+    path: path.join(SCREENSHOT_DIR, `${name}${suffix}.png`),
     fullPage: false,
   });
 }
@@ -321,13 +332,25 @@ export async function waitForHero(page: Page): Promise<void> {
 }
 
 /**
- * Opens spotlight search with "/" key.
+ * Opens spotlight search via sidebar button.
+ * On mobile, opens sidebar first if needed.
  *
  * @param page - Playwright page
  */
 export async function openSpotlight(page: Page): Promise<void> {
-  await page.keyboard.press("/");
-  await page.waitForSelector('[role="dialog"]', { timeout: 5000 });
+  const searchButton = page.getByRole("button", { name: /search/i }).first();
+  const isSearchButtonVisible = await searchButton
+    .isVisible()
+    .catch(() => false);
+
+  if (!isSearchButtonVisible) {
+    // Click sidebar trigger to open sidebar on mobile
+    await page.getByTestId("sidebar-trigger").click();
+    await page.waitForTimeout(500); // Wait for sidebar animation
+  }
+
+  await searchButton.click();
+  await page.waitForSelector('[role="dialog"]', { timeout: 10000 });
   await page.waitForTimeout(NETWORK_SETTLE_MS);
 }
 

@@ -16,7 +16,8 @@ import {
 // Configure for iPad with 1668 x 2420 px
 test.use({
   viewport: { width: 1668, height: 2420 },
-  userAgent: 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+  userAgent:
+    "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
   isMobile: true,
   hasTouch: true,
   deviceScaleFactor: 2,
@@ -33,10 +34,10 @@ test.describe("Hero Screenshots (1668x2420 iPad)", () => {
     await captureScreenshot(page, "08-spotlight-search");
   });
 
-  test("14 - Grid View (Dark)", async ({ page }) => {
+  test("01 - Library Grid (Dark)", async ({ page }) => {
     await setupForScreenshot(page, USERS.demo, "dark");
     // Root page defaults to grid view
     await waitForHero(page);
-    await captureScreenshot(page, "14-grid-dark");
+    await captureScreenshot(page, "01-library-grid-dark");
   });
 });

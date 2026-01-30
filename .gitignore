@@ -67,6 +67,7 @@ commit-history.md
 # AI/Claude Code files
 .claude/
 CLAUDE.md
+skills/
 
 # Internal development docs (not for portfolio)
 docs/
@@ -75,5 +76,5 @@ docs/
 CV.md
 portfolio.md
 
-# Portfolio screenshots should be committed
-!public/portfolio/
+# Portfolio screenshots (large PNG files - generate locally, don't commit)
+public/portfolio/*.png
