@@ -132,47 +132,53 @@ export function AppSidebar({
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Show nav items based on auth state, with pinned items under My Items */}
-        <NavMain
-          items={user ? getAuthNavItems(user.username) : guestNavItems}
-          pinnedItems={user ? pinnedItems : undefined}
-          username={user?.username}
-        />
-
-        {context === "docs" && docsTree && (
-          <NavDocs
-            tree={docsTree}
-            isAuthenticated={!!user}
+        {/* Docs context: Show only docs navigation tree */}
+        {context === "docs" ? (
+          docsTree && (
+            <NavDocs
+              tree={docsTree}
+              isAuthenticated={!!user}
+              username={user?.username}
+            />
+          )
+        ) : (
+          /* Other contexts: Show main nav items with pinned items under My Items */
+          <NavMain
+            items={user ? getAuthNavItems(user.username) : guestNavItems}
+            pinnedItems={user ? pinnedItems : undefined}
             username={user?.username}
           />
         )}
       </SidebarContent>
 
-      <SidebarFooter>
-        {/* Show footer nav for authenticated users on any page (except docs where it's redundant) */}
-        {user && context !== "docs" && (
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                tooltip="Get Help"
-                isActive={isDocsActive}
-              >
-                <Link href="/docs">
-                  <HelpCircle />
-                  <span>Get Help</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        )}
+      {/* Hide footer entirely on docs pages */}
+      {context !== "docs" && (
+        <SidebarFooter>
+          {/* Show footer nav for authenticated users */}
+          {user && (
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  tooltip="Get Help"
+                  isActive={isDocsActive}
+                >
+                  <Link href="/docs">
+                    <HelpCircle />
+                    <span>Get Help</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          )}
 
-        {user ? (
-          <NavUser user={user} driveConnection={driveConnection} />
-        ) : (
-          <AuthButtons />
-        )}
-      </SidebarFooter>
+          {user ? (
+            <NavUser user={user} driveConnection={driveConnection} />
+          ) : (
+            <AuthButtons />
+          )}
+        </SidebarFooter>
+      )}
     </Sidebar>
   );
 }

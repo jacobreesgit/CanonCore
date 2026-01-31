@@ -248,8 +248,8 @@ export function HeroCarousel({
     <section
       data-testid="hero-carousel"
       className={cn(
-        "relative",
-        addContainerPadding && "px-4 md:px-6 lg:px-8",
+        "relative px-4 sm:px-0",
+        addContainerPadding && "md:px-6 lg:px-8",
         className
       )}
     >
@@ -277,7 +277,7 @@ export function HeroCarousel({
                 <CarouselItem
                   key={slide.id}
                   className={cn(
-                    "w-full pl-4",
+                    "w-full",
                     isSingleSlide ? "basis-full" : "basis-full sm:basis-[91%]"
                   )}
                 >

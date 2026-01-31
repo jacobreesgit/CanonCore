@@ -58,31 +58,28 @@ export function NavDocs({ tree, isAuthenticated, username }: NavDocsProps) {
   const backLabel = isAuthenticated ? "Back to My Items" : "Back to Home";
 
   return (
-    <>
-      {/* Back link */}
-      <SidebarGroup>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link href={backHref}>
-                <ArrowLeft className="size-4" />
-                <span>{backLabel}</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarGroup>
+    <SidebarGroup>
+      {/* Back link above the heading */}
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild>
+            <Link href={backHref}>
+              <ArrowLeft className="size-4" />
+              <span>{backLabel}</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+
+      <SidebarGroupLabel>Documentation</SidebarGroupLabel>
 
       {/* Documentation tree */}
-      <SidebarGroup>
-        <SidebarGroupLabel>Documentation</SidebarGroupLabel>
-        <SidebarMenu>
-          {tree.children.map((node: PageTreeNode, index: number) => (
-            <DocsTreeNode key={`${node.type}-${index}`} node={node} />
-          ))}
-        </SidebarMenu>
-      </SidebarGroup>
-    </>
+      <SidebarMenu>
+        {tree.children.map((node: PageTreeNode, index: number) => (
+          <DocsTreeNode key={`${node.type}-${index}`} node={node} />
+        ))}
+      </SidebarMenu>
+    </SidebarGroup>
   );
 }
 
