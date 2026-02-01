@@ -12,15 +12,14 @@ import {
   Settings,
   Mail,
   Lock,
-  ImageIcon,
-  Sparkles,
-  Trash2,
   ChevronLeft,
   Cloud,
   Globe,
   AtSign,
   Check,
   X,
+  Upload,
+  User,
 } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { AnimatedDialogContent } from "@/components/ui/animated-dialog-content";
@@ -40,10 +39,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import { FileUpload, FileUploadTrigger } from "@/components/diceui/file-upload";
 import {
   Card,
   CardContent,
@@ -51,7 +51,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Dropzone } from "@/components/ui/dropzone";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Switch } from "@/components/ui/switch";
 import { useUsernameValidation } from "@/hooks/use-username-validation";
@@ -761,94 +760,174 @@ export function SettingsDialog({
 
             <TabsContent value="profile" className="mt-0">
               <div className="min-w-0 space-y-6">
-                {/* Profile Picture Section */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={cn(
-                        "flex size-7 items-center justify-center rounded-lg",
-                        "bg-primary/10"
-                      )}
-                    >
-                      <ImageIcon
-                        aria-hidden="true"
-                        className="text-primary size-3.5"
-                      />
-                    </div>
-                    <Label className="text-sm font-medium">
-                      Profile Picture
-                    </Label>
-                  </div>
-
-                  <Dropzone
-                    accept={{
-                      "image/jpeg": [],
-                      "image/png": [],
-                      "image/webp": [],
+                {/* Visual Profile Card with Cover + Avatar */}
+                <Card className="overflow-hidden pt-0">
+                  {/* Cover/Hero Image */}
+                  <FileUpload
+                    value={heroImage ? [heroImage] : []}
+                    onValueChange={(files) => {
+                      if (files.length > 0) {
+                        handleHeroImageDrop(files);
+                      }
                     }}
-                    maxSize={1024 * 1024}
+                    accept="image/*"
                     maxFiles={1}
-                    onDrop={handleProfileImageDrop}
-                    onError={(error) => toast.error(error.message)}
-                    src={profileImage ? [profileImage] : undefined}
-                    className="h-24 w-full rounded-lg p-0"
-                    data-testid="profile-dropzone"
+                    maxSize={5 * 1024 * 1024}
                   >
-                    {profileImageSrc ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={profileImageSrc}
-                        alt="Profile preview"
-                        className="size-full rounded-lg object-cover"
-                      />
-                    ) : (
-                      <div className="flex size-full flex-col items-center justify-center gap-1">
-                        <ImageIcon
-                          aria-hidden="true"
-                          className="text-muted-foreground/50 size-6"
-                        />
-                        <p className="text-muted-foreground text-xs">
-                          Drag and drop or click to upload
+                    <div
+                      className="bg-muted relative h-32 bg-cover bg-center sm:h-40"
+                      style={{
+                        backgroundImage: heroImageSrc
+                          ? `url(${heroImageSrc})`
+                          : undefined,
+                      }}
+                      data-testid="hero-dropzone"
+                    >
+                      <div className="absolute inset-0 bg-black/20" />
+                      <div className="absolute right-3 bottom-3 flex gap-2">
+                        <FileUploadTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="shadow-md"
+                          >
+                            <Upload className="mr-2 size-4" />
+                            Change Cover
+                          </Button>
+                        </FileUploadTrigger>
+                        {heroImage && (
+                          <Button
+                            size="icon"
+                            variant="secondary"
+                            className="size-8 shadow-md"
+                            onClick={() => {
+                              setHeroImage(null);
+                              setHeroImagePreview(null);
+                            }}
+                          >
+                            <X className="size-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </FileUpload>
+
+                  <CardContent className="-mt-12 pb-0 sm:-mt-14">
+                    <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-end">
+                      {/* Avatar with Upload */}
+                      <FileUpload
+                        value={profileImage ? [profileImage] : []}
+                        onValueChange={(files) => {
+                          if (files.length > 0) {
+                            handleProfileImageDrop(files);
+                          }
+                        }}
+                        accept="image/*"
+                        maxFiles={1}
+                        maxSize={2 * 1024 * 1024}
+                      >
+                        <div
+                          className="relative"
+                          data-testid="profile-dropzone"
+                        >
+                          <Avatar className="border-card size-24 border-4 shadow-lg sm:size-28">
+                            <AvatarImage
+                              src={profileImageSrc || undefined}
+                              alt={name || "Profile"}
+                              className="object-cover"
+                            />
+                            <AvatarFallback className="text-2xl font-semibold">
+                              {name
+                                ?.split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .toUpperCase()
+                                .slice(0, 2) || (
+                                <User
+                                  aria-hidden="true"
+                                  className="text-muted-foreground size-10"
+                                />
+                              )}
+                            </AvatarFallback>
+                          </Avatar>
+                          <FileUploadTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant="secondary"
+                              className="absolute -right-1 -bottom-1 size-8 rounded-full shadow-md"
+                            >
+                              <Upload className="size-4" />
+                            </Button>
+                          </FileUploadTrigger>
+                        </div>
+                      </FileUpload>
+                      <div className="space-y-1 text-center sm:pb-1 sm:text-left">
+                        <h3 className="text-lg font-semibold">
+                          {name || "Your Name"}
+                        </h3>
+                        <p className="text-muted-foreground text-sm">
+                          {user.email}
                         </p>
                       </div>
-                    )}
-                  </Dropzone>
+                    </div>
+                  </CardContent>
+                </Card>
 
-                  {(user.hasImage || profileImage) && !removeProfile && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleRemoveProfileImage}
-                    >
-                      <Trash2 aria-hidden="true" className="mr-1.5 size-3.5" />
-                      Remove
-                    </Button>
-                  )}
-                  <p className="text-muted-foreground text-xs">
-                    Drag and drop or click to upload. JPEG, PNG, or WebP. Max
-                    1MB.
-                  </p>
-                </div>
+                {/* Basic Info Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Basic Information</CardTitle>
+                    <CardDescription>
+                      This information will be displayed on your public profile
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="settings-name">Display Name</Label>
+                      <Input
+                        id="settings-name"
+                        name="name"
+                        autoComplete="name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Your name"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
 
-                {/* Name Section */}
-                <div className="space-y-3">
-                  <Label
-                    htmlFor="settings-name"
-                    className="text-sm font-medium"
-                  >
-                    Display Name
-                  </Label>
-                  <Input
-                    id="settings-name"
-                    name="name"
-                    autoComplete="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Your name"
-                    className="h-10"
-                  />
-                </div>
+                {/* Remove buttons for existing images */}
+                {((user.hasImage && !removeProfile) ||
+                  (user.hasHeroImage && !removeHero)) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Remove Images</CardTitle>
+                      <CardDescription>
+                        Remove your existing profile images
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex gap-2">
+                      {user.hasImage && !removeProfile && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleRemoveProfileImage}
+                        >
+                          Remove Avatar
+                        </Button>
+                      )}
+                      {user.hasHeroImage && !removeHero && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleRemoveHeroImage}
+                        >
+                          Remove Cover
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Public Profile Toggle */}
                 <div className="space-y-3">
@@ -896,78 +975,6 @@ export function SettingsDialog({
                     profile URL.
                     {!user.username &&
                       " Set a username in the Account tab to enable your public profile."}
-                  </p>
-                </div>
-
-                <Separator />
-
-                {/* Hero Banner Section */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={cn(
-                        "flex size-7 items-center justify-center rounded-lg",
-                        "bg-primary/10"
-                      )}
-                    >
-                      <Sparkles
-                        aria-hidden="true"
-                        className="text-primary size-3.5"
-                      />
-                    </div>
-                    <Label className="text-sm font-medium">Hero Banner</Label>
-                  </div>
-                  <p className="text-muted-foreground text-xs">
-                    Displayed at the top of your My Items page.
-                  </p>
-
-                  <Dropzone
-                    accept={{
-                      "image/jpeg": [],
-                      "image/png": [],
-                      "image/webp": [],
-                    }}
-                    maxSize={2 * 1024 * 1024}
-                    maxFiles={1}
-                    onDrop={handleHeroImageDrop}
-                    onError={(error) => toast.error(error.message)}
-                    src={heroImage ? [heroImage] : undefined}
-                    className="h-24 w-full rounded-lg p-0"
-                    data-testid="hero-dropzone"
-                  >
-                    {heroImageSrc ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={heroImageSrc}
-                        alt="Hero preview"
-                        className="size-full rounded-lg object-cover"
-                      />
-                    ) : (
-                      <div className="flex size-full flex-col items-center justify-center gap-1">
-                        <Sparkles
-                          aria-hidden="true"
-                          className="text-muted-foreground/50 size-6"
-                        />
-                        <p className="text-muted-foreground text-xs">
-                          Drag and drop or click to upload
-                        </p>
-                      </div>
-                    )}
-                  </Dropzone>
-
-                  {(user.hasHeroImage || heroImage) && !removeHero && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleRemoveHeroImage}
-                    >
-                      <Trash2 aria-hidden="true" className="mr-1.5 size-3.5" />
-                      Remove Banner
-                    </Button>
-                  )}
-                  <p className="text-muted-foreground text-xs">
-                    Wide format recommended. Max 2MB.
                   </p>
                 </div>
               </div>

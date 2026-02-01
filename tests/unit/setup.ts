@@ -20,6 +20,21 @@ Element.prototype.scrollIntoView = vi.fn();
 // Mock scrollTo for animated dialog scroll reset
 Element.prototype.scrollTo = vi.fn();
 
+// Mock window.matchMedia for useMobile hook (jsdom doesn't implement it)
+Object.defineProperty(window, "matchMedia", {
+  writable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(), // deprecated
+    removeListener: vi.fn(), // deprecated
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
+
 // Mock Prisma
 vi.mock("@/lib/prisma", () => ({
   prisma: {

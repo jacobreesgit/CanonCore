@@ -177,7 +177,6 @@ export function PosterSelectionStep({
               onSelect={handleGridSelect}
               isSkipped={isSkipped}
               disabled={disabled}
-              initialLimit={9}
               showTabs={false}
             />
           </TabsContent>
@@ -299,7 +298,6 @@ export function PosterSelectionStep({
         isSkipped={isSkipped}
         onSkipChange={onSkipChange}
         disabled={disabled}
-        initialLimit={9}
       />
     </div>
   );

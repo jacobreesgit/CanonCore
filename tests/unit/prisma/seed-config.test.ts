@@ -184,60 +184,6 @@ describe("seed-config", () => {
     });
   });
 
-  describe("Doctor Who constants and helpers", () => {
-    it("exports CLASSIC_DOCTOR_WHO_ID", async () => {
-      const config = await import("@/prisma/seed-config");
-      expect(config.CLASSIC_DOCTOR_WHO_ID).toBe(121);
-    });
-
-    it("exports MODERN_DOCTOR_WHO_ID", async () => {
-      const config = await import("@/prisma/seed-config");
-      expect(config.MODERN_DOCTOR_WHO_ID).toBe(57243);
-    });
-
-    it("isClassicDoctorWho returns true for Classic Doctor Who ID", async () => {
-      const config = await import("@/prisma/seed-config");
-      expect(config.isClassicDoctorWho(121)).toBe(true);
-    });
-
-    it("isClassicDoctorWho returns false for Modern Doctor Who ID", async () => {
-      const config = await import("@/prisma/seed-config");
-      expect(config.isClassicDoctorWho(57243)).toBe(false);
-    });
-
-    it("isModernDoctorWho returns true for Modern Doctor Who ID", async () => {
-      const config = await import("@/prisma/seed-config");
-      expect(config.isModernDoctorWho(57243)).toBe(true);
-    });
-
-    it("isModernDoctorWho returns false for Classic Doctor Who ID", async () => {
-      const config = await import("@/prisma/seed-config");
-      expect(config.isModernDoctorWho(121)).toBe(false);
-    });
-
-    it("isDoctorWho returns true for Classic Doctor Who ID", async () => {
-      const config = await import("@/prisma/seed-config");
-      expect(config.isDoctorWho(121)).toBe(true);
-    });
-
-    it("isDoctorWho returns true for Modern Doctor Who ID", async () => {
-      const config = await import("@/prisma/seed-config");
-      expect(config.isDoctorWho(57243)).toBe(true);
-    });
-
-    it("isDoctorWho returns false for other shows", async () => {
-      const config = await import("@/prisma/seed-config");
-      expect(config.isDoctorWho(1396)).toBe(false); // Breaking Bad
-      expect(config.isDoctorWho(1399)).toBe(false); // Game of Thrones
-    });
-
-    it("TV_SHOW_IDS includes both Doctor Who series", async () => {
-      const config = await import("@/prisma/seed-config");
-      expect(config.TV_SHOW_IDS).toContain(121); // Classic
-      expect(config.TV_SHOW_IDS).toContain(57243); // Modern
-    });
-  });
-
   describe("USER_CONTENT_DISTRIBUTION uniqueness", () => {
     it("has no overlapping movie IDs between users", async () => {
       const config = await import("@/prisma/seed-config");

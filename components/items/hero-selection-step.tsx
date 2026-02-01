@@ -177,7 +177,6 @@ export function HeroSelectionStep({
               onSelect={handleGridSelect}
               isSkipped={isSkipped}
               disabled={disabled}
-              initialLimit={8}
               showTabs={false}
             />
           </TabsContent>
@@ -299,7 +298,6 @@ export function HeroSelectionStep({
         isSkipped={isSkipped}
         onSkipChange={onSkipChange}
         disabled={disabled}
-        initialLimit={8}
       />
     </div>
   );

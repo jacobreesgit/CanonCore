@@ -83,9 +83,6 @@ import {
   getEffectiveSeedUsers,
   getEffectiveMovieIdsForUser,
   getEffectiveTVShowIdsForUser,
-  isDoctorWho,
-  isClassicDoctorWho,
-  MODERN_DOCTOR_WHO_ID,
   USER_PROGRESS_RANGES,
   USER_PINNED_ITEMS,
   AVATAR_SIZE,
@@ -2372,17 +2369,8 @@ async function seedTVShowsForUser(
   const depthOffset = parentInfo ? 1 : 0;
 
   // Track which Doctor Who has been processed (for consolidation)
-  let doctorWhoProcessed = false;
-  let orderOffset = 0;
-
   for (let i = 0; i < tvShowIds.length; i++) {
     const showId = tvShowIds[i];
-
-    // Special handling: Skip Modern Doctor Who if Classic was already processed
-    if (isDoctorWho(showId) && doctorWhoProcessed) {
-      orderOffset--;
-      continue;
-    }
 
     // Rate limiting
     await sleep(TMDB_API_DELAY_MS);
@@ -2394,21 +2382,11 @@ async function seedTVShowsForUser(
       continue;
     }
 
-    // Special handling for Doctor Who: Use unified name and description
-    let name: string;
-    let description: string;
-    if (isDoctorWho(showId)) {
-      name = "Doctor Who";
-      description = truncateOverview(
-        "The adventures of the Doctor, a Time Lord who travels through time and space " +
-          "in the TARDIS with various companions, battling evil and righting wrongs. " +
-          "Spanning from 1963 to the present day."
-      );
-    } else {
-      const year = extractYear(show.first_air_date);
-      name = sanitizeFolderName(year ? `${show.name} (${year})` : show.name);
-      description = truncateOverview(show.overview);
-    }
+    const year = extractYear(show.first_air_date);
+    const name = sanitizeFolderName(
+      year ? `${show.name} (${year})` : show.name
+    );
+    const description = truncateOverview(show.overview);
 
     // Create folder for this show in Drive
     let showDriveFolderId: string | null = null;
@@ -2432,7 +2410,7 @@ async function seedTVShowsForUser(
         description: description || null,
         userId,
         parentId,
-        order: startOrder + i + orderOffset,
+        order: startOrder + i,
         depth: baseDepth,
         isPublic,
         inheritVisibility: false, // TV shows are explicitly public/private
@@ -2455,81 +2433,22 @@ async function seedTVShowsForUser(
     );
 
     // Seed seasons and episodes
-    let seasonItemCount = 0;
+    const result = await seedSeasons(
+      showId,
+      item.id,
+      showDriveFolderId,
+      name,
+      show.number_of_seasons,
+      userId,
+      ctx,
+      depthOffset,
+      0,
+      progressRange,
+      isPublic,
+      userEmail
+    );
 
-    if (isClassicDoctorWho(showId)) {
-      // Doctor Who: Seed Classic era seasons first
-      const classicResult = await seedSeasons(
-        showId,
-        item.id,
-        showDriveFolderId,
-        name,
-        show.number_of_seasons,
-        userId,
-        ctx,
-        depthOffset,
-        0,
-        progressRange,
-        isPublic,
-        userEmail,
-        0 // Start episode index at 0
-      );
-      seasonItemCount = classicResult.totalItems;
-
-      // Check if Modern Doctor Who is also in the user's list
-      if (tvShowIds.includes(MODERN_DOCTOR_WHO_ID)) {
-        await sleep(TMDB_API_DELAY_MS);
-        const modernShow = await tmdbFetch<TMDBTVShow>(
-          `/tv/${MODERN_DOCTOR_WHO_ID}`
-        );
-
-        if (modernShow) {
-          const classicSeasonCount =
-            MAX_SEASONS === 0
-              ? show.number_of_seasons
-              : Math.min(show.number_of_seasons, MAX_SEASONS);
-
-          const modernResult = await seedSeasons(
-            MODERN_DOCTOR_WHO_ID,
-            item.id,
-            showDriveFolderId,
-            name,
-            modernShow.number_of_seasons,
-            userId,
-            ctx,
-            depthOffset,
-            classicSeasonCount,
-            progressRange,
-            isPublic,
-            userEmail,
-            classicResult.nextIndex // Continue episode index from classic era
-          );
-          seasonItemCount += modernResult.totalItems;
-          log(`  🎬 Doctor Who (Modern era): ${modernResult.totalItems} items`);
-        }
-      }
-
-      doctorWhoProcessed = true;
-    } else {
-      // Normal show: seed seasons normally
-      const result = await seedSeasons(
-        showId,
-        item.id,
-        showDriveFolderId,
-        name,
-        show.number_of_seasons,
-        userId,
-        ctx,
-        depthOffset,
-        0,
-        progressRange,
-        isPublic,
-        userEmail
-      );
-      seasonItemCount = result.totalItems;
-    }
-
-    count += 1 + seasonItemCount;
+    count += 1 + result.totalItems;
     progress.completedShows++;
     logProgress(progress, name);
   }

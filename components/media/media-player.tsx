@@ -16,10 +16,8 @@ import {
   type MediaTimeUpdateEventDetail,
   type PlayerSrc,
 } from "@vidstack/react";
-import {
-  DefaultVideoLayout,
-  defaultLayoutIcons,
-} from "@vidstack/react/player/layouts/default";
+import { DefaultVideoLayout } from "@vidstack/react/player/layouts/default";
+import { mediaPlayerIcons } from "./media-player-icons";
 import "@vidstack/react/player/styles/default/theme.css";
 import "@vidstack/react/player/styles/default/layouts/video.css";
 import type { SerializedItemFile } from "@/lib/types";
@@ -141,7 +139,7 @@ export function VideoPlayer({
 
       {/* Always use video layout for cinematic experience */}
       <DefaultVideoLayout
-        icons={defaultLayoutIcons}
+        icons={mediaPlayerIcons}
         colorScheme="dark"
         noScrubGesture={false}
         smallLayoutWhen={false}

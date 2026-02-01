@@ -710,7 +710,7 @@ pnpm run test:integration
 
 **Test Accounts:**
 
-- 4 seeded users (demo, filmfan, bingewatcher, scifi_jordan)
+- 3 seeded users (demo, filmfan for screenshots; testuser for E2E)
 - Password: `SeedPassword123!` for all
 
 **Real dependencies:**

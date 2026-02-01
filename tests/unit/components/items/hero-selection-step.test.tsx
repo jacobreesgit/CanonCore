@@ -10,6 +10,11 @@ import { HeroSelectionStep } from "@/components/items/hero-selection-step";
 import type { TMDBImage } from "@/lib/tmdb-client";
 import type { QueuedFile } from "@/lib/types";
 
+// Mock useIsMobile hook - default to desktop (false)
+vi.mock("@/hooks/use-mobile", () => ({
+  useIsMobile: vi.fn(() => false),
+}));
+
 // Mock next/image
 vi.mock("next/image", () => ({
   default: ({

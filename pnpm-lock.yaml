@@ -38,6 +38,9 @@ importers:
       '@radix-ui/react-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.0.0)(@types/react@19.0.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@radix-ui/react-direction':
+        specifier: ^1.1.1
+        version: 1.1.1(@types/react@19.0.0)(react@19.0.0)
       '@radix-ui/react-dropdown-menu':
         specifier: ^2.1.16
         version: 2.1.16(@types/react-dom@19.0.0)(@types/react@19.0.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -170,6 +173,9 @@ importers:
       react-dropzone:
         specifier: ^14.3.8
         version: 14.3.8(react@19.0.0)
+      react-icons:
+        specifier: ^5.5.0
+        version: 5.5.0(react@19.0.0)
       resend:
         specifier: ^6.6.0
         version: 6.6.0
@@ -4330,6 +4336,11 @@ packages:
     engines: {node: '>= 10.13'}
     peerDependencies:
       react: '>= 16.8 || 18.0.0'
+
+  react-icons@5.5.0:
+    resolution: {integrity: sha512-MEFcXdkP3dLo8uumGI5xN3lDFNsRtrjbOEKDLD7yv76v4wpnEq2Lt2qeHaQOr34I/wPN3s3+N08WkQ+CW37Xiw==}
+    peerDependencies:
+      react: '*'
 
   react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
@@ -9639,6 +9650,10 @@ snapshots:
       attr-accept: 2.2.5
       file-selector: 2.1.2
       prop-types: 15.8.1
+      react: 19.0.0
+
+  react-icons@5.5.0(react@19.0.0):
+    dependencies:
       react: 19.0.0
 
   react-is@16.13.1: {}

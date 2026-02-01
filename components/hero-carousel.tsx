@@ -316,7 +316,7 @@ export function HeroCarousel({
                               unoptimized={backgroundSrc.startsWith("/api/")}
                             />
                             {/* Dark overlay for text readability */}
-                            <div className="absolute inset-0 bg-black/40" />
+                            <div className="absolute inset-0 bg-black/50" />
                           </>
                         ) : /* Shader fallback when no background image */
                         /* navigator.webdriver check for Playwright test stability */

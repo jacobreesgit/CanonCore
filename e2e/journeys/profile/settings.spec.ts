@@ -34,10 +34,13 @@ test.describe("Profile Settings Journey", () => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
 
-    // Check Profile tab sections
-    await expect(page.getByText("Profile Picture")).toBeVisible();
+    // Check Profile tab sections - new visual card with cover + avatar
+    await expect(page.getByTestId("hero-dropzone")).toBeVisible();
+    await expect(page.getByTestId("profile-dropzone")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /change cover/i })
+    ).toBeVisible();
     await expect(page.getByLabel("Display Name")).toBeVisible();
-    await expect(page.getByText("Hero Banner")).toBeVisible();
 
     // Navigate to Account tab to check password/email buttons
     await page.getByRole("tab", { name: "Account" }).click();
