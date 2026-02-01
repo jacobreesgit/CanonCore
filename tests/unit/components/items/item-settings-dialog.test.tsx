@@ -606,52 +606,49 @@ describe("ItemSettingsDialog", () => {
     };
 
     // Helper to complete wizard: Next (step 1) → Next (step 2) → Next (step 3) → Apply (step 4)
-    // Note: AnimatedDialogContent uses AnimatePresence mode="sync" for crossfade,
-    // so we must wait for old step to fully exit before querying Next button
+    // TMDBWizard uses headings instead of "Step X of Y" text
     const confirmMetadata = async (
       user: ReturnType<typeof userEvent.setup>
     ) => {
       // Wait for wizard step 1 (Title & Description)
       await waitFor(() => {
-        expect(screen.getByText("Apply Metadata")).toBeInTheDocument();
-        expect(screen.getByText(/Step 1 of 4/i)).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /title & description/i })
+        ).toBeInTheDocument();
       });
 
       // Step 1 → Step 2 (Poster Selection)
-      const nextButton1 = screen.getByRole("button", { name: /next/i });
-      await user.click(nextButton1);
+      await user.click(screen.getByRole("button", { name: /next/i }));
 
-      // Wait for step 2 AND ensure step 1 is fully gone (animation complete)
+      // Wait for step 2 (Select Poster)
       await waitFor(() => {
-        expect(screen.getByText(/Step 2 of 4/i)).toBeInTheDocument();
-        expect(screen.queryByText(/Step 1 of 4/i)).not.toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /select poster/i })
+        ).toBeInTheDocument();
       });
 
       // Step 2 → Step 3 (Hero Selection)
-      const nextButton2 = screen.getByRole("button", { name: /next/i });
-      await user.click(nextButton2);
+      await user.click(screen.getByRole("button", { name: /next/i }));
 
-      // Wait for step 3 AND ensure step 2 is fully gone
+      // Wait for step 3 (Select Hero Image)
       await waitFor(() => {
-        expect(screen.getByText(/Step 3 of 4/i)).toBeInTheDocument();
-        expect(screen.queryByText(/Step 2 of 4/i)).not.toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /select hero image/i })
+        ).toBeInTheDocument();
       });
 
-      // Step 3 → Step 4 (Summary)
-      const nextButton3 = screen.getByRole("button", { name: /next/i });
-      await user.click(nextButton3);
+      // Step 3 → Step 4 (Summary/Review)
+      await user.click(screen.getByRole("button", { name: /next/i }));
 
-      // Wait for step 4 AND ensure step 3 is fully gone
+      // Wait for step 4 (Review Changes)
       await waitFor(() => {
-        expect(screen.getByText(/Step 4 of 4/i)).toBeInTheDocument();
-        expect(screen.queryByText(/Step 3 of 4/i)).not.toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /review changes/i })
+        ).toBeInTheDocument();
       });
 
       // Step 4 → Complete
-      const applyButton = screen.getByRole("button", {
-        name: /apply changes/i,
-      });
-      await user.click(applyButton);
+      await user.click(screen.getByRole("button", { name: /apply/i }));
     };
 
     it("should render item name field with TMDB search", async () => {

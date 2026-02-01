@@ -129,3 +129,51 @@ export function validateUsername(username: string): {
   }
   return { success: false, error: result.error.issues[0]?.message };
 }
+
+// =============================================================================
+// TMDB Response Validation
+// =============================================================================
+
+/**
+ * TMDB image metadata schema.
+ * Validates image data from TMDB images API responses.
+ */
+export const tmdbImageSchema = z.object({
+  file_path: z.string(),
+  width: z.number(),
+  height: z.number(),
+  vote_average: z.number(),
+  aspect_ratio: z.number().optional(),
+  iso_639_1: z.string().nullable().optional(),
+});
+
+/**
+ * TMDB season metadata schema.
+ * Validates season data from /tv/{id}/season/{num} endpoint.
+ */
+export const seasonMetadataSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  overview: z.string(),
+  poster_path: z.string().nullable(),
+  air_date: z.string().nullable(),
+  season_number: z.number(),
+});
+
+/**
+ * TMDB season images schema.
+ * Validates images from /tv/{id}/season/{num}/images endpoint.
+ * Seasons only have posters (no backdrops).
+ */
+export const tmdbSeasonImagesSchema = z.object({
+  posters: z.array(tmdbImageSchema),
+});
+
+/**
+ * TMDB episode images schema.
+ * Validates images from /tv/{id}/season/{num}/episode/{num}/images endpoint.
+ * Episodes only have stills (no posters or backdrops).
+ */
+export const tmdbEpisodeImagesSchema = z.object({
+  stills: z.array(tmdbImageSchema),
+});

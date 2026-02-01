@@ -152,13 +152,29 @@ export function MediaSearchCombobox({
   );
 
   /**
-   * Handles input focus - only open if there's existing query to search.
+   * Handles input focus - open popover and re-trigger search if needed.
+   * This handles the case where user returns from another view (e.g., TMDB wizard)
+   * with a valid query but cleared results.
    */
   const handleFocus = useCallback(() => {
     if (query.length >= 2) {
       setOpen(true);
+      // Re-trigger search if we have a valid query but no results
+      // (e.g., after returning from TMDB wizard where results were cleared)
+      if (results.length === 0 && !hasSearched && !isLoading) {
+        setIsLoading(true);
+        searchMediaAction(query).then((response) => {
+          if (response.success && response.data) {
+            setResults(response.data);
+          } else {
+            setResults([]);
+          }
+          setIsLoading(false);
+          setHasSearched(true);
+        });
+      }
     }
-  }, [query]);
+  }, [query, results.length, hasSearched, isLoading]);
 
   // Fallback to simple input if TMDB not configured
   if (tmdbAvailable === false) {
@@ -199,6 +215,7 @@ export function MediaSearchCombobox({
             value={query}
             onChange={handleInputChange}
             onFocus={handleFocus}
+            onClick={(e) => e.stopPropagation()}
             autoComplete="off"
             className="pl-10"
           />

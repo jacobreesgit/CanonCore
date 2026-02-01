@@ -66,6 +66,7 @@ export interface TMDBSeasonDetail {
   name: string;
   overview: string;
   poster_path: string | null;
+  air_date: string | null;
   episodes: TMDBEpisode[];
 }
 
@@ -151,6 +152,24 @@ export interface TMDBImages {
   backdrops: TMDBImage[];
   /** Poster images (2:3 portrait) */
   posters: TMDBImage[];
+}
+
+/**
+ * Collection of images for a TV season.
+ * Seasons only have posters, no backdrops.
+ */
+export interface TMDBSeasonImages {
+  /** Poster images (2:3 portrait) */
+  posters: TMDBImage[];
+}
+
+/**
+ * Collection of images for a TV episode.
+ * Episodes only have stills (scene shots), no posters or backdrops.
+ */
+export interface TMDBEpisodeImages {
+  /** Still images (16:9 scene shots) */
+  stills: TMDBImage[];
 }
 
 /**
@@ -548,6 +567,82 @@ export async function getTVShowImages(
       .filter((img) => isValidImagePath(img.file_path))
       .sort((a, b) => b.vote_average - a.vote_average),
     posters: (data.posters || [])
+      .filter((img) => isValidImagePath(img.file_path))
+      .sort((a, b) => b.vote_average - a.vote_average),
+  };
+}
+
+/**
+ * Fetches full details for a specific season.
+ * Returns season metadata including name, overview, and poster path.
+ *
+ * @param tvId - TMDB TV show ID
+ * @param seasonNumber - Season number (0 for specials, 1+ for numbered seasons)
+ * @returns Season details or null on error
+ *
+ * @example
+ * const season = await getSeasonDetails(1396, 1); // Breaking Bad S1
+ */
+export async function getSeasonDetails(
+  tvId: number,
+  seasonNumber: number
+): Promise<TMDBSeasonDetail | null> {
+  return tmdbFetch<TMDBSeasonDetail>(`/tv/${tvId}/season/${seasonNumber}`);
+}
+
+/**
+ * Fetches all available images for a TV season.
+ * Returns posters only (seasons don't have backdrops), sorted by vote average.
+ *
+ * @param tvId - TMDB TV show ID
+ * @param seasonNumber - Season number (0 for specials, 1+ for numbered seasons)
+ * @returns Season images collection or null on error
+ *
+ * @example
+ * const images = await getTVSeasonImages(1396, 1); // Breaking Bad S1 posters
+ */
+export async function getTVSeasonImages(
+  tvId: number,
+  seasonNumber: number
+): Promise<TMDBSeasonImages | null> {
+  const data = await tmdbFetch<{ posters?: TMDBImage[] }>(
+    `/tv/${tvId}/season/${seasonNumber}/images`
+  );
+  if (!data) return null;
+
+  // Sort by vote average (highest first) and validate paths
+  return {
+    posters: (data.posters || [])
+      .filter((img) => isValidImagePath(img.file_path))
+      .sort((a, b) => b.vote_average - a.vote_average),
+  };
+}
+
+/**
+ * Fetches all available images for a TV episode.
+ * Returns stills only (16:9 scene shots), sorted by vote average.
+ *
+ * @param tvId - TMDB TV show ID
+ * @param seasonNumber - Season number (0 for specials, 1+ for numbered seasons)
+ * @param episodeNumber - Episode number (1-based)
+ * @returns Episode images collection or null on error
+ *
+ * @example
+ * const images = await getEpisodeImages(1396, 1, 1); // Breaking Bad S01E01 stills
+ */
+export async function getEpisodeImages(
+  tvId: number,
+  seasonNumber: number,
+  episodeNumber: number
+): Promise<TMDBEpisodeImages | null> {
+  const data = await tmdbFetch<{ stills?: TMDBImage[] }>(
+    `/tv/${tvId}/season/${seasonNumber}/episode/${episodeNumber}/images`
+  );
+  if (!data) return null;
+
+  // Sort by vote average (highest first) and validate paths
+  return {
+    stills: (data.stills || [])
       .filter((img) => isValidImagePath(img.file_path))
       .sort((a, b) => b.vote_average - a.vote_average),
   };
