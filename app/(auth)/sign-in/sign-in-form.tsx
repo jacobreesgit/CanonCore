@@ -94,14 +94,19 @@ export function SignInForm() {
             </p>
           </div>
 
-          {error && (
-            <div
-              data-testid="sign-in-error-message"
-              className="bg-destructive/10 text-destructive w-full rounded-md px-4 py-3 text-center text-sm"
-            >
-              {error}
-            </div>
-          )}
+          <div
+            id="sign-in-error"
+            data-testid="sign-in-error-message"
+            className={
+              error
+                ? "bg-destructive/10 text-destructive w-full rounded-md px-4 py-3 text-center text-sm"
+                : "sr-only"
+            }
+            role="alert"
+            aria-live="polite"
+          >
+            {error}
+          </div>
 
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -116,6 +121,8 @@ export function SignInForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                aria-invalid={!!error}
+                aria-describedby={error ? "sign-in-error" : undefined}
                 data-testid="sign-in-email-input"
               />
             </div>
@@ -139,6 +146,8 @@ export function SignInForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                aria-invalid={!!error}
+                aria-describedby={error ? "sign-in-error" : undefined}
                 data-testid="sign-in-password-input"
               />
             </div>

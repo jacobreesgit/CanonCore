@@ -84,18 +84,26 @@ export function EditModeToggle({
     </Button>
   );
 
-  // Wrap in tooltip when disabled with a reason
+  // When disabled with a reason: tooltip on desktop, muted text on mobile
   if (disabled && disabledReason) {
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          {/* Wrap in span to enable tooltip on disabled button */}
-          <span tabIndex={0} className="inline-flex">
-            {button}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="bottom">{disabledReason}</TooltipContent>
-      </Tooltip>
+      <div className="flex flex-col items-center gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {/* Wrap in span to enable tooltip on disabled button */}
+            <span tabIndex={0} className="inline-flex">
+              {button}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="hidden sm:block">
+            {disabledReason}
+          </TooltipContent>
+        </Tooltip>
+        {/* Mobile-only helper text (tooltips don't work on touch) */}
+        <span className="text-muted-foreground max-w-[120px] text-center text-[10px] leading-tight sm:hidden">
+          {disabledReason}
+        </span>
+      </div>
     );
   }
 

@@ -78,3 +78,5 @@ portfolio.md
 
 # Portfolio screenshots (large PNG files - generate locally, don't commit)
 public/portfolio/*.png
+
+/docs

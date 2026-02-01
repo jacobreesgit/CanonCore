@@ -5,7 +5,7 @@
 
 "use client";
 
-import { Folder, FolderOpen, FilterX, Search, Plus, X } from "lucide-react";
+import { Folder, FolderOpen, FilterX, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -13,7 +13,6 @@ export type EmptyStateVariant =
   | "first-time"
   | "no-children"
   | "filter-empty"
-  | "search-empty"
   | "public-profile-empty"
   | "public-item-empty"
   | "explore-empty";
@@ -48,13 +47,6 @@ const EMPTY_STATE_CONFIG: Record<EmptyStateVariant, EmptyStateConfig> = {
     description:
       "No items match your current filter. Try adjusting your filter criteria.",
     actionLabel: "Clear Filter",
-    actionIcon: X,
-  },
-  "search-empty": {
-    icon: Search,
-    title: "No results",
-    description: "No items match your search. Try different keywords.",
-    actionLabel: "Clear Search",
     actionIcon: X,
   },
   "public-profile-empty": {

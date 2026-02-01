@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 
 interface ParentPrivacyWarningDialogProps {
   /** Whether the dialog is open */
@@ -28,6 +28,8 @@ interface ParentPrivacyWarningDialogProps {
   affectedChildCount: number;
   /** Callback when user confirms making the item private */
   onConfirm: () => void;
+  /** Whether a loading operation is in progress */
+  isLoading?: boolean;
 }
 
 /**
@@ -40,6 +42,7 @@ export function ParentPrivacyWarningDialog({
   itemName,
   affectedChildCount,
   onConfirm,
+  isLoading = false,
 }: ParentPrivacyWarningDialogProps) {
   const childText =
     affectedChildCount === 1
@@ -68,9 +71,19 @@ export function ParentPrivacyWarningDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>
-            Make private
+          <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm} disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2
+                  aria-hidden="true"
+                  className="mr-2 size-4 animate-spin"
+                />
+                Updating…
+              </>
+            ) : (
+              "Make private"
+            )}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

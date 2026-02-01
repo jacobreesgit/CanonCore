@@ -18,6 +18,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Tv,
+  Wand2,
 } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { AnimatedDialogContent } from "@/components/ui/animated-dialog-content";
@@ -64,9 +65,11 @@ import type {
   TMDBSeasonSummary,
   TMDBEpisode,
 } from "@/lib/tmdb-client";
+import { getPosterUrl, getBackdropUrl } from "@/lib/tmdb-client";
 import { toast } from "sonner";
 import type { SerializedItemFile, ArtworkSelectionSource } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ITEM_MESSAGES } from "@/lib/constants/messages";
 import { VisibilityToggle } from "@/components/items/visibility-toggle";
 
 /** Steps for item settings dialog navigation. */
@@ -75,7 +78,10 @@ type ItemSettingsStep =
   | "episode-picker"
   | "wizard-text"
   | "wizard-poster"
-  | "wizard-hero";
+  | "wizard-hero"
+  | "wizard-summary"
+  | "change-poster"
+  | "change-hero";
 
 /** Episode picker selection type. */
 type EpisodePickerSelection =
@@ -207,6 +213,16 @@ export function ItemSettingsDialog({
     useState<ArtworkSelectionSource | null>(null);
   const [backdropSkipped, setBackdropSkipped] = useState(false);
 
+  // Temp state for editing artwork from summary step
+  const [tempPosterValue, setTempPosterValue] = useState<string | null>(null);
+  const [tempPosterSource, setTempPosterSource] =
+    useState<ArtworkSelectionSource | null>(null);
+  const [tempBackdropValue, setTempBackdropValue] = useState<string | null>(
+    null
+  );
+  const [tempBackdropSource, setTempBackdropSource] =
+    useState<ArtworkSelectionSource | null>(null);
+
   // Original values for dirty checking
   const [originalValues, setOriginalValues] = useState(() => ({
     name: item.name,
@@ -256,6 +272,11 @@ export function ItemSettingsDialog({
     setBackdropValue(null);
     setBackdropSource(null);
     setBackdropSkipped(false);
+    // Clear temp state for artwork editing from summary
+    setTempPosterValue(null);
+    setTempPosterSource(null);
+    setTempBackdropValue(null);
+    setTempBackdropSource(null);
   }, []);
 
   // Pre-select first poster and backdrop when images load
@@ -650,7 +671,7 @@ export function ItemSettingsDialog({
       );
 
       if (response.success) {
-        toast.success("Metadata applied successfully");
+        toast.success(ITEM_MESSAGES.METADATA_APPLIED);
         await onSettingsChange?.().catch((err) => {
           console.warn(
             "[ItemSettingsDialog] Refetch failed after metadata apply:",
@@ -658,10 +679,10 @@ export function ItemSettingsDialog({
           );
         });
       } else {
-        toast.error(response.error || "Failed to apply metadata");
+        toast.error(response.error || ITEM_MESSAGES.METADATA_FAILED);
       }
     } catch {
-      toast.error("Failed to apply metadata");
+      toast.error(ITEM_MESSAGES.METADATA_FAILED);
     } finally {
       setIsApplyingMetadata(false);
       setPendingTmdbResult(null);
@@ -698,8 +719,25 @@ export function ItemSettingsDialog({
       setCurrentStep("wizard-text");
     } else if (currentStep === "wizard-hero") {
       setCurrentStep("wizard-poster");
+    } else if (currentStep === "wizard-summary") {
+      // Back from summary goes to hero (with Drive) or text (without Drive)
+      if (hasDriveConnection) {
+        setCurrentStep("wizard-hero");
+      } else {
+        setCurrentStep("wizard-text");
+      }
+    } else if (
+      currentStep === "change-poster" ||
+      currentStep === "change-hero"
+    ) {
+      // Cancel artwork change and return to summary
+      setTempPosterValue(null);
+      setTempPosterSource(null);
+      setTempBackdropValue(null);
+      setTempBackdropSource(null);
+      setCurrentStep("wizard-summary");
     }
-  }, [currentStep, pendingTmdbResult]);
+  }, [currentStep, pendingTmdbResult, hasDriveConnection]);
 
   /**
    * Handles wizard next navigation.
@@ -707,21 +745,21 @@ export function ItemSettingsDialog({
    */
   const handleWizardNext = useCallback(() => {
     if (currentStep === "wizard-text") {
-      // Skip image steps if no Drive connection
+      // Skip image steps if no Drive connection, go to summary
       if (!hasDriveConnection) {
-        handleWizardComplete();
+        setCurrentStep("wizard-summary");
       } else {
         setCurrentStep("wizard-poster");
       }
     } else if (currentStep === "wizard-poster") {
       setCurrentStep("wizard-hero");
     } else if (currentStep === "wizard-hero") {
-      handleWizardComplete();
+      setCurrentStep("wizard-summary");
     }
-  }, [currentStep, hasDriveConnection, handleWizardComplete]);
+  }, [currentStep, hasDriveConnection]);
 
   /**
-   * Handles wizard skip all.
+   * Handles wizard skip all - navigates directly to summary.
    */
   const handleWizardSkipAll = useCallback(() => {
     if (currentStep === "wizard-text") {
@@ -730,8 +768,8 @@ export function ItemSettingsDialog({
     } else if (currentStep === "wizard-poster") {
       setBackdropSkipped(true);
     }
-    handleWizardComplete();
-  }, [currentStep, handleWizardComplete]);
+    setCurrentStep("wizard-summary");
+  }, [currentStep]);
 
   /**
    * Handles wizard cancel.
@@ -742,6 +780,90 @@ export function ItemSettingsDialog({
     setTmdbImages(null);
     setCurrentStep("main");
   }, []);
+
+  /**
+   * Opens change-poster step from summary.
+   * Copies current poster selection to temp state for editing.
+   */
+  const handleOpenChangePoster = useCallback(() => {
+    setTempPosterValue(posterValue);
+    setTempPosterSource(posterSource);
+    setCurrentStep("change-poster");
+  }, [posterValue, posterSource]);
+
+  /**
+   * Opens change-hero step from summary.
+   * Copies current backdrop selection to temp state for editing.
+   */
+  const handleOpenChangeHero = useCallback(() => {
+    setTempBackdropValue(backdropValue);
+    setTempBackdropSource(backdropSource);
+    setCurrentStep("change-hero");
+  }, [backdropValue, backdropSource]);
+
+  /**
+   * Saves poster change from change-poster step.
+   * Commits temp state to main state and returns to summary.
+   */
+  const handleSavePosterChange = useCallback(() => {
+    setPosterValue(tempPosterValue);
+    setPosterSource(tempPosterSource);
+    setPosterSkipped(tempPosterValue === null);
+    setTempPosterValue(null);
+    setTempPosterSource(null);
+    setCurrentStep("wizard-summary");
+  }, [tempPosterValue, tempPosterSource]);
+
+  /**
+   * Saves hero change from change-hero step.
+   * Commits temp state to main state and returns to summary.
+   */
+  const handleSaveHeroChange = useCallback(() => {
+    setBackdropValue(tempBackdropValue);
+    setBackdropSource(tempBackdropSource);
+    setBackdropSkipped(tempBackdropValue === null);
+    setTempBackdropValue(null);
+    setTempBackdropSource(null);
+    setCurrentStep("wizard-summary");
+  }, [tempBackdropValue, tempBackdropSource]);
+
+  /**
+   * Cancels artwork change and returns to summary.
+   * Discards temp state without committing.
+   */
+  const handleCancelArtworkChange = useCallback(() => {
+    setTempPosterValue(null);
+    setTempPosterSource(null);
+    setTempBackdropValue(null);
+    setTempBackdropSource(null);
+    setCurrentStep("wizard-summary");
+  }, []);
+
+  /**
+   * Clears poster selection from summary.
+   */
+  const handleClearPoster = useCallback(() => {
+    setPosterValue(null);
+    setPosterSource(null);
+    setPosterSkipped(true);
+  }, []);
+
+  /**
+   * Clears backdrop selection from summary.
+   */
+  const handleClearBackdrop = useCallback(() => {
+    setBackdropValue(null);
+    setBackdropSource(null);
+    setBackdropSkipped(true);
+  }, []);
+
+  /**
+   * Applies metadata from summary step.
+   * Calls the existing handleWizardComplete function.
+   */
+  const handleApplyFromSummary = useCallback(() => {
+    handleWizardComplete();
+  }, [handleWizardComplete]);
 
   /**
    * Handles poster selection.
@@ -1024,12 +1146,109 @@ export function ItemSettingsDialog({
                 <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
                 <DialogDescription className="text-sm">
                   Step {hasDriveConnection ? wizardStepNumber : 1} of{" "}
-                  {hasDriveConnection ? 3 : 1}:{" "}
+                  {hasDriveConnection ? 4 : 2}:{" "}
                   {currentStep === "wizard-text"
                     ? "Title & Description"
                     : currentStep === "wizard-poster"
                       ? "Select Poster"
                       : "Select Hero"}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        );
+      case "wizard-summary":
+        return (
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleWizardBack}
+                className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                aria-label="Back"
+              >
+                <ChevronLeft aria-hidden="true" className="size-5" />
+              </Button>
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                  "bg-amber-500/10 ring-1 ring-amber-500/20"
+                )}
+              >
+                <Sparkles
+                  aria-hidden="true"
+                  className="size-5 text-amber-500"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
+                <DialogDescription className="text-sm">
+                  Step {hasDriveConnection ? 4 : 2} of{" "}
+                  {hasDriveConnection ? 4 : 2}: Review & Apply
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        );
+      case "change-poster":
+        return (
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleCancelArtworkChange}
+                className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                aria-label="Back"
+              >
+                <ChevronLeft aria-hidden="true" className="size-5" />
+              </Button>
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                  "bg-violet-500/10 ring-1 ring-violet-500/20"
+                )}
+              >
+                <ImageIcon
+                  aria-hidden="true"
+                  className="size-5 text-violet-500"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-lg">Change Poster</DialogTitle>
+                <DialogDescription className="text-sm">
+                  Select a new poster image
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        );
+      case "change-hero":
+        return (
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleCancelArtworkChange}
+                className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                aria-label="Back"
+              >
+                <ChevronLeft aria-hidden="true" className="size-5" />
+              </Button>
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                  "bg-cyan-500/10 ring-1 ring-cyan-500/20"
+                )}
+              >
+                <Wand2 aria-hidden="true" className="size-5 text-cyan-500" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-lg">Change Hero</DialogTitle>
+                <DialogDescription className="text-sm">
+                  Select a new hero/backdrop image
                 </DialogDescription>
               </div>
             </div>
@@ -1119,16 +1338,7 @@ export function ItemSettingsDialog({
               </Button>
             )}
             <Button onClick={handleWizardNext} disabled={isApplyingMetadata}>
-              {isApplyingMetadata ? (
-                <>
-                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-                  Applying...
-                </>
-              ) : hasDriveConnection ? (
-                "Next"
-              ) : (
-                "Apply"
-              )}
+              {hasDriveConnection ? "Next" : "Continue"}
             </Button>
           </DialogFooter>
         );
@@ -1165,15 +1375,51 @@ export function ItemSettingsDialog({
               Cancel
             </Button>
             <Button onClick={handleWizardNext} disabled={isApplyingMetadata}>
+              Next
+            </Button>
+          </DialogFooter>
+        );
+      case "wizard-summary":
+        return (
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleWizardCancel}
+              disabled={isApplyingMetadata}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleApplyFromSummary}
+              disabled={isApplyingMetadata}
+            >
               {isApplyingMetadata ? (
                 <>
                   <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-                  Applying...
+                  Applying…
                 </>
               ) : (
-                "Apply"
+                "Apply Changes"
               )}
             </Button>
+          </DialogFooter>
+        );
+      case "change-poster":
+        return (
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelArtworkChange}>
+              Cancel
+            </Button>
+            <Button onClick={handleSavePosterChange}>Save</Button>
+          </DialogFooter>
+        );
+      case "change-hero":
+        return (
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelArtworkChange}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveHeroChange}>Save</Button>
           </DialogFooter>
         );
       default:
@@ -1369,6 +1615,225 @@ export function ItemSettingsDialog({
               />
             )}
           </>
+        );
+      case "wizard-summary":
+        if (!tmdbPreview) return null;
+        return (
+          <>
+            {/* Step indicator - 4 steps with Drive, 2 without */}
+            <div className="flex gap-1.5 py-2">
+              {(hasDriveConnection ? [1, 2, 3, 4] : [1, 2]).map((step) => (
+                <div
+                  key={step}
+                  className={cn(
+                    "h-1 flex-1 rounded-full transition-colors",
+                    "bg-amber-500"
+                  )}
+                />
+              ))}
+            </div>
+
+            {/* Summary Content */}
+            <div className="space-y-4 py-2">
+              {/* Text Changes Section */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium">Metadata to Apply</h4>
+
+                {/* Name */}
+                {textOptions.updateName && (
+                  <div className="bg-muted/50 rounded-lg p-3">
+                    <div className="text-muted-foreground mb-1 text-xs font-medium tracking-wider uppercase">
+                      Name
+                    </div>
+                    <p className="text-sm">{tmdbPreview.name}</p>
+                  </div>
+                )}
+
+                {/* Description */}
+                {textOptions.updateDescription && (
+                  <div className="bg-muted/50 rounded-lg p-3">
+                    <div className="text-muted-foreground mb-1 text-xs font-medium tracking-wider uppercase">
+                      Description
+                    </div>
+                    <p className="text-muted-foreground line-clamp-3 text-sm">
+                      {tmdbPreview.description || "No description available"}
+                    </p>
+                  </div>
+                )}
+
+                {/* No text changes selected */}
+                {!textOptions.updateName && !textOptions.updateDescription && (
+                  <p className="text-muted-foreground text-sm">
+                    No text changes selected
+                  </p>
+                )}
+              </div>
+
+              {/* Artwork Section - Only with Drive */}
+              {hasDriveConnection && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium">Artwork</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Poster Preview */}
+                    <button
+                      type="button"
+                      onClick={handleOpenChangePoster}
+                      disabled={isApplyingMetadata}
+                      aria-label={
+                        posterValue
+                          ? "Change poster selection"
+                          : "Select a poster"
+                      }
+                      className={cn(
+                        "group relative aspect-[2/3] overflow-hidden rounded-lg border transition-all",
+                        "hover:border-primary/50 hover:ring-primary/20 hover:ring-2",
+                        "focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none",
+                        isApplyingMetadata && "pointer-events-none opacity-50"
+                      )}
+                    >
+                      {posterValue && posterSource === "tmdb" ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={getPosterUrl(posterValue, "w342") ?? undefined}
+                            alt="Selected poster"
+                            width={342}
+                            height={513}
+                            className="size-full object-cover"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+                            <span className="text-xs font-medium text-white">
+                              Change
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="bg-muted/50 flex size-full flex-col items-center justify-center gap-1">
+                          <ImageIcon
+                            aria-hidden="true"
+                            className="text-muted-foreground/50 size-6"
+                          />
+                          <span className="text-muted-foreground text-xs">
+                            {posterSkipped ? "Skipped" : "Select poster"}
+                          </span>
+                        </div>
+                      )}
+                    </button>
+
+                    {/* Hero Preview */}
+                    <button
+                      type="button"
+                      onClick={handleOpenChangeHero}
+                      disabled={isApplyingMetadata}
+                      aria-label={
+                        backdropValue
+                          ? "Change hero selection"
+                          : "Select a hero image"
+                      }
+                      className={cn(
+                        "group relative aspect-video overflow-hidden rounded-lg border transition-all",
+                        "hover:border-primary/50 hover:ring-primary/20 hover:ring-2",
+                        "focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none",
+                        isApplyingMetadata && "pointer-events-none opacity-50"
+                      )}
+                    >
+                      {backdropValue && backdropSource === "tmdb" ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={
+                              getBackdropUrl(backdropValue, "w780") ?? undefined
+                            }
+                            alt="Selected hero"
+                            width={780}
+                            height={439}
+                            className="size-full object-cover"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+                            <span className="text-xs font-medium text-white">
+                              Change
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="bg-muted/50 flex size-full flex-col items-center justify-center gap-1">
+                          <Wand2
+                            aria-hidden="true"
+                            className="text-muted-foreground/50 size-6"
+                          />
+                          <span className="text-muted-foreground text-xs">
+                            {backdropSkipped ? "Skipped" : "Select hero"}
+                          </span>
+                        </div>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Clear buttons */}
+                  <div className="flex gap-2">
+                    {posterValue && !posterSkipped && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleClearPoster}
+                        disabled={isApplyingMetadata}
+                      >
+                        Clear poster
+                      </Button>
+                    )}
+                    {backdropValue && !backdropSkipped && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleClearBackdrop}
+                        disabled={isApplyingMetadata}
+                      >
+                        Clear hero
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        );
+      case "change-poster":
+        return (
+          <PosterSelectionStep
+            posters={tmdbImages?.posters || []}
+            existingFiles={existingArtwork}
+            uploadMode={false}
+            hasDriveConnection={hasDriveConnection}
+            selectedValue={tempPosterValue}
+            selectedSource={tempPosterSource}
+            onSelect={(value, source) => {
+              setTempPosterValue(value);
+              setTempPosterSource(value ? source : null);
+            }}
+            isSkipped={false}
+            onSkipChange={() => {}}
+            disabled={false}
+          />
+        );
+      case "change-hero":
+        return (
+          <HeroSelectionStep
+            backdrops={tmdbImages?.backdrops || []}
+            existingFiles={existingArtwork}
+            uploadMode={false}
+            hasDriveConnection={hasDriveConnection}
+            selectedValue={tempBackdropValue}
+            selectedSource={tempBackdropSource}
+            onSelect={(value, source) => {
+              setTempBackdropValue(value);
+              setTempBackdropSource(value ? source : null);
+            }}
+            isSkipped={false}
+            onSkipChange={() => {}}
+            disabled={false}
+          />
         );
       default:
         return null;

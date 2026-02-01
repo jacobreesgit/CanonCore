@@ -14,6 +14,8 @@ export default mergeConfig(
       sequence: {
         concurrent: false,
       },
+      // Integration tests hit a remote DB (Neon) and need longer timeout
+      testTimeout: 15000,
     },
   })
 );

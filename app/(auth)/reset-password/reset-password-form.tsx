@@ -136,14 +136,19 @@ function ResetPasswordFormInner() {
                 </p>
               </div>
 
-              {error && (
-                <div
-                  data-testid="reset-password-error-message"
-                  className="bg-destructive/10 text-destructive w-full rounded-md px-4 py-3 text-center text-sm"
-                >
-                  {error}
-                </div>
-              )}
+              <div
+                id="reset-password-error"
+                data-testid="reset-password-error-message"
+                className={
+                  error
+                    ? "bg-destructive/10 text-destructive w-full rounded-md px-4 py-3 text-center text-sm"
+                    : "sr-only"
+                }
+                role="alert"
+                aria-live="polite"
+              >
+                {error}
+              </div>
 
               <form onSubmit={onSubmit} className="space-y-4">
                 <div className="space-y-2">
@@ -157,6 +162,10 @@ function ResetPasswordFormInner() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength={8}
+                    aria-invalid={!!error}
+                    aria-describedby={
+                      error ? "reset-password-error" : undefined
+                    }
                     data-testid="reset-password-password-input"
                   />
                 </div>
@@ -171,6 +180,10 @@ function ResetPasswordFormInner() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
+                    aria-invalid={!!error}
+                    aria-describedby={
+                      error ? "reset-password-error" : undefined
+                    }
                     data-testid="reset-password-confirm-password-input"
                   />
                 </div>
