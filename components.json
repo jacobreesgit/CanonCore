@@ -10,6 +10,7 @@
     "cssVariables": true,
     "prefix": ""
   },
+  "iconLibrary": "lucide",
   "aliases": {
     "components": "@/components",
     "utils": "@/lib/utils",
@@ -17,12 +18,12 @@
     "lib": "@/lib",
     "hooks": "@/hooks"
   },
-  "iconLibrary": "lucide",
   "registries": {
     "@shadcnblocks": {
       "url": "https://shadcnblocks.com/r/{name}",
-      "headers": {
-      }
-    }
+      "headers": {}
+    },
+    "@efferd": "https://efferd.com/r/{name}.json",
+    "@diceui": "https://diceui.com/r/{name}.json"
   }
 }

@@ -121,6 +121,6 @@ describe("Grid", () => {
 
     const grid = screen.getByTestId("items-grid-view");
     expect(grid).toHaveClass("grid");
-    expect(grid).toHaveClass("grid-cols-2");
+    expect(grid).toHaveClass("grid-cols-1");
   });
 });

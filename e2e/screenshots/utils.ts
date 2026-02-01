@@ -66,11 +66,6 @@ export interface ScreenshotUser {
 export const USERS: Record<string, ScreenshotUser> = {
   demo: { email: "demo@canoncore.com", username: "demo" },
   filmfan: { email: "filmfan@canoncore.com", username: "filmfan" },
-  bingewatcher: {
-    email: "bingewatcher@canoncore.com",
-    username: "bingewatcher",
-  },
-  scifi: { email: "scifi@canoncore.com", username: "scifi_jordan" },
 };
 
 // =============================================================================

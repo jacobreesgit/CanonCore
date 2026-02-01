@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { Check, ImageOff, ImageIcon, SkipForward, Globe } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useImageLoaded } from "@/hooks/use-image-loaded";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -74,17 +75,22 @@ export function ImageSelectionGrid({
   isSkipped = false,
   onSkipChange,
   disabled = false,
-  initialLimit = 9,
+  initialLimit,
   showTabs = true,
 }: ImageSelectionGridProps) {
-  // Use initialLimit directly for all viewports (CSS grid handles responsive columns)
-  const [displayCount, setDisplayCount] = useState(initialLimit);
+  // Responsive limit: 8 on desktop, 9 on mobile (if not explicitly set)
+  const isMobile = useIsMobile();
+  const baseLimit = initialLimit ?? (isMobile ? 9 : 8);
+
+  // Track displayed count - null means use baseLimit (allows responsive updates)
+  const [displayCount, setDisplayCount] = useState<number | null>(null);
+  const effectiveDisplayCount = displayCount ?? baseLimit;
   const [activeTab, setActiveTab] = useState<"tmdb" | "existing">("tmdb");
 
   // Limit displayed TMDB images with incremental loading
   const displayedTmdbImages = useMemo(() => {
-    return tmdbImages.slice(0, displayCount);
-  }, [tmdbImages, displayCount]);
+    return tmdbImages.slice(0, effectiveDisplayCount);
+  }, [tmdbImages, effectiveDisplayCount]);
 
   /**
    * Gets the thumbnail URL for a TMDB image.
@@ -98,8 +104,8 @@ export function ImageSelectionGrid({
     [type]
   );
 
-  const hasMoreImages = tmdbImages.length > displayCount;
-  const remainingCount = tmdbImages.length - displayCount;
+  const hasMoreImages = tmdbImages.length > effectiveDisplayCount;
+  const remainingCount = tmdbImages.length - effectiveDisplayCount;
   const hasExistingFiles = existingFiles.length > 0;
 
   /**
@@ -151,14 +157,16 @@ export function ImageSelectionGrid({
         {hasMoreImages && (
           <button
             type="button"
-            onClick={() => setDisplayCount((prev) => prev + initialLimit)}
+            onClick={() =>
+              setDisplayCount((prev) => (prev ?? baseLimit) + baseLimit)
+            }
             disabled={disabled}
             className={cn(
               "text-muted-foreground hover:text-foreground mt-3 w-full text-center text-sm transition-colors",
               "disabled:pointer-events-none disabled:opacity-50"
             )}
           >
-            Show {Math.min(initialLimit, remainingCount)} more images
+            Show {Math.min(baseLimit, remainingCount)} more images
           </button>
         )}
       </>

@@ -408,8 +408,8 @@ Generated for testing purposes.
     it("has sensible default limits", async () => {
       const config = await import("../../../prisma/seed-config");
 
-      // Default MAX_SEASONS should be 2 (reasonable for testing)
-      expect(config.MAX_SEASONS).toBe(2);
+      // Default MAX_SEASONS should be 5 (balances coverage with seed time)
+      expect(config.MAX_SEASONS).toBe(5);
 
       // Default MAX_EPISODES should be 10 (reasonable for testing)
       expect(config.MAX_EPISODES).toBe(10);

@@ -91,13 +91,29 @@ test.describe("Navigation Active State", () => {
   });
 
   test.describe("guest user", () => {
-    test("Get Help nav is active on /docs", async ({ page }) => {
+    test("docs context shows docs tree navigation with Back to Home for guests", async ({
+      page,
+    }) => {
       await page.goto("/docs");
+      await openSidebarIfMobile(page);
 
+      // Docs context doesn't show "Get Help" - shows docs tree navigation instead
       const getHelpNav = page.locator('[data-slot="sidebar-menu-button"]', {
         hasText: "Get Help",
       });
-      await expect(getHelpNav).toHaveAttribute("data-active", "true");
+      await expect(getHelpNav).not.toBeVisible();
+
+      // Verify docs tree is shown with the Documentation label in sidebar
+      await expect(
+        page.locator('[data-slot="sidebar-group-label"]', {
+          hasText: "Documentation",
+        })
+      ).toBeVisible();
+
+      // Verify docs tree has "Back to Home" link (for guests)
+      await expect(
+        page.getByRole("link", { name: /back to home/i })
+      ).toBeVisible();
     });
 
     test("sign-in page does not have sidebar navigation", async ({ page }) => {

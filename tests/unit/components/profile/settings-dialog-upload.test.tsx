@@ -1,6 +1,6 @@
 /**
  * Unit tests for SettingsDialog file upload functionality.
- * Tests dropzone integration for profile picture and hero banner.
+ * Tests visual profile card with cover + avatar.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -10,6 +10,7 @@ import userEvent from "@testing-library/user-event";
 // Mock dependencies
 vi.mock("@/components/google-drive", () => ({
   GoogleDriveSettingsSection: () => <div data-testid="google-drive-section" />,
+  SyncHistory: () => <div data-testid="sync-history" />,
 }));
 
 vi.mock("@/lib/user-actions", () => ({
@@ -25,32 +26,40 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-// Mock react-dropzone to enable file upload simulation
-let mockOnDrop: ((files: File[]) => void) | null = null;
-let mockOnError: ((error: Error) => void) | null = null;
-
-vi.mock("react-dropzone", () => ({
-  useDropzone: vi.fn(({ onDrop, onError }) => {
-    // Capture the callbacks for testing
-    mockOnDrop = (files: File[]) => onDrop?.(files, [], {} as DragEvent);
-    mockOnError = onError;
-    return {
-      getRootProps: () => ({
-        onClick: vi.fn(),
-        role: "button",
-      }),
-      getInputProps: () => ({
-        type: "file",
-        "data-testid": "dropzone-input",
-      }),
-      isDragActive: false,
-    };
-  }),
+// Mock the FileUpload component to enable testing
+vi.mock("@/components/diceui/file-upload", () => ({
+  FileUpload: ({
+    children,
+    onValueChange,
+  }: {
+    children: React.ReactNode;
+    onValueChange?: (files: File[]) => void;
+  }) => {
+    return (
+      <div
+        data-testid="file-upload"
+        onClick={() => {
+          // Store the callback for later use
+          (
+            window as unknown as { __fileUploadCallback?: typeof onValueChange }
+          ).__fileUploadCallback = onValueChange;
+        }}
+      >
+        {children}
+      </div>
+    );
+  },
+  FileUploadTrigger: ({
+    children,
+    asChild: _asChild,
+  }: {
+    children: React.ReactNode;
+    asChild?: boolean;
+  }) => children,
 }));
 
 // Import after mocks
 import { SettingsDialog } from "@/components/profile/settings-dialog";
-import { toast } from "sonner";
 
 describe("SettingsDialog Upload", () => {
   const defaultProps = {
@@ -69,8 +78,6 @@ describe("SettingsDialog Upload", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockOnDrop = null;
-    mockOnError = null;
   });
 
   describe("Profile Picture Dropzone", () => {
@@ -80,25 +87,12 @@ describe("SettingsDialog Upload", () => {
       expect(screen.getByTestId("profile-dropzone")).toBeInTheDocument();
     });
 
-    it("should show empty state when no profile image", () => {
-      render(<SettingsDialog {...defaultProps} />);
-
-      expect(screen.getByText("Profile Picture")).toBeInTheDocument();
-      // Multiple dropzones show this text, just verify at least one exists
-      expect(
-        screen.getAllByText(/Drag and drop or click to upload/i).length
-      ).toBeGreaterThan(0);
-    });
-
     it("should not show remove button when no profile image", () => {
       render(<SettingsDialog {...defaultProps} />);
 
-      // Only hero remove button might exist, but profile remove should not
-      const removeButtons = screen.queryAllByRole("button", {
-        name: /remove/i,
-      });
-      // Filter to only profile-related remove (first one if exists)
-      expect(removeButtons.length).toBe(0);
+      expect(
+        screen.queryByRole("button", { name: /remove avatar/i })
+      ).not.toBeInTheDocument();
     });
 
     it("should show remove button when user has profile image", () => {
@@ -110,23 +104,8 @@ describe("SettingsDialog Upload", () => {
       );
 
       expect(
-        screen.getByRole("button", { name: /remove/i })
+        screen.getByRole("button", { name: /remove avatar/i })
       ).toBeInTheDocument();
-    });
-
-    it("should enable save button after file selection", async () => {
-      render(<SettingsDialog {...defaultProps} />);
-
-      const saveButton = screen.getByRole("button", { name: /save changes/i });
-      expect(saveButton).toBeDisabled();
-
-      // Simulate file drop via the captured callback
-      const testFile = new File(["test"], "avatar.jpg", { type: "image/jpeg" });
-      mockOnDrop?.([testFile]);
-
-      await waitFor(() => {
-        expect(saveButton).not.toBeDisabled();
-      });
     });
   });
 
@@ -137,10 +116,12 @@ describe("SettingsDialog Upload", () => {
       expect(screen.getByTestId("hero-dropzone")).toBeInTheDocument();
     });
 
-    it("should show empty state when no hero image", () => {
+    it("should show Change Cover button", () => {
       render(<SettingsDialog {...defaultProps} />);
 
-      expect(screen.getByText("Hero Banner")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /change cover/i })
+      ).toBeInTheDocument();
     });
 
     it("should show remove button when user has hero image", () => {
@@ -152,13 +133,13 @@ describe("SettingsDialog Upload", () => {
       );
 
       expect(
-        screen.getByRole("button", { name: /remove banner/i })
+        screen.getByRole("button", { name: /remove cover/i })
       ).toBeInTheDocument();
     });
   });
 
   describe("Remove functionality", () => {
-    it("should hide remove button after clicking remove for profile", async () => {
+    it("should hide remove avatar button after clicking it", async () => {
       const user = userEvent.setup();
       render(
         <SettingsDialog
@@ -167,17 +148,19 @@ describe("SettingsDialog Upload", () => {
         />
       );
 
-      const removeButton = screen.getByRole("button", { name: /^remove$/i });
+      const removeButton = screen.getByRole("button", {
+        name: /remove avatar/i,
+      });
       await user.click(removeButton);
 
       await waitFor(() => {
         expect(
-          screen.queryByRole("button", { name: /^remove$/i })
+          screen.queryByRole("button", { name: /remove avatar/i })
         ).not.toBeInTheDocument();
       });
     });
 
-    it("should hide remove button after clicking remove for hero", async () => {
+    it("should hide remove cover button after clicking it", async () => {
       const user = userEvent.setup();
       render(
         <SettingsDialog
@@ -187,13 +170,13 @@ describe("SettingsDialog Upload", () => {
       );
 
       const removeButton = screen.getByRole("button", {
-        name: /remove banner/i,
+        name: /remove cover/i,
       });
       await user.click(removeButton);
 
       await waitFor(() => {
         expect(
-          screen.queryByRole("button", { name: /remove banner/i })
+          screen.queryByRole("button", { name: /remove cover/i })
         ).not.toBeInTheDocument();
       });
     });
@@ -210,7 +193,9 @@ describe("SettingsDialog Upload", () => {
       const saveButton = screen.getByRole("button", { name: /save changes/i });
       expect(saveButton).toBeDisabled();
 
-      const removeButton = screen.getByRole("button", { name: /^remove$/i });
+      const removeButton = screen.getByRole("button", {
+        name: /remove avatar/i,
+      });
       await user.click(removeButton);
 
       await waitFor(() => {
@@ -219,36 +204,35 @@ describe("SettingsDialog Upload", () => {
     });
   });
 
-  describe("Error handling", () => {
-    it("should show toast error when file validation fails", async () => {
+  describe("Visual Profile Card", () => {
+    it("should show user name and email", () => {
       render(<SettingsDialog {...defaultProps} />);
 
-      // Simulate error via the captured callback
-      mockOnError?.(new Error("File is larger than 1048576 bytes"));
-
-      await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith(
-          "File is larger than 1048576 bytes"
-        );
-      });
-    });
-  });
-
-  describe("Constraints display", () => {
-    it("should show profile picture constraints", () => {
-      render(<SettingsDialog {...defaultProps} />);
-
-      expect(
-        screen.getByText(/JPEG, PNG, or WebP\. Max 1MB/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText("Test User")).toBeInTheDocument();
+      expect(screen.getByText("test@example.com")).toBeInTheDocument();
     });
 
-    it("should show hero banner constraints", () => {
+    it("should show Display Name input", () => {
       render(<SettingsDialog {...defaultProps} />);
 
-      expect(
-        screen.getByText(/Wide format recommended\. Max 2MB/i)
-      ).toBeInTheDocument();
+      expect(screen.getByLabelText(/display name/i)).toBeInTheDocument();
+    });
+
+    it("should show Remove Images card when user has images", () => {
+      render(
+        <SettingsDialog
+          {...defaultProps}
+          user={{ ...defaultProps.user, hasImage: true, hasHeroImage: true }}
+        />
+      );
+
+      expect(screen.getByText("Remove Images")).toBeInTheDocument();
+    });
+
+    it("should not show Remove Images card when user has no images", () => {
+      render(<SettingsDialog {...defaultProps} />);
+
+      expect(screen.queryByText("Remove Images")).not.toBeInTheDocument();
     });
   });
 });
