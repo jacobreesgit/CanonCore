@@ -20,6 +20,9 @@ import {
   getTVSeasons,
   getTVEpisodes,
   getEpisodeDetails,
+  getSeasonDetails,
+  getTVSeasonImages,
+  getEpisodeImages,
   downloadPoster,
   downloadBackdrop,
   extractYear,
@@ -31,6 +34,8 @@ import {
   type TMDBSearchResult,
   type TMDBImages,
   type TMDBSeasonSummary,
+  type TMDBSeasonImages,
+  type TMDBEpisodeImages,
   type TMDBEpisode,
 } from "@/lib/tmdb-client";
 import { uploadBuffer } from "@/lib/google-drive-upload";
@@ -607,5 +612,276 @@ export async function getEpisodePreviewAction(
       "Failed to fetch episode preview"
     );
     return { success: false, error: "Failed to fetch episode preview" };
+  }
+}
+
+// =============================================================================
+// Season and Episode Image Actions (for TV Picker and Wizard)
+// =============================================================================
+
+/**
+ * Preview data for season metadata confirmation.
+ */
+export interface SeasonMetadataPreview {
+  /** Season name (e.g., "Season 1") */
+  name: string;
+  /** Season overview/description */
+  description: string;
+  /** Full poster URL for preview thumbnail */
+  posterUrl: string | null;
+  /** Raw poster path for download */
+  posterPath: string | null;
+  /** Season number */
+  seasonNumber: number;
+  /** Air date of the season */
+  airDate: string | null;
+}
+
+/**
+ * Fetches season metadata for the wizard.
+ * Returns formatted season name, description, and poster URL.
+ * Uses parallel auth + rate limit checks per codebase pattern.
+ *
+ * @param tvId - TMDB TV show ID
+ * @param seasonNumber - Season number (0 for specials, 1+ for numbered seasons)
+ * @returns Season metadata preview or error
+ *
+ * @example
+ * const result = await getSeasonMetadataAction(1396, 1); // Breaking Bad S1
+ */
+export async function getSeasonMetadataAction(
+  tvId: number,
+  seasonNumber: number
+): Promise<ActionResult<SeasonMetadataPreview>> {
+  // Parallel auth + rate limit (per codebase pattern)
+  const [session, rateLimitResult] = await Promise.all([
+    auth(),
+    checkRateLimit("tmdbPreview"),
+  ]);
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  if (!isTMDBConfigured()) {
+    return { success: false, error: "TMDB integration not configured" };
+  }
+
+  if (rateLimitResult) {
+    return { success: false, error: rateLimitResult.error };
+  }
+
+  try {
+    const season = await tmdbCircuitBreaker.execute(() =>
+      getSeasonDetails(tvId, seasonNumber)
+    );
+
+    if (!season) {
+      return { success: false, error: "Season not found on TMDB" };
+    }
+
+    return {
+      success: true,
+      data: {
+        name: season.name,
+        description: truncateOverview(season.overview || ""),
+        posterUrl: getPosterUrl(season.poster_path, "w342"),
+        posterPath: season.poster_path,
+        seasonNumber: season.season_number,
+        airDate: season.air_date,
+      },
+    };
+  } catch (error) {
+    logger.error(
+      { error, tvId, seasonNumber },
+      "Failed to fetch season metadata"
+    );
+    return { success: false, error: "Failed to fetch season details" };
+  }
+}
+
+/**
+ * Fetches all available images for a TV season.
+ * Returns posters only (seasons don't have backdrops), sorted by vote average.
+ *
+ * @param tvId - TMDB TV show ID
+ * @param seasonNumber - Season number (0 for specials, 1+ for numbered seasons)
+ * @returns Season images collection or error
+ *
+ * @example
+ * const result = await getSeasonImagesAction(1396, 1); // Breaking Bad S1 posters
+ */
+export async function getSeasonImagesAction(
+  tvId: number,
+  seasonNumber: number
+): Promise<ActionResult<TMDBSeasonImages>> {
+  // Parallel auth + rate limit (per codebase pattern)
+  const [session, rateLimitResult] = await Promise.all([
+    auth(),
+    checkRateLimit("tmdbImages"),
+  ]);
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  if (!isTMDBConfigured()) {
+    return { success: false, error: "TMDB integration not configured" };
+  }
+
+  if (rateLimitResult) {
+    return { success: false, error: rateLimitResult.error };
+  }
+
+  try {
+    const images = await tmdbCircuitBreaker.execute(() =>
+      getTVSeasonImages(tvId, seasonNumber)
+    );
+
+    if (!images) {
+      return { success: false, error: "Season images not found" };
+    }
+
+    return { success: true, data: images };
+  } catch (error) {
+    logger.error(
+      { error, tvId, seasonNumber },
+      "Failed to fetch season images"
+    );
+    return { success: false, error: "Failed to fetch season images" };
+  }
+}
+
+/**
+ * Fetches all available still images for a TV episode.
+ * Returns stills (16:9 scene shots), sorted by vote average.
+ *
+ * @param tvId - TMDB TV show ID
+ * @param seasonNumber - Season number (0 for specials, 1+ for numbered seasons)
+ * @param episodeNumber - Episode number (1-based)
+ * @returns Episode images collection or error
+ *
+ * @example
+ * const result = await getEpisodeImagesAction(1396, 1, 1); // Breaking Bad S01E01 stills
+ */
+export async function getEpisodeImagesAction(
+  tvId: number,
+  seasonNumber: number,
+  episodeNumber: number
+): Promise<ActionResult<TMDBEpisodeImages>> {
+  // Parallel auth + rate limit (per codebase pattern)
+  const [session, rateLimitResult] = await Promise.all([
+    auth(),
+    checkRateLimit("tmdbImages"),
+  ]);
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  if (!isTMDBConfigured()) {
+    return { success: false, error: "TMDB integration not configured" };
+  }
+
+  if (rateLimitResult) {
+    return { success: false, error: rateLimitResult.error };
+  }
+
+  try {
+    const images = await tmdbCircuitBreaker.execute(() =>
+      getEpisodeImages(tvId, seasonNumber, episodeNumber)
+    );
+
+    if (!images) {
+      return { success: false, error: "Episode images not found" };
+    }
+
+    return { success: true, data: images };
+  } catch (error) {
+    logger.error(
+      { error, tvId, seasonNumber, episodeNumber },
+      "Failed to fetch episode images"
+    );
+    return { success: false, error: "Failed to fetch episode images" };
+  }
+}
+
+/**
+ * Combined data for a season including metadata and images.
+ */
+export interface SeasonData {
+  /** Season metadata */
+  metadata: SeasonMetadataPreview;
+  /** Season images (posters only) */
+  images: TMDBSeasonImages;
+}
+
+/**
+ * Fetches season metadata AND images in parallel.
+ * IMPORTANT: Use this instead of calling metadata + images sequentially
+ * to avoid waterfall requests (per react-best-practices async-parallel rule).
+ *
+ * @param tvId - TMDB TV show ID
+ * @param seasonNumber - Season number (0 for specials, 1+ for numbered seasons)
+ * @returns Combined season data or error
+ *
+ * @example
+ * const result = await getSeasonDataAction(1396, 1);
+ * if (result.success) {
+ *   const { metadata, images } = result.data;
+ * }
+ */
+export async function getSeasonDataAction(
+  tvId: number,
+  seasonNumber: number
+): Promise<ActionResult<SeasonData>> {
+  // Parallel auth + rate limit (per codebase pattern)
+  const [session, rateLimitResult] = await Promise.all([
+    auth(),
+    checkRateLimit("tmdbPreview"),
+  ]);
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  if (!isTMDBConfigured()) {
+    return { success: false, error: "TMDB integration not configured" };
+  }
+
+  if (rateLimitResult) {
+    return { success: false, error: rateLimitResult.error };
+  }
+
+  try {
+    // Fetch metadata and images in parallel to avoid waterfall
+    const [season, images] = await Promise.all([
+      tmdbCircuitBreaker.execute(() => getSeasonDetails(tvId, seasonNumber)),
+      tmdbCircuitBreaker.execute(() => getTVSeasonImages(tvId, seasonNumber)),
+    ]);
+
+    // Metadata is required, images are optional
+    if (!season) {
+      return { success: false, error: "Season not found on TMDB" };
+    }
+
+    return {
+      success: true,
+      data: {
+        metadata: {
+          name: season.name,
+          description: truncateOverview(season.overview || ""),
+          posterUrl: getPosterUrl(season.poster_path, "w342"),
+          posterPath: season.poster_path,
+          seasonNumber: season.season_number,
+          airDate: season.air_date,
+        },
+        // Fallback to empty posters if images fetch failed
+        images: images || { posters: [] },
+      },
+    };
+  } catch (error) {
+    logger.error({ error, tvId, seasonNumber }, "Failed to fetch season data");
+    return { success: false, error: "Failed to fetch season data" };
   }
 }

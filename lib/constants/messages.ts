@@ -35,3 +35,13 @@ export const ITEM_MESSAGES = {
   METADATA_APPLIED: "Metadata applied successfully",
   METADATA_FAILED: "Failed to apply metadata",
 } as const;
+
+/** TMDB wizard error and status messages. */
+export const TMDB_WIZARD_MESSAGES = {
+  SEASON_LOAD_ERROR: "Failed to load season details. Please try again",
+  IMAGES_UNAVAILABLE: "Artwork not available for this selection",
+  NO_STILLS: "No still images available for this episode",
+  NETWORK_SLOW: "Connection is slow. Please wait or try again",
+  RATE_LIMITED: (seconds: number) =>
+    `Too many requests. Please wait ${seconds} second${seconds === 1 ? "" : "s"}`,
+} as const;
