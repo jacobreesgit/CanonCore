@@ -73,7 +73,7 @@ test.describe("Profile Settings Journey", () => {
     await expect(getProfileDialog(page)).not.toBeVisible({ timeout: 5000 });
 
     // Verify success toast
-    await expect(page.getByText("Settings updated")).toBeVisible();
+    await expect(page.getByText("Settings saved")).toBeVisible();
   });
 
   test("cancel closes dialog without saving", async ({ page, myItemsPage }) => {
@@ -247,7 +247,7 @@ test.describe("Change Password Step", () => {
       .click();
 
     // Should show success toast and return to main settings
-    await expect(page.getByText("Password changed successfully")).toBeVisible();
+    await expect(page.getByText("Password saved")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   });
 
@@ -390,7 +390,7 @@ test.describe("Change Email Step", () => {
       .click();
 
     // Should show success toast and return to main settings
-    await expect(page.getByText("Email changed successfully")).toBeVisible();
+    await expect(page.getByText("Email saved")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   });
 

@@ -71,6 +71,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PreferencesTab } from "@/components/profile/preferences-tab";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SETTINGS_MESSAGES } from "@/lib/constants/messages";
 import type { GoogleDriveConnection } from "@/lib/types";
 
 /** Steps for settings dialog navigation. */
@@ -249,7 +250,7 @@ export function SettingsDialog({
       const result = await changePassword({ currentPassword, newPassword });
 
       if (result.success) {
-        toast.success("Password changed successfully");
+        toast.success(SETTINGS_MESSAGES.PASSWORD_SAVED);
         setCurrentStep("main");
         setCurrentPassword("");
         setNewPassword("");
@@ -290,7 +291,7 @@ export function SettingsDialog({
       });
 
       if (result.success) {
-        toast.success("Email changed successfully");
+        toast.success(SETTINGS_MESSAGES.EMAIL_SAVED);
         await onProfileChange?.();
         setCurrentStep("main");
       } else {
@@ -333,7 +334,7 @@ export function SettingsDialog({
       });
 
       if (result.success) {
-        toast.success("Username changed successfully");
+        toast.success(SETTINGS_MESSAGES.USERNAME_SAVED);
         await onProfileChange?.();
         setCurrentStep("main");
       } else {
@@ -480,7 +481,7 @@ export function SettingsDialog({
       }
 
       if (!hasError) {
-        toast.success("Settings updated");
+        toast.success(SETTINGS_MESSAGES.SAVED);
         await onProfileChange?.().catch(() => {});
         onOpenChange(false);
       }

@@ -255,7 +255,7 @@ export class SettingsPage {
       .click();
 
     // Wait for success toast
-    await this.page.getByText(/username changed successfully/i).waitFor({
+    await this.page.getByText(/username saved/i).waitFor({
       state: "visible",
       timeout: 5000,
     });
@@ -373,7 +373,7 @@ export class SettingsPage {
   async expectSettingsSavedToast(): Promise<void> {
     const toast = this.page
       .locator("[data-sonner-toast]")
-      .filter({ hasText: /settings updated/i });
+      .filter({ hasText: /settings saved/i });
     await toast.waitFor({ state: "visible", timeout: 5000 });
   }
 

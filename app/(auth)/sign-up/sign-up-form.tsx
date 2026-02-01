@@ -133,14 +133,19 @@ export function SignUpForm() {
             </p>
           </div>
 
-          {error && (
-            <div
-              data-testid="sign-up-error-message"
-              className="bg-destructive/10 text-destructive w-full rounded-md px-4 py-3 text-center text-sm"
-            >
-              {error}
-            </div>
-          )}
+          <div
+            id="sign-up-error"
+            data-testid="sign-up-error-message"
+            className={
+              error
+                ? "bg-destructive/10 text-destructive w-full rounded-md px-4 py-3 text-center text-sm"
+                : "sr-only"
+            }
+            role="alert"
+            aria-live="polite"
+          >
+            {error}
+          </div>
 
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -155,6 +160,8 @@ export function SignUpForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                aria-invalid={!!error}
+                aria-describedby={error ? "sign-up-error" : undefined}
                 data-testid="sign-up-email-input"
               />
             </div>
@@ -185,6 +192,14 @@ export function SignUpForm() {
                   )}
                   value={username}
                   onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                  aria-invalid={!!(username && usernameError)}
+                  aria-describedby={
+                    username && usernameError
+                      ? "username-error"
+                      : username && usernameSuccess
+                        ? "username-success"
+                        : undefined
+                  }
                   data-testid="sign-up-username-input"
                 />
                 {username && (
@@ -200,10 +215,22 @@ export function SignUpForm() {
                 )}
               </div>
               {username && usernameError && (
-                <p className="text-destructive text-xs">{usernameError}</p>
+                <p
+                  id="username-error"
+                  className="text-destructive text-xs"
+                  aria-live="polite"
+                >
+                  {usernameError}
+                </p>
               )}
               {username && usernameSuccess && (
-                <p className="text-xs text-green-600">{usernameSuccess}</p>
+                <p
+                  id="username-success"
+                  className="text-xs text-green-600"
+                  aria-live="polite"
+                >
+                  {usernameSuccess}
+                </p>
               )}
             </div>
 
@@ -218,6 +245,8 @@ export function SignUpForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={8}
+                aria-invalid={!!error}
+                aria-describedby={error ? "sign-up-error" : undefined}
                 data-testid="sign-up-password-input"
               />
             </div>
@@ -232,6 +261,8 @@ export function SignUpForm() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
+                aria-invalid={!!error}
+                aria-describedby={error ? "sign-up-error" : undefined}
                 data-testid="sign-up-confirm-password-input"
               />
             </div>

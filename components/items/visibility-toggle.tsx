@@ -192,7 +192,7 @@ export function VisibilityToggle({
             <div className="flex items-center gap-3">
               <Link2
                 aria-hidden="true"
-                className="text-muted-foreground h-5 w-5"
+                className="text-muted-foreground size-5"
               />
               <div className="space-y-0.5">
                 <Label
@@ -210,7 +210,7 @@ export function VisibilityToggle({
               {isUpdating && (
                 <Loader2
                   aria-hidden="true"
-                  className="text-muted-foreground h-4 w-4 animate-spin"
+                  className="text-muted-foreground size-4 animate-spin"
                 />
               )}
               <Switch
@@ -233,11 +233,11 @@ export function VisibilityToggle({
         >
           <div className="flex items-center gap-3">
             {currentPublic && !currentInherit ? (
-              <Globe aria-hidden="true" className="h-5 w-5 text-green-500" />
+              <Globe aria-hidden="true" className="size-5 text-green-500" />
             ) : (
               <Lock
                 aria-hidden="true"
-                className="text-muted-foreground h-5 w-5"
+                className="text-muted-foreground size-5"
               />
             )}
             <div className="space-y-0.5">
@@ -267,7 +267,7 @@ export function VisibilityToggle({
             {isUpdating && !currentInherit && (
               <Loader2
                 aria-hidden="true"
-                className="text-muted-foreground h-4 w-4 animate-spin"
+                className="text-muted-foreground size-4 animate-spin"
               />
             )}
             <Switch
@@ -298,7 +298,7 @@ export function VisibilityToggle({
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle
                 aria-hidden="true"
-                className="h-5 w-5 text-amber-500"
+                className="size-5 text-amber-500"
               />
               Make &quot;{itemName}&quot; Private?
             </AlertDialogTitle>

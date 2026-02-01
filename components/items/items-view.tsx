@@ -818,7 +818,7 @@ export function ItemsView({
               ) : (
                 <RefreshCw className="size-4" />
               )}
-              <span>{isSyncing ? "Syncing..." : "Sync"}</span>
+              <span>{isSyncing ? "Syncing…" : "Sync"}</span>
             </Button>
 
             {/* Desktop: Sort/Filter dropdowns */}
@@ -1023,7 +1023,7 @@ export function ItemsView({
               onClick={handleBulkDelete}
               disabled={isBulkDeleting}
             >
-              {isBulkDeleting ? "Deleting..." : "Delete"}
+              {isBulkDeleting ? "Deleting…" : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

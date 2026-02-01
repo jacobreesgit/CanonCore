@@ -186,7 +186,7 @@ test.describe("Upload and Save Flow", () => {
     await expect(getProfileDialog(page)).not.toBeVisible({ timeout: 5000 });
 
     // Success toast should appear
-    await expect(page.getByText("Settings updated")).toBeVisible();
+    await expect(page.getByText("Settings saved")).toBeVisible();
   });
 
   test("can upload both profile and hero and save", async ({
@@ -220,7 +220,7 @@ test.describe("Upload and Save Flow", () => {
     await expect(getProfileDialog(page)).not.toBeVisible({ timeout: 5000 });
 
     // Success toast should appear
-    await expect(page.getByText("Settings updated")).toBeVisible();
+    await expect(page.getByText("Settings saved")).toBeVisible();
   });
 
   test("cancel discards upload changes", async ({ page, myItemsPage }) => {

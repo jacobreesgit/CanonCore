@@ -895,7 +895,7 @@ function FileTypeComboboxSelectMode({
                       className="border-primary size-4 rounded-full border-2 border-t-transparent"
                     />
                     <span className="flex items-center gap-2">
-                      <span>Uploading...</span>
+                      <span>Uploading…</span>
                       <motion.span
                         key={uploadProgress.overallPercent}
                         initial={{ scale: 1.1 }}
@@ -993,7 +993,7 @@ function FileTypeComboboxSelectMode({
               onClick={handleConfirmDelete}
               disabled={deletingId !== null}
             >
-              {deletingId !== null ? "Deleting..." : "Delete"}
+              {deletingId !== null ? "Deleting…" : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -605,7 +605,7 @@ describe("ItemSettingsDialog", () => {
       return screen.getByRole("combobox");
     };
 
-    // Helper to complete wizard: Next (step 1) → Next (step 2) → Apply (step 3)
+    // Helper to complete wizard: Next (step 1) → Next (step 2) → Next (step 3) → Apply (step 4)
     // Note: AnimatedDialogContent uses AnimatePresence mode="sync" for crossfade,
     // so we must wait for old step to fully exit before querying Next button
     const confirmMetadata = async (
@@ -614,7 +614,7 @@ describe("ItemSettingsDialog", () => {
       // Wait for wizard step 1 (Title & Description)
       await waitFor(() => {
         expect(screen.getByText("Apply Metadata")).toBeInTheDocument();
-        expect(screen.getByText(/Step 1 of 3/i)).toBeInTheDocument();
+        expect(screen.getByText(/Step 1 of 4/i)).toBeInTheDocument();
       });
 
       // Step 1 → Step 2 (Poster Selection)
@@ -623,8 +623,8 @@ describe("ItemSettingsDialog", () => {
 
       // Wait for step 2 AND ensure step 1 is fully gone (animation complete)
       await waitFor(() => {
-        expect(screen.getByText(/Step 2 of 3/i)).toBeInTheDocument();
-        expect(screen.queryByText(/Step 1 of 3/i)).not.toBeInTheDocument();
+        expect(screen.getByText(/Step 2 of 4/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Step 1 of 4/i)).not.toBeInTheDocument();
       });
 
       // Step 2 → Step 3 (Hero Selection)
@@ -633,12 +633,24 @@ describe("ItemSettingsDialog", () => {
 
       // Wait for step 3 AND ensure step 2 is fully gone
       await waitFor(() => {
-        expect(screen.getByText(/Step 3 of 3/i)).toBeInTheDocument();
-        expect(screen.queryByText(/Step 2 of 3/i)).not.toBeInTheDocument();
+        expect(screen.getByText(/Step 3 of 4/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Step 2 of 4/i)).not.toBeInTheDocument();
       });
 
-      // Step 3 → Complete
-      const applyButton = screen.getByRole("button", { name: /^apply$/i });
+      // Step 3 → Step 4 (Summary)
+      const nextButton3 = screen.getByRole("button", { name: /next/i });
+      await user.click(nextButton3);
+
+      // Wait for step 4 AND ensure step 3 is fully gone
+      await waitFor(() => {
+        expect(screen.getByText(/Step 4 of 4/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Step 3 of 4/i)).not.toBeInTheDocument();
+      });
+
+      // Step 4 → Complete
+      const applyButton = screen.getByRole("button", {
+        name: /apply changes/i,
+      });
       await user.click(applyButton);
     };
 
