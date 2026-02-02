@@ -34,10 +34,13 @@ test.describe("Profile Settings Journey", () => {
     await myItemsPage.openProfileSettings();
     await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
 
-    // Check Profile tab sections
-    await expect(page.getByText("Profile Picture")).toBeVisible();
+    // Check Profile tab sections - new visual card with cover + avatar
+    await expect(page.getByTestId("hero-dropzone")).toBeVisible();
+    await expect(page.getByTestId("profile-dropzone")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /change cover/i })
+    ).toBeVisible();
     await expect(page.getByLabel("Display Name")).toBeVisible();
-    await expect(page.getByText("Hero Banner")).toBeVisible();
 
     // Navigate to Account tab to check password/email buttons
     await page.getByRole("tab", { name: "Account" }).click();
@@ -70,7 +73,7 @@ test.describe("Profile Settings Journey", () => {
     await expect(getProfileDialog(page)).not.toBeVisible({ timeout: 5000 });
 
     // Verify success toast
-    await expect(page.getByText("Settings updated")).toBeVisible();
+    await expect(page.getByText("Settings saved")).toBeVisible();
   });
 
   test("cancel closes dialog without saving", async ({ page, myItemsPage }) => {
@@ -244,7 +247,7 @@ test.describe("Change Password Step", () => {
       .click();
 
     // Should show success toast and return to main settings
-    await expect(page.getByText("Password changed successfully")).toBeVisible();
+    await expect(page.getByText("Password saved")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   });
 
@@ -387,7 +390,7 @@ test.describe("Change Email Step", () => {
       .click();
 
     // Should show success toast and return to main settings
-    await expect(page.getByText("Email changed successfully")).toBeVisible();
+    await expect(page.getByText("Email saved")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   });
 

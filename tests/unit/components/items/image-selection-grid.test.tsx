@@ -12,6 +12,11 @@ import {
 } from "@/components/items/image-selection-grid";
 import type { TMDBImage } from "@/lib/tmdb-client";
 
+// Mock useIsMobile hook - default to desktop (false)
+vi.mock("@/hooks/use-mobile", () => ({
+  useIsMobile: vi.fn(() => false),
+}));
+
 // Mock next/image
 vi.mock("next/image", () => ({
   default: ({

@@ -16,8 +16,18 @@ test.describe("Sign Up Journey", () => {
     await landingPage.goto();
     await landingPage.expectVisible();
 
-    // Click get started (goes to sign-in, then navigate to sign-up)
-    await landingPage.clickGetStarted();
+    // On mobile, open the sidebar first (it's collapsed behind hamburger menu)
+    const sidebarTrigger = page.getByTestId("sidebar-trigger");
+    const getStartedLink = page.getByRole("link", { name: "Get Started" });
+
+    // Check if the link is already visible (desktop) or needs sidebar opened (mobile)
+    if (!(await getStartedLink.isVisible())) {
+      await sidebarTrigger.click();
+      await expect(getStartedLink).toBeVisible({ timeout: 5000 });
+    }
+
+    // Click Get Started in sidebar (goes to sign-in, then navigate to sign-up)
+    await getStartedLink.click();
     await expect(page).toHaveURL("/sign-in");
     await page.getByTestId("sign-in-sign-up-link").click();
     await expect(page).toHaveURL("/sign-up");

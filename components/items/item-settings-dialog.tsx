@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import {
   Loader2,
@@ -30,58 +30,39 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileTypeCombobox } from "@/components/items/file-type-combobox";
 import { MediaSearchCombobox } from "@/components/items/media-search-combobox";
 import { ItemDialogTabs } from "@/components/items/item-dialog-tabs";
+import type { CurrentTextValues } from "@/components/items/title-description-step";
 import {
-  TitleDescriptionStep,
-  type CurrentTextValues,
-  type TextPreviewData,
-  type TitleDescriptionOptions,
-} from "@/components/items/title-description-step";
-import { PosterSelectionStep } from "@/components/items/poster-selection-step";
-import { HeroSelectionStep } from "@/components/items/hero-selection-step";
-import type { ExistingArtworkFile } from "@/components/items/image-selection-grid";
+  TMDBWizard,
+  type TMDBWizardResult,
+  type TMDBWizardHeaderProps,
+  type TMDBWizardFooterProps,
+} from "./wizards/tmdb-wizard";
+import { WizardStepIndicator } from "@/components/wizards/wizard-step-indicator";
 import {
-  SeasonItem,
-  EpisodeItem,
-  LoadingState,
-  ErrorState,
-} from "@/components/items/episode-picker-helpers";
+  TVPicker,
+  type TVPickerResult,
+  type TVPickerSelection,
+  type TVPickerLevel,
+} from "./wizards/tv-picker";
 import { updateItemSettings } from "@/lib/item-file-actions";
 import {
   applyMetadataAction,
   getMetadataPreviewAction,
-  getImagesAction,
   getEpisodePreviewAction,
-  getSeasonsAction,
-  getEpisodesAction,
 } from "@/lib/tmdb-actions";
-import type {
-  TMDBSearchResult,
-  TMDBImages,
-  TMDBSeasonSummary,
-  TMDBEpisode,
-} from "@/lib/tmdb-client";
+import type { TMDBSearchResult } from "@/lib/tmdb-client";
+import type { TextPreviewData } from "@/components/items/title-description-step";
 import { toast } from "sonner";
-import type { SerializedItemFile, ArtworkSelectionSource } from "@/lib/types";
+import type { SerializedItemFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ITEM_MESSAGES } from "@/lib/constants/messages";
 import { VisibilityToggle } from "@/components/items/visibility-toggle";
 
 /** Steps for item settings dialog navigation. */
-type ItemSettingsStep =
-  | "main"
-  | "episode-picker"
-  | "wizard-text"
-  | "wizard-poster"
-  | "wizard-hero";
-
-/** Episode picker selection type. */
-type EpisodePickerSelection =
-  | { type: "show" }
-  | { type: "season"; seasonNumber: number }
-  | { type: "episode"; seasonNumber: number; episodeNumber: number };
+type ItemSettingsStep = "main" | "episode-picker" | "tmdb-wizard";
 
 interface ItemSettingsDialogProps {
   /** Whether the dialog is open */
@@ -150,6 +131,16 @@ export function ItemSettingsDialog({
   // Current step
   const [currentStep, setCurrentStep] = useState<ItemSettingsStep>("main");
 
+  // TV picker level state (for level-aware back navigation)
+  const [tvPickerLevel, setTvPickerLevel] = useState<TVPickerLevel>("show");
+  const tvPickerBackRef = useRef<(() => void) | null>(null);
+
+  // TMDB wizard state (for rendering step indicator in header, buttons in footer)
+  const [wizardHeaderProps, setWizardHeaderProps] =
+    useState<TMDBWizardHeaderProps | null>(null);
+  const [wizardFooterProps, setWizardFooterProps] =
+    useState<TMDBWizardFooterProps | null>(null);
+
   // Form state
   const [name, setName] = useState(item.name);
   const [description, setDescription] = useState(item.description ?? "");
@@ -180,32 +171,10 @@ export function ItemSettingsDialog({
   const [pendingTmdbResult, setPendingTmdbResult] =
     useState<TMDBSearchResult | null>(null);
   const [tmdbPreview, setTmdbPreview] = useState<TextPreviewData | null>(null);
-  const [tmdbImages, setTmdbImages] = useState<TMDBImages | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-  const [isLoadingImages, setIsLoadingImages] = useState(false);
 
-  // Episode picker state
-  const [seasons, setSeasons] = useState<TMDBSeasonSummary[]>([]);
-  const [episodes, setEpisodes] = useState<TMDBEpisode[]>([]);
-  const [selectedSeason, setSelectedSeason] =
-    useState<TMDBSeasonSummary | null>(null);
-  const [isLoadingSeasons, setIsLoadingSeasons] = useState(false);
-  const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(false);
-  const [episodeError, setEpisodeError] = useState<string | null>(null);
-
-  // Wizard state
-  const [textOptions, setTextOptions] = useState<TitleDescriptionOptions>({
-    updateName: true,
-    updateDescription: true,
-  });
-  const [posterValue, setPosterValue] = useState<string | null>(null);
-  const [posterSource, setPosterSource] =
-    useState<ArtworkSelectionSource | null>(null);
-  const [posterSkipped, setPosterSkipped] = useState(false);
-  const [backdropValue, setBackdropValue] = useState<string | null>(null);
-  const [backdropSource, setBackdropSource] =
-    useState<ArtworkSelectionSource | null>(null);
-  const [backdropSkipped, setBackdropSkipped] = useState(false);
+  // Track if wizard is applying metadata
+  const [isEpisodeMode, setIsEpisodeMode] = useState(false);
 
   // Original values for dirty checking
   const [originalValues, setOriginalValues] = useState(() => ({
@@ -235,44 +204,10 @@ export function ItemSettingsDialog({
       // Reset TMDB state
       setPendingTmdbResult(null);
       setTmdbPreview(null);
-      setTmdbImages(null);
-      setSeasons([]);
-      setEpisodes([]);
-      setSelectedSeason(null);
-      setEpisodeError(null);
-      resetWizardState();
+      setIsEpisodeMode(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
-
-  /**
-   * Resets wizard-specific state.
-   */
-  const resetWizardState = useCallback(() => {
-    setTextOptions({ updateName: true, updateDescription: true });
-    setPosterValue(null);
-    setPosterSource(null);
-    setPosterSkipped(false);
-    setBackdropValue(null);
-    setBackdropSource(null);
-    setBackdropSkipped(false);
-  }, []);
-
-  // Pre-select first poster and backdrop when images load
-  useEffect(() => {
-    if (tmdbImages?.posters?.[0] && posterValue === null && !posterSkipped) {
-      setPosterValue(tmdbImages.posters[0].file_path);
-      setPosterSource("tmdb");
-    }
-    if (
-      tmdbImages?.backdrops?.[0] &&
-      backdropValue === null &&
-      !backdropSkipped
-    ) {
-      setBackdropValue(tmdbImages.backdrops[0].file_path);
-      setBackdropSource("tmdb");
-    }
-  }, [tmdbImages, posterValue, backdropValue, posterSkipped, backdropSkipped]);
 
   // Sync form state when item changes
   useEffect(() => {
@@ -319,17 +254,6 @@ export function ItemSettingsDialog({
       description: item.description,
     }),
     [item.name, item.description]
-  );
-
-  // Convert artwork files to ExistingArtworkFile format for wizard
-  const existingArtwork: ExistingArtworkFile[] = useMemo(
-    () =>
-      files.artwork.map((f) => ({
-        id: f.id,
-        filename: f.filename,
-        driveFileId: f.driveFileId,
-      })),
-    [files.artwork]
   );
 
   /**
@@ -448,17 +372,15 @@ export function ItemSettingsDialog({
   }, [onSettingsChange]);
 
   /**
-   * Fetches preview data and navigates to wizard.
+   * Fetches preview data and navigates to TMDBWizard.
    */
   const fetchPreviewAndOpenWizard = useCallback(
     async (
       tmdbId: number,
       mediaType: "movie" | "tv",
-      episodeSel?: EpisodePickerSelection
+      episodeSel?: TVPickerSelection
     ) => {
       setIsLoadingPreview(true);
-      setTmdbImages(null);
-      resetWizardState();
 
       try {
         if (episodeSel?.type === "episode") {
@@ -473,8 +395,8 @@ export function ItemSettingsDialog({
               name: response.data.name,
               description: response.data.description,
             });
-            setTmdbImages({ posters: [], backdrops: [] });
-            setCurrentStep("wizard-text");
+            setIsEpisodeMode(true);
+            setCurrentStep("tmdb-wizard");
           } else if (!response.success) {
             toast.error(response.error);
             setCurrentStep("main");
@@ -490,19 +412,8 @@ export function ItemSettingsDialog({
               name: response.data.name,
               description: response.data.description,
             });
-            setCurrentStep("wizard-text");
-
-            // Fetch images in the background
-            setIsLoadingImages(true);
-            getImagesAction(tmdbId, mediaType)
-              .then((imagesResponse) => {
-                if (imagesResponse.success && imagesResponse.data) {
-                  setTmdbImages(imagesResponse.data);
-                }
-              })
-              .finally(() => {
-                setIsLoadingImages(false);
-              });
+            setIsEpisodeMode(false);
+            setCurrentStep("tmdb-wizard");
           } else if (!response.success) {
             toast.error(response.error);
             setCurrentStep("main");
@@ -518,7 +429,7 @@ export function ItemSettingsDialog({
         setIsLoadingPreview(false);
       }
     },
-    [resetWizardState]
+    []
   );
 
   /**
@@ -530,28 +441,7 @@ export function ItemSettingsDialog({
 
       if (result.mediaType === "tv") {
         // For TV shows, navigate to episode picker
-        setSeasons([]);
-        setEpisodes([]);
-        setSelectedSeason(null);
-        setEpisodeError(null);
         setCurrentStep("episode-picker");
-
-        // Fetch seasons
-        setIsLoadingSeasons(true);
-        try {
-          const seasonsResult = await getSeasonsAction(result.id);
-          if (seasonsResult.success && seasonsResult.data) {
-            setSeasons(seasonsResult.data);
-          } else if (!seasonsResult.success) {
-            setEpisodeError(seasonsResult.error);
-          } else {
-            setEpisodeError("Failed to load seasons");
-          }
-        } catch {
-          setEpisodeError("Failed to load seasons");
-        } finally {
-          setIsLoadingSeasons(false);
-        }
         return;
       }
 
@@ -562,176 +452,91 @@ export function ItemSettingsDialog({
   );
 
   /**
-   * Handles season selection in episode picker.
+   * Handles episode picker cancel.
    */
-  const handleSeasonSelect = useCallback(
-    async (season: TMDBSeasonSummary) => {
-      if (!pendingTmdbResult) return;
-
-      setSelectedSeason(season);
-      setIsLoadingEpisodes(true);
-      setEpisodeError(null);
-      setEpisodes([]);
-
-      try {
-        const result = await getEpisodesAction(
-          pendingTmdbResult.id,
-          season.season_number
-        );
-        if (result.success && result.data) {
-          setEpisodes(result.data);
-        } else if (!result.success) {
-          setEpisodeError(result.error);
-        } else {
-          setEpisodeError("Failed to load episodes");
-        }
-      } catch {
-        setEpisodeError("Failed to load episodes");
-      } finally {
-        setIsLoadingEpisodes(false);
-      }
-    },
-    [pendingTmdbResult]
-  );
+  const handleEpisodePickerCancel = useCallback(() => {
+    setPendingTmdbResult(null);
+    setTvPickerLevel("show");
+    setCurrentStep("main");
+  }, []);
 
   /**
-   * Handles episode picker back navigation.
+   * Handles level-aware back navigation for episode picker.
+   * At show level: cancels picker and returns to main step.
+   * At season level: navigates back to show view within picker.
    */
   const handleEpisodePickerBack = useCallback(() => {
-    if (selectedSeason) {
-      setSelectedSeason(null);
-      setEpisodes([]);
-      setEpisodeError(null);
+    if (tvPickerLevel === "season" && tvPickerBackRef.current) {
+      tvPickerBackRef.current();
     } else {
-      setPendingTmdbResult(null);
-      setCurrentStep("main");
+      handleEpisodePickerCancel();
     }
-  }, [selectedSeason]);
+  }, [tvPickerLevel, handleEpisodePickerCancel]);
 
   /**
-   * Handles episode picker selection.
+   * Handles TV picker completion.
    */
-  const handleEpisodePickerSelect = useCallback(
-    async (selection: EpisodePickerSelection) => {
-      if (!pendingTmdbResult) return;
+  const handleTVPickerComplete = useCallback(
+    async (result: TVPickerResult) => {
       await fetchPreviewAndOpenWizard(
-        pendingTmdbResult.id,
-        pendingTmdbResult.mediaType,
-        selection
+        result.tmdbResult.id,
+        result.tmdbResult.mediaType,
+        result.selection
       );
     },
-    [pendingTmdbResult, fetchPreviewAndOpenWizard]
+    [fetchPreviewAndOpenWizard]
   );
 
   /**
-   * Handles wizard completion - applies metadata immediately.
+   * Handles TMDB wizard completion.
+   * Applies the wizard result using applyMetadataAction.
    */
-  const handleWizardComplete = useCallback(async () => {
-    if (!pendingTmdbResult) return;
+  const handleTMDBWizardComplete = useCallback(
+    async (result: TMDBWizardResult) => {
+      setIsApplyingMetadata(true);
 
-    setIsApplyingMetadata(true);
+      try {
+        const response = await applyMetadataAction(
+          item.id,
+          result.tmdbResult.id,
+          result.tmdbResult.mediaType,
+          {
+            updateName: result.textOptions.updateName,
+            updateDescription: result.textOptions.updateDescription,
+            updatePoster:
+              result.poster !== null &&
+              result.poster.source === "tmdb" &&
+              result.poster.value !== null,
+            updateBackdrop:
+              result.backdrop !== null &&
+              result.backdrop.source === "tmdb" &&
+              result.backdrop.value !== null,
+          }
+        );
 
-    try {
-      const posterPath = posterSkipped ? null : posterValue;
-      const backdropPath = backdropSkipped ? null : backdropValue;
-
-      const response = await applyMetadataAction(
-        item.id,
-        pendingTmdbResult.id,
-        pendingTmdbResult.mediaType,
-        {
-          updateName: textOptions.updateName,
-          updateDescription: textOptions.updateDescription,
-          updatePoster:
-            !posterSkipped && posterSource === "tmdb" && !!posterPath,
-          updateBackdrop:
-            !backdropSkipped && backdropSource === "tmdb" && !!backdropPath,
+        if (response.success) {
+          toast.success(ITEM_MESSAGES.METADATA_APPLIED);
+          await onSettingsChange?.().catch((err) => {
+            console.warn(
+              "[ItemSettingsDialog] Refetch failed after metadata apply:",
+              err
+            );
+          });
+        } else {
+          toast.error(response.error || ITEM_MESSAGES.METADATA_FAILED);
         }
-      );
-
-      if (response.success) {
-        toast.success("Metadata applied successfully");
-        await onSettingsChange?.().catch((err) => {
-          console.warn(
-            "[ItemSettingsDialog] Refetch failed after metadata apply:",
-            err
-          );
-        });
-      } else {
-        toast.error(response.error || "Failed to apply metadata");
-      }
-    } catch {
-      toast.error("Failed to apply metadata");
-    } finally {
-      setIsApplyingMetadata(false);
-      setPendingTmdbResult(null);
-      setTmdbPreview(null);
-      setTmdbImages(null);
-      setCurrentStep("main");
-    }
-  }, [
-    pendingTmdbResult,
-    item.id,
-    textOptions,
-    posterValue,
-    posterSource,
-    posterSkipped,
-    backdropValue,
-    backdropSource,
-    backdropSkipped,
-    onSettingsChange,
-  ]);
-
-  /**
-   * Handles wizard back navigation.
-   */
-  const handleWizardBack = useCallback(() => {
-    if (currentStep === "wizard-text") {
-      if (pendingTmdbResult?.mediaType === "tv") {
-        setCurrentStep("episode-picker");
-      } else {
+      } catch {
+        toast.error(ITEM_MESSAGES.METADATA_FAILED);
+      } finally {
+        setIsApplyingMetadata(false);
         setPendingTmdbResult(null);
         setTmdbPreview(null);
+        setIsEpisodeMode(false);
         setCurrentStep("main");
       }
-    } else if (currentStep === "wizard-poster") {
-      setCurrentStep("wizard-text");
-    } else if (currentStep === "wizard-hero") {
-      setCurrentStep("wizard-poster");
-    }
-  }, [currentStep, pendingTmdbResult]);
-
-  /**
-   * Handles wizard next navigation.
-   * Skips poster/hero steps when no Drive connection (images require Drive).
-   */
-  const handleWizardNext = useCallback(() => {
-    if (currentStep === "wizard-text") {
-      // Skip image steps if no Drive connection
-      if (!hasDriveConnection) {
-        handleWizardComplete();
-      } else {
-        setCurrentStep("wizard-poster");
-      }
-    } else if (currentStep === "wizard-poster") {
-      setCurrentStep("wizard-hero");
-    } else if (currentStep === "wizard-hero") {
-      handleWizardComplete();
-    }
-  }, [currentStep, hasDriveConnection, handleWizardComplete]);
-
-  /**
-   * Handles wizard skip all.
-   */
-  const handleWizardSkipAll = useCallback(() => {
-    if (currentStep === "wizard-text") {
-      setPosterSkipped(true);
-      setBackdropSkipped(true);
-    } else if (currentStep === "wizard-poster") {
-      setBackdropSkipped(true);
-    }
-    handleWizardComplete();
-  }, [currentStep, handleWizardComplete]);
+    },
+    [item.id, onSettingsChange]
+  );
 
   /**
    * Handles wizard cancel.
@@ -739,31 +544,9 @@ export function ItemSettingsDialog({
   const handleWizardCancel = useCallback(() => {
     setPendingTmdbResult(null);
     setTmdbPreview(null);
-    setTmdbImages(null);
+    setIsEpisodeMode(false);
     setCurrentStep("main");
   }, []);
-
-  /**
-   * Handles poster selection.
-   */
-  const handlePosterSelect = useCallback(
-    (value: string | null, source: ArtworkSelectionSource) => {
-      setPosterValue(value);
-      setPosterSource(value ? source : null);
-    },
-    []
-  );
-
-  /**
-   * Handles backdrop selection.
-   */
-  const handleBackdropSelect = useCallback(
-    (value: string | null, source: ArtworkSelectionSource) => {
-      setBackdropValue(value);
-      setBackdropSource(value ? source : null);
-    },
-    []
-  );
 
   // Details tab content
   const detailsContent = (
@@ -918,10 +701,6 @@ export function ItemSettingsDialog({
     </div>
   );
 
-  // Wizard step number for display
-  const wizardStepNumber =
-    currentStep === "wizard-text" ? 1 : currentStep === "wizard-poster" ? 2 : 3;
-
   // Episode picker display
   const displayTitle = pendingTmdbResult
     ? pendingTmdbResult.year
@@ -977,35 +756,37 @@ export function ItemSettingsDialog({
                   "bg-blue-500/10 ring-1 ring-blue-500/20"
                 )}
               >
-                {selectedSeason ? (
-                  <Film aria-hidden="true" className="size-5 text-blue-500" />
-                ) : (
-                  <Tv aria-hidden="true" className="size-5 text-blue-500" />
-                )}
+                <Tv aria-hidden="true" className="size-5 text-blue-500" />
               </div>
               <div className="min-w-0 flex-1">
-                <DialogTitle className="text-lg">
-                  {selectedSeason ? "Select Episode" : "Select Season"}
-                </DialogTitle>
+                <DialogTitle className="text-lg">Select Season</DialogTitle>
                 <DialogDescription className="truncate text-sm">
-                  {selectedSeason ? selectedSeason.name : displayTitle}
+                  {displayTitle}
                 </DialogDescription>
               </div>
             </div>
           </DialogHeader>
         );
-      case "wizard-text":
-      case "wizard-poster":
-      case "wizard-hero":
+      case "tmdb-wizard":
         return (
           <DialogHeader>
+            {wizardHeaderProps && (
+              <div className="pb-4">
+                <WizardStepIndicator
+                  steps={wizardHeaderProps.steps}
+                  currentStep={wizardHeaderProps.currentStep}
+                  stepLabels={wizardHeaderProps.stepLabels}
+                />
+              </div>
+            )}
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={handleWizardBack}
+                onClick={handleWizardCancel}
+                disabled={isApplyingMetadata}
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
-                aria-label="Back"
+                aria-label="Cancel"
               >
                 <ChevronLeft aria-hidden="true" className="size-5" />
               </Button>
@@ -1023,13 +804,7 @@ export function ItemSettingsDialog({
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
                 <DialogDescription className="text-sm">
-                  Step {hasDriveConnection ? wizardStepNumber : 1} of{" "}
-                  {hasDriveConnection ? 3 : 1}:{" "}
-                  {currentStep === "wizard-text"
-                    ? "Title & Description"
-                    : currentStep === "wizard-poster"
-                      ? "Select Poster"
-                      : "Select Hero"}
+                  {tmdbPreview?.name || "Select metadata to apply"}
                 </DialogDescription>
               </div>
             </div>
@@ -1069,111 +844,46 @@ export function ItemSettingsDialog({
           </DialogFooter>
         );
       case "episode-picker":
+        // EpisodePicker component handles its own action buttons
+        return null;
+      case "tmdb-wizard":
+        // Render footer from wizard state (synced via onFooterChange)
+        if (!wizardFooterProps) return null;
         return (
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setPendingTmdbResult(null);
-                setCurrentStep("main");
-              }}
-            >
-              Cancel
-            </Button>
-            {selectedSeason && (
+            <div className="flex w-full justify-between gap-3">
               <Button
-                variant="ghost"
-                onClick={() =>
-                  handleEpisodePickerSelect({
-                    type: "season",
-                    seasonNumber: selectedSeason.season_number,
-                  })
-                }
+                type="button"
+                variant="outline"
+                onClick={wizardFooterProps.onBack}
+                disabled={wizardFooterProps.isDisabled}
               >
-                Use Season
+                <ChevronLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+                Back
               </Button>
-            )}
-            <Button onClick={() => handleEpisodePickerSelect({ type: "show" })}>
-              Use Show
-            </Button>
-          </DialogFooter>
-        );
-      case "wizard-text":
-        return (
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={handleWizardCancel}
-              disabled={isApplyingMetadata}
-            >
-              Cancel
-            </Button>
-            {/* Hide Skip All when no Drive - there are no image steps to skip */}
-            {hasDriveConnection && (
-              <Button
-                variant="destructive"
-                onClick={handleWizardSkipAll}
-                disabled={isApplyingMetadata}
-              >
-                Skip All
-              </Button>
-            )}
-            <Button onClick={handleWizardNext} disabled={isApplyingMetadata}>
-              {isApplyingMetadata ? (
-                <>
-                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-                  Applying...
-                </>
-              ) : hasDriveConnection ? (
-                "Next"
-              ) : (
-                "Apply"
-              )}
-            </Button>
-          </DialogFooter>
-        );
-      case "wizard-poster":
-        return (
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={handleWizardCancel}
-              disabled={isApplyingMetadata}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleWizardSkipAll}
-              disabled={isApplyingMetadata}
-            >
-              Skip All
-            </Button>
-            <Button onClick={handleWizardNext} disabled={isApplyingMetadata}>
-              Next
-            </Button>
-          </DialogFooter>
-        );
-      case "wizard-hero":
-        return (
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={handleWizardCancel}
-              disabled={isApplyingMetadata}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleWizardNext} disabled={isApplyingMetadata}>
-              {isApplyingMetadata ? (
-                <>
-                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-                  Applying...
-                </>
-              ) : (
-                "Apply"
-              )}
-            </Button>
+              <div className="flex gap-2">
+                {wizardFooterProps.onSkipAll && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={wizardFooterProps.onSkipAll}
+                    disabled={wizardFooterProps.isDisabled}
+                  >
+                    Skip All
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  onClick={wizardFooterProps.onNext}
+                  disabled={wizardFooterProps.isDisabled}
+                >
+                  {wizardFooterProps.isLastStep ? "Apply" : "Next"}
+                  {!wizardFooterProps.isLastStep && (
+                    <ChevronRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                  )}
+                </Button>
+              </div>
+            </div>
           </DialogFooter>
         );
       default:
@@ -1201,174 +911,51 @@ export function ItemSettingsDialog({
           </div>
         );
       case "episode-picker":
+        if (!pendingTmdbResult) return null;
         return (
-          <>
-            {selectedSeason && (
-              <div className="flex items-center gap-1 text-sm">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedSeason(null);
-                    setEpisodes([]);
-                  }}
-                  className="text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
-                >
-                  <ChevronLeft aria-hidden="true" className="size-4" />
-                  <span className="max-w-[150px] truncate">{displayTitle}</span>
-                </button>
-                <ChevronRight
-                  aria-hidden="true"
-                  className="text-muted-foreground/50 size-4"
-                />
-                <span className="text-foreground font-medium">
-                  {selectedSeason.name}
-                </span>
-              </div>
-            )}
-
-            <div className="min-h-[280px]">
-              {!selectedSeason ? (
-                isLoadingSeasons ? (
-                  <LoadingState message="Loading seasons..." />
-                ) : episodeError ? (
-                  <ErrorState message={episodeError} />
-                ) : (
-                  <ScrollArea className="h-[280px] pr-3">
-                    <div className="space-y-1">
-                      {seasons.map((season) => (
-                        <SeasonItem
-                          key={season.id}
-                          season={season}
-                          onClick={() => handleSeasonSelect(season)}
-                        />
-                      ))}
-                    </div>
-                  </ScrollArea>
-                )
-              ) : isLoadingEpisodes ? (
-                <LoadingState message="Loading episodes..." />
-              ) : episodeError ? (
-                <ErrorState message={episodeError} />
-              ) : (
-                <ScrollArea className="h-[280px] pr-3">
-                  <div className="space-y-1">
-                    {episodes.map((episode) => (
-                      <EpisodeItem
-                        key={episode.id}
-                        episode={episode}
-                        onClick={() =>
-                          handleEpisodePickerSelect({
-                            type: "episode",
-                            seasonNumber: selectedSeason.season_number,
-                            episodeNumber: episode.episode_number,
-                          })
-                        }
-                      />
-                    ))}
-                  </div>
-                </ScrollArea>
-              )}
-            </div>
-          </>
+          <TVPicker
+            initialData={{
+              tmdbResult: pendingTmdbResult,
+            }}
+            onComplete={handleTVPickerComplete}
+            onCancel={handleEpisodePickerCancel}
+            onLevelChange={setTvPickerLevel}
+            renderFooter={(props) => {
+              // Store the onBack ref for header back button
+              tvPickerBackRef.current = props.onBack;
+              return (
+                <DialogFooter>
+                  <Button
+                    onClick={props.onUseSelection}
+                    disabled={props.isDisabled}
+                  >
+                    {props.level === "show"
+                      ? "Use This Show"
+                      : "Use This Season"}
+                  </Button>
+                </DialogFooter>
+              );
+            }}
+          />
         );
-      case "wizard-text":
-        if (!tmdbPreview) return null;
+      case "tmdb-wizard":
+        if (!tmdbPreview || !pendingTmdbResult) return null;
         return (
-          <>
-            {/* Step indicator - 1 step without Drive, 3 with Drive */}
-            <div className="flex gap-1.5 py-2">
-              {(hasDriveConnection ? [1, 2, 3] : [1]).map((step) => (
-                <div
-                  key={step}
-                  className={cn(
-                    "h-1 flex-1 rounded-full transition-colors",
-                    step <= wizardStepNumber ? "bg-amber-500" : "bg-muted"
-                  )}
-                />
-              ))}
-            </div>
-
-            <TitleDescriptionStep
-              currentValues={currentValues}
-              preview={tmdbPreview}
-              options={textOptions}
-              onOptionsChange={setTextOptions}
-              disabled={false}
-            />
-
-            {/* Note when images are skipped */}
-            {!hasDriveConnection && (
-              <p className="text-muted-foreground mt-4 text-center text-xs">
-                Connect Google Drive to add poster and hero images.
-              </p>
-            )}
-          </>
-        );
-      case "wizard-poster":
-        return (
-          <>
-            <div className="flex gap-1.5 py-2">
-              {[1, 2, 3].map((step) => (
-                <div
-                  key={step}
-                  className={cn(
-                    "h-1 flex-1 rounded-full transition-colors",
-                    step <= wizardStepNumber ? "bg-amber-500" : "bg-muted"
-                  )}
-                />
-              ))}
-            </div>
-
-            {isLoadingImages ? (
-              <LoadingState message="Loading poster options..." />
-            ) : (
-              <PosterSelectionStep
-                posters={tmdbImages?.posters || []}
-                existingFiles={existingArtwork}
-                uploadMode={false}
-                hasDriveConnection={hasDriveConnection}
-                selectedValue={posterValue}
-                selectedSource={posterSource}
-                onSelect={handlePosterSelect}
-                isSkipped={posterSkipped}
-                onSkipChange={setPosterSkipped}
-                disabled={false}
-              />
-            )}
-          </>
-        );
-      case "wizard-hero":
-        return (
-          <>
-            <div className="flex gap-1.5 py-2">
-              {[1, 2, 3].map((step) => (
-                <div
-                  key={step}
-                  className={cn(
-                    "h-1 flex-1 rounded-full transition-colors",
-                    step <= wizardStepNumber ? "bg-amber-500" : "bg-muted"
-                  )}
-                />
-              ))}
-            </div>
-
-            {isLoadingImages ? (
-              <LoadingState message="Loading backdrop options..." />
-            ) : (
-              <HeroSelectionStep
-                backdrops={tmdbImages?.backdrops || []}
-                existingFiles={existingArtwork}
-                uploadMode={false}
-                hasDriveConnection={hasDriveConnection}
-                selectedValue={backdropValue}
-                selectedSource={backdropSource}
-                onSelect={handleBackdropSelect}
-                isSkipped={backdropSkipped}
-                onSkipChange={setBackdropSkipped}
-                disabled={false}
-              />
-            )}
-          </>
+          <TMDBWizard
+            initialData={{
+              tmdbResult: pendingTmdbResult,
+              preview: tmdbPreview,
+              isEpisodeMode: isEpisodeMode,
+            }}
+            currentValues={currentValues}
+            uploadMode={false}
+            hasDriveConnection={hasDriveConnection}
+            existingArtwork={files.artwork}
+            existingHero={files.artwork}
+            onComplete={handleTMDBWizardComplete}
+            onHeaderChange={setWizardHeaderProps}
+            onFooterChange={setWizardFooterProps}
+          />
         );
       default:
         return null;
@@ -1379,7 +966,7 @@ export function ItemSettingsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <AnimatedDialogContent
         stepKey={currentStep}
-        className="max-h-[90vh]"
+        className="max-h-[90vh] sm:max-w-2xl"
         header={getStepHeader()}
         footer={getStepFooter()}
       >

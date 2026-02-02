@@ -3,7 +3,7 @@ title: Item Settings
 description: Configure item names, descriptions, and primary files
 ---
 
-The Settings dialog lets you configure items - rename them, add descriptions, and choose which files play or display by default.
+The Settings dialogue lets you configure items - rename them, add descriptions, and choose which files play or display by default.
 
 ## Open Settings
 
@@ -12,7 +12,7 @@ The Settings dialog lets you configure items - rename them, add descriptions, an
 When you're inside an item (on its detail page):
 
 1. Click the **Settings** button in the toolbar
-2. The Settings dialog opens
+2. The Settings dialogue opens
 
 This is the quickest way when you're already viewing an item's contents.
 
@@ -61,30 +61,43 @@ If you want to use TMDB data:
 2. Results appear with poster thumbnails and release years
 3. Click a result to open the metadata wizard
 
-The wizard walks you through three steps:
+**For TV shows**, you can drill down to a specific level before continuing:
+
+- **Use Entire Show** - Apply show-level metadata (e.g., "Breaking Bad")
+- **Select a Season** - Click a season to see its episodes, or use that season's metadata
+- **Select an Episode** - Choose a specific episode for episode-level metadata (e.g., "S1E1: Pilot")
+
+Episodes don't have artwork on TMDB, so selecting an episode skips the poster and hero steps.
+
+**For movies**, clicking a result goes straight to the metadata wizard.
+
+The wizard walks you through up to four steps:
 
 **Step 1: Title & Description**
 Choose whether to update the name and/or description. You'll see your current values alongside the TMDB data, so you can decide what to keep.
 
-**Step 2: Poster Selection**
+**Step 2: Poster Selection** *(requires Google Drive)*
 Browse available poster images from TMDB, sorted by community rating. You can also switch to the "My Uploads" tab to keep your existing artwork, or skip this step entirely.
 
-**Step 3: Hero Selection**
+**Step 3: Hero Selection** *(requires Google Drive)*
 Choose a backdrop image for the hero banner. These are widescreen images that appear at the top of item detail pages. Same options: pick from TMDB, use existing, or skip.
 
-Click **Apply** on the final step to save your selections. If you're connected to Google Drive, selected images upload automatically.
+**Step 4: Review & Apply**
+See a summary of everything you've selected - text changes and artwork - before applying. Click the poster or hero image to change your selection, or use the **Clear** buttons to remove artwork choices. When you're happy, click **Apply Changes** to save.
 
-**Tip**: You can skip image steps if you only want to update the text fields, or use the "Skip All" button to apply just the text changes without touching artwork.
+Without Google Drive connected, you'll only see steps 1 and 4 (artwork selection requires Drive for storage).
+
+**Tip**: You can skip image steps if you only want to update the text fields, or use the "Skip All" button to jump straight to the review step.
 
 ### When TMDB has no results
 
-If TMDB doesn't recognize what you're searching for, you'll see "No results found". This is expected for non-movie/TV content like folders, games, or books. Just type your desired name and click **Save** - the search is optional.
+If TMDB doesn't recognise what you're searching for, you'll see "No results found". This is expected for non-movie/TV content like folders, games, or books. Just type your desired name and click **Save** - the search is optional.
 
 ### Choose primary files
 
 When an item has multiple files of the same type, you can pick which one is the "primary" - the one that plays or displays by default.
 
-The Settings dialog shows sections for:
+The Settings dialogue shows sections for:
 
 - **Primary Media** - Which video or audio file plays first
 - **Primary Artwork** - Which image shows as the thumbnail
@@ -99,12 +112,12 @@ The Hero Artwork section only appears when you have 2 or more artwork files, sin
 
 ## File summary
 
-At the top of the dialog, you'll see icons showing how many files are attached:
+At the top of the dialogue, you'll see icons showing how many files are attached:
 
 - Media files (video, audio)
 - Artwork files (images)
 - Subtitle files
 
-## Close the dialog
+## Close the dialogue
 
 Click the **X** button or press **Escape** to close. If you haven't saved name changes, they won't be applied.

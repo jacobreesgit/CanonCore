@@ -9,6 +9,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { Logo } from "@/components/logo";
+import { FloatingPaths } from "@/components/floating-paths";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -94,52 +96,59 @@ export function SignUpForm() {
   };
 
   return (
-    <section className="bg-muted relative h-screen overflow-hidden">
-      {/* Background Gradient */}
-      <div
-        className="absolute inset-0 z-0"
-        style={{
-          backgroundImage: `
-            radial-gradient(circle 600px at 0% 200px, oklch(from var(--primary) calc(l * 0.7) calc(c * 0.6) h / 0.15), transparent),
-            radial-gradient(circle 600px at 100% 200px, oklch(from var(--primary) calc(l * 0.75) calc(c * 0.65) h / 0.12), transparent)
-          `,
-        }}
-      />
-      <div
-        className="relative z-10 flex h-full items-center justify-center"
-        style={{
-          paddingTop: "var(--safe-area-inset-top)",
-          paddingRight: "var(--safe-area-inset-right)",
-          paddingBottom: "var(--safe-area-inset-bottom)",
-          paddingLeft: "var(--safe-area-inset-left)",
-        }}
-      >
-        <div className="flex flex-col items-center gap-6 lg:justify-start">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-1.5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/black.png" alt="CanonCore" className="h-6 dark:invert" />
-            <span className="text-xl font-semibold">CanonCore</span>
+    <main className="relative md:h-screen md:overflow-hidden lg:grid lg:grid-cols-2">
+      {/* Left panel - decorative */}
+      <div className="bg-secondary dark:bg-secondary/20 relative hidden h-full flex-col border-r p-10 lg:flex">
+        <div className="to-background absolute inset-0 bg-gradient-to-b from-transparent via-transparent" />
+        <Link href="/">
+          <Logo />
+        </Link>
+
+        <div className="absolute inset-0">
+          <FloatingPaths position={1} />
+          <FloatingPaths position={-1} />
+        </div>
+      </div>
+
+      {/* Right panel - form */}
+      <div className="relative flex min-h-screen flex-col justify-center p-4">
+        <div
+          aria-hidden
+          className="absolute inset-0 isolate -z-10 opacity-60 contain-strict"
+        >
+          <div className="bg-[radial-gradient(68.54%_68.72%_at_55.02%_31.46%,--theme(--color-foreground/.06)_0,hsla(0,0%,55%,.02)_50%,--theme(--color-foreground/.01)_80%)] absolute top-0 right-0 h-320 w-140 -translate-y-87.5 rounded-full" />
+          <div className="bg-[radial-gradient(50%_50%_at_50%_50%,--theme(--color-foreground/.04)_0,--theme(--color-foreground/.01)_80%,transparent_100%)] absolute top-0 right-0 h-320 w-60 [translate:5%_-50%] rounded-full" />
+          <div className="bg-[radial-gradient(50%_50%_at_50%_50%,--theme(--color-foreground/.04)_0,--theme(--color-foreground/.01)_80%,transparent_100%)] absolute top-0 right-0 h-320 w-60 -translate-y-87.5 rounded-full" />
+        </div>
+
+        <div className="mx-auto w-full max-w-sm space-y-4">
+          <Link href="/" className="mb-4 block lg:hidden">
+            <Logo />
           </Link>
 
-          <form
-            onSubmit={onSubmit}
-            className="border-muted bg-background flex w-full max-w-sm min-w-sm flex-col items-center gap-y-4 rounded-md border px-6 py-8 shadow-md"
+          <div className="mb-8 flex flex-col space-y-1">
+            <h1 className="text-2xl font-bold tracking-wide">Create account</h1>
+            <p className="text-muted-foreground text-base">
+              Join CanonCore and start organising.
+            </p>
+          </div>
+
+          <div
+            id="sign-up-error"
+            data-testid="sign-up-error-message"
+            className={
+              error
+                ? "bg-destructive/10 text-destructive w-full rounded-md px-4 py-3 text-center text-sm"
+                : "sr-only"
+            }
+            role="alert"
+            aria-live="polite"
           >
-            <h1 className="text-xl font-semibold text-balance">
-              Create your account
-            </h1>
+            {error}
+          </div>
 
-            {error && (
-              <div
-                data-testid="sign-up-error-message"
-                className="bg-destructive/10 text-destructive w-full rounded-md px-4 py-3 text-center text-sm"
-              >
-                {error}
-              </div>
-            )}
-
-            <div className="flex w-full flex-col gap-2">
+          <form onSubmit={onSubmit} className="space-y-4">
+            <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -147,16 +156,17 @@ export function SignUpForm() {
                 type="email"
                 autoComplete="email"
                 spellCheck={false}
-                placeholder="Email"
-                className="text-sm"
+                placeholder="your.email@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                aria-invalid={!!error}
+                aria-describedby={error ? "sign-up-error" : undefined}
                 data-testid="sign-up-email-input"
               />
             </div>
 
-            <div className="flex w-full flex-col gap-2">
+            <div className="space-y-2">
               <Label htmlFor="username">
                 Username{" "}
                 <span className="text-muted-foreground font-normal">
@@ -172,7 +182,7 @@ export function SignUpForm() {
                   spellCheck={false}
                   placeholder="Choose a username"
                   className={cn(
-                    "pr-10 text-sm",
+                    "pr-10",
                     username &&
                       (isUsernameValid
                         ? "border-green-500 focus-visible:ring-green-500/20"
@@ -182,6 +192,14 @@ export function SignUpForm() {
                   )}
                   value={username}
                   onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                  aria-invalid={!!(username && usernameError)}
+                  aria-describedby={
+                    username && usernameError
+                      ? "username-error"
+                      : username && usernameSuccess
+                        ? "username-success"
+                        : undefined
+                  }
                   data-testid="sign-up-username-input"
                 />
                 {username && (
@@ -197,40 +215,54 @@ export function SignUpForm() {
                 )}
               </div>
               {username && usernameError && (
-                <p className="text-destructive text-xs">{usernameError}</p>
+                <p
+                  id="username-error"
+                  className="text-destructive text-xs"
+                  aria-live="polite"
+                >
+                  {usernameError}
+                </p>
               )}
               {username && usernameSuccess && (
-                <p className="text-xs text-green-600">{usernameSuccess}</p>
+                <p
+                  id="username-success"
+                  className="text-xs text-green-600"
+                  aria-live="polite"
+                >
+                  {usernameSuccess}
+                </p>
               )}
             </div>
 
-            <div className="flex w-full flex-col gap-2">
+            <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <PasswordInput
                 id="password"
                 name="new-password"
                 autoComplete="new-password"
                 placeholder="Password"
-                className="text-sm"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={8}
+                aria-invalid={!!error}
+                aria-describedby={error ? "sign-up-error" : undefined}
                 data-testid="sign-up-password-input"
               />
             </div>
 
-            <div className="flex w-full flex-col gap-2">
+            <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm password</Label>
               <PasswordInput
                 id="confirmPassword"
                 name="confirm-password"
                 autoComplete="new-password"
                 placeholder="Confirm password"
-                className="text-sm"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
+                aria-invalid={!!error}
+                aria-describedby={error ? "sign-up-error" : undefined}
                 data-testid="sign-up-confirm-password-input"
               />
             </div>
@@ -238,15 +270,16 @@ export function SignUpForm() {
             <Button
               type="submit"
               className="w-full"
+              size="lg"
               disabled={loading}
               data-testid="sign-up-submit-button"
             >
-              {loading ? "Creating account…" : "Create account"}
+              {loading ? "Creating account..." : "Create account"}
             </Button>
           </form>
 
-          <div className="text-muted-foreground flex justify-center gap-1 text-sm">
-            <p>Already have an account?</p>
+          <p className="text-muted-foreground text-center text-sm">
+            Already have an account?{" "}
             <Link
               href="/sign-in"
               className="text-primary font-medium hover:underline"
@@ -254,9 +287,9 @@ export function SignUpForm() {
             >
               Sign in
             </Link>
-          </div>
+          </p>
         </div>
       </div>
-    </section>
+    </main>
   );
 }

@@ -84,8 +84,8 @@ describe("AddItemDialog", () => {
 
   /**
    * Helper to complete wizard.
-   * With hasDriveConnection=true: 4 steps (text → poster → hero → summary)
-   * With hasDriveConnection=false: 2 steps (text → summary)
+   * With hasDriveConnection=true: 4 steps (text → poster → hero → review/apply)
+   * With hasDriveConnection=false: 2 steps (text → review/apply)
    */
   // Note: AnimatedDialogContent uses AnimatePresence mode="sync" for crossfade,
   // so we must wait for old step to fully exit before querying Next button
@@ -94,52 +94,89 @@ describe("AddItemDialog", () => {
     hasDriveConnection = true
   ) => {
     if (hasDriveConnection) {
-      // Wait for wizard step 1 to appear
+      // Wait for wizard step 1 (Title & Description) to appear
       await waitFor(() => {
         expect(screen.getByText("Apply Metadata")).toBeInTheDocument();
-        expect(screen.getByText(/Step 1 of 4/i)).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /title & description/i })
+        ).toBeInTheDocument();
       });
 
       // Step 1 → Step 2
       await user.click(screen.getByRole("button", { name: /next/i }));
 
-      // Wait for step 2 AND ensure step 1 is fully gone (animation complete)
+      // Wait for step 2 (Poster) AND ensure step 1 heading is gone
       await waitFor(() => {
-        expect(screen.getByText(/Step 2 of 4/i)).toBeInTheDocument();
-        expect(screen.queryByText(/Step 1 of 4/i)).not.toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /select poster/i })
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByRole("heading", { name: /title & description/i })
+        ).not.toBeInTheDocument();
       });
 
       // Step 2 → Step 3
       await user.click(screen.getByRole("button", { name: /next/i }));
 
-      // Wait for step 3 AND ensure step 2 is fully gone
+      // Wait for step 3 (Hero) AND ensure step 2 heading is gone
       await waitFor(() => {
-        expect(screen.getByText(/Step 3 of 4/i)).toBeInTheDocument();
-        expect(screen.queryByText(/Step 2 of 4/i)).not.toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /select hero image/i })
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByRole("heading", { name: /select poster/i })
+        ).not.toBeInTheDocument();
       });
 
-      // Step 3 → Step 4 (Summary)
+      // Step 3 → Step 4 (Review Changes)
+      await user.click(screen.getByRole("button", { name: /next/i }));
+
+      // Wait for step 4 (Review Changes) AND ensure step 3 heading is gone
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: /review changes/i })
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByRole("heading", { name: /select hero image/i })
+        ).not.toBeInTheDocument();
+      });
+
+      // Click Apply to complete wizard and go to final form
       await user.click(screen.getByRole("button", { name: /apply/i }));
 
-      // Wait for step 4 (wizard-summary) AND ensure step 3 is fully gone
+      // Wait for final form (wizard-summary) - it shows "Review & Create" in the header
       await waitFor(() => {
-        expect(screen.getByText(/Step 4 of 4/i)).toBeInTheDocument();
-        expect(screen.queryByText(/Step 3 of 4/i)).not.toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /review & create/i })
+        ).toBeInTheDocument();
       });
     } else {
-      // Without Drive: 2 steps (text → summary)
+      // Without Drive: 2 steps (text → review/apply)
       await waitFor(() => {
         expect(screen.getByText("Apply Metadata")).toBeInTheDocument();
-        expect(screen.getByText(/Step 1 of 2/i)).toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /title & description/i })
+        ).toBeInTheDocument();
       });
 
-      // Step 1 → Step 2 (Summary)
-      await user.click(screen.getByRole("button", { name: /continue/i }));
+      // Step 1 → Step 2 (Review)
+      await user.click(screen.getByRole("button", { name: /next/i }));
 
-      // Wait for step 2 (wizard-summary) AND ensure step 1 is fully gone
+      // Wait for step 2 (Review Changes)
       await waitFor(() => {
-        expect(screen.getByText(/Step 2 of 2/i)).toBeInTheDocument();
-        expect(screen.queryByText(/Step 1 of 2/i)).not.toBeInTheDocument();
+        expect(
+          screen.getByRole("heading", { name: /review changes/i })
+        ).toBeInTheDocument();
+      });
+
+      // Click Apply to complete wizard and go to final form
+      await user.click(screen.getByRole("button", { name: /apply/i }));
+
+      // Wait for final form
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: /review & create/i })
+        ).toBeInTheDocument();
       });
     }
   };
@@ -758,32 +795,45 @@ describe("AddItemDialog - Categorized File Uploads", () => {
     });
   });
 
-  /** Helper to complete wizard: Next (step 1) → Next (step 2) → Apply (step 3) → Summary (step 4) */
+  /** Helper to complete wizard: text → poster → hero → review → apply */
   const completeWizard = async (user: ReturnType<typeof userEvent.setup>) => {
     await waitFor(() => {
       expect(screen.getByText("Apply Metadata")).toBeInTheDocument();
-      expect(screen.getByText(/Step 1 of 4/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: /title & description/i })
+      ).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole("button", { name: /next/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Step 2 of 4/i)).toBeInTheDocument();
-      expect(screen.queryByText(/Step 1 of 4/i)).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: /select poster/i })
+      ).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole("button", { name: /next/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Step 3 of 4/i)).toBeInTheDocument();
-      expect(screen.queryByText(/Step 2 of 4/i)).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: /select hero image/i })
+      ).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /next/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /review changes/i })
+      ).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole("button", { name: /apply/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Step 4 of 4/i)).toBeInTheDocument();
-      expect(screen.queryByText(/Step 3 of 4/i)).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: /review & create/i })
+      ).toBeInTheDocument();
     });
   };
 
@@ -961,26 +1011,41 @@ describe("AddItemDialog - Summary View Layout", () => {
     });
   });
 
-  /** Helper to complete wizard: navigates to step 4 (wizard-summary) */
+  /** Helper to complete wizard: text → poster → hero → review → apply */
   const completeWizard = async (user: ReturnType<typeof userEvent.setup>) => {
     await waitFor(() => {
       expect(screen.getByText("Apply Metadata")).toBeInTheDocument();
-      expect(screen.getByText(/Step 1 of 4/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: /title & description/i })
+      ).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole("button", { name: /next/i }));
     await waitFor(() => {
-      expect(screen.getByText(/Step 2 of 4/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: /select poster/i })
+      ).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole("button", { name: /next/i }));
     await waitFor(() => {
-      expect(screen.getByText(/Step 3 of 4/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: /select hero image/i })
+      ).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /next/i }));
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /review changes/i })
+      ).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole("button", { name: /apply/i }));
     await waitFor(() => {
-      expect(screen.getByText(/Step 4 of 4/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: /review & create/i })
+      ).toBeInTheDocument();
     });
   };
 
@@ -1061,7 +1126,9 @@ describe("AddItemDialog - Summary View Layout", () => {
     });
 
     // Artwork section uses individual "Poster" and "Hero Banner" labels
-    expect(screen.getByText("Poster")).toBeInTheDocument();
+    // Use getAllByText since "Poster" appears in wizard step indicator too
+    const posterLabels = screen.getAllByText("Poster");
+    expect(posterLabels.length).toBeGreaterThan(0);
     expect(screen.getByText("Hero Banner")).toBeInTheDocument();
 
     // Files tab exists (there may be multiple, so use getAllByRole)
@@ -1111,8 +1178,11 @@ describe("AddItemDialog - Summary View Layout", () => {
     await completeWizard(user);
 
     // Artwork section should have poster and hero thumbnails
-    expect(screen.getByText("Poster")).toBeInTheDocument();
-    expect(screen.getByText("Hero Banner")).toBeInTheDocument();
+    // Use getAllByText since "Poster" appears in wizard step indicator too
+    const posterLabels = screen.getAllByText("Poster");
+    expect(posterLabels.length).toBeGreaterThan(0);
+    const heroLabels = screen.getAllByText("Hero Banner");
+    expect(heroLabels.length).toBeGreaterThan(0);
 
     // Should show artwork images in dropzone-style buttons
     const posterPreview = screen.getByRole("img", {

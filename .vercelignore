@@ -7,6 +7,9 @@ test-results/
 # Documentation
 docs/
 
+# Claude Code skills
+skills/
+
 # Development files
 *.md
 !README.md
@@ -15,3 +18,6 @@ docs/
 seed-media/
 *.mp4
 *.srt
+
+# Portfolio screenshots (large PNG files - not needed for production)
+public/portfolio/*.png

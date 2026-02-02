@@ -44,6 +44,7 @@ export default tseslint.config(
       ".source/**",
       "playwright-report/**",
       "test-results/**",
+      "storybook-static/**",
     ],
   }
 );

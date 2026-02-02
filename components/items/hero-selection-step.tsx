@@ -1,35 +1,12 @@
 /**
  * Wizard step for selecting hero/backdrop artwork from TMDB or uploads.
- * Supports two modes:
- * - Default: Uses ImageSelectionGrid for selecting from TMDB/existing files
- * - Upload mode: Shows dropzone for queueing new files (Add Item dialog)
+ * Thin wrapper around ArtworkSelectionStep with hero-specific configuration.
  */
 
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { Upload, CloudOff, SkipForward } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import {
-  Dropzone,
-  DropzoneEmptyState,
-  DropzoneContent,
-} from "@/components/ui/dropzone";
-import {
-  ImageSelectionGrid,
-  type ExistingArtworkFile,
-} from "./image-selection-grid";
-import { QueuedFileThumbnail } from "./queued-file-thumbnail";
-import {
-  useArtworkUpload,
-  MAX_IMAGE_SIZE_BYTES,
-  MAX_UPLOAD_FILES,
-} from "@/hooks/use-artwork-upload";
-import { formatBytes } from "@/lib/upload-utils";
-import { cn } from "@/lib/utils";
+import { ArtworkSelectionStep } from "./artwork-selection-step";
+import type { ExistingArtworkFile } from "./image-selection-grid";
 import type { TMDBImage } from "@/lib/tmdb-client";
 import type { QueuedFile, ArtworkSelectionSource } from "@/lib/types";
 
@@ -79,228 +56,33 @@ interface HeroSelectionStepProps {
  */
 export function HeroSelectionStep({
   backdrops,
-  existingFiles = [],
+  existingFiles,
   selectedValue,
   selectedSource,
   onSelect,
   isSkipped,
   onSkipChange,
-  disabled = false,
-  uploadMode = false,
-  queuedHero = [],
+  disabled,
+  uploadMode,
+  queuedHero,
   onQueueHeroChange,
-  hasDriveConnection = false,
+  hasDriveConnection,
 }: HeroSelectionStepProps) {
-  const [activeTab, setActiveTab] = useState<"tmdb" | "uploads">("tmdb");
-
-  const { handleFileDrop, handleRemoveFile, handleQueuedSelect, totalSize } =
-    useArtworkUpload({
-      queuedFiles: queuedHero,
-      onQueueChange: onQueueHeroChange,
-      selectedValue,
-      onSelect,
-      isSkipped,
-      disabled,
-    });
-
-  // Auto-select first queued file when on uploads tab with no selection.
-  // Only triggers when:
-  // 1. In upload mode with queued files
-  // 2. Not currently using a queued selection (preserves TMDB selections)
-  // 3. On the uploads tab with no value selected
-  // This preserves existing selections when switching tabs.
-  useEffect(() => {
-    if (
-      uploadMode &&
-      queuedHero.length > 0 &&
-      selectedSource !== "queued" &&
-      !isSkipped
-    ) {
-      if (activeTab === "uploads" && selectedValue === null) {
-        onSelect(queuedHero[0].id, "queued");
-      }
-    }
-  }, [
-    uploadMode,
-    queuedHero,
-    selectedSource,
-    selectedValue,
-    activeTab,
-    isSkipped,
-    onSelect,
-  ]);
-
-  /**
-   * Handles selection from ImageSelectionGrid (TMDB or existing).
-   */
-  const handleGridSelect = useCallback(
-    (value: string | null, source: "tmdb" | "existing") => {
-      onSelect(value, source);
-    },
-    [onSelect]
-  );
-
-  // For upload mode, render tabs with TMDB and My Uploads (dropzone)
-  if (uploadMode) {
-    return (
-      <div className="space-y-4">
-        <Tabs
-          value={activeTab}
-          onValueChange={(v) => setActiveTab(v as "tmdb" | "uploads")}
-        >
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="tmdb" disabled={disabled}>
-              From TMDB
-              {backdrops.length > 0 && (
-                <span className="bg-muted ml-1.5 rounded px-1.5 py-0.5 text-xs tabular-nums">
-                  {backdrops.length}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="uploads" disabled={disabled}>
-              My Uploads
-              {queuedHero.length > 0 && (
-                <span className="bg-muted ml-1.5 rounded px-1.5 py-0.5 text-xs tabular-nums">
-                  {queuedHero.length}
-                </span>
-              )}
-            </TabsTrigger>
-          </TabsList>
-
-          {/* TMDB Images Tab */}
-          <TabsContent value="tmdb" className="mt-4">
-            <ImageSelectionGrid
-              type="backdrop"
-              tmdbImages={backdrops}
-              existingFiles={[]}
-              selectedValue={selectedSource === "tmdb" ? selectedValue : null}
-              onSelect={handleGridSelect}
-              isSkipped={isSkipped}
-              disabled={disabled}
-              initialLimit={8}
-              showTabs={false}
-            />
-          </TabsContent>
-
-          {/* My Uploads Tab (Dropzone + Thumbnails) */}
-          <TabsContent value="uploads" className="mt-4">
-            {!hasDriveConnection ? (
-              <div className="bg-muted/30 flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-12">
-                <CloudOff className="text-muted-foreground/50 size-8" />
-                <p className="text-muted-foreground text-sm">
-                  Connect Google Drive in Settings to enable uploads
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Dropzone */}
-                <Dropzone
-                  onDrop={handleFileDrop}
-                  maxFiles={MAX_UPLOAD_FILES}
-                  maxSize={MAX_IMAGE_SIZE_BYTES}
-                  accept={{ "image/*": [] }}
-                  disabled={disabled || isSkipped}
-                  className="min-h-[100px]"
-                >
-                  <DropzoneEmptyState>
-                    <div className="flex flex-col items-center justify-center gap-1.5 px-4 py-3 text-center">
-                      <Upload className="text-muted-foreground size-6" />
-                      <p className="text-muted-foreground text-sm">
-                        {queuedHero.length === 0
-                          ? "No files uploaded yet. Drop hero images or click to browse."
-                          : "Drop hero images or click to browse"}
-                      </p>
-                    </div>
-                  </DropzoneEmptyState>
-                  <DropzoneContent>
-                    <div className="flex flex-col items-center justify-center gap-1.5 px-4 py-3 text-center">
-                      <Upload className="text-primary size-6" />
-                      <p className="text-sm font-medium">Drop to add</p>
-                    </div>
-                  </DropzoneContent>
-                </Dropzone>
-
-                {/* Queued Files Thumbnails */}
-                <AnimatePresence mode="popLayout">
-                  {queuedHero.length > 0 && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="space-y-3"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground text-xs">
-                          {queuedHero.length} file
-                          {queuedHero.length !== 1 && "s"} queued (click to
-                          select)
-                        </span>
-                        <span className="text-muted-foreground text-xs">
-                          {formatBytes(totalSize)}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                        {queuedHero.map((qf, index) => (
-                          <QueuedFileThumbnail
-                            key={qf.id}
-                            file={qf}
-                            index={index}
-                            isSelected={selectedValue === qf.id}
-                            isSkipped={isSkipped}
-                            disabled={disabled}
-                            onClick={() => handleQueuedSelect(qf.id)}
-                            onRemove={() => handleRemoveFile(qf.id)}
-                            aspectRatio="backdrop"
-                          />
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-
-        {/* Skip checkbox */}
-        <div className="flex items-center gap-2 pt-2">
-          <Checkbox
-            id="skip-hero-selection"
-            checked={isSkipped}
-            onCheckedChange={(checked) => onSkipChange(checked === true)}
-            disabled={disabled}
-          />
-          <Label
-            htmlFor="skip-hero-selection"
-            className={cn(
-              "flex cursor-pointer items-center gap-1.5 text-sm",
-              disabled && "cursor-not-allowed opacity-50"
-            )}
-          >
-            <SkipForward className="size-3.5" />
-            Skip hero selection
-          </Label>
-        </div>
-      </div>
-    );
-  }
-
-  // Default mode: Use ImageSelectionGrid
   return (
-    <div className="space-y-4">
-      <ImageSelectionGrid
-        type="backdrop"
-        tmdbImages={backdrops}
-        existingFiles={existingFiles}
-        selectedValue={selectedValue}
-        onSelect={handleGridSelect}
-        isSkipped={isSkipped}
-        onSkipChange={onSkipChange}
-        disabled={disabled}
-        initialLimit={8}
-      />
-    </div>
+    <ArtworkSelectionStep
+      type="backdrop"
+      images={backdrops}
+      existingFiles={existingFiles}
+      selectedValue={selectedValue}
+      selectedSource={selectedSource}
+      onSelect={onSelect}
+      isSkipped={isSkipped}
+      onSkipChange={onSkipChange}
+      disabled={disabled}
+      uploadMode={uploadMode}
+      queuedFiles={queuedHero}
+      onQueueFilesChange={onQueueHeroChange}
+      hasDriveConnection={hasDriveConnection}
+    />
   );
 }

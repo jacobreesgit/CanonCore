@@ -198,6 +198,21 @@ function AnimatedDialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         onOpenAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => {
+          // Prevent dialog from closing when interacting with Radix portals
+          // (e.g., Popover, Select) that render outside the dialog DOM tree
+          const target = e.target as HTMLElement | null;
+          if (target?.closest("[data-radix-popper-content-wrapper]")) {
+            e.preventDefault();
+          }
+        }}
+        onFocusOutside={(e) => {
+          // Prevent dialog from closing when focus moves to Radix portals
+          const target = e.target as HTMLElement | null;
+          if (target?.closest("[data-radix-popper-content-wrapper]")) {
+            e.preventDefault();
+          }
+        }}
         className={cn(
           "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 flex max-h-[95vh] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] flex-col gap-4 overscroll-contain rounded-lg border p-6 shadow-lg duration-200 outline-none sm:max-w-lg",
           className

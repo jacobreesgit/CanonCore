@@ -8,13 +8,16 @@
     "scripts/**",
     "prisma/seed-cleanup.ts",
     "components/items/fork-destination-dialog.tsx",
-    "components/items/visibility-toggle.tsx"
+    "components/items/visibility-toggle.tsx",
+    "mdx-components.tsx",
+    ".storybook/**",
+    ".github/**"
   ],
   "ignoreBinaries": ["pkill", "lsof"],
   "ignoreDependencies": [
     "pino-pretty",
     "baseline-browser-mapping",
-    "framer-motion"
+    "@types/mdx"
   ],
   "ignoreExportsUsedInFile": {
     "interface": true,

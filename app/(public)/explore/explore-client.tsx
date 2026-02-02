@@ -249,7 +249,7 @@ export function ExploreClient({
       {hasItems ? (
         <div
           data-testid="items-grid-view"
-          className="grid grid-cols-2 gap-4 px-4 md:grid-cols-3 md:px-6 lg:grid-cols-5 lg:px-8"
+          className="grid grid-cols-1 gap-4 px-4 md:grid-cols-3 md:px-6 lg:grid-cols-5 lg:px-8"
         >
           {sortedItems.map((item, index) => {
             const isOwnItem = currentUser?.id === item.userId;

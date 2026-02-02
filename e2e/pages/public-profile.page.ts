@@ -25,6 +25,7 @@ export class PublicProfilePage {
   readonly breadcrumb: Locator;
   readonly viewToggleTree: Locator;
   readonly viewToggleGrid: Locator;
+  readonly heroForkButton: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -53,6 +54,8 @@ export class PublicProfilePage {
     // View toggle buttons
     this.viewToggleTree = page.getByRole("button", { name: /tree view/i });
     this.viewToggleGrid = page.getByRole("button", { name: /grid view/i });
+    // Hero carousel fork button (different from toolbar fork button)
+    this.heroForkButton = page.getByTestId("hero-fork-button");
   }
 
   /** Navigate to a public profile */
@@ -122,8 +125,9 @@ export class PublicProfilePage {
 
   /** Expect sign-in prompt for unauthenticated user */
   async expectSignInToFork() {
+    // Use first() since there may be multiple "Sign in to Fork" links (hero + toolbar)
     await expect(
-      this.page.getByRole("link", { name: /sign in to fork/i })
+      this.page.getByRole("link", { name: /sign in to fork/i }).first()
     ).toBeVisible();
   }
 
@@ -171,5 +175,24 @@ export class PublicProfilePage {
     await expect(
       this.itemsTree.getByRole("listitem").filter({ hasText: name })
     ).toBeVisible();
+  }
+
+  /** Expect hero carousel to show "Sign in to Fork" button (guest user) */
+  async expectHeroSignInToFork() {
+    await expect(this.heroForkButton).toBeVisible();
+    await expect(this.heroForkButton).toContainText(/sign in to fork/i);
+  }
+
+  /** Expect hero carousel to show "In Library" button (already forked) */
+  async expectHeroInLibrary() {
+    await expect(this.heroForkButton).toBeVisible();
+    await expect(this.heroForkButton).toContainText(/in library/i);
+  }
+
+  /** Expect hero carousel to show enabled "Fork" button (authenticated, not forked) */
+  async expectHeroForkButton() {
+    await expect(this.heroForkButton).toBeVisible();
+    await expect(this.heroForkButton).toBeEnabled();
+    await expect(this.heroForkButton).toContainText(/^fork$/i);
   }
 }

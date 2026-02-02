@@ -20,7 +20,6 @@ import crypto from "crypto";
  *   - SEED_MOVIE_IDS: Comma-separated TMDB movie IDs to seed (overrides default list)
  *   - SEED_SHOW_IDS: Comma-separated TMDB show IDs to seed (overrides default list)
  *   - SEED_USER_EMAIL: Override to seed single user only (default: null)
- *   - SEED_GROUPED_STRUCTURE: Create Movies/TV Shows parent folders (default: true)
  *   - SEED_INCREMENTAL: Enable incremental mode (default: true, set to "false" for clean slate)
  *   - TMDB_API_DELAY_MS is hardcoded at 100ms for rate limiting
  */
@@ -36,7 +35,7 @@ function parseBooleanEnv(value: string | undefined): boolean {
 }
 
 /** Maximum seasons to seed per TV show (0 = unlimited). */
-export const MAX_SEASONS = parseInt(process.env.SEED_MAX_SEASONS || "2", 10);
+export const MAX_SEASONS = parseInt(process.env.SEED_MAX_SEASONS || "5", 10);
 
 /** Maximum episodes to seed per season (0 = unlimited). */
 export const MAX_EPISODES = parseInt(process.env.SEED_MAX_EPISODES || "10", 10);
@@ -83,10 +82,6 @@ export const SEED_SHOW_IDS = process.env.SEED_SHOW_IDS
   ? process.env.SEED_SHOW_IDS.split(",").map((id) => parseInt(id.trim(), 10))
   : null;
 
-/** Enable grouped folder structure (Movies/, TV Shows/) instead of flat. Default: true. */
-export const SEED_GROUPED_STRUCTURE =
-  process.env.SEED_GROUPED_STRUCTURE?.toLowerCase() !== "false";
-
 /**
  * Enable incremental seeding mode.
  * When true: only re-seed users whose content hash has changed.
@@ -105,46 +100,6 @@ export const PLAYBACK_DURATIONS = {
   movie: { min: 5400, max: 10800 }, // 1.5-3 hours
   episode: { min: 1800, max: 4200 }, // 30-70 minutes
 };
-
-// =============================================================================
-// Doctor Who Special Handling
-// =============================================================================
-
-/** Classic Doctor Who TMDB ID (1963-1989). */
-export const CLASSIC_DOCTOR_WHO_ID = 121;
-
-/** Modern Doctor Who TMDB ID (2005+). */
-export const MODERN_DOCTOR_WHO_ID = 57243;
-
-/**
- * Checks if a TV show ID is Classic Doctor Who.
- *
- * @param id - TMDB show ID
- * @returns True if Classic Doctor Who
- */
-export function isClassicDoctorWho(id: number): boolean {
-  return id === CLASSIC_DOCTOR_WHO_ID;
-}
-
-/**
- * Checks if a TV show ID is Modern Doctor Who.
- *
- * @param id - TMDB show ID
- * @returns True if Modern Doctor Who
- */
-export function isModernDoctorWho(id: number): boolean {
-  return id === MODERN_DOCTOR_WHO_ID;
-}
-
-/**
- * Checks if a TV show ID is any Doctor Who (Classic or Modern).
- *
- * @param id - TMDB show ID
- * @returns True if any Doctor Who
- */
-export function isDoctorWho(id: number): boolean {
-  return isClassicDoctorWho(id) || isModernDoctorWho(id);
-}
 
 /** Movie TMDB IDs to seed (superset of all user movies). */
 export const MOVIE_IDS = [
@@ -165,18 +120,6 @@ export const MOVIE_IDS = [
   194, // Amélie
   598, // City of God
   1417, // Pan's Labyrinth
-
-  // bingewatcher - Peak TV
-  155, // The Dark Knight
-  27205, // Inception
-  157336, // Interstellar
-
-  // scifi_jordan - Sci-Fi/Fantasy
-  78, // Blade Runner
-  438631, // Dune
-  329865, // Arrival
-  264660, // Ex Machina
-  286217, // The Martian
 ];
 
 /** TV Show TMDB IDs to seed (superset of all user shows). */
@@ -188,18 +131,6 @@ export const TV_SHOW_IDS = [
   // filmfan - International Film
   93405, // Squid Game
   70523, // Dark
-
-  // bingewatcher - Peak TV
-  1399, // Game of Thrones
-  66732, // Stranger Things
-  2316, // The Office
-  1668, // Friends
-
-  // scifi_jordan - Sci-Fi/Fantasy
-  121, // Doctor Who (Classic, 1963-1989)
-  57243, // Doctor Who (Modern, 2005+)
-  63639, // The Expanse
-  42009, // Black Mirror
 ];
 
 /** User profile configuration for seeding. */
@@ -250,7 +181,7 @@ export function buildPicsumUrl(
   return `https://picsum.photos/seed/${seed}/${width}/${height}`;
 }
 
-/** Seed user configuration (5 users for Explore page variety). */
+/** Seed user configuration (3 users - demo, filmfan for screenshots, testuser for E2E). */
 export const SEED_USERS: SeedUserConfig[] = [
   {
     email: "demo@canoncore.com",
@@ -270,22 +201,6 @@ export const SEED_USERS: SeedUserConfig[] = [
     isPublic: true,
     avatarSeed: "filmfan-avatar",
     heroSeed: "filmfan-hero",
-  },
-  {
-    email: "bingewatcher@canoncore.com",
-    name: "Alex Chen",
-    username: "bingewatcher",
-    isPublic: true,
-    avatarSeed: "bingewatcher-avatar",
-    heroSeed: "bingewatcher-hero",
-  },
-  {
-    email: "scifi@canoncore.com",
-    name: "Jordan Taylor",
-    username: "scifi_jordan",
-    isPublic: true,
-    avatarSeed: "scifi-avatar",
-    heroSeed: "scifi-hero",
   },
   {
     email: "test@canoncore.com",
@@ -314,18 +229,6 @@ export const USER_CONTENT_DISTRIBUTION: Record<string, UserContentConfig> = {
     // Spirited Away, Parasite, Life Is Beautiful, Amélie, City of God, Pan's Labyrinth
     showIds: [93405, 70523], // Squid Game, Dark
   },
-  "bingewatcher@canoncore.com": {
-    // Peak TV Enthusiast - Christopher Nolan films + binge-worthy shows
-    movieIds: [155, 27205, 157336],
-    // Dark Knight, Inception, Interstellar
-    showIds: [1399, 66732, 2316, 1668], // Game of Thrones, Stranger Things, The Office, Friends
-  },
-  "scifi@canoncore.com": {
-    // Sci-Fi/Fantasy Fan - science fiction films and shows
-    movieIds: [78, 438631, 329865, 264660, 286217],
-    // Blade Runner, Dune, Arrival, Ex Machina, The Martian
-    showIds: [121, 57243, 63639, 42009], // Doctor Who (Classic + Modern), The Expanse, Black Mirror
-  },
   "test@canoncore.com": {
     // Empty for E2E testing - start with clean slate
     movieIds: [],
@@ -337,8 +240,6 @@ export const USER_CONTENT_DISTRIBUTION: Record<string, UserContentConfig> = {
 export const USER_PROGRESS_RANGES: Record<string, ProgressRange> = {
   "demo@canoncore.com": { min: 0.25, max: 0.95 },
   "filmfan@canoncore.com": { min: 0.8, max: 1.0 },
-  "bingewatcher@canoncore.com": { min: 0.1, max: 0.95 },
-  "scifi@canoncore.com": { min: 0.4, max: 0.95 },
   "test@canoncore.com": { min: 0, max: 0 },
 };
 
@@ -349,8 +250,6 @@ export const USER_PROGRESS_RANGES: Record<string, ProgressRange> = {
 export const USER_PINNED_ITEMS: Record<string, number[]> = {
   "demo@canoncore.com": [1396, 603, 238], // Breaking Bad, The Matrix, The Godfather
   "filmfan@canoncore.com": [129, 496243], // Spirited Away, Parasite
-  "bingewatcher@canoncore.com": [66732, 1399], // Stranger Things, Game of Thrones
-  "scifi@canoncore.com": [438631, 57243], // Dune, Doctor Who (Modern)
   "test@canoncore.com": [],
 };
 
@@ -420,6 +319,10 @@ export function getEffectiveSeedUsers(): SeedUserConfig[] {
  * @returns Array of movie TMDB IDs
  */
 export function getEffectiveMovieIdsForUser(email: string): number[] {
+  // If global overrides are set, use them instead of user config
+  if (SEED_ONLY_SHOWS) return [];
+  if (SEED_MOVIE_IDS) return SEED_MOVIE_IDS;
+
   const userConfig = USER_CONTENT_DISTRIBUTION[email];
   if (userConfig) {
     // Apply global limits if set
@@ -439,6 +342,10 @@ export function getEffectiveMovieIdsForUser(email: string): number[] {
  * @returns Array of TV show TMDB IDs
  */
 export function getEffectiveTVShowIdsForUser(email: string): number[] {
+  // If global overrides are set, use them instead of user config
+  if (SEED_ONLY_MOVIES) return [];
+  if (SEED_SHOW_IDS) return SEED_SHOW_IDS;
+
   const userConfig = USER_CONTENT_DISTRIBUTION[email];
   if (userConfig) {
     // Apply global limits if set
@@ -526,7 +433,6 @@ export function computeUserContentHash(email: string): string {
     // Global settings that affect output
     maxSeasons: MAX_SEASONS,
     maxEpisodes: MAX_EPISODES,
-    groupedStructure: SEED_GROUPED_STRUCTURE,
     simulatePlayback: SEED_SIMULATE_PLAYBACK,
   });
 

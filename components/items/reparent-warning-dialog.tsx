@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 
 interface ReparentWarningDialogProps {
   /** Whether the dialog is open */
@@ -34,6 +34,8 @@ interface ReparentWarningDialogProps {
   willBecomePrivate: boolean;
   /** Callback when user confirms the move */
   onConfirm: () => void;
+  /** Whether a loading operation is in progress */
+  isLoading?: boolean;
 }
 
 /**
@@ -49,6 +51,7 @@ export function ReparentWarningDialog({
   willBecomePublic,
   willBecomePrivate,
   onConfirm,
+  isLoading = false,
 }: ReparentWarningDialogProps) {
   const getVisibilityMessage = () => {
     const fromText = oldParentName ? `from "${oldParentName}"` : "from root";
@@ -83,8 +86,20 @@ export function ReparentWarningDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>Move anyway</AlertDialogAction>
+          <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm} disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2
+                  aria-hidden="true"
+                  className="mr-2 size-4 animate-spin"
+                />
+                Moving…
+              </>
+            ) : (
+              "Move anyway"
+            )}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

@@ -12,6 +12,10 @@ import {
   getEpisodePreviewAction,
   getMetadataPreviewAction,
   getImagesAction,
+  getSeasonMetadataAction,
+  getSeasonImagesAction,
+  getEpisodeImagesAction,
+  getSeasonDataAction,
 } from "@/lib/tmdb-actions";
 
 // Mock dependencies
@@ -30,8 +34,11 @@ vi.mock("@/lib/tmdb-client", () => ({
   getTVSeasons: vi.fn(),
   getTVEpisodes: vi.fn(),
   getEpisodeDetails: vi.fn(),
+  getSeasonDetails: vi.fn(),
   getMovieImages: vi.fn(),
   getTVShowImages: vi.fn(),
+  getTVSeasonImages: vi.fn(),
+  getEpisodeImages: vi.fn(),
   getPosterUrl: vi.fn((p: string | null, size?: string) =>
     p ? `https://image.tmdb.org/t/p/${size || "w342"}${p}` : null
   ),
@@ -69,8 +76,11 @@ import {
   getTVSeasons,
   getTVEpisodes,
   getEpisodeDetails,
+  getSeasonDetails,
   getMovieImages,
   getTVShowImages,
+  getTVSeasonImages,
+  getEpisodeImages,
   downloadPoster,
   downloadBackdrop,
   isTMDBConfigured,
@@ -916,6 +926,416 @@ describe("tmdb-actions", () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBe("Failed to fetch images");
+      }
+    });
+  });
+
+  describe("getSeasonMetadataAction", () => {
+    const mockSeason = {
+      id: 3572,
+      season_number: 1,
+      name: "Season 1",
+      overview: "Walter White starts cooking meth...",
+      poster_path: "/s1-poster.jpg",
+      air_date: "2008-01-20",
+      episodes: [],
+    };
+
+    it("returns season metadata for authenticated user", async () => {
+      vi.mocked(getSeasonDetails).mockResolvedValue(mockSeason);
+
+      const result = await getSeasonMetadataAction(1396, 1);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data?.name).toBe("Season 1");
+        expect(result.data?.seasonNumber).toBe(1);
+        expect(result.data?.posterUrl).toContain("/s1-poster.jpg");
+      }
+    });
+
+    it("passes correct tvId and seasonNumber", async () => {
+      vi.mocked(getSeasonDetails).mockResolvedValue(mockSeason);
+
+      await getSeasonMetadataAction(1396, 3);
+
+      expect(getSeasonDetails).toHaveBeenCalledWith(1396, 3);
+    });
+
+    it("requires authentication", async () => {
+      vi.mocked(auth).mockResolvedValue(null as never);
+
+      const result = await getSeasonMetadataAction(1396, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Not authenticated");
+      }
+    });
+
+    it("checks rate limit", async () => {
+      vi.mocked(checkRateLimit).mockResolvedValue({
+        error: "Too many attempts. Please try again later.",
+      });
+
+      const result = await getSeasonMetadataAction(1396, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toContain("Too many attempts");
+      }
+    });
+
+    it("returns error when TMDB not configured", async () => {
+      vi.mocked(isTMDBConfigured).mockReturnValue(false);
+
+      const result = await getSeasonMetadataAction(1396, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("TMDB integration not configured");
+      }
+    });
+
+    it("returns error when season not found", async () => {
+      vi.mocked(getSeasonDetails).mockResolvedValue(null);
+
+      const result = await getSeasonMetadataAction(1396, 99);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Season not found on TMDB");
+      }
+    });
+
+    it("handles fetch errors", async () => {
+      vi.mocked(getSeasonDetails).mockRejectedValue(new Error("Network error"));
+
+      const result = await getSeasonMetadataAction(1396, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Failed to fetch season details");
+      }
+    });
+  });
+
+  describe("getSeasonImagesAction", () => {
+    const mockSeasonImages = {
+      posters: [
+        {
+          file_path: "/s1-p1.jpg",
+          width: 500,
+          height: 750,
+          vote_average: 5.5,
+          iso_639_1: "en",
+        },
+        {
+          file_path: "/s1-p2.jpg",
+          width: 500,
+          height: 750,
+          vote_average: 4.2,
+          iso_639_1: null,
+        },
+      ],
+    };
+
+    it("returns season images for authenticated user", async () => {
+      vi.mocked(getTVSeasonImages).mockResolvedValue(mockSeasonImages);
+
+      const result = await getSeasonImagesAction(1396, 1);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data?.posters).toHaveLength(2);
+        expect(result.data?.posters[0].file_path).toBe("/s1-p1.jpg");
+      }
+    });
+
+    it("passes correct tvId and seasonNumber", async () => {
+      vi.mocked(getTVSeasonImages).mockResolvedValue(mockSeasonImages);
+
+      await getSeasonImagesAction(1396, 3);
+
+      expect(getTVSeasonImages).toHaveBeenCalledWith(1396, 3);
+    });
+
+    it("requires authentication", async () => {
+      vi.mocked(auth).mockResolvedValue(null as never);
+
+      const result = await getSeasonImagesAction(1396, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Not authenticated");
+      }
+    });
+
+    it("checks rate limit", async () => {
+      vi.mocked(checkRateLimit).mockResolvedValue({
+        error: "Too many attempts. Please try again later.",
+      });
+
+      const result = await getSeasonImagesAction(1396, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toContain("Too many attempts");
+      }
+    });
+
+    it("returns error when TMDB not configured", async () => {
+      vi.mocked(isTMDBConfigured).mockReturnValue(false);
+
+      const result = await getSeasonImagesAction(1396, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("TMDB integration not configured");
+      }
+    });
+
+    it("returns error when images not found", async () => {
+      vi.mocked(getTVSeasonImages).mockResolvedValue(null);
+
+      const result = await getSeasonImagesAction(1396, 99);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Season images not found");
+      }
+    });
+
+    it("handles fetch errors", async () => {
+      vi.mocked(getTVSeasonImages).mockRejectedValue(
+        new Error("Network error")
+      );
+
+      const result = await getSeasonImagesAction(1396, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Failed to fetch season images");
+      }
+    });
+  });
+
+  describe("getEpisodeImagesAction", () => {
+    const mockEpisodeImages = {
+      stills: [
+        {
+          file_path: "/ep1-still1.jpg",
+          width: 1920,
+          height: 1080,
+          vote_average: 5.8,
+          aspect_ratio: 1.778,
+          iso_639_1: null,
+        },
+        {
+          file_path: "/ep1-still2.jpg",
+          width: 1920,
+          height: 1080,
+          vote_average: 4.5,
+          aspect_ratio: 1.778,
+          iso_639_1: null,
+        },
+      ],
+    };
+
+    it("returns episode images for authenticated user", async () => {
+      vi.mocked(getEpisodeImages).mockResolvedValue(mockEpisodeImages);
+
+      const result = await getEpisodeImagesAction(1396, 1, 1);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data?.stills).toHaveLength(2);
+        expect(result.data?.stills[0].file_path).toBe("/ep1-still1.jpg");
+      }
+    });
+
+    it("passes correct tvId, seasonNumber, and episodeNumber", async () => {
+      vi.mocked(getEpisodeImages).mockResolvedValue(mockEpisodeImages);
+
+      await getEpisodeImagesAction(1396, 5, 16);
+
+      expect(getEpisodeImages).toHaveBeenCalledWith(1396, 5, 16);
+    });
+
+    it("requires authentication", async () => {
+      vi.mocked(auth).mockResolvedValue(null as never);
+
+      const result = await getEpisodeImagesAction(1396, 1, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Not authenticated");
+      }
+    });
+
+    it("checks rate limit", async () => {
+      vi.mocked(checkRateLimit).mockResolvedValue({
+        error: "Too many attempts. Please try again later.",
+      });
+
+      const result = await getEpisodeImagesAction(1396, 1, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toContain("Too many attempts");
+      }
+    });
+
+    it("returns error when TMDB not configured", async () => {
+      vi.mocked(isTMDBConfigured).mockReturnValue(false);
+
+      const result = await getEpisodeImagesAction(1396, 1, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("TMDB integration not configured");
+      }
+    });
+
+    it("returns error when images not found", async () => {
+      vi.mocked(getEpisodeImages).mockResolvedValue(null);
+
+      const result = await getEpisodeImagesAction(1396, 1, 99);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Episode images not found");
+      }
+    });
+
+    it("handles fetch errors", async () => {
+      vi.mocked(getEpisodeImages).mockRejectedValue(new Error("Network error"));
+
+      const result = await getEpisodeImagesAction(1396, 1, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Failed to fetch episode images");
+      }
+    });
+  });
+
+  describe("getSeasonDataAction", () => {
+    const mockSeason = {
+      id: 3572,
+      season_number: 1,
+      name: "Season 1",
+      overview: "Walter White starts cooking meth...",
+      poster_path: "/s1-poster.jpg",
+      air_date: "2008-01-20",
+      episodes: [],
+    };
+
+    const mockSeasonImages = {
+      posters: [
+        {
+          file_path: "/s1-p1.jpg",
+          width: 500,
+          height: 750,
+          vote_average: 5.5,
+          iso_639_1: "en",
+        },
+      ],
+    };
+
+    it("returns combined season data for authenticated user", async () => {
+      vi.mocked(getSeasonDetails).mockResolvedValue(mockSeason);
+      vi.mocked(getTVSeasonImages).mockResolvedValue(mockSeasonImages);
+
+      const result = await getSeasonDataAction(1396, 1);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data?.metadata.name).toBe("Season 1");
+        expect(result.data?.images.posters).toHaveLength(1);
+      }
+    });
+
+    it("fetches metadata and images in parallel", async () => {
+      vi.mocked(getSeasonDetails).mockResolvedValue(mockSeason);
+      vi.mocked(getTVSeasonImages).mockResolvedValue(mockSeasonImages);
+
+      await getSeasonDataAction(1396, 1);
+
+      // Both should have been called
+      expect(getSeasonDetails).toHaveBeenCalledWith(1396, 1);
+      expect(getTVSeasonImages).toHaveBeenCalledWith(1396, 1);
+    });
+
+    it("returns empty posters when images not found", async () => {
+      vi.mocked(getSeasonDetails).mockResolvedValue(mockSeason);
+      vi.mocked(getTVSeasonImages).mockResolvedValue(null);
+
+      const result = await getSeasonDataAction(1396, 1);
+
+      // Should still succeed with metadata but empty images
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data?.metadata.name).toBe("Season 1");
+        expect(result.data?.images.posters).toHaveLength(0);
+      }
+    });
+
+    it("requires authentication", async () => {
+      vi.mocked(auth).mockResolvedValue(null as never);
+
+      const result = await getSeasonDataAction(1396, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Not authenticated");
+      }
+    });
+
+    it("checks rate limit", async () => {
+      vi.mocked(checkRateLimit).mockResolvedValue({
+        error: "Too many attempts. Please try again later.",
+      });
+
+      const result = await getSeasonDataAction(1396, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toContain("Too many attempts");
+      }
+    });
+
+    it("returns error when TMDB not configured", async () => {
+      vi.mocked(isTMDBConfigured).mockReturnValue(false);
+
+      const result = await getSeasonDataAction(1396, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("TMDB integration not configured");
+      }
+    });
+
+    it("returns error when season not found", async () => {
+      vi.mocked(getSeasonDetails).mockResolvedValue(null);
+      vi.mocked(getTVSeasonImages).mockResolvedValue(mockSeasonImages);
+
+      const result = await getSeasonDataAction(1396, 99);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Season not found on TMDB");
+      }
+    });
+
+    it("handles fetch errors", async () => {
+      vi.mocked(getSeasonDetails).mockRejectedValue(new Error("Network error"));
+
+      const result = await getSeasonDataAction(1396, 1);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Failed to fetch season data");
       }
     });
   });

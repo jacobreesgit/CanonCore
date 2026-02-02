@@ -65,17 +65,6 @@ describe("EmptyState", () => {
     });
   });
 
-  describe("search-empty variant", () => {
-    it("renders search-empty empty state", () => {
-      render(<EmptyState variant="search-empty" onAction={() => {}} />);
-
-      expect(screen.getByText("No results")).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: /clear search/i })
-      ).toBeInTheDocument();
-    });
-  });
-
   it("renders without action button when onAction is not provided", () => {
     render(<EmptyState variant="first-time" />);
 

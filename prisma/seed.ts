@@ -50,14 +50,8 @@
  *   - SEED_MAX_SEASONS: Max seasons per show (0 = unlimited, default: 2)
  *   - SEED_MAX_EPISODES: Max episodes per season (0 = unlimited, default: 10)
  *   - SEED_RANDOM_SEED: Seed for reproducible random file counts (default: random)
- *   - SEED_GROUPED_STRUCTURE: Create Movies/TV Shows parent folders (default: true)
  *   - SEED_SIMULATE_PLAYBACK: Generate playback progress data (default: true)
  *   - SEED_INCREMENTAL: Enable incremental mode (default: true, set to "false" for clean slate)
- *
- * Grouped Structure (default):
- *   When SEED_GROUPED_STRUCTURE=true (default), creates pinned parent folders:
- *   - Movies/ (pinnedOrder: 0) contains all movie items
- *   - TV Shows/ (pinnedOrder: 1) contains all TV show items
  *
  * Doctor Who Consolidation:
  *   Classic Doctor Who (1963-1989) and Modern Doctor Who (2005+) are consolidated
@@ -81,7 +75,6 @@ import {
   TMDB_API_DELAY_MS,
   SEED_SKIP_ARTWORK,
   SEED_QUIET,
-  SEED_GROUPED_STRUCTURE,
   SEED_SIMULATE_PLAYBACK,
   SEED_INCREMENTAL,
   PLAYBACK_DURATIONS,
@@ -90,9 +83,6 @@ import {
   getEffectiveSeedUsers,
   getEffectiveMovieIdsForUser,
   getEffectiveTVShowIdsForUser,
-  isDoctorWho,
-  isClassicDoctorWho,
-  MODERN_DOCTOR_WHO_ID,
   USER_PROGRESS_RANGES,
   USER_PINNED_ITEMS,
   AVATAR_SIZE,
@@ -1637,116 +1627,6 @@ async function _createParentFolders(
 }
 
 /**
- * Creates parent folders (Movies, TV Shows) based on user's content distribution.
- * Only creates folders for content types the user has.
- * Parent folders are always private (organizational) - individual movies/shows are public.
- */
-async function createParentFoldersForUser(
-  userId: string,
-  ctx: DriveContext | null,
-  movieIds: number[],
-  showIds: number[]
-): Promise<{
-  movies: ParentFolderInfo | null;
-  tvShows: ParentFolderInfo | null;
-}> {
-  const result: {
-    movies: ParentFolderInfo | null;
-    tvShows: ParentFolderInfo | null;
-  } = {
-    movies: null,
-    tvShows: null,
-  };
-
-  // Create Movies folder if user has movies
-  if (movieIds.length > 0) {
-    let moviesDriveFolderId: string | null = null;
-    if (ctx) {
-      try {
-        moviesDriveFolderId = await createDriveFolder(
-          ctx,
-          "Movies",
-          ctx.rootFolderId
-        );
-      } catch (error) {
-        console.error("❌ Failed to create Movies Drive folder:", error);
-      }
-    }
-
-    const moviesItem = await prisma.item.create({
-      data: {
-        name: "Movies",
-        description: "A collection of films from various genres and eras.",
-        userId,
-        parentId: null,
-        order: 0,
-        depth: 0,
-        pinnedOrder: 0,
-        isPublic: false, // Parent folders are always private (organizational)
-        inheritVisibility: false, // Root items cannot inherit
-        driveConnectionId: ctx?.connectionId || null,
-        driveFileId: moviesDriveFolderId,
-        syncStatus: moviesDriveFolderId
-          ? SyncStatus.SYNCED
-          : SyncStatus.PENDING,
-      },
-    });
-
-    result.movies = {
-      itemId: moviesItem.id,
-      driveFolderId: moviesDriveFolderId,
-    };
-
-    log("📁 Created Movies folder (pinned)");
-  }
-
-  // Create TV Shows folder if user has shows
-  if (showIds.length > 0) {
-    let tvShowsDriveFolderId: string | null = null;
-    if (ctx) {
-      try {
-        tvShowsDriveFolderId = await createDriveFolder(
-          ctx,
-          "TV Shows",
-          ctx.rootFolderId
-        );
-      } catch (error) {
-        console.error("❌ Failed to create TV Shows Drive folder:", error);
-      }
-    }
-
-    const tvShowsItem = await prisma.item.create({
-      data: {
-        name: "TV Shows",
-        description:
-          "A collection of television series spanning multiple genres.",
-        userId,
-        parentId: null,
-        order: 1,
-        depth: 0,
-        pinnedOrder: 1,
-        isPublic: false, // Parent folders are always private (organizational)
-        inheritVisibility: false, // Root items cannot inherit
-        driveConnectionId: ctx?.connectionId || null,
-        driveFileId: tvShowsDriveFolderId,
-        syncStatus: tvShowsDriveFolderId
-          ? SyncStatus.SYNCED
-          : SyncStatus.PENDING,
-      },
-    });
-
-    result.tvShows = {
-      itemId: tvShowsItem.id,
-      driveFolderId: tvShowsDriveFolderId,
-    };
-
-    log("📁 Created TV Shows folder (pinned)");
-  }
-
-  return result;
-}
-
-/**
  * Uploads a file to Google Drive.
  */
 async function uploadToDrive(
@@ -2489,17 +2369,8 @@ async function seedTVShowsForUser(
   const depthOffset = parentInfo ? 1 : 0;
 
   // Track which Doctor Who has been processed (for consolidation)
-  let doctorWhoProcessed = false;
-  let orderOffset = 0;
-
   for (let i = 0; i < tvShowIds.length; i++) {
     const showId = tvShowIds[i];
-
-    // Special handling: Skip Modern Doctor Who if Classic was already processed
-    if (isDoctorWho(showId) && doctorWhoProcessed) {
-      orderOffset--;
-      continue;
-    }
 
     // Rate limiting
     await sleep(TMDB_API_DELAY_MS);
@@ -2511,21 +2382,11 @@ async function seedTVShowsForUser(
       continue;
     }
 
-    // Special handling for Doctor Who: Use unified name and description
-    let name: string;
-    let description: string;
-    if (isDoctorWho(showId)) {
-      name = "Doctor Who";
-      description = truncateOverview(
-        "The adventures of the Doctor, a Time Lord who travels through time and space " +
-          "in the TARDIS with various companions, battling evil and righting wrongs. " +
-          "Spanning from 1963 to the present day."
-      );
-    } else {
-      const year = extractYear(show.first_air_date);
-      name = sanitizeFolderName(year ? `${show.name} (${year})` : show.name);
-      description = truncateOverview(show.overview);
-    }
+    const year = extractYear(show.first_air_date);
+    const name = sanitizeFolderName(
+      year ? `${show.name} (${year})` : show.name
+    );
+    const description = truncateOverview(show.overview);
 
     // Create folder for this show in Drive
     let showDriveFolderId: string | null = null;
@@ -2549,7 +2410,7 @@ async function seedTVShowsForUser(
         description: description || null,
         userId,
         parentId,
-        order: startOrder + i + orderOffset,
+        order: startOrder + i,
         depth: baseDepth,
         isPublic,
         inheritVisibility: false, // TV shows are explicitly public/private
@@ -2572,81 +2433,22 @@ async function seedTVShowsForUser(
     );
 
     // Seed seasons and episodes
-    let seasonItemCount = 0;
+    const result = await seedSeasons(
+      showId,
+      item.id,
+      showDriveFolderId,
+      name,
+      show.number_of_seasons,
+      userId,
+      ctx,
+      depthOffset,
+      0,
+      progressRange,
+      isPublic,
+      userEmail
+    );
 
-    if (isClassicDoctorWho(showId)) {
-      // Doctor Who: Seed Classic era seasons first
-      const classicResult = await seedSeasons(
-        showId,
-        item.id,
-        showDriveFolderId,
-        name,
-        show.number_of_seasons,
-        userId,
-        ctx,
-        depthOffset,
-        0,
-        progressRange,
-        isPublic,
-        userEmail,
-        0 // Start episode index at 0
-      );
-      seasonItemCount = classicResult.totalItems;
-
-      // Check if Modern Doctor Who is also in the user's list
-      if (tvShowIds.includes(MODERN_DOCTOR_WHO_ID)) {
-        await sleep(TMDB_API_DELAY_MS);
-        const modernShow = await tmdbFetch<TMDBTVShow>(
-          `/tv/${MODERN_DOCTOR_WHO_ID}`
-        );
-
-        if (modernShow) {
-          const classicSeasonCount =
-            MAX_SEASONS === 0
-              ? show.number_of_seasons
-              : Math.min(show.number_of_seasons, MAX_SEASONS);
-
-          const modernResult = await seedSeasons(
-            MODERN_DOCTOR_WHO_ID,
-            item.id,
-            showDriveFolderId,
-            name,
-            modernShow.number_of_seasons,
-            userId,
-            ctx,
-            depthOffset,
-            classicSeasonCount,
-            progressRange,
-            isPublic,
-            userEmail,
-            classicResult.nextIndex // Continue episode index from classic era
-          );
-          seasonItemCount += modernResult.totalItems;
-          log(`  🎬 Doctor Who (Modern era): ${modernResult.totalItems} items`);
-        }
-      }
-
-      doctorWhoProcessed = true;
-    } else {
-      // Normal show: seed seasons normally
-      const result = await seedSeasons(
-        showId,
-        item.id,
-        showDriveFolderId,
-        name,
-        show.number_of_seasons,
-        userId,
-        ctx,
-        depthOffset,
-        0,
-        progressRange,
-        isPublic,
-        userEmail
-      );
-      seasonItemCount = result.totalItems;
-    }
-
-    count += 1 + seasonItemCount;
+    count += 1 + result.totalItems;
     progress.completedShows++;
     logProgress(progress, name);
   }
@@ -2870,15 +2672,14 @@ async function generateSyncActivityLogs(userId: string): Promise<void> {
 /**
  * Main seed function.
  * Google Drive is REQUIRED - validates setup before proceeding.
- * Respects SEED_GROUPED_STRUCTURE to create Movies/TV Shows parent folders.
+ * Creates items in flat structure at root level with selective pinning.
  */
 async function main(): Promise<void> {
   // Validate configuration before seeding
   validateContentDistribution();
 
-  const structureLabel = SEED_GROUPED_STRUCTURE ? "grouped" : "flat";
   log(
-    `\n🌱 Starting database seed with Google Drive integration (${structureLabel} structure)...\n`
+    `\n🌱 Starting database seed with Google Drive integration (flat structure)...\n`
   );
 
   // Pre-flight check: Drive is REQUIRED for seeding
@@ -2968,84 +2769,31 @@ async function main(): Promise<void> {
       // Get per-user progress range for playback simulation
       const progressRange = USER_PROGRESS_RANGES[email];
 
-      let movieCount: number;
-      let tvCount: number;
+      // Flat structure: Seed directly at root level
+      const movieCount = await seedMoviesForUser(
+        userId,
+        ctx,
+        0,
+        progress,
+        userMovieIds,
+        undefined,
+        progressRange,
+        config.isPublic ?? false
+      );
+      const tvCount = await seedTVShowsForUser(
+        userId,
+        ctx,
+        movieCount,
+        progress,
+        userShowIds,
+        undefined,
+        progressRange,
+        config.isPublic ?? false,
+        config.email
+      );
 
-      if (SEED_GROUPED_STRUCTURE) {
-        // Grouped structure: Create Movies and TV Shows parent folders with pinning
-        log("📁 Creating grouped folder structure...\n");
-        const parentFolders = await createParentFoldersForUser(
-          userId,
-          ctx,
-          userMovieIds,
-          userShowIds
-        );
-
-        // Seed movies under Movies folder
-        movieCount = await seedMoviesForUser(
-          userId,
-          ctx,
-          0,
-          progress,
-          userMovieIds,
-          parentFolders.movies,
-          progressRange,
-          config.isPublic ?? false
-        );
-
-        // Seed TV shows under TV Shows folder
-        tvCount = await seedTVShowsForUser(
-          userId,
-          ctx,
-          0,
-          progress,
-          userShowIds,
-          parentFolders.tvShows,
-          progressRange,
-          config.isPublic ?? false,
-          config.email
-        );
-
-        // Add parent folder count to totals
-        const parentFolderCount =
-          (parentFolders.movies ? 1 : 0) + (parentFolders.tvShows ? 1 : 0);
-        if (parentFolderCount > 0) {
-          log(
-            `\n📌 Created ${parentFolderCount} pinned parent folder(s): ${[
-              parentFolders.movies && "Movies",
-              parentFolders.tvShows && "TV Shows",
-            ]
-              .filter(Boolean)
-              .join(", ")}`
-          );
-        }
-      } else {
-        // Flat structure: Seed directly at root level
-        movieCount = await seedMoviesForUser(
-          userId,
-          ctx,
-          0,
-          progress,
-          userMovieIds,
-          undefined,
-          progressRange,
-          config.isPublic ?? false
-        );
-        tvCount = await seedTVShowsForUser(
-          userId,
-          ctx,
-          movieCount,
-          progress,
-          userShowIds,
-          undefined,
-          progressRange,
-          config.isPublic ?? false,
-          config.email
-        );
-
-        // Pin specific items for flat structure
-        await pinItemsForUser(userId, config.email);
-      }
+      // Pin specific items for flat structure
+      await pinItemsForUser(userId, config.email);
 
       const totalTime = Math.round((Date.now() - progress.startTime) / 1000);
       log(
@@ -3084,10 +2832,6 @@ async function main(): Promise<void> {
 
         // Generate sync activity logs for demo user to populate Activity tab
         await generateSyncActivityLogs(userId);
-      }
-
-      if (SEED_GROUPED_STRUCTURE && (movieCount > 0 || tvCount > 0)) {
-        log(`   📌 Movies and TV Shows folders pinned to sidebar`);
       }
 
       // Save content hash for incremental seeding

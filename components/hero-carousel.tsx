@@ -10,7 +10,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Copy } from "lucide-react";
+import { ArrowRight, Check, Copy } from "lucide-react";
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -95,6 +95,10 @@ export interface HeroSlide {
   profileHasImage?: boolean;
   /** Owner user ID (used to check if current user owns this slide) */
   ownerUserId?: string;
+  /** Whether current user has already forked this item */
+  isForked?: boolean;
+  /** ID of the forked item in user's library (for navigation) */
+  forkedItemId?: string;
 }
 
 interface HeroCarouselProps {
@@ -120,6 +124,8 @@ interface HeroCarouselProps {
   onGoToNext?: (itemId: string) => void;
   /** Callback when fork button clicked (only shown when user doesn't own the slide) */
   onFork?: (slideId: string) => void;
+  /** Callback when "In Library" button clicked (navigates to forked item) */
+  onViewForked?: (forkedItemId: string) => void;
   /** Add responsive padding to carousel container (for profile pages) */
   addContainerPadding?: boolean;
 }
@@ -142,6 +148,7 @@ export function HeroCarousel({
   onPlay,
   onGoToNext,
   onFork,
+  onViewForked,
   addContainerPadding = false,
 }: HeroCarouselProps) {
   const [api, setApi] = useState<CarouselApi>();
@@ -216,6 +223,15 @@ export function HeroCarousel({
     setAvatarLoaded((prev) => ({ ...prev, [slideId]: true }));
   }, []);
 
+  // Track first animation
+  const shouldAnimate = !prefersReducedMotion && !hasAnimated.current;
+
+  useEffect(() => {
+    if (shouldAnimate) {
+      hasAnimated.current = true;
+    }
+  }, [shouldAnimate]);
+
   // Don't render anything if no slides
   if (slides.length === 0) {
     return null;
@@ -227,12 +243,6 @@ export function HeroCarousel({
     right: "text-right items-end",
     center: "text-center items-center",
   }[textAlign];
-
-  // Only animate on first mount
-  const shouldAnimate = !prefersReducedMotion && !hasAnimated.current;
-  if (shouldAnimate) {
-    hasAnimated.current = true;
-  }
 
   // Wrapper component based on motion preference
   const Wrapper = prefersReducedMotion ? "div" : motion.div;
@@ -248,8 +258,8 @@ export function HeroCarousel({
     <section
       data-testid="hero-carousel"
       className={cn(
-        "relative",
-        addContainerPadding && "px-4 md:px-6 lg:px-8",
+        "relative px-4 sm:px-0",
+        addContainerPadding && "md:px-6 lg:px-8",
         className
       )}
     >
@@ -277,8 +287,8 @@ export function HeroCarousel({
                 <CarouselItem
                   key={slide.id}
                   className={cn(
-                    "w-full pl-4",
-                    isSingleSlide ? "basis-full" : "basis-[91%]"
+                    "w-full",
+                    isSingleSlide ? "basis-full" : "basis-full sm:basis-[91%]"
                   )}
                 >
                   <div>
@@ -316,7 +326,7 @@ export function HeroCarousel({
                               unoptimized={backgroundSrc.startsWith("/api/")}
                             />
                             {/* Dark overlay for text readability */}
-                            <div className="absolute inset-0 bg-black/40" />
+                            <div className="absolute inset-0 bg-black/50" />
                           </>
                         ) : /* Shader fallback when no background image */
                         /* navigator.webdriver check for Playwright test stability */
@@ -529,8 +539,8 @@ export function HeroCarousel({
                               ) && "min-h-[2.75rem]",
                               // Center buttons on mobile when in single-slide profile mode
                               isSingleSlide &&
-                              slide.profileId &&
-                              slide.profileUsername
+                                slide.profileId &&
+                                slide.profileUsername
                                 ? "justify-center sm:justify-start"
                                 : textAlign === "right"
                                   ? "justify-start"
@@ -543,7 +553,7 @@ export function HeroCarousel({
                                 size="lg"
                                 variant="glass"
                                 onClick={() => onPlay(slide.id)}
-                                className="group rounded-full text-sm sm:text-base"
+                                className="group min-w-0 rounded-full text-sm max-md:w-full md:text-base"
                                 data-testid="hero-play-button"
                               >
                                 <span className="truncate">
@@ -561,7 +571,7 @@ export function HeroCarousel({
                                 size="lg"
                                 variant="glass"
                                 onClick={() => onGoToNext(slide.nextItem!.id)}
-                                className="group rounded-full text-sm sm:text-base"
+                                className="group min-w-0 rounded-full text-sm max-md:w-full md:text-base"
                                 data-testid="hero-goto-button"
                               >
                                 <span className="truncate">
@@ -573,34 +583,63 @@ export function HeroCarousel({
 
                             {/* CTA Button - for non-owners or explore page */}
                             {showCta && (
-                              <Link href={slide.link}>
+                              <Link href={slide.link} className="max-md:w-full">
                                 <Button
                                   size="lg"
                                   variant="glass"
-                                  className="group rounded-full text-sm sm:text-base"
+                                  className="group w-full rounded-full text-sm md:text-base"
                                 >
-                                  {ctaText}
+                                  <span className="truncate">{ctaText}</span>
                                   <ArrowRight className="size-4 -rotate-45 transition-all ease-out group-hover:ml-1 group-hover:rotate-0" />
                                 </Button>
                               </Link>
                             )}
 
-                            {/* Fork button - only shown when user doesn't own this slide */}
-                            {onFork &&
-                              currentUserId &&
-                              slide.ownerUserId &&
-                              currentUserId !== slide.ownerUserId && (
+                            {/* Fork button - shown when viewing someone else's item */}
+                            {slide.ownerUserId &&
+                              currentUserId !== slide.ownerUserId &&
+                              (slide.isForked && slide.forkedItemId ? (
+                                // Already forked - show "In Library"
+                                <Button
+                                  size="lg"
+                                  variant="glass"
+                                  onClick={() =>
+                                    onViewForked?.(slide.forkedItemId!)
+                                  }
+                                  className="group min-w-0 rounded-full text-sm max-md:w-full md:text-base"
+                                  data-testid="hero-fork-button"
+                                >
+                                  <Check className="size-4 text-green-400" />
+                                  <span className="truncate">In Library</span>
+                                </Button>
+                              ) : currentUserId && onFork ? (
+                                // Authenticated user - show "Fork"
                                 <Button
                                   size="lg"
                                   variant="glass"
                                   onClick={() => onFork(slide.id)}
-                                  className="group rounded-full text-sm sm:text-base"
+                                  className="group min-w-0 rounded-full text-sm max-md:w-full md:text-base"
                                   data-testid="hero-fork-button"
                                 >
-                                  <span>Fork</span>
+                                  <span className="truncate">Fork</span>
                                   <Copy className="size-4" />
                                 </Button>
-                              )}
+                              ) : !currentUserId ? (
+                                // Guest - link to sign in
+                                <Link href="/sign-in" className="max-md:w-full">
+                                  <Button
+                                    size="lg"
+                                    variant="glass"
+                                    className="group w-full min-w-0 rounded-full text-sm md:text-base"
+                                    data-testid="hero-fork-button"
+                                  >
+                                    <Copy className="size-4" />
+                                    <span className="truncate">
+                                      Sign in to Fork
+                                    </span>
+                                  </Button>
+                                </Link>
+                              ) : null)}
                           </div>
                         </div>
                       </div>

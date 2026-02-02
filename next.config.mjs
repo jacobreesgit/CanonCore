@@ -23,7 +23,7 @@ import { createMDX } from "fumadocs-mdx/next";
  */
 const cspHeader = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline' 'unsafe-eval';
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com;
   style-src 'self' 'unsafe-inline';
   img-src 'self' blob: data: https:;
   font-src 'self' data:;
@@ -77,6 +77,13 @@ const nextConfig = {
     // Tree-shake barrel imports for these packages to reduce bundle size
     optimizePackageImports: ["lucide-react", "date-fns"],
   },
+  /**
+   * Bot handling: Aggressive bots are blocked at proxy level, beneficial bots
+   * are rate-limited. htmlLimitedBots is not needed since:
+   * - Modern search engines (Google, Bing) handle streaming fine
+   * - Aggressive crawlers are blocked before reaching pages
+   * - Avoiding htmlLimitedBots maintains streaming benefits for all users
+   */
   images: {
     remotePatterns: [
       {

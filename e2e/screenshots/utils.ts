@@ -24,40 +24,23 @@ const NETWORK_SETTLE_MS = 500;
 /** All valid screenshot names for compile-time validation. */
 export const SCREENSHOT_NAMES = [
   "01-library-grid",
+  "01-library-grid-dark",
   "02-tree-view",
-  "03-video-player",
+  "02-tree-view-dark",
   "04-tmdb-wizard",
+  "04-tmdb-wizard-dark",
   "05-progress-tracking",
+  "05-progress-tracking-dark",
   "06-google-drive-sync",
+  "06-google-drive-sync-dark",
   "07-explore-page",
+  "07-explore-page-dark",
   "08-spotlight-search",
-  "09-edit-mode",
-  "10-filmfan-grid",
-  "11-bingewatcher-grid",
-  "12-scifi-grid",
-  "13-scifi-tree",
-  "14-grid-dark",
-  "15-tree-dark",
-  "16-spotlight-dark",
-  "17-public-dark",
-  "18-settings-dark",
-  "19-matrix-detail",
-  "20-got-detail",
-  "21-episode-detail",
-  "22-spirited-away-detail",
-  "23-empty-state",
-  "24-bulk-selection",
-  "25-context-menu",
-  "26-filter-active",
-  "27-sort-dropdown",
-  "28-progress-nearly-complete",
-  "29-progress-just-started",
-  "30-progress-mid",
-  "31-public-profile",
+  "08-spotlight-search-dark",
   "32-fork-dialog",
-  "33-settings-connections",
-  "34-multi-carousel",
-  "35-single-hero",
+  "32-fork-dialog-dark",
+  "36-docs",
+  "36-docs-dark",
 ] as const;
 
 /** Type-safe screenshot name. */
@@ -83,11 +66,6 @@ export interface ScreenshotUser {
 export const USERS: Record<string, ScreenshotUser> = {
   demo: { email: "demo@canoncore.com", username: "demo" },
   filmfan: { email: "filmfan@canoncore.com", username: "filmfan" },
-  bingewatcher: {
-    email: "bingewatcher@canoncore.com",
-    username: "bingewatcher",
-  },
-  scifi: { email: "scifi@canoncore.com", username: "scifi_jordan" },
 };
 
 // =============================================================================
@@ -142,8 +120,15 @@ export async function captureScreenshot(
   });
 
   await page.waitForTimeout(NETWORK_SETTLE_MS);
+
+  // Detect desktop vs mobile based on viewport width
+  const viewport = page.viewportSize();
+  const isDesktop = viewport && viewport.width === 1920;
+  const isMobile = viewport && viewport.width === 390;
+  const suffix = isDesktop ? "-desktop" : isMobile ? "-mobile" : "";
+
   await page.screenshot({
-    path: path.join(SCREENSHOT_DIR, `${name}.png`),
+    path: path.join(SCREENSHOT_DIR, `${name}${suffix}.png`),
     fullPage: false,
   });
 }
@@ -270,11 +255,21 @@ export async function switchToTreeView(page: Page): Promise<void> {
 
 /**
  * Opens the settings dialog.
+ * On mobile, opens sidebar first if needed.
  *
  * @param page - Playwright page
  */
 export async function openSettings(page: Page): Promise<void> {
-  await page.getByTestId("my-items-user-menu").click();
+  const userMenu = page.getByTestId("my-items-user-menu");
+  const isUserMenuVisible = await userMenu.isVisible().catch(() => false);
+
+  if (!isUserMenuVisible) {
+    // Click sidebar trigger to open sidebar on mobile
+    await page.getByTestId("sidebar-trigger").click();
+    await page.waitForTimeout(500); // Wait for sidebar animation
+  }
+
+  await userMenu.click();
   await page.getByTestId("my-items-settings-button").click();
   await page.waitForSelector('[role="dialog"]', { timeout: 5000 });
 }
@@ -321,13 +316,25 @@ export async function waitForHero(page: Page): Promise<void> {
 }
 
 /**
- * Opens spotlight search with "/" key.
+ * Opens spotlight search via sidebar button.
+ * On mobile, opens sidebar first if needed.
  *
  * @param page - Playwright page
  */
 export async function openSpotlight(page: Page): Promise<void> {
-  await page.keyboard.press("/");
-  await page.waitForSelector('[role="dialog"]', { timeout: 5000 });
+  const searchButton = page.getByRole("button", { name: /search/i }).first();
+  const isSearchButtonVisible = await searchButton
+    .isVisible()
+    .catch(() => false);
+
+  if (!isSearchButtonVisible) {
+    // Click sidebar trigger to open sidebar on mobile
+    await page.getByTestId("sidebar-trigger").click();
+    await page.waitForTimeout(500); // Wait for sidebar animation
+  }
+
+  await searchButton.click();
+  await page.waitForSelector('[role="dialog"]', { timeout: 10000 });
   await page.waitForTimeout(NETWORK_SETTLE_MS);
 }
 

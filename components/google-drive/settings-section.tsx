@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -79,7 +79,7 @@ export function GoogleDriveSettingsSection({
   /**
    * Initiates the Google Drive OAuth flow.
    */
-  function handleConnect() {
+  const handleConnect = useCallback(() => {
     startConnectTransition(async () => {
       const result = await initiateGoogleDriveOAuth();
 
@@ -89,12 +89,12 @@ export function GoogleDriveSettingsSection({
         toast.error(result.error || "Failed to start connection");
       }
     });
-  }
+  }, []);
 
   /**
    * Disconnects the Google Drive connection.
    */
-  function handleDisconnect() {
+  const handleDisconnect = useCallback(() => {
     startDisconnectTransition(async () => {
       const result = await disconnectGoogleDrive();
 
@@ -105,12 +105,12 @@ export function GoogleDriveSettingsSection({
         toast.error(result.error || "Failed to disconnect");
       }
     });
-  }
+  }, [onConnectionChange]);
 
   /**
    * Triggers a sync from Google Drive.
    */
-  function handleSync() {
+  const handleSync = useCallback(() => {
     startSyncTransition(async () => {
       const result = await syncFromGoogleDrive();
 
@@ -140,7 +140,7 @@ export function GoogleDriveSettingsSection({
         onConnectionChange?.();
       }
     });
-  }
+  }, [onConnectionChange]);
 
   // Determine if sync should be disabled
   // Note: ROOT_FOLDER_TRASHED is NOT disabled - user can retry after restoring folder
@@ -170,15 +170,17 @@ export function GoogleDriveSettingsSection({
           <div className="rounded-lg border">
             {/* Info section */}
             <div className="space-y-1.5 p-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">{connection.email}</span>
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="min-w-0 truncate text-sm font-medium">
+                  {connection.email}
+                </span>
                 {connection.needsReauth ? (
-                  <Badge variant="destructive" className="text-xs">
+                  <Badge variant="destructive" className="shrink-0 text-xs">
                     <AlertTriangle aria-hidden="true" className="mr-1 size-3" />
                     Reconnect
                   </Badge>
                 ) : (
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="shrink-0 text-xs">
                     <CheckCircle2 aria-hidden="true" className="mr-1 size-3" />
                     Connected
                   </Badge>
