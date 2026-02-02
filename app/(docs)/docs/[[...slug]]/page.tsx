@@ -20,18 +20,8 @@ interface PageProps {
  */
 export default async function Page(props: PageProps) {
   const params = await props.params;
-
-  // Debug logging for Vercel
-  console.log("[DOCS PAGE] Rendering page with slug:", params.slug);
-  console.log("[DOCS PAGE] source.getPages() count:", source.getPages().length);
-
   const page = source.getPage(params.slug);
-  console.log("[DOCS PAGE] Found page:", page ? page.url : "NOT FOUND");
-
-  if (!page) {
-    console.log("[DOCS PAGE] Page not found, calling notFound()");
-    notFound();
-  }
+  if (!page) notFound();
 
   const MDX = page.data.body;
 
@@ -58,10 +48,7 @@ export default async function Page(props: PageProps) {
  * Generates static params for all documentation pages.
  */
 export async function generateStaticParams() {
-  const params = source.generateParams();
-  console.log("[DOCS generateStaticParams] Generated params count:", params.length);
-  console.log("[DOCS generateStaticParams] Params:", JSON.stringify(params));
-  return params;
+  return source.generateParams();
 }
 
 /**
