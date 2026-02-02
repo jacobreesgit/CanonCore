@@ -42,6 +42,8 @@ interface PublicItemClientProps {
   isOwnItem: boolean;
   /** Current user's username for navigation after forking. */
   currentUserUsername?: string | null;
+  /** Current user's ID for hero carousel fork button. */
+  currentUserId?: string | null;
 }
 
 /**
@@ -79,6 +81,7 @@ export function PublicItemClient({
   isAuthenticated,
   isOwnItem,
   currentUserUsername,
+  currentUserId,
 }: PublicItemClientProps) {
   const router = useRouter();
   const [isForking, setIsForking] = useState(false);
@@ -102,6 +105,8 @@ export function PublicItemClient({
       ownerUserId: profile.id,
       profileId: profile.id,
       profileHasImage: profile.hasImage,
+      isForked: forkStatus?.hasForked ?? false,
+      forkedItemId: forkStatus?.forkedItemId ?? undefined,
     }),
     [
       item.id,
@@ -112,6 +117,8 @@ export function PublicItemClient({
       profile.name,
       profile.id,
       profile.hasImage,
+      forkStatus?.hasForked,
+      forkStatus?.forkedItemId,
     ]
   );
 
@@ -196,7 +203,18 @@ export function PublicItemClient({
   return (
     <div className={cn("flex flex-col gap-6", !hasChildren && "flex-1")}>
       {/* Hero banner - single slide carousel */}
-      <HeroCarousel slides={[heroSlide]} showCta={false} isOwner={isOwnItem} />
+      <HeroCarousel
+        slides={[heroSlide]}
+        showCta={false}
+        isOwner={isOwnItem}
+        currentUserId={currentUserId}
+        onFork={handleFork}
+        onViewForked={(forkedItemId) => {
+          if (currentUserUsername) {
+            router.push(`/u/${currentUserUsername}/${forkedItemId}`);
+          }
+        }}
+      />
 
       {/* Toolbar - Sort/Filter + View Toggle + Fork */}
       <div className="flex items-center justify-between gap-2 sm:gap-3">

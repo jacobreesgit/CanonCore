@@ -230,6 +230,7 @@ export default async function ItemDetailPage({
             isAuthenticated={!!currentUserId}
             isOwnItem={false}
             currentUserUsername={currentUserUsername}
+            currentUserId={currentUserId}
           />
         </div>
       </>

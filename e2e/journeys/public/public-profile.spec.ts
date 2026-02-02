@@ -510,6 +510,60 @@ test.describe("Fork Journey", () => {
     await expect(publicProfilePage.forkButton).not.toBeVisible();
     await expect(publicProfilePage.forkInLibraryButton).not.toBeVisible();
   });
+
+  test("guest sees sign-in-to-fork button in hero", async ({
+    page,
+    testUser,
+    publicProfilePage,
+    myItemsPage,
+  }) => {
+    // testUser fixture logs us in - verify we're on user page
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
+
+    // Sign out to become a guest (handles mobile sidebar)
+    await myItemsPage.signOut();
+    await page.waitForURL("/", { timeout: 10000 });
+
+    // Visit public item as guest
+    await publicProfilePage.gotoItem(ownerUsername, publicItemId);
+    await publicProfilePage.expectHeroVisible("Forkable Collection");
+
+    // Hero should show disabled "Sign in to Fork" button
+    await publicProfilePage.expectHeroSignInToFork();
+  });
+
+  test("already forked shows in-library button in hero", async ({
+    page,
+    testUser,
+    publicProfilePage,
+  }) => {
+    // Use testUser fixture for consistent test setup
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
+
+    // Visit public item
+    await publicProfilePage.gotoItem(ownerUsername, publicItemId);
+    await publicProfilePage.expectHeroVisible("Forkable Collection");
+
+    // Hero should show enabled Fork button initially
+    await publicProfilePage.expectHeroForkButton();
+
+    // Fork the item (via toolbar)
+    await publicProfilePage.forkItem();
+
+    // Wait for fork to complete
+    await publicProfilePage.expectAlreadyForked();
+
+    // Reload page to see updated hero state
+    await page.reload();
+
+    // Hero should now show "In Library" button
+    await publicProfilePage.expectHeroInLibrary();
+
+    // Cleanup forked items
+    await prisma.item
+      .deleteMany({ where: { userId: testUser.id } })
+      .catch(() => {});
+  });
 });
 
 test.describe("Public Item View Toggle and Hero Collapse Journey", () => {

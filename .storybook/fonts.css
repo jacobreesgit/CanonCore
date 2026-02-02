@@ -1,0 +1,27 @@
+/**
+ * Geist font loading for Storybook.
+ * Mirrors the fonts used in app/layout.tsx via next/font/google.
+ */
+
+/* Geist Sans - matches --font-geist-sans variable */
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@100;200;300;400;500;600;700;800;900&display=swap");
+
+/* Geist Mono - matches --font-geist-mono variable */
+@import url("https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100;200;300;400;500;600;700;800;900&display=swap");
+
+/* Set CSS variables to match Next.js font setup */
+:root {
+  --font-geist-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-geist-mono: "Geist Mono", ui-monospace, monospace;
+}
+
+/* Apply font to body like Next.js layout does */
+body {
+  font-family: var(--font-geist-sans);
+}
+
+code,
+pre,
+kbd {
+  font-family: var(--font-geist-mono);
+}
