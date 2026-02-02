@@ -25,9 +25,52 @@ import { cn } from "@/lib/utils";
 import { getMimeTypeByExtension } from "@/lib/file-type-utils";
 import { Shader1 } from "@/components/shader1";
 
+/**
+ * Language code mapping for subtitle files.
+ * Maps common language identifiers to ISO 639-1 codes.
+ * Hoisted to module scope to avoid recreation on each function call.
+ */
+const LANGUAGE_MAP: Record<string, string> = {
+  en: "en",
+  eng: "en",
+  english: "en",
+  es: "es",
+  spa: "es",
+  spanish: "es",
+  fr: "fr",
+  fra: "fr",
+  french: "fr",
+  de: "de",
+  deu: "de",
+  german: "de",
+  it: "it",
+  ita: "it",
+  italian: "it",
+  pt: "pt",
+  por: "pt",
+  portuguese: "pt",
+  ja: "ja",
+  jpn: "ja",
+  japanese: "ja",
+  ko: "ko",
+  kor: "ko",
+  korean: "ko",
+  zh: "zh",
+  chi: "zh",
+  chinese: "zh",
+  ru: "ru",
+  rus: "ru",
+  russian: "ru",
+  ar: "ar",
+  ara: "ar",
+  arabic: "ar",
+};
+
 interface VideoPlayerProps {
   /** The media file to play */
   file: SerializedItemFile;
+  /** Optional direct source URL (overrides streaming API, useful for Storybook) */
+  src?: string;
   /** Optional subtitle files to load */
   subtitles?: SerializedItemFile[];
   /** Optional poster/artwork URL (displayed for audio files or before video plays) */
@@ -46,6 +89,7 @@ interface VideoPlayerProps {
  */
 export function VideoPlayer({
   file,
+  src,
   subtitles,
   posterUrl,
   onTimeUpdate,
@@ -83,7 +127,7 @@ export function VideoPlayer({
     }
   }, [file.playbackPosition]);
 
-  const streamUrl = `/api/stream/${file.id}`;
+  const streamUrl = src || `/api/stream/${file.id}`;
   // Prioritize filename inference over database value (more reliable)
   const inferredMimeType = getMimeTypeByExtension(file.filename);
   const mimeType = inferredMimeType || file.mimeType || "video/mp4";
@@ -98,6 +142,7 @@ export function VideoPlayer({
       title={file.filename || "Media"}
       poster={posterUrl}
       viewType="video"
+      load="eager"
       crossOrigin
       playsInline
       onTimeUpdate={handleTimeUpdate}
@@ -157,41 +202,5 @@ function extractLanguageCode(filename: string): string {
   const parts = nameWithoutExt.split(".");
   const lastPart = parts[parts.length - 1]?.toLowerCase() || "";
 
-  const languageMap: Record<string, string> = {
-    en: "en",
-    eng: "en",
-    english: "en",
-    es: "es",
-    spa: "es",
-    spanish: "es",
-    fr: "fr",
-    fra: "fr",
-    french: "fr",
-    de: "de",
-    deu: "de",
-    german: "de",
-    it: "it",
-    ita: "it",
-    italian: "it",
-    pt: "pt",
-    por: "pt",
-    portuguese: "pt",
-    ja: "ja",
-    jpn: "ja",
-    japanese: "ja",
-    ko: "ko",
-    kor: "ko",
-    korean: "ko",
-    zh: "zh",
-    chi: "zh",
-    chinese: "zh",
-    ru: "ru",
-    rus: "ru",
-    russian: "ru",
-    ar: "ar",
-    ara: "ar",
-    arabic: "ar",
-  };
-
-  return languageMap[lastPart] || lastPart || "en";
+  return LANGUAGE_MAP[lastPart] || lastPart || "en";
 }

@@ -77,6 +77,14 @@ import type { GoogleDriveConnection } from "@/lib/types";
 /** Steps for settings dialog navigation. */
 type SettingsStep = "main" | "password" | "email" | "username";
 
+/** Available settings tabs */
+type SettingsTab =
+  | "profile"
+  | "account"
+  | "connections"
+  | "preferences"
+  | "activity";
+
 interface SettingsDialogProps {
   /** Whether the dialog is open */
   open: boolean;
@@ -95,6 +103,8 @@ interface SettingsDialogProps {
   googleDriveConnection: GoogleDriveConnection | null;
   /** Callback when profile is updated */
   onProfileChange?: () => Promise<void>;
+  /** Default tab to show (for Storybook) */
+  defaultTab?: SettingsTab;
 }
 
 // ============================================================================
@@ -118,6 +128,7 @@ export function SettingsDialog({
   user,
   googleDriveConnection,
   onProfileChange,
+  defaultTab = "profile",
 }: SettingsDialogProps) {
   const [currentStep, setCurrentStep] = useState<SettingsStep>("main");
 
@@ -750,7 +761,7 @@ export function SettingsDialog({
     switch (currentStep) {
       case "main":
         return (
-          <Tabs defaultValue="profile" className="w-full">
+          <Tabs defaultValue={defaultTab} className="w-full">
             <TabsList className="mb-4 grid w-full grid-cols-5">
               <TabsTrigger value="profile">Profile</TabsTrigger>
               <TabsTrigger value="account">Account</TabsTrigger>

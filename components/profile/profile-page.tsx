@@ -1,5 +1,5 @@
 /**
- * Unified profile client component.
+ * Profile page content component.
  * Renders full ItemsView for owners, read-only grid for viewers.
  * Supports both authenticated owner mode and public viewer mode.
  */
@@ -37,7 +37,7 @@ interface ProfileData {
   hasHeroImage: boolean;
 }
 
-interface UnifiedProfileClientProps {
+interface ProfilePageProps {
   /** Profile data to display */
   profile: ProfileData;
   /** Items to display (full data for owner, public data for viewer) */
@@ -51,13 +51,13 @@ interface UnifiedProfileClientProps {
 }
 
 /**
- * Unified profile client for both owner and viewer modes.
+ * Profile page content for both owner and viewer modes.
  * Owner mode: Full ItemsView with editing, CRUD, drag-drop
  * Viewer mode: Read-only grid with sort functionality
  *
  * @example
  * // Owner viewing own profile
- * <UnifiedProfileClient
+ * <ProfilePage
  *   profile={profile}
  *   items={allItems}
  *   isOwner={true}
@@ -67,33 +67,43 @@ interface UnifiedProfileClientProps {
  *
  * @example
  * // Guest viewing public profile
- * <UnifiedProfileClient
+ * <ProfilePage
  *   profile={profile}
  *   items={publicItems}
  *   isOwner={false}
  * />
  */
-export function UnifiedProfileClient({
+export function ProfilePage({
   profile,
   items,
   isOwner,
   hasDriveConnection = false,
   libraryProgress,
-}: UnifiedProfileClientProps) {
+}: ProfilePageProps) {
   // Build hero URL with userId
   const heroBackgroundUrl = profile.hasHeroImage
     ? `/api/user/hero?userId=${profile.id}`
     : undefined;
 
   // Convert profile to PublicProfile shape for ProfileHero
-  const publicProfile: PublicProfile = {
-    id: profile.id,
-    username: profile.username,
-    name: profile.name,
-    hasImage: profile.hasImage,
-    hasHeroImage: profile.hasHeroImage,
-    createdAt: new Date(), // Not used by ProfileHero
-  };
+  // Use epoch date as placeholder since createdAt is not used by ProfileHero
+  const publicProfile: PublicProfile = useMemo(
+    () => ({
+      id: profile.id,
+      username: profile.username,
+      name: profile.name,
+      hasImage: profile.hasImage,
+      hasHeroImage: profile.hasHeroImage,
+      createdAt: new Date(0),
+    }),
+    [
+      profile.id,
+      profile.username,
+      profile.name,
+      profile.hasImage,
+      profile.hasHeroImage,
+    ]
+  );
 
   // Current user info for owner display in grid items
   const currentUser = isOwner
@@ -139,6 +149,12 @@ function ViewerModeContent({
 }) {
   const router = useRouter();
   const { sortBy, setSortBy } = useExploreSortFilter();
+
+  // Create O(1) lookup map for original items (avoids O(n²) find in render loop)
+  const itemsById = useMemo(
+    () => new Map(items.map((item) => [item.id, item])),
+    [items]
+  );
 
   // Transform ItemWithArtwork to sortable format and sort
   const sortableItems = useMemo(() => {
@@ -213,8 +229,8 @@ function ViewerModeContent({
           className="grid grid-cols-2 gap-4 px-4 md:grid-cols-3 md:px-6 lg:grid-cols-5 lg:px-8"
         >
           {sortableItems.map((item, index) => {
-            // Find original item for full data
-            const originalItem = items.find((i) => i.id === item.id);
+            // O(1) lookup for original item data
+            const originalItem = itemsById.get(item.id);
             return (
               <GridItem
                 key={item.id}

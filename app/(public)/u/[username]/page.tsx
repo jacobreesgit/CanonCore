@@ -13,7 +13,7 @@ import { getItemsForProfile, getLibraryProgress } from "@/lib/item-actions";
 import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { SiteHeader } from "@/components/site-header";
-import { UnifiedProfileClient } from "@/components/profile";
+import { ProfilePage as ProfilePageContent } from "@/components/profile";
 import { OAuthToast } from "@/components/google-drive";
 
 interface PageProps {
@@ -119,7 +119,7 @@ export default async function ProfilePage({ params }: PageProps) {
         titleHref={`/u/${profile.username}`}
       />
       <div className="flex flex-1 flex-col gap-4 py-6">
-        <UnifiedProfileClient
+        <ProfilePageContent
           profile={{
             id: profileData.profile.id,
             username: profileData.profile.username,

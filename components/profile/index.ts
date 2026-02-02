@@ -5,4 +5,4 @@
 
 export { ProfileHero } from "./profile-hero";
 export { SettingsDialog } from "./settings-dialog";
-export { UnifiedProfileClient } from "./unified-profile-client";
+export { ProfilePage } from "./profile-page";

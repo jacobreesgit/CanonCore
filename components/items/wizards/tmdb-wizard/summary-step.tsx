@@ -4,7 +4,7 @@
  */
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import {
   AlertCircle,
   ArrowLeft,
@@ -62,9 +62,9 @@ export function TMDBSummaryStep({
   }, [onApply]);
 
   /**
-   * Gets image URL for preview.
+   * Memoized poster preview URL to avoid recreation on each render.
    */
-  const getPosterPreviewUrl = (): string | null => {
+  const posterPreviewUrl = useMemo((): string | null => {
     if (poster.skipped || !poster.value) return null;
     if (poster.source === "tmdb") {
       return getPosterUrl(poster.value, "w185");
@@ -72,15 +72,18 @@ export function TMDBSummaryStep({
     // For existing/queued files, we'd need file ID -> URL mapping
     // For now, return null (handled in UI)
     return null;
-  };
+  }, [poster.skipped, poster.value, poster.source]);
 
-  const getBackdropPreviewUrl = (): string | null => {
+  /**
+   * Memoized backdrop preview URL to avoid recreation on each render.
+   */
+  const backdropPreviewUrl = useMemo((): string | null => {
     if (backdrop.skipped || !backdrop.value) return null;
     if (backdrop.source === "tmdb") {
       return getBackdropUrl(backdrop.value, "w300");
     }
     return null;
-  };
+  }, [backdrop.skipped, backdrop.value, backdrop.source]);
 
   return (
     <div className="space-y-6">
@@ -115,43 +118,53 @@ export function TMDBSummaryStep({
           onClick={() => onEditStep("text")}
         >
           <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2">
-              {textOptions.updateName ? (
-                <Check className="h-3 w-3 text-green-500" aria-hidden="true" />
-              ) : (
-                <SkipForward
-                  className="text-muted-foreground h-3 w-3"
-                  aria-hidden="true"
-                />
-              )}
-              <span
+            <div className="flex items-start gap-2">
+              <div className="mt-0.5 shrink-0">
+                {textOptions.updateName ? (
+                  <Check
+                    className="h-3 w-3 text-green-500"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <SkipForward
+                    className="text-muted-foreground h-3 w-3"
+                    aria-hidden="true"
+                  />
+                )}
+              </div>
+              <div
                 className={cn(
                   !textOptions.updateName && "text-muted-foreground"
                 )}
               >
-                Name: {textOptions.updateName ? preview.name : "No change"}
-              </span>
+                <span className="font-medium">Name:</span>{" "}
+                {textOptions.updateName ? preview.name : "No change"}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              {textOptions.updateDescription ? (
-                <Check className="h-3 w-3 text-green-500" aria-hidden="true" />
-              ) : (
-                <SkipForward
-                  className="text-muted-foreground h-3 w-3"
-                  aria-hidden="true"
-                />
-              )}
-              <span
+            <div className="flex items-start gap-2">
+              <div className="mt-0.5 shrink-0">
+                {textOptions.updateDescription ? (
+                  <Check
+                    className="h-3 w-3 text-green-500"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <SkipForward
+                    className="text-muted-foreground h-3 w-3"
+                    aria-hidden="true"
+                  />
+                )}
+              </div>
+              <div
                 className={cn(
                   !textOptions.updateDescription && "text-muted-foreground"
                 )}
               >
-                Description:{" "}
+                <span className="font-medium">Description:</span>{" "}
                 {textOptions.updateDescription
-                  ? preview.description.slice(0, 50) +
-                    (preview.description.length > 50 ? "…" : "")
+                  ? preview.description
                   : "No change"}
-              </span>
+              </div>
             </div>
           </div>
         </SummarySection>
@@ -172,10 +185,10 @@ export function TMDBSummaryStep({
               </div>
             ) : poster.value ? (
               <>
-                {getPosterPreviewUrl() ? (
+                {posterPreviewUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element -- external TMDB URLs
                   <img
-                    src={getPosterPreviewUrl()!}
+                    src={posterPreviewUrl}
                     alt="Selected poster"
                     width={48}
                     height={64}
@@ -221,10 +234,10 @@ export function TMDBSummaryStep({
               </div>
             ) : backdrop.value ? (
               <>
-                {getBackdropPreviewUrl() ? (
+                {backdropPreviewUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element -- external TMDB URLs
                   <img
-                    src={getBackdropPreviewUrl()!}
+                    src={backdropPreviewUrl}
                     alt="Selected hero"
                     width={80}
                     height={48}

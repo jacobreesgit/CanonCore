@@ -2,7 +2,7 @@
 
 > Google Drive meets Netflix. Visual browsing, drag-and-drop organisation, watch progress, collections others can fork.
 
-**Live:** [canoncore.com](https://canoncore.com)
+**Live:** [canoncore.com](https://canoncore.com) | **Storybook:** [canoncore-storybook.vercel.app](https://canoncore-storybook.vercel.app)
 
 ## The Product
 
@@ -162,6 +162,12 @@ pnpm run test:e2e --project=chromium        # Desktop only
 pnpm run test:e2e --project=mobile-chrome   # Mobile only
 pnpm run test:e2e:debug                     # Debug mode
 pnpm run test:e2e:ui                        # UI mode
+
+# Storybook
+pnpm run storybook           # Dev server at localhost:6006
+pnpm run build-storybook     # Build static Storybook
+pnpm run test-storybook      # Run smoke & a11y tests
+pnpm run test-storybook:ci   # CI mode with 2 workers
 ```
 
 #### Setup Scripts

@@ -44,10 +44,10 @@ export function ParentPrivacyWarningDialog({
   onConfirm,
   isLoading = false,
 }: ParentPrivacyWarningDialogProps) {
-  const childText =
-    affectedChildCount === 1
-      ? "1 child item"
-      : `${affectedChildCount} child items`;
+  const isSingular = affectedChildCount === 1;
+  const childText = isSingular
+    ? "1 child item"
+    : `${affectedChildCount} child items`;
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -58,7 +58,9 @@ export function ParentPrivacyWarningDialog({
               aria-hidden="true"
               className="h-5 w-5 text-amber-500"
             />
-            This will affect child items
+            {isSingular
+              ? "This will affect a child item"
+              : "This will affect child items"}
           </AlertDialogTitle>
           <AlertDialogDescription>
             Making &quot;{itemName}&quot; private will also hide {childText}{" "}
