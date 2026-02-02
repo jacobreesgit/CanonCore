@@ -73,6 +73,8 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   devIndicators: false,
+  // Transpile fumadocs packages to ensure proper compilation on Vercel
+  transpilePackages: ["fumadocs-core", "fumadocs-mdx", "fumadocs-ui"],
   experimental: {
     // Tree-shake barrel imports for these packages to reduce bundle size
     optimizePackageImports: ["lucide-react", "date-fns"],
