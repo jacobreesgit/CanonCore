@@ -4,13 +4,13 @@ tests/
 playwright-report/
 test-results/
 
-# Documentation
-docs/
+# Internal deployment documentation (NOT content/docs which is user-facing)
+/docs/
 
 # Claude Code skills
 skills/
 
-# Development files
+# Development files (NOT .mdx which is user-facing docs)
 *.md
 !README.md
 
