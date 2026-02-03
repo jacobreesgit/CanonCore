@@ -205,18 +205,10 @@ export function MediaSearchCombobox({
 
   return (
     <Popover open={open} onOpenChange={setOpen} modal={false}>
-      {/* Use a wrapper div without asChild to avoid invalid type="button" on div */}
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          className={cn(
-            "relative block w-full text-left",
-            "focus-visible:outline-none",
-            className
-          )}
-        >
+        <div className={cn("relative", className)}>
           <Search
-            className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2"
+            className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
             aria-hidden="true"
           />
           <Input
@@ -236,7 +228,7 @@ export function MediaSearchCombobox({
             autoComplete="off"
             className="pl-10"
           />
-        </button>
+        </div>
       </PopoverTrigger>
 
       <PopoverContent
