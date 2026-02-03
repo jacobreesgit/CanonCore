@@ -79,7 +79,8 @@ export const Default: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByText(/choose.*destination/i);
+    const body = within(document.body);
+    await body.findByText(/choose where to add/i);
   },
 };
 
@@ -102,6 +103,7 @@ export const RootOnly: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByText(/choose.*destination/i);
+    const body = within(document.body);
+    await body.findByText(/choose where to add/i);
   },
 };

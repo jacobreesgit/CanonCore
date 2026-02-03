@@ -107,7 +107,9 @@ export const ProfileTab: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByRole("tab", { name: /profile/i });
+    // Dialog renders in portal, search in document.body
+    const body = within(document.body);
+    await body.findByRole("tab", { name: /profile/i });
   },
 };
 
@@ -125,7 +127,8 @@ export const AccountTab: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByRole("tab", { name: /account/i });
+    const body = within(document.body);
+    await body.findByRole("tab", { name: /account/i });
   },
 };
 
@@ -143,7 +146,8 @@ export const ConnectionsTab: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByRole("tab", { name: /connections/i });
+    const body = within(document.body);
+    await body.findByRole("tab", { name: /connections/i });
   },
 };
 
@@ -161,7 +165,8 @@ export const PreferencesTab: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByRole("tab", { name: /preferences/i });
+    const body = within(document.body);
+    await body.findByRole("tab", { name: /preferences/i });
   },
 };
 
@@ -179,7 +184,8 @@ export const ActivityTab: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByRole("tab", { name: /activity/i });
+    const body = within(document.body);
+    await body.findByRole("tab", { name: /activity/i });
   },
 };
 
@@ -203,27 +209,30 @@ export const TabNavigation: Story = {
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
 
+    // Dialog renders in portal, search in document.body
+    const body = within(document.body);
+
     // Wait for dialog to appear
-    const profileTab = await canvas.findByRole("tab", { name: /profile/i });
+    const profileTab = await body.findByRole("tab", { name: /profile/i });
     await expect(profileTab).toHaveAttribute("aria-selected", "true");
 
     // Click Account tab
-    const accountTab = canvas.getByRole("tab", { name: /account/i });
+    const accountTab = body.getByRole("tab", { name: /account/i });
     await userEvent.click(accountTab);
     await expect(accountTab).toHaveAttribute("aria-selected", "true");
 
     // Click Connections tab
-    const connectionsTab = canvas.getByRole("tab", { name: /connections/i });
+    const connectionsTab = body.getByRole("tab", { name: /connections/i });
     await userEvent.click(connectionsTab);
     await expect(connectionsTab).toHaveAttribute("aria-selected", "true");
 
     // Click Preferences tab
-    const preferencesTab = canvas.getByRole("tab", { name: /preferences/i });
+    const preferencesTab = body.getByRole("tab", { name: /preferences/i });
     await userEvent.click(preferencesTab);
     await expect(preferencesTab).toHaveAttribute("aria-selected", "true");
 
     // Click Activity tab
-    const activityTab = canvas.getByRole("tab", { name: /activity/i });
+    const activityTab = body.getByRole("tab", { name: /activity/i });
     await userEvent.click(activityTab);
     await expect(activityTab).toHaveAttribute("aria-selected", "true");
   },
@@ -255,8 +264,11 @@ export const ProfileFormInteraction: Story = {
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
 
+    // Dialog renders in portal, search in document.body
+    const body = within(document.body);
+
     // Wait for profile tab content
-    const nameInput = await canvas.findByLabelText(/display name/i);
+    const nameInput = await body.findByLabelText(/display name/i);
     await expect(nameInput).toBeInTheDocument();
     await expect(nameInput).toHaveValue("Film Fan");
 
@@ -292,18 +304,21 @@ export const KeyboardTabNavigation: Story = {
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
 
+    // Dialog renders in portal, search in document.body
+    const body = within(document.body);
+
     // Wait for dialog and focus first tab
-    const profileTab = await canvas.findByRole("tab", { name: /profile/i });
+    const profileTab = await body.findByRole("tab", { name: /profile/i });
     await userEvent.click(profileTab);
     await expect(profileTab).toHaveFocus();
 
     // Navigate with arrow keys
     await userEvent.keyboard("{ArrowRight}");
-    const accountTab = canvas.getByRole("tab", { name: /account/i });
+    const accountTab = body.getByRole("tab", { name: /account/i });
     await expect(accountTab).toHaveFocus();
 
     await userEvent.keyboard("{ArrowRight}");
-    const connectionsTab = canvas.getByRole("tab", { name: /connections/i });
+    const connectionsTab = body.getByRole("tab", { name: /connections/i });
     await expect(connectionsTab).toHaveFocus();
   },
   parameters: {

@@ -104,8 +104,11 @@ export function PendingIndicator() {
       )}
     >
       <div className="relative flex size-3 items-center justify-center">
-        <CloudOff className="size-3" />
-        <Loader2 className="absolute size-3 animate-spin opacity-50" />
+        <CloudOff className="size-3" aria-hidden="true" />
+        <Loader2
+          className="absolute size-3 animate-spin opacity-50"
+          aria-hidden="true"
+        />
       </div>
       <span className="tabular-nums">{count}</span>
       <span className="text-amber-600/70 dark:text-amber-400/70">pending</span>

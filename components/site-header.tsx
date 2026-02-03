@@ -148,7 +148,7 @@ export function SiteHeader({
                 className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring ml-auto rounded-md p-1.5 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
                 aria-label="Item actions"
               >
-                <MoreVertical className="size-4" />
+                <MoreVertical className="size-4" aria-hidden="true" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
@@ -157,7 +157,7 @@ export function SiteHeader({
                   onClick={onRename}
                   className="cursor-pointer gap-2"
                 >
-                  <Pencil className="size-4" />
+                  <Pencil className="size-4" aria-hidden="true" />
                   Rename
                 </DropdownMenuItem>
               )}
@@ -166,7 +166,7 @@ export function SiteHeader({
                   onClick={onDelete}
                   className="text-destructive focus:text-destructive cursor-pointer gap-2"
                 >
-                  <Trash2 className="size-4" />
+                  <Trash2 className="size-4" aria-hidden="true" />
                   Delete
                 </DropdownMenuItem>
               )}

@@ -138,12 +138,12 @@ export const BulkActionsToolbar = memo(function BulkActionsToolbar({
             >
               {isDeleting ? (
                 <>
-                  <Loader2 className="size-4 animate-spin" />
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                   <span className="hidden sm:inline">Deleting…</span>
                 </>
               ) : (
                 <>
-                  <Trash2 className="size-4" />
+                  <Trash2 className="size-4" aria-hidden="true" />
                   <span className="hidden sm:inline">Delete</span>
                 </>
               )}

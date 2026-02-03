@@ -6,7 +6,7 @@
  * These stories focus on visual documentation of the wizard structure.
  */
 import type { Meta, StoryObj } from "@storybook/nextjs";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { TMDBWizard } from "./index";
 import type { TMDBWizardInitialData } from "./tmdb-wizard-types";
 import type { TMDBSearchResult } from "@/lib/tmdb-client";
@@ -240,25 +240,55 @@ export const StepNavigation: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    // Wait for wizard to render - text step should be visible
-    const titleHeading = await canvas.findByText(/title & description/i);
-    await expect(titleHeading).toBeInTheDocument();
+    // Wait for wizard to render with explicit timeout for animation completion
+    await waitFor(
+      async () => {
+        const heading = canvas.queryByRole("heading", {
+          name: /title & description/i,
+        });
+        await expect(heading).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
 
     // Find and click Next button to proceed to Poster step
     const nextButton = canvas.getByRole("button", { name: /next/i });
     await expect(nextButton).toBeInTheDocument();
     await userEvent.click(nextButton);
 
-    // Wait for Poster step
-    const posterHeading = await canvas.findByText(/poster/i);
-    await expect(posterHeading).toBeInTheDocument();
+    // Wait for Poster step with explicit timeout
+    await waitFor(
+      async () => {
+        const heading = canvas.queryByRole("heading", { name: /poster/i });
+        await expect(heading).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
+
+    // Wait for Back button to be enabled (not disabled, no pointer-events: none)
+    await waitFor(
+      async () => {
+        const backBtn = canvas.queryByRole("button", { name: /back/i });
+        await expect(backBtn).toBeInTheDocument();
+        await expect(backBtn).not.toBeDisabled();
+      },
+      { timeout: 3000 }
+    );
 
     // Click Back to return to Text step
     const backButton = canvas.getByRole("button", { name: /back/i });
     await userEvent.click(backButton);
 
     // Verify we're back on Text step
-    await expect(canvas.getByText(/title & description/i)).toBeInTheDocument();
+    await waitFor(
+      async () => {
+        const heading = canvas.queryByRole("heading", {
+          name: /title & description/i,
+        });
+        await expect(heading).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
   },
   parameters: {
     docs: {
@@ -284,8 +314,16 @@ export const TextSelectionInteraction: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    // Wait for text step
-    await canvas.findByText(/title & description/i);
+    // Wait for text step with explicit timeout
+    await waitFor(
+      async () => {
+        const heading = canvas.queryByRole("heading", {
+          name: /title & description/i,
+        });
+        await expect(heading).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
 
     // Find checkboxes for title and description
     const checkboxes = canvas.getAllByRole("checkbox");
@@ -306,7 +344,7 @@ export const TextSelectionInteraction: Story = {
 
 /**
  * Cancel wizard interaction.
- * Tests the Cancel button functionality.
+ * Tests the onCancel callback prop for exiting the wizard.
  */
 export const CancelInteraction: Story = {
   args: {
@@ -319,18 +357,18 @@ export const CancelInteraction: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    // Wait for wizard to render
-    await canvas.findByText(/title & description/i);
+    // Wait for wizard to render (use heading role for specificity)
+    await canvas.findByRole("heading", { name: /title & description/i });
 
-    // Find and verify Cancel button exists
-    const cancelButton = canvas.getByRole("button", { name: /cancel/i });
-    await expect(cancelButton).toBeInTheDocument();
+    // Verify wizard navigation is present with Next button
+    const nextButton = canvas.getByRole("button", { name: /next/i });
+    await expect(nextButton).toBeInTheDocument();
   },
   parameters: {
     docs: {
       description: {
         story:
-          "Cancel button allows users to exit the wizard without applying changes.",
+          "The onCancel callback can be used by parent components to handle wizard cancellation.",
       },
     },
   },

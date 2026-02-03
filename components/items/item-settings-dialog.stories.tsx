@@ -177,7 +177,9 @@ export const Default: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByLabelText(/name/i);
+    // Dialog renders in portal, search in document.body
+    const body = within(document.body);
+    await body.findByLabelText(/name/i);
   },
   parameters: {
     docs: {
@@ -201,7 +203,8 @@ export const WithDriveConnection: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByLabelText(/name/i);
+    const body = within(document.body);
+    await body.findByLabelText(/name/i);
   },
   parameters: {
     docs: {
@@ -229,7 +232,8 @@ export const PublicItem: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByLabelText(/name/i);
+    const body = within(document.body);
+    await body.findByLabelText(/name/i);
   },
   parameters: {
     docs: {
@@ -256,7 +260,8 @@ export const LongDescription: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByLabelText(/name/i);
+    const body = within(document.body);
+    await body.findByLabelText(/name/i);
   },
   parameters: {
     docs: {

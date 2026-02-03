@@ -83,7 +83,10 @@ function ArtworkThumbnail({
       {/* Image icon placeholder while loading */}
       {!loaded && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <ImageIcon className={cn(iconSize, "text-muted-foreground/50")} />
+          <ImageIcon
+            className={cn(iconSize, "text-muted-foreground/50")}
+            aria-hidden="true"
+          />
         </div>
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -295,7 +298,7 @@ function FileTypeComboboxUploadMode({
             "bg-primary/10"
           )}
         >
-          <Icon className="text-primary size-3.5" />
+          <Icon className="text-primary size-3.5" aria-hidden="true" />
         </div>
         <label className="text-sm font-medium">{label}</label>
       </div>
@@ -304,7 +307,10 @@ function FileTypeComboboxUploadMode({
       {/* Disabled state - no Drive connection */}
       {disabled ? (
         <div className="bg-muted/50 rounded-lg border border-dashed p-4 text-center">
-          <CloudOff className="text-muted-foreground/50 mx-auto mb-2 size-8" />
+          <CloudOff
+            className="text-muted-foreground/50 mx-auto mb-2 size-8"
+            aria-hidden="true"
+          />
           <p className="text-muted-foreground text-sm">
             Connect Google Drive in Settings to enable file uploads.
           </p>
@@ -321,7 +327,10 @@ function FileTypeComboboxUploadMode({
           >
             <DropzoneEmptyState>
               <div className="flex flex-col items-center justify-center gap-1.5 py-2">
-                <Upload className="text-muted-foreground size-5" />
+                <Upload
+                  className="text-muted-foreground size-5"
+                  aria-hidden="true"
+                />
                 <p className="text-muted-foreground text-xs">
                   Drop {fileType} files or click to browse
                 </p>
@@ -329,7 +338,7 @@ function FileTypeComboboxUploadMode({
             </DropzoneEmptyState>
             <DropzoneContent>
               <div className="flex flex-col items-center justify-center gap-1.5 py-2">
-                <Upload className="text-primary size-5" />
+                <Upload className="text-primary size-5" aria-hidden="true" />
                 <p className="text-sm font-medium">Drop to add</p>
               </div>
             </DropzoneContent>
@@ -367,7 +376,10 @@ function FileTypeComboboxUploadMode({
                         "bg-muted/30"
                       )}
                     >
-                      <Icon className="text-muted-foreground size-3.5 shrink-0" />
+                      <Icon
+                        className="text-muted-foreground size-3.5 shrink-0"
+                        aria-hidden="true"
+                      />
                       <span className="min-w-0 flex-1 truncate text-xs">
                         {qf.file.name}
                       </span>
@@ -383,7 +395,7 @@ function FileTypeComboboxUploadMode({
                         )}
                         aria-label={`Remove ${qf.file.name}`}
                       >
-                        <X className="size-3.5" />
+                        <X className="size-3.5" aria-hidden="true" />
                       </button>
                     </motion.div>
                   ))}
@@ -694,7 +706,7 @@ function FileTypeComboboxSelectMode({
             "bg-primary/10"
           )}
         >
-          <Icon className="text-primary size-3.5" />
+          <Icon className="text-primary size-3.5" aria-hidden="true" />
         </div>
         <label className="text-sm font-medium">{label}</label>
       </div>
@@ -708,6 +720,9 @@ function FileTypeComboboxSelectMode({
             variant="outline"
             role="combobox"
             aria-expanded={isOpen}
+            aria-label={
+              selectedFile ? selectedFile.filename : `Select ${fileType} file`
+            }
             disabled={disabled || isUploading}
             className={cn(
               "h-10 w-full justify-between font-normal",
@@ -729,6 +744,7 @@ function FileTypeComboboxSelectMode({
                 "text-muted-foreground size-4 shrink-0 transition-transform duration-200",
                 isOpen && "rotate-180"
               )}
+              aria-hidden="true"
             />
           </Button>
         </PopoverTrigger>
@@ -802,13 +818,19 @@ function FileTypeComboboxSelectMode({
                     onClick={(e) => e.stopPropagation()}
                     title="Open in Google Drive"
                   >
-                    <ExternalLink className="text-muted-foreground size-3.5" />
+                    <ExternalLink
+                      className="text-muted-foreground size-3.5"
+                      aria-hidden="true"
+                    />
                   </a>
                 )}
                 {/* Checkmark for selected, delete button for non-selected */}
                 {selectedId === file.id ? (
                   <div className="mr-1 rounded p-1">
-                    <Check className="text-primary size-3.5" />
+                    <Check
+                      className="text-primary size-3.5"
+                      aria-hidden="true"
+                    />
                   </div>
                 ) : (
                   <button
@@ -825,9 +847,12 @@ function FileTypeComboboxSelectMode({
                     aria-label={`Delete ${file.filename}`}
                   >
                     {deletingId === file.id ? (
-                      <Loader2 className="size-3.5 animate-spin" />
+                      <Loader2
+                        className="size-3.5 animate-spin"
+                        aria-hidden="true"
+                      />
                     ) : (
-                      <Trash2 className="size-3.5" />
+                      <Trash2 className="size-3.5" aria-hidden="true" />
                     )}
                   </button>
                 )}
@@ -847,7 +872,7 @@ function FileTypeComboboxSelectMode({
                   "text-primary hover:bg-primary/5"
                 )}
               >
-                <Upload className="size-4" />
+                <Upload className="size-4" aria-hidden="true" />
                 <span>Upload {fileType} files...</span>
               </button>
             </>
@@ -929,7 +954,10 @@ function FileTypeComboboxSelectMode({
                     animate={{ x: 0, opacity: 1 }}
                     className="flex items-center gap-2"
                   >
-                    <AlertCircle className="text-destructive size-4" />
+                    <AlertCircle
+                      className="text-destructive size-4"
+                      aria-hidden="true"
+                    />
                     <span>
                       {uploadState.successCount} uploaded, {failedFiles.length}{" "}
                       failed
@@ -947,7 +975,7 @@ function FileTypeComboboxSelectMode({
                     onClick={handleRetry}
                     className="h-7 gap-1 px-2 text-xs"
                   >
-                    <RefreshCw className="size-3" />
+                    <RefreshCw className="size-3" aria-hidden="true" />
                     Retry
                   </Button>
                   <Button
@@ -957,7 +985,7 @@ function FileTypeComboboxSelectMode({
                     onClick={handleDismiss}
                     className="text-muted-foreground hover:text-foreground size-7 p-0"
                   >
-                    <X className="size-4" />
+                    <X className="size-4" aria-hidden="true" />
                   </Button>
                 </div>
               )}

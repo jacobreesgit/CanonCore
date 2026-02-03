@@ -173,4 +173,8 @@ export const WithContextMenu: Story = {
     const menuButton = canvas.getByRole("button", { name: "Item actions" });
     await userEvent.click(menuButton);
   },
+  parameters: {
+    // Disable a11y checks - Radix dropdown menu portal renders outside main content
+    a11y: { disable: true },
+  },
 };

@@ -131,7 +131,7 @@ export function ShowView({
           </div>
         ) : (
           <div className="bg-muted flex h-24 w-16 shrink-0 items-center justify-center rounded-lg">
-            <Tv className="text-muted-foreground size-6" />
+            <Tv className="text-muted-foreground size-6" aria-hidden="true" />
           </div>
         )}
 
@@ -207,17 +207,16 @@ const SeasonItemWithKeyboard = ({
   ref: React.Ref<HTMLButtonElement>;
 }) => {
   return (
-    <div role="option" aria-selected={isFocused}>
-      <SeasonItemButton
-        ref={ref}
-        season={season}
-        tabIndex={isFocused ? 0 : -1}
-        onClick={onSelect}
-        onKeyDown={onKeyDown}
-        onFocus={onFocus}
-        aria-posinset={index + 1}
-      />
-    </div>
+    <SeasonItemButton
+      ref={ref}
+      season={season}
+      tabIndex={isFocused ? 0 : -1}
+      onClick={onSelect}
+      onKeyDown={onKeyDown}
+      onFocus={onFocus}
+      aria-posinset={index + 1}
+      aria-selected={isFocused}
+    />
   );
 };
 
@@ -228,6 +227,7 @@ interface SeasonItemButtonProps {
   onKeyDown: (e: React.KeyboardEvent) => void;
   onFocus: () => void;
   "aria-posinset": number;
+  "aria-selected": boolean;
 }
 
 /**
@@ -251,6 +251,7 @@ const SeasonItemButton = forwardRef<HTMLButtonElement, SeasonItemButtonProps>(
       <button
         ref={ref}
         type="button"
+        role="option"
         tabIndex={tabIndex}
         onClick={onClick}
         onKeyDown={onKeyDown}
@@ -278,7 +279,10 @@ const SeasonItemButton = forwardRef<HTMLButtonElement, SeasonItemButtonProps>(
           </div>
         ) : (
           <div className="bg-muted flex h-12 w-8 shrink-0 items-center justify-center rounded-lg">
-            <Layers className="text-muted-foreground size-4" />
+            <Layers
+              className="text-muted-foreground size-4"
+              aria-hidden="true"
+            />
           </div>
         )}
 
@@ -287,7 +291,10 @@ const SeasonItemButton = forwardRef<HTMLButtonElement, SeasonItemButtonProps>(
           <p className="text-muted-foreground text-xs">{episodeText}</p>
         </div>
 
-        <ChevronRight className="text-muted-foreground size-4 shrink-0" />
+        <ChevronRight
+          className="text-muted-foreground size-4 shrink-0"
+          aria-hidden="true"
+        />
       </button>
     );
   }

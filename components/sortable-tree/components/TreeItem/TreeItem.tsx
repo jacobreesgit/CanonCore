@@ -180,7 +180,11 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
               )}
               {...handleProps}
             >
-              <GripVertical className="size-3.5" strokeWidth={2.5} />
+              <GripVertical
+                className="size-3.5"
+                strokeWidth={2.5}
+                aria-hidden="true"
+              />
             </button>
           )}
 
@@ -207,6 +211,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                   !collapsed && "rotate-90"
                 )}
                 strokeWidth={2.5}
+                aria-hidden="true"
               />
             </button>
           )}

@@ -561,7 +561,10 @@ export function HeroCarousel({
                                   {slide.primaryMediaName &&
                                     ` ${slide.primaryMediaName}`}
                                 </span>
-                                <ArrowRight className="size-4 -rotate-45 transition-all ease-out group-hover:ml-1 group-hover:rotate-0" />
+                                <ArrowRight
+                                  className="size-4 -rotate-45 transition-all ease-out group-hover:ml-1 group-hover:rotate-0"
+                                  aria-hidden="true"
+                                />
                               </Button>
                             )}
 
@@ -577,7 +580,10 @@ export function HeroCarousel({
                                 <span className="truncate">
                                   Next Up: {slide.nextItem.name}
                                 </span>
-                                <ArrowRight className="size-4 -rotate-45 transition-all ease-out group-hover:ml-1 group-hover:rotate-0" />
+                                <ArrowRight
+                                  className="size-4 -rotate-45 transition-all ease-out group-hover:ml-1 group-hover:rotate-0"
+                                  aria-hidden="true"
+                                />
                               </Button>
                             )}
 
@@ -590,7 +596,10 @@ export function HeroCarousel({
                                   className="group w-full rounded-full text-sm md:text-base"
                                 >
                                   <span className="truncate">{ctaText}</span>
-                                  <ArrowRight className="size-4 -rotate-45 transition-all ease-out group-hover:ml-1 group-hover:rotate-0" />
+                                  <ArrowRight
+                                    className="size-4 -rotate-45 transition-all ease-out group-hover:ml-1 group-hover:rotate-0"
+                                    aria-hidden="true"
+                                  />
                                 </Button>
                               </Link>
                             )}
@@ -609,7 +618,10 @@ export function HeroCarousel({
                                   className="group min-w-0 rounded-full text-sm max-md:w-full md:text-base"
                                   data-testid="hero-fork-button"
                                 >
-                                  <Check className="size-4 text-green-400" />
+                                  <Check
+                                    className="size-4 text-green-400"
+                                    aria-hidden="true"
+                                  />
                                   <span className="truncate">In Library</span>
                                 </Button>
                               ) : currentUserId && onFork ? (
@@ -622,7 +634,7 @@ export function HeroCarousel({
                                   data-testid="hero-fork-button"
                                 >
                                   <span className="truncate">Fork</span>
-                                  <Copy className="size-4" />
+                                  <Copy className="size-4" aria-hidden="true" />
                                 </Button>
                               ) : !currentUserId ? (
                                 // Guest - link to sign in
@@ -633,7 +645,10 @@ export function HeroCarousel({
                                     className="group w-full min-w-0 rounded-full text-sm md:text-base"
                                     data-testid="hero-fork-button"
                                   >
-                                    <Copy className="size-4" />
+                                    <Copy
+                                      className="size-4"
+                                      aria-hidden="true"
+                                    />
                                     <span className="truncate">
                                       Sign in to Fork
                                     </span>

@@ -43,6 +43,13 @@ const meta = {
         pathname: "/u/johndoe",
       },
     },
+    // Disable list rule - shadcn Collapsible wraps li elements in divs,
+    // which is invalid HTML list structure but required for collapsible behavior
+    a11y: {
+      config: {
+        rules: [{ id: "list", enabled: false }],
+      },
+    },
   },
   argTypes: {
     context: {
