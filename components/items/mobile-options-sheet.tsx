@@ -1,7 +1,7 @@
 /**
  * Mobile bottom drawer for toolbar options.
  * Consolidates Sort and Filter controls into a swipe-up drawer.
- * Uses Vaul for native-feeling swipe gestures and spring animations.
+ * Uses MobileBottomSheet for consistent mobile sheet behavior.
  * Only rendered on mobile viewports for a cleaner toolbar experience.
  */
 
@@ -11,12 +11,11 @@ import { useState, useRef, useCallback } from "react";
 import { SlidersHorizontal, ArrowUpDown, Filter, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer";
+  MobileBottomSheet,
+  MobileBottomSheetHeader,
+  MobileBottomSheetTitle,
+  MobileBottomSheetContent,
+} from "@/components/mobile/mobile-bottom-sheet";
 import { cn } from "@/lib/utils";
 import {
   SORT_OPTIONS,
@@ -112,29 +111,36 @@ export function MobileOptionsSheet({
   );
 
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
-      <DrawerTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={disabled}
-          className="relative gap-1.5"
-        >
-          <SlidersHorizontal className="size-4" />
-          <span>Options</span>
-          {/* Active indicator dot */}
-          {hasActiveOptions && (
-            <span className="bg-primary absolute -top-1 -right-1 size-2 rounded-full" />
-          )}
-        </Button>
-      </DrawerTrigger>
+    <>
+      {/* Trigger button */}
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={disabled}
+        className="relative gap-1.5"
+        onClick={() => setOpen(true)}
+      >
+        <SlidersHorizontal className="size-4" />
+        <span>Options</span>
+        {/* Active indicator dot */}
+        {hasActiveOptions && (
+          <span className="bg-primary absolute -top-1 -right-1 size-2 rounded-full" />
+        )}
+      </Button>
 
-      <DrawerContent>
-        <DrawerHeader>
-          <DrawerTitle>View Options</DrawerTitle>
-        </DrawerHeader>
+      {/* Bottom sheet */}
+      <MobileBottomSheet
+        open={open}
+        onOpenChange={setOpen}
+        snapPoints={["auto"]}
+        title="View Options"
+        description="Sort and filter your items"
+      >
+        <MobileBottomSheetHeader>
+          <MobileBottomSheetTitle>View Options</MobileBottomSheetTitle>
+        </MobileBottomSheetHeader>
 
-        <div className="space-y-6 overflow-y-auto pb-8">
+        <MobileBottomSheetContent className="space-y-6 px-0 pb-8">
           {/* Sort Section */}
           <div className="space-y-2">
             <div className="text-muted-foreground flex items-center gap-2 px-4 text-xs font-medium tracking-wider uppercase">
@@ -232,8 +238,8 @@ export function MobileOptionsSheet({
               </div>
             </div>
           )}
-        </div>
-      </DrawerContent>
-    </Drawer>
+        </MobileBottomSheetContent>
+      </MobileBottomSheet>
+    </>
   );
 }

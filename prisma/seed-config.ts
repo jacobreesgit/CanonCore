@@ -1,5 +1,3 @@
-import crypto from "crypto";
-
 /**
  * Seed configuration for populating the database with demo content.
  * Uses TMDB IDs to fetch real movie and TV show metadata.
@@ -7,93 +5,18 @@ import crypto from "crypto";
  * IMPORTANT: Google Drive is REQUIRED for seeding. Run setup first:
  *   pnpm run setup:seed
  *
- * Environment Variables:
- *   - SEED_MAX_SEASONS: Max seasons per show (0 = unlimited, default: 2)
- *   - SEED_MAX_EPISODES: Max episodes per season (0 = unlimited, default: 10)
- *   - SEED_RANDOM_SEED: Seed for reproducible random file counts (default: null = Math.random)
- *   - SEED_ONLY_MOVIES: Skip TV shows, seed only movies (default: false)
- *   - SEED_ONLY_SHOWS: Skip movies, seed only TV shows (default: false)
- *   - SEED_SKIP_ARTWORK: Skip downloading/uploading artwork (default: false)
- *   - SEED_QUIET: Suppress progress output (default: false)
- *   - SEED_MOVIE_COUNT: Limit number of movies (0 = all, default: 0)
- *   - SEED_SHOW_COUNT: Limit number of TV shows (0 = all, default: 0)
- *   - SEED_MOVIE_IDS: Comma-separated TMDB movie IDs to seed (overrides default list)
- *   - SEED_SHOW_IDS: Comma-separated TMDB show IDs to seed (overrides default list)
- *   - SEED_USER_EMAIL: Override to seed single user only (default: null)
- *   - SEED_INCREMENTAL: Enable incremental mode (default: true, set to "false" for clean slate)
- *   - TMDB_API_DELAY_MS is hardcoded at 100ms for rate limiting
+ * Usage:
+ *   pnpm run seed
  */
-
-/**
- * Parses boolean environment variable.
- *
- * @param value - Environment variable value
- * @returns true if value is "true" (case-insensitive), false otherwise
- */
-function parseBooleanEnv(value: string | undefined): boolean {
-  return value?.toLowerCase() === "true";
-}
 
 /** Maximum seasons to seed per TV show (0 = unlimited). */
-export const MAX_SEASONS = parseInt(process.env.SEED_MAX_SEASONS || "5", 10);
+export const MAX_SEASONS = 5;
 
 /** Maximum episodes to seed per season (0 = unlimited). */
-export const MAX_EPISODES = parseInt(process.env.SEED_MAX_EPISODES || "10", 10);
-
-/** Random seed for reproducible file counts in tests. */
-export const RANDOM_SEED = process.env.SEED_RANDOM_SEED
-  ? parseInt(process.env.SEED_RANDOM_SEED, 10)
-  : null;
+export const MAX_EPISODES = 10;
 
 /** Delay between TMDB API calls in ms (rate limiting). */
 export const TMDB_API_DELAY_MS = 100;
-
-/** Skip TV shows, seed only movies. */
-export const SEED_ONLY_MOVIES = parseBooleanEnv(process.env.SEED_ONLY_MOVIES);
-
-/** Skip movies, seed only TV shows. */
-export const SEED_ONLY_SHOWS = parseBooleanEnv(process.env.SEED_ONLY_SHOWS);
-
-/** Skip downloading/uploading artwork. */
-export const SEED_SKIP_ARTWORK = parseBooleanEnv(process.env.SEED_SKIP_ARTWORK);
-
-/** Suppress progress output. */
-export const SEED_QUIET = parseBooleanEnv(process.env.SEED_QUIET);
-
-/** Limit number of movies (0 = all). */
-export const SEED_MOVIE_COUNT = parseInt(
-  process.env.SEED_MOVIE_COUNT || "0",
-  10
-);
-
-/** Limit number of TV shows (0 = all). */
-export const SEED_SHOW_COUNT = parseInt(process.env.SEED_SHOW_COUNT || "0", 10);
-
-/** Override to seed single user only. */
-export const SEED_USER_EMAIL = process.env.SEED_USER_EMAIL || null;
-
-/** Specific movie IDs to seed (overrides default list). */
-export const SEED_MOVIE_IDS = process.env.SEED_MOVIE_IDS
-  ? process.env.SEED_MOVIE_IDS.split(",").map((id) => parseInt(id.trim(), 10))
-  : null;
-
-/** Specific TV show IDs to seed (overrides default list). */
-export const SEED_SHOW_IDS = process.env.SEED_SHOW_IDS
-  ? process.env.SEED_SHOW_IDS.split(",").map((id) => parseInt(id.trim(), 10))
-  : null;
-
-/**
- * Enable incremental seeding mode.
- * When true: only re-seed users whose content hash has changed.
- * When false: clean slate seeding (legacy behavior).
- * Default: true
- */
-export const SEED_INCREMENTAL =
-  process.env.SEED_INCREMENTAL?.toLowerCase() !== "false";
-
-/** Enable playback progress simulation for progress bar testing. */
-export const SEED_SIMULATE_PLAYBACK =
-  process.env.SEED_SIMULATE_PLAYBACK?.toLowerCase() !== "false";
 
 /** Duration ranges in seconds for different content types. */
 export const PLAYBACK_DURATIONS = {
@@ -253,108 +176,30 @@ export const USER_PINNED_ITEMS: Record<string, number[]> = {
   "test@canoncore.com": [],
 };
 
-/** Default password for seed users (override with SEED_PASSWORD env var). */
+/** Default password for seed users. */
 export const DEFAULT_SEED_PASSWORD = "SeedPassword123!";
 
 /** Folder name created in Google Drive for seeded content. */
 export const SEED_DRIVE_FOLDER_NAME = "CanonCore-Seed";
 
 /**
- * Returns effective movie IDs based on flags.
- * Respects SEED_ONLY_SHOWS, SEED_MOVIE_IDS, and SEED_MOVIE_COUNT.
- *
- * @returns Array of movie TMDB IDs to seed
- */
-export function getEffectiveMovieIds(): number[] {
-  if (SEED_ONLY_SHOWS) return [];
-  if (SEED_MOVIE_IDS) return SEED_MOVIE_IDS;
-  if (SEED_MOVIE_COUNT > 0) return MOVIE_IDS.slice(0, SEED_MOVIE_COUNT);
-  return MOVIE_IDS;
-}
-
-/**
- * Returns effective TV show IDs based on flags.
- * Respects SEED_ONLY_MOVIES, SEED_SHOW_IDS, and SEED_SHOW_COUNT.
- *
- * @returns Array of TV show TMDB IDs to seed
- */
-export function getEffectiveTVShowIds(): number[] {
-  if (SEED_ONLY_MOVIES) return [];
-  if (SEED_SHOW_IDS) return SEED_SHOW_IDS;
-  if (SEED_SHOW_COUNT > 0) return TV_SHOW_IDS.slice(0, SEED_SHOW_COUNT);
-  return TV_SHOW_IDS;
-}
-
-/**
- * Returns effective seed users based on flags.
- * Respects SEED_USER_EMAIL to filter to single user.
- *
- * @returns Array of user configurations to seed
- */
-export function getEffectiveSeedUsers(): SeedUserConfig[] {
-  if (SEED_USER_EMAIL) {
-    // Find the user in SEED_USERS or create a minimal config
-    const existingUser = SEED_USERS.find((u) => u.email === SEED_USER_EMAIL);
-    if (existingUser) {
-      return [existingUser];
-    }
-    return [
-      {
-        email: SEED_USER_EMAIL,
-        name: SEED_USER_EMAIL.split("@")[0],
-        isPublic: false,
-        avatarSeed: null,
-        heroSeed: null,
-      },
-    ];
-  }
-  return SEED_USERS;
-}
-
-/**
- * Returns effective movie IDs for a specific user.
- * Falls back to global effective IDs if user not in distribution config.
+ * Returns movie IDs for a specific user.
  *
  * @param email - User email to get movies for
  * @returns Array of movie TMDB IDs
  */
-export function getEffectiveMovieIdsForUser(email: string): number[] {
-  // If global overrides are set, use them instead of user config
-  if (SEED_ONLY_SHOWS) return [];
-  if (SEED_MOVIE_IDS) return SEED_MOVIE_IDS;
-
-  const userConfig = USER_CONTENT_DISTRIBUTION[email];
-  if (userConfig) {
-    // Apply global limits if set
-    if (SEED_MOVIE_COUNT > 0) {
-      return userConfig.movieIds.slice(0, SEED_MOVIE_COUNT);
-    }
-    return userConfig.movieIds;
-  }
-  return getEffectiveMovieIds();
+export function getMovieIdsForUser(email: string): number[] {
+  return USER_CONTENT_DISTRIBUTION[email]?.movieIds ?? [];
 }
 
 /**
- * Returns effective TV show IDs for a specific user.
- * Falls back to global effective IDs if user not in distribution config.
+ * Returns TV show IDs for a specific user.
  *
  * @param email - User email to get shows for
  * @returns Array of TV show TMDB IDs
  */
-export function getEffectiveTVShowIdsForUser(email: string): number[] {
-  // If global overrides are set, use them instead of user config
-  if (SEED_ONLY_MOVIES) return [];
-  if (SEED_SHOW_IDS) return SEED_SHOW_IDS;
-
-  const userConfig = USER_CONTENT_DISTRIBUTION[email];
-  if (userConfig) {
-    // Apply global limits if set
-    if (SEED_SHOW_COUNT > 0) {
-      return userConfig.showIds.slice(0, SEED_SHOW_COUNT);
-    }
-    return userConfig.showIds;
-  }
-  return getEffectiveTVShowIds();
+export function getTVShowIdsForUser(email: string): number[] {
+  return USER_CONTENT_DISTRIBUTION[email]?.showIds ?? [];
 }
 
 /**
@@ -383,73 +228,4 @@ export function validateContentDistribution(): void {
       }
     }
   }
-}
-
-// =============================================================================
-// Incremental Seeding
-// =============================================================================
-
-/** Hash version prefix - increment when changing hash algorithm or included fields. */
-const HASH_VERSION = "v3"; // Bumped for episode hero images (still_path as isHero)
-
-/**
- * Computes a content hash for a user's seed configuration.
- * Changes to any of these trigger a re-seed for that user:
- * - Movie IDs
- * - Show IDs
- * - Progress range
- * - Pinned items
- * - User profile (name, username, isPublic, avatar/hero seeds)
- *
- * @param email - User email to compute hash for
- * @returns Versioned SHA-256 hash of user's content configuration (e.g., "v1:abc123...")
- */
-export function computeUserContentHash(email: string): string {
-  const userConfig = SEED_USERS.find((u) => u.email === email);
-  const contentConfig = USER_CONTENT_DISTRIBUTION[email];
-  const progressConfig = USER_PROGRESS_RANGES[email];
-  const pinnedConfig = USER_PINNED_ITEMS[email];
-
-  if (!userConfig || !contentConfig) {
-    return "";
-  }
-
-  // Use .toSorted() to avoid mutating original arrays
-  const hashInput = JSON.stringify({
-    // User profile
-    name: userConfig.name,
-    username: userConfig.username,
-    isPublic: userConfig.isPublic,
-    avatarSeed: userConfig.avatarSeed,
-    heroSeed: userConfig.heroSeed,
-    heroUrl: userConfig.heroUrl,
-    // Content (sorted for determinism, using immutable toSorted)
-    movieIds: contentConfig.movieIds.toSorted((a, b) => a - b),
-    showIds: contentConfig.showIds.toSorted((a, b) => a - b),
-    // Progress
-    progressRange: progressConfig,
-    // Pinned (sorted for determinism)
-    pinnedItems: pinnedConfig?.toSorted((a, b) => a - b) ?? [],
-    // Global settings that affect output
-    maxSeasons: MAX_SEASONS,
-    maxEpisodes: MAX_EPISODES,
-    simulatePlayback: SEED_SIMULATE_PLAYBACK,
-  });
-
-  // Use full SHA-256 hash (64 chars) with version prefix for future-proofing
-  const hash = crypto.createHash("sha256").update(hashInput).digest("hex");
-  return `${HASH_VERSION}:${hash}`;
-}
-
-/**
- * Computes hashes for all seed users.
- *
- * @returns Map of email to content hash
- */
-export function computeAllUserHashes(): Map<string, string> {
-  const hashes = new Map<string, string>();
-  for (const user of SEED_USERS) {
-    hashes.set(user.email, computeUserContentHash(user.email));
-  }
-  return hashes;
 }

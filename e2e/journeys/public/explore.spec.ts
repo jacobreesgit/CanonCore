@@ -9,6 +9,7 @@ import {
   generateUniqueUsername,
   TEST_PASSWORD,
 } from "../../helpers/test-user";
+import { isMobileViewport } from "../../helpers/mobile-nav-helpers";
 
 test.describe("Explore Page Journey", () => {
   // Run serially to avoid database conflicts with shared user state
@@ -64,14 +65,25 @@ test.describe("Explore Page Journey", () => {
       page,
       publicProfilePage,
     }) => {
+      const isMobile = await isMobileViewport(page);
       await publicProfilePage.gotoExplore();
 
-      // Page should load with header showing "Explore"
-      await expect(
-        page
-          .getByTestId("site-header-breadcrumb-root")
-          .filter({ hasText: "Explore" })
-      ).toBeVisible();
+      // Verify we're on Explore page
+      if (isMobile) {
+        // Mobile: Check footer nav has Explore as active
+        await expect(
+          page
+            .getByRole("navigation", { name: /mobile navigation/i })
+            .getByRole("link", { name: /explore/i })
+        ).toHaveAttribute("aria-current", "page");
+      } else {
+        // Desktop: Check header shows "Explore"
+        await expect(
+          page
+            .getByTestId("site-header-breadcrumb-root")
+            .filter({ hasText: "Explore" })
+        ).toBeVisible();
+      }
 
       // Should see the public item (use .first() since multiple items may have same name in grid)
       await expect(
@@ -107,15 +119,27 @@ test.describe("Explore Page Journey", () => {
       page,
       publicProfilePage,
     }) => {
+      const isMobile = await isMobileViewport(page);
+
       // Navigate directly without signing in
       await publicProfilePage.gotoExplore();
 
-      // Page should load with header showing "Explore"
-      await expect(
-        page
-          .getByTestId("site-header-breadcrumb-root")
-          .filter({ hasText: "Explore" })
-      ).toBeVisible();
+      // Verify we're on Explore page
+      if (isMobile) {
+        // Mobile: Check footer nav has Explore as active
+        await expect(
+          page
+            .getByRole("navigation", { name: /mobile navigation/i })
+            .getByRole("link", { name: /explore/i })
+        ).toHaveAttribute("aria-current", "page");
+      } else {
+        // Desktop: Check header shows "Explore"
+        await expect(
+          page
+            .getByTestId("site-header-breadcrumb-root")
+            .filter({ hasText: "Explore" })
+        ).toBeVisible();
+      }
       await expect(
         page
           .getByTestId("items-grid-view")
@@ -129,6 +153,8 @@ test.describe("Explore Page Journey", () => {
       testUser,
       publicProfilePage,
     }) => {
+      const isMobile = await isMobileViewport(page);
+
       // Use testUser fixture for consistent test setup (compatible with itemsPage)
       await expect(page).toHaveURL(`/u/${testUser.username}`, {
         timeout: 10000,
@@ -137,12 +163,22 @@ test.describe("Explore Page Journey", () => {
       // Navigate to explore
       await publicProfilePage.gotoExplore();
 
-      // Page should load with header showing "Explore"
-      await expect(
-        page
-          .getByTestId("site-header-breadcrumb-root")
-          .filter({ hasText: "Explore" })
-      ).toBeVisible();
+      // Verify we're on Explore page
+      if (isMobile) {
+        // Mobile: Check footer nav has Explore as active
+        await expect(
+          page
+            .getByRole("navigation", { name: /mobile navigation/i })
+            .getByRole("link", { name: /explore/i })
+        ).toHaveAttribute("aria-current", "page");
+      } else {
+        // Desktop: Check header shows "Explore"
+        await expect(
+          page
+            .getByTestId("site-header-breadcrumb-root")
+            .filter({ hasText: "Explore" })
+        ).toBeVisible();
+      }
       await expect(
         page
           .getByTestId("items-grid-view")
@@ -157,18 +193,30 @@ test.describe("Explore Page Journey", () => {
       page,
       publicProfilePage,
     }) => {
+      const isMobile = await isMobileViewport(page);
+
       // First, make sure there are no public items by cleaning up
       // Note: This test may be flaky if other tests leave public items
       // We'll just check the structure is present
 
       await publicProfilePage.gotoExplore();
 
-      // Page should load with header showing "Explore"
-      await expect(
-        page
-          .getByTestId("site-header-breadcrumb-root")
-          .filter({ hasText: "Explore" })
-      ).toBeVisible();
+      // Verify we're on Explore page
+      if (isMobile) {
+        // Mobile: Check footer nav has Explore as active
+        await expect(
+          page
+            .getByRole("navigation", { name: /mobile navigation/i })
+            .getByRole("link", { name: /explore/i })
+        ).toHaveAttribute("aria-current", "page");
+      } else {
+        // Desktop: Check header shows "Explore"
+        await expect(
+          page
+            .getByTestId("site-header-breadcrumb-root")
+            .filter({ hasText: "Explore" })
+        ).toBeVisible();
+      }
 
       // Either shows items grid OR empty state
       const hasItems = await page.getByTestId("items-grid-view").isVisible();

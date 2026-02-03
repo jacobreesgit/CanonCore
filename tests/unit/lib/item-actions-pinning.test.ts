@@ -257,8 +257,8 @@ describe("getPinnedItems", () => {
   it("returns pinned items sorted by pinnedOrder", async () => {
     mockAuth.mockResolvedValue({ user: { id: "user-1" } });
     vi.mocked(prisma.item.findMany).mockResolvedValue([
-      { id: "item-1", name: "Movies", pinnedOrder: 0 },
-      { id: "item-2", name: "TV Shows", pinnedOrder: 1 },
+      { id: "item-1", name: "Movies", pinnedOrder: 0, isPublic: false },
+      { id: "item-2", name: "TV Shows", pinnedOrder: 1, isPublic: true },
     ] as never);
 
     const result = await getPinnedItems();
@@ -266,8 +266,8 @@ describe("getPinnedItems", () => {
     expect(result).toEqual({
       success: true,
       data: [
-        { id: "item-1", name: "Movies", pinnedOrder: 0 },
-        { id: "item-2", name: "TV Shows", pinnedOrder: 1 },
+        { id: "item-1", name: "Movies", pinnedOrder: 0, isPublic: false },
+        { id: "item-2", name: "TV Shows", pinnedOrder: 1, isPublic: true },
       ],
     });
 
@@ -282,6 +282,7 @@ describe("getPinnedItems", () => {
         id: true,
         name: true,
         pinnedOrder: true,
+        isPublic: true,
       },
     });
   });

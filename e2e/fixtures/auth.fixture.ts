@@ -3,6 +3,10 @@ import { SignInPage } from "../pages/sign-in.page";
 import { SignUpPage } from "../pages/sign-up.page";
 import type { TestUser } from "./db.fixture";
 import { generateTestUser } from "./db.fixture";
+import {
+  isMobileViewport,
+  signOutViaMobile,
+} from "../helpers/mobile-nav-helpers";
 
 /**
  * Creates a new test user account via the sign-up UI.
@@ -42,11 +46,21 @@ export async function signInTestUser(
 
 /**
  * Signs out the current user.
+ * Handles both desktop (sidebar) and mobile (footer sheet) navigation.
+ *
+ * @param page - Playwright page instance
  */
 export async function signOutUser(page: Page): Promise<void> {
-  // Click user menu and sign out
-  await page.getByTestId("my-items-user-menu").click();
-  await page.getByTestId("my-items-sign-out-button").click();
+  const isMobile = await isMobileViewport(page);
+
+  if (isMobile) {
+    // Mobile: Use footer nav → account sheet → sign out
+    await signOutViaMobile(page);
+  } else {
+    // Desktop: Use sidebar user menu dropdown
+    await page.getByTestId("my-items-user-menu").click();
+    await page.getByTestId("my-items-sign-out-button").click();
+  }
 
   // Wait for redirect to sign-in page
   await page.waitForURL("/sign-in", { timeout: 10000 });

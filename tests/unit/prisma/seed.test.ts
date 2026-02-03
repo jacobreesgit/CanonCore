@@ -383,38 +383,8 @@ Generated for testing purposes.
     it("exports hierarchy configuration constants", async () => {
       const config = await import("../../../prisma/seed-config");
 
-      // MAX_SEASONS
-      expect(config.MAX_SEASONS).toBeDefined();
-      expect(typeof config.MAX_SEASONS).toBe("number");
-      expect(config.MAX_SEASONS).toBeGreaterThanOrEqual(0);
-
-      // MAX_EPISODES
-      expect(config.MAX_EPISODES).toBeDefined();
-      expect(typeof config.MAX_EPISODES).toBe("number");
-      expect(config.MAX_EPISODES).toBeGreaterThanOrEqual(0);
-
-      // RANDOM_SEED (can be null or number)
-      expect("RANDOM_SEED" in config).toBe(true);
-      expect(
-        config.RANDOM_SEED === null || typeof config.RANDOM_SEED === "number"
-      ).toBe(true);
-
-      // TMDB_API_DELAY_MS
-      expect(config.TMDB_API_DELAY_MS).toBeDefined();
-      expect(typeof config.TMDB_API_DELAY_MS).toBe("number");
-      expect(config.TMDB_API_DELAY_MS).toBeGreaterThan(0);
-    });
-
-    it("has sensible default limits", async () => {
-      const config = await import("../../../prisma/seed-config");
-
-      // Default MAX_SEASONS should be 5 (balances coverage with seed time)
       expect(config.MAX_SEASONS).toBe(5);
-
-      // Default MAX_EPISODES should be 10 (reasonable for testing)
       expect(config.MAX_EPISODES).toBe(10);
-
-      // TMDB_API_DELAY_MS should be 100 (rate limiting)
       expect(config.TMDB_API_DELAY_MS).toBe(100);
     });
 
@@ -445,13 +415,9 @@ Generated for testing purposes.
       }
     });
 
-    it("exports playback simulation config", async () => {
+    it("exports playback duration config", async () => {
       const config = await import("../../../prisma/seed-config");
 
-      // SEED_SIMULATE_PLAYBACK should be a boolean
-      expect(typeof config.SEED_SIMULATE_PLAYBACK).toBe("boolean");
-
-      // PLAYBACK_DURATIONS should have movie and episode ranges
       expect(config.PLAYBACK_DURATIONS).toBeDefined();
       expect(config.PLAYBACK_DURATIONS.movie).toBeDefined();
       expect(config.PLAYBACK_DURATIONS.episode).toBeDefined();

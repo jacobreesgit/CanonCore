@@ -2,9 +2,11 @@
  * E2E tests for Item Settings dialog.
  * Tests opening settings, renaming items, and dialog interactions.
  * Note: Context menu works on both tree and grid items. Tree view is only on item detail pages.
+ * Note: Breadcrumb-related tests are desktop-only as breadcrumbs are hidden on mobile.
  */
 
 import { test, expect, prisma } from "../../fixtures";
+import { isMobileViewport } from "../../helpers/mobile-nav-helpers";
 
 test.describe("Item Settings Dialog", () => {
   // Use testUser fixture for consistent test setup (compatible with itemsPage)
@@ -234,14 +236,18 @@ test.describe("Item Page Settings", () => {
     page,
     itemsPage,
   }) => {
+    const isMobile = await isMobileViewport(page);
+
     // Create an item
     await itemsPage.createItem("Test Folder");
 
     // Click into the item to navigate to detail page
     await itemsPage.clickItem("Test Folder");
 
-    // Verify we're on the detail page
-    await itemsPage.expectBreadcrumb("Test Folder");
+    // Verify we're on the detail page (breadcrumb is hidden on mobile)
+    if (!isMobile) {
+      await itemsPage.expectBreadcrumb("Test Folder");
+    }
 
     // Verify Settings button is visible
     const settingsButton = page.getByRole("button", { name: /item settings/i });
@@ -290,6 +296,9 @@ test.describe("Item Page Settings", () => {
     page,
     itemsPage,
   }) => {
+    const isMobile = await isMobileViewport(page);
+    test.skip(isMobile, "Breadcrumbs are hidden on mobile");
+
     // Create an item with original name
     await itemsPage.createItem("Original Name");
 

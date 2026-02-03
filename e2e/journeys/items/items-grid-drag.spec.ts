@@ -121,8 +121,8 @@ test.describe("Items Grid Drag Journey", () => {
     // Navigate to item detail page
     await itemsPage.clickItem("Grid Item 1");
 
-    // Navigate back to root via breadcrumb
-    await itemsPage.breadcrumbHome.click();
+    // Navigate back to root via goto (breadcrumbs hidden on mobile)
+    await itemsPage.goto();
 
     // Items should persist on root page
     await itemsPage.expectItemVisible("Grid Item 1");

@@ -227,3 +227,121 @@ export const MixedMediaTypes: Story = {
     ],
   },
 };
+
+// Pinned items for homepage demo (matching PinnedItemsSection TMDB data)
+const pinnedMovies: ItemWithArtwork[] = [
+  createGridItem("godfather", "The Godfather", {
+    order: 0,
+    artworkId: "artwork-gf",
+    pinnedOrder: 0,
+    fileCounts: { media: 1, artwork: 2, subtitles: 3 },
+    mediaIconType: "film",
+  }),
+  createGridItem("dark-knight", "The Dark Knight", {
+    order: 1,
+    artworkId: "artwork-dk",
+    pinnedOrder: 1,
+    fileCounts: { media: 1, artwork: 1, subtitles: 1 },
+    mediaIconType: "film",
+  }),
+  createGridItem("inception", "Inception", {
+    order: 2,
+    artworkId: "artwork-inc",
+    pinnedOrder: 2,
+    fileCounts: { media: 1, artwork: 1, subtitles: 2 },
+    mediaIconType: "film",
+  }),
+];
+
+// Library items (unpinned - different from pinned movies)
+const libraryMovies: ItemWithArtwork[] = [
+  createGridItem("pulp-fiction", "Pulp Fiction", {
+    order: 0,
+    artworkId: "artwork-pf",
+    fileCounts: { media: 1, artwork: 1, subtitles: 0 },
+    mediaIconType: "film",
+  }),
+  createGridItem("matrix", "The Matrix", {
+    order: 1,
+    artworkId: "artwork-mx",
+    fileCounts: { media: 1, artwork: 1, subtitles: 1 },
+    mediaIconType: "film",
+  }),
+  createGridItem("fight-club", "Fight Club", {
+    order: 2,
+    artworkId: "artwork-fc",
+    fileCounts: { media: 1, artwork: 1, subtitles: 1 },
+    mediaIconType: "film",
+  }),
+  createGridItem("forrest-gump", "Forrest Gump", {
+    order: 3,
+    artworkId: "artwork-fg",
+    fileCounts: { media: 1, artwork: 1, subtitles: 2 },
+    mediaIconType: "film",
+  }),
+];
+
+/**
+ * Homepage layout with Pinned and Library sections.
+ * Shows how items are organized on the profile page.
+ */
+export const Homepage: Story = {
+  args: {
+    items: libraryMovies,
+  },
+  render: (args) => (
+    <div className="flex flex-col gap-6 p-4">
+      {/* Pinned Section */}
+      <section aria-label="Pinned items">
+        <h2 className="text-muted-foreground mb-3 flex items-center gap-2 text-xs font-medium tracking-wider uppercase">
+          <svg
+            className="size-3.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+            />
+          </svg>
+          <span>Pinned</span>
+        </h2>
+        <SortableGrid
+          items={pinnedMovies}
+          onItemsChange={args.onItemsChange}
+          onItemClick={args.onItemClick}
+          onOpenSettings={args.onOpenSettings}
+          onDeleteItem={args.onDeleteItem}
+          onPinItem={args.onPinItem}
+          onUnpinItem={args.onUnpinItem}
+          isItemSelected={args.isItemSelected}
+          onItemSelectChange={args.onItemSelectChange}
+        />
+      </section>
+
+      {/* Library Section */}
+      <section aria-label="Library">
+        <h2 className="text-muted-foreground mb-3 flex items-center gap-2 text-xs font-medium tracking-wider uppercase">
+          <svg
+            className="size-3.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+            />
+          </svg>
+          <span>Library</span>
+        </h2>
+        <SortableGrid {...args} />
+      </section>
+    </div>
+  ),
+};

@@ -64,7 +64,7 @@ const features: Feature[] = [
  */
 export function HeroContent() {
   return (
-    <section className="bg-background relative flex h-full flex-col items-center justify-center overflow-hidden px-6">
+    <section className="bg-background relative flex min-h-full flex-col items-center justify-start overflow-hidden px-6 py-8 md:justify-center md:py-0">
       {/* Subtle top gradient */}
       <div
         className="pointer-events-none absolute inset-0"

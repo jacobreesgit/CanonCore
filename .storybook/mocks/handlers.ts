@@ -89,6 +89,7 @@ export const handlers = [
       "artwork-pf": "/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg", // Pulp Fiction
       "artwork-mx": "/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg", // The Matrix
       "artwork-fc": "/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg", // Fight Club
+      "artwork-fg": "/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg", // Forrest Gump
       "artwork-fav": "/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg", // Favourites (use Inception)
       "art-1": "/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg", // Completed
       "art-2": "/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg", // In Progress

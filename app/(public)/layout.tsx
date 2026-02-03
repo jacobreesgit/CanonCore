@@ -2,11 +2,13 @@
  * Public layout with sidebar for unauthenticated pages.
  * Used by homepage, explore, and public profiles.
  * Includes spotlight search for authenticated users.
+ * Mobile: Uses footer navigation instead of sidebar.
  */
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { MobileNavProvider } from "@/components/mobile";
 import { auth, getExtendedSidebarUser } from "@/lib/auth";
 import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
 import { getPinnedItems } from "@/lib/item-actions";
@@ -32,6 +34,19 @@ export default async function PublicLayout({
   ]);
   const pinnedItems = pinnedResult.success ? pinnedResult.data : [];
 
+  // Prepare user data for mobile nav (null-safe)
+  const mobileNavUser = user
+    ? {
+        name: user.name || "User",
+        email: user.email || "",
+        avatar: user.avatar,
+        username: user.username,
+        isPublic: user.isPublic,
+        hasImage: user.hasImage,
+        hasHeroImage: user.hasHeroImage,
+      }
+    : null;
+
   const content = (
     <SidebarProvider
       className="h-svh overflow-hidden"
@@ -49,15 +64,21 @@ export default async function PublicLayout({
         pinnedItems={pinnedItems}
         driveConnection={driveConnection}
       />
-      <SidebarInset className="overflow-hidden">
+      <SidebarInset className="md:overflow-hidden">
         <main
           id="main-content"
           tabIndex={-1}
-          className="@container/main flex min-h-full flex-col overflow-y-auto outline-none"
+          className="@container/main flex min-h-full flex-col overflow-y-auto pb-16 outline-none md:pb-0"
         >
           <ErrorBoundary>{children}</ErrorBoundary>
         </main>
       </SidebarInset>
+
+      {/* Mobile footer navigation (hidden on desktop) */}
+      <MobileNavProvider
+        user={mobileNavUser}
+        driveConnection={driveConnection}
+      />
     </SidebarProvider>
   );
 

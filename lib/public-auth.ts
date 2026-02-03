@@ -66,6 +66,8 @@ export interface PublicItem {
   forkCount: number;
   /** When item was last updated */
   updatedAt: Date;
+  /** Pinned order (null if not pinned) */
+  pinnedOrder: number | null;
 }
 
 /**
@@ -274,6 +276,7 @@ export const getPublicItem = cache(
         tmdbId: true,
         tmdbType: true,
         updatedAt: true,
+        pinnedOrder: true,
         files: {
           where: { fileType: "ARTWORK" },
           select: { id: true },
@@ -303,6 +306,7 @@ export const getPublicItem = cache(
       tmdbType: item.tmdbType,
       forkCount: item._count.sourceForks,
       updatedAt: item.updatedAt,
+      pinnedOrder: item.pinnedOrder,
     };
   }
 );
@@ -349,6 +353,7 @@ export async function getPublicItemsForUser(
       tmdbId: true,
       tmdbType: true,
       updatedAt: true,
+      pinnedOrder: true,
       files: {
         where: { fileType: "ARTWORK" },
         select: { id: true },
@@ -445,6 +450,7 @@ export async function getPublicItemsForUser(
       tmdbType: item.tmdbType,
       forkCount: item._count.sourceForks,
       updatedAt: item.updatedAt,
+      pinnedOrder: item.pinnedOrder,
       // Only include progress for own profile
       ...(isOwnProfile && {
         progressPercentage: progress?.percentage ?? null,
@@ -501,6 +507,7 @@ export async function getPublicChildItems(
       tmdbId: true,
       tmdbType: true,
       updatedAt: true,
+      pinnedOrder: true,
       files: {
         where: { fileType: "ARTWORK" },
         select: { id: true },
@@ -529,6 +536,7 @@ export async function getPublicChildItems(
     tmdbType: item.tmdbType,
     forkCount: item._count.sourceForks,
     updatedAt: item.updatedAt,
+    pinnedOrder: item.pinnedOrder,
   }));
 }
 
@@ -624,6 +632,7 @@ export const getPublicDescendants = cache(
         tmdbType: true,
         updatedAt: true,
         order: true,
+        pinnedOrder: true,
         files: {
           where: { fileType: "ARTWORK" },
           select: { id: true },
@@ -649,6 +658,7 @@ export const getPublicDescendants = cache(
       tmdbType: item.tmdbType,
       forkCount: item._count.sourceForks,
       updatedAt: item.updatedAt,
+      pinnedOrder: item.pinnedOrder,
     }));
   }
 );
@@ -697,6 +707,7 @@ export async function getExploreItems(
       tmdbId: true,
       tmdbType: true,
       updatedAt: true,
+      pinnedOrder: true,
       files: {
         where: { fileType: "ARTWORK" },
         select: { id: true },
@@ -801,6 +812,7 @@ export async function getExploreItems(
         tmdbType: item.tmdbType,
         forkCount: item._count.sourceForks,
         updatedAt: item.updatedAt,
+        pinnedOrder: item.pinnedOrder,
         ownerUsername: item.user.username!,
         ownerName: item.user.name,
         // Only include progress for own items
@@ -869,10 +881,6 @@ export const searchPublicUsers = cache(
       checkRateLimit("userSearch"),
     ]);
 
-    if (!session?.user?.id) {
-      return { error: "Unauthorized" };
-    }
-
     if (rateLimitResult) {
       return rateLimitResult;
     }
@@ -882,7 +890,8 @@ export const searchPublicUsers = cache(
         where: {
           isPublic: true,
           username: { not: null },
-          id: { not: session.user.id },
+          // Exclude current user's profile (only if logged in)
+          ...(session?.user?.id && { id: { not: session.user.id } }),
         },
         select: {
           id: true,
@@ -927,10 +936,6 @@ export const searchPublicItems = cache(
       checkRateLimit("publicItemSearch"),
     ]);
 
-    if (!session?.user?.id) {
-      return { error: "Unauthorized" };
-    }
-
     if (rateLimitResult) {
       return rateLimitResult;
     }
@@ -942,8 +947,8 @@ export const searchPublicItems = cache(
           // Items with inheritVisibility=true are NOT searchable
           isPublic: true,
           inheritVisibility: false,
-          // Exclude current user's items
-          userId: { not: session.user.id },
+          // Exclude current user's items (only if logged in)
+          ...(session?.user?.id && { userId: { not: session.user.id } }),
           // Owner must be public with username
           user: {
             isPublic: true,

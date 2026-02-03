@@ -9,6 +9,10 @@ import {
   expectDarkMode,
   expectLightMode,
 } from "../../helpers/theme-helpers";
+import {
+  isMobileViewport,
+  openUserSheetIfClosed,
+} from "../../helpers/mobile-nav-helpers";
 
 test.describe("Dark Mode Theme Toggle", () => {
   test.beforeEach(async ({ page, testUser }) => {
@@ -16,11 +20,23 @@ test.describe("Dark Mode Theme Toggle", () => {
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
-  test("theme toggle button is visible in sidebar", async ({ page }) => {
-    const themeToggle = page.getByTestId("theme-toggle");
-    await expect(themeToggle).toBeVisible();
-    // Wait for component to mount and be enabled
-    await expect(themeToggle).toBeEnabled();
+  test("theme toggle button is visible", async ({ page }) => {
+    const isMobile = await isMobileViewport(page);
+
+    if (isMobile) {
+      // Mobile: Theme toggle is in user sheet
+      await openUserSheetIfClosed(page);
+      const themeButton = page
+        .getByRole("dialog", { name: /account/i })
+        .getByRole("button", { name: /(light mode|dark mode)/i });
+      await expect(themeButton).toBeVisible();
+      await page.keyboard.press("Escape");
+    } else {
+      // Desktop: Theme toggle is in sidebar
+      const themeToggle = page.getByTestId("theme-toggle");
+      await expect(themeToggle).toBeVisible();
+      await expect(themeToggle).toBeEnabled();
+    }
   });
 
   test("toggles from light to dark theme", async ({ page }) => {

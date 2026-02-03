@@ -8,6 +8,7 @@
 
 import { useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { Layers, Pin } from "lucide-react";
 import { ItemsView } from "@/components/items";
 import { ProfileHero } from "./profile-hero";
 import { GridItem } from "@/components/sortable-grid/GridItem";
@@ -52,7 +53,7 @@ interface ProfilePageProps {
 
 /**
  * Profile page content for both owner and viewer modes.
- * Owner mode: Full ItemsView with editing, CRUD, drag-drop
+ * Owner mode: Full ItemsView with editing, CRUD, drag-drop, pinned items
  * Viewer mode: Read-only grid with sort functionality
  *
  * @example
@@ -115,7 +116,7 @@ export function ProfilePage({
     : null;
 
   if (isOwner) {
-    // Owner mode: Full ItemsView with all functionality
+    // Owner mode: Full ItemsView with all functionality + pinned items section
     return (
       <ItemsView
         items={items}
@@ -156,9 +157,23 @@ function ViewerModeContent({
     [items]
   );
 
-  // Transform ItemWithArtwork to sortable format and sort
+  // Split items into pinned and unpinned
+  const pinnedItems = useMemo(
+    () =>
+      items
+        .filter((item) => item.pinnedOrder !== null)
+        .sort((a, b) => (a.pinnedOrder ?? 0) - (b.pinnedOrder ?? 0)),
+    [items]
+  );
+
+  const unpinnedItems = useMemo(
+    () => items.filter((item) => item.pinnedOrder === null),
+    [items]
+  );
+
+  // Transform unpinned items to sortable format and sort
   const sortableItems = useMemo(() => {
-    const publicItems = items.map((item) => ({
+    const publicItems = unpinnedItems.map((item) => ({
       id: item.id,
       name: item.name,
       description: item.description,
@@ -174,7 +189,7 @@ function ViewerModeContent({
       forkCount: 0,
     }));
     return sortPublicItems(publicItems, sortBy);
-  }, [items, sortBy]);
+  }, [unpinnedItems, sortBy]);
 
   // Preload on hover for faster navigation
   const handleMouseEnter = useCallback(
@@ -224,32 +239,78 @@ function ViewerModeContent({
 
       {/* Items grid or empty state */}
       {hasItems ? (
-        <div
-          data-testid="items-grid-view"
-          className="grid grid-cols-2 gap-4 px-4 md:grid-cols-3 md:px-6 lg:grid-cols-5 lg:px-8"
-        >
-          {sortableItems.map((item, index) => {
-            // O(1) lookup for original item data
-            const originalItem = itemsById.get(item.id);
-            return (
-              <GridItem
-                key={item.id}
-                id={item.id}
-                name={item.name}
-                description={item.description}
-                artworkId={originalItem?.artworkId ?? item.artworkId}
-                onClick={() => handleItemClick(item.id)}
-                onMouseEnter={() => handleMouseEnter(item.id)}
-                showArtwork={true}
-                showDescription={true}
-                priority={index < 8}
-                ownerLabel={`@${profile.username}`}
-                ownerHref={`/u/${profile.username}`}
-                ownerUserId={profile.id}
-                ownerName={profile.name}
-              />
-            );
-          })}
+        <div className="flex flex-col gap-6 px-4 md:px-6 lg:px-8">
+          {/* Pinned items section */}
+          {pinnedItems.length > 0 && (
+            <section aria-label="Pinned items">
+              <h2 className="text-muted-foreground mb-3 flex items-center gap-2 text-xs font-medium tracking-wider uppercase">
+                <Pin className="size-3.5" aria-hidden="true" />
+                <span>Pinned</span>
+              </h2>
+              <div
+                data-testid="pinned-items-grid"
+                className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5"
+              >
+                {pinnedItems.map((item, index) => (
+                  <GridItem
+                    key={item.id}
+                    id={item.id}
+                    name={item.name}
+                    description={item.description}
+                    artworkId={item.artworkId}
+                    onClick={() => handleItemClick(item.id)}
+                    onMouseEnter={() => handleMouseEnter(item.id)}
+                    showArtwork={true}
+                    showDescription={true}
+                    priority={index < 5}
+                    ownerLabel={`@${profile.username}`}
+                    ownerHref={`/u/${profile.username}`}
+                    ownerUserId={profile.id}
+                    ownerName={profile.name}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Library section (items not pinned) */}
+          {sortableItems.length > 0 && (
+            <section aria-label="Library">
+              {pinnedItems.length > 0 && (
+                <h2 className="text-muted-foreground mb-3 flex items-center gap-2 text-xs font-medium tracking-wider uppercase">
+                  <Layers className="size-3.5" aria-hidden="true" />
+                  <span>Library</span>
+                </h2>
+              )}
+              <div
+                data-testid="items-grid-view"
+                className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5"
+              >
+                {sortableItems.map((item, index) => {
+                  // O(1) lookup for original item data
+                  const originalItem = itemsById.get(item.id);
+                  return (
+                    <GridItem
+                      key={item.id}
+                      id={item.id}
+                      name={item.name}
+                      description={item.description}
+                      artworkId={originalItem?.artworkId ?? item.artworkId}
+                      onClick={() => handleItemClick(item.id)}
+                      onMouseEnter={() => handleMouseEnter(item.id)}
+                      showArtwork={true}
+                      showDescription={true}
+                      priority={index < 8}
+                      ownerLabel={`@${profile.username}`}
+                      ownerHref={`/u/${profile.username}`}
+                      ownerUserId={profile.id}
+                      ownerName={profile.name}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+          )}
         </div>
       ) : (
         <div className="flex flex-1 flex-col px-4 md:px-6 lg:px-8">
