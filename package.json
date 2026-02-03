@@ -1,6 +1,7 @@
 {
   "name": "canoncore",
   "version": "6.6.0",
+  "packageManager": "pnpm@10.15.0",
   "private": true,
   "scripts": {
     "postinstall": "prisma generate",
