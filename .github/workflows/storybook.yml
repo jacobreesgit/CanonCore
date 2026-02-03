@@ -13,6 +13,8 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
 
     steps:
       - name: Checkout
