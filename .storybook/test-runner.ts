@@ -51,6 +51,8 @@ const config: TestRunnerConfig = {
             // list/listitem: shadcn Collapsible wraps li elements in divs for collapsible behavior
             list: { enabled: false },
             listitem: { enabled: false },
+            // aria-allowed-attr: Radix PopoverTrigger adds type="button" to divs with asChild
+            "aria-allowed-attr": { enabled: false },
           },
         },
       });
