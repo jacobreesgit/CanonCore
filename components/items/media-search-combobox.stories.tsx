@@ -20,6 +20,13 @@ const meta = {
           "Auto-suggest combobox for TMDB media search. Shows movie/TV results with poster thumbnails as user types.",
       },
     },
+    // Disable aria-allowed-attr - Radix PopoverTrigger adds type="button" to divs
+    // when using asChild, which is invalid HTML but required for the combobox pattern
+    a11y: {
+      config: {
+        rules: [{ id: "aria-allowed-attr", enabled: false }],
+      },
+    },
   },
   argTypes: {
     value: {
