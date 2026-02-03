@@ -235,9 +235,8 @@ export const TMDBSearchInteraction: Story = {
     // Wait for dialog to appear
     await body.findByLabelText(/name/i);
 
-    // Find and click the TMDB search combobox
-    const searchTrigger = body.getByRole("combobox");
-    await expect(searchTrigger).toBeInTheDocument();
+    // Wait for TMDB search combobox (may take time to check TMDB availability)
+    const searchTrigger = await body.findByRole("combobox", {}, { timeout: 5000 });
     await userEvent.click(searchTrigger);
   },
   parameters: {
