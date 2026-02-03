@@ -107,13 +107,14 @@ function ArtworkThumbnail({ artworkId }: { artworkId: string }) {
 /**
  * Skeleton loader for search result items.
  * Displays animated placeholder while data loads.
+ * Height matches CommandItem styling (py-2.5 + size-8 icon = 52px).
  */
 function ItemSkeleton() {
   return (
-    <div className="flex animate-pulse items-center gap-3 px-3 py-2.5">
+    <div className="flex h-[52px] animate-pulse items-center gap-3 px-3">
       <div className="bg-muted size-8 shrink-0 rounded-md" />
-      <div className="flex flex-1 flex-col gap-1">
-        <div className="bg-muted h-4 w-32 rounded" />
+      <div className="flex flex-1 flex-col gap-1.5">
+        <div className="bg-muted h-3.5 w-32 rounded" />
         <div className="bg-muted h-3 w-20 rounded" />
       </div>
     </div>
@@ -225,7 +226,10 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
           setItems(data);
         } else {
           setItems([]);
-          toast.error("Failed to load items", { description: result.error });
+          // Don't show error toast for unauthenticated users - expected behavior
+          if (result.error !== "Not authenticated") {
+            toast.error("Failed to load items", { description: result.error });
+          }
         }
         setIsLoadingItems(false);
       }
@@ -361,7 +365,7 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
       />
       <CommandList
         ref={listRef}
-        className="flex max-h-[60vh] flex-col sm:max-h-[400px]"
+        className="flex max-h-[60vh] min-h-[300px] flex-col sm:max-h-[400px]"
       >
         <div aria-live="polite" aria-atomic="true" className="sr-only">
           {announcement}
@@ -381,9 +385,9 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
         )}
 
         {/* User's Items - with distinct icon style (solid folder) */}
-        {(items.length > 0 || isLoadingItems || !hasInitialized) && (
+        {(items.length > 0 || isAnyLoading || !hasInitialized) && (
           <CommandGroup heading="Your Items">
-            {isLoadingItems || !hasInitialized ? (
+            {isAnyLoading || !hasInitialized ? (
               <>
                 <ItemSkeleton />
                 <ItemSkeleton />
@@ -395,7 +399,7 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
                   key={item.id}
                   value={`item:${item.name} ${item.description || ""} ${item.breadcrumb || ""}`}
                   onSelect={() => handleSelectItem(item.id, item.ownerUsername)}
-                  className="group cursor-pointer gap-3 px-3 py-2.5"
+                  className="group h-[52px] cursor-pointer gap-3 px-3"
                 >
                   {item.artworkId ? (
                     <ArtworkThumbnail artworkId={item.artworkId} />
@@ -424,9 +428,9 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
         )}
 
         {/* Public Items - with distinct icon style (globe) */}
-        {(publicItems.length > 0 || isLoadingPublicItems) && (
+        {(publicItems.length > 0 || isAnyLoading || !hasInitialized) && (
           <CommandGroup heading="Public Items">
-            {isLoadingPublicItems ? (
+            {isAnyLoading || !hasInitialized ? (
               <>
                 <ItemSkeleton />
                 <ItemSkeleton />
@@ -439,7 +443,7 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
                   onSelect={() =>
                     handleSelectPublicItem(item.id, item.ownerUsername)
                   }
-                  className="group cursor-pointer gap-3 px-3 py-2.5"
+                  className="group h-[52px] cursor-pointer gap-3 px-3"
                 >
                   {item.artworkId ? (
                     <ArtworkThumbnail artworkId={item.artworkId} />
@@ -461,9 +465,9 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
         )}
 
         {/* People - with distinct icon style (user circle) */}
-        {(users.length > 0 || isLoadingUsers) && (
+        {(users.length > 0 || isAnyLoading || !hasInitialized) && (
           <CommandGroup heading="People">
-            {isLoadingUsers ? (
+            {isAnyLoading || !hasInitialized ? (
               <>
                 <ItemSkeleton />
                 <ItemSkeleton />
@@ -474,7 +478,7 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
                   key={user.id}
                   value={`user:${user.username} ${user.name || ""}`}
                   onSelect={() => handleSelectUser(user.username)}
-                  className="group cursor-pointer gap-3 px-3 py-2.5"
+                  className="group h-[52px] cursor-pointer gap-3 px-3"
                 >
                   <UserThumbnail userId={user.id} name={user.name} showImage />
                   <div className="flex min-w-0 flex-1 flex-col">

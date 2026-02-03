@@ -153,12 +153,29 @@ export async function signIn(page: Page, user: ScreenshotUser): Promise<void> {
 
 /**
  * Signs out the current user.
+ * Handles both desktop (sidebar) and mobile (footer sheet) viewports.
  *
  * @param page - Playwright page
  */
 export async function signOut(page: Page): Promise<void> {
-  await page.getByTestId("my-items-user-menu").click();
-  await page.getByTestId("my-items-sign-out-button").click();
+  const viewport = page.viewportSize();
+  const isMobile = viewport && viewport.width < 768;
+
+  if (isMobile) {
+    // Mobile: Open account sheet via footer nav, then sign out
+    const accountButton = page
+      .getByRole("navigation", { name: /mobile navigation/i })
+      .getByRole("button", { name: /account/i });
+    await accountButton.click();
+    const sheet = page.getByRole("dialog", { name: /account/i });
+    await sheet.waitFor({ state: "visible" });
+    await sheet.getByRole("button", { name: /sign out/i }).click();
+  } else {
+    // Desktop: Use sidebar user menu dropdown
+    await page.getByTestId("my-items-user-menu").click();
+    await page.getByTestId("my-items-sign-out-button").click();
+  }
+
   await page.waitForURL("/sign-in", { timeout: 10000 });
 }
 
@@ -255,22 +272,37 @@ export async function switchToTreeView(page: Page): Promise<void> {
 
 /**
  * Opens the settings dialog.
- * On mobile, opens sidebar first if needed.
+ * Handles both desktop (sidebar) and mobile (footer sheet) viewports.
  *
  * @param page - Playwright page
  */
 export async function openSettings(page: Page): Promise<void> {
-  const userMenu = page.getByTestId("my-items-user-menu");
-  const isUserMenuVisible = await userMenu.isVisible().catch(() => false);
+  const viewport = page.viewportSize();
+  const isMobile = viewport && viewport.width < 768;
 
-  if (!isUserMenuVisible) {
-    // Click sidebar trigger to open sidebar on mobile
-    await page.getByTestId("sidebar-trigger").click();
-    await page.waitForTimeout(500); // Wait for sidebar animation
+  if (isMobile) {
+    // Mobile: Open account sheet via footer nav, then settings
+    const accountButton = page
+      .getByRole("navigation", { name: /mobile navigation/i })
+      .getByRole("button", { name: /account/i });
+    await accountButton.click();
+    const sheet = page.getByRole("dialog", { name: /account/i });
+    await sheet.waitFor({ state: "visible" });
+    await sheet.getByRole("button", { name: /settings/i }).click();
+  } else {
+    // Desktop: Open sidebar if collapsed, then user menu
+    const userMenu = page.getByTestId("my-items-user-menu");
+    const isUserMenuVisible = await userMenu.isVisible().catch(() => false);
+
+    if (!isUserMenuVisible) {
+      await page.getByTestId("sidebar-trigger").click();
+      await page.waitForTimeout(500); // Wait for sidebar animation
+    }
+
+    await userMenu.click();
+    await page.getByTestId("my-items-settings-button").click();
   }
 
-  await userMenu.click();
-  await page.getByTestId("my-items-settings-button").click();
   await page.waitForSelector('[role="dialog"]', { timeout: 5000 });
 }
 

@@ -2,12 +2,14 @@
  * Documentation layout with docs-specific sidebar navigation.
  * Uses the Fumadocs page tree for navigation.
  * Includes spotlight search for authenticated users.
+ * Mobile: Uses footer navigation instead of sidebar.
  */
 
 import { source } from "@/lib/source";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { MobileNavProvider } from "@/components/mobile";
 import { auth, getExtendedSidebarUser } from "@/lib/auth";
 import { MyItemsProviders } from "@/components/my-items-providers";
 import type { ReactNode } from "react";
@@ -26,6 +28,19 @@ export default async function DocsLayout({
   const session = await auth();
   const user = await getExtendedSidebarUser(session);
 
+  // Prepare user data for mobile nav (null-safe)
+  const mobileNavUser = user
+    ? {
+        name: user.name || "User",
+        email: user.email || "",
+        avatar: user.avatar,
+        username: user.username,
+        isPublic: user.isPublic,
+        hasImage: user.hasImage,
+        hasHeroImage: user.hasHeroImage,
+      }
+    : null;
+
   const content = (
     <SidebarProvider
       className="h-svh overflow-hidden"
@@ -42,16 +57,19 @@ export default async function DocsLayout({
         context="docs"
         docsTree={source.pageTree}
       />
-      <SidebarInset className="overflow-hidden">
+      <SidebarInset className="md:overflow-hidden">
         <main
           id="main-content"
           tabIndex={-1}
-          className="@container/main flex min-h-full flex-col overflow-y-auto outline-none"
+          className="@container/main flex min-h-full flex-col overflow-y-auto pb-16 outline-none md:pb-0"
         >
           <SiteHeader title="Documentation" titleHref="/docs" />
           {children}
         </main>
       </SidebarInset>
+
+      {/* Mobile footer navigation (hidden on desktop) */}
+      <MobileNavProvider user={mobileNavUser} driveConnection={null} />
     </SidebarProvider>
   );
 

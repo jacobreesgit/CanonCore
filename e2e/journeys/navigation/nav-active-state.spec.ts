@@ -1,12 +1,16 @@
 /**
  * E2E tests for sidebar navigation active state styling.
  * Verifies nav items are visually highlighted when their page is active.
+ *
+ * Note: Mobile uses footer nav instead of sidebar for main navigation.
+ * Tests are viewport-aware and check appropriate navigation element.
  */
 
 import { test, expect } from "../../fixtures";
+import { isMobileViewport } from "../../helpers/mobile-nav-helpers";
 
-// Helper to open sidebar on mobile (collapsed by default)
-async function openSidebarIfMobile(page: import("@playwright/test").Page) {
+// Helper to open sidebar on desktop (collapsed by default)
+async function openSidebarIfDesktop(page: import("@playwright/test").Page) {
   const toggleButton = page.getByRole("button", { name: "Toggle Sidebar" });
   if (await toggleButton.isVisible()) {
     await toggleButton.click();
@@ -25,14 +29,22 @@ test.describe("Navigation Active State", () => {
     });
 
     test("My Items nav is active on /u/[username]", async ({ page }) => {
-      await openSidebarIfMobile(page);
+      const isMobile = await isMobileViewport(page);
 
-      // Find the My Items nav button in sidebar
-      const myItemsNav = page.locator('[data-slot="sidebar-menu-button"]', {
-        hasText: "My Items",
-      });
-
-      await expect(myItemsNav).toHaveAttribute("data-active", "true");
+      if (isMobile) {
+        // Mobile: Check footer nav for active state via aria-current
+        const myItemsNav = page
+          .getByRole("navigation", { name: /mobile navigation/i })
+          .getByRole("link", { name: /my items/i });
+        await expect(myItemsNav).toHaveAttribute("aria-current", "page");
+      } else {
+        // Desktop: Check sidebar nav for active state
+        await openSidebarIfDesktop(page);
+        const myItemsNav = page.locator('[data-slot="sidebar-menu-button"]', {
+          hasText: "My Items",
+        });
+        await expect(myItemsNav).toHaveAttribute("data-active", "true");
+      }
     });
 
     // Note: Google Drive connection is managed through the Settings dialog
@@ -40,8 +52,13 @@ test.describe("Navigation Active State", () => {
     test("docs context shows docs tree navigation instead of footer nav", async ({
       page,
     }) => {
+      const isMobile = await isMobileViewport(page);
+
+      // Skip on mobile - docs layout uses fumadocs sidebar which has different mobile behavior
+      test.skip(isMobile, "Docs sidebar behavior differs on mobile");
+
       await page.goto("/docs");
-      await openSidebarIfMobile(page);
+      await openSidebarIfDesktop(page);
 
       // Docs context doesn't show the footer nav with "Get Help" button
       // Instead it shows the Fumadocs tree navigation
@@ -80,13 +97,22 @@ test.describe("Navigation Active State", () => {
       await itemsPage.createItem("Test Folder");
       await itemsPage.clickItem("Test Folder");
 
-      // Now open sidebar to check nav state
-      await openSidebarIfMobile(page);
-      // My Items should be active throughout /u/[username]/* for section awareness
-      const myItemsNav = page.locator('[data-slot="sidebar-menu-button"]', {
-        hasText: "My Items",
-      });
-      await expect(myItemsNav).toHaveAttribute("data-active", "true");
+      const isMobile = await isMobileViewport(page);
+
+      if (isMobile) {
+        // Mobile: Check footer nav for active state via aria-current
+        const myItemsNav = page
+          .getByRole("navigation", { name: /mobile navigation/i })
+          .getByRole("link", { name: /my items/i });
+        await expect(myItemsNav).toHaveAttribute("aria-current", "page");
+      } else {
+        // Desktop: Check sidebar nav for active state
+        await openSidebarIfDesktop(page);
+        const myItemsNav = page.locator('[data-slot="sidebar-menu-button"]', {
+          hasText: "My Items",
+        });
+        await expect(myItemsNav).toHaveAttribute("data-active", "true");
+      }
     });
   });
 
@@ -94,8 +120,13 @@ test.describe("Navigation Active State", () => {
     test("docs context shows docs tree navigation with Back to Home for guests", async ({
       page,
     }) => {
+      const isMobile = await isMobileViewport(page);
+
+      // Skip on mobile - docs layout uses fumadocs sidebar which has different mobile behavior
+      test.skip(isMobile, "Docs sidebar behavior differs on mobile");
+
       await page.goto("/docs");
-      await openSidebarIfMobile(page);
+      await openSidebarIfDesktop(page);
 
       // Docs context doesn't show "Get Help" - shows docs tree navigation instead
       const getHelpNav = page.locator('[data-slot="sidebar-menu-button"]', {
@@ -128,8 +159,13 @@ test.describe("Navigation Active State", () => {
     });
 
     test("Get Started nav is inactive on home page", async ({ page }) => {
+      const isMobile = await isMobileViewport(page);
+
+      // Skip on mobile - home page has different navigation (footer nav with Sign In, not Get Started)
+      test.skip(isMobile, "Home page uses mobile footer nav on mobile");
+
       await page.goto("/");
-      await openSidebarIfMobile(page);
+      await openSidebarIfDesktop(page);
 
       const getStartedNav = page.locator('[data-slot="sidebar-menu-button"]', {
         hasText: "Get Started",

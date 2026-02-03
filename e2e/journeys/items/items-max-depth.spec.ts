@@ -4,9 +4,12 @@
  *
  * The application limits item nesting to 10 levels (depth 0-9)
  * to prevent excessively deep hierarchies.
+ *
+ * Note: Breadcrumb-related tests are desktop-only as breadcrumbs are hidden on mobile.
  */
 
 import { test, expect } from "../../fixtures";
+import { isMobileViewport } from "../../helpers/mobile-nav-helpers";
 
 test.describe("Items Max Depth Journey", () => {
   test("cannot create item beyond max depth via UI", async ({
@@ -56,6 +59,9 @@ test.describe("Items Max Depth Journey", () => {
     testUser,
     itemsPage,
   }) => {
+    const isMobile = await isMobileViewport(page);
+    test.skip(isMobile, "Breadcrumbs are hidden on mobile");
+
     // Allow extra time for nested operations
     test.setTimeout(60000);
     test.info().annotations.push({
@@ -89,6 +95,9 @@ test.describe("Items Max Depth Journey", () => {
     testUser,
     itemsPage,
   }) => {
+    const isMobile = await isMobileViewport(page);
+    test.skip(isMobile, "Breadcrumbs are hidden on mobile");
+
     test.setTimeout(60000); // Increase timeout for nested navigation
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
@@ -115,6 +124,9 @@ test.describe("Items Max Depth Journey", () => {
     testUser,
     itemsPage,
   }) => {
+    const isMobile = await isMobileViewport(page);
+    test.skip(isMobile, "Breadcrumbs are hidden on mobile");
+
     test.setTimeout(60000); // Increase timeout for deep nesting
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 

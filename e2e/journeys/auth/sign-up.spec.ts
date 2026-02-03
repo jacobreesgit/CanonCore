@@ -1,5 +1,6 @@
 import { test, expect } from "../../fixtures";
 import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
+import { isMobileViewport } from "../../helpers/mobile-nav-helpers";
 
 test.describe("Sign Up Journey", () => {
   test("new user can create account and reach my-items", async ({
@@ -16,19 +17,30 @@ test.describe("Sign Up Journey", () => {
     await landingPage.goto();
     await landingPage.expectVisible();
 
-    // On mobile, open the sidebar first (it's collapsed behind hamburger menu)
-    const sidebarTrigger = page.getByTestId("sidebar-trigger");
-    const getStartedLink = page.getByRole("link", { name: "Get Started" });
+    const isMobile = await isMobileViewport(page);
 
-    // Check if the link is already visible (desktop) or needs sidebar opened (mobile)
-    if (!(await getStartedLink.isVisible())) {
-      await sidebarTrigger.click();
-      await expect(getStartedLink).toBeVisible({ timeout: 5000 });
+    if (isMobile) {
+      // Mobile: Use footer nav "Sign In" link, then navigate to sign-up
+      const signInLink = page
+        .getByRole("navigation", { name: /mobile navigation/i })
+        .getByRole("link", { name: /sign in/i });
+      await signInLink.click();
+      await expect(page).toHaveURL("/sign-in");
+    } else {
+      // Desktop: Open sidebar if needed, then click "Get Started"
+      const sidebarTrigger = page.getByTestId("sidebar-trigger");
+      const getStartedLink = page.getByRole("link", { name: "Get Started" });
+
+      if (!(await getStartedLink.isVisible())) {
+        await sidebarTrigger.click();
+        await expect(getStartedLink).toBeVisible({ timeout: 5000 });
+      }
+
+      await getStartedLink.click();
+      await expect(page).toHaveURL("/sign-in");
     }
 
-    // Click Get Started in sidebar (goes to sign-in, then navigate to sign-up)
-    await getStartedLink.click();
-    await expect(page).toHaveURL("/sign-in");
+    // Navigate from sign-in to sign-up
     await page.getByTestId("sign-in-sign-up-link").click();
     await expect(page).toHaveURL("/sign-up");
 

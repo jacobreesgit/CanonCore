@@ -635,13 +635,13 @@ describe("SpotlightSearch - Cache", () => {
   });
 });
 
-describe("SpotlightSearch - Independent Loading States", () => {
+describe("SpotlightSearch - Unified Loading States", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     clearSearchCache();
   });
 
-  it("shows section content as soon as that section loads", async () => {
+  it("shows skeletons until all sections finish loading", async () => {
     // Create deferred promises that we can resolve manually
     let resolveUsers: (value: { success: true; data: [] }) => void;
     let resolvePublicItems: (value: { success: true; data: [] }) => void;
@@ -680,15 +680,23 @@ describe("SpotlightSearch - Independent Loading States", () => {
       </SpotlightProvider>
     );
 
-    // Items section should appear immediately even though users/public items are pending
+    // While other sections are still loading, skeletons should show (not the item content)
+    // Skeletons are divs with animate-pulse class
     await waitFor(() => {
       expect(screen.getByText("Your Items")).toBeInTheDocument();
-      expect(screen.getByText("My Item")).toBeInTheDocument();
     });
 
-    // Resolve pending promises to avoid warnings about unhandled rejections
+    // Content should NOT appear yet because other sections are still loading
+    expect(screen.queryByText("My Item")).not.toBeInTheDocument();
+
+    // Resolve all pending promises
     resolveUsers!({ success: true, data: [] });
     resolvePublicItems!({ success: true, data: [] });
+
+    // Now content should appear
+    await waitFor(() => {
+      expect(screen.getByText("My Item")).toBeInTheDocument();
+    });
   });
 
   it("shows skeletons while section is loading", async () => {

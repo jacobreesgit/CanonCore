@@ -68,13 +68,23 @@ describe("searchPublicUsers", () => {
     );
   });
 
-  it("returns error when not authenticated", async () => {
+  it("returns all public users when not authenticated", async () => {
     vi.mocked(auth).mockResolvedValue(null as never);
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: "user-2", username: "johndoe", name: "John Doe" },
+    ] as never);
 
     const result = await searchPublicUsers();
 
-    expect(result.success).toBeUndefined();
-    expect(result.error).toBe("Unauthorized");
+    expect(result.success).toBe(true);
+    // When not authenticated, no user is excluded
+    expect(prisma.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.not.objectContaining({
+          id: expect.anything(),
+        }),
+      })
+    );
   });
 
   it("returns error when rate limited", async () => {

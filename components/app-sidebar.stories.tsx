@@ -110,6 +110,19 @@ const mockPinnedItems: PinnedItem[] = [
   { id: "pin-3", name: "Action Movies", pinnedOrder: 2 },
 ];
 
+const mockMaxPinnedItems: PinnedItem[] = [
+  { id: "pin-1", name: "Movies", pinnedOrder: 0 },
+  { id: "pin-2", name: "TV Shows", pinnedOrder: 1 },
+  { id: "pin-3", name: "Anime", pinnedOrder: 2 },
+  { id: "pin-4", name: "Documentaries", pinnedOrder: 3 },
+  { id: "pin-5", name: "Music Videos", pinnedOrder: 4 },
+  { id: "pin-6", name: "Podcasts", pinnedOrder: 5 },
+  { id: "pin-7", name: "Courses", pinnedOrder: 6 },
+  { id: "pin-8", name: "Favourites", pinnedOrder: 7 },
+  { id: "pin-9", name: "Watch Later", pinnedOrder: 8 },
+  { id: "pin-10", name: "Archives", pinnedOrder: 9 },
+];
+
 const mockDocsTree: PageTreeRoot = {
   name: "Documentation",
   children: [
@@ -283,5 +296,18 @@ export const PinnedItemActive: Story = {
         pathname: "/u/johndoe/pin-1",
       },
     },
+  },
+};
+
+/**
+ * Maximum pinned items (10).
+ * Shows all 10 pinned items in the sidebar.
+ */
+export const MaxPinnedItems: Story = {
+  args: {
+    user: mockUser,
+    context: "my-items",
+    driveConnection: mockDriveConnection,
+    pinnedItems: mockMaxPinnedItems,
   },
 };

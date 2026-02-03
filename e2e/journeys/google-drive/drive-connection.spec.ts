@@ -341,15 +341,21 @@ test.describe("Google Drive: OAuth Connection", () => {
     await settingsPage.openFromNavUser();
     await settingsPage.goToConnectionsTab();
 
+    // Scope to settings dialog to avoid strict mode violation on mobile
+    // (mobile has both user sheet and settings dialog visible)
+    const dialog = page.locator('[role="dialog"][data-slot="dialog-content"]');
+
     // Wait for storage label to be visible (AnimatedDialogContent needs time to render)
-    await expect(page.getByText("Storage", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("Storage", { exact: true })).toBeVisible();
 
     // Verify storage bar shows usage data
-    await expect(page.getByRole("progressbar")).toBeVisible();
-    await expect(page.getByText(/\d+\.?\d* GB \/ \d+\.?\d* GB/)).toBeVisible();
+    await expect(dialog.getByRole("progressbar")).toBeVisible();
+    await expect(
+      dialog.getByText(/\d+\.?\d* GB \/ \d+\.?\d* GB/)
+    ).toBeVisible();
 
     // Verify Manage Storage link points to Google One storage
-    const manageLink = page.getByRole("link", { name: /manage storage/i });
+    const manageLink = dialog.getByRole("link", { name: /manage storage/i });
     await expect(manageLink).toBeVisible();
     await expect(manageLink).toHaveAttribute(
       "href",
@@ -390,18 +396,22 @@ test.describe("Google Drive: OAuth Connection", () => {
     await settingsPage.openFromNavUser();
     await settingsPage.goToConnectionsTab();
 
+    // Scope to settings dialog to avoid strict mode violation on mobile
+    // (mobile has both user sheet and settings dialog visible)
+    const dialog = page.locator('[role="dialog"][data-slot="dialog-content"]');
+
     // Wait for storage label to be visible (AnimatedDialogContent needs time to render)
-    await expect(page.getByText("Storage", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("Storage", { exact: true })).toBeVisible();
 
     // Storage section is always shown, but displays "Sync to see storage usage" when no data
-    await expect(page.getByText("Sync to see storage usage")).toBeVisible();
+    await expect(dialog.getByText("Sync to see storage usage")).toBeVisible();
 
     // Progress bar is rendered but with reduced opacity (still visible to Playwright)
-    await expect(page.getByRole("progressbar")).toBeVisible();
+    await expect(dialog.getByRole("progressbar")).toBeVisible();
 
     // Manage Storage link is always visible
     await expect(
-      page.getByRole("link", { name: /manage storage/i })
+      dialog.getByRole("link", { name: /manage storage/i })
     ).toBeVisible();
   });
 });

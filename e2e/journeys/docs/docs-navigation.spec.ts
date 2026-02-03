@@ -6,6 +6,10 @@
 import { test, expect } from "../../fixtures";
 import { toggleTheme, expectDarkMode } from "../../helpers/theme-helpers";
 import { openSidebarIfClosed } from "../../helpers/sidebar-helpers";
+import {
+  isMobileViewport,
+  openHelpSheetIfClosed,
+} from "../../helpers/mobile-nav-helpers";
 
 test.describe("Documentation Navigation", () => {
   test.beforeEach(async ({ page, testUser }) => {
@@ -14,12 +18,22 @@ test.describe("Documentation Navigation", () => {
   });
 
   test("can navigate to docs via Get Help link", async ({ page }) => {
-    // Open sidebar if collapsed (mobile)
-    await openSidebarIfClosed(page);
+    const isMobile = await isMobileViewport(page);
 
-    // Click Get Help link in sidebar
-    const getHelpLink = page.getByRole("link", { name: "Get Help" });
-    await getHelpLink.click();
+    if (isMobile) {
+      // Mobile: Help is accessed via footer nav → help sheet → docs link
+      await openHelpSheetIfClosed(page);
+      // Click "Browse All Documentation" link in help sheet
+      const docsLink = page.getByRole("link", {
+        name: /browse all documentation/i,
+      });
+      await docsLink.click();
+    } else {
+      // Desktop: Click Get Help link in sidebar
+      await openSidebarIfClosed(page);
+      const getHelpLink = page.getByRole("link", { name: "Get Help" });
+      await getHelpLink.click();
+    }
 
     // Should be on docs page
     await expect(page).toHaveURL("/docs");
@@ -39,9 +53,15 @@ test.describe("Documentation Navigation", () => {
     page,
     docsPage,
   }) => {
+    const isMobile = await isMobileViewport(page);
+
+    // Skip on mobile - docs layout uses fumadocs sidebar which has different mobile behavior
+    // The "Back to My Items" link may not be accessible in the same way on mobile
+    test.skip(isMobile, "Docs navigation back to My Items has different UX on mobile");
+
     await docsPage.goto();
 
-    // Open sidebar if collapsed (mobile) - Back to My Items is in our sidebar
+    // Open sidebar if collapsed - Back to My Items is in our sidebar
     await openSidebarIfClosed(page);
 
     // Click the back link in sidebar
