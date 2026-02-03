@@ -11,14 +11,14 @@ import * as dotenv from "dotenv";
 import * as fs from "fs";
 import * as path from "path";
 import { FileType, SyncStatus } from "@prisma/client";
-import type { PrismaClient } from "@prisma/client";
+import type { ExtendedPrismaClient } from "@/lib/prisma";
 import { hash } from "bcryptjs";
 import { encryptCredential } from "@/lib/crypto";
 
 dotenv.config({ path: ".env.local" });
 
 // Prisma client - initialized dynamically after env vars are loaded
-let prisma: PrismaClient;
+let prisma: ExtendedPrismaClient;
 
 const TEST_FOLDER_NAME = "Breaking Bad";
 const TEST_VIDEO_PATH = "file_example_MP4_1920_18MG.mp4";
