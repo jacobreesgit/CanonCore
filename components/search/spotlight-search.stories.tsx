@@ -60,12 +60,12 @@ type Story = StoryObj<typeof meta>;
  * Press "/" to open the search dialog.
  */
 export const Default: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+  play: async () => {
     // Press "/" to open the search dialog
     await userEvent.keyboard("/");
-    // Wait for dialog to appear
-    await canvas.findByPlaceholderText(/search/i);
+    // Dialog renders in portal, search in document.body
+    const body = within(document.body);
+    await body.findByPlaceholderText(/search/i);
   },
 };
 
@@ -74,14 +74,15 @@ export const Default: Story = {
  * Tests typing in the search field.
  */
 export const WithSearchQuery: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
+  play: async () => {
     // Press "/" to open the search dialog
     await userEvent.keyboard("/");
 
+    // Dialog renders in portal, search in document.body
+    const body = within(document.body);
+
     // Wait for dialog to appear
-    const input = await canvas.findByPlaceholderText(/search/i);
+    const input = await body.findByPlaceholderText(/search/i);
     await expect(input).toBeInTheDocument();
 
     // Type a search query
@@ -105,14 +106,15 @@ export const WithSearchQuery: Story = {
  * Demonstrates arrow key navigation through results.
  */
 export const KeyboardNavigation: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
+  play: async () => {
     // Press "/" to open the search dialog
     await userEvent.keyboard("/");
 
+    // Dialog renders in portal, search in document.body
+    const body = within(document.body);
+
     // Wait for dialog to appear
-    const input = await canvas.findByPlaceholderText(/search/i);
+    const input = await body.findByPlaceholderText(/search/i);
     await expect(input).toBeInTheDocument();
 
     // Focus should be on input
@@ -138,14 +140,15 @@ export const KeyboardNavigation: Story = {
  * Verifies dialog closes when Escape is pressed.
  */
 export const CloseOnEscape: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
+  play: async () => {
     // Press "/" to open the search dialog
     await userEvent.keyboard("/");
 
+    // Dialog renders in portal, search in document.body
+    const body = within(document.body);
+
     // Wait for dialog to appear
-    const input = await canvas.findByPlaceholderText(/search/i);
+    const input = await body.findByPlaceholderText(/search/i);
     await expect(input).toBeInTheDocument();
 
     // Press Escape to close

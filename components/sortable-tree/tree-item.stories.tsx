@@ -118,10 +118,11 @@ export const Collapsed: Story = {
 
 /**
  * Nested items at various depths.
+ * Uses custom decorator to render the ul directly (instead of global decorator's ul wrapper).
  */
 export const NestedDepths: Story = {
   render: () => (
-    <ul className="space-y-1">
+    <>
       <TreeItem
         id="parent"
         value="Parent Item"
@@ -154,15 +155,8 @@ export const NestedDepths: Story = {
         indentationWidth={20}
         showDragHandle={false}
       />
-    </ul>
+    </>
   ),
-  decorators: [
-    (Story) => (
-      <div className="w-[400px]">
-        <Story />
-      </div>
-    ),
-  ],
 };
 
 /**

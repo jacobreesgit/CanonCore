@@ -137,7 +137,11 @@ export const Dropzone = ({
         data-testid={dataTestId}
         {...getRootProps()}
       >
-        <input {...getInputProps()} disabled={disabled} />
+        <input
+          {...getInputProps()}
+          disabled={disabled}
+          aria-label="Upload file"
+        />
         {children}
       </Button>
     </DropzoneContext.Provider>

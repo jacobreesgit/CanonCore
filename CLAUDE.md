@@ -362,6 +362,7 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 - MSW mocking in `.storybook/mocks/` for server actions
 - Decorators: Theme (light/dark), auth state, reduced motion
 - Accessibility testing via `@storybook/addon-a11y`
+- Portal dialogs: Test with `within(document.body)` instead of `canvasElement`
 - Run: `pnpm run storybook` (dev), `pnpm run test-storybook` (tests)
 
 **Screenshot Automation:**

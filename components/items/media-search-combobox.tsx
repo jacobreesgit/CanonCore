@@ -34,7 +34,10 @@ function PosterThumbnail({ posterPath }: { posterPath: string }) {
       {/* Film icon placeholder while loading */}
       {!loaded && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <Film className="text-muted-foreground/50 size-5" />
+          <Film
+            className="text-muted-foreground/50 size-5"
+            aria-hidden="true"
+          />
         </div>
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -202,15 +205,29 @@ export function MediaSearchCombobox({
 
   return (
     <Popover open={open} onOpenChange={setOpen} modal={false}>
+      {/* Use a wrapper div without asChild to avoid invalid type="button" on div */}
       <PopoverTrigger asChild>
-        <div className={cn("relative", className)}>
-          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+        <button
+          type="button"
+          className={cn(
+            "relative block w-full text-left",
+            "focus-visible:outline-none",
+            className
+          )}
+        >
+          <Search
+            className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2"
+            aria-hidden="true"
+          />
           <Input
             id={id}
             ref={inputRef}
             role="combobox"
             aria-expanded={open}
             aria-haspopup="listbox"
+            aria-controls={
+              results.length > 0 ? "media-search-listbox" : undefined
+            }
             placeholder={placeholder}
             value={query}
             onChange={handleInputChange}
@@ -219,7 +236,7 @@ export function MediaSearchCombobox({
             autoComplete="off"
             className="pl-10"
           />
-        </div>
+        </button>
       </PopoverTrigger>
 
       <PopoverContent
@@ -231,7 +248,10 @@ export function MediaSearchCombobox({
         {/* Empty State - Type to search */}
         {!isLoading && !hasSearched && query.length < 2 && (
           <div className="flex flex-col items-center gap-2 py-8">
-            <Search className="text-muted-foreground/50 size-8" />
+            <Search
+              className="text-muted-foreground/50 size-8"
+              aria-hidden="true"
+            />
             <p className="text-muted-foreground text-sm">
               Type to search movies & TV shows
             </p>
@@ -241,7 +261,10 @@ export function MediaSearchCombobox({
         {/* Loading State */}
         {isLoading && (
           <div className="flex items-center justify-center gap-2 py-8">
-            <Loader2 className="text-muted-foreground size-4 animate-spin" />
+            <Loader2
+              className="text-muted-foreground size-4 animate-spin"
+              aria-hidden="true"
+            />
             <span className="text-muted-foreground text-sm">
               Searching TMDB...
             </span>
@@ -251,7 +274,10 @@ export function MediaSearchCombobox({
         {/* No Results */}
         {!isLoading && hasSearched && results.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-8">
-            <Search className="text-muted-foreground/50 size-8" />
+            <Search
+              className="text-muted-foreground/50 size-8"
+              aria-hidden="true"
+            />
             <p className="text-muted-foreground text-sm">No results found</p>
           </div>
         )}
@@ -259,6 +285,7 @@ export function MediaSearchCombobox({
         {/* Results List */}
         {!isLoading && results.length > 0 && (
           <div
+            id="media-search-listbox"
             className="max-h-[280px] overflow-y-auto p-1"
             role="listbox"
             onWheel={(e) => {
@@ -285,9 +312,15 @@ export function MediaSearchCombobox({
                 ) : (
                   <div className="bg-muted flex h-14 w-10 shrink-0 items-center justify-center rounded">
                     {result.mediaType === "movie" ? (
-                      <Film className="text-muted-foreground size-5" />
+                      <Film
+                        className="text-muted-foreground size-5"
+                        aria-hidden="true"
+                      />
                     ) : (
-                      <Tv className="text-muted-foreground size-5" />
+                      <Tv
+                        className="text-muted-foreground size-5"
+                        aria-hidden="true"
+                      />
                     )}
                   </div>
                 )}

@@ -87,7 +87,8 @@ export const Default: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByRole("alertdialog");
+    const body = within(document.body);
+    await body.findByRole("alertdialog");
   },
 };
 
@@ -105,7 +106,8 @@ export const WillBecomePublic: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByRole("alertdialog");
+    const body = within(document.body);
+    await body.findByRole("alertdialog");
   },
   parameters: {
     docs: {
@@ -131,7 +133,8 @@ export const WillBecomePrivate: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByRole("alertdialog");
+    const body = within(document.body);
+    await body.findByRole("alertdialog");
   },
   parameters: {
     docs: {
@@ -157,7 +160,8 @@ export const MovingFromRoot: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByRole("alertdialog");
+    const body = within(document.body);
+    await body.findByRole("alertdialog");
   },
   parameters: {
     docs: {
@@ -182,7 +186,8 @@ export const MovingToRoot: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByRole("alertdialog");
+    const body = within(document.body);
+    await body.findByRole("alertdialog");
   },
   parameters: {
     docs: {
@@ -207,7 +212,8 @@ export const Loading: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByRole("alertdialog");
+    const body = within(document.body);
+    await body.findByRole("alertdialog");
   },
   parameters: {
     docs: {
