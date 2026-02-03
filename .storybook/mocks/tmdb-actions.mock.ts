@@ -57,9 +57,10 @@ async function fetchTMDB<T>(endpoint: string): Promise<T> {
 
 /**
  * Check if TMDB is available.
+ * Always returns true in Storybook to enable combobox rendering even without API key.
  */
 export const isTMDBAvailable = fn(async (): Promise<boolean> => {
-  return !!TMDB_API_KEY;
+  return true;
 });
 
 /**
