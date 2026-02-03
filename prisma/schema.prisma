@@ -286,3 +286,47 @@ model Fork {
   @@index([sourceItemId])
   @@index([userId])
 }
+
+/// Audit log for tracking all database mutations.
+/// Automatically populated by Prisma Client Extension middleware.
+///
+/// RETENTION STRATEGY:
+/// This table will grow with every mutation. Implement a cleanup job to:
+/// - Delete entries older than 90 days in production
+/// - Delete entries older than 7 days in development
+/// - Consider archiving to cold storage before deletion
+/// Example cleanup: DELETE FROM "AuditLog" WHERE timestamp < NOW() - INTERVAL '90 days'
+model AuditLog {
+  id          String   @id @default(cuid())
+  timestamp   DateTime @default(now())
+
+  // Environment identification
+  environment String   // "development" | "production" | "test"
+  database    String   // Hashed database host identifier
+
+  // What changed
+  model       String   // "Item", "User", "ItemFile", etc.
+  action      String   // "create", "update", "delete", "deleteMany", etc.
+  recordId    String?  // ID of affected record (null for bulk operations)
+
+  // Who triggered it
+  userId      String?  // If known (from session context)
+  source      String?  // "seed", "e2e-test", "api", "sync", etc.
+  requestId   String?  // Request ID for correlation (x-request-id header)
+
+  // Details (sensitive fields redacted, large payloads truncated)
+  args        Json?    // Query arguments (sanitized, max 10KB)
+  result      Json?    // Result summary (count for bulk, id for single, error if failed)
+
+  // Performance
+  durationMs  Int?     // Query duration in milliseconds
+
+  // Indexes for common query patterns
+  @@index([timestamp])
+  @@index([environment, timestamp])
+  @@index([model, action])
+  @@index([recordId])
+  @@index([userId])
+  @@index([source])
+  @@index([requestId])
+}

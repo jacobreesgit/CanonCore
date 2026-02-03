@@ -52,11 +52,12 @@ import {
   type SeedUserConfig,
 } from "./seed-config";
 import { assertDriveConfigured } from "@/lib/drive-verification";
+import { withAuditContext } from "@/lib/audit-context";
 
 // Prisma will be dynamically imported after env vars are loaded
-import type { PrismaClient } from "@prisma/client";
+import type { ExtendedPrismaClient } from "@/lib/prisma";
 import { SyncLogAction, SyncLogStatus } from "@prisma/client";
-let prisma: PrismaClient;
+let prisma: ExtendedPrismaClient;
 
 // TMDB API configuration
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
@@ -1992,123 +1993,126 @@ async function main(): Promise<void> {
   const prismaModule = await import("@/lib/prisma");
   prisma = prismaModule.prisma;
 
-  // Full wipe: Clean Google Drive and database
-  console.log("🧹 Wiping all content...\n");
-  await cleanupGoogleDrive();
-  await cleanupSeedUsers();
+  // Wrap all database operations with audit context for tracking
+  await withAuditContext({ source: "seed" }, async () => {
+    // Full wipe: Clean Google Drive and database
+    console.log("🧹 Wiping all content...\n");
+    await cleanupGoogleDrive();
+    await cleanupSeedUsers();
 
-  // Create all seed users
-  const users = await createSeedUsers();
+    // Create all seed users
+    const users = await createSeedUsers();
 
-  // Seed content for all users with their configured distribution
-  for (let userIndex = 0; userIndex < users.length; userIndex++) {
-    const { id: userId, email, config } = users[userIndex];
-    const isFirstUser = userIndex === 0;
+    // Seed content for all users with their configured distribution
+    for (let userIndex = 0; userIndex < users.length; userIndex++) {
+      const { id: userId, email, config } = users[userIndex];
+      const isFirstUser = userIndex === 0;
 
-    // Get per-user content distribution
-    const userMovieIds = getMovieIdsForUser(email);
-    const userShowIds = getTVShowIdsForUser(email);
+      // Get per-user content distribution
+      const userMovieIds = getMovieIdsForUser(email);
+      const userShowIds = getTVShowIdsForUser(email);
 
-    // Skip users with no content
-    if (userMovieIds.length === 0 && userShowIds.length === 0) {
-      log(`\n⏭️  Skipping ${email} (no content configured)`);
-      continue;
-    }
-
-    log(`\n📚 Seeding content for ${email}...`);
-
-    try {
-      // Create Drive connection for all users (shared seed Drive account)
-      const ctx = await createDriveConnection(userId);
-
-      // Initialize progress tracking with user-specific IDs
-      const progress: SeedProgress = {
-        startTime: Date.now(),
-        totalShows: userShowIds.length,
-        completedShows: 0,
-        totalMovies: userMovieIds.length,
-        completedMovies: 0,
-      };
-
-      // Get per-user progress range for playback simulation
-      const progressRange = USER_PROGRESS_RANGES[email];
-
-      // Seed movies and TV shows at root level
-      const movieCount = await seedMoviesForUser(
-        userId,
-        ctx,
-        0,
-        progress,
-        userMovieIds,
-        progressRange,
-        config.isPublic ?? false
-      );
-      const tvCount = await seedTVShowsForUser(
-        userId,
-        ctx,
-        movieCount,
-        progress,
-        userShowIds,
-        progressRange,
-        config.isPublic ?? false,
-        config.email
-      );
-
-      // Pin specific items
-      await pinItemsForUser(userId, config.email);
-
-      const totalTime = Math.round((Date.now() - progress.startTime) / 1000);
-      log(
-        `\n✅ Seeded ${movieCount} movies and ${tvCount} TV show items in ${totalTime}s`
-      );
-
-      if (isFirstUser) {
-        log(`   📁 Content synced to Google Drive`);
-
-        // Run auto-sync to catch any pre-existing files, set changePageToken, and fetch quota
-        try {
-          const { syncByUserId } = await import("@/lib/google-drive-sync");
-          const syncResult = await syncByUserId(userId, { fetchQuota: true });
-          if (syncResult.success) {
-            const created = syncResult.itemsCreated ?? 0;
-            const updated = syncResult.itemsUpdated ?? 0;
-            if (created > 0 || updated > 0) {
-              log(
-                `   🔄 Auto-sync complete: ${created} created, ${updated} updated`
-              );
-            } else {
-              log(`   🔄 Auto-sync complete: no additional changes`);
-            }
-          } else {
-            console.warn(
-              `   ⚠️ Auto-sync warning: ${syncResult.error} (items created locally)`
-            );
-          }
-        } catch (syncError) {
-          console.warn(
-            "   ⚠️ Auto-sync failed (items created locally):",
-            syncError instanceof Error ? syncError.message : syncError
-          );
-          // Don't fail seed - user can sync manually later
-        }
-
-        // Generate sync activity logs for demo user to populate Activity tab
-        await generateSyncActivityLogs(userId);
+      // Skip users with no content
+      if (userMovieIds.length === 0 && userShowIds.length === 0) {
+        log(`\n⏭️  Skipping ${email} (no content configured)`);
+        continue;
       }
-    } catch (error) {
-      console.error(`\n❌ Seed failed for ${email}:`, error);
-      await cleanupOnFailure(userId);
-      throw error;
-    }
-  }
 
-  log("\n🎉 Seeding complete!\n");
-  log("Login credentials (all users have same password):");
-  for (const user of users) {
-    const publicLabel = user.config.isPublic ? " (public)" : "";
-    log(`  • ${user.email}${publicLabel}`);
-  }
-  log(`  Password: ${process.env.SEED_PASSWORD || DEFAULT_SEED_PASSWORD}\n`);
+      log(`\n📚 Seeding content for ${email}...`);
+
+      try {
+        // Create Drive connection for all users (shared seed Drive account)
+        const ctx = await createDriveConnection(userId);
+
+        // Initialize progress tracking with user-specific IDs
+        const progress: SeedProgress = {
+          startTime: Date.now(),
+          totalShows: userShowIds.length,
+          completedShows: 0,
+          totalMovies: userMovieIds.length,
+          completedMovies: 0,
+        };
+
+        // Get per-user progress range for playback simulation
+        const progressRange = USER_PROGRESS_RANGES[email];
+
+        // Seed movies and TV shows at root level
+        const movieCount = await seedMoviesForUser(
+          userId,
+          ctx,
+          0,
+          progress,
+          userMovieIds,
+          progressRange,
+          config.isPublic ?? false
+        );
+        const tvCount = await seedTVShowsForUser(
+          userId,
+          ctx,
+          movieCount,
+          progress,
+          userShowIds,
+          progressRange,
+          config.isPublic ?? false,
+          config.email
+        );
+
+        // Pin specific items
+        await pinItemsForUser(userId, config.email);
+
+        const totalTime = Math.round((Date.now() - progress.startTime) / 1000);
+        log(
+          `\n✅ Seeded ${movieCount} movies and ${tvCount} TV show items in ${totalTime}s`
+        );
+
+        if (isFirstUser) {
+          log(`   📁 Content synced to Google Drive`);
+
+          // Run auto-sync to catch any pre-existing files, set changePageToken, and fetch quota
+          try {
+            const { syncByUserId } = await import("@/lib/google-drive-sync");
+            const syncResult = await syncByUserId(userId, { fetchQuota: true });
+            if (syncResult.success) {
+              const created = syncResult.itemsCreated ?? 0;
+              const updated = syncResult.itemsUpdated ?? 0;
+              if (created > 0 || updated > 0) {
+                log(
+                  `   🔄 Auto-sync complete: ${created} created, ${updated} updated`
+                );
+              } else {
+                log(`   🔄 Auto-sync complete: no additional changes`);
+              }
+            } else {
+              console.warn(
+                `   ⚠️ Auto-sync warning: ${syncResult.error} (items created locally)`
+              );
+            }
+          } catch (syncError) {
+            console.warn(
+              "   ⚠️ Auto-sync failed (items created locally):",
+              syncError instanceof Error ? syncError.message : syncError
+            );
+            // Don't fail seed - user can sync manually later
+          }
+
+          // Generate sync activity logs for demo user to populate Activity tab
+          await generateSyncActivityLogs(userId);
+        }
+      } catch (error) {
+        console.error(`\n❌ Seed failed for ${email}:`, error);
+        await cleanupOnFailure(userId);
+        throw error;
+      }
+    }
+
+    log("\n🎉 Seeding complete!\n");
+    log("Login credentials (all users have same password):");
+    for (const user of users) {
+      const publicLabel = user.config.isPublic ? " (public)" : "";
+      log(`  • ${user.email}${publicLabel}`);
+    }
+    log(`  Password: ${process.env.SEED_PASSWORD || DEFAULT_SEED_PASSWORD}\n`);
+  });
 }
 
 main()
