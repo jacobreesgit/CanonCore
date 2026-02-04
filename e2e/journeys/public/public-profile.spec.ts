@@ -1,6 +1,8 @@
 /**
  * E2E tests for public profiles and item forking.
  * Tests viewing public profiles, public items, and fork functionality.
+ *
+ * Note: Breadcrumb-related tests are desktop-only as breadcrumbs are hidden on mobile.
  */
 
 import { test, expect, prisma } from "../../fixtures";
@@ -9,6 +11,7 @@ import {
   generateUniqueUsername,
   TEST_PASSWORD,
 } from "../../helpers/test-user";
+import { isMobileViewport } from "../../helpers/mobile-nav-helpers";
 
 test.describe("Public Profiles Journey", () => {
   // Run serially to avoid database conflicts with shared user state
@@ -93,6 +96,9 @@ test.describe("Public Profiles Journey", () => {
     publicProfilePage,
     myItemsPage,
   }) => {
+    const isMobile = await isMobileViewport(page);
+    test.skip(isMobile, "Breadcrumbs are hidden on mobile");
+
     // Sign out first (handles mobile sidebar)
     await myItemsPage.signOut();
     await page.waitForURL("/", { timeout: 10000 });
@@ -219,10 +225,11 @@ test.describe("Public Profile Enablement Journey", () => {
     // Save changes (waits for toast confirmation internally)
     await settingsPage.saveChanges();
 
-    // Ensure settings dialog is fully closed before navigating
+    // Wait for save operation to complete and dialog to auto-close
+    await page.waitForLoadState("networkidle");
     await expect(
       page.getByRole("dialog", { name: /settings/i })
-    ).not.toBeVisible({ timeout: 5000 });
+    ).not.toBeVisible({ timeout: 10000 });
 
     // Verify profile is accessible publicly
     await publicProfilePage.gotoProfile(username);

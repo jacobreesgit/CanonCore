@@ -77,7 +77,7 @@ export function SiteHeader({
   const showContextMenu = currentItemId && (onRename || onDelete);
 
   return (
-    <header className="bg-background sticky top-0 z-50 flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
+    <header className="bg-background sticky top-0 z-50 hidden h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height) md:flex">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
         <SidebarTrigger
           className="-ml-1 cursor-pointer"
@@ -148,7 +148,7 @@ export function SiteHeader({
                 className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring ml-auto rounded-md p-1.5 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
                 aria-label="Item actions"
               >
-                <MoreVertical className="size-4" />
+                <MoreVertical className="size-4" aria-hidden="true" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
@@ -157,7 +157,7 @@ export function SiteHeader({
                   onClick={onRename}
                   className="cursor-pointer gap-2"
                 >
-                  <Pencil className="size-4" />
+                  <Pencil className="size-4" aria-hidden="true" />
                   Rename
                 </DropdownMenuItem>
               )}
@@ -166,7 +166,7 @@ export function SiteHeader({
                   onClick={onDelete}
                   className="text-destructive focus:text-destructive cursor-pointer gap-2"
                 >
-                  <Trash2 className="size-4" />
+                  <Trash2 className="size-4" aria-hidden="true" />
                   Delete
                 </DropdownMenuItem>
               )}

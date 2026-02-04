@@ -202,6 +202,7 @@ export function NavMain({ items, pinnedItems = [], username }: NavMainProps) {
                             isOpen && "rotate-90",
                             isActive && !hasActivePinned && "text-background"
                           )}
+                          aria-hidden="true"
                         />
                       </button>
                     </div>

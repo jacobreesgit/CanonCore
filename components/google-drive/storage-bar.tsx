@@ -123,13 +123,13 @@ export function StorageBar({
         )}
         {isCritical && (
           <span className="text-destructive flex items-center gap-1">
-            <AlertTriangle className="size-3" />
+            <AlertTriangle className="size-3" aria-hidden="true" />
             Storage critical
           </span>
         )}
         {isWarning && !isCritical && (
           <span className="flex items-center gap-1 text-yellow-600 dark:text-yellow-500">
-            <AlertTriangle className="size-3" />
+            <AlertTriangle className="size-3" aria-hidden="true" />
             Storage almost full
           </span>
         )}

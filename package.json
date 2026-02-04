@@ -1,6 +1,7 @@
 {
   "name": "canoncore",
-  "version": "6.4.0",
+  "version": "6.7.0",
+  "packageManager": "pnpm@10.15.0",
   "private": true,
   "scripts": {
     "postinstall": "prisma generate",
@@ -29,8 +30,7 @@
     "setup:e2e-drive": "tsx scripts/setup-e2e-drive.ts",
     "setup:verify": "tsx scripts/verify-drive-setup.ts",
     "setup:all": "npm run setup:e2e && npm run setup:seed",
-    "seed:quick": "ALLOW_SEEDING=true npx prisma db seed",
-    "seed:full": "ALLOW_SEEDING=true SEED_INCREMENTAL=false npx prisma db seed",
+    "seed": "ALLOW_SEEDING=true npx prisma db seed",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build -o storybook-static",
     "test-storybook": "test-storybook",

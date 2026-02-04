@@ -1,189 +1,11 @@
 /**
- * Unit tests for seed configuration flags.
+ * Unit tests for seed configuration.
+ * Tests data integrity and validation of seed config.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect } from "vitest";
 
 describe("seed-config", () => {
-  const originalEnv = process.env;
-
-  beforeEach(() => {
-    vi.resetModules();
-    process.env = { ...originalEnv };
-  });
-
-  afterEach(() => {
-    process.env = originalEnv;
-  });
-
-  it("parses SEED_ONLY_MOVIES flag", async () => {
-    process.env.SEED_ONLY_MOVIES = "true";
-    const config = await import("@/prisma/seed-config");
-    expect(config.SEED_ONLY_MOVIES).toBe(true);
-  });
-
-  it("parses SEED_ONLY_SHOWS flag", async () => {
-    process.env.SEED_ONLY_SHOWS = "true";
-    const config = await import("@/prisma/seed-config");
-    expect(config.SEED_ONLY_SHOWS).toBe(true);
-  });
-
-  it("parses SEED_SKIP_ARTWORK flag", async () => {
-    process.env.SEED_SKIP_ARTWORK = "true";
-    const config = await import("@/prisma/seed-config");
-    expect(config.SEED_SKIP_ARTWORK).toBe(true);
-  });
-
-  it("parses SEED_QUIET flag", async () => {
-    process.env.SEED_QUIET = "true";
-    const config = await import("@/prisma/seed-config");
-    expect(config.SEED_QUIET).toBe(true);
-  });
-
-  it("parses SEED_MOVIE_COUNT as number", async () => {
-    process.env.SEED_MOVIE_COUNT = "5";
-    const config = await import("@/prisma/seed-config");
-    expect(config.SEED_MOVIE_COUNT).toBe(5);
-  });
-
-  it("parses SEED_SHOW_COUNT as number", async () => {
-    process.env.SEED_SHOW_COUNT = "3";
-    const config = await import("@/prisma/seed-config");
-    expect(config.SEED_SHOW_COUNT).toBe(3);
-  });
-
-  it("parses SEED_USER_EMAIL as string", async () => {
-    process.env.SEED_USER_EMAIL = "custom@test.com";
-    const config = await import("@/prisma/seed-config");
-    expect(config.SEED_USER_EMAIL).toBe("custom@test.com");
-  });
-
-  it("defaults boolean flags to false", async () => {
-    const config = await import("@/prisma/seed-config");
-    expect(config.SEED_ONLY_MOVIES).toBe(false);
-    expect(config.SEED_ONLY_SHOWS).toBe(false);
-    expect(config.SEED_SKIP_ARTWORK).toBe(false);
-    expect(config.SEED_QUIET).toBe(false);
-  });
-
-  it("defaults count flags to 0 (unlimited)", async () => {
-    const config = await import("@/prisma/seed-config");
-    expect(config.SEED_MOVIE_COUNT).toBe(0);
-    expect(config.SEED_SHOW_COUNT).toBe(0);
-  });
-
-  it("defaults SEED_USER_EMAIL to null", async () => {
-    const config = await import("@/prisma/seed-config");
-    expect(config.SEED_USER_EMAIL).toBe(null);
-  });
-
-  it("getEffectiveMovieIds returns limited movies when SEED_MOVIE_COUNT set", async () => {
-    process.env.SEED_MOVIE_COUNT = "3";
-    const config = await import("@/prisma/seed-config");
-    const ids = config.getEffectiveMovieIds();
-    expect(ids).toHaveLength(3);
-  });
-
-  it("getEffectiveMovieIds returns empty when SEED_ONLY_SHOWS is true", async () => {
-    process.env.SEED_ONLY_SHOWS = "true";
-    const config = await import("@/prisma/seed-config");
-    const ids = config.getEffectiveMovieIds();
-    expect(ids).toHaveLength(0);
-  });
-
-  it("getEffectiveTVShowIds returns empty when SEED_ONLY_MOVIES is true", async () => {
-    process.env.SEED_ONLY_MOVIES = "true";
-    const config = await import("@/prisma/seed-config");
-    const ids = config.getEffectiveTVShowIds();
-    expect(ids).toHaveLength(0);
-  });
-
-  it("getEffectiveSeedUsers returns single user when SEED_USER_EMAIL set", async () => {
-    process.env.SEED_USER_EMAIL = "custom@test.com";
-    const config = await import("@/prisma/seed-config");
-    const users = config.getEffectiveSeedUsers();
-    expect(users).toHaveLength(1);
-    expect(users[0].email).toBe("custom@test.com");
-  });
-
-  describe("SEED_MOVIE_IDS", () => {
-    it("defaults to null when not set", async () => {
-      const config = await import("@/prisma/seed-config");
-      expect(config.SEED_MOVIE_IDS).toBe(null);
-    });
-
-    it("parses comma-separated movie IDs", async () => {
-      process.env.SEED_MOVIE_IDS = "278,238,155";
-      const config = await import("@/prisma/seed-config");
-      expect(config.SEED_MOVIE_IDS).toEqual([278, 238, 155]);
-    });
-
-    it("trims whitespace from IDs", async () => {
-      process.env.SEED_MOVIE_IDS = "278, 238 , 155";
-      const config = await import("@/prisma/seed-config");
-      expect(config.SEED_MOVIE_IDS).toEqual([278, 238, 155]);
-    });
-
-    it("getEffectiveMovieIds uses SEED_MOVIE_IDS when set", async () => {
-      process.env.SEED_MOVIE_IDS = "278,155";
-      const config = await import("@/prisma/seed-config");
-      const ids = config.getEffectiveMovieIds();
-      expect(ids).toEqual([278, 155]);
-    });
-
-    it("SEED_MOVIE_IDS takes precedence over SEED_MOVIE_COUNT", async () => {
-      process.env.SEED_MOVIE_IDS = "278,155";
-      process.env.SEED_MOVIE_COUNT = "5";
-      const config = await import("@/prisma/seed-config");
-      const ids = config.getEffectiveMovieIds();
-      expect(ids).toEqual([278, 155]);
-    });
-
-    it("SEED_ONLY_SHOWS still takes precedence over SEED_MOVIE_IDS", async () => {
-      process.env.SEED_MOVIE_IDS = "278,155";
-      process.env.SEED_ONLY_SHOWS = "true";
-      const config = await import("@/prisma/seed-config");
-      const ids = config.getEffectiveMovieIds();
-      expect(ids).toHaveLength(0);
-    });
-  });
-
-  describe("SEED_SHOW_IDS", () => {
-    it("defaults to null when not set", async () => {
-      const config = await import("@/prisma/seed-config");
-      expect(config.SEED_SHOW_IDS).toBe(null);
-    });
-
-    it("parses comma-separated show IDs", async () => {
-      process.env.SEED_SHOW_IDS = "1396,71912";
-      const config = await import("@/prisma/seed-config");
-      expect(config.SEED_SHOW_IDS).toEqual([1396, 71912]);
-    });
-
-    it("getEffectiveTVShowIds uses SEED_SHOW_IDS when set", async () => {
-      process.env.SEED_SHOW_IDS = "1396,71912";
-      const config = await import("@/prisma/seed-config");
-      const ids = config.getEffectiveTVShowIds();
-      expect(ids).toEqual([1396, 71912]);
-    });
-
-    it("SEED_SHOW_IDS takes precedence over SEED_SHOW_COUNT", async () => {
-      process.env.SEED_SHOW_IDS = "1396";
-      process.env.SEED_SHOW_COUNT = "5";
-      const config = await import("@/prisma/seed-config");
-      const ids = config.getEffectiveTVShowIds();
-      expect(ids).toEqual([1396]);
-    });
-
-    it("SEED_ONLY_MOVIES still takes precedence over SEED_SHOW_IDS", async () => {
-      process.env.SEED_SHOW_IDS = "1396,71912";
-      process.env.SEED_ONLY_MOVIES = "true";
-      const config = await import("@/prisma/seed-config");
-      const ids = config.getEffectiveTVShowIds();
-      expect(ids).toHaveLength(0);
-    });
-  });
-
   describe("USER_CONTENT_DISTRIBUTION uniqueness", () => {
     it("has no overlapping movie IDs between users", async () => {
       const config = await import("@/prisma/seed-config");
@@ -262,6 +84,113 @@ describe("seed-config", () => {
     it("validateContentDistribution does not throw for valid config", async () => {
       const config = await import("@/prisma/seed-config");
       expect(() => config.validateContentDistribution()).not.toThrow();
+    });
+  });
+
+  describe("exports", () => {
+    it("exports required constants", async () => {
+      const config = await import("@/prisma/seed-config");
+
+      expect(config.MOVIE_IDS).toBeDefined();
+      expect(Array.isArray(config.MOVIE_IDS)).toBe(true);
+      expect(config.MOVIE_IDS.length).toBeGreaterThan(0);
+
+      expect(config.TV_SHOW_IDS).toBeDefined();
+      expect(Array.isArray(config.TV_SHOW_IDS)).toBe(true);
+      expect(config.TV_SHOW_IDS.length).toBeGreaterThan(0);
+
+      expect(config.SEED_USERS).toBeDefined();
+      expect(config.SEED_USERS.length).toBeGreaterThanOrEqual(1);
+      expect(config.SEED_USERS[0]).toHaveProperty("email");
+      expect(config.SEED_USERS[0]).toHaveProperty("name");
+
+      expect(config.DEFAULT_SEED_PASSWORD).toBeDefined();
+      expect(typeof config.DEFAULT_SEED_PASSWORD).toBe("string");
+
+      expect(config.SEED_DRIVE_FOLDER_NAME).toBeDefined();
+    });
+
+    it("exports hierarchy configuration constants", async () => {
+      const config = await import("@/prisma/seed-config");
+
+      expect(config.MAX_SEASONS).toBe(5);
+      expect(config.MAX_EPISODES).toBe(10);
+      expect(config.TMDB_API_DELAY_MS).toBe(100);
+    });
+
+    it("has valid TMDB movie IDs", async () => {
+      const { MOVIE_IDS } = await import("@/prisma/seed-config");
+
+      for (const id of MOVIE_IDS) {
+        expect(typeof id).toBe("number");
+        expect(id).toBeGreaterThan(0);
+      }
+    });
+
+    it("has valid TMDB TV show IDs", async () => {
+      const { TV_SHOW_IDS } = await import("@/prisma/seed-config");
+
+      for (const id of TV_SHOW_IDS) {
+        expect(typeof id).toBe("number");
+        expect(id).toBeGreaterThan(0);
+      }
+    });
+
+    it("has valid seed user emails", async () => {
+      const { SEED_USERS } = await import("@/prisma/seed-config");
+
+      for (const user of SEED_USERS) {
+        expect(user.email).toMatch(/@/);
+        expect(user.name.length).toBeGreaterThan(0);
+      }
+    });
+
+    it("exports playback duration config", async () => {
+      const config = await import("@/prisma/seed-config");
+
+      expect(config.PLAYBACK_DURATIONS).toBeDefined();
+      expect(config.PLAYBACK_DURATIONS.movie).toBeDefined();
+      expect(config.PLAYBACK_DURATIONS.episode).toBeDefined();
+
+      // Movie duration should be 1.5-3 hours (5400-10800 seconds)
+      expect(config.PLAYBACK_DURATIONS.movie.min).toBe(5400);
+      expect(config.PLAYBACK_DURATIONS.movie.max).toBe(10800);
+
+      // Episode duration should be 30-70 minutes (1800-4200 seconds)
+      expect(config.PLAYBACK_DURATIONS.episode.min).toBe(1800);
+      expect(config.PLAYBACK_DURATIONS.episode.max).toBe(4200);
+    });
+  });
+
+  describe("user content helpers", () => {
+    it("getMovieIdsForUser returns correct IDs for demo user", async () => {
+      const config = await import("@/prisma/seed-config");
+      const movieIds = config.getMovieIdsForUser("demo@canoncore.com");
+
+      expect(Array.isArray(movieIds)).toBe(true);
+      expect(movieIds.length).toBeGreaterThan(0);
+    });
+
+    it("getMovieIdsForUser returns empty array for unknown user", async () => {
+      const config = await import("@/prisma/seed-config");
+      const movieIds = config.getMovieIdsForUser("unknown@example.com");
+
+      expect(movieIds).toEqual([]);
+    });
+
+    it("getTVShowIdsForUser returns correct IDs for demo user", async () => {
+      const config = await import("@/prisma/seed-config");
+      const showIds = config.getTVShowIdsForUser("demo@canoncore.com");
+
+      expect(Array.isArray(showIds)).toBe(true);
+      expect(showIds.length).toBeGreaterThan(0);
+    });
+
+    it("getTVShowIdsForUser returns empty array for unknown user", async () => {
+      const config = await import("@/prisma/seed-config");
+      const showIds = config.getTVShowIdsForUser("unknown@example.com");
+
+      expect(showIds).toEqual([]);
     });
   });
 });

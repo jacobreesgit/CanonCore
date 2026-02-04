@@ -144,7 +144,10 @@ export function SeasonView({
           </div>
         ) : (
           <div className="bg-muted flex h-20 w-14 shrink-0 items-center justify-center rounded-lg">
-            <Layers className="text-muted-foreground size-5" />
+            <Layers
+              className="text-muted-foreground size-5"
+              aria-hidden="true"
+            />
           </div>
         )}
 
@@ -217,57 +220,60 @@ const EpisodeItemWithKeyboard = forwardRef<
   const episodeNum = String(episode.episode_number).padStart(2, "0");
 
   return (
-    <div role="option" aria-selected={isFocused}>
-      <button
-        ref={ref}
-        type="button"
-        tabIndex={isFocused ? 0 : -1}
-        onClick={onSelect}
-        onKeyDown={onKeyDown}
-        onFocus={onFocus}
-        aria-label={`Episode ${episode.episode_number}, ${episode.name}`}
-        aria-posinset={index + 1}
-        className={cn(
-          "flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left",
-          "hover:bg-accent hover:text-accent-foreground",
-          "focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:outline-none",
-          "transition-colors"
-        )}
-      >
-        {episode.still_path ? (
-          <div className="bg-muted relative h-12 w-20 shrink-0 overflow-hidden rounded-lg">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={getStillUrl(episode.still_path, "w300") ?? undefined}
-              alt=""
-              width={80}
-              height={48}
-              loading="lazy"
-              className="h-full w-full object-cover"
-            />
-          </div>
-        ) : (
-          <div className="bg-muted flex h-12 w-20 shrink-0 items-center justify-center rounded-lg">
-            <Film className="text-muted-foreground size-4" />
-          </div>
-        )}
-
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium">
-            <span className="text-muted-foreground mr-1.5 font-mono text-xs">
-              {episodeNum}
-            </span>
-            {episode.name}
-          </p>
-          {episode.overview && (
-            <p className="text-muted-foreground line-clamp-1 text-xs">
-              {episode.overview}
-            </p>
-          )}
+    <button
+      ref={ref}
+      type="button"
+      role="option"
+      tabIndex={isFocused ? 0 : -1}
+      onClick={onSelect}
+      onKeyDown={onKeyDown}
+      onFocus={onFocus}
+      aria-label={`Episode ${episode.episode_number}, ${episode.name}`}
+      aria-posinset={index + 1}
+      aria-selected={isFocused}
+      className={cn(
+        "flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left",
+        "hover:bg-accent hover:text-accent-foreground",
+        "focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:outline-none",
+        "transition-colors"
+      )}
+    >
+      {episode.still_path ? (
+        <div className="bg-muted relative h-12 w-20 shrink-0 overflow-hidden rounded-lg">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={getStillUrl(episode.still_path, "w300") ?? undefined}
+            alt=""
+            width={80}
+            height={48}
+            loading="lazy"
+            className="h-full w-full object-cover"
+          />
         </div>
+      ) : (
+        <div className="bg-muted flex h-12 w-20 shrink-0 items-center justify-center rounded-lg">
+          <Film className="text-muted-foreground size-4" aria-hidden="true" />
+        </div>
+      )}
 
-        <ChevronRight className="text-muted-foreground size-4 shrink-0" />
-      </button>
-    </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium">
+          <span className="text-muted-foreground mr-1.5 font-mono text-xs">
+            {episodeNum}
+          </span>
+          {episode.name}
+        </p>
+        {episode.overview && (
+          <p className="text-muted-foreground line-clamp-1 text-xs">
+            {episode.overview}
+          </p>
+        )}
+      </div>
+
+      <ChevronRight
+        className="text-muted-foreground size-4 shrink-0"
+        aria-hidden="true"
+      />
+    </button>
   );
 });

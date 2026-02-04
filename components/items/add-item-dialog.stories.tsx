@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 
 import { Button } from "@/components/ui/button";
 import { AddItemDialog } from "./add-item-dialog";
@@ -102,8 +102,9 @@ export const Default: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    // Wait for dialog to appear
-    await canvas.findByLabelText(/name/i);
+    // Dialog renders in portal, search in document.body
+    const body = within(document.body);
+    await body.findByLabelText(/name/i);
   },
   parameters: {
     docs: {
@@ -127,7 +128,8 @@ export const WithParent: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByLabelText(/name/i);
+    const body = within(document.body);
+    await body.findByLabelText(/name/i);
   },
   parameters: {
     docs: {
@@ -150,7 +152,8 @@ export const WithDriveConnection: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByLabelText(/name/i);
+    const body = within(document.body);
+    await body.findByLabelText(/name/i);
   },
   parameters: {
     docs: {
@@ -182,8 +185,11 @@ export const FormInteraction: Story = {
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
 
+    // Dialog renders in portal, search in document.body
+    const body = within(document.body);
+
     // Wait for dialog to appear
-    const nameInput = await canvas.findByLabelText(/name/i);
+    const nameInput = await body.findByLabelText(/name/i);
     await expect(nameInput).toBeInTheDocument();
 
     // Type a name
@@ -191,7 +197,7 @@ export const FormInteraction: Story = {
     await expect(nameInput).toHaveValue("My New Movie");
 
     // Find and type in description
-    const descriptionInput = canvas.getByLabelText(/description/i);
+    const descriptionInput = body.getByLabelText(/description/i);
     await userEvent.type(descriptionInput, "A great film about adventure");
     await expect(descriptionInput).toHaveValue("A great film about adventure");
   },
@@ -223,12 +229,18 @@ export const TMDBSearchInteraction: Story = {
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
 
-    // Wait for dialog to appear
-    await canvas.findByLabelText(/name/i);
+    // Dialog renders in portal, search in document.body
+    const body = within(document.body);
 
-    // Find and click the TMDB search combobox
-    const searchTrigger = canvas.getByRole("combobox");
-    await expect(searchTrigger).toBeInTheDocument();
+    // Wait for dialog to appear
+    await body.findByLabelText(/name/i);
+
+    // Wait for TMDB search combobox (may take time to check TMDB availability)
+    const searchTrigger = await body.findByRole(
+      "combobox",
+      {},
+      { timeout: 5000 }
+    );
     await userEvent.click(searchTrigger);
   },
   parameters: {
@@ -259,25 +271,38 @@ export const TabSwitching: Story = {
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
 
+    // Dialog renders in portal, search in document.body
+    const body = within(document.body);
+
     // Wait for dialog to appear
-    await canvas.findByLabelText(/name/i);
+    await body.findByLabelText(/name/i);
 
     // Find and click Files tab
-    const filesTab = canvas.getByRole("tab", { name: /files/i });
+    const filesTab = body.getByRole("tab", { name: /files/i });
     await expect(filesTab).toBeInTheDocument();
     await userEvent.click(filesTab);
 
-    // Verify Files tab content is shown
-    const uploadArea = await canvas.findByText(/drag & drop/i);
-    await expect(uploadArea).toBeInTheDocument();
+    // Verify Files tab content is shown (look for Primary Media label)
+    await waitFor(
+      async () => {
+        const mediaLabel = body.queryByText(/primary media/i);
+        await expect(mediaLabel).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
 
     // Switch back to Details tab
-    const detailsTab = canvas.getByRole("tab", { name: /details/i });
+    const detailsTab = body.getByRole("tab", { name: /details/i });
     await userEvent.click(detailsTab);
 
     // Verify Details tab content is shown
-    const nameInput = canvas.getByLabelText(/name/i);
-    await expect(nameInput).toBeInTheDocument();
+    await waitFor(
+      async () => {
+        const nameInput = body.queryByLabelText(/name/i);
+        await expect(nameInput).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
   },
   parameters: {
     docs: {

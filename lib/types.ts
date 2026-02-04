@@ -293,6 +293,8 @@ export interface PinnedItem {
   id: string;
   name: string;
   pinnedOrder: number;
+  /** Whether the item is public (for visibility filtering) */
+  isPublic?: boolean;
 }
 
 /**

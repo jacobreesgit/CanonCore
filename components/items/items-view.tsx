@@ -15,14 +15,13 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Loader2, Plus, RefreshCw } from "lucide-react";
+import { Layers, Loader2, Pin, Plus, RefreshCw } from "lucide-react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { UniqueIdentifier } from "@dnd-kit/core";
 import { toast } from "sonner";
 
 // Static imports for view-only mode (common case)
 import { Tree } from "@/components/sortable-tree";
-import { Grid } from "@/components/sortable-grid";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
@@ -89,6 +88,8 @@ import { MobileOptionsSheet } from "./mobile-options-sheet";
 import { HeroCarousel, type HeroSlide } from "@/components/hero-carousel";
 import { EmptyState, type EmptyStateVariant } from "./empty-state";
 import { BulkActionsToolbar } from "./bulk-actions-toolbar";
+import { ItemContextMenu } from "./item-context-menu";
+import { GridItem } from "@/components/sortable-grid/GridItem";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -631,6 +632,21 @@ export function ItemsView({
     [processedItems, parentId]
   );
 
+  // Split current level items into pinned and unpinned (for grid view sections)
+  // Pinned items shown first with section title, then "All Items" for the rest
+  const pinnedGridItems = useMemo(
+    () =>
+      currentLevelItems
+        .filter((item) => item.pinnedOrder !== null)
+        .sort((a, b) => (a.pinnedOrder ?? 0) - (b.pinnedOrder ?? 0)),
+    [currentLevelItems]
+  );
+
+  const unpinnedGridItems = useMemo(
+    () => currentLevelItems.filter((item) => item.pinnedOrder === null),
+    [currentLevelItems]
+  );
+
   // Bulk selection for edit mode operations
   // In tree view, include all items for cascading selection; in grid view, only current level
   const selectionItems =
@@ -907,16 +923,113 @@ export function ItemsView({
               currentUser={currentUser}
             />
           ) : (
-            <Grid
-              items={currentLevelItems}
-              onItemClick={handleItemClick}
-              onOpenSettings={handleOpenSettings}
-              onDeleteItem={handleDeleteItem}
-              hasDriveConnection={hasDriveConnection}
-              onPinItem={handlePinItem}
-              onUnpinItem={handleUnpinItem}
-              currentUser={currentUser}
-            />
+            <div className="flex flex-col gap-6">
+              {/* Pinned items section */}
+              {pinnedGridItems.length > 0 && (
+                <section aria-label="Pinned items">
+                  <h2 className="text-muted-foreground mb-3 flex items-center gap-2 text-xs font-medium tracking-wider uppercase">
+                    <Pin className="size-3.5" aria-hidden="true" />
+                    <span>Pinned</span>
+                  </h2>
+                  <div
+                    data-testid="pinned-items-grid"
+                    className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5"
+                  >
+                    {pinnedGridItems.map((item, index) => (
+                      <ItemContextMenu
+                        key={item.id}
+                        itemName={item.name}
+                        driveFileId={item.driveFileId}
+                        showAddChild={false}
+                        isPinned={true}
+                        onSettings={
+                          handleOpenSettings
+                            ? () => handleOpenSettings(item.id)
+                            : undefined
+                        }
+                        onDelete={
+                          handleDeleteItem
+                            ? () => handleDeleteItem(item.id)
+                            : undefined
+                        }
+                        hasDriveConnection={hasDriveConnection}
+                        onPin={() => handlePinItem(item.id)}
+                        onUnpin={() => handleUnpinItem(item.id)}
+                      >
+                        <GridItem
+                          id={item.id}
+                          name={item.name}
+                          description={item.description}
+                          onClick={() => handleItemClick(item.id)}
+                          artworkId={item.artworkId}
+                          progressPercentage={item.progress?.percentage ?? null}
+                          watchedCount={item.progress?.watchedItems}
+                          totalMediaCount={item.progress?.itemsWithMedia}
+                          totalItems={item.progress?.totalItems}
+                          showArtwork={true}
+                          showDescription={true}
+                          priority={index < 5}
+                        />
+                      </ItemContextMenu>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Library section (items not pinned) */}
+              {unpinnedGridItems.length > 0 && (
+                <section aria-label="Library">
+                  {pinnedGridItems.length > 0 && (
+                    <h2 className="text-muted-foreground mb-3 flex items-center gap-2 text-xs font-medium tracking-wider uppercase">
+                      <Layers className="size-3.5" aria-hidden="true" />
+                      <span>Library</span>
+                    </h2>
+                  )}
+                  <div
+                    data-testid="items-grid-view"
+                    className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5"
+                  >
+                    {unpinnedGridItems.map((item, index) => (
+                      <ItemContextMenu
+                        key={item.id}
+                        itemName={item.name}
+                        driveFileId={item.driveFileId}
+                        showAddChild={false}
+                        isPinned={false}
+                        onSettings={
+                          handleOpenSettings
+                            ? () => handleOpenSettings(item.id)
+                            : undefined
+                        }
+                        onDelete={
+                          handleDeleteItem
+                            ? () => handleDeleteItem(item.id)
+                            : undefined
+                        }
+                        hasDriveConnection={hasDriveConnection}
+                        onPin={() => handlePinItem(item.id)}
+                        onUnpin={() => handleUnpinItem(item.id)}
+                      >
+                        <GridItem
+                          id={item.id}
+                          name={item.name}
+                          description={item.description}
+                          onClick={() => handleItemClick(item.id)}
+                          artworkId={item.artworkId}
+                          progressPercentage={item.progress?.percentage ?? null}
+                          watchedCount={item.progress?.watchedItems}
+                          totalMediaCount={item.progress?.itemsWithMedia}
+                          totalItems={item.progress?.totalItems}
+                          showArtwork={true}
+                          showDescription={true}
+                          priority={index < 8}
+                        />
+                      </ItemContextMenu>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
           )
         ) : isEditing ? (
           <SortableTree

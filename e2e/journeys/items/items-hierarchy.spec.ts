@@ -12,11 +12,13 @@ test.describe("Items Hierarchy Journey", () => {
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
-  test("displays full hierarchy in tree view", async ({ itemsPage }) => {
+  test("displays full hierarchy in tree view", async ({ page, itemsPage }) => {
     // Create hierarchy: Top Level > Parent > Child > Grandchild
     await itemsPage.createItem("Top Level");
 
     await itemsPage.clickItem("Top Level");
+    // Store URL to navigate back (breadcrumbs hidden on mobile)
+    const topLevelUrl = page.url();
     await itemsPage.createItem("Parent");
 
     await itemsPage.clickItem("Parent");
@@ -25,8 +27,8 @@ test.describe("Items Hierarchy Journey", () => {
     await itemsPage.clickItem("Child");
     await itemsPage.createItem("Grandchild");
 
-    // Navigate back to Top Level (tree view is on item detail pages)
-    await itemsPage.clickBreadcrumb("Top Level");
+    // Navigate back to Top Level via URL (works on mobile where breadcrumbs are hidden)
+    await page.goto(topLevelUrl);
     await itemsPage.switchToTreeView();
 
     // All descendants should be visible in tree view
@@ -35,19 +37,21 @@ test.describe("Items Hierarchy Journey", () => {
     await itemsPage.expectItemVisible("Grandchild");
   });
 
-  test("can collapse and expand items in tree", async ({ itemsPage }) => {
+  test("can collapse and expand items in tree", async ({ page, itemsPage }) => {
     // Create Top Level container to view tree in
     await itemsPage.createItem("Top Level");
 
     await itemsPage.clickItem("Top Level");
+    // Store URL to navigate back (breadcrumbs hidden on mobile)
+    const topLevelUrl = page.url();
     // Create hierarchy: Parent > Child
     await itemsPage.createItem("Collapsible Parent");
 
     await itemsPage.clickItem("Collapsible Parent");
     await itemsPage.createItem("Nested Child");
 
-    // Navigate back to Top Level to view tree
-    await itemsPage.clickBreadcrumb("Top Level");
+    // Navigate back to Top Level via URL (works on mobile where breadcrumbs are hidden)
+    await page.goto(topLevelUrl);
     await itemsPage.switchToTreeView();
 
     // Both items should be visible in tree

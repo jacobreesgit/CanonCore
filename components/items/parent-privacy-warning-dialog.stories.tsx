@@ -81,7 +81,8 @@ export const Default: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByText(/will also become private/i);
+    const body = within(document.body);
+    await body.findByText(/will also hide/i);
   },
 };
 
@@ -96,7 +97,8 @@ export const SingleChild: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByText(/will also become private/i);
+    const body = within(document.body);
+    await body.findByText(/will also hide/i);
   },
   parameters: {
     docs: {
@@ -118,7 +120,8 @@ export const ManyChildren: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByText(/will also become private/i);
+    const body = within(document.body);
+    await body.findByText(/will also hide/i);
   },
   parameters: {
     docs: {
@@ -140,7 +143,8 @@ export const Loading: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId("dialog-trigger");
     await userEvent.click(trigger);
-    await canvas.findByText(/will also become private/i);
+    const body = within(document.body);
+    await body.findByText(/will also hide/i);
   },
   parameters: {
     docs: {

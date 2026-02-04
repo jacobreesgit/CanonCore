@@ -86,7 +86,10 @@ function MockSyncHistory({ logs, loading, error }: MockSyncHistoryProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center gap-2 py-8">
-        <Loader2 className="text-muted-foreground size-4 animate-spin" />
+        <Loader2
+          className="text-muted-foreground size-4 animate-spin"
+          aria-hidden="true"
+        />
         <span className="text-muted-foreground text-sm">Loading...</span>
       </div>
     );
@@ -104,7 +107,10 @@ function MockSyncHistory({ logs, loading, error }: MockSyncHistoryProps) {
     return (
       <div className="space-y-3 py-4 text-center">
         <div className="bg-muted/50 mx-auto flex size-10 items-center justify-center rounded-full">
-          <History className="text-muted-foreground size-5" />
+          <History
+            className="text-muted-foreground size-5"
+            aria-hidden="true"
+          />
         </div>
         <p className="text-muted-foreground text-sm">No sync activity yet</p>
       </div>
@@ -132,7 +138,7 @@ function MockSyncHistory({ logs, loading, error }: MockSyncHistoryProps) {
                 "flex items-start gap-2.5 rounded-md border p-2.5",
                 "transition-colors",
                 isFailed
-                  ? "border-destructive/30 bg-destructive/5"
+                  ? "border-destructive/50"
                   : "border-border/50 hover:bg-muted/30"
               )}
             >
@@ -140,12 +146,13 @@ function MockSyncHistory({ logs, loading, error }: MockSyncHistoryProps) {
               <div
                 className={cn(
                   "flex size-7 shrink-0 items-center justify-center rounded-md",
-                  isSuccess && "bg-emerald-500/10 text-emerald-600",
+                  isSuccess &&
+                    "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500",
                   isFailed && "bg-destructive/10 text-destructive",
                   !isSuccess && !isFailed && "bg-muted text-muted-foreground"
                 )}
               >
-                <Icon className="size-3.5" />
+                <Icon className="size-3.5" aria-hidden="true" />
               </div>
 
               {/* Content */}
@@ -153,10 +160,16 @@ function MockSyncHistory({ logs, loading, error }: MockSyncHistoryProps) {
                 <div className="flex items-center gap-1.5">
                   <span className="truncate text-sm font-medium">{name}</span>
                   {isSuccess && (
-                    <CheckCircle2 className="size-3 shrink-0 text-emerald-600" />
+                    <CheckCircle2
+                      className="size-3 shrink-0 text-emerald-700 dark:text-emerald-500"
+                      aria-hidden="true"
+                    />
                   )}
                   {isFailed && (
-                    <XCircle className="text-destructive size-3 shrink-0" />
+                    <XCircle
+                      className="text-destructive size-3 shrink-0"
+                      aria-hidden="true"
+                    />
                   )}
                 </div>
 
@@ -164,7 +177,7 @@ function MockSyncHistory({ logs, loading, error }: MockSyncHistoryProps) {
                   <span
                     className={cn(
                       isFailed && "text-destructive",
-                      isSuccess && "text-emerald-600"
+                      isSuccess && "text-emerald-700 dark:text-emerald-500"
                     )}
                   >
                     {isFailed ? "Failed" : label}
@@ -187,7 +200,7 @@ function MockSyncHistory({ logs, loading, error }: MockSyncHistoryProps) {
 
                 {/* Error message */}
                 {isFailed && log.error && (
-                  <p className="text-destructive/80 mt-1 text-xs leading-snug">
+                  <p className="text-destructive mt-1 text-xs leading-snug">
                     {log.error}
                   </p>
                 )}

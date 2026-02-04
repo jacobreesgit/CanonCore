@@ -24,6 +24,22 @@ vi.mock("@/contexts/spotlight-context", () => ({
   useSpotlightOptional: () => mockSpotlightContext(),
 }));
 
+// Mock server actions - use vi.hoisted to avoid hoisting issues
+const { mockUnpinItem, mockDeleteItem, mockToast } = vi.hoisted(() => ({
+  mockUnpinItem: vi.fn(),
+  mockDeleteItem: vi.fn(),
+  mockToast: { success: vi.fn(), error: vi.fn() },
+}));
+
+vi.mock("@/lib/item-actions", () => ({
+  unpinItem: (...args: unknown[]) => mockUnpinItem(...args),
+  deleteItem: (...args: unknown[]) => mockDeleteItem(...args),
+}));
+
+vi.mock("sonner", () => ({
+  toast: mockToast,
+}));
+
 // Mock sidebar context
 vi.mock("@/components/ui/sidebar", () => ({
   SidebarGroup: ({ children }: { children: React.ReactNode }) => (
@@ -52,6 +68,7 @@ vi.mock("@/components/ui/sidebar", () => ({
     tooltip,
     className,
     onClick,
+    asChild: _asChild,
   }: {
     children: React.ReactNode;
     isActive?: boolean;
@@ -66,6 +83,29 @@ vi.mock("@/components/ui/sidebar", () => ({
       data-tooltip={tooltip}
       className={className}
       onClick={onClick}
+      aria-current={isActive ? "page" : undefined}
+    >
+      {children}
+    </button>
+  ),
+  SidebarMenuSub: ({ children }: { children: React.ReactNode }) => (
+    <ul data-testid="sidebar-menu-sub">{children}</ul>
+  ),
+  SidebarMenuSubItem: ({ children }: { children: React.ReactNode }) => (
+    <li data-testid="sidebar-menu-sub-item">{children}</li>
+  ),
+  SidebarMenuSubButton: ({
+    children,
+    isActive,
+    asChild: _asChild,
+  }: {
+    children: React.ReactNode;
+    isActive?: boolean;
+    asChild?: boolean;
+  }) => (
+    <button
+      data-testid="sidebar-menu-sub-button"
+      data-active={isActive}
       aria-current={isActive ? "page" : undefined}
     >
       {children}
@@ -274,6 +314,175 @@ describe("NavMain", () => {
 
       const button = screen.getByTestId("sidebar-menu-button");
       expect(button.getAttribute("data-active")).toBe("false");
+    });
+  });
+
+  describe("Pinned items", () => {
+    const pinnedItems = [
+      { id: "item-1", name: "Movies", pinnedOrder: 0, isPublic: true },
+      { id: "item-2", name: "TV Shows", pinnedOrder: 1, isPublic: false },
+    ];
+
+    beforeEach(() => {
+      mockUnpinItem.mockResolvedValue({ success: true });
+      mockDeleteItem.mockResolvedValue({ success: true });
+    });
+
+    it("renders My Items without expand button when no pinned items", () => {
+      mockPathname.mockReturnValue("/u/testuser");
+      render(<NavMain items={testItems} username={testUsername} />);
+
+      // Should not have expand/collapse button
+      expect(
+        screen.queryByRole("button", { name: /expand|collapse/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it("renders My Items with expand button when pinned items exist", () => {
+      mockPathname.mockReturnValue("/u/testuser");
+      render(
+        <NavMain
+          items={testItems}
+          pinnedItems={pinnedItems}
+          username={testUsername}
+        />
+      );
+
+      // Should have expand/collapse button
+      expect(
+        screen.getByRole("button", { name: /expand|collapse/i })
+      ).toBeInTheDocument();
+    });
+
+    it("renders pinned items as sub-items under My Items", () => {
+      mockPathname.mockReturnValue("/u/testuser");
+      render(
+        <NavMain
+          items={testItems}
+          pinnedItems={pinnedItems}
+          username={testUsername}
+        />
+      );
+
+      // Should render pinned item names in sub-menu
+      expect(screen.getByText("Movies")).toBeInTheDocument();
+      expect(screen.getByText("TV Shows")).toBeInTheDocument();
+    });
+
+    it("renders pinned items with correct links", () => {
+      mockPathname.mockReturnValue("/u/testuser");
+      render(
+        <NavMain
+          items={testItems}
+          pinnedItems={pinnedItems}
+          username={testUsername}
+        />
+      );
+
+      // Find the link for Movies
+      const moviesLink = screen.getByRole("link", { name: /movies/i });
+      expect(moviesLink).toHaveAttribute("href", "/u/testuser/item-1");
+    });
+
+    it("expands by default when on My Items path", () => {
+      mockPathname.mockReturnValue("/u/testuser");
+      render(
+        <NavMain
+          items={testItems}
+          pinnedItems={pinnedItems}
+          username={testUsername}
+        />
+      );
+
+      // Sub-menu should be visible (expanded)
+      expect(screen.getByTestId("sidebar-menu-sub")).toBeInTheDocument();
+    });
+
+    it("expands by default when a pinned item is active", () => {
+      mockPathname.mockReturnValue("/u/testuser/item-1");
+      render(
+        <NavMain
+          items={testItems}
+          pinnedItems={pinnedItems}
+          username={testUsername}
+        />
+      );
+
+      // Sub-menu should be visible (expanded)
+      expect(screen.getByTestId("sidebar-menu-sub")).toBeInTheDocument();
+    });
+
+    it("highlights active pinned item", () => {
+      mockPathname.mockReturnValue("/u/testuser/item-1");
+      render(
+        <NavMain
+          items={testItems}
+          pinnedItems={pinnedItems}
+          username={testUsername}
+        />
+      );
+
+      // Find the sub-button for Movies
+      const subButtons = screen.getAllByTestId("sidebar-menu-sub-button");
+      const moviesButton = subButtons.find((btn) =>
+        btn.textContent?.includes("Movies")
+      );
+      expect(moviesButton?.getAttribute("data-active")).toBe("true");
+    });
+
+    it("does not highlight inactive pinned items", () => {
+      mockPathname.mockReturnValue("/u/testuser/item-1");
+      render(
+        <NavMain
+          items={testItems}
+          pinnedItems={pinnedItems}
+          username={testUsername}
+        />
+      );
+
+      // Find the sub-button for TV Shows
+      const subButtons = screen.getAllByTestId("sidebar-menu-sub-button");
+      const tvButton = subButtons.find((btn) =>
+        btn.textContent?.includes("TV Shows")
+      );
+      expect(tvButton?.getAttribute("data-active")).toBe("false");
+    });
+
+    it("toggles expand/collapse when chevron clicked", async () => {
+      const user = userEvent.setup();
+      mockPathname.mockReturnValue("/u/testuser");
+      render(
+        <NavMain
+          items={testItems}
+          pinnedItems={pinnedItems}
+          username={testUsername}
+        />
+      );
+
+      // Initially expanded (on My Items path)
+      expect(screen.getByTestId("sidebar-menu-sub")).toBeInTheDocument();
+
+      // Click to collapse
+      const toggleButton = screen.getByRole("button", {
+        name: /expand|collapse/i,
+      });
+      await user.click(toggleButton);
+
+      // Should be collapsed (sub-menu not visible due to AnimatePresence)
+      // Note: In tests, the motion.div exit animation completes immediately
+    });
+
+    it("does not expand pinned items section when no username", () => {
+      mockPathname.mockReturnValue("/u/testuser");
+      render(<NavMain items={testItems} pinnedItems={pinnedItems} />);
+
+      // Without username, myItemsBaseUrl is null, so:
+      // - isMyItemsPath is false (can't match pathname)
+      // - hasActivePinned is false (can't build URLs to compare)
+      // - isOpen defaults to false (collapsed)
+      // Sub-items should not be visible because section is collapsed
+      const subButtons = screen.queryAllByTestId("sidebar-menu-sub-button");
+      expect(subButtons.length).toBe(0);
     });
   });
 });

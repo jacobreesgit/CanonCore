@@ -4,27 +4,40 @@
  */
 
 import type { Page } from "@playwright/test";
+import {
+  isMobileViewport,
+  openSettingsViaMobile,
+} from "../helpers/mobile-nav-helpers";
 
 export class SettingsPage {
   constructor(private page: Page) {}
 
   /**
    * Opens Settings dialog from the nav user menu.
-   * Handles mobile sidebar being collapsed.
+   * Handles both desktop (sidebar) and mobile (footer sheet) navigation.
    */
   async openFromNavUser(): Promise<void> {
-    const userMenu = this.page.getByTestId("my-items-user-menu");
-    const sidebarTrigger = this.page.getByTestId("sidebar-trigger");
+    const isMobile = await isMobileViewport(this.page);
 
-    // On mobile, sidebar is collapsed - need to open it first
-    const isUserMenuVisible = await userMenu.isVisible();
-    if (!isUserMenuVisible) {
-      await sidebarTrigger.click();
-      await userMenu.waitFor({ state: "visible", timeout: 5000 });
+    if (isMobile) {
+      // Mobile: Open account sheet via footer, then settings
+      await openSettingsViaMobile(this.page);
+    } else {
+      // Desktop: Open sidebar if collapsed, then user menu
+      const userMenu = this.page.getByTestId("my-items-user-menu");
+      const sidebarTrigger = this.page.getByTestId("sidebar-trigger");
+
+      const isUserMenuVisible = await userMenu.isVisible();
+      if (!isUserMenuVisible) {
+        await sidebarTrigger.click();
+        await userMenu.waitFor({ state: "visible", timeout: 5000 });
+      }
+
+      await userMenu.click();
+      await this.page.getByTestId("my-items-settings-button").click();
     }
 
-    await userMenu.click();
-    await this.page.getByTestId("my-items-settings-button").click();
+    // Wait for settings dialog to be visible
     await this.page.getByRole("dialog").waitFor({ state: "visible" });
 
     // Wait for AnimatedDialogContent animation to complete (250ms fade-in)

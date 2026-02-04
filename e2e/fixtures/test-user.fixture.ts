@@ -89,13 +89,19 @@ export const testUserFixture = base.extend<{ testUser: TestUserWithId }>({
 
     // Sign in the user via UI
     await page.goto("/sign-in");
-    // Wait for sign-in form to be fully loaded
-    await page
-      .getByLabel("Email")
-      .waitFor({ state: "visible", timeout: 15000 });
-    await page.getByLabel("Email").fill(testUser.email);
-    await page.getByTestId("sign-in-password-input").fill(testUser.password);
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.waitForLoadState("networkidle");
+
+    // Wait for sign-in form to be fully loaded and use testId selectors for reliability
+    const emailInput = page.getByTestId("sign-in-email-input");
+    const passwordInput = page.getByTestId("sign-in-password-input");
+    const submitButton = page.getByTestId("sign-in-submit-button");
+
+    await emailInput.waitFor({ state: "visible", timeout: 15000 });
+    await emailInput.fill(testUser.email);
+    await passwordInput.fill(testUser.password);
+    await submitButton.click();
+    await page.waitForLoadState("networkidle");
+
     // Sign-in redirects to user's profile
     await page.waitForURL(`/u/${testUser.username}`, { timeout: 15000 });
 

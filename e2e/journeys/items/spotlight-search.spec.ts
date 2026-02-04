@@ -4,6 +4,8 @@
 
 import { test, expect } from "../../fixtures";
 import { SpotlightPage } from "../../pages/spotlight.page";
+import { MobileFooterPage } from "../../pages/mobile-footer.page";
+import { isMobileViewport } from "../../helpers/mobile-nav-helpers";
 
 test.describe("Spotlight Search Journey", () => {
   let spotlightPage: SpotlightPage;
@@ -27,6 +29,10 @@ test.describe("Spotlight Search Journey", () => {
   });
 
   test("opens spotlight via sidebar button", async ({ page }) => {
+    // Skip on mobile - sidebar button doesn't exist on mobile
+    const isMobile = await isMobileViewport(page);
+    test.skip(isMobile, "Sidebar search button is only available on desktop");
+
     // Ensure sidebar is visible
     const searchButton = page.getByRole("button", { name: /search/i }).first();
     if (!(await searchButton.isVisible())) {
@@ -154,7 +160,7 @@ test.describe("Spotlight Search Journey", () => {
 test.describe("Spotlight Search - Mobile", () => {
   test.use({ viewport: { width: 375, height: 667 } });
 
-  test("spotlight works on mobile", async ({ page, testUser }) => {
+  test("spotlight works on mobile via keyboard", async ({ page, testUser }) => {
     // Use testUser fixture for consistent test setup (compatible with itemsPage)
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
@@ -163,5 +169,46 @@ test.describe("Spotlight Search - Mobile", () => {
     // Use keyboard shortcut (works even on mobile)
     await spotlightPage.openWithKeyboard();
     await spotlightPage.expectOpen();
+  });
+
+  test("opens search via mobile footer button", async ({ page, testUser }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
+
+    const mobileFooter = new MobileFooterPage(page);
+
+    // Open search via footer button
+    await mobileFooter.openSearchSheet();
+
+    // Verify search sheet is open with input
+    const searchInput = page.getByPlaceholder(/search/i);
+    await expect(searchInput).toBeVisible();
+  });
+
+  test("can search and select result on mobile", async ({
+    page,
+    testUser,
+    itemsPage,
+  }) => {
+    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
+
+    // Create a test item
+    await itemsPage.createItem("Mobile Test Item");
+
+    const mobileFooter = new MobileFooterPage(page);
+
+    // Open search via footer
+    await mobileFooter.openSearchSheet();
+
+    // Search for the item
+    const searchInput = page.getByPlaceholder(/search/i);
+    await searchInput.fill("Mobile Test");
+
+    // Verify result appears and click it
+    const result = page.getByRole("option", { name: /mobile test item/i });
+    await expect(result).toBeVisible();
+    await result.click();
+
+    // Should navigate to item
+    await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+\/[a-z0-9-]+/);
   });
 });

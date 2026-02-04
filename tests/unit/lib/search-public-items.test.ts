@@ -104,13 +104,34 @@ describe("searchPublicItems", () => {
     );
   });
 
-  it("returns error when not authenticated", async () => {
+  it("returns results without user exclusion when not authenticated", async () => {
     vi.mocked(auth).mockResolvedValue(null as never);
+    vi.mocked(prisma.item.findMany).mockResolvedValue([
+      {
+        id: "item-1",
+        name: "Public Collection",
+        description: "Description",
+        files: [],
+        user: { username: "johndoe", name: "John Doe" },
+      },
+    ] as never);
 
     const result = await searchPublicItems();
 
-    expect(result.success).toBeUndefined();
-    expect(result.error).toBe("Unauthorized");
+    // Should succeed for unauthenticated users
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toHaveLength(1);
+    }
+
+    // Verify query does not exclude any user's items when not authenticated
+    expect(prisma.item.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.not.objectContaining({
+          userId: expect.anything(),
+        }),
+      })
+    );
   });
 
   it("returns error when rate limited", async () => {

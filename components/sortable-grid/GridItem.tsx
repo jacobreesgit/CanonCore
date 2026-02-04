@@ -142,15 +142,29 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       }
     };
 
+    // In edit mode (handleProps), don't use role="button" to avoid nested interactive
+    // elements (checkbox and drag handle are inside). The card is still clickable
+    // for selection, but keyboard users use Tab to reach the checkbox directly.
+    const isEditMode = !!handleProps;
+    const hasNestedInteractive = isEditMode || !!ownerHref;
+
+    // Build accessibility props conditionally
+    // When there are nested interactive elements, don't use role="button" to avoid a11y violations
+    const a11yProps = hasNestedInteractive
+      ? {}
+      : {
+          role: "button" as const,
+          tabIndex: 0,
+          "aria-label": name,
+          onKeyDown: handleKeyDown,
+        };
+
     return (
       <div
         ref={combinedRef}
         data-id={String(id)}
         onClick={handleClick}
-        role="button"
-        tabIndex={0}
-        aria-label={name}
-        onKeyDown={handleKeyDown}
+        {...a11yProps}
         className={cn(
           // Base styles - Feature222 sizing - square on mobile for compactness
           "group relative w-full cursor-pointer overflow-hidden rounded-lg",
@@ -237,7 +251,11 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
             )}
             {...handleProps}
           >
-            <GripVertical className="size-5" strokeWidth={2.5} />
+            <GripVertical
+              className="size-5"
+              strokeWidth={2.5}
+              aria-hidden="true"
+            />
           </button>
         )}
 
@@ -259,6 +277,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
             <Folder
               className="text-muted-foreground/50 size-16"
               strokeWidth={1.5}
+              aria-hidden="true"
             />
           </div>
         )}

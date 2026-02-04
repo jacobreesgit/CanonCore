@@ -1670,6 +1670,7 @@ export async function getPinnedItems(): Promise<ItemResult<PinnedItem[]>> {
       id: true,
       name: true,
       pinnedOrder: true,
+      isPublic: true,
     },
   });
 
@@ -1677,6 +1678,7 @@ export async function getPinnedItems(): Promise<ItemResult<PinnedItem[]>> {
     id: item.id,
     name: item.name,
     pinnedOrder: item.pinnedOrder!,
+    isPublic: item.isPublic,
   }));
 
   return { success: true, data: pinnedItems };
@@ -2106,7 +2108,7 @@ export const getItemsForProfile = cache(
         updatedAt: item.updatedAt,
         artworkId: item.artworkId,
         // Read-only defaults for viewer
-        pinnedOrder: null,
+        pinnedOrder: item.pinnedOrder,
         isPublic: true,
         inheritVisibility: false,
         driveFileId: null,

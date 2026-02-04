@@ -124,8 +124,17 @@ export class ItemsPage {
     if (description) {
       await this.addFolderDescription.fill(description);
     }
+
+    // Dismiss any TMDB autocomplete popover by pressing Escape and waiting
+    await this.page.keyboard.press("Escape");
+    await this.page.waitForTimeout(300);
+
+    // Ensure the Create button is visible and enabled before clicking
+    await expect(this.addFolderSubmit).toBeVisible({ timeout: 5000 });
     await expect(this.addFolderSubmit).toBeEnabled({ timeout: 2000 });
-    await this.addFolderSubmit.click();
+
+    // Click the Create button (use force on mobile to bypass any remaining popover interference)
+    await this.addFolderSubmit.click({ timeout: 10000 });
 
     // Wait for dialog to close (longer timeout for mobile)
     await expect(this.addFolderDialog).not.toBeVisible({ timeout: 15000 });
@@ -700,9 +709,10 @@ export class ItemsPage {
   async waitForLoadingComplete(): Promise<void> {
     // Wait for loading spinner to disappear (if visible)
     await expect(this.loadingSpinner).not.toBeVisible({ timeout: 10000 });
-    // Ensure content is rendered (either empty state or tree/grid)
+    // Ensure content is rendered (empty state, tree/grid, or pinned grid)
+    const pinnedGrid = this.getPinnedItemsGrid();
     await expect(
-      this.emptyState.or(this.treeView).or(this.gridView).first()
+      this.emptyState.or(this.treeView).or(this.gridView).or(pinnedGrid).first()
     ).toBeVisible({ timeout: 10000 });
   }
 
@@ -1012,8 +1022,26 @@ export class ItemsPage {
    * @param name - Name of the item to pin
    */
   async pinItemViaContextMenu(name: string): Promise<void> {
-    await this.openContextMenu(name);
-    await this.page.getByRole("menuitem", { name: /pin to sidebar/i }).click();
+    const pinMenuItem = this.page.getByRole("menuitem", {
+      name: /pin to sidebar/i,
+    });
+    // Retry context menu opening up to 3 times (can be flaky on mobile)
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await this.openContextMenu(name);
+      try {
+        await pinMenuItem.waitFor({ state: "visible", timeout: 2000 });
+        break;
+      } catch {
+        await this.page.keyboard.press("Escape");
+        await this.page.waitForTimeout(200);
+        if (attempt === 2) {
+          throw new Error(
+            `Context menu failed to open for item "${name}" after 3 attempts`
+          );
+        }
+      }
+    }
+    await pinMenuItem.click({ force: true });
     await this.page.waitForLoadState("networkidle");
   }
 
@@ -1023,10 +1051,26 @@ export class ItemsPage {
    * @param name - Name of the item to unpin
    */
   async unpinItemViaContextMenu(name: string): Promise<void> {
-    await this.openContextMenu(name);
-    await this.page
-      .getByRole("menuitem", { name: /unpin from sidebar/i })
-      .click();
+    const unpinMenuItem = this.page.getByRole("menuitem", {
+      name: /unpin from sidebar/i,
+    });
+    // Retry context menu opening up to 3 times (can be flaky on mobile)
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await this.openContextMenu(name);
+      try {
+        await unpinMenuItem.waitFor({ state: "visible", timeout: 2000 });
+        break;
+      } catch {
+        await this.page.keyboard.press("Escape");
+        await this.page.waitForTimeout(200);
+        if (attempt === 2) {
+          throw new Error(
+            `Context menu failed to open for item "${name}" after 3 attempts`
+          );
+        }
+      }
+    }
+    await unpinMenuItem.click({ force: true });
     await this.page.waitForLoadState("networkidle");
   }
 
@@ -1119,5 +1163,72 @@ export class ItemsPage {
     );
     await pinnedItem.click();
     await this.page.waitForLoadState("networkidle");
+  }
+
+  // ==================== Profile Page Pinned Grid Methods ====================
+
+  /**
+   * Gets the pinned items grid locator on the profile page (main content).
+   * This is separate from the sidebar pinned items.
+   */
+  getPinnedItemsGrid(): Locator {
+    return this.page.getByTestId("pinned-items-grid");
+  }
+
+  /**
+   * Checks that the pinned items grid section is visible on the profile page.
+   */
+  async expectPinnedGridVisible(): Promise<void> {
+    await expect(this.getPinnedItemsGrid()).toBeVisible({ timeout: 5000 });
+  }
+
+  /**
+   * Checks that the pinned items grid section is NOT visible on the profile page.
+   */
+  async expectPinnedGridNotVisible(): Promise<void> {
+    await expect(this.getPinnedItemsGrid()).not.toBeVisible();
+  }
+
+  /**
+   * Checks that an item appears in the pinned items grid on the profile page.
+   *
+   * @param name - Name of the item to look for
+   */
+  async expectItemInPinnedGrid(name: string): Promise<void> {
+    const pinnedGrid = this.getPinnedItemsGrid();
+    await expect(pinnedGrid.getByText(name, { exact: true })).toBeVisible({
+      timeout: 5000,
+    });
+  }
+
+  /**
+   * Checks that an item does NOT appear in the pinned items grid.
+   *
+   * @param name - Name of the item that should not be in pinned grid
+   */
+  async expectItemNotInPinnedGrid(name: string): Promise<void> {
+    const pinnedGrid = this.getPinnedItemsGrid();
+    await expect(pinnedGrid.getByText(name, { exact: true })).not.toBeVisible();
+  }
+
+  /**
+   * Clicks on an item in the pinned items grid.
+   *
+   * @param name - Name of the pinned item to click
+   */
+  async clickItemInPinnedGrid(name: string): Promise<void> {
+    const pinnedGrid = this.getPinnedItemsGrid();
+    await pinnedGrid.getByRole("button", { name, exact: true }).click();
+    await this.page.waitForLoadState("networkidle");
+  }
+
+  /**
+   * Gets the count of items in the pinned items grid.
+   */
+  async getPinnedGridItemCount(): Promise<number> {
+    const pinnedGrid = this.getPinnedItemsGrid();
+    // Grid items are buttons with data-id
+    const items = await pinnedGrid.locator("[data-id]").count();
+    return items;
   }
 }
