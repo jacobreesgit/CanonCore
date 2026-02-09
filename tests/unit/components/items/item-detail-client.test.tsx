@@ -27,24 +27,19 @@ vi.mock("@/lib/item-file-actions", () => ({
 }));
 
 // Mock child components to simplify tests
-vi.mock("@/components/items/items-toolbar", () => ({
-  ItemsToolbar: ({
-    hasItems,
-    isEditing,
-    item,
+vi.mock("@/components/ui/content-toolbar", () => ({
+  ContentToolbar: ({
+    disabled,
+    actions,
   }: {
-    hasItems: boolean;
-    isEditing: boolean;
-    item?: { id: string; name: string };
+    disabled?: boolean;
+    actions?: React.ReactNode;
   }) => (
-    <div
-      data-testid="items-toolbar"
-      data-has-items={hasItems}
-      data-editing={isEditing}
-    >
-      {item && <span data-testid="toolbar-item-name">{item.name}</span>}
+    <div data-testid="content-toolbar" data-disabled={disabled}>
+      {actions && <div data-testid="toolbar-actions">{actions}</div>}
     </div>
   ),
+  ToolbarDivider: () => <div data-testid="toolbar-divider" />,
 }));
 
 vi.mock("@/components/items/items-view", () => ({
@@ -67,40 +62,19 @@ vi.mock("@/components/items/items-view", () => ({
   ),
 }));
 
-vi.mock("@/components/hero-carousel", () => ({
-  HeroCarousel: ({
+vi.mock("@/components/hero", () => ({
+  CinematicHero: ({
     slides,
-    isOwner,
-    onPlay,
-    onGoToNext,
+    actions,
   }: {
-    slides: Array<{ id: string; name: string; hasMedia?: boolean }>;
-    isOwner?: boolean;
-    onPlay?: () => void;
-    onGoToNext?: (itemId: string) => void;
+    slides: Array<{ id: string; name: string }>;
+    actions?: React.ReactNode;
   }) => {
     const slide = slides[0];
     return (
-      <div
-        data-testid="hero-carousel"
-        data-name={slide?.name}
-        data-has-media={slide?.hasMedia}
-        data-is-owner={isOwner}
-      >
+      <div data-testid="hero-carousel" data-name={slide?.name}>
         {slide?.name} hero
-        {onPlay && (
-          <button data-testid="hero-play" onClick={onPlay}>
-            Play
-          </button>
-        )}
-        {onGoToNext && (
-          <button
-            data-testid="hero-goto"
-            onClick={() => onGoToNext("next-item")}
-          >
-            Go to
-          </button>
-        )}
+        {actions && <div data-testid="hero-actions">{actions}</div>}
       </div>
     );
   },
@@ -129,6 +103,8 @@ describe("ItemDetailClient", () => {
     inheritVisibility: false,
     parentId: null,
     childCount: 0,
+    tmdbId: null,
+    tmdbType: null,
   };
 
   const defaultChildItems = [
@@ -145,6 +121,16 @@ describe("ItemDetailClient", () => {
       userId: "user-1",
       createdAt: new Date(),
       updatedAt: new Date(),
+      // TMDB metadata
+      tmdbId: null,
+      tmdbType: null,
+      tmdbShowTagline: true,
+      tmdbShowMetadata: true,
+      tmdbShowGenres: true,
+      tmdbShowCast: true,
+      tmdbShowProviders: true,
+      tmdbShowVideos: true,
+      tmdbShowRecommendations: true,
       // Google Drive fields
       driveFileId: null,
       driveModifiedAt: null,
@@ -186,7 +172,7 @@ describe("ItemDetailClient", () => {
       await waitForLoading();
 
       expect(screen.getByTestId("hero-carousel")).toBeInTheDocument();
-      expect(screen.getByTestId("items-toolbar")).toBeInTheDocument();
+      expect(screen.getByTestId("content-toolbar")).toBeInTheDocument();
       expect(screen.getByTestId("items-view")).toBeInTheDocument();
     });
 
@@ -214,25 +200,13 @@ describe("ItemDetailClient", () => {
       expect(screen.getByTestId("items-view")).toHaveTextContent("1 items");
     });
 
-    it("should set hasItems=true when children exist", async () => {
-      render(
-        <ItemDetailClient item={defaultItem} childItems={defaultChildItems} />
-      );
-      await waitForLoading();
-
-      expect(screen.getByTestId("items-toolbar")).toHaveAttribute(
-        "data-has-items",
-        "true"
-      );
-    });
-
-    it("should set hasItems=false when no children", async () => {
+    it("should disable toolbar when no children", async () => {
       render(<ItemDetailClient item={defaultItem} childItems={[]} />);
       await waitForLoading();
 
-      expect(screen.getByTestId("items-toolbar")).toHaveAttribute(
-        "data-has-items",
-        "false"
+      expect(screen.getByTestId("content-toolbar")).toHaveAttribute(
+        "data-disabled",
+        "true"
       );
     });
   });
@@ -262,7 +236,7 @@ describe("ItemDetailClient", () => {
       subtitles: [],
     };
 
-    it("should pass hasMedia=true to hero when media files exist", async () => {
+    it("should render Play button in hero when media files exist", async () => {
       render(
         <ItemDetailClient
           item={defaultItem}
@@ -272,10 +246,8 @@ describe("ItemDetailClient", () => {
       );
       await waitForLoading();
 
-      expect(screen.getByTestId("hero-carousel")).toHaveAttribute(
-        "data-has-media",
-        "true"
-      );
+      expect(screen.getByTestId("hero-actions")).toBeInTheDocument();
+      expect(screen.getByText("Play")).toBeInTheDocument();
     });
 
     it("should show hero without file cards (MediaOverlay only when playing)", async () => {
@@ -293,7 +265,7 @@ describe("ItemDetailClient", () => {
       expect(screen.queryByTestId("media-overlay")).not.toBeInTheDocument();
     });
 
-    it("should NOT show tabs - always flat layout", async () => {
+    it("should show Contents/About tabs when children exist", async () => {
       render(
         <ItemDetailClient
           item={defaultItem}
@@ -303,8 +275,8 @@ describe("ItemDetailClient", () => {
       );
       await waitForLoading();
 
-      // Tabs should never appear
-      expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+      // Tabs appear when there are children or TMDB data
+      expect(screen.getByRole("tablist")).toBeInTheDocument();
     });
   });
 
@@ -320,7 +292,7 @@ describe("ItemDetailClient", () => {
       await waitForLoading();
 
       // Component should render without error
-      expect(screen.getByTestId("items-toolbar")).toBeInTheDocument();
+      expect(screen.getByTestId("content-toolbar")).toBeInTheDocument();
     });
   });
 
@@ -329,7 +301,7 @@ describe("ItemDetailClient", () => {
       render(<ItemDetailClient item={defaultItem} childItems={[]} />);
       await waitForLoading();
 
-      const toolbar = screen.getByTestId("items-toolbar");
+      const toolbar = screen.getByTestId("content-toolbar");
       const hero = screen.getByTestId("hero-carousel");
 
       // Toolbar should come after hero in DOM order

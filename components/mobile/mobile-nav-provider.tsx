@@ -11,7 +11,6 @@ import { usePathname } from "next/navigation";
 import { MobileFooterContainer } from "./mobile-footer-nav";
 import { MobileSearchSheet } from "./mobile-search-sheet";
 import { MobileUserSheet } from "./mobile-user-sheet";
-import { MobileGuestSettingsSheet } from "./mobile-guest-settings-sheet";
 import { MobileHelpSheet } from "./mobile-help-sheet";
 import type { GoogleDriveConnection } from "@/lib/types";
 
@@ -21,7 +20,7 @@ const SHEET_TRANSITION_DELAY = 150;
 /**
  * Sheet types that can be opened.
  */
-type SheetType = "search" | "user" | "settings" | "help" | null;
+type SheetType = "search" | "user" | "help" | null;
 
 /**
  * Props for MobileNavProvider component.
@@ -134,18 +133,6 @@ export function MobileNavProvider({
     [openSheet, closeSheet]
   );
 
-  // Handler for settings sheet open/close (guests only)
-  const handleSettingsOpenChange = React.useCallback(
-    (open: boolean) => {
-      if (open) {
-        openSheet("settings");
-      } else {
-        closeSheet();
-      }
-    },
-    [openSheet, closeSheet]
-  );
-
   // Handler for help sheet open/close
   const handleHelpOpenChange = React.useCallback(
     (open: boolean) => {
@@ -167,7 +154,6 @@ export function MobileNavProvider({
         user={user}
         onSearchOpen={() => openSheet("search")}
         onUserOpen={() => openSheet("user")}
-        onSettingsOpen={() => openSheet("settings")}
         onHelpOpen={() => openSheet("help")}
       />
 
@@ -184,14 +170,6 @@ export function MobileNavProvider({
           onOpenChange={handleUserOpenChange}
           user={user}
           driveConnection={driveConnection}
-        />
-      )}
-
-      {/* Guest Settings Sheet (only for unauthenticated users) */}
-      {!user && (
-        <MobileGuestSettingsSheet
-          open={activeSheet === "settings"}
-          onOpenChange={handleSettingsOpenChange}
         />
       )}
 

@@ -7,7 +7,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@/components/providers/theme-provider";
-import { DeferredAnalytics } from "@/components/deferred-analytics";
+import { DeferredAnalytics } from "@/components/providers/deferred-analytics";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -41,7 +41,6 @@ export const metadata: Metadata = {
 /**
  * Viewport configuration for safe area support on notched devices.
  * viewport-fit=cover enables env(safe-area-inset-*) CSS functions.
- * themeColor sets browser chrome color for light/dark modes.
  */
 export const viewport: Viewport = {
   viewportFit: "cover",
@@ -60,7 +59,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         {/* Preconnect to TMDB image CDN for faster poster/backdrop loading */}
         <link rel="preconnect" href="https://image.tmdb.org" />

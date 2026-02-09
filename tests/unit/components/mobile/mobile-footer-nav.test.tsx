@@ -26,19 +26,11 @@ vi.mock("@/hooks/use-mobile", () => ({
   useIsMobile: () => mockIsMobile(),
 }));
 
-// Mock next-themes
-const mockTheme = vi.fn();
-const mockSetTheme = vi.fn();
-vi.mock("next-themes", () => ({
-  useTheme: () => ({ theme: mockTheme(), setTheme: mockSetTheme }),
-}));
-
 describe("MobileFooterNav", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockPathname.mockReturnValue("/");
     mockIsMobile.mockReturnValue(true);
-    mockTheme.mockReturnValue("light");
   });
 
   describe("Visibility", () => {
@@ -336,28 +328,28 @@ describe("getAuthenticatedFooterItems", () => {
 });
 
 describe("getGuestFooterItems", () => {
-  it("returns 5 items for guest users", () => {
+  it("returns 4 items for guest users", () => {
     const items = getGuestFooterItems();
-    expect(items).toHaveLength(5);
+    expect(items).toHaveLength(4);
   });
 
-  it("includes Explore, Search, Help, Settings, and Sign In", () => {
+  it("includes Explore, Search, Help, and Sign In", () => {
     const items = getGuestFooterItems();
     const labels = items.map((item) => item.label);
 
     expect(labels).toContain("Explore");
     expect(labels).toContain("Search");
     expect(labels).toContain("Help");
-    expect(labels).toContain("Settings");
     expect(labels).toContain("Sign In");
   });
 
-  it("does not include My Items or Account", () => {
+  it("does not include My Items, Account, or Settings", () => {
     const items = getGuestFooterItems();
     const labels = items.map((item) => item.label);
 
     expect(labels).not.toContain("My Items");
     expect(labels).not.toContain("Account");
+    expect(labels).not.toContain("Settings");
   });
 
   it("has correct Sign In href", () => {
@@ -373,7 +365,6 @@ describe("MobileFooterContainer", () => {
     vi.clearAllMocks();
     mockPathname.mockReturnValue("/");
     mockIsMobile.mockReturnValue(true);
-    mockTheme.mockReturnValue("light");
   });
 
   it("renders authenticated items when user is provided", () => {
@@ -394,7 +385,7 @@ describe("MobileFooterContainer", () => {
     render(<MobileFooterContainer user={null} />);
 
     expect(screen.getByText("Sign In")).toBeInTheDocument();
-    expect(screen.getByText("Settings")).toBeInTheDocument();
+    expect(screen.getByText("Help")).toBeInTheDocument();
   });
 
   it("calls onUserOpen when Account button is clicked", async () => {
@@ -435,20 +426,6 @@ describe("MobileFooterContainer", () => {
     await user.click(helpButton);
 
     expect(onHelpOpen).toHaveBeenCalled();
-  });
-
-  it("calls onSettingsOpen when Settings button is clicked (guest)", async () => {
-    const user = userEvent.setup();
-    const onSettingsOpen = vi.fn();
-
-    render(
-      <MobileFooterContainer user={null} onSettingsOpen={onSettingsOpen} />
-    );
-
-    const settingsButton = screen.getByRole("button", { name: /settings/i });
-    await user.click(settingsButton);
-
-    expect(onSettingsOpen).toHaveBeenCalled();
   });
 
   it("calls onSearchOpen when Search button is clicked", async () => {

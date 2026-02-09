@@ -1,55 +1,31 @@
 /**
  * E2E tests for items loading behavior.
- * Verifies that the loading spinner prevents view flash during hydration.
+ * Verifies that content renders correctly after hydration.
  * Note: Root profile page is always grid view. Tree view is only on item detail pages.
  */
 
 import { test, expect } from "../../fixtures";
 
-test.describe("Items Loading Spinner", () => {
+test.describe("Items Loading", () => {
   // Use testUser fixture for consistent test setup (compatible with itemsPage)
   test.beforeEach(async ({ page, testUser }) => {
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
   });
 
-  test("loading spinner clears before content renders", async ({
-    itemsPage,
-  }) => {
-    // Wait for loading to complete
+  test("content renders on root page", async ({ itemsPage }) => {
+    // Wait for content to be ready
     await itemsPage.waitForLoadingComplete();
 
-    // Verify spinner is hidden and content is visible
-    await itemsPage.expectLoadingHidden();
     // Root profile page shows grid view or empty state
     await expect(
       itemsPage.emptyState.or(itemsPage.gridView).first()
     ).toBeVisible();
   });
 
-  test("does not show both loading and view simultaneously", async ({
+  test("grid view renders after navigation on root page", async ({
     itemsPage,
   }) => {
-    // Navigate to items page
-    await itemsPage.goto();
-
-    // At any point, we should not see loading spinner AND view together
-    // This verifies the loading state properly guards the content
-    const spinnerVisible = await itemsPage.loadingSpinner.isVisible();
-    const gridVisible = await itemsPage.gridView.isVisible();
-
-    // Either spinner is visible OR grid is visible, but not both
-    if (spinnerVisible) {
-      expect(gridVisible).toBe(false);
-    }
-
-    // Wait for loading to complete before test ends
-    await itemsPage.waitForLoadingComplete();
-  });
-
-  test("grid view renders after loading completes on root page", async ({
-    itemsPage,
-  }) => {
-    // Navigate and wait for loading
+    // Navigate and wait for content
     await itemsPage.goto();
     await itemsPage.waitForLoadingComplete();
 
@@ -59,9 +35,7 @@ test.describe("Items Loading Spinner", () => {
     ).toBeVisible();
   });
 
-  test("navigation to item detail shows loading then content", async ({
-    itemsPage,
-  }) => {
+  test("navigation to item detail shows content", async ({ itemsPage }) => {
     // Create a test item
     await itemsPage.waitForLoadingComplete();
     await itemsPage.createItem("Loading Test Item");
@@ -70,7 +44,6 @@ test.describe("Items Loading Spinner", () => {
     await itemsPage.clickItem("Loading Test Item");
 
     // Verify content is ready
-    await itemsPage.expectLoadingHidden();
     await expect(itemsPage.heroSection).toBeVisible();
   });
 

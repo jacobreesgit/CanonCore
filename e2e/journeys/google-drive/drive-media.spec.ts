@@ -7,7 +7,7 @@
  * with the "Breaking Bad" folder and video file already in the database.
  */
 
-import { test, expect } from "../../fixtures";
+import { test, expect, prisma } from "../../fixtures";
 import { ItemsPage } from "../../pages/items.page";
 
 test.describe("Google Drive: Media Playback", () => {
@@ -26,6 +26,19 @@ test.describe("Google Drive: Media Playback", () => {
     // Clean up any leftover test folders from Google Drive (keeps "Breaking Bad")
     await cleanupTestDriveFolders();
 
+    // Remove duplicate "Breaking Bad" items (keep only the one with driveFileId)
+    const duplicates = await prisma.item.findMany({
+      where: { userId: e2eDriveUser.id, name: TEST_ITEM_NAME },
+      orderBy: { createdAt: "asc" },
+    });
+    if (duplicates.length > 1) {
+      // Keep the first (original) one, delete the rest
+      for (const dup of duplicates.slice(1)) {
+        await prisma.itemFile.deleteMany({ where: { itemId: dup.id } });
+        await prisma.item.delete({ where: { id: dup.id } });
+      }
+    }
+
     // e2eDriveUser fixture logs us in - "Breaking Bad" is already in the database
     itemsPage = new ItemsPage(page, e2eDriveUser.username);
 
@@ -34,10 +47,8 @@ test.describe("Google Drive: Media Playback", () => {
     await page.waitForLoadState("networkidle");
     await itemsPage.waitForLoadingComplete();
 
-    // Wait for the item to be visible (could be button in grid view or listitem in tree view)
-    await expect(
-      page.getByRole("button", { name: TEST_ITEM_NAME, exact: true })
-    ).toBeVisible({ timeout: 10000 });
+    // Wait for the item to be visible
+    await itemsPage.expectItemVisible(TEST_ITEM_NAME);
 
     // Suppress unused variable warning - fixture is used for login side effect
     void e2eDriveUser;
@@ -76,7 +87,7 @@ test.describe("Google Drive: Media Playback", () => {
     await itemsPage.clickItem(TEST_ITEM_NAME);
 
     // Look for play button (may not exist without media files)
-    const playButton = page.getByRole("button", { name: /play/i });
+    const playButton = page.getByTestId("hero-play-button");
     const hasPlayButton = await playButton.count();
 
     if (hasPlayButton > 0) {

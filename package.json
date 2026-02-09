@@ -1,6 +1,6 @@
 {
   "name": "canoncore",
-  "version": "6.7.0",
+  "version": "7.0.0",
   "packageManager": "pnpm@10.15.0",
   "private": true,
   "scripts": {
@@ -74,7 +74,6 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
-    "embla-carousel-autoplay": "^8.6.0",
     "embla-carousel-react": "^8.6.0",
     "file-type": "^21.3.0",
     "framer-motion": "^12.28.1",

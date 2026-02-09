@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { PosterSelectionStep } from "@/components/items/poster-selection-step";
+import { PosterSelectionStep } from "@/components/items/wizards/tmdb-wizard/poster-selection-step";
 import type { TMDBImage } from "@/lib/tmdb-client";
 import type { QueuedFile } from "@/lib/types";
 

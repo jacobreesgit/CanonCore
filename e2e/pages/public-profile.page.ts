@@ -26,6 +26,12 @@ export class PublicProfilePage {
   readonly viewToggleTree: Locator;
   readonly viewToggleGrid: Locator;
   readonly heroForkButton: Locator;
+  readonly sortDropdown: Locator;
+  readonly filterDropdown: Locator;
+  readonly pinnedSection: Locator;
+  readonly librarySection: Locator;
+  readonly heroProgressBar: Locator;
+  readonly heroProgressLabel: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -33,14 +39,14 @@ export class PublicProfilePage {
     this.heroSection = page.getByTestId("hero-carousel");
     this.heroTitle = this.heroSection.locator("h1");
     this.heroDescription = this.heroSection.locator("p").first();
-    // Profile hero (profile-hero)
-    this.profileHeroSection = page.getByTestId("profile-hero");
+    // Profile hero (now uses hero-carousel testid via CinematicHero)
+    this.profileHeroSection = page.getByTestId("hero-carousel");
     this.profileHeroTitle = this.profileHeroSection.locator("h1");
     this.itemsGrid = page.getByTestId("items-grid-view");
     this.itemsTree = page.getByTestId("items-tree-view");
     this.emptyState = page.getByText(/no public items yet|no child items/i);
     this.forkButton = page.getByRole("button", { name: /fork to library/i });
-    this.forkInLibraryButton = page.getByRole("link", {
+    this.forkInLibraryButton = page.getByRole("button", {
       name: /in your library/i,
     });
     this.forkDestinationDialog = page.getByRole("dialog", {
@@ -56,6 +62,23 @@ export class PublicProfilePage {
     this.viewToggleGrid = page.getByRole("button", { name: /grid view/i });
     // Hero carousel fork button (different from toolbar fork button)
     this.heroForkButton = page.getByTestId("hero-fork-button");
+    // Sort and filter dropdowns (used by ContentToolbar on viewer profiles and explore)
+    this.sortDropdown = page
+      .getByRole("button", {
+        name: /recently updated|name a-z|name z-a/i,
+      })
+      .first();
+    this.filterDropdown = page
+      .getByRole("button", {
+        name: /all items|exclude yours|has files|no files|synced|pending sync|sync error/i,
+      })
+      .first();
+    // Profile sections
+    this.pinnedSection = page.getByLabel("Pinned items");
+    this.librarySection = page.getByLabel("Library");
+    // Hero progress
+    this.heroProgressBar = page.getByTestId("hero-progress-bar");
+    this.heroProgressLabel = page.getByTestId("hero-progress-label");
   }
 
   /** Navigate to a public profile */
@@ -79,7 +102,7 @@ export class PublicProfilePage {
     await expect(this.heroTitle).toContainText(title);
   }
 
-  /** Expect profile hero section (profile-hero) to be visible with username */
+  /** Expect profile hero section to be visible with username */
   async expectProfileHeroVisible(username: string) {
     await expect(this.profileHeroSection).toBeVisible();
     await expect(this.profileHeroTitle).toContainText(`@${username}`);
@@ -103,8 +126,13 @@ export class PublicProfilePage {
 
   /** Click on an item in the grid */
   async clickItem(name: string) {
-    // Use first() since grid items have name in both title and description
-    await this.itemsGrid.getByText(name).first().click();
+    // Use dispatchEvent to avoid hover triggering the overlay which contains
+    // an owner profile link that intercepts regular clicks
+    await this.itemsGrid
+      .locator("[data-id]")
+      .filter({ hasText: name })
+      .first()
+      .dispatchEvent("click");
   }
 
   /** Fork an item to root */
@@ -125,9 +153,9 @@ export class PublicProfilePage {
 
   /** Expect sign-in prompt for unauthenticated user */
   async expectSignInToFork() {
-    // Use first() since there may be multiple "Sign in to Fork" links (hero + toolbar)
+    // HeroButton renders <button>, not <a>, so use button role
     await expect(
-      this.page.getByRole("link", { name: /sign in to fork/i }).first()
+      this.page.getByRole("button", { name: /sign in to fork/i }).first()
     ).toBeVisible();
   }
 
@@ -186,13 +214,77 @@ export class PublicProfilePage {
   /** Expect hero carousel to show "In Library" button (already forked) */
   async expectHeroInLibrary() {
     await expect(this.heroForkButton).toBeVisible();
-    await expect(this.heroForkButton).toContainText(/in library/i);
+    await expect(this.heroForkButton).toContainText(/in.*library/i);
   }
 
   /** Expect hero carousel to show enabled "Fork" button (authenticated, not forked) */
   async expectHeroForkButton() {
     await expect(this.heroForkButton).toBeVisible();
     await expect(this.heroForkButton).toBeEnabled();
-    await expect(this.heroForkButton).toContainText(/^fork$/i);
+    await expect(this.heroForkButton).toContainText(/fork to library/i);
+  }
+
+  /** Select a sort option. Handles both desktop dropdown and mobile Options sheet. */
+  async selectSortOption(label: string) {
+    const mobileOptionsButton = this.page.getByRole("button", {
+      name: "Options",
+      exact: true,
+    });
+
+    await expect(mobileOptionsButton.or(this.sortDropdown).first()).toBeVisible(
+      { timeout: 10000 }
+    );
+
+    const isMobile = await mobileOptionsButton.isVisible();
+
+    if (isMobile) {
+      await mobileOptionsButton.click();
+      await this.page
+        .getByRole("option", { name: new RegExp(label, "i") })
+        .click();
+      await this.page.keyboard.press("Escape");
+    } else {
+      await this.sortDropdown.click();
+      await this.page
+        .getByRole("menuitemradio", { name: new RegExp(label, "i") })
+        .click();
+    }
+  }
+
+  /** Select a filter option. Handles both desktop dropdown and mobile Options sheet. */
+  async selectFilterOption(label: string) {
+    const mobileOptionsButton = this.page.getByRole("button", {
+      name: "Options",
+      exact: true,
+    });
+
+    await expect(
+      mobileOptionsButton.or(this.filterDropdown).first()
+    ).toBeVisible({ timeout: 10000 });
+
+    const isMobile = await mobileOptionsButton.isVisible();
+
+    if (isMobile) {
+      await mobileOptionsButton.click();
+      await this.page
+        .getByRole("option", { name: new RegExp(label, "i") })
+        .click();
+      await this.page.keyboard.press("Escape");
+    } else {
+      await this.filterDropdown.click();
+      await this.page
+        .getByRole("menuitemradio", { name: new RegExp(label, "i") })
+        .click();
+    }
+  }
+
+  /** Expect pinned section to be visible */
+  async expectPinnedSectionVisible() {
+    await expect(this.pinnedSection).toBeVisible();
+  }
+
+  /** Expect hero progress bar to be visible */
+  async expectHeroProgressVisible() {
+    await expect(this.heroProgressBar).toBeVisible();
   }
 }

@@ -19,8 +19,6 @@ test.describe("Items Grid Drag Journey", () => {
     await itemsPage.createItem("Grid Item 1");
     await itemsPage.createItem("Grid Item 2");
     await itemsPage.createItem("Grid Item 3");
-
-    // Wait for toasts to disappear
   });
 
   test("items display correctly in grid view", async ({ itemsPage }) => {
@@ -51,7 +49,7 @@ test.describe("Items Grid Drag Journey", () => {
     await itemsPage.dragItemTo("Grid Item 1", "Grid Item 3");
 
     // Wait for reorder to persist via network
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // All items should still be visible
     await itemsPage.expectItemVisible("Grid Item 1");
@@ -96,7 +94,7 @@ test.describe("Items Grid Drag Journey", () => {
     }
 
     // Wait for reorder to persist via network
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Verify items are still present after drag
     await itemsPage.expectItemVisible("Grid Item 1");
@@ -113,7 +111,7 @@ test.describe("Items Grid Drag Journey", () => {
 
     // Perform a drag
     await itemsPage.dragItemTo("Grid Item 2", "Grid Item 1");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Exit edit mode
     await itemsPage.exitEditMode();

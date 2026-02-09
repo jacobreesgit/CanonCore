@@ -1272,6 +1272,8 @@ async function seedMoviesForUser(
         depth: 0,
         isPublic,
         inheritVisibility: false,
+        tmdbId: movieId,
+        tmdbType: "movie",
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: movieDriveFolderId,
         syncStatus: movieDriveFolderId ? SyncStatus.SYNCED : SyncStatus.PENDING,
@@ -1383,6 +1385,8 @@ async function seedEpisodes(
         depth: 2,
         isPublic,
         inheritVisibility: true, // Episodes inherit from season
+        tmdbId: episode.id,
+        tmdbType: "episode",
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: episodeDriveFolderId,
         syncStatus: episodeDriveFolderId
@@ -1611,6 +1615,8 @@ async function seedSeasons(
         depth: 1,
         isPublic,
         inheritVisibility: true, // Seasons inherit from show
+        tmdbId: season.id,
+        tmdbType: "season",
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: seasonDriveFolderId,
         syncStatus: seasonDriveFolderId
@@ -1719,6 +1725,8 @@ async function seedTVShowsForUser(
         depth: 0,
         isPublic,
         inheritVisibility: false,
+        tmdbId: showId,
+        tmdbType: "tv",
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: showDriveFolderId,
         syncStatus: showDriveFolderId ? SyncStatus.SYNCED : SyncStatus.PENDING,

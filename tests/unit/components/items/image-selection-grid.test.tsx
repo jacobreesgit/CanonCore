@@ -9,7 +9,7 @@ import userEvent from "@testing-library/user-event";
 import {
   ImageSelectionGrid,
   type ExistingArtworkFile,
-} from "@/components/items/image-selection-grid";
+} from "@/components/items/wizards/tmdb-wizard/image-selection-grid";
 import type { TMDBImage } from "@/lib/tmdb-client";
 
 // Mock useIsMobile hook - default to desktop (false)

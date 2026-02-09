@@ -34,6 +34,15 @@ function createItem(
     userId: "user-1",
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
+    tmdbId: null,
+    tmdbType: null,
+    tmdbShowTagline: true,
+    tmdbShowMetadata: true,
+    tmdbShowGenres: true,
+    tmdbShowCast: true,
+    tmdbShowProviders: true,
+    tmdbShowVideos: true,
+    tmdbShowRecommendations: true,
     ...overrides,
   };
 }

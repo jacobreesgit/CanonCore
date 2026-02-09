@@ -89,17 +89,6 @@ export class SettingsPage {
   }
 
   /**
-   * Gets the connected Google account email displayed.
-   */
-  async getConnectedEmail(): Promise<string | null> {
-    const element = this.page.getByTestId("google-account-email");
-    if (await element.isVisible()) {
-      return element.textContent();
-    }
-    return null;
-  }
-
-  /**
    * Checks if the Google Drive connection section shows as connected.
    */
   async isConnected(): Promise<boolean> {
@@ -285,14 +274,6 @@ export class SettingsPage {
       state: "visible",
       timeout: 5000,
     });
-  }
-
-  /**
-   * Gets the current username value.
-   */
-  async getUsername(): Promise<string> {
-    const input = this.page.getByTestId("settings-username-input");
-    return (await input.inputValue()) ?? "";
   }
 
   /**

@@ -38,11 +38,6 @@ export {
 } from "./mobile-nav-provider";
 
 export {
-  MobileGuestSettingsSheet,
-  type MobileGuestSettingsSheetProps,
-} from "./mobile-guest-settings-sheet";
-
-export {
   MobileHelpSheet,
   type MobileHelpSheetProps,
 } from "./mobile-help-sheet";

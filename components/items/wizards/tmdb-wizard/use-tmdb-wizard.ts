@@ -8,7 +8,8 @@ import { useCallback, useMemo } from "react";
 import { useWizardMachine } from "@/components/wizards";
 import type { TMDBImages } from "@/lib/tmdb-client";
 import type { ArtworkSelectionSource } from "@/lib/types";
-import type { TitleDescriptionOptions } from "@/components/items/title-description-step";
+import { DEFAULT_TMDB_DISPLAY } from "@/lib/types";
+import type { TitleDescriptionOptions } from "./title-description-step";
 import type {
   TMDBWizardStep,
   TMDBWizardData,
@@ -278,6 +279,7 @@ export function useTMDBWizard(
         : still?.value
           ? { value: still.value, source: still.source }
           : null,
+      displayOptions: data.displayOptions ?? DEFAULT_TMDB_DISPLAY,
       isEpisodeMode: contentType === "episode",
     };
   }, [state.data]);

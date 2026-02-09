@@ -1,38 +1,27 @@
 /**
- * Unit tests for ItemsToolbar sort/filter functionality.
+ * Unit tests for ContentToolbar sort/filter functionality.
  */
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ItemsToolbar } from "@/components/items/items-toolbar";
+import { ContentToolbar } from "@/components/ui/content-toolbar";
 
-// Mock next/navigation
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh: vi.fn() }),
+// Mock MobileOptionsSheet to simplify tests
+vi.mock("@/components/items/mobile-options-sheet", () => ({
+  MobileOptionsSheet: () => (
+    <div data-testid="mobile-options-sheet">Mobile Sheet</div>
+  ),
 }));
 
-// Mock server actions
-vi.mock("@/lib/item-file-actions", () => ({
-  getItemFiles: vi.fn().mockResolvedValue({
-    success: true,
-    data: { media: [], artwork: [], subtitles: [] },
-  }),
-}));
-
-vi.mock("@/lib/google-drive-sync", () => ({
-  syncFromGoogleDrive: vi.fn().mockResolvedValue({ success: true }),
-}));
-
-describe("ItemsToolbar Sort/Filter", () => {
+describe("ContentToolbar Sort/Filter", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("renders sort dropdown when props are provided", () => {
     render(
-      <ItemsToolbar
-        hasItems={true}
+      <ContentToolbar
         sortBy="custom"
         onSortChange={() => {}}
         filterBy="all"
@@ -45,8 +34,7 @@ describe("ItemsToolbar Sort/Filter", () => {
 
   it("renders filter dropdown when props are provided", () => {
     render(
-      <ItemsToolbar
-        hasItems={true}
+      <ContentToolbar
         sortBy="custom"
         onSortChange={() => {}}
         filterBy="all"
@@ -62,8 +50,7 @@ describe("ItemsToolbar Sort/Filter", () => {
     const user = userEvent.setup();
 
     render(
-      <ItemsToolbar
-        hasItems={true}
+      <ContentToolbar
         sortBy="custom"
         onSortChange={onSortChange}
         filterBy="all"
@@ -84,8 +71,7 @@ describe("ItemsToolbar Sort/Filter", () => {
     const user = userEvent.setup();
 
     render(
-      <ItemsToolbar
-        hasItems={true}
+      <ContentToolbar
         sortBy="custom"
         onSortChange={() => {}}
         filterBy="all"
@@ -101,50 +87,14 @@ describe("ItemsToolbar Sort/Filter", () => {
     expect(onFilterChange).toHaveBeenCalledWith("has-files");
   });
 
-  it("disables edit mode toggle when sort is not custom", () => {
-    render(
-      <ItemsToolbar
-        hasItems={true}
-        isEditing={false}
-        onEditToggle={() => {}}
-        sortBy="name-asc"
-        onSortChange={() => {}}
-        filterBy="all"
-        onFilterChange={() => {}}
-      />
-    );
-
-    // Edit button should be disabled when not using custom sort
-    const editButton = screen.getByRole("button", { name: /edit/i });
-    expect(editButton).toBeDisabled();
-  });
-
-  it("enables edit mode toggle when sort is custom", () => {
-    render(
-      <ItemsToolbar
-        hasItems={true}
-        isEditing={false}
-        onEditToggle={() => {}}
-        sortBy="custom"
-        onSortChange={() => {}}
-        filterBy="all"
-        onFilterChange={() => {}}
-      />
-    );
-
-    // Edit button should be enabled with custom sort
-    const editButton = screen.getByRole("button", { name: /edit/i });
-    expect(editButton).not.toBeDisabled();
-  });
-
   it("disables sort dropdown when no items", () => {
     render(
-      <ItemsToolbar
-        hasItems={false}
+      <ContentToolbar
         sortBy="custom"
         onSortChange={() => {}}
         filterBy="all"
         onFilterChange={() => {}}
+        disabled
       />
     );
 

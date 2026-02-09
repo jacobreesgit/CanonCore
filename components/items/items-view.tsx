@@ -15,14 +15,16 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Layers, Loader2, Pin, Plus, RefreshCw } from "lucide-react";
 import { useControllableState } from "@/hooks/use-controllable-state";
+import { useSettingsDialog } from "@/hooks/use-settings-dialog";
 import { UniqueIdentifier } from "@dnd-kit/core";
 import { toast } from "sonner";
 
 // Static imports for view-only mode (common case)
 import { Tree } from "@/components/sortable-tree";
+import { Section } from "@/components/ui/section";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GridViewContent } from "./grid-view-content";
 
 /**
  * Loading skeleton for tree view during edit mode chunk load.
@@ -37,28 +39,10 @@ function TreeSkeleton() {
   );
 }
 
-/**
- * Loading skeleton for grid view during edit mode chunk load.
- */
-function GridSkeleton() {
-  return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-5">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <Skeleton key={i} className="aspect-[2/3] w-full rounded-lg" />
-      ))}
-    </div>
-  );
-}
-
-// Dynamic imports for edit mode (~15KB dnd-kit loaded on demand)
+// Dynamic import for edit mode (~15KB dnd-kit loaded on demand)
 const SortableTree = dynamic(
   () => import("@/components/sortable-tree").then((mod) => mod.SortableTree),
   { loading: () => <TreeSkeleton />, ssr: false }
-);
-
-const SortableGrid = dynamic(
-  () => import("@/components/sortable-grid").then((mod) => mod.SortableGrid),
-  { loading: () => <GridSkeleton />, ssr: false }
 );
 
 // Dynamic imports for heavy dialogs (loaded on demand when user opens them)
@@ -80,16 +64,9 @@ const ItemSettingsDialog = dynamic(
   }
 );
 
-import { EditModeToggle } from "./edit-mode-toggle";
-import { ViewToggle, useStoredViewMode } from "./view-toggle";
-import { SortDropdown } from "./sort-dropdown";
-import { FilterDropdown } from "./filter-dropdown";
-import { MobileOptionsSheet } from "./mobile-options-sheet";
-import { HeroCarousel, type HeroSlide } from "@/components/hero-carousel";
+import { useStoredViewMode } from "./view-toggle";
 import { EmptyState, type EmptyStateVariant } from "./empty-state";
 import { BulkActionsToolbar } from "./bulk-actions-toolbar";
-import { ItemContextMenu } from "./item-context-menu";
-import { GridItem } from "@/components/sortable-grid/GridItem";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -103,13 +80,10 @@ import { useBulkSelection } from "@/hooks/use-bulk-selection";
 import type {
   ItemWithArtwork,
   TreeItems,
-  SerializedItemFile,
   TMDBMetadataSelection,
-  ItemProgress,
   SortOption,
   FilterOption,
 } from "@/lib/types";
-import { formatProgressLabel } from "@/lib/progress-utils";
 import {
   itemsToTree,
   treeToItemUpdates,
@@ -127,27 +101,7 @@ import {
   pinItem,
   unpinItem,
 } from "@/lib/item-actions";
-import { getItemFiles } from "@/lib/item-file-actions";
-import { syncFromGoogleDrive } from "@/lib/google-drive-sync";
 import { cn } from "@/lib/utils";
-
-/** State for the settings dialog */
-interface SettingsDialogState {
-  item: {
-    id: string;
-    name: string;
-    description: string | null;
-    isPublic: boolean;
-    inheritVisibility: boolean;
-    hasParent: boolean;
-    hasChildren: boolean;
-  };
-  files: {
-    media: SerializedItemFile[];
-    artwork: SerializedItemFile[];
-    subtitles: SerializedItemFile[];
-  };
-}
 
 interface CurrentUser {
   id: string;
@@ -178,28 +132,12 @@ interface ItemsViewProps {
   onFilterChange?: (filter: FilterOption) => void;
   /** Callback when items change (for parent state sync). */
   onItemsChange?: (items: ItemWithArtwork[]) => void;
-  /** Hero title (displays ItemHero after toolbar when provided). */
-  heroTitle?: string;
-  /** Background URL for hero (e.g., /api/user/hero for My Items page). */
-  heroBackgroundUrl?: string;
-  /** Progress data for hero display (library-wide progress for My Items). */
-  heroProgress?: ItemProgress | null;
-  /** Profile data for avatar in hero carousel (single-slide mode). */
-  heroProfile?: {
-    id: string;
-    username: string;
-    name: string | null;
-    hasImage: boolean;
-    hasHeroImage: boolean;
-  };
-  /** Whether user has Google Drive connected (shows Sync button). */
+  /** Whether user has Google Drive connected (shows Upload button in settings). */
   hasDriveConnection?: boolean;
   /** Current user info for owner display in grid items. */
   currentUser?: CurrentUser | null;
   /** Disable tree view option (forces grid view, hides view toggle). */
   disableTreeView?: boolean;
-  /** Add responsive padding to grid/tree container (for profile pages). */
-  addContainerPadding?: boolean;
 }
 
 /**
@@ -214,31 +152,24 @@ interface ItemsViewProps {
  * @param onEditingChange - Callback when edit mode changes
  * @param addItemOpen - External add dialog control
  * @param onAddItemOpenChange - Callback when add dialog state changes
- * @param heroTitle - Title for hero banner (when provided)
- * @param heroBackgroundUrl - Background URL for hero
  * @param hasDriveConnection - Whether Google Drive is connected
  */
 export function ItemsView({
   items: initialItems,
   parentId = null,
-  hideToolbar = false,
+  hideToolbar: _hideToolbar = false,
   isEditing: externalIsEditing,
   onEditingChange,
   addItemOpen: externalAddItemOpen,
   onAddItemOpenChange,
   sortBy: externalSortBy,
-  onSortChange,
+  onSortChange: _onSortChange,
   filterBy: externalFilterBy,
   onFilterChange,
   onItemsChange,
-  heroTitle,
-  heroBackgroundUrl,
-  heroProgress,
-  heroProfile,
   hasDriveConnection = false,
   currentUser,
   disableTreeView = false,
-  addContainerPadding = false,
 }: ItemsViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -277,17 +208,15 @@ export function ItemsView({
   // Sort/filter state from hook (persisted to localStorage)
   const {
     sortBy: internalSortBy,
-    setSortBy: setInternalSortBy,
+    setSortBy: _setInternalSortBy,
     filterBy: internalFilterBy,
     setFilterBy: setInternalFilterBy,
   } = useItemsSortFilter();
 
   // Support external or internal control for sort/filter
   const sortBy = externalSortBy ?? internalSortBy;
-  const setSortBy = onSortChange ?? setInternalSortBy;
   const filterBy = externalFilterBy ?? internalFilterBy;
   const setFilterBy = onFilterChange ?? setInternalFilterBy;
-  const isCustomSort = sortBy === "custom";
   const hasActiveFilter = filterBy !== "all";
 
   // Edit mode state - supports external control or internal state via useControllableState
@@ -296,17 +225,12 @@ export function ItemsView({
     defaultValue: false,
     onChange: onEditingChange,
   });
-  // Settings dialog state
-  const [settingsDialog, setSettingsDialog] =
-    useState<SettingsDialogState | null>(null);
   // Add item dialog state - supports external control or internal state via useControllableState
   const [addItemOpen, setAddItemOpen] = useControllableState({
     value: externalAddItemOpen,
     defaultValue: false,
     onChange: onAddItemOpenChange,
   });
-  // Sync state
-  const [isSyncing, startSyncTransition] = useTransition();
   // Bulk delete state
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
@@ -332,70 +256,13 @@ export function ItemsView({
     }
   }, [parentId, setItems]);
 
-  /**
-   * Triggers a sync from Google Drive.
-   */
-  const handleSync = useCallback(() => {
-    startSyncTransition(async () => {
-      const result = await syncFromGoogleDrive();
-
-      if (result.success) {
-        const parts = [];
-        if (result.itemsCreated) parts.push(`${result.itemsCreated} created`);
-        if (result.itemsUpdated) parts.push(`${result.itemsUpdated} updated`);
-        if (result.itemsErrored) parts.push(`${result.itemsErrored} failed`);
-
-        const message =
-          parts.length > 0 ? parts.join(", ") : "Already up to date";
-        toast.success(`Sync complete: ${message}`);
-        await refetchItems();
-      } else {
-        // Show user-friendly message for root folder errors (detailed UI in settings)
-        if (result.error === "ROOT_FOLDER_TRASHED") {
-          toast.error(
-            "Sync paused: CanonCore folder is in Trash. Check settings to restore."
-          );
-        } else if (result.error === "ROOT_FOLDER_DELETED") {
-          toast.error(
-            "Sync paused: CanonCore folder was deleted. Reconnect in settings."
-          );
-        } else {
-          toast.error(result.error || "Sync failed");
-        }
-      }
-    });
-  }, [refetchItems]);
-
-  /**
-   * Opens the settings dialog for an item.
-   * Uses itemsRef to always get latest items (avoids stale closure).
-   * Fetches the item's files before opening.
-   */
-  const handleOpenSettings = useCallback(async (id: string) => {
-    // Use ref to avoid stale closure when items update right before reopening
-    const item = itemsRef.current.find((i) => i.id === id);
-    if (!item) return;
-
-    // Fetch files for this item
-    const filesResult = await getItemFiles(id);
-    const files =
-      filesResult.success && filesResult.data
-        ? filesResult.data
-        : { media: [], artwork: [], subtitles: [] };
-
-    setSettingsDialog({
-      item: {
-        id: item.id,
-        name: item.name,
-        description: item.description,
-        isPublic: item.isPublic,
-        inheritVisibility: item.inheritVisibility,
-        hasParent: item.parentId !== null,
-        hasChildren: item.childCount > 0,
-      },
-      files,
-    });
-  }, []);
+  // Settings dialog (extracted hook manages state, open, close, refresh)
+  const {
+    settingsDialog,
+    openSettings: handleOpenSettings,
+    closeSettings,
+    refreshSettings,
+  } = useSettingsDialog({ itemsRef, refetchItems });
 
   // Handle item click - navigate to item detail
   const handleItemClick = useCallback(
@@ -422,6 +289,7 @@ export function ItemsView({
               tmdbId: tmdbSelection.tmdbId,
               mediaType: tmdbSelection.mediaType,
               options: tmdbSelection.options,
+              displayOptions: tmdbSelection.displayOptions,
             })
           : await createItem(parentId, name, description);
 
@@ -760,129 +628,11 @@ export function ItemsView({
   return (
     <div
       className={cn(
-        "flex flex-col gap-6",
+        "flex flex-col",
         items.length === 0 && "flex-1",
         isPending && "opacity-70"
       )}
     >
-      {/* Hero section - shown when heroTitle provided */}
-      {heroTitle && (
-        <HeroCarousel
-          slides={[
-            {
-              id: "hero",
-              name: heroTitle,
-              backgroundUrl: heroBackgroundUrl,
-              link: currentUser?.username ? `/u/${currentUser.username}` : "/",
-              progressPercentage: heroProgress?.percentage ?? null,
-              progressLabel: heroProgress
-                ? formatProgressLabel(heroProgress)
-                : null,
-              // Profile data for avatar display in single-slide mode
-              profileId: heroProfile?.id,
-              profileUsername: heroProfile?.username,
-              profileName: heroProfile?.name,
-              profileHasImage: heroProfile?.hasImage,
-            } satisfies HeroSlide,
-          ]}
-          showCta={false}
-          isOwner={true}
-          addContainerPadding={addContainerPadding}
-        />
-      )}
-
-      {/* Toolbar - always visible, buttons disabled when not applicable */}
-      {!hideToolbar && (
-        <div className="flex items-center justify-between gap-2 px-4 sm:gap-3 md:px-6 lg:px-8">
-          {/* Left side: Mobile options sheet OR Desktop sync + dropdowns */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Mobile: Sync button + Options sheet */}
-            <div className="flex items-center gap-2 sm:hidden">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleSync}
-                disabled={!hasDriveConnection || isSyncing}
-                aria-label={isSyncing ? "Syncing" : "Sync"}
-                className="size-9"
-              >
-                {isSyncing ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="size-4" />
-                )}
-              </Button>
-              <MobileOptionsSheet
-                sortBy={sortBy}
-                onSortChange={setSortBy}
-                filterBy={filterBy}
-                onFilterChange={setFilterBy}
-                disabled={items.length === 0}
-              />
-            </div>
-
-            {/* Desktop: Sync button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSync}
-              disabled={!hasDriveConnection || isSyncing}
-              className="hidden gap-1.5 sm:inline-flex"
-            >
-              {isSyncing ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <RefreshCw className="size-4" />
-              )}
-              <span>{isSyncing ? "Syncing…" : "Sync"}</span>
-            </Button>
-
-            {/* Desktop: Sort/Filter dropdowns */}
-            <div className="hidden items-center gap-3 sm:flex">
-              <SortDropdown
-                value={sortBy}
-                onChange={setSortBy}
-                disabled={items.length === 0}
-              />
-              <FilterDropdown
-                value={filterBy}
-                onChange={setFilterBy}
-                disabled={items.length === 0}
-              />
-            </div>
-          </div>
-
-          {/* Right side: Add Item + Edit + View toggle */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAddItemOpen(true)}
-              className="gap-1.5"
-              aria-label="Add"
-            >
-              <Plus className="size-4" strokeWidth={2} />
-              <span className="hidden sm:inline" aria-hidden="true">
-                Add
-              </span>
-            </Button>
-            <EditModeToggle
-              isEditing={isEditing}
-              onToggle={() => setIsEditing((prev) => !prev)}
-              disabled={items.length === 0 || !isCustomSort}
-              disabledReason={
-                items.length === 0
-                  ? "No items to edit"
-                  : !isCustomSort
-                    ? "Set sort to Custom Order to reorder"
-                    : undefined
-              }
-            />
-            {!disableTreeView && <ViewToggle disabled={items.length === 0} />}
-          </div>
-        </div>
-      )}
-
       {/* Bulk actions toolbar - shown in edit mode when items exist */}
       {isEditing && currentLevelItems.length > 0 && (
         <BulkActionsToolbar
@@ -896,207 +646,72 @@ export function ItemsView({
       )}
 
       {/* Items display */}
-      <div
-        className={cn(
-          addContainerPadding && "px-4 md:px-6 lg:px-8",
-          currentLevelItems.length === 0 && "flex flex-1 flex-col"
-        )}
-      >
-        {currentLevelItems.length === 0 ? (
+      {currentLevelItems.length === 0 ? (
+        <Section className="flex flex-1 flex-col">
           <EmptyState
             variant={getEmptyStateVariant()}
             onAction={handleEmptyStateAction}
           />
-        ) : viewMode === "grid" ? (
-          isEditing ? (
-            <SortableGrid
-              items={currentLevelItems}
-              onItemsChange={handleGridItemsChange}
+        </Section>
+      ) : viewMode === "grid" ? (
+        <GridViewContent
+          isEditing={isEditing}
+          currentLevelItems={currentLevelItems}
+          pinnedItems={pinnedGridItems}
+          unpinnedItems={unpinnedGridItems}
+          onItemsChange={handleGridItemsChange}
+          onItemClick={handleItemClick}
+          onOpenSettings={handleOpenSettings}
+          onDeleteItem={handleDeleteItem}
+          onPinItem={handlePinItem}
+          onUnpinItem={handleUnpinItem}
+          hasDriveConnection={hasDriveConnection}
+          isItemSelected={bulkSelection.isSelected}
+          onItemSelectChange={handleItemSelectionChange}
+          currentUser={currentUser}
+        />
+      ) : (
+        <Section className="py-8" aria-label="Contents">
+          {isEditing ? (
+            <SortableTree
+              items={treeItemsProcessed}
+              onItemsChange={handleTreeItemsChange}
               onItemClick={handleItemClick}
               onOpenSettings={handleOpenSettings}
               onDeleteItem={handleDeleteItem}
+              onAddChild={handleAddChild}
+              onAddChildComplete={refetchItems}
               hasDriveConnection={hasDriveConnection}
               onPinItem={handlePinItem}
               onUnpinItem={handleUnpinItem}
               isItemSelected={bulkSelection.isSelected}
               onItemSelectChange={handleItemSelectionChange}
-              currentUser={currentUser}
             />
           ) : (
-            <div className="flex flex-col gap-6">
-              {/* Pinned items section */}
-              {pinnedGridItems.length > 0 && (
-                <section aria-label="Pinned items">
-                  <h2 className="text-muted-foreground mb-3 flex items-center gap-2 text-xs font-medium tracking-wider uppercase">
-                    <Pin className="size-3.5" aria-hidden="true" />
-                    <span>Pinned</span>
-                  </h2>
-                  <div
-                    data-testid="pinned-items-grid"
-                    className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5"
-                  >
-                    {pinnedGridItems.map((item, index) => (
-                      <ItemContextMenu
-                        key={item.id}
-                        itemName={item.name}
-                        driveFileId={item.driveFileId}
-                        showAddChild={false}
-                        isPinned={true}
-                        onSettings={
-                          handleOpenSettings
-                            ? () => handleOpenSettings(item.id)
-                            : undefined
-                        }
-                        onDelete={
-                          handleDeleteItem
-                            ? () => handleDeleteItem(item.id)
-                            : undefined
-                        }
-                        hasDriveConnection={hasDriveConnection}
-                        onPin={() => handlePinItem(item.id)}
-                        onUnpin={() => handleUnpinItem(item.id)}
-                      >
-                        <GridItem
-                          id={item.id}
-                          name={item.name}
-                          description={item.description}
-                          onClick={() => handleItemClick(item.id)}
-                          artworkId={item.artworkId}
-                          progressPercentage={item.progress?.percentage ?? null}
-                          watchedCount={item.progress?.watchedItems}
-                          totalMediaCount={item.progress?.itemsWithMedia}
-                          totalItems={item.progress?.totalItems}
-                          showArtwork={true}
-                          showDescription={true}
-                          priority={index < 5}
-                        />
-                      </ItemContextMenu>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* Library section (items not pinned) */}
-              {unpinnedGridItems.length > 0 && (
-                <section aria-label="Library">
-                  {pinnedGridItems.length > 0 && (
-                    <h2 className="text-muted-foreground mb-3 flex items-center gap-2 text-xs font-medium tracking-wider uppercase">
-                      <Layers className="size-3.5" aria-hidden="true" />
-                      <span>Library</span>
-                    </h2>
-                  )}
-                  <div
-                    data-testid="items-grid-view"
-                    className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5"
-                  >
-                    {unpinnedGridItems.map((item, index) => (
-                      <ItemContextMenu
-                        key={item.id}
-                        itemName={item.name}
-                        driveFileId={item.driveFileId}
-                        showAddChild={false}
-                        isPinned={false}
-                        onSettings={
-                          handleOpenSettings
-                            ? () => handleOpenSettings(item.id)
-                            : undefined
-                        }
-                        onDelete={
-                          handleDeleteItem
-                            ? () => handleDeleteItem(item.id)
-                            : undefined
-                        }
-                        hasDriveConnection={hasDriveConnection}
-                        onPin={() => handlePinItem(item.id)}
-                        onUnpin={() => handleUnpinItem(item.id)}
-                      >
-                        <GridItem
-                          id={item.id}
-                          name={item.name}
-                          description={item.description}
-                          onClick={() => handleItemClick(item.id)}
-                          artworkId={item.artworkId}
-                          progressPercentage={item.progress?.percentage ?? null}
-                          watchedCount={item.progress?.watchedItems}
-                          totalMediaCount={item.progress?.itemsWithMedia}
-                          totalItems={item.progress?.totalItems}
-                          showArtwork={true}
-                          showDescription={true}
-                          priority={index < 8}
-                        />
-                      </ItemContextMenu>
-                    ))}
-                  </div>
-                </section>
-              )}
-            </div>
-          )
-        ) : isEditing ? (
-          <SortableTree
-            items={treeItemsProcessed}
-            onItemsChange={handleTreeItemsChange}
-            onItemClick={handleItemClick}
-            onOpenSettings={handleOpenSettings}
-            onDeleteItem={handleDeleteItem}
-            onAddChild={handleAddChild}
-            onAddChildComplete={refetchItems}
-            hasDriveConnection={hasDriveConnection}
-            onPinItem={handlePinItem}
-            onUnpinItem={handleUnpinItem}
-            isItemSelected={bulkSelection.isSelected}
-            onItemSelectChange={handleItemSelectionChange}
-          />
-        ) : (
-          <Tree
-            items={treeItemsProcessed}
-            onItemClick={handleItemClick}
-            onOpenSettings={handleOpenSettings}
-            onDeleteItem={handleDeleteItem}
-            onAddChild={handleAddChild}
-            onAddChildComplete={refetchItems}
-            hasDriveConnection={hasDriveConnection}
-            onPinItem={handlePinItem}
-            onUnpinItem={handleUnpinItem}
-          />
-        )}
-      </div>
+            <Tree
+              items={treeItemsProcessed}
+              onItemClick={handleItemClick}
+              onOpenSettings={handleOpenSettings}
+              onDeleteItem={handleDeleteItem}
+              onAddChild={handleAddChild}
+              onAddChildComplete={refetchItems}
+              hasDriveConnection={hasDriveConnection}
+              onPinItem={handlePinItem}
+              onUnpinItem={handleUnpinItem}
+            />
+          )}
+        </Section>
+      )}
 
       {/* Item Settings Dialog */}
       {settingsDialog && (
         <ItemSettingsDialog
           open={!!settingsDialog}
-          onOpenChange={(open) => !open && setSettingsDialog(null)}
+          onOpenChange={(open) => !open && closeSettings()}
           item={settingsDialog.item}
           files={settingsDialog.files}
           hasDriveConnection={hasDriveConnection}
-          onSettingsChange={async () => {
-            await refetchItems();
-            // Refetch dialog state to show updated values
-            const filesResult = await getItemFiles(settingsDialog.item.id);
-            const updatedFiles =
-              filesResult.success && filesResult.data
-                ? filesResult.data
-                : settingsDialog.files;
-
-            // Refetch item data from local state to get updated values
-            const updatedItem = itemsRef.current.find(
-              (i) => i.id === settingsDialog.item.id
-            );
-            if (updatedItem) {
-              setSettingsDialog({
-                item: {
-                  id: updatedItem.id,
-                  name: updatedItem.name,
-                  description: updatedItem.description,
-                  isPublic: updatedItem.isPublic,
-                  inheritVisibility: updatedItem.inheritVisibility,
-                  hasParent: updatedItem.parentId !== null,
-                  hasChildren: updatedItem.childCount > 0,
-                },
-                files: updatedFiles,
-              });
-            }
-          }}
+          onSettingsChange={refreshSettings}
         />
       )}
 

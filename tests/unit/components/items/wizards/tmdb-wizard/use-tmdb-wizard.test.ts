@@ -375,6 +375,15 @@ describe("useTMDBWizard", () => {
         backdrop: { value: "/backdrop.jpg", source: "existing" },
         still: null,
         isEpisodeMode: false,
+        displayOptions: {
+          showTagline: true,
+          showMetadata: true,
+          showGenres: true,
+          showCast: true,
+          showProviders: true,
+          showRecommendations: true,
+          showVideos: true,
+        },
       });
     });
 

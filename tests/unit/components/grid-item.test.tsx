@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { GridItem } from "@/components/sortable-grid/GridItem";
+import { GridItem } from "@/components/sortable-grid/grid-item";
 
 // Mock useLazyImage to prevent Vitest worker shutdown issues with module resolution
 // Note: useImageLoaded is not mocked because it only uses React state/refs and needs

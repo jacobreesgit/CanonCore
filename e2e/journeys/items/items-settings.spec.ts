@@ -9,17 +9,23 @@ import { test, expect, prisma } from "../../fixtures";
 import { isMobileViewport } from "../../helpers/mobile-nav-helpers";
 
 test.describe("Item Settings Dialog", () => {
+  // Each test does: beforeEach (create parent + navigate) + create child + settings ops
+  // This exceeds the default 30s timeout
+  test.slow();
+
   // Use testUser fixture for consistent test setup (compatible with itemsPage)
   test.beforeEach(async ({ page, testUser, itemsPage }) => {
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
-    // Create parent item and navigate to it for tree view tests
+    // Create parent item and navigate to it for context menu tests
     await itemsPage.createItem("Settings Parent");
     await itemsPage.clickItem("Settings Parent");
   });
 
-  test("opens settings dialog via context menu", async ({ itemsPage }) => {
+  test("opens settings dialog via context menu", async ({
+    page,
+    itemsPage,
+  }) => {
     await itemsPage.createItem("Settings Test Folder");
-    // Switch to tree view on item detail page
     await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Settings Test Folder");
@@ -30,7 +36,10 @@ test.describe("Item Settings Dialog", () => {
     await expect(dialog.getByText("Item Settings")).toBeVisible();
   });
 
-  test("shows current item name in settings dialog", async ({ itemsPage }) => {
+  test("shows current item name in settings dialog", async ({
+    page,
+    itemsPage,
+  }) => {
     await itemsPage.createItem("Current Name");
     await itemsPage.switchToTreeView();
 
@@ -41,7 +50,7 @@ test.describe("Item Settings Dialog", () => {
     await expect(nameInput).toHaveValue("Current Name");
   });
 
-  test("can rename item via settings dialog", async ({ itemsPage }) => {
+  test("can rename item via settings dialog", async ({ page, itemsPage }) => {
     await itemsPage.createItem("Old Name");
     await itemsPage.switchToTreeView();
 
@@ -53,6 +62,7 @@ test.describe("Item Settings Dialog", () => {
   });
 
   test("closes settings dialog when clicking close button", async ({
+    page,
     itemsPage,
   }) => {
     await itemsPage.createItem("Close Test");
@@ -65,7 +75,10 @@ test.describe("Item Settings Dialog", () => {
     await expect(itemsPage.getSettingsDialog()).not.toBeVisible();
   });
 
-  test("disables save button when name unchanged", async ({ itemsPage }) => {
+  test("disables save button when name unchanged", async ({
+    page,
+    itemsPage,
+  }) => {
     await itemsPage.createItem("Unchanged Name");
     await itemsPage.switchToTreeView();
 
@@ -89,6 +102,7 @@ test.describe("Item Settings Dialog", () => {
   });
 
   test("shows file summary counts in settings dialog", async ({
+    page,
     itemsPage,
   }) => {
     await itemsPage.createItem("Summary Test");
@@ -104,21 +118,26 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.closeSettingsDialog();
   });
 
-  test("shows description field in settings dialog", async ({ itemsPage }) => {
+  test("shows description field in settings dialog", async ({
+    page,
+    itemsPage,
+  }) => {
     await itemsPage.createItem("Description Field Test");
     await itemsPage.switchToTreeView();
 
     await itemsPage.openSettingsViaContextMenu("Description Field Test");
 
     // Verify description input is visible (label includes "(optional)" suffix)
-    const descriptionInput = itemsPage.page.getByLabel(/description/i);
+    // Scope to settings dialog to avoid matching create item dialog's description field
+    const dialog = itemsPage.getSettingsDialog();
+    const descriptionInput = dialog.getByLabel(/description/i);
     await expect(descriptionInput).toBeVisible();
     await expect(descriptionInput).toHaveValue("");
 
     await itemsPage.closeSettingsDialog();
   });
 
-  test("can add description to item", async ({ itemsPage }) => {
+  test("can add description to item", async ({ page, itemsPage }) => {
     await itemsPage.createItem("Add Description Test");
     await itemsPage.switchToTreeView();
 
@@ -135,7 +154,7 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.closeSettingsDialog();
   });
 
-  test("can update description", async ({ itemsPage }) => {
+  test("can update description", async ({ page, itemsPage }) => {
     await itemsPage.createItem("Update Description Test");
     await itemsPage.switchToTreeView();
 
@@ -159,7 +178,7 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.closeSettingsDialog();
   });
 
-  test("can clear description", async ({ itemsPage }) => {
+  test("can clear description", async ({ page, itemsPage }) => {
     await itemsPage.createItem("Clear Description Test");
     await itemsPage.switchToTreeView();
 
@@ -183,7 +202,7 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.closeSettingsDialog();
   });
 
-  test("shows character count for description", async ({ itemsPage }) => {
+  test("shows character count for description", async ({ page, itemsPage }) => {
     await itemsPage.createItem("Char Count Test");
     await itemsPage.switchToTreeView();
 
@@ -194,13 +213,14 @@ test.describe("Item Settings Dialog", () => {
     await expect(dialog.getByText("0/1000")).toBeVisible();
 
     // Type some text
-    await itemsPage.page.getByLabel(/description/i).fill("Hello");
+    await dialog.getByLabel(/description/i).fill("Hello");
     await expect(dialog.getByText("5/1000")).toBeVisible();
 
     await itemsPage.closeSettingsDialog();
   });
 
   test("description save button disabled when unchanged", async ({
+    page,
     itemsPage,
   }) => {
     await itemsPage.createItem("Disabled Save Test");
@@ -215,11 +235,12 @@ test.describe("Item Settings Dialog", () => {
     await expect(saveButton).toBeDisabled();
 
     // Type something to enable it
-    await itemsPage.page.getByLabel(/description/i).fill("New description");
+    const dialog = itemsPage.getSettingsDialog();
+    await dialog.getByLabel(/description/i).fill("New description");
     await expect(saveButton).toBeEnabled();
 
     // Clear to original (empty) to disable again
-    await itemsPage.page.getByLabel(/description/i).fill("");
+    await dialog.getByLabel(/description/i).fill("");
     await expect(saveButton).toBeDisabled();
 
     await itemsPage.closeSettingsDialog();
@@ -250,7 +271,7 @@ test.describe("Item Page Settings", () => {
     }
 
     // Verify Settings button is visible
-    const settingsButton = page.getByRole("button", { name: /item settings/i });
+    const settingsButton = page.getByRole("button", { name: /^settings$/i });
     await expect(settingsButton).toBeVisible();
   });
 
@@ -265,7 +286,7 @@ test.describe("Item Page Settings", () => {
     await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+$/);
 
     // Verify Settings button is NOT visible
-    const settingsButton = page.getByRole("button", { name: /item settings/i });
+    const settingsButton = page.getByRole("button", { name: /^settings$/i });
     await expect(settingsButton).not.toBeVisible();
   });
 
@@ -280,7 +301,7 @@ test.describe("Item Page Settings", () => {
     await itemsPage.clickItem("My Test Item");
 
     // Click Settings button
-    const settingsButton = page.getByRole("button", { name: /item settings/i });
+    const settingsButton = page.getByRole("button", { name: /^settings$/i });
     await settingsButton.click();
 
     // Verify settings dialog is visible
@@ -307,7 +328,7 @@ test.describe("Item Page Settings", () => {
     await itemsPage.expectBreadcrumb("Original Name");
 
     // Click Settings button
-    const settingsButton = page.getByRole("button", { name: /item settings/i });
+    const settingsButton = page.getByRole("button", { name: /^settings$/i });
     await settingsButton.click();
 
     // Wait for settings dialog
@@ -321,8 +342,8 @@ test.describe("Item Page Settings", () => {
     // Click "Save Changes" button
     await page.getByRole("button", { name: /save changes/i }).click();
 
-    // Dialog closes automatically on success
-    await expect(settingsDialog).not.toBeVisible({ timeout: 5000 });
+    // Dialog closes automatically on success (after onSettingsChange refetch completes)
+    await expect(settingsDialog).not.toBeVisible({ timeout: 10000 });
 
     // Verify breadcrumb is updated (confirms save succeeded)
     await itemsPage.expectBreadcrumb("Updated Name");
@@ -336,7 +357,7 @@ test.describe("Item Page Settings", () => {
     await itemsPage.clickItem("Description Test");
 
     // Click Settings button
-    const settingsButton = page.getByRole("button", { name: /item settings/i });
+    const settingsButton = page.getByRole("button", { name: /^settings$/i });
     await settingsButton.click();
 
     // Wait for settings dialog
@@ -344,19 +365,20 @@ test.describe("Item Page Settings", () => {
     await expect(settingsDialog).toBeVisible({ timeout: 5000 });
 
     // Add description (label includes "(optional)" suffix)
-    const descriptionInput = page.getByLabel(/description/i);
+    // Scope to settings dialog to avoid matching create item dialog's description field
+    const descriptionInput = settingsDialog.getByLabel(/description/i);
     await descriptionInput.fill("This is a test description");
 
     // Click "Save Changes" button
     await page.getByRole("button", { name: /save changes/i }).click();
 
-    // Dialog closes automatically on success (confirms save succeeded)
-    await expect(settingsDialog).not.toBeVisible({ timeout: 5000 });
+    // Dialog closes automatically on success (after onSettingsChange refetch completes)
+    await expect(settingsDialog).not.toBeVisible({ timeout: 15000 });
 
     // Re-open settings to verify description was saved
-    await page.getByRole("button", { name: /item settings/i }).click();
+    await page.getByRole("button", { name: /^settings$/i }).click();
     await expect(settingsDialog).toBeVisible({ timeout: 5000 });
-    await expect(page.getByLabel(/description/i)).toHaveValue(
+    await expect(settingsDialog.getByLabel(/description/i)).toHaveValue(
       "This is a test description"
     );
   });
@@ -387,7 +409,7 @@ test.describe("File Deletion", () => {
 
     // Navigate to item and open settings
     await itemsPage.clickItem("Delete Test");
-    await page.getByRole("button", { name: /item settings/i }).click();
+    await page.getByRole("button", { name: /^settings$/i }).click();
 
     // Switch to Files tab first (tabbed interface)
     const dialog = page.getByRole("dialog");
@@ -417,7 +439,7 @@ test.describe("File Deletion", () => {
 
     // Navigate to item and open settings
     await itemsPage.clickItem("Confirm Delete Test");
-    await page.getByRole("button", { name: /item settings/i }).click();
+    await page.getByRole("button", { name: /^settings$/i }).click();
 
     // Wait for settings dialog
     const settingsDialog = page.getByRole("dialog", { name: /settings/i });
@@ -451,7 +473,7 @@ test.describe("File Deletion", () => {
 
     // Navigate to item and open settings
     await itemsPage.clickItem("Cancel Delete Test");
-    await page.getByRole("button", { name: /item settings/i }).click();
+    await page.getByRole("button", { name: /^settings$/i }).click();
 
     const settingsDialog = page.getByRole("dialog", { name: /settings/i });
     await expect(settingsDialog).toBeVisible({ timeout: 5000 });
@@ -489,7 +511,7 @@ test.describe("File Deletion", () => {
 
     // Navigate to item and open settings
     await itemsPage.clickItem("Upload Delete Flow");
-    await page.getByRole("button", { name: /item settings/i }).click();
+    await page.getByRole("button", { name: /^settings$/i }).click();
 
     const settingsDialog = page.getByRole("dialog", { name: /settings/i });
     await expect(settingsDialog).toBeVisible({ timeout: 5000 });

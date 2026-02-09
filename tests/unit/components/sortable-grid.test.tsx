@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { SortableGrid } from "@/components/sortable-grid/SortableGrid";
+import { SortableGrid } from "@/components/sortable-grid/sortable-grid-component";
 import type { ItemWithArtwork } from "@/lib/types";
 
 // Mock hooks to prevent Vitest worker shutdown issues with module resolution
@@ -24,7 +24,7 @@ vi.mock("@/hooks/use-image-loaded", () => ({
 }));
 
 // Mock SortableGridItem to simplify testing
-vi.mock("@/components/sortable-grid/SortableGridItem", () => ({
+vi.mock("@/components/sortable-grid/sortable-grid-item", () => ({
   SortableGridItem: ({
     id,
     name,
@@ -41,7 +41,7 @@ vi.mock("@/components/sortable-grid/SortableGridItem", () => ({
 }));
 
 // Mock GridItem for DragOverlay
-vi.mock("@/components/sortable-grid/GridItem", () => ({
+vi.mock("@/components/sortable-grid/grid-item", () => ({
   GridItem: ({ id, name }: { id: string; name: string }) => (
     <div data-testid={`overlay-item-${id}`}>{name}</div>
   ),
@@ -77,6 +77,15 @@ describe("SortableGrid", () => {
     primaryMediaName: null,
     mediaIconType: null,
     progress: null,
+    tmdbId: null,
+    tmdbType: null,
+    tmdbShowTagline: true,
+    tmdbShowMetadata: true,
+    tmdbShowGenres: true,
+    tmdbShowCast: true,
+    tmdbShowProviders: true,
+    tmdbShowVideos: true,
+    tmdbShowRecommendations: true,
   });
 
   const mockItems: ItemWithArtwork[] = [

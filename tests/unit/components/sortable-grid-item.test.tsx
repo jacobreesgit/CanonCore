@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { SortableGridItem } from "@/components/sortable-grid/SortableGridItem";
+import { SortableGridItem } from "@/components/sortable-grid/sortable-grid-item";
 import { DndContext } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 

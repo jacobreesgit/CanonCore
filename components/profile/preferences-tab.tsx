@@ -6,8 +6,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Moon, Sun, Monitor } from "lucide-react";
-import { useTheme } from "next-themes";
+import { Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
@@ -27,7 +26,6 @@ import { toast } from "sonner";
  * Loads preferences from the server and saves changes immediately.
  */
 export function PreferencesTab() {
-  const { theme, setTheme } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -96,50 +94,6 @@ export function PreferencesTab() {
 
   return (
     <div className="space-y-6">
-      {/* Theme */}
-      <div className="space-y-3">
-        <Label className="text-base font-medium">Theme</Label>
-        <p className="text-muted-foreground text-sm">
-          Choose your preferred color scheme.
-        </p>
-        <RadioGroup
-          value={theme}
-          onValueChange={setTheme}
-          className="flex gap-4"
-        >
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="light" id="theme-light" />
-            <Label
-              htmlFor="theme-light"
-              className="flex cursor-pointer items-center gap-1.5 font-normal"
-            >
-              <Sun className="size-4" aria-hidden="true" />
-              Light
-            </Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="dark" id="theme-dark" />
-            <Label
-              htmlFor="theme-dark"
-              className="flex cursor-pointer items-center gap-1.5 font-normal"
-            >
-              <Moon className="size-4" aria-hidden="true" />
-              Dark
-            </Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="system" id="theme-system" />
-            <Label
-              htmlFor="theme-system"
-              className="flex cursor-pointer items-center gap-1.5 font-normal"
-            >
-              <Monitor className="size-4" aria-hidden="true" />
-              System
-            </Label>
-          </div>
-        </RadioGroup>
-      </div>
-
       {/* View Mode */}
       <div className="space-y-3">
         <Label className="text-base font-medium">View Mode</Label>

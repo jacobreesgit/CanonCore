@@ -91,6 +91,13 @@ export async function forkItem(
         userId: true,
         tmdbId: true,
         tmdbType: true,
+        tmdbShowTagline: true,
+        tmdbShowMetadata: true,
+        tmdbShowGenres: true,
+        tmdbShowCast: true,
+        tmdbShowProviders: true,
+        tmdbShowVideos: true,
+        tmdbShowRecommendations: true,
         files: {
           where: { fileType: "ARTWORK" },
           select: { id: true },
@@ -171,6 +178,13 @@ export async function forkItem(
           forkedFromId: sourceItemId,
           tmdbId: sourceItem.tmdbId,
           tmdbType: sourceItem.tmdbType,
+          tmdbShowTagline: sourceItem.tmdbShowTagline,
+          tmdbShowMetadata: sourceItem.tmdbShowMetadata,
+          tmdbShowGenres: sourceItem.tmdbShowGenres,
+          tmdbShowCast: sourceItem.tmdbShowCast,
+          tmdbShowProviders: sourceItem.tmdbShowProviders,
+          tmdbShowVideos: sourceItem.tmdbShowVideos,
+          tmdbShowRecommendations: sourceItem.tmdbShowRecommendations,
           isPublic: false, // Forked items start private
           inheritVisibility: false, // Forked items use explicit visibility
         },

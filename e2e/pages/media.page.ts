@@ -12,7 +12,6 @@ export class MediaPage {
   private username: string;
   readonly heroSection: Locator;
   readonly heroTitle: Locator;
-  readonly heroStats: Locator;
   readonly emptyState: Locator;
   readonly mediaOverlay: Locator;
   readonly videoPlayer: Locator;
@@ -21,11 +20,9 @@ export class MediaPage {
   constructor(page: Page, username: string) {
     this.page = page;
     this.username = username;
-    // Hero section with artwork (uses data-testid from HeroCarousel)
+    // Hero section with artwork (uses data-testid from CinematicHero)
     this.heroSection = page.getByTestId("hero-carousel");
     this.heroTitle = page.getByRole("heading", { level: 1 });
-    // Hero stats row showing file counts (uses data-testid for resilience)
-    this.heroStats = page.getByTestId("hero-stats");
     this.emptyState = page.getByText("No items yet");
     // Media overlay components
     this.mediaOverlay = page.getByRole("dialog");

@@ -62,12 +62,22 @@ export interface PublicItem {
   tmdbId: number | null;
   /** TMDB media type */
   tmdbType: string | null;
+  /** TMDB display preferences */
+  tmdbShowTagline: boolean;
+  tmdbShowMetadata: boolean;
+  tmdbShowGenres: boolean;
+  tmdbShowCast: boolean;
+  tmdbShowProviders: boolean;
+  tmdbShowVideos: boolean;
+  tmdbShowRecommendations: boolean;
   /** Number of times this item has been forked */
   forkCount: number;
   /** When item was last updated */
   updatedAt: Date;
   /** Pinned order (null if not pinned) */
   pinnedOrder: number | null;
+  /** File counts by type */
+  fileCounts: { media: number; artwork: number; subtitles: number };
 }
 
 /**
@@ -275,12 +285,17 @@ export const getPublicItem = cache(
         userId: true,
         tmdbId: true,
         tmdbType: true,
+        tmdbShowTagline: true,
+        tmdbShowMetadata: true,
+        tmdbShowGenres: true,
+        tmdbShowCast: true,
+        tmdbShowProviders: true,
+        tmdbShowVideos: true,
+        tmdbShowRecommendations: true,
         updatedAt: true,
         pinnedOrder: true,
         files: {
-          where: { fileType: "ARTWORK" },
-          select: { id: true },
-          take: 1,
+          select: { id: true, fileType: true, isPrimary: true },
           orderBy: { isPrimary: "desc" },
         },
         _count: {
@@ -293,6 +308,7 @@ export const getPublicItem = cache(
       return null;
     }
 
+    const artworkFile = item.files.find((f) => f.fileType === "ARTWORK");
     return {
       id: item.id,
       name: item.name,
@@ -301,12 +317,24 @@ export const getPublicItem = cache(
       depth: item.depth,
       order: item.order,
       userId: item.userId,
-      artworkId: item.files[0]?.id ?? null,
+      artworkId: artworkFile?.id ?? null,
       tmdbId: item.tmdbId,
       tmdbType: item.tmdbType,
+      tmdbShowTagline: item.tmdbShowTagline,
+      tmdbShowMetadata: item.tmdbShowMetadata,
+      tmdbShowGenres: item.tmdbShowGenres,
+      tmdbShowCast: item.tmdbShowCast,
+      tmdbShowProviders: item.tmdbShowProviders,
+      tmdbShowVideos: item.tmdbShowVideos,
+      tmdbShowRecommendations: item.tmdbShowRecommendations,
       forkCount: item._count.sourceForks,
       updatedAt: item.updatedAt,
       pinnedOrder: item.pinnedOrder,
+      fileCounts: {
+        media: item.files.filter((f) => f.fileType === "MEDIA").length,
+        artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
+        subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
+      },
     };
   }
 );
@@ -352,12 +380,17 @@ export async function getPublicItemsForUser(
       userId: true,
       tmdbId: true,
       tmdbType: true,
+      tmdbShowTagline: true,
+      tmdbShowMetadata: true,
+      tmdbShowGenres: true,
+      tmdbShowCast: true,
+      tmdbShowProviders: true,
+      tmdbShowVideos: true,
+      tmdbShowRecommendations: true,
       updatedAt: true,
       pinnedOrder: true,
       files: {
-        where: { fileType: "ARTWORK" },
-        select: { id: true },
-        take: 1,
+        select: { id: true, fileType: true, isPrimary: true },
         orderBy: { isPrimary: "desc" },
       },
       _count: {
@@ -437,6 +470,7 @@ export async function getPublicItemsForUser(
 
   return items.map((item) => {
     const progress = isOwnProfile ? progressMap.get(item.id) : undefined;
+    const artworkFile = item.files.find((f) => f.fileType === "ARTWORK");
     return {
       id: item.id,
       name: item.name,
@@ -445,12 +479,24 @@ export async function getPublicItemsForUser(
       depth: item.depth,
       order: item.order,
       userId: item.userId,
-      artworkId: item.files[0]?.id ?? null,
+      artworkId: artworkFile?.id ?? null,
       tmdbId: item.tmdbId,
       tmdbType: item.tmdbType,
+      tmdbShowTagline: item.tmdbShowTagline,
+      tmdbShowMetadata: item.tmdbShowMetadata,
+      tmdbShowGenres: item.tmdbShowGenres,
+      tmdbShowCast: item.tmdbShowCast,
+      tmdbShowProviders: item.tmdbShowProviders,
+      tmdbShowVideos: item.tmdbShowVideos,
+      tmdbShowRecommendations: item.tmdbShowRecommendations,
       forkCount: item._count.sourceForks,
       updatedAt: item.updatedAt,
       pinnedOrder: item.pinnedOrder,
+      fileCounts: {
+        media: item.files.filter((f) => f.fileType === "MEDIA").length,
+        artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
+        subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
+      },
       // Only include progress for own profile
       ...(isOwnProfile && {
         progressPercentage: progress?.percentage ?? null,
@@ -506,12 +552,17 @@ export async function getPublicChildItems(
       userId: true,
       tmdbId: true,
       tmdbType: true,
+      tmdbShowTagline: true,
+      tmdbShowMetadata: true,
+      tmdbShowGenres: true,
+      tmdbShowCast: true,
+      tmdbShowProviders: true,
+      tmdbShowVideos: true,
+      tmdbShowRecommendations: true,
       updatedAt: true,
       pinnedOrder: true,
       files: {
-        where: { fileType: "ARTWORK" },
-        select: { id: true },
-        take: 1,
+        select: { id: true, fileType: true, isPrimary: true },
         orderBy: { isPrimary: "desc" },
       },
       _count: {
@@ -523,21 +574,36 @@ export async function getPublicChildItems(
     skip: offset,
   });
 
-  return items.map((item) => ({
-    id: item.id,
-    name: item.name,
-    description: item.description,
-    parentId: item.parentId,
-    depth: item.depth,
-    order: item.order,
-    userId: item.userId,
-    artworkId: item.files[0]?.id ?? null,
-    tmdbId: item.tmdbId,
-    tmdbType: item.tmdbType,
-    forkCount: item._count.sourceForks,
-    updatedAt: item.updatedAt,
-    pinnedOrder: item.pinnedOrder,
-  }));
+  return items.map((item) => {
+    const artworkFile = item.files.find((f) => f.fileType === "ARTWORK");
+    return {
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      parentId: item.parentId,
+      depth: item.depth,
+      order: item.order,
+      userId: item.userId,
+      artworkId: artworkFile?.id ?? null,
+      tmdbId: item.tmdbId,
+      tmdbType: item.tmdbType,
+      tmdbShowTagline: item.tmdbShowTagline,
+      tmdbShowMetadata: item.tmdbShowMetadata,
+      tmdbShowGenres: item.tmdbShowGenres,
+      tmdbShowCast: item.tmdbShowCast,
+      tmdbShowProviders: item.tmdbShowProviders,
+      tmdbShowVideos: item.tmdbShowVideos,
+      tmdbShowRecommendations: item.tmdbShowRecommendations,
+      forkCount: item._count.sourceForks,
+      updatedAt: item.updatedAt,
+      pinnedOrder: item.pinnedOrder,
+      fileCounts: {
+        media: item.files.filter((f) => f.fileType === "MEDIA").length,
+        artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
+        subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
+      },
+    };
+  });
 }
 
 /**
@@ -630,13 +696,18 @@ export const getPublicDescendants = cache(
         userId: true,
         tmdbId: true,
         tmdbType: true,
+        tmdbShowTagline: true,
+        tmdbShowMetadata: true,
+        tmdbShowGenres: true,
+        tmdbShowCast: true,
+        tmdbShowProviders: true,
+        tmdbShowVideos: true,
+        tmdbShowRecommendations: true,
         updatedAt: true,
         order: true,
         pinnedOrder: true,
         files: {
-          where: { fileType: "ARTWORK" },
-          select: { id: true },
-          take: 1,
+          select: { id: true, fileType: true, isPrimary: true },
           orderBy: { isPrimary: "desc" },
         },
         _count: {
@@ -645,21 +716,36 @@ export const getPublicDescendants = cache(
       },
     });
 
-    return items.map((item) => ({
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      parentId: item.parentId,
-      depth: item.depth,
-      order: item.order,
-      userId: item.userId,
-      artworkId: item.files[0]?.id ?? null,
-      tmdbId: item.tmdbId,
-      tmdbType: item.tmdbType,
-      forkCount: item._count.sourceForks,
-      updatedAt: item.updatedAt,
-      pinnedOrder: item.pinnedOrder,
-    }));
+    return items.map((item) => {
+      const artworkFile = item.files.find((f) => f.fileType === "ARTWORK");
+      return {
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        parentId: item.parentId,
+        depth: item.depth,
+        order: item.order,
+        userId: item.userId,
+        artworkId: artworkFile?.id ?? null,
+        tmdbId: item.tmdbId,
+        tmdbType: item.tmdbType,
+        tmdbShowTagline: item.tmdbShowTagline,
+        tmdbShowMetadata: item.tmdbShowMetadata,
+        tmdbShowGenres: item.tmdbShowGenres,
+        tmdbShowCast: item.tmdbShowCast,
+        tmdbShowProviders: item.tmdbShowProviders,
+        tmdbShowVideos: item.tmdbShowVideos,
+        tmdbShowRecommendations: item.tmdbShowRecommendations,
+        forkCount: item._count.sourceForks,
+        updatedAt: item.updatedAt,
+        pinnedOrder: item.pinnedOrder,
+        fileCounts: {
+          media: item.files.filter((f) => f.fileType === "MEDIA").length,
+          artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
+          subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
+        },
+      };
+    });
   }
 );
 
@@ -685,6 +771,7 @@ export async function getExploreItems(
     watchedCount?: number;
     totalMediaCount?: number;
     totalItems?: number;
+    isForkedByCurrentUser?: boolean;
   })[]
 > {
   const items = await prisma.item.findMany({
@@ -706,12 +793,17 @@ export async function getExploreItems(
       userId: true,
       tmdbId: true,
       tmdbType: true,
+      tmdbShowTagline: true,
+      tmdbShowMetadata: true,
+      tmdbShowGenres: true,
+      tmdbShowCast: true,
+      tmdbShowProviders: true,
+      tmdbShowVideos: true,
+      tmdbShowRecommendations: true,
       updatedAt: true,
       pinnedOrder: true,
       files: {
-        where: { fileType: "ARTWORK" },
-        select: { id: true },
-        take: 1,
+        select: { id: true, fileType: true, isPrimary: true },
         orderBy: { isPrimary: "desc" },
       },
       _count: {
@@ -794,11 +886,27 @@ export async function getExploreItems(
     }
   }
 
+  // Look up which items the current user has forked
+  const forkedSourceIds = new Set<string>();
+  if (currentUserId) {
+    const forks = await prisma.fork.findMany({
+      where: {
+        userId: currentUserId,
+        sourceItemId: { in: items.map((i) => i.id) },
+      },
+      select: { sourceItemId: true },
+    });
+    for (const fork of forks) {
+      forkedSourceIds.add(fork.sourceItemId);
+    }
+  }
+
   return items
     .filter((item) => item.user && item.user.username != null)
     .map((item) => {
       const isOwnItem = currentUserId && item.userId === currentUserId;
       const progress = isOwnItem ? progressMap.get(item.id) : undefined;
+      const artworkFile = item.files.find((f) => f.fileType === "ARTWORK");
       return {
         id: item.id,
         name: item.name,
@@ -807,12 +915,24 @@ export async function getExploreItems(
         depth: item.depth,
         order: item.order,
         userId: item.userId,
-        artworkId: item.files[0]?.id ?? null,
+        artworkId: artworkFile?.id ?? null,
         tmdbId: item.tmdbId,
         tmdbType: item.tmdbType,
+        tmdbShowTagline: item.tmdbShowTagline,
+        tmdbShowMetadata: item.tmdbShowMetadata,
+        tmdbShowGenres: item.tmdbShowGenres,
+        tmdbShowCast: item.tmdbShowCast,
+        tmdbShowProviders: item.tmdbShowProviders,
+        tmdbShowVideos: item.tmdbShowVideos,
+        tmdbShowRecommendations: item.tmdbShowRecommendations,
         forkCount: item._count.sourceForks,
         updatedAt: item.updatedAt,
         pinnedOrder: item.pinnedOrder,
+        fileCounts: {
+          media: item.files.filter((f) => f.fileType === "MEDIA").length,
+          artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
+          subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
+        },
         ownerUsername: item.user.username!,
         ownerName: item.user.name,
         // Only include progress for own items
@@ -822,6 +942,7 @@ export async function getExploreItems(
           totalMediaCount: progress?.itemsWithMedia ?? 0,
           totalItems: progress?.totalItems ?? 0,
         }),
+        isForkedByCurrentUser: forkedSourceIds.has(item.id),
       };
     });
 }
@@ -865,6 +986,72 @@ export async function getPublicBreadcrumb(
 
   return ancestors.map(({ id, name }) => ({ id, name }));
 }
+
+/**
+ * Fetches library progress for a public profile.
+ * Only counts items where isPublic is true.
+ * Used by viewers to see overall watched progress on a profile page.
+ * Cached per-request to deduplicate calls from generateMetadata and page.
+ *
+ * @param userId - User ID whose public library progress to calculate
+ * @returns Progress data or null if no items with media
+ */
+export const getPublicLibraryProgress = cache(
+  async (
+    userId: string
+  ): Promise<{
+    percentage: number;
+    watchedItems: number;
+    itemsWithMedia: number;
+    totalItems: number;
+  } | null> => {
+    const result = await prisma.$queryRaw<
+      Array<{
+        totalItems: bigint;
+        itemsWithMedia: bigint;
+        watchedItems: bigint;
+      }>
+    >`
+      SELECT
+        COUNT(DISTINCT i.id) as "totalItems",
+        COUNT(DISTINCT CASE WHEN f.id IS NOT NULL THEN i.id END) as "itemsWithMedia",
+        COUNT(DISTINCT CASE
+          WHEN f."playbackPosition" IS NOT NULL
+            AND f."playbackDuration" IS NOT NULL
+            AND f."playbackDuration" > 0
+            AND f."playbackPosition" >= f."playbackDuration" * ${COMPLETION_THRESHOLD}
+          THEN i.id
+        END) as "watchedItems"
+      FROM "Item" i
+      LEFT JOIN "ItemFile" f ON f."itemId" = i.id
+        AND f."fileType" = 'MEDIA'
+        AND f."isPrimary" = true
+      WHERE i."userId" = ${userId}
+        AND i."isPublic" = true
+    `;
+
+    if (result.length === 0) {
+      return null;
+    }
+
+    const row = result[0];
+    const totalItems = Number(row.totalItems);
+    const itemsWithMedia = Number(row.itemsWithMedia);
+    const watchedItems = Number(row.watchedItems);
+
+    // Return null if no items with media
+    if (itemsWithMedia === 0) {
+      return null;
+    }
+
+    return {
+      watchedItems,
+      itemsWithMedia,
+      percentage: Math.round((watchedItems / itemsWithMedia) * 100),
+      totalItems,
+    };
+  }
+);
 
 /**
  * Searches for public users for spotlight search.
@@ -1017,6 +1204,10 @@ export interface FeaturedItem {
   ownerHasImage: boolean;
   /** Link to item page */
   link: string;
+  /** TMDB ID for metadata enrichment */
+  tmdbId: number | null;
+  /** TMDB media type (movie/tv) */
+  tmdbType: string | null;
 }
 
 /**
@@ -1049,6 +1240,8 @@ export const getFeaturedItems = cache(
           name: true,
           description: true,
           userId: true,
+          tmdbId: true,
+          tmdbType: true,
           files: {
             where: { fileType: "ARTWORK" },
             select: { id: true },
@@ -1081,6 +1274,8 @@ export const getFeaturedItems = cache(
           ownerUserId: item.userId,
           ownerHasImage: item.user.image !== null,
           link: `/u/${item.user.username}/${item.id}`,
+          tmdbId: item.tmdbId,
+          tmdbType: item.tmdbType,
         }));
     } catch (error) {
       // Graceful degradation - return empty array instead of crashing page

@@ -25,7 +25,7 @@ test.use({
 
 test.describe("Hero Screenshots (1668x2420 iPad)", () => {
   test("08 - Spotlight Search", async ({ page }) => {
-    await setupForScreenshot(page, USERS.demo, "dark");
+    await setupForScreenshot(page, USERS.demo);
     // Navigate to explore page
     await page.goto("/explore");
     await page.waitForLoadState("networkidle");
@@ -34,10 +34,10 @@ test.describe("Hero Screenshots (1668x2420 iPad)", () => {
     await captureScreenshot(page, "08-spotlight-search");
   });
 
-  test("01 - Library Grid (Dark)", async ({ page }) => {
-    await setupForScreenshot(page, USERS.demo, "dark");
+  test("01 - Library Grid", async ({ page }) => {
+    await setupForScreenshot(page, USERS.demo);
     // Root page defaults to grid view
     await waitForHero(page);
-    await captureScreenshot(page, "01-library-grid-dark");
+    await captureScreenshot(page, "01-library-grid");
   });
 });

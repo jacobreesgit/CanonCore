@@ -40,6 +40,7 @@ import {
 } from "@/lib/tmdb-client";
 import { uploadBuffer } from "@/lib/google-drive-upload";
 import { handlePrismaError } from "@/lib/errors";
+import type { TmdbDisplayOptions } from "@/lib/types";
 
 /**
  * Options for selectively applying TMDB metadata fields.
@@ -145,13 +146,15 @@ export async function searchMediaAction(
  * @param tmdbId - TMDB ID
  * @param mediaType - "movie" or "tv"
  * @param options - Which fields to update (defaults to all)
+ * @param displayOptions - Per-item TMDB display preferences
  * @returns Success or error
  */
 export async function applyMetadataAction(
   itemId: string,
   tmdbId: number,
   mediaType: "movie" | "tv",
-  options: ApplyMetadataOptions = DEFAULT_METADATA_OPTIONS
+  options: ApplyMetadataOptions = DEFAULT_METADATA_OPTIONS,
+  displayOptions?: TmdbDisplayOptions
 ): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user?.id) {
@@ -215,8 +218,21 @@ export async function applyMetadataAction(
       backdropPath = show.backdrop_path;
     }
 
-    // Build update data based on options
-    const updateData: { name?: string; description?: string | null } = {};
+    // Build update data — always persist tmdbId/tmdbType for downstream TMDB lookups
+    const updateData: {
+      tmdbId: number;
+      tmdbType: string;
+      name?: string;
+      description?: string | null;
+      tmdbShowTagline?: boolean;
+      tmdbShowMetadata?: boolean;
+      tmdbShowGenres?: boolean;
+      tmdbShowCast?: boolean;
+      tmdbShowProviders?: boolean;
+      tmdbShowVideos?: boolean;
+      tmdbShowRecommendations?: boolean;
+    } = { tmdbId, tmdbType: mediaType };
+
     if (opts.updateName) {
       updateData.name = name;
     }
@@ -224,13 +240,21 @@ export async function applyMetadataAction(
       updateData.description = description || null;
     }
 
-    // Update item metadata if any text fields selected
-    if (Object.keys(updateData).length > 0) {
-      await prisma.item.update({
-        where: { id: itemId },
-        data: updateData,
-      });
+    // Persist display preferences if provided
+    if (displayOptions) {
+      updateData.tmdbShowTagline = displayOptions.showTagline;
+      updateData.tmdbShowMetadata = displayOptions.showMetadata;
+      updateData.tmdbShowGenres = displayOptions.showGenres;
+      updateData.tmdbShowCast = displayOptions.showCast;
+      updateData.tmdbShowProviders = displayOptions.showProviders;
+      updateData.tmdbShowVideos = displayOptions.showVideos;
+      updateData.tmdbShowRecommendations = displayOptions.showRecommendations;
     }
+
+    await prisma.item.update({
+      where: { id: itemId },
+      data: updateData,
+    });
 
     // Find existing artwork files
     const existingPrimary = item.files?.find((f) => f.isPrimary);

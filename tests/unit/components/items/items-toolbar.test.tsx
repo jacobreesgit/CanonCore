@@ -1,244 +1,132 @@
 /**
- * Unit tests for ItemsToolbar component.
+ * Unit tests for ContentToolbar component.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ItemsToolbar } from "@/components/items/items-toolbar";
-import { getItemFiles } from "@/lib/item-file-actions";
+import { ContentToolbar } from "@/components/ui/content-toolbar";
 
-// Mock next/navigation
-const mockRefresh = vi.fn();
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh: mockRefresh }),
+// Mock MobileOptionsSheet to simplify tests
+vi.mock("@/components/items/mobile-options-sheet", () => ({
+  MobileOptionsSheet: () => (
+    <div data-testid="mobile-options-sheet">Mobile Sheet</div>
+  ),
 }));
 
-// Mock auth to avoid next-auth module resolution issues
-vi.mock("@/lib/auth", () => ({
-  auth: vi.fn().mockResolvedValue({ user: { id: "test-user" } }),
-}));
-
-// Mock server actions
-vi.mock("@/lib/item-actions", () => ({
-  updateItem: vi.fn().mockResolvedValue({ success: true }),
-}));
-
-vi.mock("@/lib/item-file-actions", () => ({
-  getItemFiles: vi.fn().mockResolvedValue({
-    success: true,
-    data: { media: [], artwork: [], subtitles: [] },
-  }),
-}));
-
-// Mock sonner toast
-vi.mock("sonner", () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-  },
-}));
-
-// Mock sortable components to prevent module resolution during shutdown
-vi.mock("@/components/sortable-grid", () => ({
-  SortableGrid: () => null,
-  Grid: () => null,
-}));
-
-vi.mock("@/components/sortable-tree", () => ({
-  SortableTree: () => null,
-  Tree: () => null,
-}));
-
-vi.mock("@/hooks/use-lazy-image", () => ({
-  useLazyImage: () => ({ ref: { current: null }, isInView: true }),
-}));
-
-vi.mock("@/hooks/use-image-loaded", () => ({
-  useImageLoaded: () => ({
-    ref: { current: null },
-    loaded: false,
-    error: false,
-    onLoad: vi.fn(),
-    onError: vi.fn(),
-  }),
-}));
-
-// Mock ItemContextMenu to prevent deep import chain during shutdown
-vi.mock("@/components/items/item-context-menu", () => ({
-  ItemContextMenu: ({ children }: { children: React.ReactNode }) => children,
-}));
-
-describe("ItemsToolbar", () => {
-  const defaultProps = {
-    hasItems: false,
-  };
-
-  const mockItem = {
-    id: "item-1",
-    name: "Movies",
-    description: "My movie collection",
-    isPublic: false,
-    inheritVisibility: false,
-    hasParent: false,
-    hasChildren: false,
-  };
-
+describe("ContentToolbar", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   describe("rendering", () => {
     it("should render without crashing with minimal props", () => {
-      render(<ItemsToolbar {...defaultProps} />);
-      // Component should render
+      render(<ContentToolbar />);
       expect(document.body).toBeDefined();
     });
 
-    it("should disable Add/Edit/View controls when hasItems is false", () => {
-      render(<ItemsToolbar {...defaultProps} />);
-
-      // Controls are rendered but disabled (Add button shows "Add" text)
-      const addButtons = screen.getAllByRole("button", { name: /^add$/i });
-      expect(addButtons[0]).toBeDisabled();
-      expect(
-        screen.getByRole("button", { name: /enter edit mode/i })
-      ).toBeDisabled();
-    });
-
-    it("should render Add/Edit/View controls when hasItems is true", () => {
-      const onEditToggle = vi.fn();
-      const onAddItem = vi.fn();
-
+    it("should render sort and filter dropdowns when props provided", () => {
       render(
-        <ItemsToolbar
-          hasItems={true}
-          isEditing={false}
-          onEditToggle={onEditToggle}
-          onAddItem={onAddItem}
+        <ContentToolbar
+          sortBy="custom"
+          onSortChange={() => {}}
+          filterBy="all"
+          onFilterChange={() => {}}
         />
       );
 
-      const addButtons = screen.getAllByRole("button", { name: /^add$/i });
-      expect(addButtons[0]).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: /enter edit mode/i })
-      ).toBeInTheDocument();
+      expect(screen.getByText("Custom Order")).toBeInTheDocument();
+      expect(screen.getByText("All Items")).toBeInTheDocument();
+    });
+
+    it("should not render sort/filter when props omitted", () => {
+      render(<ContentToolbar />);
+
+      expect(screen.queryByText("Custom Order")).not.toBeInTheDocument();
+      expect(screen.queryByText("All Items")).not.toBeInTheDocument();
+    });
+
+    it("should render actions slot content", () => {
+      render(
+        <ContentToolbar
+          actions={<button data-testid="custom-action">Custom</button>}
+        />
+      );
+
+      expect(screen.getByTestId("custom-action")).toBeInTheDocument();
     });
   });
 
-  describe("Settings button", () => {
-    it("should render Settings button when item is provided", () => {
-      render(<ItemsToolbar {...defaultProps} item={mockItem} />);
+  describe("sync button", () => {
+    it("should render sync buttons when showSync is true", () => {
+      render(
+        <ContentToolbar showSync hasDriveConnection={true} onSync={() => {}} />
+      );
 
-      const settingsButton = screen.getByRole("button", {
-        name: "Item Settings",
-      });
-      expect(settingsButton).toBeInTheDocument();
+      // Mobile + desktop sync buttons both render (CSS hides one at a time)
+      const syncButtons = screen.getAllByRole("button", { name: "Sync" });
+      expect(syncButtons.length).toBeGreaterThanOrEqual(1);
     });
 
-    it("should not render Settings button when item is not provided", () => {
-      render(<ItemsToolbar {...defaultProps} />);
+    it("should not render sync button when showSync is false", () => {
+      render(<ContentToolbar />);
 
       expect(
-        screen.queryByRole("button", { name: "Item Settings" })
+        screen.queryByRole("button", { name: "Sync" })
       ).not.toBeInTheDocument();
     });
 
-    it("should open settings dialog and fetch files when Settings clicked", async () => {
-      const user = userEvent.setup();
+    it("should disable sync when no Drive connection", () => {
+      render(
+        <ContentToolbar showSync hasDriveConnection={false} onSync={() => {}} />
+      );
 
-      render(<ItemsToolbar {...defaultProps} item={mockItem} />);
-
-      const settingsButton = screen.getByRole("button", {
-        name: "Item Settings",
-      });
-      await user.click(settingsButton);
-
-      // Dialog should appear
-      expect(await screen.findByRole("dialog")).toBeInTheDocument();
-
-      // Verify getItemFiles was called with correct item ID
-      expect(getItemFiles).toHaveBeenCalledWith("item-1");
-
-      // Verify dialog shows item name in input
-      expect(screen.getByLabelText(/item name/i)).toHaveValue("Movies");
+      const syncButtons = screen.getAllByRole("button", { name: "Sync" });
+      syncButtons.forEach((btn) => expect(btn).toBeDisabled());
     });
 
-    it("should handle null description in settings dialog", async () => {
+    it("should call onSync when sync button clicked", async () => {
+      const onSync = vi.fn();
       const user = userEvent.setup();
-      const itemWithNullDescription = {
-        ...mockItem,
-        id: "item-2",
-        name: "TV Shows",
-        description: null,
-      };
 
-      render(<ItemsToolbar {...defaultProps} item={itemWithNullDescription} />);
+      render(
+        <ContentToolbar showSync hasDriveConnection={true} onSync={onSync} />
+      );
 
-      const settingsButton = screen.getByRole("button", {
-        name: "Item Settings",
-      });
-      await user.click(settingsButton);
+      // Click the first sync button (mobile)
+      const syncButtons = screen.getAllByRole("button", { name: "Sync" });
+      await user.click(syncButtons[0]);
+      expect(onSync).toHaveBeenCalledTimes(1);
+    });
 
-      expect(await screen.findByRole("dialog")).toBeInTheDocument();
-      expect(screen.getByLabelText(/item name/i)).toHaveValue("TV Shows");
+    it("should show syncing state", () => {
+      render(
+        <ContentToolbar
+          showSync
+          hasDriveConnection={true}
+          isSyncing={true}
+          onSync={() => {}}
+        />
+      );
+
+      const syncButtons = screen.getAllByRole("button", { name: "Syncing" });
+      syncButtons.forEach((btn) => expect(btn).toBeDisabled());
     });
   });
 
-  describe("Add Item button", () => {
-    it("should call onAddItem when Add clicked", async () => {
-      const user = userEvent.setup();
-      const onAddItem = vi.fn();
-
+  describe("disabled state", () => {
+    it("should disable sort dropdown when disabled is true", () => {
       render(
-        <ItemsToolbar
-          hasItems={true}
-          isEditing={false}
-          onEditToggle={vi.fn()}
-          onAddItem={onAddItem}
+        <ContentToolbar
+          sortBy="custom"
+          onSortChange={() => {}}
+          filterBy="all"
+          onFilterChange={() => {}}
+          disabled
         />
       );
 
-      const addButtons = screen.getAllByRole("button", { name: /^add$/i });
-      await user.click(addButtons[0]);
-      expect(onAddItem).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe("Edit toggle", () => {
-    it("should call onEditToggle when Edit clicked", async () => {
-      const user = userEvent.setup();
-      const onEditToggle = vi.fn();
-
-      render(
-        <ItemsToolbar
-          hasItems={true}
-          isEditing={false}
-          onEditToggle={onEditToggle}
-          onAddItem={vi.fn()}
-        />
-      );
-
-      await user.click(
-        screen.getByRole("button", { name: /enter edit mode/i })
-      );
-      expect(onEditToggle).toHaveBeenCalledTimes(1);
-    });
-
-    it("should show Done button when isEditing is true", () => {
-      render(
-        <ItemsToolbar
-          hasItems={true}
-          isEditing={true}
-          onEditToggle={vi.fn()}
-          onAddItem={vi.fn()}
-        />
-      );
-
-      expect(
-        screen.getByRole("button", { name: /exit edit mode/i })
-      ).toBeInTheDocument();
+      expect(screen.getByText("Custom Order").closest("button")).toBeDisabled();
     });
   });
 });

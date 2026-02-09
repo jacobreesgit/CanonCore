@@ -199,7 +199,8 @@ test.describe("Item Visibility", () => {
 
       // Navigate to public parent
       await publicProfilePage.gotoItem(ownerUsername, publicParentId);
-      await expect(page.getByText("Inheriting Child")).toBeVisible();
+      // Use .first() because GridItem renders name in two <h3> elements (default + hover)
+      await expect(page.getByText("Inheriting Child").first()).toBeVisible();
     });
 
     test("inheriting child of private parent is NOT visible", async ({
@@ -276,7 +277,9 @@ test.describe("Item Visibility", () => {
 
       // Navigate to child, grandchild should be visible
       await publicProfilePage.gotoItem(ownerUsername, child.id);
-      await expect(page.getByText("Inheriting Grandchild")).toBeVisible();
+      await expect(
+        page.getByText("Inheriting Grandchild").first()
+      ).toBeVisible();
     });
 
     test("inheritance breaks at private ancestor", async ({

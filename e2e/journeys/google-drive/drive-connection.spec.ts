@@ -190,23 +190,9 @@ test.describe("Google Drive: OAuth Connection", () => {
     await page.waitForLoadState("networkidle");
     await itemsPage.expectItemVisible("Drive Context Menu Test");
 
-    // Open context menu with retry
+    // Open context menu and verify Drive link
+    await itemsPage.openContextMenu("Drive Context Menu Test");
     const driveOption = page.getByRole("menuitem", { name: /open in drive/i });
-    for (let attempt = 0; attempt < 3; attempt++) {
-      await itemsPage.openContextMenu("Drive Context Menu Test");
-      try {
-        await driveOption.waitFor({ state: "visible", timeout: 2000 });
-        break;
-      } catch {
-        await page.keyboard.press("Escape");
-        await page.waitForTimeout(200);
-        if (attempt === 2) {
-          throw new Error("Open in Drive menu item not found after 3 attempts");
-        }
-      }
-    }
-
-    // Should see Open in Drive option with correct link
     await expect(driveOption).toBeVisible();
     await expect(driveOption).toHaveAttribute(
       "href",

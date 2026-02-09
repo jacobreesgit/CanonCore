@@ -37,7 +37,6 @@ test.describe("Bulk Delete", () => {
   }) => {
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
-    // Create test items
     await itemsPage.createItem("Folder A");
     await itemsPage.createItem("Folder B");
     await itemsPage.createItem("Folder C");
@@ -62,7 +61,6 @@ test.describe("Bulk Delete", () => {
   }) => {
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
-    // Create test items
     await itemsPage.createItem("Folder A");
     await itemsPage.createItem("Folder B");
     await itemsPage.createItem("Folder C");
@@ -87,7 +85,6 @@ test.describe("Bulk Delete", () => {
   }) => {
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
-    // Create test items
     await itemsPage.createItem("Folder A");
     await itemsPage.createItem("Folder B");
     await itemsPage.createItem("Folder C");
@@ -102,8 +99,6 @@ test.describe("Bulk Delete", () => {
     // Click bulk delete
     await itemsPage.clickBulkDelete();
 
-    // Wait for deletion and success toast
-
     // Items should be removed
     await itemsPage.expectItemNotVisible("Folder A");
     await itemsPage.expectItemNotVisible("Folder B");
@@ -117,7 +112,6 @@ test.describe("Bulk Delete", () => {
   }) => {
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
-    // Create test items
     await itemsPage.createItem("Folder A");
     await itemsPage.createItem("Folder B");
     await itemsPage.createItem("Folder C");
@@ -130,8 +124,6 @@ test.describe("Bulk Delete", () => {
 
     // Click bulk delete
     await itemsPage.clickBulkDelete();
-
-    // Wait for deletion
 
     // All items should be removed, edit mode should exit
     await itemsPage.expectItemNotVisible("Folder A");
@@ -146,7 +138,6 @@ test.describe("Bulk Delete", () => {
   }) => {
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
-    // Create test items
     await itemsPage.createItem("Folder A");
     await itemsPage.createItem("Folder B");
     await itemsPage.createItem("Folder C");
@@ -172,7 +163,6 @@ test.describe("Bulk Delete", () => {
   test("should work in grid view", async ({ page, testUser, itemsPage }) => {
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
-    // Create test items
     await itemsPage.createItem("Folder A");
     await itemsPage.createItem("Folder B");
     await itemsPage.createItem("Folder C");

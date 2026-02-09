@@ -109,6 +109,10 @@ describe("TMDB apply metadata integration", () => {
       poster_path: "/poster.jpg",
       backdrop_path: "/backdrop.jpg",
       release_date: "1994-09-23",
+      tagline: "",
+      runtime: null,
+      vote_average: 0,
+      genres: [],
     });
 
     // Apply metadata
@@ -142,6 +146,9 @@ describe("TMDB apply metadata integration", () => {
       backdrop_path: "/bb-backdrop.jpg",
       first_air_date: "2008-01-20",
       number_of_seasons: 5,
+      tagline: "",
+      vote_average: 0,
+      genres: [],
     });
 
     // Apply metadata
@@ -218,6 +225,10 @@ describe("TMDB apply metadata integration", () => {
       poster_path: null,
       backdrop_path: null,
       release_date: "1994-09-23",
+      tagline: "",
+      runtime: null,
+      vote_average: 0,
+      genres: [],
     });
 
     const result = await applyMetadataAction("non-existent-id", 278, "movie");
@@ -255,6 +266,10 @@ describe("TMDB apply metadata integration", () => {
       poster_path: null,
       backdrop_path: null,
       release_date: "1994-09-23",
+      tagline: "",
+      runtime: null,
+      vote_average: 0,
+      genres: [],
     });
 
     // Try to apply metadata as test user
@@ -285,6 +300,10 @@ describe("TMDB apply metadata integration", () => {
       poster_path: null,
       backdrop_path: null,
       release_date: "",
+      tagline: "",
+      runtime: null,
+      vote_average: 0,
+      genres: [],
     });
 
     // Apply metadata
@@ -318,6 +337,10 @@ describe("TMDB apply metadata integration", () => {
       poster_path: null,
       backdrop_path: null,
       release_date: "2023-01-01",
+      tagline: "",
+      runtime: null,
+      vote_average: 0,
+      genres: [],
     });
 
     // Apply metadata
