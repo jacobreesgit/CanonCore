@@ -4,7 +4,7 @@
 
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { Tree } from "@/components/sortable-tree/Tree";
+import { Tree } from "@/components/sortable-tree/tree";
 import type { TreeItems } from "@/lib/types";
 
 const mockItems: TreeItems = [

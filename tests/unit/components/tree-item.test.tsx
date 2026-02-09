@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { TreeItem } from "@/components/sortable-tree/components/TreeItem/TreeItem";
+import { TreeItem } from "@/components/sortable-tree/components/tree-item/tree-item";
 
 describe("TreeItem", () => {
   const defaultProps = {

@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -99,11 +99,18 @@ export function NavMain({ items, pinnedItems = [], username }: NavMainProps) {
     return pathname === href || pathname.startsWith(`${href}/`);
   });
 
-  // My Items is expanded when it has pinned items and either My Items or a pinned item is active
+  // My Items is expanded by default when it has pinned items
   const isMyItemsPath = myItemsBaseUrl
     ? pathname === myItemsBaseUrl || pathname.startsWith(`${myItemsBaseUrl}/`)
     : false;
-  const [isOpen, setIsOpen] = useState(hasActivePinned || isMyItemsPath);
+  const [isOpen, setIsOpen] = useState(hasPinnedItems && !!username);
+
+  // Auto-expand when pinned items appear (e.g. after router.refresh())
+  useEffect(() => {
+    if (hasPinnedItems) {
+      setIsOpen(true);
+    }
+  }, [hasPinnedItems]);
 
   async function handleUnpin(id: string) {
     const result = await unpinItem(id);

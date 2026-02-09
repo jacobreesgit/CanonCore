@@ -20,6 +20,7 @@ import { DocsPage } from "../pages/docs.page";
 import { MediaPage } from "../pages/media.page";
 import { SettingsPage } from "../pages/settings.page";
 import { PublicProfilePage } from "../pages/public-profile.page";
+import { AboutTabPage } from "../pages/about-tab.page";
 
 /**
  * Page object fixtures available in all tests.
@@ -36,6 +37,7 @@ type PageObjectFixtures = {
   mediaPage: MediaPage;
   settingsPage: SettingsPage;
   publicProfilePage: PublicProfilePage;
+  aboutTabPage: AboutTabPage;
 };
 
 /**
@@ -80,6 +82,9 @@ const composedTest = googleDriveFixture.extend<PageObjectFixtures>({
   },
   publicProfilePage: async ({ page }, use) => {
     await use(new PublicProfilePage(page));
+  },
+  aboutTabPage: async ({ page }, use) => {
+    await use(new AboutTabPage(page));
   },
 });
 

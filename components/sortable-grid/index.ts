@@ -1,4 +1,4 @@
-export { Grid } from "./Grid";
-export { GridItem } from "./GridItem";
-export { SortableGrid } from "./SortableGrid";
-export { SortableGridItem } from "./SortableGridItem";
+export { Grid } from "./grid";
+export { GridItem } from "./grid-item";
+export { SortableGrid } from "./sortable-grid-component";
+export { SortableGridItem } from "./sortable-grid-item";

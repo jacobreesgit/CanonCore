@@ -34,28 +34,7 @@ test.describe("Items View Toggle Journey", () => {
     await expect(itemsPage.gridView).toBeVisible();
   });
 
-  test("view preference persists across navigation", async ({
-    page,
-    itemsPage,
-  }) => {
-    // Create parent container and navigate into it (tree view only on item detail pages)
-    await itemsPage.createItem("Persist Container");
-    await itemsPage.clickItem("Persist Container");
-
-    // Create some test items inside the container
-    await itemsPage.createItem("Folder A");
-    await itemsPage.createItem("Folder B");
-    await page.waitForLoadState("networkidle");
-
-    // Switch to grid
-    await itemsPage.switchToGridView();
-    await expect(itemsPage.gridView).toBeVisible();
-
-    // Navigate away and back (wait for full page load)
-    await page.reload();
-    await page.waitForLoadState("networkidle");
-    await expect(itemsPage.gridView).toBeVisible();
-  });
+  // "view preference persists across navigation" moved to heavy-serial.spec.ts
 
   test("items visible in both views", async ({ itemsPage }) => {
     // Create parent container and navigate into it (tree view only on item detail pages)

@@ -18,7 +18,7 @@ import { encryptCredential } from "@/lib/crypto";
 export const TEST_FOLDER_NAME = "Breaking Bad";
 
 /** Local test video file path. */
-const TEST_VIDEO_PATH = "file_example_MP4_1920_18MG.mp4";
+const TEST_VIDEO_PATH = "video.mp4";
 
 /** E2E test user credentials. */
 export const E2E_USER_EMAIL = "e2e-drive-test@canoncore.test";

@@ -1,6 +1,6 @@
 /**
  * Theme provider wrapper for next-themes.
- * Enables dark mode support with system preference detection.
+ * Forces dark mode only - no light mode support.
  */
 
 "use client";
@@ -9,7 +9,7 @@ import { ThemeProvider as NextThemesProvider } from "next-themes";
 
 /**
  * Wraps children with next-themes provider for theme management.
- * Uses class attribute for dark mode and defaults to system preference.
+ * Forces dark mode only with no switching capability.
  *
  * @param children - React children to wrap with theme context
  */
@@ -17,8 +17,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <NextThemesProvider
       attribute="class"
-      defaultTheme="system"
-      enableSystem
+      defaultTheme="dark"
+      forcedTheme="dark"
       disableTransitionOnChange
     >
       {children}

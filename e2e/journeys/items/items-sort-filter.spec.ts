@@ -74,7 +74,7 @@ test.describe("Items Sort/Filter Journey", () => {
 
     // Reload the page
     await page.reload();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Sort should still be Name Z-A
     const currentSort = await itemsPage.getCurrentSortOption();
@@ -128,7 +128,7 @@ test.describe("Items Sort/Filter Journey", () => {
 
     // Reload the page
     await page.reload();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Filter should still be No Files
     const currentFilter = await itemsPage.getCurrentFilterOption();

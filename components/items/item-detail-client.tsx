@@ -1,27 +1,65 @@
 /**
- * Client-side wrapper for item detail pages.
- * Manages shared state between ItemsToolbar and ItemsView.
- * Always shows hero banner followed by children grid/tree.
+ * Client-side wrapper for item detail pages (owner mode).
+ * Uses CinematicHero for cinematic header and Contents/About tabs.
+ * Manages shared state between ContentToolbar and ItemsView.
  */
 
 "use client";
 
-import { useState, useCallback, useTransition, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { ItemsToolbar } from "./items-toolbar";
+import {
+  useState,
+  useCallback,
+  useTransition,
+  useMemo,
+  useEffect,
+} from "react";
+import dynamic from "next/dynamic";
+import { Play, Plus, Settings2 } from "lucide-react";
 import { ItemsView } from "./items-view";
-import { HeroCarousel, type HeroSlide } from "@/components/hero-carousel";
+import { EditModeToggle } from "./edit-mode-toggle";
+import { ViewToggle } from "./view-toggle";
+import { AboutTabContent } from "./about-tab-content";
+import { CinematicHero } from "@/components/hero";
+import { HeroButton } from "@/components/items/hero-button";
+import { PlaylistButton } from "@/components/items/playlist-button";
+import { UnderlineTabs } from "@/components/ui/underline-tabs";
+import { HeroContentLayout } from "@/components/ui/hero-content-layout";
+import {
+  ContentToolbar,
+  ToolbarDivider,
+} from "@/components/ui/content-toolbar";
+import { Button } from "@/components/ui/button";
 import { MediaOverlay } from "@/components/media/media-overlay";
 import { updatePlaybackPosition } from "@/lib/item-file-actions";
+import { getItemFiles } from "@/lib/item-file-actions";
+import { useSyncHandler } from "@/hooks/use-sync-handler";
 import type {
   ItemWithArtwork,
   SerializedItemFile,
   ItemProgress,
 } from "@/lib/types";
+import type { TmdbItemMetadata, TmdbItemDetails } from "@/lib/tmdb-client";
+import type { TmdbDisplayOptions } from "@/lib/types";
 import { useItemsSortFilter } from "@/hooks/use-items-sort-filter";
 import { getItems } from "@/lib/item-actions";
 import { useGoToItem } from "@/hooks/use-go-to-item";
 import { formatProgressLabel } from "@/lib/progress-utils";
+
+// Lazy-load settings dialog
+const ItemSettingsDialog = dynamic(
+  () =>
+    import("./item-settings-dialog").then((mod) => ({
+      default: mod.ItemSettingsDialog,
+    })),
+  { ssr: false }
+);
+
+/** Empty files state for initial dialog load */
+const emptyFiles = {
+  media: [] as SerializedItemFile[],
+  artwork: [] as SerializedItemFile[],
+  subtitles: [] as SerializedItemFile[],
+};
 
 interface CurrentUser {
   id: string;
@@ -39,6 +77,8 @@ interface ItemDetailClientProps {
     inheritVisibility: boolean;
     parentId: string | null;
     childCount: number;
+    tmdbId: number | null;
+    tmdbType: string | null;
   };
   /** Child items to display. */
   childItems: ItemWithArtwork[];
@@ -58,12 +98,17 @@ interface ItemDetailClientProps {
   currentUser?: CurrentUser | null;
   /** Open settings dialog on mount (from URL query param). */
   defaultSettingsOpen?: boolean;
+  /** TMDB metadata for hero display. */
+  tmdbMetadata?: TmdbItemMetadata | null;
+  /** TMDB details for About tab (cast, providers, videos, recommendations). */
+  tmdbDetails?: TmdbItemDetails | null;
+  /** Per-item TMDB display preferences. */
+  tmdbDisplayOptions?: TmdbDisplayOptions | null;
 }
 
 /**
- * Client wrapper for item detail page with hero banner and unified toolbar.
- * Manages edit mode and add item dialog state shared between toolbar and view.
- * Displays: Toolbar -> Hero -> Children grid/tree.
+ * Client wrapper for item detail page with CinematicHero and Contents/About tabs.
+ * Manages edit mode, add item dialog, settings dialog, and sync state.
  */
 export function ItemDetailClient({
   item,
@@ -74,8 +119,10 @@ export function ItemDetailClient({
   hasDriveConnection = false,
   currentUser,
   defaultSettingsOpen = false,
+  tmdbMetadata,
+  tmdbDetails,
+  tmdbDisplayOptions,
 }: ItemDetailClientProps) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [childItems, setChildItems] = useState(initialChildItems);
   const [isEditing, setIsEditing] = useState(false);
@@ -84,14 +131,42 @@ export function ItemDetailClient({
     null
   );
 
+  // Settings dialog state (absorbed from ItemsToolbar)
+  const [settingsOpen, setSettingsOpen] = useState(defaultSettingsOpen);
+  const [settingsFiles, setSettingsFiles] = useState(emptyFiles);
+
   // Sort/filter state (persisted to localStorage)
   const { sortBy, setSortBy, filterBy, setFilterBy } = useItemsSortFilter();
+
+  // Sync with post-sync item refresh
+  const handleSyncSuccess = useCallback(() => {
+    startTransition(async () => {
+      const itemsResult = await getItems(item.id);
+      if (itemsResult.success && itemsResult.data) {
+        setChildItems(itemsResult.data);
+      }
+    });
+  }, [item.id]);
+  const { isSyncing, handleSync } = useSyncHandler({
+    onSuccess: handleSyncSuccess,
+  });
 
   // First incomplete item for "Go to" button
   const { nextItem, goToNext } = useGoToItem({
     parentId: item.id,
     username: currentUser?.username,
   });
+
+  // Fetch files on mount when settings dialog should be open by default
+  useEffect(() => {
+    if (defaultSettingsOpen) {
+      getItemFiles(item.id).then((result) => {
+        if (result.success && result.data) {
+          setSettingsFiles(result.data);
+        }
+      });
+    }
+  }, [defaultSettingsOpen, item.id]);
 
   // Resolve hero artwork using fallback chain: isHero -> isPrimary -> first
   const heroArtworkId = useMemo(() => {
@@ -112,6 +187,8 @@ export function ItemDetailClient({
 
   const hasChildren = childItems.length > 0;
   const hasMedia = files && files.media.length > 0;
+  const hasTmdb = !!item.tmdbId;
+  const isTV = item.tmdbType === "tv";
 
   // Check if any media has progress
   const hasProgress =
@@ -123,57 +200,41 @@ export function ItemDetailClient({
     ? files.media.find((f) => f.isPrimary) || files.media[0]
     : null;
 
-  // Create single slide for HeroCarousel
-  const heroSlide: HeroSlide = useMemo(
-    () => ({
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      artworkId: heroArtworkId,
-      link: currentUser?.username
-        ? `/u/${currentUser.username}/${item.id}`
-        : `/u`, // Self-link (not used when isOwner=true)
-      hasMedia: hasMedia ?? false,
-      hasProgress: hasProgress ?? false,
-      primaryMediaName: primaryMedia?.filename ?? null,
-      progressPercentage: itemProgress?.percentage ?? null,
-      progressLabel: itemProgress ? formatProgressLabel(itemProgress) : null,
-      nextItem: nextItem ?? null,
-    }),
-    [
-      item.id,
-      item.name,
-      item.description,
-      heroArtworkId,
-      hasMedia,
-      hasProgress,
-      primaryMedia,
-      itemProgress,
-      nextItem,
-      currentUser?.username,
-    ]
-  );
+  // Progress data for hero
+  const progressPercentage = itemProgress?.percentage ?? undefined;
+  const progressLabel = itemProgress
+    ? (formatProgressLabel(itemProgress) ?? undefined)
+    : undefined;
+
+  // Disable edit mode when not using custom sort
+  const isCustomSort = sortBy === "custom";
 
   /**
-   * Refetches child items from server.
+   * Opens settings dialog and fetches files.
    */
-  const refetchItems = useCallback(async () => {
-    startTransition(async () => {
-      const result = await getItems(item.id);
-
-      if (result.success && result.data) {
-        setChildItems(result.data);
-      }
-    });
+  const handleOpenSettings = useCallback(async () => {
+    setSettingsOpen(true);
+    const result = await getItemFiles(item.id);
+    if (result.success && result.data) {
+      setSettingsFiles(result.data);
+    }
   }, [item.id]);
 
   /**
-   * Handles sync completion - refresh items and page.
+   * Refreshes files and child items after settings change.
    */
-  const handleSyncComplete = useCallback(async () => {
-    await refetchItems();
-    router.refresh();
-  }, [refetchItems, router]);
+  const handleSettingsChange = useCallback(async () => {
+    const [filesResult, itemsResult] = await Promise.all([
+      getItemFiles(item.id),
+      getItems(item.id),
+    ]);
+    if (filesResult.success && filesResult.data) {
+      setSettingsFiles(filesResult.data);
+    }
+    if (itemsResult.success && itemsResult.data) {
+      setChildItems(itemsResult.data);
+    }
+  }, [item.id]);
 
   /**
    * Handles play button click from hero.
@@ -194,48 +255,101 @@ export function ItemDetailClient({
     []
   );
 
-  // Shared toolbar props
-  const toolbarProps = {
-    hasItems: hasChildren,
-    isEditing,
-    onEditToggle: () => setIsEditing((prev) => !prev),
-    onAddItem: () => setAddItemOpen(true),
-    sortBy,
-    onSortChange: setSortBy,
-    filterBy,
-    onFilterChange: setFilterBy,
-    onSyncComplete: handleSyncComplete,
-    item: {
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      isPublic: item.isPublic,
-      inheritVisibility: item.inheritVisibility,
-      hasParent: item.parentId !== null,
-      hasChildren: item.childCount > 0,
-    },
-    childCount: childItems.length,
-    hasDriveConnection,
-    defaultSettingsOpen,
+  // Owner hero action buttons
+  const ownerActions = (
+    <>
+      {hasMedia && (
+        <HeroButton
+          variant="primary"
+          onClick={handlePlay}
+          data-testid="hero-play-button"
+        >
+          <Play className="size-4" />
+          {hasProgress ? `Resume ${primaryMedia?.filename ?? ""}` : "Play"}
+        </HeroButton>
+      )}
+      {nextItem && (
+        <HeroButton
+          onClick={() => goToNext(nextItem)}
+          data-testid="hero-goto-button"
+        >
+          Next Up: {nextItem.name}
+        </HeroButton>
+      )}
+      {/* Playlist (placeholder feature) */}
+      <PlaylistButton />
+    </>
+  );
+
+  // Settings item data for dialog
+  const settingsItem = {
+    id: item.id,
+    name: item.name,
+    description: item.description,
+    isPublic: item.isPublic,
+    inheritVisibility: item.inheritVisibility,
+    hasParent: item.parentId !== null,
+    hasChildren: item.childCount > 0,
   };
 
-  return (
-    <div
-      className={`flex flex-col gap-6 ${!hasChildren ? "flex-1" : ""} ${isPending ? "opacity-70" : ""}`}
-    >
-      {/* Hero banner - single slide carousel for item detail */}
-      <HeroCarousel
-        slides={[heroSlide]}
-        showCta={false}
-        isOwner={true}
-        onPlay={handlePlay}
-        onGoToNext={(itemId) => goToNext({ id: itemId, name: "" })}
+  // Contents tab toolbar left actions (view toggle)
+  const contentsLeftActions = <ViewToggle disabled={!hasChildren} />;
+
+  // Contents tab toolbar right actions
+  const contentsActions = (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setAddItemOpen(true)}
+        className="gap-1.5"
+        aria-label="Add"
+      >
+        <Plus className="size-4" strokeWidth={2} />
+        <span className="hidden sm:inline">Add</span>
+      </Button>
+      <EditModeToggle
+        isEditing={isEditing}
+        onToggle={() => setIsEditing((prev) => !prev)}
+        disabled={!hasChildren || !isCustomSort}
+        disabledReason={
+          !hasChildren
+            ? "No items to edit"
+            : !isCustomSort
+              ? "Set sort to Custom Order to reorder"
+              : undefined
+        }
       />
+      <ToolbarDivider />
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleOpenSettings}
+        className="gap-1.5"
+        aria-label="Settings"
+      >
+        <Settings2 className="size-4" />
+        <span className="hidden sm:inline">Settings</span>
+      </Button>
+    </>
+  );
 
-      {/* Toolbar - below hero */}
-      <ItemsToolbar {...toolbarProps} />
-
-      {/* Children section - always shown (may be empty state) */}
+  // Contents tab content (toolbar + items view)
+  const contentsContent = (
+    <>
+      <ContentToolbar
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+        filterBy={filterBy}
+        onFilterChange={setFilterBy}
+        showSync
+        isSyncing={isSyncing}
+        onSync={handleSync}
+        hasDriveConnection={hasDriveConnection}
+        disabled={!hasChildren}
+        leftActions={contentsLeftActions}
+        actions={contentsActions}
+      />
       <ItemsView
         items={childItems}
         parentId={item.id}
@@ -252,6 +366,88 @@ export function ItemDetailClient({
         hasDriveConnection={hasDriveConnection}
         currentUser={currentUser}
       />
+    </>
+  );
+
+  // About tab content (shared component with internal filter state)
+  const aboutContent = (
+    <AboutTabContent
+      description={item.description}
+      tmdbDetails={tmdbDetails}
+      tmdbDisplayOptions={tmdbDisplayOptions}
+      isTV={isTV}
+    />
+  );
+
+  // Show tabs when there are children or TMDB data
+  const showTabs = hasChildren || hasTmdb;
+
+  // Hero element
+  const hero = (
+    <CinematicHero
+      slides={[
+        {
+          id: item.id,
+          name: item.name,
+          artworkId: heroArtworkId,
+          tagline:
+            tmdbDisplayOptions?.showTagline !== false
+              ? tmdbMetadata?.tagline
+              : undefined,
+          description: item.description ?? undefined,
+          metadata:
+            tmdbDisplayOptions?.showMetadata !== false && tmdbMetadata
+              ? {
+                  year: tmdbMetadata.year,
+                  runtime: tmdbMetadata.runtime,
+                  contentRating: tmdbMetadata.contentRating,
+                  voteAverage: tmdbMetadata.voteAverage,
+                }
+              : undefined,
+          genres:
+            tmdbDisplayOptions?.showGenres !== false &&
+            tmdbMetadata?.genres?.length
+              ? tmdbMetadata.genres
+              : undefined,
+          progress: progressPercentage,
+          progressLabel,
+        },
+      ]}
+      headingLevel="h1"
+      actions={ownerActions}
+    />
+  );
+
+  return (
+    <HeroContentLayout hero={hero} isPending={isPending}>
+      {/* Tabbed content or direct toolbar */}
+      {showTabs ? (
+        <UnderlineTabs
+          defaultTab={hasChildren ? "contents" : "about"}
+          tabs={[
+            {
+              id: "contents",
+              label: "Contents",
+              content: contentsContent,
+            },
+            { id: "about", label: "About", content: aboutContent },
+          ]}
+        />
+      ) : (
+        contentsContent
+      )}
+
+      {/* Item Settings Dialog */}
+      {settingsOpen && (
+        <ItemSettingsDialog
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          item={settingsItem}
+          files={settingsFiles}
+          hasDriveConnection={hasDriveConnection}
+          onSettingsChange={handleSettingsChange}
+        />
+      )}
 
       {/* Media player overlay */}
       {playingFile && files && (
@@ -265,6 +461,6 @@ export function ItemDetailClient({
           onPositionUpdate={handlePositionUpdate}
         />
       )}
-    </div>
+    </HeroContentLayout>
   );
 }

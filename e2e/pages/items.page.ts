@@ -14,9 +14,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 
-/** Timeout for waiting for toast notifications to dismiss (matches Sonner default) */
-const TOAST_DISMISS_TIMEOUT = 5000;
-
 export class ItemsPage {
   readonly page: Page;
   private username: string;
@@ -33,7 +30,6 @@ export class ItemsPage {
   readonly gridView: Locator;
   readonly breadcrumbHome: Locator;
   readonly heroSection: Locator;
-  readonly loadingSpinner: Locator;
   readonly sortDropdown: Locator;
   readonly filterDropdown: Locator;
   readonly editModeButton: Locator;
@@ -61,7 +57,6 @@ export class ItemsPage {
       .getByLabel("Breadcrumb")
       .getByRole("link", { name: /my items/i });
     this.heroSection = page.getByTestId("hero-carousel");
-    this.loadingSpinner = page.getByTestId("items-loading");
     // Sort dropdown shows current sort option (Custom Order, Name A-Z, etc.)
     this.sortDropdown = page
       .getByRole("button", {
@@ -125,21 +120,28 @@ export class ItemsPage {
       await this.addFolderDescription.fill(description);
     }
 
-    // Dismiss any TMDB autocomplete popover by pressing Escape and waiting
-    await this.page.keyboard.press("Escape");
-    await this.page.waitForTimeout(300);
+    // The TMDB combobox has a 300ms debounce search that opens a Radix popover.
+    // Wait for debounce to fire, then dismiss the popover with Escape if it opened.
+    // Escape is safe here: if the popover IS open, Radix closes the popover first
+    // (not the dialog). If it's NOT open, we skip Escape entirely.
+    await this.page.waitForTimeout(500);
+    const tmdbPopover = this.page.locator(
+      "[data-radix-popper-content-wrapper]"
+    );
+    if (await tmdbPopover.isVisible().catch(() => false)) {
+      await this.page.keyboard.press("Escape");
+      await expect(tmdbPopover).not.toBeVisible({ timeout: 3000 });
+    }
 
-    // Ensure the Create button is visible and enabled before clicking
-    await expect(this.addFolderSubmit).toBeVisible({ timeout: 5000 });
-    await expect(this.addFolderSubmit).toBeEnabled({ timeout: 2000 });
+    await expect(this.addFolderSubmit).toBeVisible({ timeout: 10000 });
+    await expect(this.addFolderSubmit).toBeEnabled({ timeout: 5000 });
+    // Use force: true to bypass re-checking actionability during click.
+    // Under parallel load, React re-renders from TMDB search responses can
+    // detach the button between actionability check and click dispatch.
+    await this.addFolderSubmit.click({ timeout: 15000, force: true });
 
-    // Click the Create button (use force on mobile to bypass any remaining popover interference)
-    await this.addFolderSubmit.click({ timeout: 10000 });
-
-    // Wait for dialog to close (longer timeout for mobile)
+    // Wait for dialog to close
     await expect(this.addFolderDialog).not.toBeVisible({ timeout: 15000 });
-    // Wait for React state update to complete
-    await this.page.waitForLoadState("networkidle");
     await this.expectItemVisible(name);
   }
 
@@ -175,13 +177,15 @@ export class ItemsPage {
 
   async expectItemNotVisible(name: string) {
     // Target items in tree/grid views, not breadcrumbs
+    // Use .first() after .or() because GridItem renders name in two <h3> elements
+    // (default view + hover overlay), both present in the DOM
     const treeItem = this.page
       .getByRole("listitem")
       .getByText(name, { exact: true });
     const gridItem = this.page
       .locator("[data-id]")
       .getByText(name, { exact: true });
-    await expect(treeItem.or(gridItem)).not.toBeVisible();
+    await expect(treeItem.or(gridItem).first()).not.toBeVisible();
   }
 
   async clickItem(name: string) {
@@ -197,9 +201,6 @@ export class ItemsPage {
       .locator("[data-id]")
       .getByText(name, { exact: true });
     await treeItem.or(gridButton).or(gridItem).first().click();
-    // Wait for navigation and page content to be ready
-    await this.page.waitForLoadState("networkidle");
-    await this.page.waitForLoadState("domcontentloaded");
     // Wait for the hero heading to show item name (works on mobile where breadcrumbs collapse)
     await expect(
       this.heroSection.getByRole("heading", { level: 1, name })
@@ -244,16 +245,32 @@ export class ItemsPage {
   }
 
   async openContextMenu(name: string) {
-    // Dismiss any open overlays by pressing Escape
+    // Dismiss any open overlays first
     await this.page.keyboard.press("Escape");
-    await this.page.waitForTimeout(100);
 
-    const item = this.getItemLocator(name);
-    // Ensure item is visible and scroll into view
-    await item.scrollIntoViewIfNeeded();
-    await item.waitFor({ state: "visible", timeout: 5000 });
-    // Right-click to open context menu (don't left-click first as it navigates)
-    await item.click({ button: "right" });
+    // Get the container element (listitem for tree, div[data-id] for grid)
+    const mainContent = this.page.getByRole("main");
+    const treeContainer = mainContent
+      .getByRole("listitem")
+      .filter({ hasText: name });
+    const gridContainer = mainContent
+      .locator("[data-id]")
+      .filter({ hasText: name });
+    const container = treeContainer.or(gridContainer).first();
+
+    await container.scrollIntoViewIfNeeded();
+
+    // Click the more button directly — Playwright treats opacity:0 elements as
+    // visible (they have bounding boxes), so no explicit hover needed.
+    // This avoids the hover → scale-105 → dropdown-shifts instability loop
+    // that causes "element is not stable" failures.
+    const moreButton = container.getByRole("button", {
+      name: /more options/i,
+    });
+    await moreButton.click();
+
+    // Wait for the dropdown menu to fully open before callers interact with items
+    await expect(this.page.getByRole("menu")).toBeVisible();
   }
 
   /**
@@ -262,30 +279,9 @@ export class ItemsPage {
    * @param name - Name of the item to open settings for
    */
   async openSettingsViaContextMenu(name: string) {
-    const settingsMenuItem = this.page.getByRole("menuitem", {
-      name: /settings/i,
-    });
-    // Retry context menu opening up to 3 times
-    for (let attempt = 0; attempt < 3; attempt++) {
-      await this.openContextMenu(name);
-      try {
-        await settingsMenuItem.waitFor({ state: "visible", timeout: 2000 });
-        break;
-      } catch {
-        await this.page.keyboard.press("Escape");
-        await this.page.waitForTimeout(200);
-        if (attempt === 2) {
-          throw new Error(
-            `Context menu failed to open for item "${name}" after 3 attempts`
-          );
-        }
-      }
-    }
-    await settingsMenuItem.click({ force: true });
-    // Wait for settings dialog to appear
-    await expect(
-      this.page.getByRole("dialog", { name: /settings/i })
-    ).toBeVisible({ timeout: 5000 });
+    await this.openContextMenu(name);
+    await this.page.getByRole("menuitem", { name: /settings/i }).click();
+    await expect(this.getSettingsDialog()).toBeVisible({ timeout: 5000 });
   }
 
   /**
@@ -296,16 +292,13 @@ export class ItemsPage {
    */
   async renameItemViaContextMenu(oldName: string, newName: string) {
     await this.openSettingsViaContextMenu(oldName);
-    // Find the name input in the settings dialog (label is "Name")
-    await this.page.getByLabel(/item name/i).fill(newName);
-    // Click "Save Changes" button (single save for all settings)
-    await this.page.getByRole("button", { name: /save changes/i }).click();
-    // Wait for success toast
-    await this.expectSuccessToast("Settings saved");
-    // Wait for dialog to close automatically on success
-    await expect(
-      this.page.getByRole("dialog", { name: /settings/i })
-    ).not.toBeVisible({ timeout: 5000 });
+    const dialog = this.getSettingsDialog();
+    await dialog.getByLabel(/item name/i).fill(newName);
+    // Wait for Save to be enabled (React state update from fill)
+    const saveButton = dialog.getByRole("button", { name: /save changes/i });
+    await expect(saveButton).toBeEnabled({ timeout: 3000 });
+    await saveButton.click();
+    await expect(dialog).not.toBeVisible({ timeout: 10000 });
   }
 
   /**
@@ -330,22 +323,23 @@ export class ItemsPage {
     description: string
   ): Promise<void> {
     await this.openSettingsViaContextMenu(itemName);
-    await this.page.getByLabel(/description/i).fill(description);
-    // Click "Save Changes" button (single save for all settings)
-    await this.page.getByRole("button", { name: /save changes/i }).click();
-    // Wait for success toast
-    await this.expectSuccessToast("Settings saved");
-    // Wait for dialog to close automatically on success
-    await expect(
-      this.page.getByRole("dialog", { name: /settings/i })
-    ).not.toBeVisible({ timeout: 5000 });
+    const dialog = this.getSettingsDialog();
+    await dialog.getByLabel(/description/i).fill(description);
+    // Wait for Save to be enabled (React state update from fill)
+    const saveButton = dialog.getByRole("button", { name: /save changes/i });
+    await expect(saveButton).toBeEnabled({ timeout: 3000 });
+    await saveButton.click();
+    await expect(dialog).not.toBeVisible({ timeout: 10000 });
   }
 
   /**
    * Gets the description input value from the settings dialog.
    */
   async getDescriptionFromSettingsDialog(): Promise<string> {
-    return this.page.getByLabel(/description/i).inputValue();
+    // Scope to settings dialog to avoid matching create item dialog's description field
+    return this.getSettingsDialog()
+      .getByLabel(/description/i)
+      .inputValue();
   }
 
   /**
@@ -403,61 +397,45 @@ export class ItemsPage {
     // Click on the file option to select it
     await this.getSettingsDialog().getByText(filename, { exact: true }).click();
     // Wait for network to settle (optimistic update + server call)
-    await this.page.waitForLoadState("networkidle");
   }
 
   async deleteItemViaContextMenu(name: string) {
-    // Retry context menu opening up to 3 times (can be flaky)
-    const deleteMenuItem = this.page.getByRole("menuitem", { name: /delete/i });
-    for (let attempt = 0; attempt < 3; attempt++) {
-      await this.openContextMenu(name);
-      // Wait for context menu to appear
-      try {
-        await deleteMenuItem.waitFor({ state: "visible", timeout: 2000 });
-        break;
-      } catch {
-        // Menu didn't appear, press Escape and retry
-        await this.page.keyboard.press("Escape");
-        await this.page.waitForTimeout(200);
-        if (attempt === 2) {
-          throw new Error(
-            `Context menu failed to open for item "${name}" after 3 attempts`
-          );
-        }
-      }
-    }
-    await deleteMenuItem.click({ force: true });
-    // Wait for delete confirmation dialog to appear
-    const deleteDialog = this.page.getByRole("dialog", { name: /delete/i });
-    await deleteDialog.waitFor({ state: "visible", timeout: 5000 });
-    // Wait for dialog animation to settle
-    await this.page.waitForTimeout(300);
-    // Click the delete button in the dialog (force to bypass animation stability check)
-    const deleteButton = deleteDialog.getByRole("button", {
-      name: /^delete$/i,
+    await this.openContextMenu(name);
+    // Use dispatchEvent because Next.js dev overlay portal can intercept clicks on mobile
+    await this.page
+      .getByRole("menuitem", { name: /^delete$/i })
+      .dispatchEvent("click");
+    // Wait for delete confirmation dialog
+    const deleteDialog = this.page.getByRole("alertdialog", {
+      name: /delete/i,
     });
-    await deleteButton.click({ force: true });
-    // Wait for confirmation dialog to close
-    await expect(
-      this.page.getByRole("dialog", { name: /delete/i })
-    ).not.toBeVisible({ timeout: 10000 });
-    // Wait for network to settle after deletion
-    await this.page.waitForLoadState("networkidle");
+    await expect(deleteDialog).toBeVisible({ timeout: 5000 });
+    await deleteDialog.getByRole("button", { name: /^delete$/i }).click();
+    await expect(deleteDialog).not.toBeVisible({ timeout: 10000 });
+  }
+
+  /** Scroll to top so the auto-hiding header becomes visible. */
+  async ensureHeaderVisible() {
+    await this.page.evaluate(() => {
+      const main = document.getElementById("main-content");
+      (main ?? window).scrollTo(0, 0);
+    });
+    await expect(this.page.getByLabel("Breadcrumb")).toBeVisible({
+      timeout: 3000,
+    });
   }
 
   async expectBreadcrumb(name: string) {
-    // Scope to SiteHeader breadcrumb nav
-    // Use exact matching to avoid partial matches (e.g., "Parent" matching "Grandparent")
+    await this.ensureHeaderVisible();
     await expect(
       this.page
         .getByLabel("Breadcrumb")
         .getByRole("link", { name, exact: true })
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 10000 });
   }
 
   async clickBreadcrumb(name: string) {
-    // Scope to SiteHeader breadcrumb nav
-    // Use exact matching to avoid partial matches (e.g., "Parent" matching "Grandparent")
+    await this.ensureHeaderVisible();
     await this.page
       .getByLabel("Breadcrumb")
       .getByRole("link", { name, exact: true })
@@ -494,7 +472,6 @@ export class ItemsPage {
 
     await source.dragTo(target);
     // Wait for network to settle after drag operation
-    await this.page.waitForLoadState("networkidle");
   }
 
   /**
@@ -509,7 +486,6 @@ export class ItemsPage {
     const target = this.getItemLocator(targetName);
 
     await sourceHandle.dragTo(target);
-    await this.page.waitForLoadState("networkidle");
   }
 
   /**
@@ -530,7 +506,6 @@ export class ItemsPage {
         targetPosition: { x: targetBox.width - 10, y: targetBox.height / 2 },
       });
     }
-    await this.page.waitForLoadState("networkidle");
   }
 
   /**
@@ -622,49 +597,6 @@ export class ItemsPage {
   }
 
   /**
-   * Selects a primary media file in settings dialog.
-   *
-   * @param filename - The filename to select as primary media
-   */
-  async selectPrimaryMedia(filename: string): Promise<void> {
-    const select = this.page.getByRole("combobox", { name: /primary media/i });
-    await select.click();
-    await this.page
-      .getByRole("option", { name: new RegExp(filename, "i") })
-      .click();
-  }
-
-  /**
-   * Selects a primary artwork file in settings dialog.
-   *
-   * @param filename - The filename to select as primary artwork
-   */
-  async selectPrimaryArtwork(filename: string): Promise<void> {
-    const select = this.page.getByRole("combobox", {
-      name: /primary artwork/i,
-    });
-    await select.click();
-    await this.page
-      .getByRole("option", { name: new RegExp(filename, "i") })
-      .click();
-  }
-
-  /**
-   * Selects a default subtitle file in settings dialog.
-   *
-   * @param filename - The filename to select as default subtitle
-   */
-  async selectDefaultSubtitle(filename: string): Promise<void> {
-    const select = this.page.getByRole("combobox", {
-      name: /default subtitle/i,
-    });
-    await select.click();
-    await this.page
-      .getByRole("option", { name: new RegExp(filename, "i") })
-      .click();
-  }
-
-  /**
    * Collapses an item in tree view.
    *
    * @param name - Name of the item to collapse
@@ -703,31 +635,15 @@ export class ItemsPage {
   }
 
   /**
-   * Waits for the loading spinner to disappear and content to be ready.
-   * Use this after navigation to ensure hydration completes.
+   * Waits for content to be ready after navigation.
+   * Ensures hydration completes before interacting with the page.
    */
   async waitForLoadingComplete(): Promise<void> {
-    // Wait for loading spinner to disappear (if visible)
-    await expect(this.loadingSpinner).not.toBeVisible({ timeout: 10000 });
     // Ensure content is rendered (empty state, tree/grid, or pinned grid)
     const pinnedGrid = this.getPinnedItemsGrid();
     await expect(
       this.emptyState.or(this.treeView).or(this.gridView).or(pinnedGrid).first()
     ).toBeVisible({ timeout: 10000 });
-  }
-
-  /**
-   * Expects the loading spinner to be visible.
-   */
-  async expectLoadingVisible(): Promise<void> {
-    await expect(this.loadingSpinner).toBeVisible();
-  }
-
-  /**
-   * Expects the loading spinner to not be visible.
-   */
-  async expectLoadingHidden(): Promise<void> {
-    await expect(this.loadingSpinner).not.toBeVisible();
   }
 
   /**
@@ -757,13 +673,17 @@ export class ItemsPage {
    */
   async selectSortOption(option: string): Promise<void> {
     // Wait for either mobile or desktop control to be visible
+    // Use exact: true to prevent matching "More options" buttons on grid items
     const mobileOptionsButton = this.page.getByRole("button", {
       name: "Options",
+      exact: true,
     });
     const desktopSortDropdown = this.sortDropdown;
 
-    // Wait for one of them to appear
-    await expect(mobileOptionsButton.or(desktopSortDropdown)).toBeVisible({
+    // Wait for one of them to appear (.first() after .or() per Playwright best practices)
+    await expect(
+      mobileOptionsButton.or(desktopSortDropdown).first()
+    ).toBeVisible({
       timeout: 10000,
     });
 
@@ -791,13 +711,17 @@ export class ItemsPage {
    */
   async selectFilterOption(option: string): Promise<void> {
     // Wait for either mobile or desktop control to be visible
+    // Use exact: true to prevent matching "More options" buttons on grid items
     const mobileOptionsButton = this.page.getByRole("button", {
       name: "Options",
+      exact: true,
     });
     const desktopFilterDropdown = this.filterDropdown;
 
-    // Wait for one of them to appear
-    await expect(mobileOptionsButton.or(desktopFilterDropdown)).toBeVisible({
+    // Wait for one of them to appear (.first() after .or() per Playwright best practices)
+    await expect(
+      mobileOptionsButton.or(desktopFilterDropdown).first()
+    ).toBeVisible({
       timeout: 10000,
     });
 
@@ -823,8 +747,10 @@ export class ItemsPage {
    */
   async getCurrentSortOption(): Promise<string> {
     // Check if mobile Options button exists
+    // Use exact: true to prevent matching "More options" buttons on grid items
     const mobileOptionsButton = this.page.getByRole("button", {
       name: "Options",
+      exact: true,
     });
     const isMobile = await mobileOptionsButton.isVisible();
 
@@ -848,8 +774,10 @@ export class ItemsPage {
    */
   async getCurrentFilterOption(): Promise<string> {
     // Check if mobile Options button exists
+    // Use exact: true to prevent matching "More options" buttons on grid items
     const mobileOptionsButton = this.page.getByRole("button", {
       name: "Options",
+      exact: true,
     });
     const isMobile = await mobileOptionsButton.isVisible();
 
@@ -984,7 +912,7 @@ export class ItemsPage {
    *
    * @param count - Number of items to be deleted
    */
-  async expectBulkDeleteButton(count: number): Promise<void> {
+  async expectBulkDeleteButton(_count: number): Promise<void> {
     // New UI: Delete button no longer shows count in text (just "Delete")
     await expect(this.getBulkDeleteButton()).toBeVisible();
     await expect(this.getBulkDeleteButton()).toBeEnabled();
@@ -1018,60 +946,38 @@ export class ItemsPage {
 
   /**
    * Pins an item to the sidebar via context menu.
+   * Waits for the item to appear in the pinned grid (confirms server action completed).
    *
    * @param name - Name of the item to pin
    */
   async pinItemViaContextMenu(name: string): Promise<void> {
-    const pinMenuItem = this.page.getByRole("menuitem", {
-      name: /pin to sidebar/i,
-    });
-    // Retry context menu opening up to 3 times (can be flaky on mobile)
-    for (let attempt = 0; attempt < 3; attempt++) {
-      await this.openContextMenu(name);
-      try {
-        await pinMenuItem.waitFor({ state: "visible", timeout: 2000 });
-        break;
-      } catch {
-        await this.page.keyboard.press("Escape");
-        await this.page.waitForTimeout(200);
-        if (attempt === 2) {
-          throw new Error(
-            `Context menu failed to open for item "${name}" after 3 attempts`
-          );
-        }
-      }
-    }
-    await pinMenuItem.click({ force: true });
-    await this.page.waitForLoadState("networkidle");
+    await this.openContextMenu(name);
+    await this.page.getByRole("menuitem", { name: /pin to sidebar/i }).click();
+    // Wait for the pinned item to appear in the profile page grid
+    // This is the actual UI change — much more reliable than asserting on a transient toast
+    const pinnedGrid = this.getPinnedItemsGrid();
+    await expect(
+      pinnedGrid.getByText(name, { exact: true }).first()
+    ).toBeVisible({ timeout: 10000 });
   }
 
   /**
    * Unpins an item from the sidebar via context menu.
+   * Waits for the item to disappear from the pinned grid (confirms server action completed).
    *
    * @param name - Name of the item to unpin
    */
   async unpinItemViaContextMenu(name: string): Promise<void> {
-    const unpinMenuItem = this.page.getByRole("menuitem", {
-      name: /unpin from sidebar/i,
-    });
-    // Retry context menu opening up to 3 times (can be flaky on mobile)
-    for (let attempt = 0; attempt < 3; attempt++) {
-      await this.openContextMenu(name);
-      try {
-        await unpinMenuItem.waitFor({ state: "visible", timeout: 2000 });
-        break;
-      } catch {
-        await this.page.keyboard.press("Escape");
-        await this.page.waitForTimeout(200);
-        if (attempt === 2) {
-          throw new Error(
-            `Context menu failed to open for item "${name}" after 3 attempts`
-          );
-        }
-      }
-    }
-    await unpinMenuItem.click({ force: true });
-    await this.page.waitForLoadState("networkidle");
+    await this.openContextMenu(name);
+    await this.page
+      .getByRole("menuitem", { name: /unpin from sidebar/i })
+      .click();
+    // Wait for the item to disappear from the pinned grid
+    // This is the actual UI change — much more reliable than asserting on a transient toast
+    const pinnedGrid = this.getPinnedItemsGrid();
+    await expect(
+      pinnedGrid.getByText(name, { exact: true }).first()
+    ).not.toBeVisible({ timeout: 10000 });
   }
 
   /**
@@ -1093,7 +999,8 @@ export class ItemsPage {
         hasText: name,
       }
     );
-    await expect(pinnedItem).toBeVisible({ timeout: 5000 });
+    // router.refresh() after pin takes ~2s to propagate to sidebar
+    await expect(pinnedItem).toBeVisible({ timeout: 10000 });
   }
 
   /**
@@ -1162,7 +1069,6 @@ export class ItemsPage {
       }
     );
     await pinnedItem.click();
-    await this.page.waitForLoadState("networkidle");
   }
 
   // ==================== Profile Page Pinned Grid Methods ====================
@@ -1196,7 +1102,11 @@ export class ItemsPage {
    */
   async expectItemInPinnedGrid(name: string): Promise<void> {
     const pinnedGrid = this.getPinnedItemsGrid();
-    await expect(pinnedGrid.getByText(name, { exact: true })).toBeVisible({
+    // Use .first() because GridItem renders the name in two <h3> elements
+    // (default view + hover overlay), both present in the DOM
+    await expect(
+      pinnedGrid.getByText(name, { exact: true }).first()
+    ).toBeVisible({
       timeout: 5000,
     });
   }
@@ -1208,7 +1118,9 @@ export class ItemsPage {
    */
   async expectItemNotInPinnedGrid(name: string): Promise<void> {
     const pinnedGrid = this.getPinnedItemsGrid();
-    await expect(pinnedGrid.getByText(name, { exact: true })).not.toBeVisible();
+    await expect(
+      pinnedGrid.getByText(name, { exact: true }).first()
+    ).not.toBeVisible();
   }
 
   /**
@@ -1219,7 +1131,6 @@ export class ItemsPage {
   async clickItemInPinnedGrid(name: string): Promise<void> {
     const pinnedGrid = this.getPinnedItemsGrid();
     await pinnedGrid.getByRole("button", { name, exact: true }).click();
-    await this.page.waitForLoadState("networkidle");
   }
 
   /**

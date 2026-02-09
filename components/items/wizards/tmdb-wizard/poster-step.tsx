@@ -8,7 +8,7 @@ import { useCallback } from "react";
 import { AlertCircle, ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { PosterSelectionStep } from "@/components/items/poster-selection-step";
+import { PosterSelectionStep } from "./poster-selection-step";
 import type { ArtworkSelectionSource } from "@/lib/types";
 import type { TMDBArtworkStepProps } from "./tmdb-wizard-types";
 import { toExistingArtworkFile } from "./tmdb-wizard-types";

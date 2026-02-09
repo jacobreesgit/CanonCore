@@ -314,6 +314,7 @@ export function MobileSearchSheet({
       open={open}
       onOpenChange={onOpenChange}
       repositionInputs
+      snapPoints={[0.85]}
       title="Search"
       description="Search items and people"
     >
@@ -372,11 +373,18 @@ export function MobileSearchSheet({
         )}
 
         {/* Your Items */}
-        {(filteredItems.length > 0 || isLoadingItems || !hasInitialized) && (
+        {(filteredItems.length > 0 || isAnyLoading || !hasInitialized) && (
           <section className="mb-6">
             <SectionHeading>Your Items</SectionHeading>
-            {isLoadingItems || !hasInitialized ? (
+            {isAnyLoading || !hasInitialized ? (
               <>
+                <ItemSkeleton />
+                <ItemSkeleton />
+                <ItemSkeleton />
+                <ItemSkeleton />
+                <ItemSkeleton />
+                <ItemSkeleton />
+                <ItemSkeleton />
                 <ItemSkeleton />
                 <ItemSkeleton />
                 <ItemSkeleton />
@@ -422,11 +430,23 @@ export function MobileSearchSheet({
         )}
 
         {/* Public Items */}
-        {(filteredPublicItems.length > 0 || isLoadingPublicItems) && (
+        {(filteredPublicItems.length > 0 ||
+          isAnyLoading ||
+          !hasInitialized) && (
           <section className="mb-6">
             <SectionHeading>Public Collections</SectionHeading>
-            {isLoadingPublicItems ? (
+            {isAnyLoading || !hasInitialized ? (
               <>
+                <ItemSkeleton />
+                <ItemSkeleton />
+                <ItemSkeleton />
+                <ItemSkeleton />
+                <ItemSkeleton />
+                <ItemSkeleton />
+                <ItemSkeleton />
+                <ItemSkeleton />
+                <ItemSkeleton />
+                <ItemSkeleton />
                 <ItemSkeleton />
                 <ItemSkeleton />
               </>
@@ -468,11 +488,15 @@ export function MobileSearchSheet({
         )}
 
         {/* People */}
-        {(filteredUsers.length > 0 || isLoadingUsers) && (
+        {(filteredUsers.length > 0 || isAnyLoading || !hasInitialized) && (
           <section>
             <SectionHeading>People</SectionHeading>
-            {isLoadingUsers ? (
+            {isAnyLoading || !hasInitialized ? (
               <>
+                <ItemSkeleton />
+                <ItemSkeleton />
+                <ItemSkeleton />
+                <ItemSkeleton />
                 <ItemSkeleton />
                 <ItemSkeleton />
               </>

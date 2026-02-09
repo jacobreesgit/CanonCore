@@ -9,6 +9,13 @@ export default defineConfig({
       provider: "v8",
       include: ["lib/**"],
     },
+    server: {
+      deps: {
+        // next-auth is ESM and imports next/server without .js extension,
+        // which fails under Node.js ESM resolution. Inlining lets Vite resolve it.
+        inline: ["next-auth"],
+      },
+    },
   },
   resolve: {
     alias: {

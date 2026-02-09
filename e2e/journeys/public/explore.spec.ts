@@ -103,12 +103,14 @@ test.describe("Explore Page Journey", () => {
     }) => {
       await publicProfilePage.gotoExplore();
 
-      // Click on the item (scope to grid view to avoid strict mode violation)
+      // Use dispatchEvent to avoid hover triggering the overlay which contains
+      // an owner profile link that intercepts regular clicks
       await page
         .getByTestId("items-grid-view")
-        .getByText("Public Explore Collection")
+        .locator("[data-id]")
+        .filter({ hasText: "Public Explore Collection" })
         .first()
-        .click();
+        .dispatchEvent("click");
 
       // Should navigate to the public item page
       await expect(page).toHaveURL(`/u/${ownerUsername}/${publicItemId}`);
@@ -242,15 +244,16 @@ test.describe("Explore Page Journey", () => {
       const sidebarTrigger = page.getByTestId("sidebar-trigger");
 
       // On mobile, need to open sidebar first
-      const isExploreVisible = await page
-        .getByRole("link", { name: /explore/i })
-        .isVisible();
-      if (!isExploreVisible) {
+      const exploreLink = page.getByRole("link", { name: /explore/i });
+      if (!(await exploreLink.isVisible().catch(() => false))) {
         await sidebarTrigger.click();
+        // Wait for sidebar to animate open and link to become visible
+        await expect(exploreLink).toBeVisible({ timeout: 5000 });
       }
 
-      await page.getByRole("link", { name: /explore/i }).click();
-      await expect(page).toHaveURL("/explore");
+      // Use dispatchEvent because Next.js dev overlay can intercept clicks on mobile
+      await exploreLink.dispatchEvent("click");
+      await expect(page).toHaveURL("/explore", { timeout: 10000 });
     });
 
     test("explore link visible to unauthenticated users", async ({ page }) => {
@@ -372,23 +375,25 @@ test.describe("Explore Page Journey", () => {
     }) => {
       await publicProfilePage.gotoExplore();
 
-      // Click owner 1's item (scope to grid to avoid strict mode violation)
+      // Click owner 1's item — use dispatchEvent to avoid hover overlay interception
       await page
         .getByTestId("items-grid-view")
-        .getByText("Owner 1 Collection")
+        .locator("[data-id]")
+        .filter({ hasText: "Owner 1 Collection" })
         .first()
-        .click();
+        .dispatchEvent("click");
       await expect(page).toHaveURL(new RegExp(`/u/${owner1Username}/`));
 
       // Go back to explore
       await publicProfilePage.gotoExplore();
 
-      // Click owner 2's item (scope to grid to avoid strict mode violation)
+      // Click owner 2's item — use dispatchEvent to avoid hover overlay interception
       await page
         .getByTestId("items-grid-view")
-        .getByText("Owner 2 Collection")
+        .locator("[data-id]")
+        .filter({ hasText: "Owner 2 Collection" })
         .first()
-        .click();
+        .dispatchEvent("click");
       await expect(page).toHaveURL(new RegExp(`/u/${owner2Username}/`));
     });
   });

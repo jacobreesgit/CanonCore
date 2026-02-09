@@ -6,7 +6,7 @@
 import type { Metadata } from "next";
 
 import { SiteHeader } from "@/components/site-header";
-import { HeroContent } from "./hero-content";
+import { HeroContent } from "./landing-hero";
 
 export const metadata: Metadata = {
   title: "CanonCore - Media Library Management",

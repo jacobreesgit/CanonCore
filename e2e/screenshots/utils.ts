@@ -24,23 +24,14 @@ const NETWORK_SETTLE_MS = 500;
 /** All valid screenshot names for compile-time validation. */
 export const SCREENSHOT_NAMES = [
   "01-library-grid",
-  "01-library-grid-dark",
   "02-tree-view",
-  "02-tree-view-dark",
   "04-tmdb-wizard",
-  "04-tmdb-wizard-dark",
   "05-progress-tracking",
-  "05-progress-tracking-dark",
   "06-google-drive-sync",
-  "06-google-drive-sync-dark",
   "07-explore-page",
-  "07-explore-page-dark",
   "08-spotlight-search",
-  "08-spotlight-search-dark",
   "32-fork-dialog",
-  "32-fork-dialog-dark",
   "36-docs",
-  "36-docs-dark",
 ] as const;
 
 /** Type-safe screenshot name. */
@@ -184,52 +175,33 @@ export async function signOut(page: Page): Promise<void> {
 // =============================================================================
 
 /**
- * Toggles theme between light and dark mode.
+ * Verifies the app is in dark mode.
+ * The app is now dark mode only - no light mode support.
  *
  * @param page - Playwright page
  */
-export async function toggleTheme(page: Page): Promise<void> {
-  const toggle = page.getByTestId("theme-toggle");
-  await toggle.focus();
-  await page.keyboard.press("Enter");
-  await page.waitForTimeout(ANIMATION_SETTLE_MS);
-}
-
-/**
- * Sets the theme to a specific mode.
- *
- * @param page - Playwright page
- * @param mode - "light" or "dark"
- */
-export async function setTheme(
-  page: Page,
-  mode: "light" | "dark"
-): Promise<void> {
+export async function expectDarkMode(page: Page): Promise<void> {
   const html = page.locator("html");
+  await html.waitFor({ state: "attached" });
+  // Dark mode is now forced - just verify the class is present
   const isDark = await html.evaluate((el) => el.classList.contains("dark"));
-
-  if (mode === "dark" && !isDark) {
-    await toggleTheme(page);
-  } else if (mode === "light" && isDark) {
-    await toggleTheme(page);
+  if (!isDark) {
+    throw new Error("Expected dark mode but page is not in dark mode");
   }
 }
 
 /**
- * Sets up page for screenshot capture with sign-in and theme.
- * Combines common setup steps to reduce boilerplate in tests.
+ * Sets up page for screenshot capture with sign-in.
+ * Dark mode is now the only mode.
  *
  * @param page - Playwright page
  * @param user - User to sign in
- * @param theme - Theme mode (default: "light")
  */
 export async function setupForScreenshot(
   page: Page,
-  user: ScreenshotUser,
-  theme: "light" | "dark" = "light"
+  user: ScreenshotUser
 ): Promise<void> {
   await signIn(page, user);
-  await setTheme(page, theme);
 }
 
 // =============================================================================
@@ -407,20 +379,27 @@ export async function clickItem(page: Page, name: string): Promise<void> {
 }
 
 /**
- * Right-clicks on an item to open context menu.
+ * Opens the more options menu for an item by hovering and clicking the "..." button.
  *
  * @param page - Playwright page
- * @param name - Item name to right-click
+ * @param name - Item name to open menu for
  */
 export async function openContextMenu(page: Page, name: string): Promise<void> {
-  // Tree view: items are in listitem elements
-  const treeItem = page.getByRole("listitem").getByText(name, { exact: true });
-  // Grid view: items are buttons with the item name
-  const gridButton = page.getByRole("button", { name, exact: true });
-  // Legacy selector
-  const gridItem = page.locator("[data-id]").getByText(name, { exact: true });
+  const mainContent = page.getByRole("main");
+  const treeContainer = mainContent
+    .getByRole("listitem")
+    .filter({ hasText: name });
+  const gridContainer = mainContent
+    .locator("[data-id]")
+    .filter({ hasText: name });
+  const container = treeContainer.or(gridContainer).first();
 
-  await treeItem.or(gridButton).or(gridItem).first().click({ button: "right" });
+  await container.scrollIntoViewIfNeeded();
+  await container.hover();
+  const moreButton = container.getByRole("button", {
+    name: /more options/i,
+  });
+  await moreButton.click();
   await page.waitForTimeout(ANIMATION_SETTLE_MS);
 }
 

@@ -8,7 +8,11 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { auth } from "@/lib/auth";
-import { getPublicProfile, getProfileByIdOrUsername } from "@/lib/public-auth";
+import {
+  getPublicProfile,
+  getProfileByIdOrUsername,
+  getPublicLibraryProgress,
+} from "@/lib/public-auth";
 import { getItemsForProfile, getLibraryProgress } from "@/lib/item-actions";
 import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -27,7 +31,16 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { username } = await params;
-  const profile = await getPublicProfile(username);
+
+  // Check auth to determine ownership (mirrors page component logic)
+  const session = await auth();
+  const sessionUsername = session?.user?.username;
+  const isOwnerByUsername =
+    sessionUsername && sessionUsername.toLowerCase() === username.toLowerCase();
+
+  const profile = isOwnerByUsername
+    ? await getProfileByIdOrUsername(username)
+    : await getPublicProfile(username);
 
   if (!profile) {
     return {
@@ -107,6 +120,12 @@ export default async function ProfilePage({ params }: PageProps) {
     libraryProgress = progress;
   }
 
+  // For viewers, fetch public library progress
+  let viewerProgress = null;
+  if (!isOwner) {
+    viewerProgress = await getPublicLibraryProgress(profile.id);
+  }
+
   return (
     <>
       {isOwner && (
@@ -118,7 +137,7 @@ export default async function ProfilePage({ params }: PageProps) {
         title={isOwner ? "My Items" : `@${profile.username}`}
         titleHref={`/u/${profile.username}`}
       />
-      <div className="flex flex-1 flex-col gap-4 py-6">
+      <div className="bg-background text-foreground flex flex-1 flex-col">
         <ProfilePageContent
           profile={{
             id: profileData.profile.id,
@@ -131,6 +150,7 @@ export default async function ProfilePage({ params }: PageProps) {
           isOwner={isOwner}
           hasDriveConnection={hasDriveConnection}
           libraryProgress={libraryProgress}
+          viewerProgress={viewerProgress}
         />
       </div>
     </>

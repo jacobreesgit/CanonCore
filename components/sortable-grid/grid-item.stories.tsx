@@ -5,7 +5,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import { fn } from "storybook/test";
 
-import { GridItem } from "./GridItem";
+import { GridItem } from "./grid-item";
 
 const meta = {
   title: "Layout/GridItem",

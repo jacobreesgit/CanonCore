@@ -4,7 +4,7 @@
 
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { Grid } from "@/components/sortable-grid/Grid";
+import { Grid } from "@/components/sortable-grid/grid";
 import type { ItemWithArtwork } from "@/lib/types";
 
 // Mock hooks and components to prevent Vitest worker shutdown issues with module resolution
@@ -54,6 +54,15 @@ const mockItems: ItemWithArtwork[] = [
     primaryMediaName: "movie.mp4",
     mediaIconType: "film",
     progress: null,
+    tmdbId: null,
+    tmdbType: null,
+    tmdbShowTagline: true,
+    tmdbShowMetadata: true,
+    tmdbShowGenres: true,
+    tmdbShowCast: true,
+    tmdbShowProviders: true,
+    tmdbShowVideos: true,
+    tmdbShowRecommendations: true,
   },
   {
     id: "2",
@@ -81,6 +90,15 @@ const mockItems: ItemWithArtwork[] = [
     primaryMediaName: null,
     mediaIconType: null,
     progress: null,
+    tmdbId: null,
+    tmdbType: null,
+    tmdbShowTagline: true,
+    tmdbShowMetadata: true,
+    tmdbShowGenres: true,
+    tmdbShowCast: true,
+    tmdbShowProviders: true,
+    tmdbShowVideos: true,
+    tmdbShowRecommendations: true,
   },
 ];
 
@@ -88,15 +106,17 @@ describe("Grid", () => {
   it("should render all items", () => {
     render(<Grid items={mockItems} />);
 
-    expect(screen.getByText("Item 1")).toBeInTheDocument();
-    expect(screen.getByText("Item 2")).toBeInTheDocument();
+    // Title appears twice (default view + hover view), so use getAllByText
+    expect(screen.getAllByText("Item 1").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Item 2").length).toBeGreaterThanOrEqual(1);
   });
 
   it("should call onItemClick when item is clicked", () => {
     const onItemClick = vi.fn();
     render(<Grid items={mockItems} onItemClick={onItemClick} />);
 
-    fireEvent.click(screen.getByText("Item 1"));
+    // Title appears twice (default view + hover view), click the first one
+    fireEvent.click(screen.getAllByText("Item 1")[0]);
     expect(onItemClick).toHaveBeenCalledWith("1");
   });
 

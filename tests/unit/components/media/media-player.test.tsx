@@ -49,7 +49,7 @@ vi.mock("@vidstack/react/player/layouts/default", () => ({
 vi.mock("@vidstack/react/player/styles/default/theme.css", () => ({}));
 vi.mock("@vidstack/react/player/styles/default/layouts/video.css", () => ({}));
 
-vi.mock("@/components/shader1", () => ({
+vi.mock("@/components/shader-background", () => ({
   Shader1: vi.fn(() => <div data-testid="shader-background" />),
 }));
 

@@ -45,9 +45,9 @@ import {
   type CurrentTextValues,
   type TextPreviewData,
   type TitleDescriptionOptions,
-} from "./title-description-step";
-import { PosterSelectionStep } from "./poster-selection-step";
-import { HeroSelectionStep } from "./hero-selection-step";
+} from "./wizards/tmdb-wizard/title-description-step";
+import { PosterSelectionStep } from "./wizards/tmdb-wizard/poster-selection-step";
+import { HeroSelectionStep } from "./wizards/tmdb-wizard/hero-selection-step";
 import {
   TMDBWizard,
   type TMDBWizardResult,
@@ -567,6 +567,7 @@ export function AddItemDialog({
         backdropPath:
           result.backdrop?.source === "tmdb" ? result.backdrop.value : null,
       },
+      displayOptions: result.displayOptions,
     });
 
     setIsEpisodeMode(result.isEpisodeMode);

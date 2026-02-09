@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import {
   TitleDescriptionStep,
   type TitleDescriptionOptions,
-} from "@/components/items/title-description-step";
+} from "./title-description-step";
 import type { TMDBStepProps } from "./tmdb-wizard-types";
 
 /**

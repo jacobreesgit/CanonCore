@@ -30,6 +30,17 @@ export interface Item {
   userId: string;
   createdAt: Date;
   updatedAt: Date;
+  // TMDB metadata
+  tmdbId: number | null;
+  tmdbType: string | null;
+  // TMDB display preferences
+  tmdbShowTagline: boolean;
+  tmdbShowMetadata: boolean;
+  tmdbShowGenres: boolean;
+  tmdbShowCast: boolean;
+  tmdbShowProviders: boolean;
+  tmdbShowVideos: boolean;
+  tmdbShowRecommendations: boolean;
   // Google Drive fields
   driveFileId: string | null;
   driveModifiedAt: Date | null;
@@ -367,7 +378,38 @@ export interface TMDBMetadataSelection {
     posterPath: string | null;
     backdropPath: string | null;
   };
+  /** Per-item TMDB display preferences */
+  displayOptions?: TmdbDisplayOptions;
 }
+
+// =============================================================================
+// TMDB Display Options
+// =============================================================================
+
+/**
+ * Per-item toggles for which TMDB data sections appear on the detail page.
+ * All default to true so existing items are unchanged.
+ */
+export interface TmdbDisplayOptions {
+  showTagline: boolean;
+  showMetadata: boolean;
+  showGenres: boolean;
+  showCast: boolean;
+  showProviders: boolean;
+  showVideos: boolean;
+  showRecommendations: boolean;
+}
+
+/** Default display options — all sections visible. */
+export const DEFAULT_TMDB_DISPLAY: TmdbDisplayOptions = {
+  showTagline: true,
+  showMetadata: true,
+  showGenres: true,
+  showCast: true,
+  showProviders: true,
+  showVideos: true,
+  showRecommendations: true,
+};
 
 // =============================================================================
 // User Preferences Types
@@ -392,7 +434,8 @@ export type FilterOption =
   | "no-files"
   | "synced"
   | "pending"
-  | "error";
+  | "error"
+  | "exclude-yours";
 
 /** Valid view modes for validation. */
 export const VALID_VIEW_MODES: ViewMode[] = ["grid", "tree"];
@@ -415,6 +458,7 @@ export const VALID_FILTER_OPTIONS: FilterOption[] = [
   "synced",
   "pending",
   "error",
+  "exclude-yours",
 ];
 
 /**

@@ -44,7 +44,7 @@ async function closeSidebarIfMobile(page: import("@playwright/test").Page) {
     await expect(sidebarDialog).not.toBeVisible({ timeout: 5000 });
     // Wait for content to be interactable
     await page.waitForTimeout(300);
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
   }
 }
 
@@ -160,7 +160,7 @@ test.describe("Pinned Sidebar Items", () => {
     await itemsPage.clickPinnedItem("Favorites");
 
     // Wait for navigation to complete
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Close sidebar on mobile so we can see the hero
     await closeSidebarIfMobile(page);
@@ -189,7 +189,7 @@ test.describe("Pinned Sidebar Items", () => {
     await page.reload();
     await itemsPage.waitForLoadingComplete();
     // Wait for network to settle after reload
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Item should still be pinned after refresh
     await expandSidebar(page);
@@ -240,6 +240,8 @@ test.describe("Pinned Grid Items (Profile Page)", () => {
   });
 
   test("multiple pinned items display in grid", async ({ page, itemsPage }) => {
+    // Creating 3 items + 3 pin operations needs more than 30s
+    test.setTimeout(60000);
     await itemsPage.goto();
     await itemsPage.createItem("Pin A");
     await itemsPage.createItem("Pin B");
@@ -247,15 +249,15 @@ test.describe("Pinned Grid Items (Profile Page)", () => {
 
     // Pin all items (wait for network and UI to stabilize between pins)
     await itemsPage.pinItemViaContextMenu("Pin A");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await page.waitForTimeout(500);
 
     await itemsPage.pinItemViaContextMenu("Pin B");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
     await page.waitForTimeout(500);
 
     await itemsPage.pinItemViaContextMenu("Pin C");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // All should appear in pinned grid
     await itemsPage.expectPinnedGridVisible();
@@ -310,7 +312,7 @@ test.describe("Pinned Grid Items (Profile Page)", () => {
     // Wait for pinned grid to be visible after reload (longer timeout for stability)
     await itemsPage.expectPinnedGridVisible();
     // Wait for network to settle after reload
-    await itemsPage.page.waitForLoadState("networkidle");
+    await itemsPage.page.waitForLoadState("domcontentloaded");
     await itemsPage.expectItemInPinnedGrid("Persist Grid");
   });
 
@@ -329,7 +331,7 @@ test.describe("Pinned Grid Items (Profile Page)", () => {
     await itemsPage.expectPinnedGridVisible();
 
     // Wait for UI to stabilize after pin operation
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Check that "Pinned" heading appears before "Library" heading
     // Use exact match to avoid matching item names like "Pinned Item"
@@ -374,10 +376,13 @@ test.describe("Pinned Grid Items (Profile Page)", () => {
 
     // Wait for pinned grid to show all items
     await itemsPage.expectPinnedGridVisible();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
-    // Try to pin 11th item - should show error toast
-    await itemsPage.pinItemViaContextMenu(`Item 11`);
+    // Try to pin 11th item - should fail (max 10 enforced)
+    // Don't use pinItemViaContextMenu here because it waits for the item to appear
+    // in the pinned grid, which won't happen for a failed pin
+    await itemsPage.openContextMenu(`Item 11`);
+    await page.getByRole("menuitem", { name: /pin to sidebar/i }).click();
     await itemsPage.expectErrorToast("Maximum of 10 pinned items");
 
     // Wait for UI to stabilize

@@ -4,7 +4,7 @@
  */
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import { fn } from "storybook/test";
-import { SortableTree } from "./SortableTree";
+import { SortableTree } from "./sortable-tree-component";
 import type { TreeItems, TreeItem } from "@/lib/types";
 
 /**

@@ -222,9 +222,9 @@ describe("ShowView", () => {
         />
       );
 
-      const buttons = screen.getAllByRole("button");
-      expect(buttons[0]).toHaveAccessibleName("Season 1, 7 episodes");
-      expect(buttons[1]).toHaveAccessibleName("Season 2, 13 episodes");
+      const options = screen.getAllByRole("option");
+      expect(options[0]).toHaveAccessibleName("Season 1, 7 episodes");
+      expect(options[1]).toHaveAccessibleName("Season 2, 13 episodes");
     });
   });
 
@@ -241,10 +241,10 @@ describe("ShowView", () => {
         />
       );
 
-      const buttons = screen.getAllByRole("button");
-      expect(buttons[0]).toHaveAttribute("tabIndex", "-1");
-      expect(buttons[1]).toHaveAttribute("tabIndex", "0");
-      expect(buttons[2]).toHaveAttribute("tabIndex", "-1");
+      const options = screen.getAllByRole("option");
+      expect(options[0]).toHaveAttribute("tabIndex", "-1");
+      expect(options[1]).toHaveAttribute("tabIndex", "0");
+      expect(options[2]).toHaveAttribute("tabIndex", "-1");
     });
   });
 
@@ -264,13 +264,13 @@ describe("ShowView", () => {
         />
       );
 
-      const buttons = screen.getAllByRole("button");
-      await user.click(buttons[1]);
+      const options = screen.getAllByRole("option");
+      await user.click(options[1]);
 
       expect(onSeasonSelect).toHaveBeenCalledWith(mockSeasons[1], 1);
     });
 
-    it("calls onFocusChange when button receives focus", () => {
+    it("calls onFocusChange when option receives focus", () => {
       const onFocusChange = vi.fn();
 
       render(
@@ -284,9 +284,9 @@ describe("ShowView", () => {
         />
       );
 
-      const buttons = screen.getAllByRole("button");
-      // Programmatically focus the second button
-      buttons[1].focus();
+      const options = screen.getAllByRole("option");
+      // Programmatically focus the second option
+      options[1].focus();
 
       expect(onFocusChange).toHaveBeenCalledWith(1);
     });

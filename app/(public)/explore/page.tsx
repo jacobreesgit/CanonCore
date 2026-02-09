@@ -7,6 +7,7 @@ import { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { getExploreItems, getFeaturedItems } from "@/lib/public-auth";
 import { getProfile } from "@/lib/user-actions";
+import { getItemTmdbMetadata } from "@/lib/tmdb-client";
 import { SiteHeader } from "@/components/site-header";
 import { ExploreClient } from "./explore-client";
 
@@ -50,13 +51,26 @@ export default async function ExplorePage() {
     ? await getExploreItems(50, 0, currentUserId)
     : items;
 
+  // Batch-fetch TMDB metadata for featured items (parallel, graceful failures)
+  const tmdbResults = await Promise.all(
+    featuredItems.map((item) =>
+      item.tmdbId && item.tmdbType
+        ? getItemTmdbMetadata(item.tmdbId, item.tmdbType)
+        : Promise.resolve(null)
+    )
+  );
+  const enrichedFeaturedItems = featuredItems.map((item, i) => ({
+    ...item,
+    tmdbMetadata: tmdbResults[i] ?? null,
+  }));
+
   return (
     <>
       <SiteHeader title="Explore" titleHref="/explore" />
-      <div className="flex flex-1 flex-col gap-4 py-6">
+      <div className="bg-background text-foreground flex flex-1 flex-col">
         <ExploreClient
           items={itemsWithProgress}
-          featuredItems={featuredItems}
+          featuredItems={enrichedFeaturedItems}
           currentUser={currentUser}
         />
       </div>

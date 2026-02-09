@@ -13,19 +13,21 @@ import type {
   ArtworkSelectionSource,
   QueuedFile,
   SerializedItemFile,
+  TmdbDisplayOptions,
 } from "@/lib/types";
+import { DEFAULT_TMDB_DISPLAY } from "@/lib/types";
 import type {
   CurrentTextValues,
   TextPreviewData,
   TitleDescriptionOptions,
-} from "@/components/items/title-description-step";
+} from "./title-description-step";
 
 // Re-export for convenience
 export type {
   CurrentTextValues,
   TextPreviewData,
   TitleDescriptionOptions,
-} from "@/components/items/title-description-step";
+} from "./title-description-step";
 
 /**
  * Wizard step identifiers for the TMDB metadata flow.
@@ -140,6 +142,9 @@ export interface TMDBWizardData {
 
   /** Still selection state (for episodes) */
   still: ArtworkSelection;
+
+  /** Per-item TMDB display preferences */
+  displayOptions: TmdbDisplayOptions;
 
   /** @deprecated Use contentType === 'episode' instead */
   isEpisodeMode: boolean;
@@ -286,6 +291,9 @@ export interface TMDBWizardResult {
     value: string | null;
     source: ArtworkSelectionSource | null;
   } | null;
+
+  /** Per-item TMDB display preferences */
+  displayOptions: TmdbDisplayOptions;
 
   /** @deprecated Use contentType === 'episode' instead */
   isEpisodeMode: boolean;
@@ -461,6 +469,7 @@ export function createInitialTMDBWizardData(
       source: null,
       skipped: false,
     },
+    displayOptions: { ...DEFAULT_TMDB_DISPLAY },
     isEpisodeMode: contentType === "episode",
   };
 }
