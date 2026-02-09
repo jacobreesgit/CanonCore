@@ -54,41 +54,7 @@ test.describe("Items Max Depth Journey", () => {
     await itemsPage.expectItemNotVisible("Too Deep");
   });
 
-  test("breadcrumbs show full hierarchy path", async ({
-    page,
-    testUser,
-    itemsPage,
-  }) => {
-    const isMobile = await isMobileViewport(page);
-    test.skip(isMobile, "Breadcrumbs are hidden on mobile");
-
-    // Allow extra time for nested operations
-    test.setTimeout(60000);
-    test.info().annotations.push({
-      type: "flaky",
-      description: "Parallel execution timing",
-    });
-    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
-
-    // Create a 3-level hierarchy with toast waits for stability
-    await itemsPage.createItem("Grandparent");
-    await itemsPage.clickItem("Grandparent");
-    // Wait for empty state to disappear and Add button to be stable
-    await page.waitForTimeout(500);
-
-    await itemsPage.createItem("Parent");
-    await itemsPage.clickItem("Parent");
-    // Wait for empty state to disappear and Add button to be stable
-    await page.waitForTimeout(500);
-
-    await itemsPage.createItem("Child");
-    await itemsPage.clickItem("Child");
-
-    // Verify breadcrumb trail shows all ancestors
-    await itemsPage.expectBreadcrumb("Grandparent");
-    await itemsPage.expectBreadcrumb("Parent");
-    await itemsPage.expectBreadcrumb("Child");
-  });
+  // "breadcrumbs show full hierarchy path" moved to heavy-serial.spec.ts
 
   test("can navigate to any level via breadcrumbs", async ({
     page,

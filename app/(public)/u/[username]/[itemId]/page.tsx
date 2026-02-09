@@ -16,11 +16,14 @@ import { getItem, getDescendants, getItemProgress } from "@/lib/item-actions";
 import { getItemFiles } from "@/lib/item-file-actions";
 import { getForkStatus, getForkInfo } from "@/lib/fork-actions";
 import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
+import { getItemTmdbMetadata, getItemTmdbDetails } from "@/lib/tmdb-client";
+import { resolveTmdbForItem } from "@/lib/tmdb-utils";
+import type { TmdbDisplayOptions } from "@/lib/types";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SiteHeader } from "@/components/site-header";
 import { ItemDetailClient } from "@/components/items";
-import { PublicItemClient } from "./public-item-client";
+import { PublicItemClient } from "./public-item-detail-client";
 
 interface PageProps {
   params: Promise<{ username: string; itemId: string }>;
@@ -35,27 +38,53 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { username, itemId } = await params;
 
-  const [profile, item] = await Promise.all([
-    getPublicProfile(username),
-    getPublicItem(itemId),
-  ]);
+  // Check auth to determine ownership (mirrors page component logic)
+  const session = await auth();
+  const sessionUsername = session?.user?.username;
+  const isOwnerByUsername =
+    sessionUsername && sessionUsername.toLowerCase() === username.toLowerCase();
 
-  if (!profile || !item) {
+  const profile = isOwnerByUsername
+    ? await getProfileByIdOrUsername(username)
+    : await getPublicProfile(username);
+
+  if (!profile) {
+    return { title: "Item Not Found" };
+  }
+
+  // Owner can see private items; viewers only see public items
+  let itemName: string | undefined;
+  let itemDescription: string | null = null;
+
+  if (isOwnerByUsername) {
+    const result = await getItem(itemId);
+    if (result.success && result.data) {
+      itemName = result.data.item.name;
+      itemDescription = result.data.item.description;
+    }
+  } else {
+    const publicItem = await getPublicItem(itemId);
+    if (publicItem) {
+      itemName = publicItem.name;
+      itemDescription = publicItem.description;
+    }
+  }
+
+  if (!itemName) {
     return { title: "Item Not Found" };
   }
 
   const displayName = profile.name ?? `@${profile.username}`;
 
   return {
-    title: `${item.name} by ${displayName} | CanonCore`,
+    title: `${itemName} by ${displayName} | CanonCore`,
     description:
-      item.description ??
-      `View ${item.name} on ${displayName}'s media library.`,
+      itemDescription ?? `View ${itemName} on ${displayName}'s media library.`,
     openGraph: {
-      title: `${item.name} | CanonCore`,
+      title: `${itemName} | CanonCore`,
       description:
-        item.description ??
-        `View ${item.name} on ${displayName}'s media library.`,
+        itemDescription ??
+        `View ${itemName} on ${displayName}'s media library.`,
       type: "article",
     },
   };
@@ -118,14 +147,40 @@ export default async function ItemDetailPage({
       })
     );
 
+    // Extract TMDB display preferences from item
+    const tmdbDisplayOptions: TmdbDisplayOptions = {
+      showTagline: item.tmdbShowTagline,
+      showMetadata: item.tmdbShowMetadata,
+      showGenres: item.tmdbShowGenres,
+      showCast: item.tmdbShowCast,
+      showProviders: item.tmdbShowProviders,
+      showVideos: item.tmdbShowVideos,
+      showRecommendations: item.tmdbShowRecommendations,
+    };
+
+    // Resolve TMDB ID once (handles season/episode → show resolution)
+    const resolvedTmdb = await resolveTmdbForItem(item);
+
     // Fetch additional data in parallel
-    const [childrenResult, filesResult, itemProgress, driveConnection] =
-      await Promise.all([
-        getDescendants(itemId),
-        getItemFiles(itemId),
-        getItemProgress(itemId),
-        getGoogleDriveConnection(),
-      ]);
+    const [
+      childrenResult,
+      filesResult,
+      itemProgress,
+      driveConnection,
+      tmdbMetadata,
+      tmdbDetails,
+    ] = await Promise.all([
+      getDescendants(itemId),
+      getItemFiles(itemId),
+      getItemProgress(itemId),
+      getGoogleDriveConnection(),
+      resolvedTmdb
+        ? getItemTmdbMetadata(resolvedTmdb.tmdbId, resolvedTmdb.tmdbType)
+        : null,
+      resolvedTmdb
+        ? getItemTmdbDetails(resolvedTmdb.tmdbId, resolvedTmdb.tmdbType)
+        : null,
+    ]);
 
     const childItems = childrenResult.success
       ? (childrenResult.data ?? [])
@@ -149,7 +204,7 @@ export default async function ItemDetailPage({
           titleHref={`/u/${profile.username}`}
           breadcrumbs={breadcrumbs}
         />
-        <div className="flex flex-1 flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
+        <div className="bg-background text-foreground flex flex-1 flex-col">
           <ItemDetailClient
             item={{
               id: item.id,
@@ -159,6 +214,8 @@ export default async function ItemDetailPage({
               inheritVisibility: item.inheritVisibility,
               parentId: item.parentId,
               childCount: childItems.length,
+              tmdbId: item.tmdbId,
+              tmdbType: item.tmdbType,
             }}
             childItems={childItems}
             files={files}
@@ -166,6 +223,9 @@ export default async function ItemDetailPage({
             hasDriveConnection={hasDriveConnection}
             currentUser={currentUser}
             defaultSettingsOpen={defaultSettingsOpen}
+            tmdbMetadata={tmdbMetadata}
+            tmdbDetails={tmdbDetails}
+            tmdbDisplayOptions={tmdbDisplayOptions}
           />
         </div>
       </>
@@ -183,20 +243,47 @@ export default async function ItemDetailPage({
       notFound();
     }
 
+    // Extract TMDB display preferences from public item
+    const viewerDisplayOptions: TmdbDisplayOptions = {
+      showTagline: item.tmdbShowTagline,
+      showMetadata: item.tmdbShowMetadata,
+      showGenres: item.tmdbShowGenres,
+      showCast: item.tmdbShowCast,
+      showProviders: item.tmdbShowProviders,
+      showVideos: item.tmdbShowVideos,
+      showRecommendations: item.tmdbShowRecommendations,
+    };
+
+    // Resolve TMDB ID once (handles season/episode → show resolution)
+    const resolvedTmdb = await resolveTmdbForItem(item);
+
     // Get additional data in parallel
-    const [childItems, breadcrumb, forkInfo, forkStatusResult, currentUser] =
-      await Promise.all([
-        getPublicDescendants(itemId),
-        getPublicBreadcrumb(itemId),
-        getForkInfo(itemId),
-        getForkStatus(itemId), // Safe for unauthenticated - returns error
-        currentUserId
-          ? prisma.user.findUnique({
-              where: { id: currentUserId },
-              select: { username: true },
-            })
-          : null,
-      ]);
+    const [
+      childItems,
+      breadcrumb,
+      forkInfo,
+      forkStatusResult,
+      currentUser,
+      tmdbMetadata,
+      tmdbDetails,
+    ] = await Promise.all([
+      getPublicDescendants(itemId),
+      getPublicBreadcrumb(itemId),
+      getForkInfo(itemId),
+      getForkStatus(itemId), // Safe for unauthenticated - returns error
+      currentUserId
+        ? prisma.user.findUnique({
+            where: { id: currentUserId },
+            select: { username: true },
+          })
+        : null,
+      resolvedTmdb
+        ? getItemTmdbMetadata(resolvedTmdb.tmdbId, resolvedTmdb.tmdbType)
+        : null,
+      resolvedTmdb
+        ? getItemTmdbDetails(resolvedTmdb.tmdbId, resolvedTmdb.tmdbType)
+        : null,
+    ]);
 
     // Extract fork status if authenticated and request succeeded
     const forkStatus =
@@ -220,7 +307,7 @@ export default async function ItemDetailPage({
           titleHref={`/u/${profile.username}`}
           breadcrumbs={headerBreadcrumbs}
         />
-        <div className="flex flex-1 flex-col gap-4 px-4 py-6 md:px-6 lg:px-8">
+        <div className="bg-background text-foreground flex flex-1 flex-col">
           <PublicItemClient
             profile={profile}
             item={item}
@@ -231,6 +318,9 @@ export default async function ItemDetailPage({
             isOwnItem={false}
             currentUserUsername={currentUserUsername}
             currentUserId={currentUserId}
+            tmdbMetadata={tmdbMetadata}
+            tmdbDetails={tmdbDetails}
+            tmdbDisplayOptions={viewerDisplayOptions}
           />
         </div>
       </>

@@ -149,6 +149,15 @@ model Item {
   tmdbId      Int?     // TMDB movie/TV ID
   tmdbType    String?  // "movie" | "tv"
 
+  // TMDB display preferences (which sections appear on detail page)
+  tmdbShowTagline          Boolean @default(true)
+  tmdbShowMetadata         Boolean @default(true)   // year, runtime, rating, vote
+  tmdbShowGenres           Boolean @default(true)
+  tmdbShowCast             Boolean @default(true)
+  tmdbShowProviders        Boolean @default(true)
+  tmdbShowVideos           Boolean @default(true)
+  tmdbShowRecommendations  Boolean @default(true)
+
   // Fork tracking
   forkedFromId  String?  // original item ID if this was forked
   forkedFrom    Item?    @relation("ItemFork", fields: [forkedFromId], references: [id], onDelete: SetNull)

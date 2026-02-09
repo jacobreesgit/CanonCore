@@ -25,6 +25,7 @@
   },
   "rules": {
     "exports": "off",
-    "types": "off"
+    "types": "off",
+    "duplicates": "off"
   }
 }

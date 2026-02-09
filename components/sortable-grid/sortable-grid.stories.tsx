@@ -4,7 +4,7 @@
  */
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import { fn } from "storybook/test";
-import { SortableGrid } from "./SortableGrid";
+import { SortableGrid } from "./sortable-grid-component";
 import type { ItemWithArtwork } from "@/lib/types";
 
 /**
@@ -100,6 +100,15 @@ function createGridItem(
     primaryMediaName: null,
     mediaIconType: null,
     progress: null,
+    tmdbId: null,
+    tmdbType: null,
+    tmdbShowTagline: true,
+    tmdbShowMetadata: true,
+    tmdbShowGenres: true,
+    tmdbShowCast: true,
+    tmdbShowProviders: true,
+    tmdbShowVideos: true,
+    tmdbShowRecommendations: true,
     ...options,
   };
 }

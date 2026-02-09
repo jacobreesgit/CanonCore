@@ -6,13 +6,13 @@
  */
 
 import { AppSidebar } from "@/components/app-sidebar";
-import { ErrorBoundary } from "@/components/error-boundary";
+import { ErrorBoundary } from "@/components/providers/error-boundary";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { MobileNavProvider } from "@/components/mobile";
 import { auth, getExtendedSidebarUser } from "@/lib/auth";
 import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
 import { getPinnedItems } from "@/lib/item-actions";
-import { MyItemsProviders } from "@/components/my-items-providers";
+import { MyItemsProviders } from "@/components/items/my-items-providers";
 
 /**
  * Wraps public pages with sidebar and header.

@@ -4,7 +4,6 @@
  */
 
 import { test, expect } from "../../fixtures";
-import { toggleTheme, expectDarkMode } from "../../helpers/theme-helpers";
 import { openSidebarIfClosed } from "../../helpers/sidebar-helpers";
 import {
   isMobileViewport,
@@ -70,18 +69,6 @@ test.describe("Documentation Navigation", () => {
 
     // Should be on user profile page
     await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+$/);
-  });
-
-  test("docs respects dark mode setting", async ({ page, docsPage }) => {
-    // Set dark mode in my items
-    await toggleTheme(page);
-    await expectDarkMode(page);
-
-    // Navigate to docs
-    await docsPage.goto();
-
-    // Docs should also be in dark mode
-    await expectDarkMode(page);
   });
 
   test("docs page is accessible without authentication", async ({ page }) => {

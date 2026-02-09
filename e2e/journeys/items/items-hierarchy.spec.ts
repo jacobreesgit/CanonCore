@@ -13,6 +13,8 @@ test.describe("Items Hierarchy Journey", () => {
   });
 
   test("displays full hierarchy in tree view", async ({ page, itemsPage }) => {
+    // Deep hierarchy creation (4 creates + 4 navigations) needs more than 30s
+    test.setTimeout(60000);
     // Create hierarchy: Top Level > Parent > Child > Grandchild
     await itemsPage.createItem("Top Level");
 
@@ -38,6 +40,8 @@ test.describe("Items Hierarchy Journey", () => {
   });
 
   test("can collapse and expand items in tree", async ({ page, itemsPage }) => {
+    // Deep hierarchy creation + collapse/expand needs more than 30s
+    test.setTimeout(60000);
     // Create Top Level container to view tree in
     await itemsPage.createItem("Top Level");
 

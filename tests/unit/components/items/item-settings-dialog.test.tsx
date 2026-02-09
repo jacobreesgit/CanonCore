@@ -767,7 +767,8 @@ describe("ItemSettingsDialog", () => {
           expect.objectContaining({
             updateName: true,
             updateDescription: true,
-          })
+          }),
+          expect.anything()
         );
       });
     });

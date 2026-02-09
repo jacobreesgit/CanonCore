@@ -27,7 +27,6 @@ const meta = {
   },
   args: {
     onSheetOpen: fn(),
-    onAction: fn(),
     forceShow: true,
     className: "relative inset-auto w-[390px]",
   },
@@ -41,13 +40,11 @@ export const Authenticated: Story = {
     items: getAuthenticatedFooterItems("johndoe"),
     userAvatar: "https://github.com/shadcn.png",
     userName: "John Doe",
-    currentTheme: "light",
   },
 };
 
 export const Guest: Story = {
   args: {
     items: getGuestFooterItems(),
-    currentTheme: "light",
   },
 };

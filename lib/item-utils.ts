@@ -332,6 +332,7 @@ export const EXPLORE_SORT_OPTIONS: SortOptionConfig[] = [
 /** Filter options for explore page (no sync-related filters). */
 export const EXPLORE_FILTER_OPTIONS: FilterOptionConfig[] = [
   { value: "all", label: "All Items" },
+  { value: "exclude-yours", label: "Exclude Yours" },
 ];
 
 /**

@@ -14,13 +14,9 @@ import {
   HelpCircle,
   Library,
   LogIn,
-  Moon,
   Search,
-  Settings,
-  Sun,
   User,
 } from "lucide-react";
-import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -35,12 +31,10 @@ export interface MobileFooterNavItem {
   icon: React.ReactNode;
   /** Accessible label for screen readers */
   ariaLabel: string;
-  /** URL for navigation (mutually exclusive with sheet/action) */
+  /** URL for navigation (mutually exclusive with sheet) */
   href?: string;
-  /** Sheet type to open (mutually exclusive with href/action) */
-  sheet?: "search" | "user" | "settings" | "help";
-  /** Action type for special buttons (mutually exclusive with href/sheet) */
-  action?: "theme";
+  /** Sheet type to open (mutually exclusive with href) */
+  sheet?: "search" | "user" | "help";
   /** Whether this is the active route */
   isActive?: boolean;
 }
@@ -52,15 +46,11 @@ export interface MobileFooterNavProps {
   /** Items to display in the footer */
   items: MobileFooterNavItem[];
   /** Callback when a sheet trigger is pressed */
-  onSheetOpen?: (sheet: "search" | "user" | "settings" | "help") => void;
-  /** Callback when an action is triggered */
-  onAction?: (action: "theme") => void;
+  onSheetOpen?: (sheet: "search" | "user" | "help") => void;
   /** User avatar URL for the user button */
   userAvatar?: string;
   /** User name for avatar fallback */
   userName?: string;
-  /** Current theme (for theme toggle icon) */
-  currentTheme?: string;
   /** Optional className for styling */
   className?: string;
   /** Force show regardless of viewport (for Storybook) */
@@ -74,19 +64,15 @@ export interface MobileFooterNavProps {
  *
  * @param items - Navigation items to display
  * @param onSheetOpen - Callback when sheet trigger is pressed
- * @param onAction - Callback when action is triggered
  * @param userAvatar - URL for user avatar
  * @param userName - Name for avatar fallback
- * @param currentTheme - Current theme for toggle icon
  * @param className - Additional styles
  */
 export function MobileFooterNav({
   items,
   onSheetOpen,
-  onAction,
   userAvatar,
   userName,
-  currentTheme,
   className,
   forceShow = false,
 }: MobileFooterNavProps) {
@@ -159,57 +145,6 @@ export function MobileFooterNav({
                 {item.label}
               </span>
             </Link>
-          );
-        }
-
-        // Render as button for action items (like theme toggle)
-        if (item.action) {
-          // Determine icon for theme toggle based on current theme
-          const actionIcon =
-            item.action === "theme" ? (
-              currentTheme === "dark" ? (
-                <Sun className="h-5 w-5" aria-hidden="true" />
-              ) : (
-                <Moon className="h-5 w-5" aria-hidden="true" />
-              )
-            ) : (
-              item.icon
-            );
-
-          const actionLabel =
-            item.action === "theme"
-              ? currentTheme === "dark"
-                ? "Light"
-                : "Dark"
-              : item.label;
-
-          return (
-            <button
-              key={item.label}
-              type="button"
-              aria-label={item.ariaLabel}
-              onClick={() => item.action && onAction?.(item.action)}
-              className={cn(
-                "flex flex-1 flex-col items-center justify-center gap-0.5",
-                "min-h-[44px] min-w-[44px]",
-                "transition-colors duration-150 ease-out",
-                "active:scale-95",
-                "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
-                "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <span className="flex h-5 w-5 items-center justify-center">
-                {actionIcon}
-              </span>
-              <span
-                className={cn(
-                  "text-[10px] leading-none font-medium",
-                  "landscape:max-h-[500px]:hidden"
-                )}
-              >
-                {actionLabel}
-              </span>
-            </button>
           );
         }
 
@@ -328,12 +263,6 @@ export function getGuestFooterItems(): MobileFooterNavItem[] {
       sheet: "help",
     },
     {
-      label: "Settings",
-      icon: <Settings className="h-5 w-5" aria-hidden="true" />,
-      ariaLabel: "Settings",
-      sheet: "settings",
-    },
-    {
       label: "Sign In",
       icon: <LogIn className="h-5 w-5" aria-hidden="true" />,
       ariaLabel: "Sign in",
@@ -358,8 +287,6 @@ export interface MobileFooterContainerProps {
   onSearchOpen?: () => void;
   /** Callback when user sheet should open */
   onUserOpen?: () => void;
-  /** Callback when settings sheet should open (guests only) */
-  onSettingsOpen?: () => void;
   /** Callback when help sheet should open */
   onHelpOpen?: () => void;
   /** Optional className */
@@ -375,7 +302,6 @@ export interface MobileFooterContainerProps {
  * @param user - Current user data or null
  * @param onSearchOpen - Callback to open search sheet
  * @param onUserOpen - Callback to open user sheet
- * @param onSettingsOpen - Callback to open settings sheet (guests)
  * @param onHelpOpen - Callback to open help sheet
  * @param className - Additional styles
  */
@@ -383,48 +309,33 @@ export function MobileFooterContainer({
   user,
   onSearchOpen,
   onUserOpen,
-  onSettingsOpen,
   onHelpOpen,
   className,
   forceShow = false,
 }: MobileFooterContainerProps) {
-  const { theme, setTheme } = useTheme();
   const items = user
     ? getAuthenticatedFooterItems(user.username)
     : getGuestFooterItems();
 
   const handleSheetOpen = React.useCallback(
-    (sheet: "search" | "user" | "settings" | "help") => {
+    (sheet: "search" | "user" | "help") => {
       if (sheet === "search") {
         onSearchOpen?.();
       } else if (sheet === "user") {
         onUserOpen?.();
-      } else if (sheet === "settings") {
-        onSettingsOpen?.();
       } else if (sheet === "help") {
         onHelpOpen?.();
       }
     },
-    [onSearchOpen, onUserOpen, onSettingsOpen, onHelpOpen]
-  );
-
-  const handleAction = React.useCallback(
-    (action: "theme") => {
-      if (action === "theme") {
-        setTheme(theme === "dark" ? "light" : "dark");
-      }
-    },
-    [theme, setTheme]
+    [onSearchOpen, onUserOpen, onHelpOpen]
   );
 
   return (
     <MobileFooterNav
       items={items}
       onSheetOpen={handleSheetOpen}
-      onAction={handleAction}
       userAvatar={user?.avatar}
       userName={user?.name || undefined}
-      currentTheme={theme}
       className={className}
       forceShow={forceShow}
     />

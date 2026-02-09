@@ -33,7 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FileTypeCombobox } from "@/components/items/file-type-combobox";
 import { MediaSearchCombobox } from "@/components/items/media-search-combobox";
 import { ItemDialogTabs } from "@/components/items/item-dialog-tabs";
-import type { CurrentTextValues } from "@/components/items/title-description-step";
+import type { CurrentTextValues } from "@/components/items/wizards/tmdb-wizard/title-description-step";
 import {
   TMDBWizard,
   type TMDBWizardResult,
@@ -54,7 +54,7 @@ import {
   getEpisodePreviewAction,
 } from "@/lib/tmdb-actions";
 import type { TMDBSearchResult } from "@/lib/tmdb-client";
-import type { TextPreviewData } from "@/components/items/title-description-step";
+import type { TextPreviewData } from "@/components/items/wizards/tmdb-wizard/title-description-step";
 import { toast } from "sonner";
 import type { SerializedItemFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -323,10 +323,10 @@ export function ItemSettingsDialog({
         } else {
           toast.success("Settings saved");
         }
-        await onSettingsChange?.().catch((err) => {
+        onOpenChange(false);
+        onSettingsChange?.().catch((err) => {
           console.warn("[ItemSettingsDialog] Refetch failed after save:", err);
         });
-        onOpenChange(false);
       } else {
         toast.error(result.error || "Failed to save settings");
       }
@@ -511,7 +511,8 @@ export function ItemSettingsDialog({
               result.backdrop !== null &&
               result.backdrop.source === "tmdb" &&
               result.backdrop.value !== null,
-          }
+          },
+          result.displayOptions
         );
 
         if (response.success) {

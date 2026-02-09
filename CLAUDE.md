@@ -65,29 +65,39 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 
 **Components Organisation:**
 
-- `components/items/` - Items feature (30+ components for dialogs, toolbars, views)
+- `components/hero/` - Cinematic hero system (cinematic-hero, hero-avatar, types)
+- `components/items/` - Items feature (40+ components for dialogs, toolbars, views, detail sections)
   - `wizards/tv-picker/` - TV show navigation for selecting shows, seasons, or episodes
-  - `wizards/tmdb-wizard/` - 4-step metadata wizard (text, poster, hero, summary)
+  - `wizards/tmdb-wizard/` - 4-step metadata wizard (text, poster, hero, summary) plus artwork/image selection steps
+  - Detail components: `about-tab-content`, `recommendations`, `wiki-accordion`, `cast-row`, `video-row`, `watch-providers`, `metadata-line`, `expandable-description`
+  - Action components: `hero-button`, `item-more-button`, `poster-card`, `playlist-button`
+  - `grid-view-content` - Extracted grid view rendering from items-view
 - `components/wizards/` - Reusable wizard infrastructure (state machine hook, step indicator)
 - `components/google-drive/` - Drive integration UI (oauth-toast, settings-section, sync-history, storage-bar)
-- `components/sortable-grid/` and `sortable-tree/` - dnd-kit drag-drop with view/edit modes
+- `components/sortable-grid/` and `sortable-tree/` - dnd-kit drag-drop with view/edit modes (kebab-case filenames)
 - `components/media/` - Media player with Vidstack (media-player, media-player-icons)
 - `components/diceui/` - Third-party DiceUI components (file-upload with drag-drop, previews)
 - `components/mobile/` - Mobile navigation (footer nav, bottom sheets, search/user/help sheets)
-- `components/ui/` - shadcn/ui primitives (do not document)
-- Shared components: `logo.tsx` (reusable logo), `floating-paths.tsx` (animated SVG background)
+- `components/providers/` - App-level providers (theme-provider, error-boundary, deferred-analytics)
+- `components/ui/` - shadcn/ui primitives + shared UI (content-toolbar, hero-content-layout, section, underline-tabs, progress-bar)
+- Shared components: `logo.tsx`, `floating-paths.tsx`, `shader-background.tsx`
 - Stories: Co-located `*.stories.tsx` files for Storybook component documentation
 
 **Utilities & Helpers:**
 
-- `lib/*-utils.ts` - Feature utilities (item, progress, file-type, upload, sync)
+- `lib/*-utils.ts` - Feature utilities (item, progress, file-type, upload, sync, avatar, tmdb)
 - `lib/*-client.ts` - External API clients (google-drive, tmdb)
+- `lib/avatar-utils.ts` - Avatar initials and gradient background generation
+- `lib/tmdb-utils.ts` - TMDB resolution for season/episode items (recursive CTE ancestry walk)
+- `lib/mock-data.ts` - Static data constants for cinematic UI (wiki sections, about tab filters)
 - `lib/audit-context.ts` - AsyncLocalStorage context for audit logging (userId, source, requestId)
 - `lib/audit-logger.ts` - Prisma extension for automatic mutation logging with redaction
 - `lib/bot-patterns.ts` - Centralised bot lists for robots.txt and proxy middleware
 - `lib/constants/messages.ts` - Centralised user-facing messages (SYNC, SETTINGS, ITEM)
-- `lib/types.ts` - Shared TypeScript types
+- `lib/types.ts` - Shared TypeScript types (includes `TmdbDisplayOptions`, `DEFAULT_TMDB_DISPLAY`)
 - `hooks/use-reduced-motion.ts` - Reduced motion preference detection with localStorage override
+- `hooks/use-settings-dialog.ts` - Item settings dialog lifecycle management
+- `hooks/use-sync-handler.ts` - Sync operation handler for Drive sync
 
 **Testing:**
 
@@ -95,6 +105,7 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 - `tests/integration/` - Vitest integration tests with real DB
 - `tests/integration/audit/` - Audit logger integration tests
 - `e2e/journeys/` - Playwright E2E tests by feature
+- `e2e/journeys/items/heavy-serial.spec.ts` - Heavy tests forced serial (`test.describe.configure({ mode: "serial" })`) to avoid parallel timeout failures
 - `e2e/pages/` - Page Object Models
 - `e2e/fixtures/` - Reusable test fixtures
 
@@ -117,6 +128,7 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 
 - User has optional `username` (unique, case-insensitive), `isPublic`, `image`/`heroImage` blobs, `defaultViewMode`/`defaultSortBy` (String?, not enum)
 - Item has self-referential parent/child hierarchy, `pinnedOrder` (null or 0+), `isPublic`, `inheritVisibility`, `forkedFromId`
+- Item has TMDB display preferences: 7 boolean fields (`tmdbShowTagline`, `tmdbShowMetadata`, `tmdbShowGenres`, `tmdbShowCast`, `tmdbShowProviders`, `tmdbShowVideos`, `tmdbShowRecommendations`) all defaulting to `true`
 - Item has Google Drive fields: `driveFileId`, `driveModifiedAt`, `syncStatus`, `driveConnectionId`
 - ItemFile has `fileType` (MEDIA/ARTWORK/SUBTITLE), `isPrimary`, `isHero`, `playbackPosition`
 - Fork tracks copies: `sourceItemId`, `targetItemId`, `userId` (unique constraint on source+user)
@@ -157,7 +169,7 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 1. Validate environment (ALLOW_SEEDING, TMDB_API_KEY, Drive credentials)
 2. Wipe Google Drive content (delete all files, empty trash)
 3. Delete all seed users from database
-4. Create seed users with TMDB metadata, artwork, and progress data
+4. Create seed users with TMDB metadata (including `tmdbId`/`tmdbType` on all items), artwork, and progress data
 
 **Configuration:**
 
@@ -184,9 +196,10 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 
 **Key Features:**
 
-- HeroCarousel: Single-slide mode on item details, multi-slide on Explore (respects prefers-reduced-motion)
+- CinematicHero: Multi-mode hero (carousel with auto-advance on Explore, single-slide on item detail, profile avatar mode). Respects `prefers-reduced-motion`.
 - Sort: Custom Order, Name A-Z/Z-A, Newest/Oldest, Recently Updated
-- Filter: All Items, Has Files, No Files, Synced, Pending
+- Filter: All Items, Has Files, No Files, Synced, Pending (Explore adds: Exclude Yours)
+- TMDB display options: Per-item toggles for tagline, metadata, genres, cast, providers, videos, recommendations
 - Pinned items: Max 10, shown in sidebar with folder icons
 - Progress tracking: 90% threshold for "watched", DFS traversal for first incomplete
 - Bulk operations: Edit mode shows checkboxes, select-all in toolbar
@@ -226,6 +239,8 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 
 - `isItemFullyPublic()` - Checks profile and ancestor chain
 - `getFeaturedItems()` - Returns 5 most recently updated items with artwork for carousel
+- `getPublicLibraryProgress()` - Library progress stats for profile viewers
+- `PublicItem` includes TMDB display preferences and `fileCounts`
 - All functions use `React.cache()` for request deduplication
 
 ### TMDB Metadata Integration
@@ -255,8 +270,20 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 
 - `searchMediaAction`, `getMetadataPreviewAction`, `getImagesAction`
 - `getSeasonsAction`, `getEpisodesAction` for TV shows
+- `applyMetadataAction` - Always persists `tmdbId`/`tmdbType`, accepts optional `TmdbDisplayOptions`
 - Circuit breaker: 5 failures → 60s recovery
 - Graceful degradation if TMDB_API_KEY not set
+
+**TMDB Client:** `lib/tmdb-client.ts`
+
+- Exported types: `CastMember`, `WatchProvider`, `Video`, `Recommendation`
+- `getItemTmdbMetadata()` - Cached normalised metadata with content ratings
+- `getCast()`, `getWatchProviders()`, `getVideos()`, `getRecommendations()`
+- `TMDBMovie`/`TMDBTVShow` include `tagline`, `runtime`, `genres`, `vote_average`
+
+**TMDB Resolution:** `lib/tmdb-utils.ts`
+
+- `resolveTmdbForItem()` - Walks item ancestry via recursive CTE to find parent TV show for season/episode items
 
 **Artwork Handling:**
 
@@ -360,7 +387,7 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 - Storybook 10 with Next.js framework and Tailwind CSS 4
 - Stories co-located with components (`*.stories.tsx`)
 - MSW mocking in `.storybook/mocks/` for server actions
-- Decorators: Theme (light/dark), auth state, reduced motion
+- Decorators: Theme (dark only), auth state, reduced motion
 - Accessibility testing via `@storybook/addon-a11y`
 - Portal dialogs: Test with `within(document.body)` instead of `canvasElement`
 - Run: `pnpm run storybook` (dev), `pnpm run test-storybook` (tests)
@@ -368,41 +395,29 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 **Screenshot Automation:**
 
 - Portfolio screenshots for marketing in `e2e/screenshots/`
-- 8 active scenarios × 2 themes (light/dark) × 2 devices (desktop/mobile) = 32 screenshots
+- Dark mode only — scenarios × 2 devices (desktop/mobile)
 - Desktop: 5760×3723 (1920×1241 @ 3× scale), Mobile: 1170×2732 (390×844 @ 3× scale + 200px top padding)
-- Mobile screenshots have 200px top padding for iPhone notch clearance (white for light, black for dark)
+- Mobile screenshots have 200px top padding for iPhone notch clearance (black for dark, gray #7e7e7e for dialogs)
 - Run: `npx playwright test --config=e2e/screenshots/playwright.config.ts`
 
 **Adding Mobile Top Padding (if regenerating screenshots):**
 
-After generating mobile screenshots, add theme-matched top padding for iPhone mockups:
+After generating mobile screenshots, add top padding for iPhone mockups:
 
 ```bash
 cd public/portfolio
 
-# Add theme-matched bars (white for light, black for dark)
+# Add black bars for standard pages
 for img in *-mobile.png; do
-  if [[ $img == *"-dark-"* ]]; then
-    magick "$img" -gravity north -background black -splice 0x200 "${img}.new"
-  else
-    magick "$img" -gravity north -background white -splice 0x200 "${img}.new"
-  fi
+  magick "$img" -gravity north -background black -splice 0x200 "${img}.new"
   mv "${img}.new" "$img"
 done
 
 # Special case: gray bars for dialogs with semi-transparent backgrounds
-magick 04-tmdb-wizard-mobile.png -gravity north -background "#7e7e7e" -splice 0x200 04-tmdb-wizard-mobile.png.new && mv 04-tmdb-wizard-mobile.png.new 04-tmdb-wizard-mobile.png
-magick 04-tmdb-wizard-dark-mobile.png -gravity north -background "#7e7e7e" -splice 0x200 04-tmdb-wizard-dark-mobile.png.new && mv 04-tmdb-wizard-dark-mobile.png.new 04-tmdb-wizard-dark-mobile.png
-magick 05-progress-tracking-mobile.png -gravity north -background "#7e7e7e" -splice 0x200 05-progress-tracking-mobile.png.new && mv 05-progress-tracking-mobile.png.new 05-progress-tracking-mobile.png
-magick 05-progress-tracking-dark-mobile.png -gravity north -background "#7e7e7e" -splice 0x200 05-progress-tracking-dark-mobile.png.new && mv 05-progress-tracking-dark-mobile.png.new 05-progress-tracking-dark-mobile.png
-magick 06-google-drive-sync-mobile.png -gravity north -background "#7e7e7e" -splice 0x200 06-google-drive-sync-mobile.png.new && mv 06-google-drive-sync-mobile.png.new 06-google-drive-sync-mobile.png
-magick 08-spotlight-search-mobile.png -gravity north -background "#7e7e7e" -splice 0x200 08-spotlight-search-mobile.png.new && mv 08-spotlight-search-mobile.png.new 08-spotlight-search-mobile.png
-magick 08-spotlight-search-dark-mobile.png -gravity north -background "#7e7e7e" -splice 0x200 08-spotlight-search-dark-mobile.png.new && mv 08-spotlight-search-dark-mobile.png.new 08-spotlight-search-dark-mobile.png
-magick 32-fork-dialog-mobile.png -gravity north -background "#7e7e7e" -splice 0x200 32-fork-dialog-mobile.png.new && mv 32-fork-dialog-mobile.png.new 32-fork-dialog-mobile.png
-magick 32-fork-dialog-dark-mobile.png -gravity north -background "#7e7e7e" -splice 0x200 32-fork-dialog-dark-mobile.png.new && mv 32-fork-dialog-dark-mobile.png.new 32-fork-dialog-dark-mobile.png
+for img in 04-tmdb-wizard-mobile.png 05-progress-tracking-mobile.png 06-google-drive-sync-mobile.png 08-spotlight-search-mobile.png 32-fork-dialog-mobile.png; do
+  magick "$img" -gravity north -background "#7e7e7e" -splice 0x200 "${img}.new" && mv "${img}.new" "$img"
+done
 ```
-
-This adds 200px bars (black for dark mode, white for light mode, gray #7e7e7e for dialogs) to prevent UI from being hidden by iPhone notch.
 
 ### Security
 
@@ -472,14 +487,23 @@ See `docs/deployments/DEPLOYMENT-6.0.2.md` for detailed implementation and monit
 - Tailwind CSS 4 with CSS variables
 - shadcn/ui "new-york" style
 - Prettier with tailwindcss plugin for class sorting
+- Cinematic design system tokens in `globals.css`:
+  - Glass: `--glass-bg`, `--glass-border`, `--glass-hover`, `--glow`
+  - Typography: `--tertiary-foreground` (40% white)
+  - Section spacing: `--section-px-mobile` through `--section-px-2xl`
+  - Gradients: `--gradient-hero`, `--gradient-card`, `--gradient-top`
+- Keyframe animations: `ken-burns`, `fade-in`, `fade-in-up`, `slide-up`, `shimmer`
+- Utility classes: `.ken-burns`, `.animate-fade-in`, `.animate-slide-up`, `.stagger-grid`, `.skeleton-shimmer`
+- All animations respect `prefers-reduced-motion`
 - Auth pages use split-panel layout (decorative left panel with FloatingPaths, form right panel)
-- Landing page uses Apple-inspired hero with feature card grid and Framer Motion animations
+- Landing page uses hero with feature card grid and Framer Motion animations
+- Site header auto-hides on scroll down, reappears on scroll up
 
 ### Accessibility
 
 - Skip link: "Skip to main content" for keyboard/screen reader navigation (WCAG 2.1 Level A)
 - Reduced motion: `@media (prefers-reduced-motion)` disables animations globally; `useReducedMotion` hook for JS control
-- HeroCarousel respects reduced motion preference (disables autoplay)
+- CinematicHero respects reduced motion preference (disables autoplay, ken-burns)
 - Touch optimisation: 300ms tap delay removal, iOS highlight suppression, 44px minimum touch targets
 - Safe area support: CSS variables for notched devices (iPhone X+), mobile footer respects safe areas
 - Decorative icons: `aria-hidden="true"` on non-interactive icons
@@ -489,11 +513,11 @@ See `docs/deployments/DEPLOYMENT-6.0.2.md` for detailed implementation and monit
 
 ### Dark Mode
 
-- next-themes for theme management with system preference detection
-- ThemeProvider wraps app in `app/layout.tsx`
-- ThemeToggle button in header with sun/moon icons
-- color-scheme CSS: Browser-native dark mode for scrollbars and form controls
-- Preference persists to localStorage
+- App is permanently dark — no light mode or theme toggle
+- `<html className="dark">` in `app/layout.tsx`
+- `ThemeProvider` with `forcedTheme="dark"` (overrides any stored preference)
+- `color-scheme: dark` in `:root` for browser-native scrollbars and form controls
+- Single unified `:root` with cinematic dark values — no `.dark {}` override block
 
 ## Branching Strategy
 
@@ -537,6 +561,10 @@ Seed (required for database seeding with Drive integration):
 - `GOOGLE_SEED_REFRESH_TOKEN` - Refresh token for seed Drive account
 - `GOOGLE_SEED_ROOT_FOLDER_ID` - Folder ID where seed creates content
 - `GOOGLE_SEED_EMAIL` - Email of seed account (optional, for display)
+
+E2E Testing (required for E2E tests):
+
+- `E2E_DATABASE_URL` - Neon PostgreSQL connection string (dedicated E2E branch, isolates test cleanup from dev/seed data)
 
 E2E Testing (optional - for Google Drive E2E tests):
 

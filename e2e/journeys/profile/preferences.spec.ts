@@ -105,7 +105,7 @@ test.describe("User Preferences Journey", () => {
 
     // Navigate away and back - localStorage should persist
     await page.goto("/docs");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Navigate back to the item detail page (tree view is only on detail pages)
     await itemsPage.goto();

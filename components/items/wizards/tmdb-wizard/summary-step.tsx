@@ -9,14 +9,18 @@ import {
   AlertCircle,
   ArrowLeft,
   Check,
+  Film,
   Image as ImageIcon,
   Sparkles,
   SkipForward,
   Type,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { DEFAULT_TMDB_DISPLAY } from "@/lib/types";
+import type { TmdbDisplayOptions } from "@/lib/types";
 import { getPosterUrl, getBackdropUrl } from "@/lib/tmdb-client";
 import type { TMDBSummaryStepProps } from "./tmdb-wizard-types";
 
@@ -41,6 +45,7 @@ export function TMDBSummaryStep({
   onBack,
   onEditStep,
   onApply,
+  onDataChange,
 }: TMDBSummaryStepProps) {
   const preview = data.preview ?? { name: "", description: "" };
   const textOptions = data.textOptions ?? {
@@ -266,6 +271,17 @@ export function TMDBSummaryStep({
             )}
           </div>
         </SummarySection>
+
+        {/* Display options */}
+        {data.tmdbResult && (
+          <>
+            <Separator />
+            <DisplayOptionsSection
+              displayOptions={data.displayOptions ?? DEFAULT_TMDB_DISPLAY}
+              onChange={(updated) => onDataChange({ displayOptions: updated })}
+            />
+          </>
+        )}
       </div>
 
       {/* Navigation buttons (hidden when parent handles footer) */}
@@ -335,6 +351,61 @@ function SummarySection({
         </Button>
       </div>
       {children}
+    </div>
+  );
+}
+
+/** Display options toggle labels keyed by TmdbDisplayOptions field. */
+const DISPLAY_OPTION_LABELS: {
+  key: keyof TmdbDisplayOptions;
+  label: string;
+}[] = [
+  { key: "showTagline", label: "Tagline" },
+  { key: "showMetadata", label: "Metadata (year, runtime, rating)" },
+  { key: "showGenres", label: "Genres" },
+  { key: "showCast", label: "Cast" },
+  { key: "showProviders", label: "Where to Watch" },
+  { key: "showVideos", label: "Videos" },
+  { key: "showRecommendations", label: "More Like This" },
+];
+
+/**
+ * Display options section with toggle checkboxes.
+ * Allows users to control which TMDB data appears on the item detail page.
+ */
+function DisplayOptionsSection({
+  displayOptions,
+  onChange,
+}: {
+  displayOptions: TmdbDisplayOptions;
+  onChange: (updated: TmdbDisplayOptions) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Film className="text-muted-foreground h-4 w-4" aria-hidden="true" />
+        <span className="font-medium">Detail Page Display</span>
+      </div>
+      <p className="text-muted-foreground text-xs">
+        Choose which TMDB data appears on your item&apos;s detail page.
+      </p>
+      <div className="space-y-1.5">
+        {DISPLAY_OPTION_LABELS.map(({ key, label }) => (
+          <label key={key} className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={displayOptions[key]}
+              onCheckedChange={(checked) =>
+                onChange({ ...displayOptions, [key]: !!checked })
+              }
+            />
+            <span
+              className={cn(!displayOptions[key] && "text-muted-foreground")}
+            >
+              {label}
+            </span>
+          </label>
+        ))}
+      </div>
     </div>
   );
 }

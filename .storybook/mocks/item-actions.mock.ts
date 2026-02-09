@@ -27,6 +27,13 @@ interface Item {
   syncStatus: string;
   syncError: string | null;
   driveConnectionId: string | null;
+  tmdbShowTagline: boolean;
+  tmdbShowMetadata: boolean;
+  tmdbShowGenres: boolean;
+  tmdbShowCast: boolean;
+  tmdbShowProviders: boolean;
+  tmdbShowVideos: boolean;
+  tmdbShowRecommendations: boolean;
 }
 
 interface ItemWithArtwork extends Item {
@@ -130,6 +137,13 @@ const createMockItem = (overrides: Partial<Item> = {}): Item => ({
   syncStatus: "SYNCED",
   syncError: null,
   driveConnectionId: null,
+  tmdbShowTagline: true,
+  tmdbShowMetadata: true,
+  tmdbShowGenres: true,
+  tmdbShowCast: true,
+  tmdbShowProviders: true,
+  tmdbShowVideos: true,
+  tmdbShowRecommendations: true,
   ...overrides,
 });
 
@@ -182,6 +196,13 @@ const mockFolderItems: ItemWithArtwork[] = [
     syncStatus: "SYNCED",
     syncError: null,
     driveConnectionId: null,
+    tmdbShowTagline: true,
+    tmdbShowMetadata: true,
+    tmdbShowGenres: true,
+    tmdbShowCast: true,
+    tmdbShowProviders: true,
+    tmdbShowVideos: true,
+    tmdbShowRecommendations: true,
     artworkId: null,
     fileCounts: { media: 0, artwork: 0, subtitles: 0 },
     childCount: 5,
@@ -208,6 +229,13 @@ const mockFolderItems: ItemWithArtwork[] = [
     syncStatus: "SYNCED",
     syncError: null,
     driveConnectionId: null,
+    tmdbShowTagline: true,
+    tmdbShowMetadata: true,
+    tmdbShowGenres: true,
+    tmdbShowCast: true,
+    tmdbShowProviders: true,
+    tmdbShowVideos: true,
+    tmdbShowRecommendations: true,
     artworkId: null,
     fileCounts: { media: 0, artwork: 0, subtitles: 0 },
     childCount: 3,
@@ -234,6 +262,13 @@ const mockFolderItems: ItemWithArtwork[] = [
     syncStatus: "SYNCED",
     syncError: null,
     driveConnectionId: null,
+    tmdbShowTagline: true,
+    tmdbShowMetadata: true,
+    tmdbShowGenres: true,
+    tmdbShowCast: true,
+    tmdbShowProviders: true,
+    tmdbShowVideos: true,
+    tmdbShowRecommendations: true,
     artworkId: null,
     fileCounts: { media: 0, artwork: 0, subtitles: 0 },
     childCount: 2,
@@ -260,6 +295,13 @@ const mockFolderItems: ItemWithArtwork[] = [
     syncStatus: "SYNCED",
     syncError: null,
     driveConnectionId: null,
+    tmdbShowTagline: true,
+    tmdbShowMetadata: true,
+    tmdbShowGenres: true,
+    tmdbShowCast: true,
+    tmdbShowProviders: true,
+    tmdbShowVideos: true,
+    tmdbShowRecommendations: true,
     artworkId: null,
     fileCounts: { media: 0, artwork: 0, subtitles: 0 },
     childCount: 0,
@@ -277,6 +319,13 @@ const mockFolderItems: ItemWithArtwork[] = [
     pinnedOrder: null,
     isPublic: false,
     inheritVisibility: true,
+    tmdbShowTagline: true,
+    tmdbShowMetadata: true,
+    tmdbShowGenres: true,
+    tmdbShowCast: true,
+    tmdbShowProviders: true,
+    tmdbShowVideos: true,
+    tmdbShowRecommendations: true,
     userId: "mock-user-id",
     createdAt: new Date(),
     updatedAt: new Date(),

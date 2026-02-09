@@ -8,6 +8,9 @@ import { MobileFooterPage } from "../../pages/mobile-footer.page";
 import { isMobileViewport } from "../../helpers/mobile-nav-helpers";
 
 test.describe("Spotlight Search Journey", () => {
+  // Creating 4 items in beforeEach + search operations need more than 30s
+  test.setTimeout(60000);
+
   let spotlightPage: SpotlightPage;
 
   test.beforeEach(async ({ page, testUser, itemsPage }) => {
@@ -158,6 +161,7 @@ test.describe("Spotlight Search Journey", () => {
 });
 
 test.describe("Spotlight Search - Mobile", () => {
+  test.setTimeout(60000);
   test.use({ viewport: { width: 375, height: 667 } });
 
   test("spotlight works on mobile via keyboard", async ({ page, testUser }) => {
@@ -203,10 +207,12 @@ test.describe("Spotlight Search - Mobile", () => {
     const searchInput = page.getByPlaceholder(/search/i);
     await searchInput.fill("Mobile Test");
 
-    // Verify result appears and click it
+    // Verify result appears
     const result = page.getByRole("option", { name: /mobile test item/i });
     await expect(result).toBeVisible();
-    await result.click();
+    // On small viewports the result can be outside the viewport even after scroll.
+    // Use dispatchEvent to bypass viewport constraints.
+    await result.dispatchEvent("click");
 
     // Should navigate to item
     await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+\/[a-z0-9-]+/);

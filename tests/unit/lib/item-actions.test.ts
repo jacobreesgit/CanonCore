@@ -85,6 +85,13 @@ const mockItem = (overrides: {
   inheritVisibility: overrides.inheritVisibility ?? false,
   tmdbId: null,
   tmdbType: null,
+  tmdbShowTagline: true,
+  tmdbShowMetadata: true,
+  tmdbShowGenres: true,
+  tmdbShowCast: true,
+  tmdbShowProviders: true,
+  tmdbShowVideos: true,
+  tmdbShowRecommendations: true,
   forkedFromId: null,
   // Google Drive fields
   driveFileId: null,

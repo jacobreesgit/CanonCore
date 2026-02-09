@@ -225,12 +225,12 @@ describe("SeasonView", () => {
         />
       );
 
-      // Find buttons by their labels
+      // Find options by their labels (role="option" inside listbox)
       expect(
-        screen.getByRole("button", { name: "Episode 1, Pilot" })
+        screen.getByRole("option", { name: "Episode 1, Pilot" })
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: "Episode 2, Cat's in the Bag..." })
+        screen.getByRole("option", { name: "Episode 2, Cat's in the Bag..." })
       ).toBeInTheDocument();
     });
 
@@ -262,10 +262,10 @@ describe("SeasonView", () => {
         />
       );
 
-      const buttons = screen.getAllByRole("button", { name: /Episode/ });
-      expect(buttons[0]).toHaveAttribute("tabIndex", "0");
-      expect(buttons[1]).toHaveAttribute("tabIndex", "-1");
-      expect(buttons[2]).toHaveAttribute("tabIndex", "-1");
+      const options = screen.getAllByRole("option", { name: /Episode/ });
+      expect(options[0]).toHaveAttribute("tabIndex", "0");
+      expect(options[1]).toHaveAttribute("tabIndex", "-1");
+      expect(options[2]).toHaveAttribute("tabIndex", "-1");
     });
   });
 
@@ -284,8 +284,8 @@ describe("SeasonView", () => {
         />
       );
 
-      const buttons = screen.getAllByRole("button", { name: /Episode/ });
-      await user.click(buttons[1]);
+      const options = screen.getAllByRole("option", { name: /Episode/ });
+      await user.click(options[1]);
 
       expect(onEpisodeSelect).toHaveBeenCalledWith(mockEpisodes[1]);
     });

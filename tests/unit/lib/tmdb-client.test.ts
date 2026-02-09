@@ -21,6 +21,9 @@ import {
   getTVEpisodes,
   getEpisodeDetails,
   getStillUrl,
+  formatRuntime,
+  getProfileImageUrl,
+  getItemTmdbDetails,
 } from "@/lib/tmdb-client";
 import type { TMDBMovie, TMDBTVShow, TMDBImages } from "@/lib/tmdb-client";
 
@@ -188,6 +191,10 @@ describe("tmdb-client", () => {
         poster_path: "/poster.jpg",
         backdrop_path: "/backdrop.jpg",
         release_date: "1994-09-23",
+        tagline: "",
+        runtime: null,
+        vote_average: 0,
+        genres: [],
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -231,6 +238,9 @@ describe("tmdb-client", () => {
         backdrop_path: "/backdrop.jpg",
         first_air_date: "2008-01-20",
         number_of_seasons: 5,
+        tagline: "",
+        vote_average: 0,
+        genres: [],
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -1116,6 +1126,292 @@ describe("tmdb-client", () => {
     it("supports w1280 size", () => {
       const url = getStillUrl("/still.jpg", "w1280");
       expect(url).toBe("https://image.tmdb.org/t/p/w1280/still.jpg");
+    });
+  });
+
+  describe("formatRuntime", () => {
+    it("formats hours and minutes", () => {
+      expect(formatRuntime(166)).toBe("2h 46m");
+    });
+
+    it("formats hours only when no minutes", () => {
+      expect(formatRuntime(120)).toBe("2h");
+    });
+
+    it("formats minutes only when under an hour", () => {
+      expect(formatRuntime(45)).toBe("45m");
+    });
+
+    it("handles zero minutes", () => {
+      expect(formatRuntime(0)).toBe("0m");
+    });
+  });
+
+  describe("getProfileImageUrl", () => {
+    it("returns full URL for valid path", () => {
+      expect(getProfileImageUrl("/abc123.jpg")).toBe(
+        "https://image.tmdb.org/t/p/w185/abc123.jpg"
+      );
+    });
+
+    it("returns null for null path", () => {
+      expect(getProfileImageUrl(null)).toBeNull();
+    });
+  });
+
+  describe("getItemTmdbDetails", () => {
+    it("fetches cast, providers, videos, and recommendations in parallel", async () => {
+      // Mock 4 sequential fetch calls (credits, providers, videos, recommendations)
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              cast: [
+                {
+                  id: 1,
+                  name: "Actor One",
+                  character: "Character One",
+                  profile_path: "/actor1.jpg",
+                  order: 0,
+                },
+                {
+                  id: 2,
+                  name: "Actor Two",
+                  character: "Character Two",
+                  profile_path: null,
+                  order: 1,
+                },
+              ],
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              results: {
+                US: {
+                  flatrate: [
+                    {
+                      provider_id: 8,
+                      provider_name: "Netflix",
+                      logo_path: "/netflix.jpg",
+                    },
+                  ],
+                },
+              },
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              results: [
+                {
+                  id: "v1",
+                  key: "abc123",
+                  name: "Trailer",
+                  type: "Trailer",
+                  site: "YouTube",
+                },
+                {
+                  id: "v2",
+                  key: "def456",
+                  name: "Clip",
+                  type: "Clip",
+                  site: "Vimeo",
+                },
+              ],
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              results: [
+                {
+                  id: 100,
+                  title: "Similar Movie",
+                  poster_path: "/similar.jpg",
+                  backdrop_path: "/similar-bd.jpg",
+                  media_type: "movie",
+                },
+              ],
+            }),
+        });
+
+      const result = await getItemTmdbDetails(278, "movie");
+
+      expect(result).not.toBeNull();
+      expect(result!.cast).toHaveLength(2);
+      expect(result!.cast[0].name).toBe("Actor One");
+      expect(result!.cast[0].profilePath).toBe("/actor1.jpg");
+
+      expect(result!.providers).toHaveLength(1);
+      expect(result!.providers[0].providerName).toBe("Netflix");
+      expect(result!.providers[0].logoPath).toBe(
+        "https://image.tmdb.org/t/p/w92/netflix.jpg"
+      );
+
+      // Only YouTube videos are included
+      expect(result!.videos).toHaveLength(1);
+      expect(result!.videos[0].key).toBe("abc123");
+
+      expect(result!.recommendations).toHaveLength(1);
+      expect(result!.recommendations[0].title).toBe("Similar Movie");
+    });
+
+    it("returns null when TMDB_API_KEY not set", async () => {
+      vi.stubEnv("TMDB_API_KEY", "");
+
+      const result = await getItemTmdbDetails(278, "movie");
+
+      expect(result).toBeNull();
+    });
+
+    it("limits cast to 10 members sorted by order", async () => {
+      const cast = Array.from({ length: 15 }, (_, i) => ({
+        id: i,
+        name: `Actor ${i}`,
+        character: `Character ${i}`,
+        profile_path: null,
+        order: 14 - i, // Reverse order to test sorting
+      }));
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ cast }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ results: {} }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ results: [] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ results: [] }),
+        });
+
+      const result = await getItemTmdbDetails(278, "movie");
+
+      expect(result!.cast).toHaveLength(10);
+      // Should be sorted by order (lowest first)
+      expect(result!.cast[0].name).toBe("Actor 14");
+    });
+
+    it("limits videos to 4 YouTube entries", async () => {
+      const videos = Array.from({ length: 8 }, (_, i) => ({
+        id: `v${i}`,
+        key: `key${i}`,
+        name: `Video ${i}`,
+        type: "Trailer",
+        site: "YouTube",
+      }));
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ cast: [] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ results: {} }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ results: videos }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ results: [] }),
+        });
+
+      const result = await getItemTmdbDetails(278, "movie");
+
+      expect(result!.videos).toHaveLength(4);
+    });
+
+    it("limits recommendations to 6", async () => {
+      const recs = Array.from({ length: 10 }, (_, i) => ({
+        id: i,
+        title: `Movie ${i}`,
+        poster_path: null,
+        backdrop_path: null,
+        media_type: "movie",
+      }));
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ cast: [] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ results: {} }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ results: [] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ results: recs }),
+        });
+
+      const result = await getItemTmdbDetails(278, "movie");
+
+      expect(result!.recommendations).toHaveLength(6);
+    });
+
+    it("uses tv prefix for TV shows", async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ cast: [] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ results: {} }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ results: [] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ results: [] }),
+        });
+
+      await getItemTmdbDetails(1396, "tv");
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/tv/1396/credits"),
+        expect.any(Object)
+      );
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/tv/1396/watch/providers"),
+        expect.any(Object)
+      );
+    });
+
+    it("handles null responses gracefully", async () => {
+      mockFetch
+        .mockResolvedValueOnce({ ok: false, status: 500 })
+        .mockResolvedValueOnce({ ok: false, status: 500 })
+        .mockResolvedValueOnce({ ok: false, status: 500 })
+        .mockResolvedValueOnce({ ok: false, status: 500 });
+
+      const result = await getItemTmdbDetails(278, "movie");
+
+      expect(result).not.toBeNull();
+      expect(result!.cast).toHaveLength(0);
+      expect(result!.providers).toHaveLength(0);
+      expect(result!.videos).toHaveLength(0);
+      expect(result!.recommendations).toHaveLength(0);
     });
   });
 });

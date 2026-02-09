@@ -1,11 +1,13 @@
 /**
  * Context menu for item actions (settings, delete, add child).
- * Clean dialog interactions with refined styling.
+ * Glassmorphism styling with AlertDialog confirmation.
+ * Exports reusable ItemMenuActions and renderMenuItems for use in both
+ * ContextMenu and DropdownMenu contexts.
  */
 
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ComponentType, ReactNode, useState } from "react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -14,14 +16,15 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { AddItemDialog, type CreateItemResult } from "./add-item-dialog";
 import {
   Plus,
@@ -30,11 +33,12 @@ import {
   ExternalLink,
   Pin,
   PinOff,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface ItemContextMenuProps {
-  children: ReactNode;
+/** Shared action props for item menus (context menu and dropdown menu). */
+export interface ItemMenuActions {
   itemName: string;
   /** Google Drive folder ID for this item (if synced) */
   driveFileId?: string | null;
@@ -55,6 +59,124 @@ interface ItemContextMenuProps {
   onUnpin?(): Promise<void>;
 }
 
+/** Glassmorphism menu item styling shared by context menu and dropdown menu. */
+export const MENU_ITEM_CLASSES = cn(
+  "gap-2 rounded-lg px-3 py-2",
+  "text-sm",
+  "text-muted-foreground",
+  "hover:bg-white/10 hover:text-foreground",
+  "focus:bg-white/10 focus:text-foreground",
+  "cursor-pointer"
+);
+
+/** Destructive (delete) menu item styling. */
+const DELETE_ITEM_CLASSES = cn(
+  "gap-2 rounded-lg px-3 py-2",
+  "text-sm",
+  "text-red-400",
+  "hover:bg-red-500/10 hover:text-red-300",
+  "focus:bg-red-500/10 focus:text-red-300",
+  "cursor-pointer"
+);
+
+/**
+ * Renders menu items for item actions.
+ * Works with both ContextMenuItem and DropdownMenuItem.
+ *
+ * @param actions - Item action callbacks
+ * @param MenuItem - The menu item component (ContextMenuItem or DropdownMenuItem)
+ * @param MenuSeparator - The separator component (ContextMenuSeparator or DropdownMenuSeparator)
+ * @param onDeleteClick - Callback to open delete confirmation
+ * @param onAddChildClick - Callback to open add child dialog
+ */
+export function renderMenuItems({
+  actions,
+  MenuItem,
+  MenuSeparator,
+  onDeleteClick,
+  onAddChildClick,
+}: {
+  actions: ItemMenuActions;
+  MenuItem: ComponentType<{
+    onClick?: () => void;
+    className?: string;
+    children: ReactNode;
+    asChild?: boolean;
+  }>;
+  MenuSeparator: ComponentType<{ className?: string }>;
+  onDeleteClick: () => void;
+  onAddChildClick: () => void;
+}) {
+  const {
+    showAddChild = true,
+    driveFileId,
+    isPinned = false,
+    onSettings,
+    onDelete,
+    onAddChild,
+    onPin,
+    onUnpin,
+  } = actions;
+
+  return (
+    <>
+      {showAddChild && onAddChild && (
+        <MenuItem onClick={onAddChildClick} className={MENU_ITEM_CLASSES}>
+          <Plus aria-hidden="true" className="size-4" strokeWidth={2} />
+          <span>Add Child Item</span>
+        </MenuItem>
+      )}
+      {onSettings && (
+        <MenuItem onClick={onSettings} className={MENU_ITEM_CLASSES}>
+          <Settings aria-hidden="true" className="size-4" strokeWidth={2} />
+          <span>Settings</span>
+        </MenuItem>
+      )}
+      {isPinned && onUnpin && (
+        <MenuItem onClick={onUnpin} className={MENU_ITEM_CLASSES}>
+          <PinOff aria-hidden="true" className="size-4" strokeWidth={2} />
+          <span>Unpin from Sidebar</span>
+        </MenuItem>
+      )}
+      {!isPinned && onPin && (
+        <MenuItem onClick={onPin} className={MENU_ITEM_CLASSES}>
+          <Pin aria-hidden="true" className="size-4" strokeWidth={2} />
+          <span>Pin to Sidebar</span>
+        </MenuItem>
+      )}
+      {driveFileId && (
+        <MenuItem asChild className={MENU_ITEM_CLASSES}>
+          <a
+            href={`https://drive.google.com/drive/folders/${driveFileId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <ExternalLink
+              aria-hidden="true"
+              className="size-4"
+              strokeWidth={2}
+            />
+            <span>Open in Drive</span>
+          </a>
+        </MenuItem>
+      )}
+      {onDelete && (
+        <>
+          <MenuSeparator className="bg-white/[0.08]" />
+          <MenuItem onClick={onDeleteClick} className={DELETE_ITEM_CLASSES}>
+            <Trash2 aria-hidden="true" className="size-4" strokeWidth={2} />
+            <span>Delete</span>
+          </MenuItem>
+        </>
+      )}
+    </>
+  );
+}
+
+interface ItemContextMenuProps extends ItemMenuActions {
+  children: ReactNode;
+}
+
 /**
  * Context menu wrapper for item actions.
  * Provides right-click menu with settings, delete, add child, pin/unpin, and Drive link options.
@@ -73,18 +195,15 @@ interface ItemContextMenuProps {
  */
 export function ItemContextMenu({
   children,
-  itemName,
-  driveFileId,
-  showAddChild = true,
-  hasDriveConnection = false,
-  isPinned = false,
-  onSettings,
-  onDelete,
-  onAddChild,
-  onAddChildComplete,
-  onPin,
-  onUnpin,
+  ...actions
 }: ItemContextMenuProps) {
+  const {
+    itemName,
+    onDelete,
+    onAddChild,
+    onAddChildComplete,
+    hasDriveConnection = false,
+  } = actions;
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [addChildOpen, setAddChildOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -104,96 +223,69 @@ export function ItemContextMenu({
     <>
       <ContextMenu>
         <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
-        <ContextMenuContent className="w-52">
-          {showAddChild && onAddChild && (
-            <ContextMenuItem
-              onClick={() => setAddChildOpen(true)}
-              className="gap-2"
-            >
-              <Plus aria-hidden="true" className="size-4" strokeWidth={2} />
-              <span>Add Child Item</span>
-            </ContextMenuItem>
+        <ContextMenuContent
+          className={cn(
+            "w-52",
+            "bg-[#1a1a1a]/90 backdrop-blur-xl",
+            "border border-white/[0.08]",
+            "rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
+            "text-foreground"
           )}
-          {onSettings && (
-            <ContextMenuItem onClick={onSettings} className="gap-2">
-              <Settings aria-hidden="true" className="size-4" strokeWidth={2} />
-              <span>Settings</span>
-            </ContextMenuItem>
-          )}
-          {isPinned && onUnpin && (
-            <ContextMenuItem onClick={onUnpin} className="gap-2">
-              <PinOff aria-hidden="true" className="size-4" strokeWidth={2} />
-              <span>Unpin from Sidebar</span>
-            </ContextMenuItem>
-          )}
-          {!isPinned && onPin && (
-            <ContextMenuItem onClick={onPin} className="gap-2">
-              <Pin aria-hidden="true" className="size-4" strokeWidth={2} />
-              <span>Pin to Sidebar</span>
-            </ContextMenuItem>
-          )}
-          {driveFileId && (
-            <ContextMenuItem asChild className="gap-2">
-              <a
-                href={`https://drive.google.com/drive/folders/${driveFileId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ExternalLink
-                  aria-hidden="true"
-                  className="size-4"
-                  strokeWidth={2}
-                />
-                <span>Open in Drive</span>
-              </a>
-            </ContextMenuItem>
-          )}
-          {onDelete && (
-            <>
-              <ContextMenuSeparator />
-              <ContextMenuItem
-                onClick={() => setDeleteOpen(true)}
-                className={cn(
-                  "gap-2",
-                  "text-destructive focus:text-destructive focus:bg-destructive/10"
-                )}
-              >
-                <Trash2 aria-hidden="true" className="size-4" strokeWidth={2} />
-                <span>Delete</span>
-              </ContextMenuItem>
-            </>
-          )}
+        >
+          {renderMenuItems({
+            actions,
+            MenuItem: ContextMenuItem,
+            MenuSeparator: ContextMenuSeparator,
+            onDeleteClick: () => setDeleteOpen(true),
+            onAddChildClick: () => setAddChildOpen(true),
+          })}
         </ContextMenuContent>
       </ContextMenu>
 
-      {/* Delete Dialog */}
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Delete Item</DialogTitle>
-            <DialogDescription>
+      {/* Delete Confirmation Dialog - glassmorphism styling */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent
+          className={cn(
+            "bg-[#1a1a1a]/95 backdrop-blur-xl",
+            "border border-white/[0.08]",
+            "shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
+            "text-foreground"
+          )}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Item</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
               Are you sure you want to delete &ldquo;{itemName}&rdquo;? This
               will also delete all child items. This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteOpen(false)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
               disabled={isLoading}
+              className={cn(
+                "text-foreground border-white/20 bg-white/10",
+                "hover:bg-white/20"
+              )}
             >
               Cancel
-            </Button>
-            <Button
-              variant="destructive"
+            </AlertDialogCancel>
+            <AlertDialogAction
               onClick={handleDelete}
               disabled={isLoading}
+              className="bg-red-500 text-white hover:bg-red-600"
             >
-              {isLoading ? "Deleting…" : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Deleting…
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Add Child Item Dialog */}
       <AddItemDialog

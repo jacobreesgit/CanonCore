@@ -55,7 +55,7 @@ test.describe("Sticky Dialog Footer", () => {
   }) => {
     // Navigate to my-items first
     await myItemsPage.goto();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
     // Open profile settings using page object
     await myItemsPage.openProfileSettings();

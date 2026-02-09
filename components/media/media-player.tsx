@@ -23,7 +23,7 @@ import "@vidstack/react/player/styles/default/layouts/video.css";
 import type { SerializedItemFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { getMimeTypeByExtension } from "@/lib/file-type-utils";
-import { Shader1 } from "@/components/shader1";
+import { Shader1 } from "@/components/shader-background";
 
 /**
  * Language code mapping for subtitle files.

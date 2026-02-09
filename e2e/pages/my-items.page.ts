@@ -16,7 +16,6 @@ import {
 export class MyItemsPage {
   readonly page: Page;
   private username: string;
-  readonly welcomeMessage: Locator;
   readonly userMenu: Locator;
   readonly signOutButton: Locator;
   readonly profileSettingsButton: Locator;
@@ -25,7 +24,6 @@ export class MyItemsPage {
   constructor(page: Page, username: string) {
     this.page = page;
     this.username = username;
-    this.welcomeMessage = page.getByTestId("my-items-welcome-message");
     this.userMenu = page.getByTestId("my-items-user-menu");
     this.signOutButton = page.getByTestId("my-items-sign-out-button");
     this.profileSettingsButton = page.getByTestId("my-items-settings-button");

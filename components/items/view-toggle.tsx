@@ -1,6 +1,6 @@
 /**
  * Toggle between tree and grid view modes.
- * Refined segmented control with smooth transitions.
+ * Glassmorphism styling with sliding indicator.
  * Persists preference in localStorage.
  */
 
@@ -16,6 +16,8 @@ interface ViewToggleProps {
   onChange?(value: ViewMode): void;
   /** If true, the toggle is disabled. */
   disabled?: boolean;
+  /** Additional CSS classes. */
+  className?: string;
 }
 
 const STORAGE_KEY = "items-view-mode";
@@ -64,15 +66,12 @@ export function useStoredViewMode(): [ViewMode, (mode: ViewMode) => void] {
 /**
  * Segmented control for switching between tree and grid view modes.
  * Persists preference in localStorage with hydration-safe access.
- *
- * @param value - Controlled view mode value
- * @param onChange - Callback when view mode changes
- * @param disabled - Whether the toggle is disabled
  */
 export function ViewToggle({
   value,
   onChange,
   disabled = false,
+  className,
 }: ViewToggleProps) {
   const [storedView, setStoredView] = useStoredViewMode();
 
@@ -89,19 +88,20 @@ export function ViewToggle({
     <div
       className={cn(
         "relative inline-flex h-8 items-center rounded-md p-0.5",
-        "bg-muted/60 border-border/50 border",
-        "shadow-sm",
-        disabled && "pointer-events-none opacity-50"
+        "bg-white/5",
+        disabled && "pointer-events-none opacity-50",
+        className
       )}
     >
       {/* Sliding background indicator */}
       <div
         className={cn(
-          "absolute inset-0.5 w-[calc(50%-2px)] rounded-sm",
-          "bg-background border-border/40 border shadow-sm",
+          "absolute inset-y-0.5 w-[calc(50%-2px)] rounded",
+          "bg-white/10",
           "transition-transform duration-200 ease-out",
-          view === "tree" && "translate-x-full"
+          view === "tree" ? "translate-x-[calc(100%+2px)]" : "translate-x-0"
         )}
+        style={{ left: "2px" }}
       />
 
       <button
@@ -111,11 +111,12 @@ export function ViewToggle({
         onClick={() => handleChange("grid")}
         disabled={disabled}
         className={cn(
-          "relative z-10 inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-sm px-3",
-          "text-sm font-medium transition-colors duration-150",
+          "relative z-10 inline-flex h-7 items-center gap-1.5 rounded px-2.5",
+          "text-sm transition-colors duration-150",
           view === "grid"
             ? "text-foreground"
-            : "text-muted-foreground hover:text-foreground/80"
+            : "hover:text-muted-foreground text-[var(--tertiary-foreground)]",
+          "focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
         )}
       >
         <LayoutGrid aria-hidden="true" className="size-4" strokeWidth={2} />
@@ -129,11 +130,12 @@ export function ViewToggle({
         onClick={() => handleChange("tree")}
         disabled={disabled}
         className={cn(
-          "relative z-10 inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-sm px-3",
-          "text-sm font-medium transition-colors duration-150",
+          "relative z-10 inline-flex h-7 items-center gap-1.5 rounded px-2.5",
+          "text-sm transition-colors duration-150",
           view === "tree"
             ? "text-foreground"
-            : "text-muted-foreground hover:text-foreground/80"
+            : "hover:text-muted-foreground text-[var(--tertiary-foreground)]",
+          "focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
         )}
       >
         <List aria-hidden="true" className="size-4" strokeWidth={2} />

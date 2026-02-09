@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { ImageSelectionGrid } from "@/components/items/image-selection-grid";
+import { ImageSelectionGrid } from "./image-selection-grid";
 import type { ArtworkSelectionSource } from "@/lib/types";
 import type { TMDBArtworkStepProps } from "./tmdb-wizard-types";
 import { toExistingArtworkFile } from "./tmdb-wizard-types";

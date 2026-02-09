@@ -209,6 +209,10 @@ describe("tmdb-actions", () => {
         poster_path: "/poster.jpg",
         backdrop_path: "/backdrop.jpg",
         release_date: "1994-09-23",
+        tagline: "",
+        runtime: null,
+        vote_average: 0,
+        genres: [],
       });
       vi.mocked(downloadPoster).mockResolvedValue(Buffer.from([1, 2, 3]));
       vi.mocked(downloadBackdrop).mockResolvedValue(Buffer.from([4, 5, 6]));
@@ -218,13 +222,15 @@ describe("tmdb-actions", () => {
       });
     });
 
-    it("updates item with movie metadata", async () => {
+    it("updates item with movie metadata and tmdbId/tmdbType", async () => {
       const result = await applyMetadataAction("item-1", 278, "movie");
 
       expect(result.success).toBe(true);
       expect(prisma.item.update).toHaveBeenCalledWith({
         where: { id: "item-1" },
         data: {
+          tmdbId: 278,
+          tmdbType: "movie",
           name: "The Shawshank Redemption (1994)",
           description: expect.any(String),
         },
@@ -290,7 +296,7 @@ describe("tmdb-actions", () => {
       }
     });
 
-    it("handles TV shows", async () => {
+    it("handles TV shows and stores tmdbId/tmdbType", async () => {
       vi.mocked(getTVShow).mockResolvedValue({
         id: 1396,
         name: "Breaking Bad",
@@ -299,6 +305,9 @@ describe("tmdb-actions", () => {
         backdrop_path: "/bb-backdrop.jpg",
         first_air_date: "2008-01-20",
         number_of_seasons: 5,
+        tagline: "",
+        vote_average: 0,
+        genres: [],
       });
 
       const result = await applyMetadataAction("item-1", 1396, "tv");
@@ -307,6 +316,8 @@ describe("tmdb-actions", () => {
       expect(prisma.item.update).toHaveBeenCalledWith({
         where: { id: "item-1" },
         data: {
+          tmdbId: 1396,
+          tmdbType: "tv",
           name: "Breaking Bad (2008)",
           description: expect.any(String),
         },
@@ -717,6 +728,10 @@ describe("tmdb-actions", () => {
         poster_path: "/poster.jpg",
         backdrop_path: "/backdrop.jpg",
         release_date: "1994-09-23",
+        tagline: "",
+        runtime: null,
+        vote_average: 0,
+        genres: [],
       });
 
       const result = await getMetadataPreviewAction(278, "movie");
@@ -738,6 +753,9 @@ describe("tmdb-actions", () => {
         backdrop_path: "/bb-backdrop.jpg",
         first_air_date: "2008-01-20",
         number_of_seasons: 5,
+        tagline: "",
+        vote_average: 0,
+        genres: [],
       });
 
       const result = await getMetadataPreviewAction(1396, "tv");

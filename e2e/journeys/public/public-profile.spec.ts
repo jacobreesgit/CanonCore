@@ -367,12 +367,9 @@ test.describe("Public Profile Enablement Journey", () => {
     // Reload page
     await page.reload();
 
-    // Verify profile is accessible
+    // Verify profile is accessible and stay on the page
     await publicProfilePage.gotoProfile(username);
     await expect(page).toHaveURL(`/u/${username}`);
-
-    // Go back to user's profile page
-    await page.goto(`/u/${username}`);
 
     // Open settings and disable
     await settingsPage.openFromNavUser();
@@ -694,8 +691,8 @@ test.describe("Public Item View Toggle and Hero Collapse Journey", () => {
     await publicProfilePage.gotoItem(ownerUsername, childItemId);
     await publicProfilePage.expectHeroVisible("Child Item");
 
-    // View toggle should be disabled
-    await expect(publicProfilePage.viewToggleTree).toBeDisabled();
-    await expect(publicProfilePage.viewToggleGrid).toBeDisabled();
+    // View toggle should not be visible (empty state replaces the toolbar)
+    await expect(publicProfilePage.viewToggleTree).not.toBeVisible();
+    await expect(publicProfilePage.viewToggleGrid).not.toBeVisible();
   });
 });

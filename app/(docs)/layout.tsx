@@ -11,7 +11,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { MobileNavProvider } from "@/components/mobile";
 import { auth, getExtendedSidebarUser } from "@/lib/auth";
-import { MyItemsProviders } from "@/components/my-items-providers";
+import { MyItemsProviders } from "@/components/items/my-items-providers";
 import type { ReactNode } from "react";
 
 /**

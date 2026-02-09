@@ -16,8 +16,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Folder,
   FolderOpen,
@@ -53,6 +51,7 @@ const FOLDER_ROW_HEIGHT = 40;
 /**
  * Single folder item in the selection list.
  * Uses a regular button instead of motion for virtualization compatibility.
+ * Glassmorphism styling.
  */
 function FolderItemRow({
   folder,
@@ -69,10 +68,11 @@ function FolderItemRow({
     <button
       onClick={onSelect}
       className={cn(
-        "flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left transition-colors",
+        "flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left",
+        "transition-colors duration-150",
         isSelected
-          ? "bg-primary text-primary-foreground"
-          : "hover:bg-muted text-foreground"
+          ? "text-foreground bg-white/20"
+          : "text-muted-foreground hover:bg-white/10"
       )}
       style={{ ...style, paddingLeft: `${12 + folder.depth * 16}px` }}
     >
@@ -143,6 +143,10 @@ export function ForkDestinationDialog({
           }
 
           const items: ItemWithArtwork[] = result.data ?? [];
+          // Pre-compute set of parent IDs for O(1) hasChildren lookup
+          const parentIds = new Set(
+            items.map((i) => i.parentId).filter(Boolean)
+          );
           // Convert to folder items, filtering by depth
           const folderItems: FolderItem[] = items
             .filter((item: ItemWithArtwork) => item.depth < MAX_ITEM_DEPTH - 1)
@@ -150,9 +154,7 @@ export function ForkDestinationDialog({
               id: item.id,
               name: item.name,
               depth: item.depth,
-              hasChildren: items.some(
-                (i: ItemWithArtwork) => i.parentId === item.id
-              ),
+              hasChildren: parentIds.has(item.id),
             }))
             .sort((a: FolderItem, b: FolderItem) => {
               // Sort by depth first, then by name
@@ -176,13 +178,21 @@ export function ForkDestinationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className={cn(
+          "sm:max-w-md",
+          "bg-[#1a1a1a]/95 backdrop-blur-xl",
+          "border border-white/[0.08]",
+          "shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
+          "text-foreground"
+        )}
+      >
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="text-foreground flex items-center gap-2">
             <Copy className="h-5 w-5" />
             Fork to Library
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-muted-foreground">
             Choose where to add &ldquo;{itemName}&rdquo; in your library.
           </DialogDescription>
         </DialogHeader>
@@ -195,9 +205,9 @@ export function ForkDestinationDialog({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="bg-background/80 absolute inset-0 z-10 flex flex-col items-center justify-center rounded-lg backdrop-blur-sm"
+                className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-lg bg-black/60 backdrop-blur-sm"
               >
-                <Loader2 className="text-primary h-8 w-8 animate-spin" />
+                <Loader2 className="h-8 w-8 animate-spin text-white" />
                 <p className="text-muted-foreground mt-3 text-sm font-medium">
                   Adding to your library...
                 </p>
@@ -207,24 +217,32 @@ export function ForkDestinationDialog({
 
           {loading ? (
             <div className="flex h-48 items-center justify-center">
-              <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+              <Loader2 className="h-6 w-6 animate-spin text-[var(--tertiary-foreground)]" />
             </div>
           ) : error ? (
             <div className="flex h-48 items-center justify-center">
-              <p className="text-destructive text-sm">{error}</p>
+              <p className="text-sm text-red-400">{error}</p>
             </div>
           ) : (
             <div className="space-y-2">
               {/* Search input - only show if there are folders */}
               {folders.length > 0 && (
-                <div className="relative">
-                  <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-                  <Input
+                <div className="relative mb-3">
+                  <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--tertiary-foreground)]" />
+                  <input
+                    type="text"
                     placeholder="Search folders…"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     disabled={isForking}
-                    className="h-9 pl-9"
+                    className={cn(
+                      "h-9 w-full rounded-lg pr-3 pl-9",
+                      "border border-white/20 bg-white/10",
+                      "text-foreground text-sm",
+                      "placeholder:text-[var(--tertiary-foreground)]",
+                      "focus:ring-2 focus:ring-white/30 focus:outline-none",
+                      "disabled:opacity-50"
+                    )}
                   />
                 </div>
               )}
@@ -237,10 +255,11 @@ export function ForkDestinationDialog({
                   onClick={() => setSelectedId(null)}
                   disabled={isForking}
                   className={cn(
-                    "flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left transition-colors",
+                    "flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left",
+                    "transition-colors duration-150",
                     selectedId === null
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-muted text-foreground",
+                      ? "text-foreground bg-white/20"
+                      : "text-muted-foreground hover:bg-white/10",
                     isForking && "pointer-events-none opacity-50"
                   )}
                 >
@@ -254,7 +273,8 @@ export function ForkDestinationDialog({
                 <div
                   ref={scrollContainerRef}
                   className={cn(
-                    "flex h-48 flex-col overflow-auto rounded-lg border",
+                    "mt-2 flex h-48 flex-col overflow-auto rounded-lg",
+                    "border border-white/10",
                     isForking && "pointer-events-none opacity-50"
                   )}
                 >
@@ -284,10 +304,10 @@ export function ForkDestinationDialog({
                       })}
                     </div>
                   ) : (
-                    <div className="flex flex-1 flex-col items-center gap-2 py-12">
+                    <div className="flex flex-1 flex-col items-center justify-center gap-2 py-12">
                       <Search
                         aria-hidden="true"
-                        className="text-muted-foreground/50 size-8"
+                        className="size-8 text-[var(--tertiary-foreground)]"
                       />
                       <p className="text-muted-foreground text-sm">
                         No results found.
@@ -308,26 +328,48 @@ export function ForkDestinationDialog({
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
-          <Button
-            variant="outline"
+          <button
+            type="button"
             onClick={() => onOpenChange(false)}
             disabled={isForking}
+            className={cn(
+              "rounded-full px-4 py-2",
+              "text-sm font-medium",
+              "border border-white/20 bg-white/10",
+              "text-muted-foreground",
+              "hover:text-foreground hover:bg-white/20",
+              "transition-colors duration-150",
+              "disabled:cursor-not-allowed disabled:opacity-50"
+            )}
           >
             Cancel
-          </Button>
-          <Button onClick={handleConfirm} disabled={isForking || loading}>
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={isForking || loading}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full px-4 py-2",
+              "text-sm font-medium",
+              "bg-white text-black",
+              "hover:bg-white/90",
+              "active:scale-[0.97]",
+              "transition-all duration-150",
+              "disabled:cursor-not-allowed disabled:opacity-50"
+            )}
+          >
             {isForking ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 Forking…
               </>
             ) : (
               <>
-                <Copy className="mr-2 h-4 w-4" />
+                <Copy className="h-4 w-4" />
                 Fork Here
               </>
             )}
-          </Button>
+          </button>
         </div>
       </DialogContent>
     </Dialog>

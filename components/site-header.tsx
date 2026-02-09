@@ -19,11 +19,11 @@
 
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { ChevronRight, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { ThemeToggle } from "@/components/theme-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,8 +76,73 @@ export function SiteHeader({
 }: SiteHeaderProps) {
   const showContextMenu = currentItemId && (onRename || onDelete);
 
+  // Scroll-based header visibility
+  const [isVisible, setIsVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const ticking = useRef(false);
+
+  useEffect(() => {
+    // Find the scrollable container (main element by stable ID, or window fallback)
+    const getScrollContainer = () => {
+      const main = document.getElementById("main-content");
+      return main || window;
+    };
+
+    // Standard threshold: hide after scrolling down 64px (header height)
+    const SCROLL_THRESHOLD = 64;
+
+    const handleScroll = () => {
+      if (ticking.current) return;
+
+      ticking.current = true;
+      requestAnimationFrame(() => {
+        const container = getScrollContainer();
+        const currentScrollY =
+          container instanceof Window
+            ? container.scrollY
+            : (container as HTMLElement).scrollTop;
+        const isScrollingUp = currentScrollY < lastScrollY.current;
+        const scrollDelta = Math.abs(currentScrollY - lastScrollY.current);
+
+        // Ignore tiny scroll movements (less than 5px) to prevent jitter
+        if (scrollDelta < 5) {
+          ticking.current = false;
+          return;
+        }
+
+        // Show header when:
+        // - Near top (within threshold)
+        // - OR scrolling up
+        // Hide header when:
+        // - Past threshold AND scrolling down
+        if (currentScrollY <= SCROLL_THRESHOLD) {
+          // Near top - always show
+          setIsVisible(true);
+        } else if (isScrollingUp) {
+          // Scrolling up - show
+          setIsVisible(true);
+        } else {
+          // Scrolling down past threshold - hide
+          setIsVisible(false);
+        }
+
+        lastScrollY.current = currentScrollY;
+        ticking.current = false;
+      });
+    };
+
+    const container = getScrollContainer();
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
-    <header className="bg-background sticky top-0 z-50 hidden h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height) md:flex">
+    <header
+      className={cn(
+        "bg-background sticky top-0 z-50 hidden h-(--header-height) shrink-0 items-center gap-2 border-b transition-all duration-300 ease-out group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height) md:flex",
+        !isVisible && "-translate-y-full opacity-0"
+      )}
+    >
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
         <SidebarTrigger
           className="-ml-1 cursor-pointer"
@@ -136,9 +201,6 @@ export function SiteHeader({
             );
           })}
         </nav>
-
-        {/* Theme Toggle */}
-        <ThemeToggle />
 
         {/* Context Menu for current item actions */}
         {showContextMenu && (

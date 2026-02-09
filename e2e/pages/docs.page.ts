@@ -9,7 +9,6 @@ export class DocsPage {
   readonly page: Page;
   readonly heading: Locator;
   readonly backToMyItems: Locator;
-  readonly sidebar: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -17,7 +16,6 @@ export class DocsPage {
     this.backToMyItems = page.getByRole("link", {
       name: "Back to My Items",
     });
-    this.sidebar = page.locator('[data-sidebar="true"]');
   }
 
   /**

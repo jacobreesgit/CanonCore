@@ -115,8 +115,8 @@ describe("MobileNavProvider", () => {
       );
 
       expect(screen.getByText("Explore")).toBeInTheDocument();
+      expect(screen.getByText("Search")).toBeInTheDocument();
       expect(screen.getByText("Help")).toBeInTheDocument();
-      expect(screen.getByText("Settings")).toBeInTheDocument();
       expect(screen.getByText("Sign In")).toBeInTheDocument();
     });
 
@@ -165,7 +165,7 @@ describe("MobileNavProvider", () => {
         </MobileNavProvider>
       );
 
-      expect(screen.queryByText("Settings")).not.toBeInTheDocument();
+      // Authenticated users don't see Sign In button
       expect(screen.queryByText("Sign In")).not.toBeInTheDocument();
     });
   });
@@ -187,25 +187,6 @@ describe("MobileNavProvider", () => {
       // Help sheet should open - look for "Documentation" text in header
       await waitFor(() => {
         expect(screen.getByText("Documentation")).toBeInTheDocument();
-      });
-    });
-
-    it("opens settings sheet for guests when Settings is clicked", async () => {
-      const user = userEvent.setup();
-      mockIsMobile.mockReturnValue(true);
-
-      render(
-        <MobileNavProvider user={null}>
-          <div>Content</div>
-        </MobileNavProvider>
-      );
-
-      const settingsButton = screen.getByRole("button", { name: /settings/i });
-      await user.click(settingsButton);
-
-      // Settings sheet should open - look for "Preferences" text in header
-      await waitFor(() => {
-        expect(screen.getByText("Preferences")).toBeInTheDocument();
       });
     });
 

@@ -17,11 +17,17 @@ import { encryptCredential } from "@/lib/crypto";
 
 dotenv.config({ path: ".env.local" });
 
+// Use dedicated E2E database to avoid destroying dev/seed data
+if (!process.env.E2E_DATABASE_URL) {
+  throw new Error("E2E_DATABASE_URL is required — set it in .env.local");
+}
+process.env.DATABASE_URL = process.env.E2E_DATABASE_URL;
+
 // Prisma client - initialized dynamically after env vars are loaded
 let prisma: ExtendedPrismaClient;
 
 const TEST_FOLDER_NAME = "Breaking Bad";
-const TEST_VIDEO_PATH = "file_example_MP4_1920_18MG.mp4";
+const TEST_VIDEO_PATH = "video.mp4";
 const E2E_TEST_USER_EMAIL = "e2e-drive-test@canoncore.test";
 const E2E_TEST_PASSWORD = "TestPassword123";
 

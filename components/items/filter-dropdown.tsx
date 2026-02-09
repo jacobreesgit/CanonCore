@@ -1,12 +1,11 @@
 /**
  * Dropdown component for filtering items.
- * Integrates with shadcn/ui DropdownMenu for consistent styling.
+ * Glassmorphism styling with generic string values.
  */
 
 "use client";
 
 import { Filter } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,61 +13,82 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FILTER_OPTIONS, type FilterOptionConfig } from "@/lib/item-utils";
-import type { FilterOption } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import { FILTER_OPTIONS } from "@/lib/item-utils";
 
-interface FilterDropdownProps {
-  /** Current filter option value. */
-  value: FilterOption;
-  /** Callback when filter option changes. */
-  onChange: (value: FilterOption) => void;
+interface FilterDropdownProps<T extends string = string> {
+  /** Current filter value. */
+  value: T;
+  /** Callback when filter value changes. */
+  onChange: (value: T) => void;
   /** Whether the dropdown is disabled. */
   disabled?: boolean;
   /** Custom filter options to display. Defaults to FILTER_OPTIONS. */
-  options?: FilterOptionConfig[];
+  options?: { value: T; label: string }[];
+  /** Additional CSS classes for trigger. */
+  className?: string;
 }
 
 /**
  * Dropdown for filtering items by various criteria.
  * Shows a visual indicator (dot) when a filter is active.
- *
- * @param value - Current filter option
- * @param onChange - Callback when filter option changes
- * @param disabled - Whether the dropdown is disabled
- * @param options - Custom filter options to display (defaults to FILTER_OPTIONS)
  */
-export function FilterDropdown({
+export function FilterDropdown<T extends string = string>({
   value,
   onChange,
   disabled,
-  options = FILTER_OPTIONS,
-}: FilterDropdownProps) {
+  options = FILTER_OPTIONS as { value: T; label: string }[],
+  className,
+}: FilterDropdownProps<T>) {
   const currentLabel =
     options.find((opt) => opt.value === value)?.label ?? "Filter";
   const isActive = value !== "all";
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" disabled={disabled}>
-          <Filter aria-hidden="true" className="mr-2 size-4" />
-          {currentLabel}
-          {isActive && (
-            <span
-              aria-hidden="true"
-              data-active="true"
-              className="bg-primary ml-2 size-2 rounded-full"
-            />
-          )}
-        </Button>
+      <DropdownMenuTrigger
+        disabled={disabled}
+        className={cn(
+          "inline-flex items-center gap-2 rounded-md px-3 py-1.5",
+          "text-sm",
+          "text-muted-foreground",
+          "border border-transparent",
+          "hover:bg-white/5",
+          "transition-colors",
+          "data-[state=open]:text-foreground data-[state=open]:border-white/20 data-[state=open]:bg-white/10 data-[state=open]:backdrop-blur-sm",
+          "focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none",
+          "disabled:cursor-not-allowed disabled:opacity-50",
+          className
+        )}
+      >
+        <Filter aria-hidden="true" className="size-4" />
+        <span>{currentLabel}</span>
+        {isActive && (
+          <span
+            data-active="true"
+            aria-hidden="true"
+            className="bg-primary ml-1 size-2 rounded-full"
+          />
+        )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent
+        align="start"
+        className={cn(
+          "bg-[#1a1a1a]/90 backdrop-blur-xl",
+          "border border-white/[0.08]",
+          "shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+        )}
+      >
         <DropdownMenuRadioGroup
           value={value}
-          onValueChange={(v) => onChange(v as FilterOption)}
+          onValueChange={(v) => onChange(v as T)}
         >
           {options.map((option) => (
-            <DropdownMenuRadioItem key={option.value} value={option.value}>
+            <DropdownMenuRadioItem
+              key={option.value}
+              value={option.value}
+              className="focus:bg-white/10"
+            >
               {option.label}
             </DropdownMenuRadioItem>
           ))}

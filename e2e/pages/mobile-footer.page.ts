@@ -172,13 +172,6 @@ export class MobileFooterPage {
     return this.userSheet.getByRole("button", { name: /settings/i });
   }
 
-  /** Theme toggle button in user sheet. */
-  get themeToggleButton() {
-    return this.userSheet.getByRole("button", {
-      name: /light mode|dark mode/i,
-    });
-  }
-
   /**
    * Signs out via the user sheet.
    */

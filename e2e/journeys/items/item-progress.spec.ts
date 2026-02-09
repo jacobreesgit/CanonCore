@@ -60,33 +60,7 @@ test.describe("Item Progress Bars", () => {
     await itemsPage.exitEditMode();
   });
 
-  test("hides progress bar in edit mode (tree view)", async ({
-    page,
-    itemsPage,
-  }) => {
-    // Create parent and navigate to it (tree view is on item detail pages)
-    await itemsPage.createItem("Tree Parent");
-    await itemsPage.clickItem("Tree Parent");
-
-    // Create child items
-    await itemsPage.createItem("Tree Child A");
-    await itemsPage.createItem("Tree Child B");
-
-    // Switch to tree view
-    await itemsPage.switchToTreeView();
-
-    // Set sort to Custom Order (required for edit mode)
-    await itemsPage.selectSortOption("Custom Order");
-
-    // Enter edit mode
-    await itemsPage.enterEditMode();
-
-    // Progress bar should not be visible in edit mode
-    await expect(page.getByTestId("tree-item-progress-bar")).not.toBeVisible();
-
-    // Exit edit mode
-    await itemsPage.exitEditMode();
-  });
+  // "hides progress bar in edit mode (tree view)" moved to heavy-serial.spec.ts
 
   test("shows hero section on item detail page", async ({
     page,
@@ -106,30 +80,5 @@ test.describe("Item Progress Bars", () => {
     await expect(page.getByTestId("hero-progress-bar")).not.toBeVisible();
   });
 
-  test("navigates between views without progress bar errors", async ({
-    page,
-    itemsPage,
-  }) => {
-    // Create parent and navigate to it (view toggle is on item detail pages)
-    await itemsPage.createItem("View Toggle Parent");
-    await itemsPage.clickItem("View Toggle Parent");
-
-    // Create child items
-    await itemsPage.createItem("Progress Item A");
-    await itemsPage.createItem("Progress Item B");
-
-    // Switch between views multiple times
-    await itemsPage.switchToTreeView();
-    await expect(
-      page.getByTestId("items-tree-view").getByText("Progress Item A")
-    ).toBeVisible();
-
-    await itemsPage.switchToGridView();
-    await expect(
-      page.getByTestId("items-grid-view").getByText("Progress Item A")
-    ).toBeVisible();
-
-    // No errors should occur - page should remain stable
-    await expect(page.getByTestId("items-grid-view")).toBeVisible();
-  });
+  // "navigates between views without progress bar errors" moved to heavy-serial.spec.ts
 });

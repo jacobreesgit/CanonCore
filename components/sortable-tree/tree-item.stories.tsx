@@ -5,7 +5,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import { fn } from "storybook/test";
 
-import { TreeItem } from "./components/TreeItem/TreeItem";
+import { TreeItem } from "./components/tree-item/tree-item";
 
 const meta = {
   title: "Layout/TreeItem",

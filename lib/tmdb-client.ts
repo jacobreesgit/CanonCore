@@ -3,11 +3,49 @@
  * Server-side only - do not import in client components.
  */
 
+import { cache } from "react";
 import { logger } from "@/lib/logger";
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p";
 const TMDB_TIMEOUT_MS = 10000; // 10 second timeout for API requests
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Shared Types (used by UI components and API client)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Cast member for cast row component. */
+export interface CastMember {
+  id: number;
+  name: string;
+  character: string;
+  profilePath: string | null;
+}
+
+/** Watch provider for streaming services component. */
+export interface WatchProvider {
+  providerId: number;
+  providerName: string;
+  logoPath: string;
+}
+
+/** Video for trailers/videos component. */
+export interface Video {
+  id: string;
+  key: string;
+  name: string;
+  type: string;
+  site: string;
+}
+
+/** Recommendation for similar content component. */
+export interface Recommendation {
+  id: number;
+  title: string;
+  posterPath: string | null;
+  backdropPath: string | null;
+  mediaType: "movie" | "tv";
+}
 
 /** Poster sizes available from TMDB. */
 export type PosterSize =
@@ -30,6 +68,10 @@ export interface TMDBMovie {
   poster_path: string | null;
   backdrop_path: string | null;
   release_date: string;
+  tagline: string;
+  runtime: number | null;
+  vote_average: number;
+  genres: { id: number; name: string }[];
 }
 
 /** TMDB TV show details. */
@@ -41,6 +83,9 @@ export interface TMDBTVShow {
   backdrop_path: string | null;
   first_air_date: string;
   number_of_seasons: number;
+  tagline: string;
+  vote_average: number;
+  genres: { id: number; name: string }[];
 }
 
 /** TMDB TV episode. */
@@ -399,7 +444,7 @@ export function getPosterUrl(
   posterPath: string | null,
   size: PosterSize = "w500"
 ): string | null {
-  if (!posterPath) return null;
+  if (!posterPath || !isValidImagePath(posterPath)) return null;
   return `${TMDB_IMAGE_BASE}/${size}${posterPath}`;
 }
 
@@ -667,3 +712,251 @@ export function getBestTextlessBackdrop(images: TMDBImages): string | null {
   // Already sorted by vote_average, so first is best
   return candidates[0]?.file_path || null;
 }
+
+// =============================================================================
+// Item Metadata Helper
+// =============================================================================
+
+/** Normalized TMDB metadata for item detail pages. */
+export interface TmdbItemMetadata {
+  /** Movie/show tagline (e.g., "Long live the fighters."). */
+  tagline?: string;
+  /** Release year. */
+  year?: string;
+  /** Runtime in minutes (movies only). */
+  runtime?: number;
+  /** Community vote average (0-10). */
+  voteAverage?: number;
+  /** Content rating (e.g., "PG-13", "TV-MA"). */
+  contentRating?: string;
+  /** Genre names. */
+  genres: string[];
+}
+
+/**
+ * Fetches normalized TMDB metadata for an item detail page.
+ * Includes content rating from release dates (movies) or content ratings (TV).
+ * Cached per-request via React.cache().
+ *
+ * @param tmdbId - TMDB movie or TV show ID
+ * @param tmdbType - "movie" or "tv"
+ * @returns Normalized metadata or null on error
+ */
+export const getItemTmdbMetadata = cache(
+  async (
+    tmdbId: number,
+    tmdbType: string
+  ): Promise<TmdbItemMetadata | null> => {
+    if (!process.env.TMDB_API_KEY) return null;
+
+    try {
+      if (tmdbType === "movie") {
+        const [movie, releases] = await Promise.all([
+          getMovie(tmdbId),
+          tmdbFetch<{
+            results: {
+              iso_3166_1: string;
+              release_dates: { certification: string }[];
+            }[];
+          }>(`/movie/${tmdbId}/release_dates`),
+        ]);
+        if (!movie) return null;
+
+        const usRelease = releases?.results?.find((r) => r.iso_3166_1 === "US");
+        const cert = usRelease?.release_dates?.find(
+          (d) => d.certification
+        )?.certification;
+
+        return {
+          tagline: movie.tagline || undefined,
+          year: movie.release_date?.slice(0, 4) || undefined,
+          runtime: movie.runtime ?? undefined,
+          voteAverage: movie.vote_average || undefined,
+          contentRating: cert || undefined,
+          genres: movie.genres?.map((g) => g.name) ?? [],
+        };
+      } else {
+        const [show, ratings] = await Promise.all([
+          getTVShow(tmdbId),
+          tmdbFetch<{
+            results: { iso_3166_1: string; rating: string }[];
+          }>(`/tv/${tmdbId}/content_ratings`),
+        ]);
+        if (!show) return null;
+
+        const usRating = ratings?.results?.find((r) => r.iso_3166_1 === "US");
+
+        return {
+          tagline: show.tagline || undefined,
+          year: show.first_air_date?.slice(0, 4) || undefined,
+          voteAverage: show.vote_average || undefined,
+          contentRating: usRating?.rating || undefined,
+          genres: show.genres?.map((g) => g.name) ?? [],
+        };
+      }
+    } catch {
+      return null;
+    }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Shared Utility Functions
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Formats runtime in hours and minutes.
+ *
+ * @param minutes - Runtime in minutes
+ * @returns Formatted string (e.g., "2h 46m")
+ */
+export function formatRuntime(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours === 0) return `${mins}m`;
+  if (mins === 0) return `${hours}h`;
+  return `${hours}h ${mins}m`;
+}
+
+/**
+ * Gets profile image URL from TMDB path.
+ *
+ * @param profilePath - TMDB profile path
+ * @returns Full image URL or null
+ */
+export function getProfileImageUrl(profilePath: string | null): string | null {
+  if (!profilePath) return null;
+  return `${TMDB_IMAGE_BASE}/w185${profilePath}`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Extended TMDB Details (cast, providers, videos, recommendations)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Combined TMDB details for item detail About tab. */
+export interface TmdbItemDetails {
+  cast: CastMember[];
+  providers: WatchProvider[];
+  videos: Video[];
+  recommendations: Recommendation[];
+}
+
+/** TMDB credits API response shape. */
+interface TMDBCreditsResponse {
+  cast?: {
+    id: number;
+    name: string;
+    character: string;
+    profile_path: string | null;
+    order: number;
+  }[];
+}
+
+/** TMDB watch providers API response shape. */
+interface TMDBWatchProvidersResponse {
+  results?: {
+    US?: {
+      flatrate?: {
+        provider_id: number;
+        provider_name: string;
+        logo_path: string;
+      }[];
+    };
+  };
+}
+
+/** TMDB videos API response shape. */
+interface TMDBVideosResponse {
+  results?: {
+    id: string;
+    key: string;
+    name: string;
+    type: string;
+    site: string;
+  }[];
+}
+
+/** TMDB recommendations API response shape. */
+interface TMDBRecommendationsResponse {
+  results?: {
+    id: number;
+    title?: string;
+    name?: string;
+    poster_path: string | null;
+    backdrop_path: string | null;
+    media_type: string;
+  }[];
+}
+
+/**
+ * Fetches extended TMDB details (cast, providers, videos, recommendations).
+ * All four endpoints are fetched in parallel. Failures return empty arrays.
+ * Cached per-request via React.cache().
+ *
+ * @param tmdbId - TMDB movie or TV show ID
+ * @param tmdbType - "movie" or "tv"
+ * @returns Combined details or null if TMDB is not configured
+ */
+export const getItemTmdbDetails = cache(
+  async (
+    tmdbId: number,
+    tmdbType: "movie" | "tv"
+  ): Promise<TmdbItemDetails | null> => {
+    if (!process.env.TMDB_API_KEY) return null;
+
+    const prefix = tmdbType === "movie" ? "movie" : "tv";
+
+    try {
+      const [credits, watchProviders, videos, recommendations] =
+        await Promise.all([
+          tmdbFetch<TMDBCreditsResponse>(`/${prefix}/${tmdbId}/credits`),
+          tmdbFetch<TMDBWatchProvidersResponse>(
+            `/${prefix}/${tmdbId}/watch/providers`
+          ),
+          tmdbFetch<TMDBVideosResponse>(`/${prefix}/${tmdbId}/videos`),
+          tmdbFetch<TMDBRecommendationsResponse>(
+            `/${prefix}/${tmdbId}/recommendations`
+          ),
+        ]);
+
+      return {
+        cast: (credits?.cast ?? [])
+          .sort((a, b) => a.order - b.order)
+          .slice(0, 10)
+          .map((c) => ({
+            id: c.id,
+            name: c.name,
+            character: c.character,
+            profilePath: c.profile_path,
+          })),
+        providers: (watchProviders?.results?.US?.flatrate ?? []).map((p) => ({
+          providerId: p.provider_id,
+          providerName: p.provider_name,
+          logoPath: `${TMDB_IMAGE_BASE}/w92${p.logo_path}`,
+        })),
+        videos: (videos?.results ?? [])
+          .filter((v) => v.site === "YouTube")
+          .slice(0, 4)
+          .map((v) => ({
+            id: v.id,
+            key: v.key,
+            name: v.name,
+            type: v.type,
+            site: v.site,
+          })),
+        recommendations: (recommendations?.results ?? [])
+          .filter((r) => r.media_type === "movie" || r.media_type === "tv")
+          .slice(0, 6)
+          .map((r) => ({
+            id: r.id,
+            title: r.title || r.name || "Unknown",
+            posterPath: r.poster_path,
+            backdropPath: r.backdrop_path,
+            mediaType: r.media_type as "movie" | "tv",
+          })),
+      };
+    } catch {
+      return null;
+    }
+  }
+);

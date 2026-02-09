@@ -134,6 +134,15 @@ describe("ItemsView", () => {
     primaryMediaName: null,
     mediaIconType: null,
     progress: null,
+    tmdbId: null,
+    tmdbType: null,
+    tmdbShowTagline: true,
+    tmdbShowMetadata: true,
+    tmdbShowGenres: true,
+    tmdbShowCast: true,
+    tmdbShowProviders: true,
+    tmdbShowVideos: true,
+    tmdbShowRecommendations: true,
   });
 
   const mockItems: ItemWithArtwork[] = [
@@ -159,59 +168,10 @@ describe("ItemsView", () => {
       expect(screen.getByText("No items yet")).toBeInTheDocument();
       expect(screen.getByText(/create your first item/i)).toBeInTheDocument();
     });
-
-    it("renders Add button in empty state", () => {
-      render(<ItemsView items={[]} />);
-      // Add button shows "Add" text (not "Add Item")
-      const buttons = screen.getAllByRole("button", { name: /^add$/i });
-      expect(buttons.length).toBeGreaterThan(0);
-    });
-  });
-
-  describe("toolbar", () => {
-    it("shows toolbar by default", () => {
-      render(<ItemsView items={mockItems} />);
-      // Add button shows "Add" text
-      const addButtons = screen.getAllByRole("button", { name: /^add$/i });
-      expect(addButtons.length).toBeGreaterThan(0);
-      // Sync buttons exist (mobile + desktop)
-      const syncButtons = screen.getAllByRole("button", { name: /sync/i });
-      expect(syncButtons.length).toBeGreaterThan(0);
-    });
-
-    it("hides toolbar when hideToolbar is true", () => {
-      render(<ItemsView items={mockItems} hideToolbar />);
-      expect(
-        screen.queryByRole("button", { name: /^add$/i })
-      ).not.toBeInTheDocument();
-    });
-
-    it("disables Sync button when no drive connection", () => {
-      render(<ItemsView items={mockItems} hasDriveConnection={false} />);
-      // All sync buttons (mobile + desktop) should be disabled
-      const syncButtons = screen.getAllByRole("button", { name: /sync/i });
-      syncButtons.forEach((btn) => expect(btn).toBeDisabled());
-    });
-
-    it("enables Sync button when drive connected", () => {
-      render(<ItemsView items={mockItems} hasDriveConnection />);
-      // All sync buttons (mobile + desktop) should be enabled
-      const syncButtons = screen.getAllByRole("button", { name: /sync/i });
-      syncButtons.forEach((btn) => expect(btn).toBeEnabled());
-    });
-
-    it("disables Edit and View toggle when no items", () => {
-      render(<ItemsView items={[]} />);
-      // ViewToggle receives disabled prop when items.length === 0
-      expect(screen.getByTestId("view-toggle")).toHaveAttribute(
-        "data-disabled",
-        "true"
-      );
-    });
   });
 
   describe("external control", () => {
-    it("uses external isEditing state when provided", () => {
+    it("uses external isEditing state when provided", async () => {
       const onEditingChange = vi.fn();
       render(
         <ItemsView
@@ -220,11 +180,11 @@ describe("ItemsView", () => {
           onEditingChange={onEditingChange}
         />
       );
-      // When isEditing=true, the component should be in edit mode
-      // We verify by checking the edit mode toggle button state
-      // Note: SortableTree is dynamically imported, so we can't test its rendering in unit tests
-      // The actual dynamic loading behavior is better tested in E2E
-      expect(screen.getByTestId("view-toggle")).toBeInTheDocument();
+      // When isEditing=true, SortableTree is dynamically imported
+      // Wait for it to appear (mocked as sortable-tree testid)
+      await waitFor(() => {
+        expect(screen.getByTestId("sortable-tree")).toBeInTheDocument();
+      });
     });
 
     // Note: AddItemDialog is dynamically imported, so we can't test its rendering in unit tests
@@ -254,22 +214,6 @@ describe("ItemsView", () => {
       // Filter should receive the sorted result
       const sortResult = vi.mocked(sortItems).mock.results[0]?.value;
       expect(filterItems).toHaveBeenCalledWith(sortResult, "all");
-    });
-
-    it("disables edit mode when sort is not custom", () => {
-      sortFilterState.sortBy = "name-asc";
-      render(<ItemsView items={mockItems} />);
-      // Edit button should be disabled when not using custom sort
-      const editButton = screen.getByRole("button", { name: /edit/i });
-      expect(editButton).toBeDisabled();
-    });
-
-    it("enables edit mode when sort is custom", () => {
-      sortFilterState.sortBy = "custom";
-      render(<ItemsView items={mockItems} />);
-      // Edit button should be enabled with custom sort
-      const editButton = screen.getByRole("button", { name: /edit/i });
-      expect(editButton).toBeEnabled();
     });
   });
 

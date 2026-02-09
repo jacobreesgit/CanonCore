@@ -11,6 +11,9 @@
 import { test, expect } from "../../fixtures";
 
 test.describe("Items Tree Drag Journey", () => {
+  // Multiple item creation + navigation + drag operations need more than 30s
+  test.setTimeout(60000);
+
   // Use testUser fixture for consistent test setup (compatible with itemsPage)
   test.beforeEach(async ({ page, testUser }) => {
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });

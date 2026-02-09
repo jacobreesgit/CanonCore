@@ -6,24 +6,33 @@
 
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Layers, Pin } from "lucide-react";
+import { Plus } from "lucide-react";
+import { getItems } from "@/lib/item-actions";
 import { ItemsView } from "@/components/items";
-import { ProfileHero } from "./profile-hero";
-import { GridItem } from "@/components/sortable-grid/GridItem";
-import { SortDropdown } from "@/components/items/sort-dropdown";
-import { MobileOptionsSheet } from "@/components/items/mobile-options-sheet";
+import { EditModeToggle } from "@/components/items/edit-mode-toggle";
+import { CinematicHero, type HeroSlide } from "@/components/hero";
+import { GridItem } from "@/components/sortable-grid/grid-item";
 import { EmptyState } from "@/components/items/empty-state";
+import { Section } from "@/components/ui/section";
+import { HeroContentLayout } from "@/components/ui/hero-content-layout";
+import { ContentToolbar } from "@/components/ui/content-toolbar";
+import { Button } from "@/components/ui/button";
 import { useExploreSortFilter } from "@/hooks/use-explore-sort";
-import { EXPLORE_SORT_OPTIONS, sortPublicItems } from "@/lib/item-utils";
-import { cn } from "@/lib/utils";
-import type { ItemWithArtwork, ItemProgress } from "@/lib/types";
-import type { PublicProfile } from "@/lib/public-auth";
+import { useItemsSortFilter } from "@/hooks/use-items-sort-filter";
+import { useSyncHandler } from "@/hooks/use-sync-handler";
+import {
+  EXPLORE_SORT_OPTIONS,
+  sortPublicItems,
+  filterItems,
+} from "@/lib/item-utils";
+import { formatProgressLabel } from "@/lib/progress-utils";
+import type { ItemWithArtwork, ItemProgress, FilterOption } from "@/lib/types";
 
 /**
  * Profile data for unified display.
- * Subset of PublicProfile with fields needed by ProfileHero.
+ * Subset of PublicProfile with fields needed by CinematicHero.
  */
 interface ProfileData {
   /** User ID */
@@ -49,6 +58,8 @@ interface ProfilePageProps {
   hasDriveConnection?: boolean;
   /** Library progress data (owner mode only) */
   libraryProgress?: ItemProgress | null;
+  /** Public library progress for viewers (non-owner mode) */
+  viewerProgress?: { percentage: number } | null;
 }
 
 /**
@@ -80,76 +91,185 @@ export function ProfilePage({
   isOwner,
   hasDriveConnection = false,
   libraryProgress,
+  viewerProgress,
 }: ProfilePageProps) {
+  if (isOwner) {
+    return (
+      <OwnerModeContent
+        profile={profile}
+        items={items}
+        hasDriveConnection={hasDriveConnection}
+        libraryProgress={libraryProgress}
+      />
+    );
+  }
+
+  return (
+    <ViewerModeContent
+      profile={profile}
+      items={items}
+      viewerProgress={viewerProgress}
+    />
+  );
+}
+
+/**
+ * Owner mode content component.
+ * Full ItemsView with editing, sync, and add item controls.
+ * State is lifted out of ItemsView so ContentToolbar can control it.
+ */
+function OwnerModeContent({
+  profile,
+  items: initialItems,
+  hasDriveConnection,
+  libraryProgress,
+}: {
+  profile: ProfileData;
+  items: ItemWithArtwork[];
+  hasDriveConnection: boolean;
+  libraryProgress?: ItemProgress | null;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [items, setItems] = useState(initialItems);
+
+  // Sort/filter state (persisted to localStorage)
+  const { sortBy, setSortBy, filterBy, setFilterBy } = useItemsSortFilter();
+
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Add item dialog state
+  const [addItemOpen, setAddItemOpen] = useState(false);
+
+  // Sync with post-sync explicit refetch
+  const handleSyncSuccess = useCallback(() => {
+    startTransition(async () => {
+      const result = await getItems(null);
+      if (result.success && result.data) {
+        setItems(result.data);
+      }
+    });
+  }, []);
+  const { isSyncing, handleSync } = useSyncHandler({
+    onSuccess: handleSyncSuccess,
+  });
+
+  // Disable edit mode when not using custom sort
+  const isCustomSort = sortBy === "custom";
+
   // Build hero URL with userId
   const heroBackgroundUrl = profile.hasHeroImage
     ? `/api/user/hero?userId=${profile.id}`
     : undefined;
 
-  // Convert profile to PublicProfile shape for ProfileHero
-  // Use epoch date as placeholder since createdAt is not used by ProfileHero
-  const publicProfile: PublicProfile = useMemo(
-    () => ({
-      id: profile.id,
-      username: profile.username,
-      name: profile.name,
-      hasImage: profile.hasImage,
-      hasHeroImage: profile.hasHeroImage,
-      createdAt: new Date(0),
-    }),
-    [
-      profile.id,
-      profile.username,
-      profile.name,
-      profile.hasImage,
-      profile.hasHeroImage,
-    ]
+  // Current user info for owner display in grid items
+  const currentUser = {
+    id: profile.id,
+    username: profile.username,
+    name: profile.name,
+  };
+
+  // Toolbar actions
+  const toolbarActions = (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setAddItemOpen(true)}
+        className="gap-1.5"
+        aria-label="Add"
+      >
+        <Plus className="size-4" strokeWidth={2} />
+        <span className="hidden sm:inline">Add</span>
+      </Button>
+      <EditModeToggle
+        isEditing={isEditing}
+        onToggle={() => setIsEditing((prev) => !prev)}
+        disabled={items.length === 0 || !isCustomSort}
+        disabledReason={
+          items.length === 0
+            ? "No items to edit"
+            : !isCustomSort
+              ? "Set sort to Custom Order to reorder"
+              : undefined
+        }
+      />
+    </>
   );
 
-  // Current user info for owner display in grid items
-  const currentUser = isOwner
-    ? {
-        id: profile.id,
-        username: profile.username,
-        name: profile.name,
-      }
-    : null;
+  // Hero element
+  const hero = (
+    <CinematicHero
+      slides={[
+        {
+          id: "hero",
+          name: profile.name ?? `@${profile.username}`,
+          backgroundUrl: heroBackgroundUrl,
+          progress: libraryProgress?.percentage ?? undefined,
+          progressLabel: libraryProgress
+            ? (formatProgressLabel(libraryProgress) ?? undefined)
+            : undefined,
+          profile: {
+            id: profile.id,
+            username: profile.username,
+            name: profile.name,
+            hasImage: profile.hasImage,
+          },
+        } satisfies HeroSlide,
+      ]}
+    />
+  );
 
-  if (isOwner) {
-    // Owner mode: Full ItemsView with all functionality + pinned items section
-    return (
+  return (
+    <HeroContentLayout hero={hero} isPending={isPending}>
+      <ContentToolbar
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+        filterBy={filterBy}
+        onFilterChange={setFilterBy}
+        showSync
+        isSyncing={isSyncing}
+        onSync={handleSync}
+        hasDriveConnection={hasDriveConnection}
+        disabled={items.length === 0}
+        actions={toolbarActions}
+      />
       <ItemsView
         items={items}
-        heroTitle={profile.name ?? `@${profile.username}`}
-        heroBackgroundUrl={heroBackgroundUrl}
-        heroProgress={libraryProgress}
+        hideToolbar
+        isEditing={isEditing}
+        onEditingChange={setIsEditing}
+        addItemOpen={addItemOpen}
+        onAddItemOpenChange={setAddItemOpen}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+        filterBy={filterBy}
+        onFilterChange={setFilterBy}
         hasDriveConnection={hasDriveConnection}
         currentUser={currentUser}
         disableTreeView
-        addContainerPadding
-        // Pass profile data for avatar in hero carousel
-        heroProfile={publicProfile}
+        onItemsChange={setItems}
       />
-    );
-  }
-
-  // Viewer mode: Read-only grid with ProfileHero
-  return <ViewerModeContent profile={publicProfile} items={items} />;
+    </HeroContentLayout>
+  );
 }
 
 /**
  * Viewer mode content component.
- * Read-only grid with ProfileHero and sort functionality.
+ * Read-only grid with CinematicHero and sort functionality.
  */
 function ViewerModeContent({
   profile,
   items,
+  viewerProgress,
 }: {
-  profile: PublicProfile;
+  profile: ProfileData;
   items: ItemWithArtwork[];
+  viewerProgress?: { percentage: number } | null;
 }) {
   const router = useRouter();
   const { sortBy, setSortBy } = useExploreSortFilter();
+  const [filterBy, setFilterBy] = useState<FilterOption>("all");
 
   // Create O(1) lookup map for original items (avoids O(n²) find in render loop)
   const itemsById = useMemo(
@@ -171,9 +291,10 @@ function ViewerModeContent({
     [items]
   );
 
-  // Transform unpinned items to sortable format and sort
+  // Filter unpinned items, then transform to sortable format and sort
   const sortableItems = useMemo(() => {
-    const publicItems = unpinnedItems.map((item) => ({
+    const filtered = filterItems(unpinnedItems, filterBy);
+    const publicItems = filtered.map((item) => ({
       id: item.id,
       name: item.name,
       description: item.description,
@@ -189,7 +310,7 @@ function ViewerModeContent({
       forkCount: 0,
     }));
     return sortPublicItems(publicItems, sortBy);
-  }, [unpinnedItems, sortBy]);
+  }, [unpinnedItems, sortBy, filterBy]);
 
   // Preload on hover for faster navigation
   const handleMouseEnter = useCallback(
@@ -208,48 +329,57 @@ function ViewerModeContent({
 
   const hasItems = items.length > 0;
 
+  // Hero element
+  const hero = (
+    <CinematicHero
+      headingLevel="h1"
+      slides={[
+        {
+          id: profile.id,
+          name: profile.name ?? `@${profile.username}`,
+          backgroundUrl: profile.hasHeroImage
+            ? `/api/user/hero?userId=${profile.id}`
+            : undefined,
+          progress: viewerProgress?.percentage,
+          progressLabel:
+            viewerProgress && viewerProgress.percentage > 0
+              ? `${viewerProgress.percentage}% watched`
+              : undefined,
+          profile: {
+            id: profile.id,
+            username: profile.username,
+            name: profile.name,
+            hasImage: profile.hasImage,
+          },
+        } satisfies HeroSlide,
+      ]}
+    />
+  );
+
   return (
-    <div className={cn("flex flex-col gap-6", !hasItems && "flex-1")}>
-      {/* Profile hero with cover photo and avatar */}
-      <ProfileHero profile={profile} isOwnProfile={false} addContainerPadding />
-
-      {/* Toolbar - Sort only */}
-      <div className="flex items-center gap-2 px-4 sm:gap-3 md:px-6 lg:px-8">
-        {/* Mobile: Options sheet */}
-        <div className="sm:hidden">
-          <MobileOptionsSheet
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-            disabled={!hasItems}
-            sortOptions={EXPLORE_SORT_OPTIONS}
-            defaultSort="updated-desc"
-          />
-        </div>
-
-        {/* Desktop: Sort dropdown */}
-        <div className="hidden items-center gap-3 sm:flex">
-          <SortDropdown
-            value={sortBy}
-            onChange={setSortBy}
-            disabled={!hasItems}
-            options={EXPLORE_SORT_OPTIONS}
-          />
-        </div>
-      </div>
+    <HeroContentLayout hero={hero} className={!hasItems ? "flex-1" : undefined}>
+      <ContentToolbar
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+        filterBy={filterBy}
+        onFilterChange={setFilterBy}
+        disabled={!hasItems}
+        sortOptions={EXPLORE_SORT_OPTIONS}
+        defaultSort="updated-desc"
+      />
 
       {/* Items grid or empty state */}
       {hasItems ? (
-        <div className="flex flex-col gap-6 px-4 md:px-6 lg:px-8">
+        <>
           {/* Pinned items section */}
           {pinnedItems.length > 0 && (
-            <section aria-label="Pinned items">
-              <h2 className="text-muted-foreground mb-3 flex items-center gap-2 text-xs font-medium tracking-wider uppercase">
-                <Pin className="size-3.5" aria-hidden="true" />
-                <span>Pinned</span>
+            <Section className="py-8" aria-label="Pinned items">
+              <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
+                Pinned
               </h2>
               <div
                 data-testid="pinned-items-grid"
-                className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5"
+                className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6"
               >
                 {pinnedItems.map((item, index) => (
                   <GridItem
@@ -270,21 +400,20 @@ function ViewerModeContent({
                   />
                 ))}
               </div>
-            </section>
+            </Section>
           )}
 
           {/* Library section (items not pinned) */}
           {sortableItems.length > 0 && (
-            <section aria-label="Library">
+            <Section className="py-8" aria-label="Library">
               {pinnedItems.length > 0 && (
-                <h2 className="text-muted-foreground mb-3 flex items-center gap-2 text-xs font-medium tracking-wider uppercase">
-                  <Layers className="size-3.5" aria-hidden="true" />
-                  <span>Library</span>
+                <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
+                  Library
                 </h2>
               )}
               <div
                 data-testid="items-grid-view"
-                className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5"
+                className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6"
               >
                 {sortableItems.map((item, index) => {
                   // O(1) lookup for original item data
@@ -309,14 +438,14 @@ function ViewerModeContent({
                   );
                 })}
               </div>
-            </section>
+            </Section>
           )}
-        </div>
+        </>
       ) : (
-        <div className="flex flex-1 flex-col px-4 md:px-6 lg:px-8">
+        <Section className="flex flex-1 flex-col">
           <EmptyState variant="public-profile-empty" />
-        </div>
+        </Section>
       )}
-    </div>
+    </HeroContentLayout>
   );
 }
