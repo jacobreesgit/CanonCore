@@ -33,6 +33,11 @@ export interface MobileBottomSheetProps {
   description?: string;
   /** Optional callback when close animation completes */
   onAnimationEnd?: (open: boolean) => void;
+  /** When true, enforce min-height from the first snap point so the sheet
+   *  doesn't collapse when swipeable tab content is shorter than the snap. */
+  swipeable?: boolean;
+  /** Optional test ID for E2E testing */
+  "data-testid"?: string;
 }
 
 /**
@@ -61,12 +66,29 @@ export function MobileBottomSheet({
   children,
   snapPoints,
   repositionInputs = false,
+  swipeable = false,
   className,
   title,
   description,
   onAnimationEnd,
+  "data-testid": dataTestId,
 }: MobileBottomSheetProps) {
   const { reducedMotion: prefersReducedMotion } = useReducedMotion();
+
+  // When swipeable, enforce a min-height from the snap point so tab content
+  // that's shorter than the snap doesn't collapse the sheet.
+  const minHeight = React.useMemo(() => {
+    if (!swipeable || !snapPoints || snapPoints.length === 0) return undefined;
+    const snap = snapPoints[0];
+    if (snap === "auto") return undefined;
+    if (typeof snap === "number") {
+      return snap <= 1 ? `${snap * 100}dvh` : `${snap}px`;
+    }
+    if (typeof snap === "string" && snap.endsWith("%")) {
+      return `${parseFloat(snap)}dvh`;
+    }
+    return undefined;
+  }, [swipeable, snapPoints]);
 
   return (
     <DrawerPrimitive.Root
@@ -92,19 +114,23 @@ export function MobileBottomSheet({
         <DrawerPrimitive.Content
           className={cn(
             "bg-background fixed inset-x-0 bottom-0 z-50 flex max-h-[96vh] flex-col overscroll-contain rounded-t-xl border-t",
-            "pb-[env(safe-area-inset-bottom)]",
+            // Vaul sets --snap-point-height as the translateY offset for numeric snap points.
+            // Without compensating padding, the footer gets pushed below the viewport.
+            "pb-[calc(env(safe-area-inset-bottom)+var(--snap-point-height,0px))]",
             // Safari fix: match overlay compositing to prevent rendering glitches
             "[transform:translateZ(0)] transform-gpu [will-change:transform] [backface-visibility:hidden]",
             className
           )}
+          style={minHeight ? { minHeight } : undefined}
           aria-describedby={description ? "sheet-description" : undefined}
+          data-testid={dataTestId}
         >
           {/* Handle - with handleOnly, this is the only draggable area */}
           <DrawerPrimitive.Handle className="bg-muted mx-auto mt-4 h-1.5 w-12 shrink-0 rounded-full" />
 
-          {/* Accessible title (visually hidden but announced) */}
-          <DrawerPrimitive.Title className="sr-only">
-            {title}
+          {/* Accessible title (visually hidden, non-heading to avoid duplicate with visible MobileBottomSheetTitle) */}
+          <DrawerPrimitive.Title asChild>
+            <span className="sr-only">{title}</span>
           </DrawerPrimitive.Title>
 
           {/* Optional description */}

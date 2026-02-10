@@ -196,6 +196,7 @@ function generateFileId(): string {
  */
 export function FileTypeCombobox(props: FileTypeComboboxProps) {
   const { label, description, icon: Icon, fileType, disabled = false } = props;
+  const sectionTestId = `file-section-${label.toLowerCase().replace(/\s+/g, "-")}`;
 
   // Render upload-only mode if specified
   if (props.uploadOnly) {
@@ -208,6 +209,7 @@ export function FileTypeCombobox(props: FileTypeComboboxProps) {
         disabled={disabled}
         queuedFiles={props.queuedFiles}
         onQueueFilesChange={props.onQueueFilesChange}
+        sectionTestId={sectionTestId}
       />
     );
   }
@@ -226,6 +228,7 @@ export function FileTypeCombobox(props: FileTypeComboboxProps) {
       onUploadComplete={props.onUploadComplete}
       onFileDeleted={props.onFileDeleted}
       itemId={props.itemId}
+      sectionTestId={sectionTestId}
     />
   );
 }
@@ -242,6 +245,7 @@ function FileTypeComboboxUploadMode({
   disabled,
   queuedFiles,
   onQueueFilesChange,
+  sectionTestId,
 }: {
   label: string;
   description: string;
@@ -250,6 +254,7 @@ function FileTypeComboboxUploadMode({
   disabled?: boolean;
   queuedFiles: QueuedFile[];
   onQueueFilesChange: (files: QueuedFile[]) => void;
+  sectionTestId: string;
 }) {
   /**
    * Handles files dropped into the dropzone.
@@ -289,7 +294,7 @@ function FileTypeComboboxUploadMode({
   }, [queuedFiles]);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-testid={sectionTestId}>
       {/* Label and Description */}
       <div className="flex items-center gap-2">
         <div
@@ -425,6 +430,7 @@ function FileTypeComboboxSelectMode({
   onUploadComplete,
   onFileDeleted,
   itemId,
+  sectionTestId,
 }: {
   label: string;
   description: string;
@@ -437,6 +443,7 @@ function FileTypeComboboxSelectMode({
   onUploadComplete: (successCount: number) => void;
   onFileDeleted?: () => void;
   itemId: string;
+  sectionTestId: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -697,7 +704,7 @@ function FileTypeComboboxSelectMode({
   const hasError = uploadState?.status === "error" && failedFiles.length > 0;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-testid={sectionTestId}>
       {/* Label and Description */}
       <div className="flex items-center gap-2">
         <div

@@ -1,47 +1,13 @@
 /**
  * Stories for TMDBPosterStep component.
- * Poster selection step with TMDB images grid and skip option.
+ * Fetches real TMDB poster galleries via Storybook loaders.
  */
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import { fn } from "storybook/test";
 
 import { TMDBPosterStep } from "./poster-step";
 import type { TMDBWizardData, ArtworkSelection } from "./tmdb-wizard-types";
-import type { TMDBImages } from "@/lib/tmdb-client";
-
-/**
- * Mock TMDB poster images (real Inception posters from TMDB API).
- */
-const mockPosters: TMDBImages["posters"] = [
-  {
-    file_path: "/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg",
-    vote_average: 8.0,
-    iso_639_1: "mk",
-    width: 2000,
-    height: 3000,
-  },
-  {
-    file_path: "/xlaY2zyzMfkhk0HSC5VUwzoZPU1.jpg",
-    vote_average: 7.5,
-    iso_639_1: "en",
-    width: 2000,
-    height: 3000,
-  },
-  {
-    file_path: "/ljsZTbVsrQSqZgWeep2B1QiDKuh.jpg",
-    vote_average: 7.0,
-    iso_639_1: "en",
-    width: 1000,
-    height: 1500,
-  },
-  {
-    file_path: "/tXQvtRWfkUUnWJAn2tN3jERIUG.jpg",
-    vote_average: 8.3,
-    iso_639_1: "es",
-    width: 2000,
-    height: 3000,
-  },
-];
+import { fetchTmdbImages } from "../../../../.storybook/lib/tmdb";
 
 /**
  * Creates mock wizard data for poster step stories.
@@ -52,7 +18,7 @@ function createMockData(
   return {
     contentType: "movie",
     images: {
-      posters: mockPosters,
+      posters: [],
       backdrops: [],
     },
     poster: {
@@ -69,7 +35,7 @@ const mockCurrentValues = {
   description: "My description",
 };
 
-const meta = {
+const meta: Meta<typeof TMDBPosterStep> = {
   title: "Items/Wizards/TMDB/PosterStep",
   component: TMDBPosterStep,
   tags: ["autodocs"],
@@ -120,33 +86,77 @@ const meta = {
       </div>
     ),
   ],
-} satisfies Meta<typeof TMDBPosterStep>;
+};
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
- * Default poster selection step with available images.
+ * Inception (2010) poster gallery from TMDB.
  */
 export const Default: Story = {
-  args: {
-    data: createMockData(),
-  },
+  args: { data: createMockData() },
+  loaders: [
+    async () => {
+      const images = await fetchTmdbImages(27205, "movie");
+      return { images };
+    },
+  ],
+  render: (args, { loaded: { images } }) => (
+    <TMDBPosterStep
+      {...args}
+      data={createMockData({
+        images: images ?? { posters: [], backdrops: [] },
+      })}
+    />
+  ),
+};
+
+/**
+ * The Dark Knight (2008) poster gallery from TMDB.
+ */
+export const TheDarkKnight: Story = {
+  args: { data: createMockData() },
+  loaders: [
+    async () => {
+      const images = await fetchTmdbImages(155, "movie");
+      return { images };
+    },
+  ],
+  render: (args, { loaded: { images } }) => (
+    <TMDBPosterStep
+      {...args}
+      data={createMockData({
+        images: images ?? { posters: [], backdrops: [] },
+      })}
+    />
+  ),
 };
 
 /**
  * Poster already selected.
  */
 export const WithSelection: Story = {
-  args: {
-    data: createMockData({
-      poster: {
-        value: "/9gk7adHYeDvHkCSEqAvQNLV5Ber.jpg",
-        source: "tmdb",
-        skipped: false,
-      } as ArtworkSelection,
-    }),
-  },
+  args: { data: createMockData() },
+  loaders: [
+    async () => {
+      const images = await fetchTmdbImages(27205, "movie");
+      return { images };
+    },
+  ],
+  render: (args, { loaded: { images } }) => (
+    <TMDBPosterStep
+      {...args}
+      data={createMockData({
+        images: images ?? { posters: [], backdrops: [] },
+        poster: {
+          value: images?.posters?.[0]?.file_path ?? null,
+          source: "tmdb",
+          skipped: false,
+        } as ArtworkSelection,
+      })}
+    />
+  ),
 };
 
 /**
@@ -192,15 +202,25 @@ export const WithError: Story = {
  * Season content type (uses seasonImages).
  */
 export const SeasonContent: Story = {
-  args: {
-    data: createMockData({
-      contentType: "season",
-      images: null,
-      seasonImages: {
-        posters: mockPosters.slice(0, 2),
-      },
-    }),
-  },
+  args: { data: createMockData({ contentType: "season" }) },
+  loaders: [
+    async () => {
+      const images = await fetchTmdbImages(27205, "movie");
+      return { images };
+    },
+  ],
+  render: (args, { loaded: { images } }) => (
+    <TMDBPosterStep
+      {...args}
+      data={createMockData({
+        contentType: "season",
+        images: null,
+        seasonImages: {
+          posters: (images?.posters ?? []).slice(0, 2),
+        },
+      })}
+    />
+  ),
 };
 
 /**
@@ -208,13 +228,25 @@ export const SeasonContent: Story = {
  * Shows tabs with TMDB images and My Uploads dropzone.
  */
 export const UploadMode: Story = {
-  args: {
-    data: createMockData(),
-    uploadMode: true,
-    hasDriveConnection: true,
-    queuedFiles: [],
-    onFilesQueue: fn(),
-  },
+  args: { data: createMockData(), uploadMode: true },
+  loaders: [
+    async () => {
+      const images = await fetchTmdbImages(27205, "movie");
+      return { images };
+    },
+  ],
+  render: (args, { loaded: { images } }) => (
+    <TMDBPosterStep
+      {...args}
+      data={createMockData({
+        images: images ?? { posters: [], backdrops: [] },
+      })}
+      uploadMode
+      hasDriveConnection
+      queuedFiles={[]}
+      onFilesQueue={fn()}
+    />
+  ),
 };
 
 /**

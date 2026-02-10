@@ -5,6 +5,38 @@
 
 import { cache } from "react";
 import { prisma } from "@/lib/prisma";
+import type { TmdbDisplayOptions } from "@/lib/types";
+
+/** Fields required by extractTmdbDisplayOptions. */
+interface TmdbDisplayFields {
+  tmdbShowTagline: boolean;
+  tmdbShowMetadata: boolean;
+  tmdbShowGenres: boolean;
+  tmdbShowCast: boolean;
+  tmdbShowProviders: boolean;
+  tmdbShowVideos: boolean;
+  tmdbShowRecommendations: boolean;
+}
+
+/**
+ * Extracts TMDB display options from an item's database fields.
+ *
+ * @param item - Item with TMDB display boolean fields
+ * @returns TmdbDisplayOptions object
+ */
+export function extractTmdbDisplayOptions(
+  item: TmdbDisplayFields
+): TmdbDisplayOptions {
+  return {
+    showTagline: item.tmdbShowTagline,
+    showMetadata: item.tmdbShowMetadata,
+    showGenres: item.tmdbShowGenres,
+    showCast: item.tmdbShowCast,
+    showProviders: item.tmdbShowProviders,
+    showVideos: item.tmdbShowVideos,
+    showRecommendations: item.tmdbShowRecommendations,
+  };
+}
 
 /**
  * Resolved TMDB reference for an item.

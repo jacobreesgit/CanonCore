@@ -53,12 +53,23 @@ export class SettingsPage {
    * Uses specific selector to avoid matching mobile sidebar which also has role="dialog".
    */
   async close(): Promise<void> {
-    await this.page.getByRole("button", { name: "Close" }).click();
-    // Wait for the settings dialog specifically (not the mobile sidebar)
-    // The settings dialog has data-slot="dialog-content"
-    await this.page
-      .locator('[role="dialog"][data-slot="dialog-content"]')
-      .waitFor({ state: "hidden" });
+    const isMobile = await isMobileViewport(this.page);
+
+    if (isMobile) {
+      // Mobile: click Cancel button in the sheet footer
+      await this.page.getByRole("button", { name: "Cancel" }).click();
+      // Wait for sheet to close
+      await this.page
+        .getByRole("dialog", { name: /settings/i })
+        .waitFor({ state: "hidden", timeout: 5000 });
+    } else {
+      await this.page.getByRole("button", { name: "Close" }).click();
+      // Wait for the settings dialog specifically (not the mobile sidebar)
+      // The settings dialog has data-slot="dialog-content"
+      await this.page
+        .locator('[role="dialog"][data-slot="dialog-content"]')
+        .waitFor({ state: "hidden" });
+    }
   }
 
   /**
@@ -122,23 +133,40 @@ export class SettingsPage {
 
   /**
    * Switches to the Account tab.
+   * Desktop: "Change Username" button, Mobile: "Username" section with "Change" button.
    */
   async goToAccountTab(): Promise<void> {
     await this.page.getByRole("tab", { name: "Account" }).click();
-    // Wait for "Change Username" button to be visible (indicates tab content loaded)
-    await this.page.getByRole("button", { name: /change username/i }).waitFor({
-      state: "visible",
-      timeout: 5000,
-    });
+    const isMobile = await isMobileViewport(this.page);
+    if (isMobile) {
+      // Mobile: Wait for "Change Password" button (unique to Account tab content)
+      await this.page
+        .getByRole("button", { name: /change password/i })
+        .waitFor({
+          state: "visible",
+          timeout: 5000,
+        });
+    } else {
+      // Desktop: Wait for "Change Username" button
+      await this.page
+        .getByRole("button", { name: /change username/i })
+        .waitFor({
+          state: "visible",
+          timeout: 5000,
+        });
+    }
   }
 
   /**
    * Switches to the Connections tab.
+   * Desktop uses "Connections" label, mobile uses "Cloud" label.
    */
   async goToConnectionsTab(): Promise<void> {
-    await this.page.getByRole("tab", { name: "Connections" }).click();
+    const isMobile = await isMobileViewport(this.page);
+    const tabName = isMobile ? "Cloud" : "Connections";
+    await this.page.getByRole("tab", { name: tabName }).click();
     // Wait for Google Drive section to be visible (using label which contains the text)
-    await this.page.getByText("Google Drive").first().waitFor({
+    await this.page.getByTestId("google-drive-section").waitFor({
       state: "visible",
       timeout: 3000,
     });
@@ -146,9 +174,17 @@ export class SettingsPage {
 
   /**
    * Switches to the Preferences tab.
+   * Desktop uses "Preferences" label, mobile uses "Prefs" label.
    */
   async goToPreferencesTab(): Promise<void> {
-    await this.page.getByRole("tab", { name: "Preferences" }).click();
+    const isMobile = await isMobileViewport(this.page);
+    const tabName = isMobile ? "Prefs" : "Preferences";
+    await this.page.getByRole("tab", { name: tabName }).click();
+    // Wait for the Preferences tab content to render (radio buttons)
+    await this.page.getByRole("radio", { name: "Grid" }).waitFor({
+      state: "visible",
+      timeout: 5000,
+    });
   }
 
   /**
@@ -221,8 +257,16 @@ export class SettingsPage {
    * Opens the Change Username step from the Account tab.
    */
   async openChangeUsername(): Promise<void> {
-    await this.page.getByRole("button", { name: /change username/i }).click();
-    // Wait for step to open
+    const isMobile = await isMobileViewport(this.page);
+    if (isMobile) {
+      // Mobile: button says "Change" next to the Username section
+      await this.page
+        .getByRole("button", { name: "Change", exact: true })
+        .click();
+    } else {
+      await this.page.getByRole("button", { name: /change username/i }).click();
+    }
+    // Wait for step to open (heading is same on both)
     await this.page.getByRole("heading", { name: /change username/i }).waitFor({
       state: "visible",
       timeout: 5000,
@@ -251,10 +295,17 @@ export class SettingsPage {
    * Submits the username change form.
    */
   async submitUsernameChange(): Promise<void> {
-    await this.page
-      .locator('[data-slot="dialog-footer"]')
-      .getByRole("button", { name: /change username/i })
-      .click();
+    const isMobile = await isMobileViewport(this.page);
+    if (isMobile) {
+      // Mobile: submit button is in MobileBottomSheetFooter
+      await this.page.getByRole("button", { name: /change username/i }).click();
+    } else {
+      // Desktop: submit button is in dialog footer
+      await this.page
+        .locator('[data-slot="dialog-footer"]')
+        .getByRole("button", { name: /change username/i })
+        .click();
+    }
 
     // Wait for success toast
     await this.page.getByText(/username saved/i).waitFor({
@@ -263,7 +314,6 @@ export class SettingsPage {
     });
 
     // Wait for username step to close and return to main settings
-    // Check that the "Change Username" heading is no longer visible
     await this.page.getByRole("heading", { name: /change username/i }).waitFor({
       state: "hidden",
       timeout: 5000,

@@ -10,7 +10,6 @@ import { Plus, Settings2 } from "lucide-react";
 import { ContentToolbar } from "@/components/ui/content-toolbar";
 import { Button } from "@/components/ui/button";
 import { EditModeToggle } from "./edit-mode-toggle";
-import { ViewToggle } from "./view-toggle";
 
 const meta = {
   title: "Items/Toolbar/ContentToolbar",
@@ -118,14 +117,15 @@ export const ActiveFilter: Story = {
 
 export const WithOwnerActions: Story = {
   args: {
+    viewMode: "grid",
+    onViewChange: fn(),
     actions: (
       <>
         <Button variant="outline" size="sm" className="gap-1.5">
           <Plus className="size-4" strokeWidth={2} />
-          <span className="hidden sm:inline">Add</span>
+          <span className="hidden xl:inline">Add</span>
         </Button>
         <EditModeToggle isEditing={false} onToggle={fn()} />
-        <ViewToggle />
       </>
     ),
   },
@@ -133,7 +133,7 @@ export const WithOwnerActions: Story = {
     docs: {
       description: {
         story:
-          "Toolbar with owner action buttons (Add, Edit, View toggle) in actions slot.",
+          "Toolbar with owner action buttons (Add, Edit) and view dropdown.",
       },
     },
   },
@@ -141,17 +141,18 @@ export const WithOwnerActions: Story = {
 
 export const ItemDetailPage: Story = {
   args: {
+    viewMode: "grid",
+    onViewChange: fn(),
     actions: (
       <>
         <Button variant="outline" size="sm" className="gap-1.5">
           <Plus className="size-4" strokeWidth={2} />
-          <span className="hidden sm:inline">Add</span>
+          <span className="hidden xl:inline">Add</span>
         </Button>
         <EditModeToggle isEditing={false} onToggle={fn()} />
-        <ViewToggle />
         <Button variant="outline" size="sm" className="gap-1.5">
           <Settings2 className="size-4" />
-          <span className="hidden sm:inline">Settings</span>
+          <span className="hidden xl:inline">Settings</span>
         </Button>
       </>
     ),

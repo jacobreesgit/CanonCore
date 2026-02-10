@@ -8,7 +8,14 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { SlidersHorizontal, ArrowUpDown, Filter, Check } from "lucide-react";
+import {
+  SlidersHorizontal,
+  ArrowUpDown,
+  Filter,
+  Check,
+  LayoutGrid,
+  List,
+} from "lucide-react";
 import {
   MobileBottomSheet,
   MobileBottomSheetHeader,
@@ -22,25 +29,31 @@ import {
   type SortOptionConfig,
   type FilterOptionConfig,
 } from "@/lib/item-utils";
-import type { SortOption, FilterOption } from "@/lib/types";
+import type { SortOption, FilterOption, ViewMode } from "@/lib/types";
 
 export interface MobileOptionsSheetProps {
-  /** Current sort option. */
-  sortBy: SortOption;
-  /** Callback when sort option changes. */
-  onSortChange: (value: SortOption) => void;
+  /** Current sort option. Optional - when omitted, sort section is hidden. */
+  sortBy?: SortOption;
+  /** Callback when sort option changes. Optional - when omitted, sort section is hidden. */
+  onSortChange?: (value: SortOption) => void;
   /** Current filter option. Optional - when omitted, filter section is hidden. */
-  filterBy?: FilterOption;
+  filterBy?: FilterOption | string;
   /** Callback when filter option changes. Optional - when omitted, filter section is hidden. */
-  onFilterChange?: (value: FilterOption) => void;
+  onFilterChange?: ((value: FilterOption) => void) | ((value: string) => void);
   /** Whether controls are disabled (e.g., no items). */
   disabled?: boolean;
   /** Custom sort options to display. Defaults to SORT_OPTIONS. */
   sortOptions?: SortOptionConfig[];
   /** Custom filter options to display. Defaults to FILTER_OPTIONS. */
-  filterOptions?: FilterOptionConfig[];
+  filterOptions?: FilterOptionConfig[] | { value: string; label: string }[];
   /** Default sort option for determining "active" state. Defaults to "custom". */
   defaultSort?: SortOption;
+
+  // --- View mode (optional) ---
+  /** Current view mode. Optional - when omitted, view section is hidden. */
+  viewMode?: ViewMode;
+  /** Callback when view mode changes. */
+  onViewChange?: (value: ViewMode) => void;
 }
 
 /**
@@ -65,17 +78,24 @@ export function MobileOptionsSheet({
   sortOptions = SORT_OPTIONS,
   filterOptions = FILTER_OPTIONS,
   defaultSort = "custom",
+  viewMode,
+  onViewChange,
 }: MobileOptionsSheetProps) {
   const [open, setOpen] = useState(false);
   const sortRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const filterRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Calculate if any non-default options are active
-  const hasActiveSort = sortBy !== defaultSort;
+  const hasActiveSort =
+    sortBy !== undefined &&
+    onSortChange !== undefined &&
+    sortBy !== defaultSort;
   const hasActiveFilter = filterBy !== undefined && filterBy !== "all";
   const hasActiveOptions = hasActiveSort || hasActiveFilter;
 
-  // Whether to show the filter section
+  // Whether to show each section
+  const showView = viewMode !== undefined && onViewChange !== undefined;
+  const showSort = sortBy !== undefined && onSortChange !== undefined;
   const showFilter = filterBy !== undefined && onFilterChange !== undefined;
 
   /**
@@ -114,6 +134,7 @@ export function MobileOptionsSheet({
       {/* Trigger button - glassmorphism styling */}
       <button
         type="button"
+        data-testid="mobile-options-trigger"
         disabled={disabled}
         onClick={() => setOpen(true)}
         className={cn(
@@ -153,57 +174,123 @@ export function MobileOptionsSheet({
           </MobileBottomSheetTitle>
         </MobileBottomSheetHeader>
 
-        <MobileBottomSheetContent className="space-y-6 px-0 pb-8">
-          {/* Sort Section */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 px-4 text-xs font-medium tracking-wider text-[var(--tertiary-foreground)] uppercase">
-              <ArrowUpDown aria-hidden="true" className="size-4" />
-              <span>Sort By</span>
-            </div>
-            <div
-              className="space-y-1 px-2"
-              role="listbox"
-              aria-label="Sort options"
-            >
-              {sortOptions.map((option, index) => (
+        <MobileBottomSheetContent className="space-y-6 pb-8">
+          {/* View Mode Section */}
+          {showView && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs font-medium tracking-wider text-[var(--tertiary-foreground)] uppercase">
+                <LayoutGrid aria-hidden="true" className="size-4" />
+                <span>View</span>
+              </div>
+              <div
+                className="-mx-2 space-y-1"
+                role="listbox"
+                aria-label="View mode"
+              >
                 <button
-                  key={option.value}
-                  ref={(el) => {
-                    sortRefs.current[index] = el;
-                  }}
                   type="button"
                   role="option"
-                  aria-selected={sortBy === option.value}
-                  onClick={() => {
-                    onSortChange(option.value);
-                  }}
-                  onKeyDown={(e) => handleKeyDown(e, sortRefs, index)}
+                  aria-selected={viewMode === "grid"}
+                  onClick={() => onViewChange!("grid")}
                   className={cn(
                     "flex w-full items-center justify-between rounded-lg px-4 py-3",
                     "text-sm font-medium",
                     "transition-colors duration-150",
-                    sortBy === option.value
+                    "min-h-[44px]",
+                    viewMode === "grid"
                       ? "text-foreground bg-white/20"
                       : "text-muted-foreground hover:bg-white/10",
                     "focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
                   )}
                 >
-                  <span>{option.label}</span>
-                  {sortBy === option.value && <Check className="size-4" />}
+                  <span className="flex items-center gap-2">
+                    <LayoutGrid aria-hidden="true" className="size-4" />
+                    Grid
+                  </span>
+                  {viewMode === "grid" && (
+                    <Check aria-hidden="true" className="size-4" />
+                  )}
                 </button>
-              ))}
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={viewMode === "tree"}
+                  onClick={() => onViewChange!("tree")}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-lg px-4 py-3",
+                    "text-sm font-medium",
+                    "transition-colors duration-150",
+                    "min-h-[44px]",
+                    viewMode === "tree"
+                      ? "text-foreground bg-white/20"
+                      : "text-muted-foreground hover:bg-white/10",
+                    "focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <List aria-hidden="true" className="size-4" />
+                    Tree
+                  </span>
+                  {viewMode === "tree" && (
+                    <Check aria-hidden="true" className="size-4" />
+                  )}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Sort Section */}
+          {showSort && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs font-medium tracking-wider text-[var(--tertiary-foreground)] uppercase">
+                <ArrowUpDown aria-hidden="true" className="size-4" />
+                <span>Sort By</span>
+              </div>
+              <div
+                className="-mx-2 space-y-1"
+                role="listbox"
+                aria-label="Sort options"
+              >
+                {sortOptions.map((option, index) => (
+                  <button
+                    key={option.value}
+                    ref={(el) => {
+                      sortRefs.current[index] = el;
+                    }}
+                    type="button"
+                    role="option"
+                    aria-selected={sortBy === option.value}
+                    onClick={() => {
+                      onSortChange!(option.value);
+                    }}
+                    onKeyDown={(e) => handleKeyDown(e, sortRefs, index)}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-lg px-4 py-3",
+                      "text-sm font-medium",
+                      "transition-colors duration-150",
+                      sortBy === option.value
+                        ? "text-foreground bg-white/20"
+                        : "text-muted-foreground hover:bg-white/10",
+                      "focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
+                    )}
+                  >
+                    <span>{option.label}</span>
+                    {sortBy === option.value && <Check className="size-4" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Filter Section - only shown when filter props provided */}
           {showFilter && (
             <div className="space-y-2">
-              <div className="flex items-center gap-2 px-4 text-xs font-medium tracking-wider text-[var(--tertiary-foreground)] uppercase">
+              <div className="flex items-center gap-2 text-xs font-medium tracking-wider text-[var(--tertiary-foreground)] uppercase">
                 <Filter aria-hidden="true" className="size-4" />
                 <span>Filter</span>
               </div>
               <div
-                className="space-y-1 px-2"
+                className="-mx-2 space-y-1"
                 role="listbox"
                 aria-label="Filter options"
               >
@@ -217,7 +304,7 @@ export function MobileOptionsSheet({
                     role="option"
                     aria-selected={filterBy === option.value}
                     onClick={() => {
-                      onFilterChange(option.value);
+                      (onFilterChange as (value: string) => void)(option.value);
                     }}
                     onKeyDown={(e) => handleKeyDown(e, filterRefs, index)}
                     className={cn(

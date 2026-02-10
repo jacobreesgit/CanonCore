@@ -472,17 +472,14 @@ describe("NavMain", () => {
       // Note: In tests, the motion.div exit animation completes immediately
     });
 
-    it("does not expand pinned items section when no username", () => {
+    it("expands pinned items section even without username due to auto-expand effect", () => {
       mockPathname.mockReturnValue("/u/testuser");
       render(<NavMain items={testItems} pinnedItems={pinnedItems} />);
 
-      // Without username, myItemsBaseUrl is null, so:
-      // - isMyItemsPath is false (can't match pathname)
-      // - hasActivePinned is false (can't build URLs to compare)
-      // - isOpen defaults to false (collapsed)
-      // Sub-items should not be visible because section is collapsed
+      // Without username, initial state is collapsed, but the useEffect
+      // auto-expands when hasPinnedItems is true (regardless of username)
       const subButtons = screen.queryAllByTestId("sidebar-menu-sub-button");
-      expect(subButtons.length).toBe(0);
+      expect(subButtons.length).toBe(2);
     });
   });
 });

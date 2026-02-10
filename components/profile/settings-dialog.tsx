@@ -1327,6 +1327,7 @@ export function SettingsDialog({
         <AnimatedDialogContent
           stepKey={currentStep}
           className="max-h-[90vh] sm:max-w-2xl"
+          data-testid="settings-dialog"
           header={getStepHeader()}
           footer={getStepFooter()}
         >

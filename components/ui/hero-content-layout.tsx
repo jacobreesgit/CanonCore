@@ -35,7 +35,6 @@ export function HeroContentLayout({
     <div className={cn("flex flex-col", isPending && "opacity-70", className)}>
       {hero}
       {children}
-      <div className="h-16" />
     </div>
   );
 }

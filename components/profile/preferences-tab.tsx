@@ -127,7 +127,10 @@ export function PreferencesTab() {
           Choose the default sort order for your items.
         </p>
         <Select value={sortBy} onValueChange={handleSortChange}>
-          <SelectTrigger className="w-full max-w-xs">
+          <SelectTrigger
+            className="w-full max-w-xs"
+            aria-label="Default sort order"
+          >
             <SelectValue placeholder="Select sort order" />
           </SelectTrigger>
           <SelectContent>

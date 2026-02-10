@@ -405,7 +405,9 @@ test.describe("About Tab", () => {
     // Contents tab should show the inherited child
     await aboutTabPage.switchToContents();
     await expect(
-      page.locator("[data-id]").getByText("Season 1", { exact: true }).first()
+      page
+        .locator('[data-testid="grid-item-title"]')
+        .filter({ hasText: "Season 1" })
     ).toBeVisible();
   });
 });

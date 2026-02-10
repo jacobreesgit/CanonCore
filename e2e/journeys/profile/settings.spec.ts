@@ -6,9 +6,59 @@
 import { test, expect } from "../../fixtures";
 import { TEST_PASSWORD } from "../../helpers/test-user";
 
-// Helper to get the profile dialog (excludes mobile sidebar which is also a dialog)
+/**
+ * Gets the profile settings container (desktop dialog or mobile sheet).
+ * Desktop uses data-slot="dialog-content", mobile uses role="dialog" with name "Settings".
+ */
+const getProfileContainer = async (page: import("@playwright/test").Page) => {
+  const viewport = page.viewportSize();
+  const isMobile = viewport ? viewport.width < 1024 : false;
+  if (isMobile) {
+    return page.getByRole("dialog", { name: /settings/i });
+  }
+  return page.getByTestId("settings-dialog");
+};
+
+// Keep for backward compatibility with footer-specific tests
 const getProfileDialog = (page: import("@playwright/test").Page) =>
-  page.locator('[data-slot="dialog-content"]').first();
+  page.getByTestId("settings-dialog");
+
+/**
+ * Gets a submit button from the settings footer area.
+ * Desktop: scopes to dialog-footer slot. Mobile: uses last() to disambiguate.
+ */
+const getFooterButton = async (
+  page: import("@playwright/test").Page,
+  name: RegExp
+) => {
+  const viewport = page.viewportSize();
+  const isMobile = viewport ? viewport.width < 1024 : false;
+  if (isMobile) {
+    // Use last() dialog to handle sub-step sheets (password/email/username)
+    const container = page.getByRole("dialog").last();
+    return container.getByRole("button", { name }).last();
+  }
+  return getProfileDialog(page)
+    .locator('[data-slot="dialog-footer"]')
+    .getByRole("button", { name });
+};
+
+/**
+ * Gets a cancel button from the settings footer area.
+ * Desktop: scopes to last dialog-footer (handles animated transitions). Mobile: uses last() dialog.
+ */
+const getFooterCancelButton = async (page: import("@playwright/test").Page) => {
+  const viewport = page.viewportSize();
+  const isMobile = viewport ? viewport.width < 1024 : false;
+  if (isMobile) {
+    const container = page.getByRole("dialog").last();
+    return container.getByRole("button", { name: /cancel/i }).last();
+  }
+  return getProfileDialog(page)
+    .locator('[data-slot="dialog-footer"]')
+    .last()
+    .getByRole("button", { name: /cancel/i });
+};
 
 test.describe("Profile Settings Journey", () => {
   test.beforeEach(async ({ page, testUser }) => {
@@ -23,7 +73,9 @@ test.describe("Profile Settings Journey", () => {
     await myItemsPage.openProfileSettings();
 
     // Dialog should be visible with correct title
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
     await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
     await expect(
       page.getByText("Manage your account and connections")
@@ -32,7 +84,9 @@ test.describe("Profile Settings Journey", () => {
 
   test("shows profile sections in dialog", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Check Profile tab sections - new visual card with cover + avatar
     await expect(page.getByTestId("hero-dropzone")).toBeVisible();
@@ -59,7 +113,9 @@ test.describe("Profile Settings Journey", () => {
     myItemsPage,
   }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Update name
     const nameInput = page.getByLabel("Display Name");
@@ -70,7 +126,9 @@ test.describe("Profile Settings Journey", () => {
     await page.getByRole("button", { name: "Save Changes" }).click();
 
     // Wait for dialog to close
-    await expect(getProfileDialog(page)).not.toBeVisible({ timeout: 5000 });
+    await expect(await getProfileContainer(page)).not.toBeVisible({
+      timeout: 5000,
+    });
 
     // Verify success toast
     await expect(page.getByText("Settings saved")).toBeVisible();
@@ -78,7 +136,9 @@ test.describe("Profile Settings Journey", () => {
 
   test("cancel closes dialog without saving", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Make a change
     const nameInput = page.getByLabel("Display Name");
@@ -87,14 +147,18 @@ test.describe("Profile Settings Journey", () => {
     await nameInput.fill("Changed Name");
 
     // Click cancel
-    await page.getByRole("button", { name: "Cancel" }).click();
+    const cancelButton = await getFooterCancelButton(page);
+    await cancelButton.scrollIntoViewIfNeeded();
+    await cancelButton.click();
 
     // Dialog should close
-    await expect(getProfileDialog(page)).not.toBeVisible();
+    await expect(await getProfileContainer(page)).not.toBeVisible();
 
     // Re-open and check name is unchanged
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
     await expect(page.getByLabel("Display Name")).toHaveValue(originalName);
   });
 
@@ -105,18 +169,20 @@ test.describe("Profile Settings Journey", () => {
     await myItemsPage.openProfileSettings();
 
     // Wait for dialog to be visible
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     const saveButton = page.getByRole("button", { name: "Save Changes" });
 
-    // Initially disabled when no changes made
+    // Initially disabled when no changes made (both desktop dialog and mobile sheet)
     await expect(saveButton).toBeDisabled();
 
     // Make a change
     const nameInput = page.getByLabel("Display Name");
     await nameInput.fill("New Name");
 
-    // Now save should be enabled
+    // Now save should be enabled/visible
     await expect(saveButton).toBeEnabled();
   });
 
@@ -146,7 +212,9 @@ test.describe("Change Password Step", () => {
     myItemsPage,
   }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Navigate to Account tab first (Change Password is in Account tab now)
     await page.getByRole("tab", { name: "Account" }).click();
@@ -165,7 +233,9 @@ test.describe("Change Password Step", () => {
 
   test("password mismatch shows error", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Navigate to Account tab first
     await page.getByRole("tab", { name: "Account" }).click();
@@ -182,10 +252,8 @@ test.describe("Change Password Step", () => {
     await page.getByLabel(/confirm new password/i).fill("DifferentPassword1");
 
     // Try to submit - use the submit button in footer (not the nav button)
-    await getProfileDialog(page)
-      .locator('[data-slot="dialog-footer"]')
-      .getByRole("button", { name: /change password/i })
-      .click();
+    const submitBtn = await getFooterButton(page, /change password/i);
+    await submitBtn.click();
 
     // Should show mismatch error
     await expect(page.getByText("New passwords do not match")).toBeVisible();
@@ -196,7 +264,9 @@ test.describe("Change Password Step", () => {
     myItemsPage,
   }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Navigate to Account tab first
     await page.getByRole("tab", { name: "Account" }).click();
@@ -213,10 +283,8 @@ test.describe("Change Password Step", () => {
     await page.getByLabel(/confirm new password/i).fill("NewPassword1");
 
     // Submit using footer button
-    await getProfileDialog(page)
-      .locator('[data-slot="dialog-footer"]')
-      .getByRole("button", { name: /change password/i })
-      .click();
+    const submitBtn = await getFooterButton(page, /change password/i);
+    await submitBtn.click();
 
     // Should show error
     await expect(page.getByText("Incorrect current password")).toBeVisible();
@@ -224,7 +292,9 @@ test.describe("Change Password Step", () => {
 
   test("can change password successfully", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Navigate to Account tab first
     await page.getByRole("tab", { name: "Account" }).click();
@@ -241,10 +311,8 @@ test.describe("Change Password Step", () => {
     await page.getByLabel(/confirm new password/i).fill("NewPassword1");
 
     // Submit using footer button
-    await getProfileDialog(page)
-      .locator('[data-slot="dialog-footer"]')
-      .getByRole("button", { name: /change password/i })
-      .click();
+    const submitBtn = await getFooterButton(page, /change password/i);
+    await submitBtn.click();
 
     // Should show success toast and return to main settings
     await expect(page.getByText("Password saved")).toBeVisible();
@@ -253,7 +321,9 @@ test.describe("Change Password Step", () => {
 
   test("cancel returns to main settings", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Navigate to Account tab first
     await page.getByRole("tab", { name: "Account" }).click();
@@ -265,11 +335,8 @@ test.describe("Change Password Step", () => {
     ).toBeVisible();
 
     // Click cancel in footer (use last() to handle animated transitions)
-    await getProfileDialog(page)
-      .locator('[data-slot="dialog-footer"]')
-      .last()
-      .getByRole("button", { name: /cancel/i })
-      .click();
+    const cancelBtn = await getFooterCancelButton(page);
+    await cancelBtn.click();
 
     // Should return to main settings view
     await expect(
@@ -291,7 +358,9 @@ test.describe("Change Email Step", () => {
     testUser,
   }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Navigate to Account tab first
     await page.getByRole("tab", { name: "Account" }).click();
@@ -309,7 +378,9 @@ test.describe("Change Email Step", () => {
 
   test("shows error when email unchanged", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Navigate to Account tab first
     await page.getByRole("tab", { name: "Account" }).click();
@@ -324,10 +395,8 @@ test.describe("Change Email Step", () => {
     await page.getByLabel("Current Password").fill(TEST_PASSWORD);
 
     // Submit using footer button
-    await getProfileDialog(page)
-      .locator('[data-slot="dialog-footer"]')
-      .getByRole("button", { name: /change email/i })
-      .click();
+    const emailBtn = await getFooterButton(page, /change email/i);
+    await emailBtn.click();
 
     // Should show error
     await expect(
@@ -337,7 +406,9 @@ test.describe("Change Email Step", () => {
 
   test("shows error for wrong password", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Navigate to Account tab first
     await page.getByRole("tab", { name: "Account" }).click();
@@ -354,10 +425,8 @@ test.describe("Change Email Step", () => {
     await page.getByLabel("Current Password").fill("WrongPassword1");
 
     // Submit using footer button
-    await getProfileDialog(page)
-      .locator('[data-slot="dialog-footer"]')
-      .getByRole("button", { name: /change email/i })
-      .click();
+    const emailBtn = await getFooterButton(page, /change email/i);
+    await emailBtn.click();
 
     // Should show error
     await expect(page.getByText("Incorrect password")).toBeVisible();
@@ -365,7 +434,9 @@ test.describe("Change Email Step", () => {
 
   test("can change email successfully", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Navigate to Account tab first
     await page.getByRole("tab", { name: "Account" }).click();
@@ -384,10 +455,8 @@ test.describe("Change Email Step", () => {
     await page.getByLabel("Current Password").fill(TEST_PASSWORD);
 
     // Submit using footer button
-    await getProfileDialog(page)
-      .locator('[data-slot="dialog-footer"]')
-      .getByRole("button", { name: /change email/i })
-      .click();
+    const emailBtn = await getFooterButton(page, /change email/i);
+    await emailBtn.click();
 
     // Should show success toast and return to main settings
     await expect(page.getByText("Email saved")).toBeVisible();
@@ -396,7 +465,9 @@ test.describe("Change Email Step", () => {
 
   test("cancel returns to main settings", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Navigate to Account tab first
     await page.getByRole("tab", { name: "Account" }).click();
@@ -408,11 +479,8 @@ test.describe("Change Email Step", () => {
     ).toBeVisible();
 
     // Click cancel in footer (use last() to handle animated transitions)
-    await getProfileDialog(page)
-      .locator('[data-slot="dialog-footer"]')
-      .last()
-      .getByRole("button", { name: /cancel/i })
-      .click();
+    const cancelBtn = await getFooterCancelButton(page);
+    await cancelBtn.click();
 
     // Should return to main settings view
     await expect(

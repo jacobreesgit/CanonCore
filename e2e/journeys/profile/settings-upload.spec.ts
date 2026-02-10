@@ -6,9 +6,17 @@
 import { test, expect } from "../../fixtures";
 import path from "path";
 
-// Helper to get the profile dialog
-const getProfileDialog = (page: import("@playwright/test").Page) =>
-  page.locator('[data-slot="dialog-content"]').first();
+/**
+ * Gets the profile settings container (desktop dialog or mobile sheet).
+ */
+const getProfileContainer = async (page: import("@playwright/test").Page) => {
+  const viewport = page.viewportSize();
+  const isMobile = viewport ? viewport.width < 1024 : false;
+  if (isMobile) {
+    return page.getByRole("dialog", { name: /settings/i });
+  }
+  return page.getByTestId("settings-dialog");
+};
 
 // Helper to get file input from FileUpload component containing the testid element
 const getFileInput = (page: import("@playwright/test").Page, testId: string) =>
@@ -28,7 +36,9 @@ test.describe("Profile Picture Upload", () => {
     myItemsPage,
   }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Find the FileUpload component's file input
     const input = getFileInput(page, "profile-dropzone");
@@ -51,7 +61,9 @@ test.describe("Profile Picture Upload", () => {
     myItemsPage,
   }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Upload first
     const input = getFileInput(page, "profile-dropzone");
@@ -61,11 +73,15 @@ test.describe("Profile Picture Upload", () => {
 
     // Save to persist the image
     await page.getByRole("button", { name: /save changes/i }).click();
-    await expect(getProfileDialog(page)).not.toBeVisible({ timeout: 5000 });
+    await expect(await getProfileContainer(page)).not.toBeVisible({
+      timeout: 5000,
+    });
 
     // Re-open settings
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Now "Remove Avatar" button should be visible (for saved images)
     const removeButton = page.getByRole("button", { name: /remove avatar/i });
@@ -87,7 +103,9 @@ test.describe("Profile Picture Upload", () => {
     myItemsPage,
   }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Should show the profile dropzone with avatar area
     const dropzone = page.getByTestId("profile-dropzone");
@@ -107,7 +125,9 @@ test.describe("Hero Banner Upload", () => {
 
   test("can upload hero banner via dropzone", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Find the FileUpload component's file input
     const input = getFileInput(page, "hero-dropzone");
@@ -128,7 +148,9 @@ test.describe("Hero Banner Upload", () => {
 
   test("can remove hero banner after upload", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Upload first
     const input = getFileInput(page, "hero-dropzone");
@@ -150,7 +172,9 @@ test.describe("Hero Banner Upload", () => {
     myItemsPage,
   }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Should show the hero dropzone area
     const heroDropzone = page.getByTestId("hero-dropzone");
@@ -171,7 +195,9 @@ test.describe("Upload and Save Flow", () => {
 
   test("can upload profile picture and save", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Upload profile picture
     const input = getFileInput(page, "profile-dropzone");
@@ -183,7 +209,9 @@ test.describe("Upload and Save Flow", () => {
     await page.getByRole("button", { name: /save changes/i }).click();
 
     // Dialog should close
-    await expect(getProfileDialog(page)).not.toBeVisible({ timeout: 5000 });
+    await expect(await getProfileContainer(page)).not.toBeVisible({
+      timeout: 5000,
+    });
 
     // Success toast should appear
     await expect(page.getByText("Settings saved")).toBeVisible();
@@ -194,7 +222,9 @@ test.describe("Upload and Save Flow", () => {
     myItemsPage,
   }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Upload profile picture
     const profileInput = getFileInput(page, "profile-dropzone");
@@ -217,7 +247,9 @@ test.describe("Upload and Save Flow", () => {
     await page.getByRole("button", { name: /save changes/i }).click();
 
     // Dialog should close
-    await expect(getProfileDialog(page)).not.toBeVisible({ timeout: 5000 });
+    await expect(await getProfileContainer(page)).not.toBeVisible({
+      timeout: 5000,
+    });
 
     // Success toast should appear
     await expect(page.getByText("Settings saved")).toBeVisible();
@@ -225,7 +257,9 @@ test.describe("Upload and Save Flow", () => {
 
   test("cancel discards upload changes", async ({ page, myItemsPage }) => {
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Upload profile picture
     const input = getFileInput(page, "profile-dropzone");
@@ -237,11 +271,13 @@ test.describe("Upload and Save Flow", () => {
     await page.getByRole("button", { name: /cancel/i }).click();
 
     // Dialog should close
-    await expect(getProfileDialog(page)).not.toBeVisible();
+    await expect(await getProfileContainer(page)).not.toBeVisible();
 
     // Re-open and check no image is saved (no Remove Avatar button)
     await myItemsPage.openProfileSettings();
-    await expect(getProfileDialog(page)).toBeVisible({ timeout: 10000 });
+    await expect(await getProfileContainer(page)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Remove Avatar button should not be visible (no saved image)
     await expect(

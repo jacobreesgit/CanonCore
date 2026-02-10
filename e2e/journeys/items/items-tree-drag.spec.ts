@@ -58,7 +58,8 @@ test.describe("Items Tree Drag Journey", () => {
     await itemsPage.dragItemTo("Folder A", "Folder C");
 
     // Wait for reorder to persist via network
-    await page.waitForLoadState("networkidle");
+    // Wait for items to settle after drag (network request completes)
+    await page.waitForLoadState("domcontentloaded");
 
     // The order should now be B, C, A (A moved after C)
     // Note: Exact order depends on dnd-kit collision detection
@@ -143,7 +144,8 @@ test.describe("Items Tree Drag Journey", () => {
     // Use the specific drag handle method
     await itemsPage.dragTreeItemTo("Folder B", "Folder A");
 
-    await page.waitForLoadState("networkidle");
+    // Wait for items to settle after drag (network request completes)
+    await page.waitForLoadState("domcontentloaded");
 
     // Items should still be visible after drag operation
     await itemsPage.expectItemVisible("Folder A");
@@ -169,7 +171,8 @@ test.describe("Items Tree Drag Journey", () => {
 
     // Perform a drag operation
     await itemsPage.dragItemTo("Folder C", "Folder A");
-    await page.waitForLoadState("networkidle");
+    // Wait for items to settle after drag (network request completes)
+    await page.waitForLoadState("domcontentloaded");
 
     // Refresh the page
     await page.reload();

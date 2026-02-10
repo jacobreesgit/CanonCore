@@ -69,13 +69,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 // Mock view mode hook - default to tree view
-vi.mock("@/components/items/view-toggle", () => ({
+vi.mock("@/hooks/use-stored-view-mode", () => ({
   useStoredViewMode: vi.fn(() => ["tree"]),
-  ViewToggle: ({ disabled }: { disabled?: boolean }) => (
-    <div data-testid="view-toggle" data-disabled={disabled}>
-      View Toggle
-    </div>
-  ),
 }));
 
 // Mock tree/grid components

@@ -25,12 +25,13 @@ export async function openHelpSheetIfClosed(page: Page): Promise<void> {
 }
 
 /**
- * Opens the user/account bottom sheet if it's not already open.
+ * Opens the user/settings bottom sheet if it's not already open.
+ * Account button now opens MobileSettingsSheet directly.
  *
  * @param page - Playwright page instance
  */
 export async function openUserSheetIfClosed(page: Page): Promise<void> {
-  const sheet = page.getByRole("dialog", { name: /account/i });
+  const sheet = page.getByRole("dialog", { name: /settings/i });
   if (!(await sheet.isVisible())) {
     const accountButton = page
       .getByRole("navigation", { name: /mobile navigation/i })
@@ -119,27 +120,34 @@ export async function navigateToSignIn(page: Page): Promise<void> {
 }
 
 /**
- * Signs out via the user sheet (mobile).
+ * Signs out via the settings sheet (mobile).
+ * Opens settings, navigates to Account tab, clicks Sign out.
  *
  * @param page - Playwright page instance
  */
 export async function signOutViaMobile(page: Page): Promise<void> {
-  await openUserSheetIfClosed(page);
+  await openSettingsViaMobile(page);
+  const accountTab = page.getByRole("tab", { name: /account/i });
+  await accountTab.click();
   const signOutButton = page.getByRole("button", { name: /sign out/i });
   await signOutButton.click();
 }
 
 /**
- * Opens settings dialog from user sheet (mobile).
+ * Opens settings sheet from mobile footer (mobile).
+ * Account button now opens MobileSettingsSheet directly.
  *
  * @param page - Playwright page instance
  */
 export async function openSettingsViaMobile(page: Page): Promise<void> {
-  await openUserSheetIfClosed(page);
-  const settingsButton = page
-    .getByRole("dialog", { name: /account/i })
-    .getByRole("button", { name: /settings/i });
-  await settingsButton.click();
+  const sheet = page.getByRole("dialog", { name: /settings/i });
+  if (!(await sheet.isVisible())) {
+    const accountButton = page
+      .getByRole("navigation", { name: /mobile navigation/i })
+      .getByRole("button", { name: /account/i });
+    await accountButton.click();
+    await expect(sheet).toBeVisible();
+  }
 }
 
 /**
@@ -165,7 +173,7 @@ export async function waitForMobileFooter(page: Page): Promise<void> {
 
 /**
  * Checks if user is on mobile viewport by checking viewport width.
- * Mobile is defined as viewport width < 768px (md breakpoint).
+ * Mobile is defined as viewport width < 1024px (lg breakpoint).
  *
  * @param page - Playwright page instance
  * @returns True if on mobile viewport
@@ -173,7 +181,7 @@ export async function waitForMobileFooter(page: Page): Promise<void> {
 export async function isMobileViewport(page: Page): Promise<boolean> {
   const viewport = page.viewportSize();
   if (viewport) {
-    return viewport.width < 768;
+    return viewport.width < 1024;
   }
   // Fallback to checking footer visibility if viewport not available
   return isMobileFooterVisible(page);

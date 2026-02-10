@@ -16,7 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { StorageBar, formatBytes } from "@/components/google-drive/storage-bar";
-import { SettingsDialog } from "@/components/profile";
+import { MobileSettingsSheet } from "@/components/profile/mobile-settings-sheet";
 import { clearSearchCache } from "@/components/search/spotlight-search";
 import type { GoogleDriveConnection } from "@/lib/types";
 
@@ -180,8 +180,8 @@ export function MobileUserSheet({
         </div>
       </MobileBottomSheet>
 
-      {/* Settings Dialog (renders on top of sheet) */}
-      <SettingsDialog
+      {/* Mobile Settings Sheet */}
+      <MobileSettingsSheet
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         user={{

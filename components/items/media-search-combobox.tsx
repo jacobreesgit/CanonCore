@@ -232,6 +232,7 @@ export function MediaSearchCombobox({
       </PopoverTrigger>
 
       <PopoverContent
+        data-testid="tmdb-search-popover"
         className="w-[var(--radix-popover-trigger-width)] p-0"
         align="start"
         sideOffset={4}

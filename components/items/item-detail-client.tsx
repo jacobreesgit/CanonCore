@@ -14,20 +14,17 @@ import {
   useEffect,
 } from "react";
 import dynamic from "next/dynamic";
-import { Play, Plus, Settings2 } from "lucide-react";
+import { Play, Plus, Settings2, SkipForward } from "lucide-react";
 import { ItemsView } from "./items-view";
 import { EditModeToggle } from "./edit-mode-toggle";
-import { ViewToggle } from "./view-toggle";
+import { useStoredViewMode } from "@/hooks/use-stored-view-mode";
 import { AboutTabContent } from "./about-tab-content";
 import { CinematicHero } from "@/components/hero";
 import { HeroButton } from "@/components/items/hero-button";
 import { PlaylistButton } from "@/components/items/playlist-button";
 import { UnderlineTabs } from "@/components/ui/underline-tabs";
 import { HeroContentLayout } from "@/components/ui/hero-content-layout";
-import {
-  ContentToolbar,
-  ToolbarDivider,
-} from "@/components/ui/content-toolbar";
+import { ContentToolbar } from "@/components/ui/content-toolbar";
 import { Button } from "@/components/ui/button";
 import { MediaOverlay } from "@/components/media/media-overlay";
 import { updatePlaybackPosition } from "@/lib/item-file-actions";
@@ -43,7 +40,16 @@ import type { TmdbDisplayOptions } from "@/lib/types";
 import { useItemsSortFilter } from "@/hooks/use-items-sort-filter";
 import { getItems } from "@/lib/item-actions";
 import { useGoToItem } from "@/hooks/use-go-to-item";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { formatProgressLabel } from "@/lib/progress-utils";
+// Lazy-load MobileItemSheet (mobile-only, heavy with Framer Motion)
+const MobileItemSheet = dynamic(
+  () =>
+    import("@/components/items/mobile-item-sheet").then((mod) => ({
+      default: mod.MobileItemSheet,
+    })),
+  { ssr: false }
+);
 
 // Lazy-load settings dialog
 const ItemSettingsDialog = dynamic(
@@ -79,6 +85,13 @@ interface ItemDetailClientProps {
     childCount: number;
     tmdbId: number | null;
     tmdbType: string | null;
+    tmdbShowTagline: boolean;
+    tmdbShowMetadata: boolean;
+    tmdbShowGenres: boolean;
+    tmdbShowCast: boolean;
+    tmdbShowProviders: boolean;
+    tmdbShowVideos: boolean;
+    tmdbShowRecommendations: boolean;
   };
   /** Child items to display. */
   childItems: ItemWithArtwork[];
@@ -131,9 +144,24 @@ export function ItemDetailClient({
     null
   );
 
-  // Settings dialog state (absorbed from ItemsToolbar)
-  const [settingsOpen, setSettingsOpen] = useState(defaultSettingsOpen);
+  // Viewport detection for portal-based components (dialogs render to <body>,
+  // bypassing CSS hidden wrappers — must use JS to prevent dual portals)
+  const isMobile = useIsMobile();
+
+  // Settings dialog state — route to correct surface based on viewport at init
+  const [settingsOpen, setSettingsOpen] = useState(() => {
+    if (!defaultSettingsOpen) return false;
+    if (typeof window !== "undefined" && window.innerWidth < 1024) return false;
+    return true;
+  });
   const [settingsFiles, setSettingsFiles] = useState(emptyFiles);
+
+  // Mobile sheet open state (separate from desktop dialog)
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(() => {
+    if (!defaultSettingsOpen) return false;
+    if (typeof window !== "undefined" && window.innerWidth < 1024) return true;
+    return false;
+  });
 
   // Sort/filter state (persisted to localStorage)
   const { sortBy, setSortBy, filterBy, setFilterBy } = useItemsSortFilter();
@@ -159,13 +187,16 @@ export function ItemDetailClient({
 
   // Fetch files on mount when settings dialog should be open by default
   useEffect(() => {
-    if (defaultSettingsOpen) {
-      getItemFiles(item.id).then((result) => {
-        if (result.success && result.data) {
-          setSettingsFiles(result.data);
-        }
-      });
-    }
+    if (!defaultSettingsOpen) return;
+    let stale = false;
+    getItemFiles(item.id).then((result) => {
+      if (!stale && result.success && result.data) {
+        setSettingsFiles(result.data);
+      }
+    });
+    return () => {
+      stale = true;
+    };
   }, [defaultSettingsOpen, item.id]);
 
   // Resolve hero artwork using fallback chain: isHero -> isPrimary -> first
@@ -210,15 +241,19 @@ export function ItemDetailClient({
   const isCustomSort = sortBy === "custom";
 
   /**
-   * Opens settings dialog and fetches files.
+   * Opens settings dialog (desktop) or mobile sheet based on viewport.
    */
   const handleOpenSettings = useCallback(async () => {
-    setSettingsOpen(true);
+    if (isMobile) {
+      setMobileSheetOpen(true);
+    } else {
+      setSettingsOpen(true);
+    }
     const result = await getItemFiles(item.id);
     if (result.success && result.data) {
       setSettingsFiles(result.data);
     }
-  }, [item.id]);
+  }, [isMobile, item.id]);
 
   /**
    * Refreshes files and child items after settings change.
@@ -273,11 +308,20 @@ export function ItemDetailClient({
           onClick={() => goToNext(nextItem)}
           data-testid="hero-goto-button"
         >
+          <SkipForward className="size-4" />
           Next Up: {nextItem.name}
         </HeroButton>
       )}
       {/* Playlist (placeholder feature) */}
       <PlaylistButton />
+      <HeroButton
+        onClick={handleOpenSettings}
+        aria-label="Settings"
+        data-testid="hero-settings-button"
+      >
+        <Settings2 className="size-4" />
+        Settings
+      </HeroButton>
     </>
   );
 
@@ -290,10 +334,18 @@ export function ItemDetailClient({
     inheritVisibility: item.inheritVisibility,
     hasParent: item.parentId !== null,
     hasChildren: item.childCount > 0,
+    tmdbId: item.tmdbId,
+    tmdbShowTagline: item.tmdbShowTagline,
+    tmdbShowMetadata: item.tmdbShowMetadata,
+    tmdbShowGenres: item.tmdbShowGenres,
+    tmdbShowCast: item.tmdbShowCast,
+    tmdbShowProviders: item.tmdbShowProviders,
+    tmdbShowVideos: item.tmdbShowVideos,
+    tmdbShowRecommendations: item.tmdbShowRecommendations,
   };
 
-  // Contents tab toolbar left actions (view toggle)
-  const contentsLeftActions = <ViewToggle disabled={!hasChildren} />;
+  // View mode (persisted in localStorage)
+  const [viewMode, setViewMode] = useStoredViewMode();
 
   // Contents tab toolbar right actions
   const contentsActions = (
@@ -306,7 +358,7 @@ export function ItemDetailClient({
         aria-label="Add"
       >
         <Plus className="size-4" strokeWidth={2} />
-        <span className="hidden sm:inline">Add</span>
+        <span className="hidden xl:inline">Add</span>
       </Button>
       <EditModeToggle
         isEditing={isEditing}
@@ -320,17 +372,6 @@ export function ItemDetailClient({
               : undefined
         }
       />
-      <ToolbarDivider />
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleOpenSettings}
-        className="gap-1.5"
-        aria-label="Settings"
-      >
-        <Settings2 className="size-4" />
-        <span className="hidden sm:inline">Settings</span>
-      </Button>
     </>
   );
 
@@ -342,12 +383,13 @@ export function ItemDetailClient({
         onSortChange={setSortBy}
         filterBy={filterBy}
         onFilterChange={setFilterBy}
+        viewMode={viewMode}
+        onViewChange={setViewMode}
         showSync
         isSyncing={isSyncing}
         onSync={handleSync}
         hasDriveConnection={hasDriveConnection}
         disabled={!hasChildren}
-        leftActions={contentsLeftActions}
         actions={contentsActions}
       />
       <ItemsView
@@ -376,6 +418,7 @@ export function ItemDetailClient({
       tmdbDetails={tmdbDetails}
       tmdbDisplayOptions={tmdbDisplayOptions}
       isTV={isTV}
+      actions={contentsActions}
     />
   );
 
@@ -437,11 +480,23 @@ export function ItemDetailClient({
         contentsContent
       )}
 
-      {/* Item Settings Dialog */}
-      {settingsOpen && (
+      {/* Item Settings Dialog (desktop) */}
+      {settingsOpen && !isMobile && (
         <ItemSettingsDialog
           open={settingsOpen}
           onOpenChange={setSettingsOpen}
+          item={settingsItem}
+          files={settingsFiles}
+          hasDriveConnection={hasDriveConnection}
+          onSettingsChange={handleSettingsChange}
+        />
+      )}
+
+      {/* Item Settings Sheet (mobile) */}
+      {mobileSheetOpen && isMobile && (
+        <MobileItemSheet
+          open={mobileSheetOpen}
+          onOpenChange={setMobileSheetOpen}
           item={settingsItem}
           files={settingsFiles}
           hasDriveConnection={hasDriveConnection}

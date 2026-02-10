@@ -248,8 +248,6 @@ export function AddItemDialog({
   const [selectedSeasonNumber, setSelectedSeasonNumber] = useState<
     number | null
   >(null);
-  // Track if this is an episode selection (no artwork available)
-  const [isEpisodeMode, setIsEpisodeMode] = useState(false);
 
   // Temporary state for change-artwork steps (allows cancel without losing original)
   const [tempPosterValue, setTempPosterValue] = useState<string | null>(null);
@@ -276,7 +274,6 @@ export function AddItemDialog({
     setBackdropSkipped(false);
     setContentType("movie");
     setSelectedSeasonNumber(null);
-    setIsEpisodeMode(false);
   }, []);
 
   // Reset state when dialog opens
@@ -394,7 +391,7 @@ export function AddItemDialog({
             setTmdbImages({ posters: [], backdrops: [] });
             setContentType("episode");
             setSelectedSeasonNumber(episodeSel.seasonNumber);
-            setIsEpisodeMode(true);
+
             setCurrentStep("tmdb-wizard");
           } else {
             toast.error("Could not fetch episode preview");
@@ -415,7 +412,7 @@ export function AddItemDialog({
             });
             setContentType("season");
             setSelectedSeasonNumber(episodeSel.seasonNumber);
-            setIsEpisodeMode(false);
+
             setCurrentStep("tmdb-wizard");
             // Note: TMDBWizard handles image fetching internally
           } else {
@@ -434,7 +431,7 @@ export function AddItemDialog({
             });
             setContentType(mediaType === "tv" ? "show" : "movie");
             setSelectedSeasonNumber(null);
-            setIsEpisodeMode(false);
+
             setCurrentStep("tmdb-wizard");
             // Note: TMDBWizard handles image fetching internally
           } else {
@@ -570,7 +567,6 @@ export function AddItemDialog({
       displayOptions: result.displayOptions,
     });
 
-    setIsEpisodeMode(result.isEpisodeMode);
     setCurrentStep("wizard-summary");
   }, []);
 
@@ -891,7 +887,7 @@ export function AddItemDialog({
 
   // Determine if artwork section should be visible
   // Hide for episodes (no poster/backdrop) and when no TMDB selection in manual mode
-  const showArtworkSection = !isEpisodeMode;
+  const showArtworkSection = contentType !== "episode";
 
   /**
    * Gets the header content for the current step.
@@ -1525,7 +1521,6 @@ export function AddItemDialog({
               tmdbResult: pendingTmdbResult,
               preview: tmdbPreview,
               contentType: contentType,
-              isEpisodeMode: isEpisodeMode,
               ...(selectedSeasonNumber !== null && {
                 seasonNumber: selectedSeasonNumber,
               }),

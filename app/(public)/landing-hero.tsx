@@ -1,140 +1,203 @@
 /**
- * Apple-inspired product landing with bold typography and clean grid.
- * Premium, confident, minimal — every element earns its place.
+ * Cinematic editorial landing hero.
+ * Centered dramatic typography with atmospheric glow and feature grid.
  */
 
 "use client";
 
 import { motion } from "framer-motion";
 import {
+  ArrowRight,
   Clapperboard,
   GitFork,
   History,
   Layers,
   Tv,
-  type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { SiGoogledrive } from "react-icons/si";
-import type { IconType } from "react-icons";
 
-interface Feature {
-  icon: LucideIcon | IconType;
-  title: string;
-  description: string;
-}
+import {
+  FeatureCardGrid,
+  type FeatureItem,
+} from "@/components/feature-card-grid";
+import { Button } from "@/components/ui/button";
 
-const features: Feature[] = [
+const features: FeatureItem[] = [
   {
     icon: Layers,
     title: "Infinite Hierarchy",
     description:
       "Nest movies in franchises, episodes in seasons, as deep as you need.",
+    color: "text-sky-500",
+    bgColor: "bg-sky-500/10",
+    href: "/docs/files-and-folders/organise",
   },
   {
     icon: SiGoogledrive,
     title: "Drive Sync",
     description:
       "Bidirectional sync with Google Drive. Your files, your control.",
+    color: "text-green-500",
+    bgColor: "bg-green-500/10",
+    href: "/docs/google-drive/sync-files",
   },
   {
     icon: Clapperboard,
     title: "Rich Metadata",
     description: "One click fetches posters, backdrops, and cast from TMDB.",
+    color: "text-pink-500",
+    bgColor: "bg-pink-500/10",
+    href: "/docs/files-and-folders/item-settings",
   },
   {
     icon: History,
     title: "Progress Tracking",
     description: "Resume exactly where you left off, on any device.",
+    color: "text-purple-500",
+    bgColor: "bg-purple-500/10",
+    href: "/docs/google-drive/progress-tracking",
   },
   {
     icon: GitFork,
     title: "Public Profiles",
     description:
       "Share collections with a link. Let others fork what they love.",
+    color: "text-orange-500",
+    bgColor: "bg-orange-500/10",
+    href: "/docs/sharing/public-profile",
   },
   {
     icon: Tv,
     title: "Stream Anywhere",
     description: "Phone, tablet, laptop, TV. Your library travels with you.",
+    color: "text-green-500",
+    bgColor: "bg-green-500/10",
+    href: "/docs/google-drive/media-playback",
   },
 ];
 
+const ease = [0.25, 0.46, 0.45, 0.94] as const;
+
 /**
- * Apple-style product hero with bold headline and clean feature grid.
+ * Cinematic landing hero with centered typography and feature grid.
  */
 export function HeroContent() {
   return (
-    <section className="bg-background relative flex min-h-full flex-col items-center justify-start overflow-hidden px-6 py-8 md:justify-center md:py-0">
-      {/* Subtle top gradient */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse 80% 40% at 50% 0%, oklch(from var(--foreground) l c h / 0.02), transparent)",
-        }}
-      />
-
-      {/* Content container */}
-      <div className="relative z-10 flex w-full max-w-5xl flex-col items-center">
-        {/* Hero text */}
-        <motion.div
-          className="mb-16 text-center"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{
-            duration: 0.8,
-            ease: [0.25, 0.46, 0.45, 0.94] as const,
+    <section className="bg-background relative overflow-hidden">
+      {/* Atmospheric background — layered gradient orbs */}
+      <div className="pointer-events-none absolute inset-0">
+        {/* Center top glow */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse 70% 40% at 50% 0%, rgba(255, 255, 255, 0.04), transparent)",
           }}
-        >
-          <h1
+        />
+        {/* Warm accent — left */}
+        <div
+          className="absolute inset-0 hidden md:block"
+          style={{
+            background:
+              "radial-gradient(ellipse 40% 50% at 20% 30%, rgba(251, 146, 60, 0.03), transparent 70%)",
+          }}
+        />
+        {/* Cool accent — right */}
+        <div
+          className="absolute inset-0 hidden md:block"
+          style={{
+            background:
+              "radial-gradient(ellipse 40% 50% at 80% 30%, rgba(56, 189, 248, 0.03), transparent 70%)",
+          }}
+        />
+        {/* Deep glow — center bottom */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse 60% 30% at 50% 100%, rgba(255, 255, 255, 0.02), transparent)",
+          }}
+        />
+      </div>
+
+      <div className="relative z-10 mx-auto flex max-w-5xl flex-col px-6">
+        {/* Hero — centered editorial */}
+        <div className="flex flex-col items-center py-24 text-center md:py-32 lg:py-40">
+          {/* Headline */}
+          <motion.h1
             data-testid="landing-hero-title"
-            className="mb-4 text-4xl font-semibold tracking-tight md:text-5xl lg:text-6xl"
+            className="max-w-3xl text-5xl leading-[1.08] font-semibold tracking-tight md:text-6xl lg:text-7xl"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.1, ease }}
           >
             Your media library.
             <br />
-            <span className="from-foreground/60 to-foreground/40 bg-gradient-to-r bg-clip-text text-transparent">
+            <span className="from-foreground/70 via-foreground/40 to-foreground/20 bg-gradient-to-r bg-clip-text text-transparent">
               Elevated.
             </span>
-          </h1>
-          <p className="text-muted-foreground mx-auto max-w-2xl text-lg md:text-xl">
+          </motion.h1>
+
+          {/* Subtitle */}
+          <motion.p
+            className="text-muted-foreground mt-6 max-w-xl text-lg leading-relaxed md:text-xl"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.25, ease }}
+          >
             CanonCore syncs with Google Drive to organise, stream, and share
             your personal media collection.
-          </p>
-        </motion.div>
+          </motion.p>
 
-        {/* Feature grid - 3x2 */}
-        <div className="grid w-full grid-cols-2 gap-4 md:grid-cols-3 md:gap-5">
-          {features.map((feature, idx) => {
-            const Icon = feature.icon;
-            return (
-              <motion.div
-                key={feature.title}
-                className="group border-border/50 bg-card/50 hover:border-border hover:bg-card flex cursor-pointer flex-col items-center rounded-2xl border p-6 text-center shadow-sm transition-all duration-300 hover:shadow-md"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  delay: 0.3 + idx * 0.08,
-                  duration: 0.6,
-                  ease: [0.25, 0.46, 0.45, 0.94] as const,
-                }}
-              >
-                {/* Icon */}
-                <div className="bg-foreground/[0.05] group-hover:bg-foreground/[0.08] mb-4 flex size-12 items-center justify-center rounded-xl transition-colors duration-300">
-                  <Icon className="text-foreground/70 group-hover:text-foreground size-6 transition-colors duration-300" />
-                </div>
+          {/* CTAs */}
+          <motion.div
+            className="mt-10 flex flex-wrap items-center justify-center gap-4"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4, ease }}
+          >
+            <Button asChild size="lg">
+              <Link href="/sign-up">Get Started</Link>
+            </Button>
+            <Button asChild variant="ghost" size="lg" className="group gap-2">
+              <Link href="/explore">
+                Explore Collections
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+              </Link>
+            </Button>
+          </motion.div>
+        </div>
 
-                {/* Title */}
-                <h3 className="mb-2 text-base font-semibold tracking-tight md:text-lg">
-                  {feature.title}
-                </h3>
+        {/* Gradient divider */}
+        <div className="mx-auto w-full max-w-2xl">
+          <div
+            className="h-px"
+            style={{
+              background:
+                "linear-gradient(to right, transparent, var(--glass-border), rgba(255, 255, 255, 0.12), var(--glass-border), transparent)",
+            }}
+          />
+        </div>
 
-                {/* Description */}
-                <p className="text-muted-foreground text-sm leading-relaxed md:text-base">
-                  {feature.description}
-                </p>
-              </motion.div>
-            );
-          })}
+        {/* Feature grid */}
+        <div className="py-20 md:py-24">
+          <motion.h2
+            className="mb-8 text-center text-3xl font-semibold tracking-tight md:text-4xl"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.55, ease }}
+          >
+            Features that speak for{" "}
+            <span className="text-muted-foreground">themselves</span>
+          </motion.h2>
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.65, ease }}
+          >
+            <FeatureCardGrid items={features} />
+          </motion.div>
         </div>
       </div>
     </section>

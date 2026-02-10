@@ -5,6 +5,7 @@
  */
 
 import { test, expect, prisma } from "../../fixtures";
+import { ItemsPage } from "../../pages/items.page";
 
 test.describe("TMDB Display Options", () => {
   test.beforeEach(async ({ page, testUser }) => {
@@ -194,6 +195,124 @@ test.describe("TMDB Display Options", () => {
 
     // Still hidden after reload
     await expect(page.getByTestId("hero-tagline")).not.toBeVisible();
+  });
+
+  test.describe("Settings dialog TMDB tab", () => {
+    test("shows TMDB tab for items with TMDB metadata", async ({
+      page,
+      testUser,
+    }) => {
+      const item = await prisma.item.create({
+        data: {
+          name: "TMDB Settings Tab Item",
+          userId: testUser.id,
+          depth: 0,
+          order: 0,
+          tmdbId: 278,
+          tmdbType: "movie",
+        },
+      });
+
+      const itemsPage = new ItemsPage(page, testUser.username);
+      await page.goto(`/u/${testUser.username}/${item.id}`);
+      await expect(page.getByTestId("hero-carousel")).toBeVisible({
+        timeout: 10000,
+      });
+
+      // Open settings (viewport-aware: Settings button on desktop, Options trigger on mobile)
+      await itemsPage.openSettingsFromToolbar();
+      const container = await itemsPage.getSettingsContainer();
+      await expect(container).toBeVisible();
+
+      // Verify TMDB tab is visible
+      await expect(container.getByRole("tab", { name: /tmdb/i })).toBeVisible();
+    });
+
+    test("does not show TMDB tab for items without TMDB metadata", async ({
+      page,
+      testUser,
+    }) => {
+      const item = await prisma.item.create({
+        data: {
+          name: "No TMDB Item",
+          userId: testUser.id,
+          depth: 0,
+          order: 0,
+        },
+      });
+
+      const itemsPage = new ItemsPage(page, testUser.username);
+      await page.goto(`/u/${testUser.username}/${item.id}`);
+      await expect(page.getByTestId("hero-carousel")).toBeVisible({
+        timeout: 10000,
+      });
+
+      await itemsPage.openSettingsFromToolbar();
+      const container = await itemsPage.getSettingsContainer();
+      await expect(container).toBeVisible();
+
+      // TMDB tab should NOT be present
+      await expect(
+        container.getByRole("tab", { name: /tmdb/i })
+      ).not.toBeVisible();
+    });
+
+    test("can toggle display options and changes persist", async ({
+      page,
+      testUser,
+    }) => {
+      const item = await prisma.item.create({
+        data: {
+          name: "Toggle Options Item",
+          userId: testUser.id,
+          depth: 0,
+          order: 0,
+          tmdbId: 278,
+          tmdbType: "movie",
+          tmdbShowCast: true,
+        },
+      });
+
+      const itemsPage = new ItemsPage(page, testUser.username);
+      await page.goto(`/u/${testUser.username}/${item.id}`);
+      await expect(page.getByTestId("hero-carousel")).toBeVisible({
+        timeout: 10000,
+      });
+
+      // Open settings and navigate to TMDB tab
+      await itemsPage.openSettingsFromToolbar();
+      const container = await itemsPage.getSettingsContainer();
+      await container.getByRole("tab", { name: /tmdb/i }).click();
+
+      // Uncheck "Cast" — find checkbox associated with the Cast label
+      const castCheckboxInTab = container.getByRole("checkbox", {
+        name: /cast/i,
+      });
+      // Set up response listener before clicking (debounced save fires after 300ms)
+      const savePromise = page.waitForResponse(
+        (resp) => resp.request().method() === "POST" && resp.status() === 200,
+        { timeout: 5000 }
+      );
+      await castCheckboxInTab.click();
+      await savePromise;
+
+      // Close settings
+      await itemsPage.closeSettings();
+
+      // Reload and reopen settings — verify Cast is still unchecked
+      await page.reload();
+      await expect(page.getByTestId("hero-carousel")).toBeVisible({
+        timeout: 10000,
+      });
+      await itemsPage.openSettingsFromToolbar();
+      const reopened = await itemsPage.getSettingsContainer();
+      await reopened.getByRole("tab", { name: /tmdb/i }).click();
+
+      const castCheckboxVerify = reopened.getByRole("checkbox", {
+        name: /cast/i,
+      });
+      await expect(castCheckboxVerify).not.toBeChecked();
+    });
   });
 
   test("display options respected on public item detail", async ({

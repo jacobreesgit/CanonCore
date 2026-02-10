@@ -5,10 +5,6 @@
 
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import { WikiAccordion } from "./wiki-accordion";
-import {
-  MOCK_WIKI_SECTIONS_MOVIE,
-  MOCK_WIKI_SECTIONS_TV,
-} from "@/lib/mock-data";
 
 const meta = {
   title: "Items/About/WikiAccordion",
@@ -34,36 +30,6 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
-
-/** Movie wiki sections — Plot Summary, Production History, Critical Reception, Trivia. */
-export const MovieSections: Story = {
-  args: {
-    sections: MOCK_WIKI_SECTIONS_MOVIE,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Default movie sections: Plot Summary, Production History, Critical Reception, and Trivia & Facts.",
-      },
-    },
-  },
-};
-
-/** TV show wiki sections — includes Episode Guide instead of Trivia. */
-export const TVSections: Story = {
-  args: {
-    sections: MOCK_WIKI_SECTIONS_TV,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "TV show sections swap Trivia for Episode Guide and Critical Reception for Reception & Awards.",
-      },
-    },
-  },
-};
 
 /** Default (no sections prop) falls back to movie sections. */
 export const Default: Story = {

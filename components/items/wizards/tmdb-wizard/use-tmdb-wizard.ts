@@ -280,7 +280,6 @@ export function useTMDBWizard(
           ? { value: still.value, source: still.source }
           : null,
       displayOptions: data.displayOptions ?? DEFAULT_TMDB_DISPLAY,
-      isEpisodeMode: contentType === "episode",
     };
   }, [state.data]);
 

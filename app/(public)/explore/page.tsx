@@ -1,6 +1,6 @@
 /**
  * Public explore page showcasing featured and recent public items.
- * Features a Hero226 carousel with 5 featured items at the top.
+ * Features a cinematic hero carousel with 5 featured items at the top.
  */
 
 import { Metadata } from "next";
@@ -28,15 +28,22 @@ export const metadata: Metadata = {
  * Fetches featured items for carousel and all public items for grid.
  */
 export default async function ExplorePage() {
-  // Get session, profile, featured items, and explore items in parallel
-  const [session, profileResult, featuredItems, items] = await Promise.all([
-    auth(),
-    getProfile(),
-    getFeaturedItems(5),
-    getExploreItems(50, 0, null),
+  // Start auth, profile, and featured items immediately
+  const sessionPromise = auth();
+  const profilePromise = getProfile();
+  const featuredPromise = getFeaturedItems(5);
+
+  // Await session first so we can pass the correct userId to getExploreItems
+  const session = await sessionPromise;
+  const currentUserId = session?.user?.id ?? null;
+
+  // Fetch items with correct userId (avoids double-fetch), plus finish parallel work
+  const [profileResult, featuredItems, items] = await Promise.all([
+    profilePromise,
+    featuredPromise,
+    getExploreItems(50, 0, currentUserId),
   ]);
 
-  const currentUserId = session?.user?.id ?? null;
   const profile = profileResult.success ? profileResult.data : null;
   const currentUser = profile
     ? {
@@ -45,11 +52,6 @@ export default async function ExplorePage() {
         name: profile.name,
       }
     : null;
-
-  // Re-fetch items with user ID for progress calculation if logged in
-  const itemsWithProgress = currentUserId
-    ? await getExploreItems(50, 0, currentUserId)
-    : items;
 
   // Batch-fetch TMDB metadata for featured items (parallel, graceful failures)
   const tmdbResults = await Promise.all(
@@ -69,7 +71,7 @@ export default async function ExplorePage() {
       <SiteHeader title="Explore" titleHref="/explore" />
       <div className="bg-background text-foreground flex flex-1 flex-col">
         <ExploreClient
-          items={itemsWithProgress}
+          items={items}
           featuredItems={enrichedFeaturedItems}
           currentUser={currentUser}
         />

@@ -61,9 +61,9 @@ export class MobileFooterPage {
     return this.page.getByRole("dialog", { name: /search/i });
   }
 
-  /** User/Account bottom sheet dialog. */
+  /** User/Account bottom sheet dialog (now opens Settings directly). */
   get userSheet() {
-    return this.page.getByRole("dialog", { name: /account/i });
+    return this.page.getByRole("dialog", { name: /settings/i });
   }
 
   /** Help bottom sheet dialog. */
@@ -162,30 +162,25 @@ export class MobileFooterPage {
 
   // === USER SHEET ACTIONS ===
 
-  /** Sign out button in user sheet. */
+  /** Sign out button in settings sheet Account tab. */
   get signOutButton() {
     return this.userSheet.getByRole("button", { name: /sign out/i });
   }
 
-  /** Settings button in user sheet. */
-  get userSettingsButton() {
-    return this.userSheet.getByRole("button", { name: /settings/i });
-  }
-
   /**
-   * Signs out via the user sheet.
+   * Signs out via the settings sheet Account tab.
    */
   async signOut(): Promise<void> {
     await this.openUserSheet();
+    await this.page.getByRole("tab", { name: /account/i }).click();
     await this.signOutButton.click();
   }
 
   /**
-   * Opens settings dialog from user sheet.
+   * Opens settings sheet (Account button now opens settings directly).
    */
   async openSettingsFromUserSheet(): Promise<void> {
     await this.openUserSheet();
-    await this.userSettingsButton.click();
   }
 
   // === HELP SHEET ACTIONS ===

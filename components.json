@@ -21,7 +21,9 @@
   "registries": {
     "@shadcnblocks": {
       "url": "https://shadcnblocks.com/r/{name}",
-      "headers": {}
+      "headers": {
+        "Authorization": "Bearer sk_live_cqlIpvhOko_rSApc7HMAU0Ac5mOnvNKz"
+      }
     },
     "@efferd": "https://efferd.com/r/{name}.json",
     "@diceui": "https://diceui.com/r/{name}.json"

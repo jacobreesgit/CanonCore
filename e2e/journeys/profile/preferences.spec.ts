@@ -4,6 +4,7 @@
  */
 
 import { test, expect } from "../../fixtures";
+import { isMobileViewport } from "../../helpers/mobile-nav-helpers";
 
 test.describe("User Preferences Journey", () => {
   test.beforeEach(async ({ page, testUser }) => {
@@ -123,23 +124,31 @@ test.describe("User Preferences Journey", () => {
     page,
   }) => {
     await settingsPage.openFromNavUser();
+    const isMobile = await isMobileViewport(page);
+
+    // Helper to get the visible tabpanel
+    // On mobile (SwipeableTabs), multiple tabpanels exist but only active is visible
+    const getVisiblePanel = () =>
+      isMobile
+        ? page.locator('[role="tabpanel"]:not(.hidden)').first()
+        : page.getByRole("tabpanel");
 
     // Should start on Profile tab (has Display Name, Profile Picture, Hero Banner)
-    await expect(page.getByRole("tabpanel")).toContainText(
+    await expect(getVisiblePanel()).toContainText(
       /display name|profile picture/i
     );
 
     // Switch to Preferences tab
     await settingsPage.goToPreferencesTab();
-    await expect(page.getByRole("tabpanel")).toContainText(/view mode/i);
+    await expect(getVisiblePanel()).toContainText(/view mode/i);
 
     // Switch to Activity tab
     await settingsPage.goToActivityTab();
-    await expect(page.getByRole("tabpanel")).toContainText(/activity|history/i);
+    await expect(getVisiblePanel()).toContainText(/activity|history|no sync/i);
 
     // Switch back to Profile tab
     await settingsPage.goToProfileTab();
-    await expect(page.getByRole("tabpanel")).toContainText(
+    await expect(getVisiblePanel()).toContainText(
       /display name|profile picture/i
     );
   });

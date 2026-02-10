@@ -61,7 +61,7 @@ export default defineConfig({
       name: "Mobile Chrome",
       use: {
         ...devices["Pixel 5"],
-        viewport: { width: 390, height: 844 }, // Below 768px to trigger mobile layout
+        viewport: { width: 390, height: 844 }, // Below 1024px to trigger mobile layout
         deviceScaleFactor: 3, // 3x for high quality (390x3=1170, 844x3=2532)
         isMobile: true,
         hasTouch: true,

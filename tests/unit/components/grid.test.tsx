@@ -25,6 +25,7 @@ vi.mock("@/hooks/use-image-loaded", () => ({
 // Mock ItemContextMenu to prevent deep import chain during shutdown
 vi.mock("@/components/items/item-context-menu", () => ({
   ItemContextMenu: ({ children }: { children: React.ReactNode }) => children,
+  renderMenuItems: () => null,
 }));
 
 const mockItems: ItemWithArtwork[] = [
