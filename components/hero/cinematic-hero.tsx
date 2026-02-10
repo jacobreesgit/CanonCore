@@ -245,7 +245,10 @@ export function CinematicHero({
                         <div
                           className="bg-primary absolute inset-y-0 left-0 rounded-full transition-[width] duration-300 ease-out"
                           style={{
-                            width: `max(8px, ${activeSlide.progress}%)`,
+                            width:
+                              activeSlide.progress === 0
+                                ? "0%"
+                                : `max(8px, ${activeSlide.progress}%)`,
                           }}
                         />
                       </div>

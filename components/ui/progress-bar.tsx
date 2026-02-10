@@ -52,7 +52,8 @@ export function ProgressBar({
             !compact && "transition-[width] duration-300 ease-out"
           )}
           style={{
-            width: `max(8px, ${clampedProgress}%)`,
+            width:
+              clampedProgress === 0 ? "0%" : `max(8px, ${clampedProgress}%)`,
           }}
         />
       </div>

@@ -338,6 +338,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
           <div className="absolute inset-x-0 bottom-0 p-2 md:p-3">
             <div className="flex items-center gap-1.5">
               <h3
+                data-testid="grid-item-title"
                 className={cn(
                   "min-w-0 truncate text-xs font-semibold tracking-tight",
                   "text-white drop-shadow-lg",

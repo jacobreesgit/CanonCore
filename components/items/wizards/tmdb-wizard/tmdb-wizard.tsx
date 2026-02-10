@@ -77,13 +77,8 @@ export function TMDBWizard({
   // Derive content type from initial data
   const contentType: TMDBWizardContentType = useMemo(() => {
     if (initialData.contentType) return initialData.contentType;
-    if (initialData.isEpisodeMode) return "episode";
     return initialData.tmdbResult.mediaType === "tv" ? "show" : "movie";
-  }, [
-    initialData.contentType,
-    initialData.isEpisodeMode,
-    initialData.tmdbResult.mediaType,
-  ]);
+  }, [initialData.contentType, initialData.tmdbResult.mediaType]);
 
   // Determine visible steps based on content type and Drive connection
   const visibleSteps = useMemo<TMDBWizardStep[]>(

@@ -329,7 +329,7 @@ test.describe("Google Drive: OAuth Connection", () => {
 
     // Scope to settings dialog to avoid strict mode violation on mobile
     // (mobile has both user sheet and settings dialog visible)
-    const dialog = page.locator('[role="dialog"][data-slot="dialog-content"]');
+    const dialog = page.getByTestId("settings-dialog");
 
     // Wait for storage label to be visible (AnimatedDialogContent needs time to render)
     await expect(dialog.getByText("Storage", { exact: true })).toBeVisible();
@@ -384,7 +384,7 @@ test.describe("Google Drive: OAuth Connection", () => {
 
     // Scope to settings dialog to avoid strict mode violation on mobile
     // (mobile has both user sheet and settings dialog visible)
-    const dialog = page.locator('[role="dialog"][data-slot="dialog-content"]');
+    const dialog = page.getByTestId("settings-dialog");
 
     // Wait for storage label to be visible (AnimatedDialogContent needs time to render)
     await expect(dialog.getByText("Storage", { exact: true })).toBeVisible();

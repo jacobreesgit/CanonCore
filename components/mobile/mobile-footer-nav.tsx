@@ -60,7 +60,7 @@ export interface MobileFooterNavProps {
 /**
  * Fixed bottom navigation bar for mobile viewports.
  * Renders navigation links and sheet triggers with active state indication.
- * Only visible on mobile (< 768px viewport).
+ * Only visible on mobile (< 1024px viewport).
  *
  * @param items - Navigation items to display
  * @param onSheetOpen - Callback when sheet trigger is pressed

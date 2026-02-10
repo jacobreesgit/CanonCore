@@ -82,16 +82,25 @@ test.describe("Profile Viewer Features", () => {
       timeout: 10000,
     });
 
-    // Both items visible
-    await expect(page.getByText("Alpha Collection").first()).toBeVisible();
-    await expect(page.getByText("Zeta Collection").first()).toBeVisible();
+    // Both items visible (use grid-item-title to avoid hover overlay duplicate)
+    const gridTitle = page.locator('[data-testid="grid-item-title"]');
+    await expect(
+      gridTitle.filter({ hasText: "Alpha Collection" })
+    ).toBeVisible();
+    await expect(
+      gridTitle.filter({ hasText: "Zeta Collection" })
+    ).toBeVisible();
 
     // Change sort to Name A-Z
     await publicProfilePage.selectSortOption("Name A-Z");
 
     // Items should still be visible (sorted differently)
-    await expect(page.getByText("Alpha Collection").first()).toBeVisible();
-    await expect(page.getByText("Zeta Collection").first()).toBeVisible();
+    await expect(
+      gridTitle.filter({ hasText: "Alpha Collection" })
+    ).toBeVisible();
+    await expect(
+      gridTitle.filter({ hasText: "Zeta Collection" })
+    ).toBeVisible();
   });
 
   test("viewer sees pinned section on public profile", async ({
@@ -131,7 +140,11 @@ test.describe("Profile Viewer Features", () => {
 
     // Pinned item should appear in pinned grid
     const pinnedGrid = page.getByTestId("pinned-items-grid");
-    await expect(pinnedGrid.getByText("Pinned Favorite").first()).toBeVisible();
+    await expect(
+      pinnedGrid
+        .locator('[data-testid="grid-item-title"]')
+        .filter({ hasText: "Pinned Favorite" })
+    ).toBeVisible();
 
     // Library section heading should appear when pinned section exists
     await expect(page.getByText("Library")).toBeVisible();
@@ -180,22 +193,31 @@ test.describe("Profile Viewer Features", () => {
       timeout: 10000,
     });
 
-    // Both items visible initially
-    await expect(page.getByText("Item With Media").first()).toBeVisible();
-    await expect(page.getByText("Item Without Files").first()).toBeVisible();
+    // Both items visible initially (use grid-item-title to avoid hover overlay duplicate)
+    const gridTitle = page.locator('[data-testid="grid-item-title"]');
+    await expect(
+      gridTitle.filter({ hasText: "Item With Media" })
+    ).toBeVisible();
+    await expect(
+      gridTitle.filter({ hasText: "Item Without Files" })
+    ).toBeVisible();
 
     // Filter to "Has Files"
     await publicProfilePage.selectFilterOption("Has Files");
 
     // Only item with files should be visible
-    await expect(page.getByText("Item With Media").first()).toBeVisible();
     await expect(
-      page.getByText("Item Without Files").first()
+      gridTitle.filter({ hasText: "Item With Media" })
+    ).toBeVisible();
+    await expect(
+      gridTitle.filter({ hasText: "Item Without Files" })
     ).not.toBeVisible();
 
     // Reset filter to "All Items"
     await publicProfilePage.selectFilterOption("All Items");
-    await expect(page.getByText("Item Without Files").first()).toBeVisible();
+    await expect(
+      gridTitle.filter({ hasText: "Item Without Files" })
+    ).toBeVisible();
   });
 
   test("profile hero shows progress bar", async ({

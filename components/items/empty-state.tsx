@@ -105,11 +105,12 @@ export function EmptyState({ variant, onAction, className }: EmptyStateProps) {
 
   return (
     <div
+      data-testid="empty-state"
       className={cn(
         "flex flex-1 flex-col items-center justify-center gap-5",
         "border-border/40 rounded-xl border-2 border-dashed",
         "from-muted/30 to-muted/10 bg-gradient-to-b",
-        "min-h-[280px] p-8",
+        "mb-4 min-h-[280px] p-8",
         className
       )}
     >
@@ -139,6 +140,7 @@ export function EmptyState({ variant, onAction, className }: EmptyStateProps) {
       {/* Action button - only render when onAction provided AND actionLabel non-empty */}
       {onAction && config.actionLabel && (
         <Button
+          data-testid="empty-state-action"
           onClick={onAction}
           variant="outline"
           size="sm"

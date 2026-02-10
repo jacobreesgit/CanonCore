@@ -21,7 +21,6 @@ const mockInitialData: TMDBWizardInitialData = {
     name: "Test Movie (2024)",
     description: "A test movie description",
   },
-  isEpisodeMode: false,
 };
 
 describe("useTMDBWizard", () => {
@@ -66,15 +65,15 @@ describe("useTMDBWizard", () => {
       });
     });
 
-    it("respects isEpisodeMode from initial data", () => {
+    it("respects contentType='episode' from initial data", () => {
       const episodeData: TMDBWizardInitialData = {
         ...mockInitialData,
-        isEpisodeMode: true,
+        contentType: "episode",
       };
 
       const { result } = renderHook(() => useTMDBWizard(episodeData));
 
-      expect(result.current.data.isEpisodeMode).toBe(true);
+      expect(result.current.data.contentType).toBe("episode");
     });
   });
 
@@ -374,7 +373,6 @@ describe("useTMDBWizard", () => {
         poster: { value: "/poster.jpg", source: "tmdb" },
         backdrop: { value: "/backdrop.jpg", source: "existing" },
         still: null,
-        isEpisodeMode: false,
         displayOptions: {
           showTagline: true,
           showMetadata: true,
@@ -413,16 +411,15 @@ describe("useTMDBWizard", () => {
   });
 
   describe("episode mode", () => {
-    it("skips poster and hero steps in episode mode when going to summary", () => {
+    it("sets contentType to episode when specified", () => {
       const episodeData: TMDBWizardInitialData = {
         ...mockInitialData,
-        isEpisodeMode: true,
+        contentType: "episode",
       };
 
       const { result } = renderHook(() => useTMDBWizard(episodeData));
 
-      // In episode mode, artwork steps should auto-skip
-      expect(result.current.data.isEpisodeMode).toBe(true);
+      expect(result.current.data.contentType).toBe("episode");
     });
   });
 
@@ -466,31 +463,6 @@ describe("useTMDBWizard", () => {
         ...mockInitialData,
         tmdbResult: { ...mockInitialData.tmdbResult, mediaType: "tv" },
         contentType: "episode",
-      };
-
-      const { result } = renderHook(() => useTMDBWizard(episodeData));
-
-      expect(result.current.data.contentType).toBe("episode");
-    });
-
-    it("prefers explicit contentType over isEpisodeMode", () => {
-      const seasonData: TMDBWizardInitialData = {
-        ...mockInitialData,
-        tmdbResult: { ...mockInitialData.tmdbResult, mediaType: "tv" },
-        contentType: "season",
-        isEpisodeMode: true, // Should be ignored when contentType is set
-      };
-
-      const { result } = renderHook(() => useTMDBWizard(seasonData));
-
-      expect(result.current.data.contentType).toBe("season");
-    });
-
-    it("falls back to isEpisodeMode when contentType not set", () => {
-      const episodeData: TMDBWizardInitialData = {
-        ...mockInitialData,
-        tmdbResult: { ...mockInitialData.tmdbResult, mediaType: "tv" },
-        isEpisodeMode: true,
       };
 
       const { result } = renderHook(() => useTMDBWizard(episodeData));

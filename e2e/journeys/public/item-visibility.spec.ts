@@ -9,6 +9,7 @@ import {
   generateUniqueUsername,
   TEST_PASSWORD,
 } from "../../helpers/test-user";
+import { ItemsPage } from "../../pages/items.page";
 
 // Owner with public profile for visibility tests
 let ownerId: string;
@@ -199,8 +200,11 @@ test.describe("Item Visibility", () => {
 
       // Navigate to public parent
       await publicProfilePage.gotoItem(ownerUsername, publicParentId);
-      // Use .first() because GridItem renders name in two <h3> elements (default + hover)
-      await expect(page.getByText("Inheriting Child").first()).toBeVisible();
+      await expect(
+        page
+          .locator('[data-testid="grid-item-title"]')
+          .filter({ hasText: "Inheriting Child" })
+      ).toBeVisible();
     });
 
     test("inheriting child of private parent is NOT visible", async ({
@@ -278,7 +282,9 @@ test.describe("Item Visibility", () => {
       // Navigate to child, grandchild should be visible
       await publicProfilePage.gotoItem(ownerUsername, child.id);
       await expect(
-        page.getByText("Inheriting Grandchild").first()
+        page
+          .locator('[data-testid="grid-item-title"]')
+          .filter({ hasText: "Inheriting Grandchild" })
       ).toBeVisible();
     });
 
@@ -339,7 +345,11 @@ test.describe("Item Visibility", () => {
       });
 
       await publicProfilePage.gotoExplore();
-      await expect(page.getByText("Explore Visible Item")).toBeVisible();
+      await expect(
+        page
+          .locator('[data-testid="grid-item-title"]')
+          .filter({ hasText: "Explore Visible Item" })
+      ).toBeVisible();
     });
 
     test("inherited-public items do NOT appear on Explore", async ({
@@ -373,7 +383,11 @@ test.describe("Item Visibility", () => {
 
       await publicProfilePage.gotoExplore();
       // Parent appears (explicit public root item)
-      await expect(page.getByText("Parent On Explore")).toBeVisible();
+      await expect(
+        page
+          .locator('[data-testid="grid-item-title"]')
+          .filter({ hasText: "Parent On Explore" })
+      ).toBeVisible();
       // Child does NOT appear (inherited visibility + not root)
       await expect(
         page.getByText("Inherited Not On Explore")
@@ -554,11 +568,13 @@ test.describe("Item Visibility", () => {
       await signInPage.signIn(ownerEmail, TEST_PASSWORD);
       await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+$/, { timeout: 10000 });
 
-      // Open settings via context menu
-      await itemsPage.openSettingsViaContextMenu("Toggle To Public");
+      // Open settings (viewport-aware: context menu on desktop, Options sheet on mobile)
+      await itemsPage.openItemSettings("Toggle To Public");
+
+      const container = await itemsPage.getSettingsContainer();
 
       // Find and click the visibility toggle switch (labeled "Private" when off)
-      const visibilitySwitch = page.getByRole("switch", {
+      const visibilitySwitch = container.getByRole("switch", {
         name: /private|public/i,
       });
       await visibilitySwitch.click();
@@ -568,11 +584,8 @@ test.describe("Item Visibility", () => {
         page.getByText(/item is now public/i, { exact: false })
       ).toBeVisible({ timeout: 5000 });
 
-      // Close dialog
-      await page.keyboard.press("Escape");
-      await expect(
-        page.getByRole("dialog", { name: /settings/i })
-      ).not.toBeVisible({ timeout: 5000 });
+      // Close settings
+      await itemsPage.closeSettings();
 
       // Sign out and verify visible on public profile
       await page.goto("/");
@@ -617,17 +630,16 @@ test.describe("Item Visibility", () => {
       await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+$/, { timeout: 10000 });
 
       // Navigate directly to child item's detail page
+      const itemsPage = new ItemsPage(page, ownerUsername);
       await page.goto(`/u/${ownerUsername}/${child.id}`);
       await page.waitForLoadState("networkidle");
 
-      // Click the Settings button in the toolbar
-      await page.getByRole("button", { name: /settings/i }).click();
-
-      // Wait for dialog to open
-      await expect(page.getByRole("dialog")).toBeVisible({ timeout: 5000 });
+      // Open settings (viewport-aware)
+      await itemsPage.openSettingsFromToolbar();
+      const container = await itemsPage.getSettingsContainer();
 
       // Verify inherit option is visible for non-root item
-      await expect(page.getByText(/inherit from parent/i)).toBeVisible();
+      await expect(container.getByText(/inherit from parent/i)).toBeVisible();
     });
 
     test("inherit option NOT shown for root items", async ({
@@ -654,17 +666,18 @@ test.describe("Item Visibility", () => {
       await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+$/, { timeout: 10000 });
 
       // Navigate directly to the root item's detail page
+      const itemsPage = new ItemsPage(page, ownerUsername);
       await page.goto(`/u/${ownerUsername}/${rootItem.id}`);
       await page.waitForLoadState("networkidle");
 
-      // Click the Settings button in the toolbar
-      await page.getByRole("button", { name: /settings/i }).click();
-
-      // Wait for dialog to open
-      await expect(page.getByRole("dialog")).toBeVisible({ timeout: 5000 });
+      // Open settings (viewport-aware)
+      await itemsPage.openSettingsFromToolbar();
+      const container = await itemsPage.getSettingsContainer();
 
       // Verify inherit option is NOT visible for root item
-      await expect(page.getByText(/inherit from parent/i)).not.toBeVisible();
+      await expect(
+        container.getByText(/inherit from parent/i)
+      ).not.toBeVisible();
     });
   });
 });

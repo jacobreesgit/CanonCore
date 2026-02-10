@@ -25,9 +25,6 @@ test.describe("Empty States", () => {
       await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD, username);
       await expect(page).toHaveURL(`/u/${username}`, { timeout: 10000 });
 
-      // Wait for page to fully load
-      await page.waitForLoadState("networkidle");
-
       // Should show first-time empty state
       await expect(page.getByText("No items yet")).toBeVisible({
         timeout: 10000,
@@ -35,10 +32,8 @@ test.describe("Empty States", () => {
       await expect(
         page.getByText(/create your first item to start organizing/i)
       ).toBeVisible();
-      // Toolbar and empty state both have Add Item buttons - check at least one is visible
-      await expect(
-        page.getByRole("button", { name: /add item/i }).first()
-      ).toBeVisible();
+      // Check empty state action button is visible
+      await expect(page.getByTestId("empty-state-action")).toBeVisible();
     });
 
     test("should open add item dialog from empty state action", async ({
@@ -51,17 +46,11 @@ test.describe("Empty States", () => {
       await signUpPage.signUp(email, TEST_PASSWORD, TEST_PASSWORD, username);
       await expect(page).toHaveURL(`/u/${username}`, { timeout: 10000 });
 
-      // Wait for page to fully load
-      await page.waitForLoadState("networkidle");
-
-      // Click the Add Item button (either toolbar or empty state)
-      await expect(
-        page.getByRole("button", { name: /add item/i }).first()
-      ).toBeVisible({ timeout: 10000 });
-      await page
-        .getByRole("button", { name: /add item/i })
-        .first()
-        .click();
+      // Click the empty state's Add Item button
+      await expect(page.getByTestId("empty-state-action")).toBeVisible({
+        timeout: 10000,
+      });
+      await page.getByTestId("empty-state-action").click();
 
       // Add item dialog should open
       await expect(
@@ -130,10 +119,7 @@ test.describe("Empty States", () => {
       // Apply filter that matches nothing (Has Files - but none have files)
       await itemsPage.selectFilterOption("Has Files");
 
-      // Wait for filter to apply and empty state to appear
-      await page.waitForLoadState("networkidle");
-
-      // Should show filter-empty state
+      // Should show filter-empty state (selectFilterOption waits for menu to close)
       await expect(page.getByText("No matching items")).toBeVisible({
         timeout: 10000,
       });
@@ -151,7 +137,6 @@ test.describe("Empty States", () => {
     }) => {
       // Apply filter that matches nothing
       await itemsPage.selectFilterOption("Has Files");
-      await page.waitForLoadState("networkidle");
       await expect(page.getByText("No matching items")).toBeVisible({
         timeout: 10000,
       });

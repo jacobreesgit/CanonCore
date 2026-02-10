@@ -85,12 +85,12 @@ test.describe("Explore Page Journey", () => {
         ).toBeVisible();
       }
 
-      // Should see the public item (use .first() since multiple items may have same name in grid)
+      // Should see the public item via grid title testid
       await expect(
         page
           .getByTestId("items-grid-view")
-          .getByText("Public Explore Collection")
-          .first()
+          .locator('[data-testid="grid-item-title"]')
+          .filter({ hasText: "Public Explore Collection" })
       ).toBeVisible();
 
       // Should show owner username (use .first() since username appears multiple times in grid)
@@ -145,8 +145,8 @@ test.describe("Explore Page Journey", () => {
       await expect(
         page
           .getByTestId("items-grid-view")
-          .getByText("Public Explore Collection")
-          .first()
+          .locator('[data-testid="grid-item-title"]')
+          .filter({ hasText: "Public Explore Collection" })
       ).toBeVisible();
     });
 
@@ -184,8 +184,8 @@ test.describe("Explore Page Journey", () => {
       await expect(
         page
           .getByTestId("items-grid-view")
-          .getByText("Public Explore Collection")
-          .first()
+          .locator('[data-testid="grid-item-title"]')
+          .filter({ hasText: "Public Explore Collection" })
       ).toBeVisible();
     });
   });
@@ -260,17 +260,20 @@ test.describe("Explore Page Journey", () => {
       // Go to landing or sign-in page
       await page.goto("/");
 
-      // Sidebar should have explore link
+      // Sidebar should have explore link (use exact match to avoid matching "Explore Collections")
       const sidebarTrigger = page.getByTestId("sidebar-trigger");
 
       // On mobile, need to open sidebar
-      const exploreLink = page.getByRole("link", { name: /explore/i });
+      const exploreLink = page.getByRole("link", {
+        name: "Explore",
+        exact: true,
+      });
       const isExploreVisible = await exploreLink.isVisible().catch(() => false);
       if (!isExploreVisible && (await sidebarTrigger.isVisible())) {
         await sidebarTrigger.click();
       }
 
-      await expect(page.getByRole("link", { name: /explore/i })).toBeVisible({
+      await expect(exploreLink).toBeVisible({
         timeout: 5000,
       });
     });
@@ -350,18 +353,18 @@ test.describe("Explore Page Journey", () => {
     }) => {
       await publicProfilePage.gotoExplore();
 
-      // Should see items from both owners (use .first() for potential duplicates)
+      // Should see items from both owners via grid title testid
       await expect(
         page
           .getByTestId("items-grid-view")
-          .getByText("Owner 1 Collection")
-          .first()
+          .locator('[data-testid="grid-item-title"]')
+          .filter({ hasText: "Owner 1 Collection" })
       ).toBeVisible();
       await expect(
         page
           .getByTestId("items-grid-view")
-          .getByText("Owner 2 Collection")
-          .first()
+          .locator('[data-testid="grid-item-title"]')
+          .filter({ hasText: "Owner 2 Collection" })
       ).toBeVisible();
 
       // Should see both usernames (use .first() since they appear multiple times in grid)

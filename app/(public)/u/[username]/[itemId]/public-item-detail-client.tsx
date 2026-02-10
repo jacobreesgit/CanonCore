@@ -15,7 +15,7 @@ import { PlaylistButton } from "@/components/items/playlist-button";
 import { AboutTabContent } from "@/components/items/about-tab-content";
 import { GridItem } from "@/components/sortable-grid";
 import { Tree } from "@/components/sortable-tree";
-import { ViewToggle, useStoredViewMode } from "@/components/items/view-toggle";
+import { useStoredViewMode } from "@/hooks/use-stored-view-mode";
 import { EmptyState } from "@/components/items/empty-state";
 import { UnderlineTabs } from "@/components/ui/underline-tabs";
 import { Section } from "@/components/ui/section";
@@ -103,7 +103,7 @@ export function PublicItemClient({
   const { sortBy, setSortBy, filterBy, setFilterBy } = useItemsSortFilter();
 
   // View mode state (persisted to localStorage)
-  const [viewMode] = useStoredViewMode();
+  const [viewMode, setViewMode] = useStoredViewMode();
 
   // Filter to get only direct children of this item, then apply sort and filter
   type ChildItem = (typeof childItems)[number];
@@ -232,13 +232,10 @@ export function PublicItemClient({
     </>
   );
 
-  // Contents toolbar left actions (view toggle)
-  const contentsLeftActions = <ViewToggle disabled={!hasChildren} />;
-
   // Contents toolbar right actions
   const contentsActions =
     forkInfo && forkInfo.forkCount > 0 ? (
-      <span className="text-muted-foreground hidden items-center gap-1.5 text-sm sm:flex">
+      <span className="text-muted-foreground hidden items-center gap-1.5 text-sm lg:flex">
         <Copy className="size-4" />
         {forkInfo.forkCount} {forkInfo.forkCount === 1 ? "fork" : "forks"}
       </span>
@@ -262,8 +259,9 @@ export function PublicItemClient({
         onSortChange={setSortBy}
         filterBy={filterBy}
         onFilterChange={setFilterBy}
+        viewMode={viewMode}
+        onViewChange={setViewMode}
         disabled={!hasChildren}
-        leftActions={contentsLeftActions}
         actions={contentsActions}
       />
 

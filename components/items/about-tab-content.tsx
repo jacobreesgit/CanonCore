@@ -43,7 +43,7 @@ interface AboutTabContentProps {
   tmdbDisplayOptions?: TmdbDisplayOptions | null;
   /** Whether the item is a TV show (affects wiki sections). */
   isTV: boolean;
-  /** Right-side toolbar actions (e.g., Settings button). */
+  /** Right-side actions for the toolbar (e.g., Add, Edit, Sync). */
   actions?: React.ReactNode;
 }
 

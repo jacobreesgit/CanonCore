@@ -4,6 +4,7 @@
  */
 
 import { test, expect } from "../../fixtures";
+import { isMobileViewport } from "../../helpers/mobile-nav-helpers";
 
 test.describe("Sticky Dialog Footer", () => {
   test.beforeEach(async ({ page, testUser }) => {
@@ -15,6 +16,9 @@ test.describe("Sticky Dialog Footer", () => {
     itemsPage,
     page,
   }) => {
+    const isMobile = await isMobileViewport(page);
+    test.skip(isMobile, "Sticky footer is a desktop Dialog pattern");
+
     await itemsPage.goto();
     // Create parent item and navigate into it (tree view is only available on item detail pages)
     await itemsPage.createItem("Parent Folder");
@@ -53,6 +57,9 @@ test.describe("Sticky Dialog Footer", () => {
     myItemsPage,
     page,
   }) => {
+    const isMobile = await isMobileViewport(page);
+    test.skip(isMobile, "Sticky footer is a desktop Dialog pattern");
+
     // Navigate to my-items first
     await myItemsPage.goto();
     await page.waitForLoadState("domcontentloaded");
@@ -84,6 +91,9 @@ test.describe("Sticky Dialog Footer", () => {
     itemsPage,
     page,
   }) => {
+    const isMobile = await isMobileViewport(page);
+    test.skip(isMobile, "Sticky footer is a desktop Dialog pattern");
+
     await itemsPage.goto();
 
     // Open add item dialog
@@ -115,6 +125,9 @@ test.describe("Sticky Dialog Footer", () => {
     itemsPage,
     page,
   }) => {
+    const isMobile = await isMobileViewport(page);
+    test.skip(isMobile, "Sticky footer is a desktop Dialog pattern");
+
     await itemsPage.goto();
 
     // Open add item dialog

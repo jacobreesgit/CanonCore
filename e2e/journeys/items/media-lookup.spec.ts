@@ -10,6 +10,7 @@
  */
 
 import { test, expect } from "../../fixtures";
+import { isMobileViewport } from "../../helpers/mobile-nav-helpers";
 
 /** Mock TMDB search response for "The Shawshank Redemption" */
 const mockShawshankResult = {
@@ -180,16 +181,17 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       const nameInput = page.getByLabel(/item name/i);
       await nameInput.fill("Shawshank");
 
-      // Wait for debounce and results
-      await page.waitForTimeout(400);
+      // Wait for TMDB search popover to appear (300ms debounce + network)
+      const tmdbPopover = page.getByTestId("tmdb-search-popover");
+      await tmdbPopover
+        .waitFor({ state: "visible", timeout: 3000 })
+        .catch(() => {});
 
-      // Check if search results appear
-      const searchResult = page.getByText("The Shawshank Redemption", {
-        exact: false,
-      });
-      const hasResults = await searchResult.isVisible().catch(() => false);
-
-      if (hasResults) {
+      // Check if search results appear (use .first() — real API may return multiple matches)
+      const searchResult = page
+        .getByText("The Shawshank Redemption", { exact: false })
+        .first();
+      if (await tmdbPopover.isVisible().catch(() => false)) {
         await expect(searchResult).toBeVisible({ timeout: 5000 });
       }
     });
@@ -224,12 +226,11 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       const nameInput = page.getByLabel(/item name/i);
       await nameInput.fill("xyznonexistentmovie123");
 
-      // Wait for search
-      await page.waitForTimeout(400);
-
-      // Should show "No results found" message
-      const noResults = page.getByText(/no results/i);
-      const hasNoResultsMsg = await noResults.isVisible().catch(() => false);
+      // Wait for TMDB search popover to appear with "No results" message
+      const tmdbPopover = page.getByTestId("tmdb-search-popover");
+      await tmdbPopover
+        .waitFor({ state: "visible", timeout: 3000 })
+        .catch(() => {});
 
       // Can still create item with manual name
       await nameInput.fill("My Indie Film");
@@ -335,8 +336,8 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Create an item first
       await itemsPage.createItem("Original Name");
 
-      // Rename via settings dialog (context menu works in grid view)
-      await itemsPage.renameItemViaContextMenu("Original Name", "Renamed Item");
+      // Rename via settings (viewport-aware: context menu on desktop, Options sheet on mobile)
+      await itemsPage.renameItem("Original Name", "Renamed Item");
 
       // Verify the rename worked
       await itemsPage.expectItemVisible("Renamed Item");
@@ -349,13 +350,14 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Create an item first
       await itemsPage.createItem("Desc Test");
 
-      // Open settings and update description manually (context menu works in grid view)
-      await itemsPage.openSettingsViaContextMenu("Desc Test");
+      // Open settings (viewport-aware: context menu on desktop, Options sheet on mobile)
+      await itemsPage.openItemSettings("Desc Test");
 
-      const descInput = page.getByLabel(/description/i);
+      const container = await itemsPage.getSettingsContainer();
+      const descInput = container.getByLabel(/description/i);
       await descInput.fill("New description text");
 
-      await page.getByRole("button", { name: /save changes/i }).click();
+      await container.getByRole("button", { name: /save changes/i }).click();
 
       // Verify the update worked
     });
@@ -369,15 +371,16 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Create an item
       await itemsPage.createItem("Check Name Display");
 
-      // Open settings (context menu works in grid view)
-      await itemsPage.openSettingsViaContextMenu("Check Name Display");
+      // Open settings (viewport-aware)
+      await itemsPage.openItemSettings("Check Name Display");
 
       // Verify the name field shows current name
-      const nameInput = page.getByLabel(/item name/i);
+      const container = await itemsPage.getSettingsContainer();
+      const nameInput = container.getByLabel(/item name/i);
       await expect(nameInput).toHaveValue("Check Name Display");
 
-      // Close dialog
-      await itemsPage.closeSettingsDialog();
+      // Close settings
+      await itemsPage.closeSettings();
     });
 
     test("PATH 4: Save button disabled when no changes", async ({
@@ -389,15 +392,19 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Create an item
       await itemsPage.createItem("No Changes Test");
 
-      // Open settings (context menu works in grid view)
-      await itemsPage.openSettingsViaContextMenu("No Changes Test");
+      // Open settings (viewport-aware)
+      await itemsPage.openItemSettings("No Changes Test");
+
+      const container = await itemsPage.getSettingsContainer();
 
       // Save button should be disabled
-      const saveButton = page.getByRole("button", { name: /save changes/i });
+      const saveButton = container.getByRole("button", {
+        name: /save changes/i,
+      });
       await expect(saveButton).toBeDisabled();
 
       // Make a change
-      const nameInput = page.getByLabel(/item name/i);
+      const nameInput = container.getByLabel(/item name/i);
       await nameInput.fill("Modified Name");
 
       // Save button should now be enabled
@@ -409,7 +416,7 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Save button should be disabled again
       await expect(saveButton).toBeDisabled();
 
-      await itemsPage.closeSettingsDialog();
+      await itemsPage.closeSettings();
     });
 
     test("PATH 5: Empty name shows error", async ({ page, itemsPage }) => {
@@ -418,25 +425,29 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Create an item
       await itemsPage.createItem("Empty Name Test");
 
-      // Open settings (context menu works in grid view)
-      await itemsPage.openSettingsViaContextMenu("Empty Name Test");
+      // Open settings (viewport-aware)
+      await itemsPage.openItemSettings("Empty Name Test");
+
+      const container = await itemsPage.getSettingsContainer();
 
       // Clear the name
-      const nameInput = page.getByLabel(/item name/i);
+      const nameInput = container.getByLabel(/item name/i);
       await nameInput.fill("");
 
       // Add a description to enable save button (name empty + description change)
-      const descInput = page.getByLabel(/description/i);
+      const descInput = container.getByLabel(/description/i);
       await descInput.fill("Some description");
 
       // Try to save
-      const saveButton = page.getByRole("button", { name: /save changes/i });
+      const saveButton = container.getByRole("button", {
+        name: /save changes/i,
+      });
       await saveButton.click();
 
       // Should show error toast
       await itemsPage.expectErrorToast("Name is required");
 
-      await itemsPage.closeSettingsDialog();
+      await itemsPage.closeSettings();
     });
 
     test("PATH 6: TMDB search available in settings dialog", async ({
@@ -464,25 +475,24 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Create an item
       await itemsPage.createItem("TMDB Search Test");
 
-      // Open settings (context menu works in grid view)
-      await itemsPage.openSettingsViaContextMenu("TMDB Search Test");
+      // Open settings (viewport-aware)
+      await itemsPage.openItemSettings("TMDB Search Test");
+
+      const container = await itemsPage.getSettingsContainer();
 
       // The name field should function as a TMDB search combobox
-      const nameInput = page.getByLabel(/item name/i);
+      const nameInput = container.getByLabel(/item name/i);
       await nameInput.fill("Shawshank");
 
-      // Wait for search
-      await page.waitForTimeout(400);
-
-      // Check for search results
-      const searchResult = page.getByText("The Shawshank Redemption", {
-        exact: false,
-      });
-      const hasResults = await searchResult.isVisible().catch(() => false);
+      // Wait for TMDB search popover to appear (300ms debounce + network)
+      const tmdbPopover = page.getByTestId("tmdb-search-popover");
+      await tmdbPopover
+        .waitFor({ state: "visible", timeout: 3000 })
+        .catch(() => {});
 
       // If TMDB is working, results should appear
       // If not, the manual entry still works
-      await itemsPage.closeSettingsDialog();
+      await itemsPage.closeSettings();
     });
 
     test("PATH 7: Cancel closes dialog without saving changes", async ({
@@ -494,17 +504,24 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Create an item
       await itemsPage.createItem("Cancel Test");
 
-      // Open settings (context menu works in grid view)
-      await itemsPage.openSettingsViaContextMenu("Cancel Test");
+      // Open settings (viewport-aware)
+      await itemsPage.openItemSettings("Cancel Test");
+
+      const container = await itemsPage.getSettingsContainer();
 
       // Make changes
-      const nameInput = page.getByLabel(/item name/i);
+      const nameInput = container.getByLabel(/item name/i);
       await nameInput.fill("Should Not Save");
 
       // Click cancel/close
-      await itemsPage.closeSettingsDialog();
+      await itemsPage.closeSettings();
 
       // Item name should be unchanged
+      if (await isMobileViewport(page)) {
+        // On mobile, openItemSettings navigated into the item detail page.
+        // Navigate back to the items list to verify the name wasn't saved.
+        await itemsPage.goto();
+      }
       await itemsPage.expectItemVisible("Cancel Test");
       await itemsPage.expectItemNotVisible("Should Not Save");
     });
@@ -528,28 +545,32 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Create an item
       await itemsPage.createItem("Tabs Test");
 
-      // Open settings (context menu works in grid view)
-      await itemsPage.openSettingsViaContextMenu("Tabs Test");
+      // Open settings (viewport-aware)
+      await itemsPage.openItemSettings("Tabs Test");
+
+      const container = await itemsPage.getSettingsContainer();
 
       // Should start on Details tab
-      const nameInput = page.getByLabel(/item name/i);
+      const nameInput = container.getByLabel(/item name/i);
       await expect(nameInput).toBeVisible();
 
       // Click Files tab
-      const filesTab = page.getByRole("tab", { name: /files/i });
+      const filesTab = container.getByRole("tab", { name: /files/i });
       await filesTab.click();
 
-      // Should see file sections
-      await expect(page.getByText(/primary media/i)).toBeVisible();
+      // Use data-testid to avoid matching inactive SwipeableTabs panels
+      await expect(
+        container.getByTestId("file-section-primary-media")
+      ).toBeVisible();
 
       // Click back to Details
-      const detailsTab = page.getByRole("tab", { name: /details/i });
+      const detailsTab = container.getByRole("tab", { name: /details/i });
       await detailsTab.click();
 
       // Name input should be visible again
       await expect(nameInput).toBeVisible();
 
-      await itemsPage.closeSettingsDialog();
+      await itemsPage.closeSettings();
     });
   });
 
@@ -575,12 +596,13 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Create an item to test Edit dialog
       await itemsPage.createItem("Consistency Test");
 
-      // Check Edit dialog has same "Item name" label (context menu works in grid view)
-      await itemsPage.openSettingsViaContextMenu("Consistency Test");
-      const editNameInput = page.getByLabel(/item name/i);
+      // Check Edit dialog/sheet has same "Item name" label (viewport-aware)
+      await itemsPage.openItemSettings("Consistency Test");
+      const container = await itemsPage.getSettingsContainer();
+      const editNameInput = container.getByLabel(/item name/i);
       await expect(editNameInput).toBeVisible();
       await expect(editNameInput).toHaveValue("Consistency Test");
-      await itemsPage.closeSettingsDialog();
+      await itemsPage.closeSettings();
     });
 
     test("Both dialogs have Item name combobox field", async ({
@@ -605,13 +627,14 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       // Create item for Edit dialog test
       await itemsPage.createItem("Combobox Test");
 
-      // Test Edit dialog has same combobox (context menu works in grid view)
-      await itemsPage.openSettingsViaContextMenu("Combobox Test");
+      // Test Edit dialog/sheet has same combobox (viewport-aware)
+      await itemsPage.openItemSettings("Combobox Test");
 
-      const editNameInput = page.getByLabel(/item name/i);
+      const container = await itemsPage.getSettingsContainer();
+      const editNameInput = container.getByLabel(/item name/i);
       await expect(editNameInput).toBeVisible();
 
-      await itemsPage.closeSettingsDialog();
+      await itemsPage.closeSettings();
     });
   });
 

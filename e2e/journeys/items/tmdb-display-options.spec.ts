@@ -5,6 +5,7 @@
  */
 
 import { test, expect, prisma } from "../../fixtures";
+import { ItemsPage } from "../../pages/items.page";
 
 test.describe("TMDB Display Options", () => {
   test.beforeEach(async ({ page, testUser }) => {
@@ -212,19 +213,19 @@ test.describe("TMDB Display Options", () => {
         },
       });
 
+      const itemsPage = new ItemsPage(page, testUser.username);
       await page.goto(`/u/${testUser.username}/${item.id}`);
       await expect(page.getByTestId("hero-carousel")).toBeVisible({
         timeout: 10000,
       });
 
-      // Open settings dialog via the toolbar Settings button
-      await page.getByRole("button", { name: "Settings" }).click();
-      await expect(page.getByRole("dialog", { name: /settings/i })).toBeVisible(
-        { timeout: 5000 }
-      );
+      // Open settings (viewport-aware: Settings button on desktop, Options trigger on mobile)
+      await itemsPage.openSettingsFromToolbar();
+      const container = await itemsPage.getSettingsContainer();
+      await expect(container).toBeVisible();
 
       // Verify TMDB tab is visible
-      await expect(page.getByRole("tab", { name: /tmdb/i })).toBeVisible();
+      await expect(container.getByRole("tab", { name: /tmdb/i })).toBeVisible();
     });
 
     test("does not show TMDB tab for items without TMDB metadata", async ({
@@ -240,18 +241,20 @@ test.describe("TMDB Display Options", () => {
         },
       });
 
+      const itemsPage = new ItemsPage(page, testUser.username);
       await page.goto(`/u/${testUser.username}/${item.id}`);
       await expect(page.getByTestId("hero-carousel")).toBeVisible({
         timeout: 10000,
       });
 
-      await page.getByRole("button", { name: "Settings" }).click();
-      await expect(page.getByRole("dialog", { name: /settings/i })).toBeVisible(
-        { timeout: 5000 }
-      );
+      await itemsPage.openSettingsFromToolbar();
+      const container = await itemsPage.getSettingsContainer();
+      await expect(container).toBeVisible();
 
       // TMDB tab should NOT be present
-      await expect(page.getByRole("tab", { name: /tmdb/i })).not.toBeVisible();
+      await expect(
+        container.getByRole("tab", { name: /tmdb/i })
+      ).not.toBeVisible();
     });
 
     test("can toggle display options and changes persist", async ({
@@ -270,47 +273,45 @@ test.describe("TMDB Display Options", () => {
         },
       });
 
+      const itemsPage = new ItemsPage(page, testUser.username);
       await page.goto(`/u/${testUser.username}/${item.id}`);
       await expect(page.getByTestId("hero-carousel")).toBeVisible({
         timeout: 10000,
       });
 
       // Open settings and navigate to TMDB tab
-      await page.getByRole("button", { name: "Settings" }).click();
-      await expect(page.getByRole("dialog", { name: /settings/i })).toBeVisible(
+      await itemsPage.openSettingsFromToolbar();
+      const container = await itemsPage.getSettingsContainer();
+      await container.getByRole("tab", { name: /tmdb/i }).click();
+
+      // Uncheck "Cast" — find checkbox associated with the Cast label
+      const castCheckboxInTab = container.getByRole("checkbox", {
+        name: /cast/i,
+      });
+      // Set up response listener before clicking (debounced save fires after 300ms)
+      const savePromise = page.waitForResponse(
+        (resp) => resp.request().method() === "POST" && resp.status() === 200,
         { timeout: 5000 }
       );
-      await page.getByRole("tab", { name: /tmdb/i }).click();
+      await castCheckboxInTab.click();
+      await savePromise;
 
-      // Uncheck "Cast"
-      const castLabel = page.getByText("Cast").locator("..");
-      await castLabel.getByRole("checkbox").click();
-
-      // Wait for debounced save
-      await page.waitForTimeout(500);
-
-      // Close dialog
-      await page.keyboard.press("Escape");
-      await expect(
-        page.getByRole("dialog", { name: /settings/i })
-      ).not.toBeVisible();
+      // Close settings
+      await itemsPage.closeSettings();
 
       // Reload and reopen settings — verify Cast is still unchecked
       await page.reload();
       await expect(page.getByTestId("hero-carousel")).toBeVisible({
         timeout: 10000,
       });
-      await page.getByRole("button", { name: "Settings" }).click();
-      await expect(page.getByRole("dialog", { name: /settings/i })).toBeVisible(
-        { timeout: 5000 }
-      );
-      await page.getByRole("tab", { name: /tmdb/i }).click();
+      await itemsPage.openSettingsFromToolbar();
+      const reopened = await itemsPage.getSettingsContainer();
+      await reopened.getByRole("tab", { name: /tmdb/i }).click();
 
-      const castCheckbox = page
-        .getByText("Cast")
-        .locator("..")
-        .getByRole("checkbox");
-      await expect(castCheckbox).not.toBeChecked();
+      const castCheckboxVerify = reopened.getByRole("checkbox", {
+        name: /cast/i,
+      });
+      await expect(castCheckboxVerify).not.toBeChecked();
     });
   });
 

@@ -71,7 +71,7 @@ export const BulkActionsToolbar = memo(function BulkActionsToolbar({
       className={cn(
         "fixed right-0 bottom-0 left-0 z-50",
         "pointer-events-none flex justify-center",
-        "pb-safe px-4 pb-4 sm:pb-6",
+        "pb-safe px-4 pb-4 lg:pb-6",
         className
       )}
     >
@@ -83,7 +83,7 @@ export const BulkActionsToolbar = memo(function BulkActionsToolbar({
           selectionCount > 0 && "border-primary/20"
         )}
       >
-        <div className="relative flex h-16 items-center gap-3 px-4 sm:gap-4 sm:px-6">
+        <div className="relative flex h-16 items-center gap-3 px-4 lg:gap-4 lg:px-6">
           {/* Selection count with animated number */}
           <motion.div
             key={selectionCount}
@@ -104,7 +104,7 @@ export const BulkActionsToolbar = memo(function BulkActionsToolbar({
             </div>
             <span
               className={cn(
-                "hidden text-sm font-medium transition-colors sm:inline",
+                "hidden text-sm font-medium transition-colors xl:inline",
                 selectionCount > 0 ? "text-foreground" : "text-muted-foreground"
               )}
             >
@@ -139,12 +139,12 @@ export const BulkActionsToolbar = memo(function BulkActionsToolbar({
               {isDeleting ? (
                 <>
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                  <span className="hidden sm:inline">Deleting…</span>
+                  <span className="hidden xl:inline">Deleting…</span>
                 </>
               ) : (
                 <>
                   <Trash2 className="size-4" aria-hidden="true" />
-                  <span className="hidden sm:inline">Delete</span>
+                  <span className="hidden xl:inline">Delete</span>
                 </>
               )}
             </Button>

@@ -39,15 +39,8 @@ test.describe("Google Drive: Web to Cloud Sync", () => {
     // Create item first
     await itemsPage.createItem("Rename Test Item");
 
-    // Open settings and rename (grid view context menu works on root page)
-    await itemsPage.openSettingsViaContextMenu("Rename Test Item");
-    await page.getByLabel(/item name/i).fill("Renamed Item");
-    await page.getByRole("button", { name: /save changes/i }).click();
-
-    // Wait for dialog to close
-    await expect(
-      page.getByRole("dialog", { name: /settings/i })
-    ).not.toBeVisible({ timeout: 5000 });
+    // Rename via settings (viewport-aware: context menu on desktop, Options sheet on mobile)
+    await itemsPage.renameItem("Rename Test Item", "Renamed Item");
 
     // Verify renamed in web (use itemsPage to scope to content area)
     await itemsPage.expectItemVisible("Renamed Item");
@@ -92,15 +85,8 @@ test.describe("Google Drive: Web to Cloud Sync", () => {
     });
     const originalDriveId = itemBefore!.driveFileId;
 
-    // Rename the item (grid view context menu works on root page)
-    await itemsPage.openSettingsViaContextMenu("Stable ID Test");
-    await page.getByLabel(/item name/i).fill("Renamed Stable ID");
-    await page.getByRole("button", { name: /save changes/i }).click();
-
-    // Wait for dialog to close and rename to complete
-    await expect(
-      page.getByRole("dialog", { name: /settings/i })
-    ).not.toBeVisible({ timeout: 5000 });
+    // Rename the item (viewport-aware)
+    await itemsPage.renameItem("Stable ID Test", "Renamed Stable ID");
     await itemsPage.expectItemVisible("Renamed Stable ID");
 
     // Verify driveFileId is unchanged (key advantage over SFTP)

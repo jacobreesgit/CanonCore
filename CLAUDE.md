@@ -73,14 +73,16 @@ pnpm run test-storybook:ci   # CI mode with limited workers
   - `tmdb-display-options` - Shared TMDB display option toggles (used in wizard summary + settings dialog TMDB tab)
   - Action components: `hero-button`, `item-more-button`, `poster-card`, `playlist-button`
   - `grid-view-content` - Extracted grid view rendering from items-view
+  - Mobile sheets: `mobile-item-sheet` (combined sort/filter/view/settings), `mobile-add-item-sheet` (add item), `mobile-options-sheet` (sort/filter/view)
 - `components/wizards/` - Reusable wizard infrastructure (state machine hook, step indicator)
 - `components/google-drive/` - Drive integration UI (oauth-toast, settings-section, sync-history, storage-bar)
 - `components/sortable-grid/` and `sortable-tree/` - dnd-kit drag-drop with view/edit modes (kebab-case filenames)
 - `components/media/` - Media player with Vidstack (media-player, media-player-icons)
 - `components/diceui/` - Third-party DiceUI components (file-upload with drag-drop, previews)
-- `components/mobile/` - Mobile navigation (footer nav, bottom sheets, search/user/help sheets)
+- `components/mobile/` - Mobile navigation and shared mobile components (footer nav, bottom sheets, swipeable-tabs, discard-changes-alert, search/help sheets)
+- `components/profile/` - Profile UI (settings-dialog, mobile-settings-sheet, preferences-tab, profile-page)
 - `components/providers/` - App-level providers (theme-provider, error-boundary, deferred-analytics)
-- `components/ui/` - shadcn/ui primitives + shared UI (content-toolbar, hero-content-layout, section, underline-tabs, progress-bar)
+- `components/ui/` - shadcn/ui primitives + shared UI (content-toolbar with ViewDropdown, hero-content-layout, section, underline-tabs, progress-bar)
 - Shared components: `logo.tsx`, `floating-paths.tsx`, `shader-background.tsx`, `feature-card-grid.tsx`
 - Stories: Co-located `*.stories.tsx` files for Storybook component documentation
 
@@ -99,6 +101,10 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 - `hooks/use-reduced-motion.ts` - Reduced motion preference detection with localStorage override
 - `hooks/use-settings-dialog.ts` - Item settings dialog lifecycle management
 - `hooks/use-sync-handler.ts` - Sync operation handler for Drive sync
+- `hooks/use-add-item-form.ts` - Add item form state (TMDB search, wizard, file uploads) shared by desktop dialog and mobile sheet
+- `hooks/use-item-settings-form.ts` - Item settings form state (dirty detection, TMDB display, save/cancel) shared by desktop dialog and mobile sheet
+- `hooks/use-settings-form.ts` - Profile settings form state (avatar/hero uploads, password/email changes) shared by desktop dialog and mobile sheet
+- `hooks/use-stored-view-mode.ts` - localStorage-synced view mode with `useSyncExternalStore`
 
 **Testing:**
 
@@ -190,10 +196,11 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 **Core Patterns:**
 
 - Hierarchical tree with drag-and-drop reordering (dnd-kit), max 10 levels deep
-- Dual view modes: Tree (hierarchical) and Grid (movie poster cards)
+- Dual view modes: Tree (hierarchical) and Grid (movie poster cards), switched via ViewDropdown in ContentToolbar
 - Edit mode toggle: "Edit" enables drag-and-drop, "Done" returns to view (only in custom sort)
 - View mode: Full background artwork with dark overlay
 - Edit mode: Simplified icons with drag handles
+- Mobile (< 1024px): Bottom sheets replace desktop dialogs; `MobileItemSheet` combines sort/filter/view/settings; `MobileAddItemSheet` for item creation
 
 **Key Features:**
 
@@ -511,7 +518,8 @@ See `docs/deployments/DEPLOYMENT-6.0.2.md` for detailed implementation and monit
 - Safe area support: CSS variables for notched devices (iPhone X+), mobile footer respects safe areas
 - Decorative icons: `aria-hidden="true"` on non-interactive icons
 - Navigation a11y: `aria-current="page"` on active sidebar and mobile footer items
-- Mobile navigation: Bottom sheets have accessible titles, focus trapping, swipe-to-dismiss gesture support
+- Mobile navigation: Bottom sheets have accessible titles, focus trapping, swipe-to-dismiss gesture support, `SwipeableTabs` with `role="tablist"`/`role="tabpanel"` semantics
+- Discard changes confirmation: `DiscardChangesAlert` shown when closing mobile sheets with unsaved changes
 - Auth form a11y: Error messages use `role="alert"` and `aria-live="polite"` for screen reader announcements; inputs get `aria-invalid` and `aria-describedby` when validation fails
 
 ### Dark Mode

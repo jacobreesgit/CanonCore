@@ -50,6 +50,24 @@ type AllFixtures = PageObjectFixtures &
 
 // Compose Google Drive fixture (includes testUser) with page objects
 const composedTest = googleDriveFixture.extend<PageObjectFixtures>({
+  // Hide Next.js dev error overlay that intercepts pointer events on mobile
+  page: async ({ page }, use) => {
+    await page
+      .addStyleTag({
+        content:
+          "nextjs-portal { display: none !important; pointer-events: none !important; }",
+      })
+      .catch(() => {});
+    page.on("load", async () => {
+      await page
+        .addStyleTag({
+          content:
+            "nextjs-portal { display: none !important; pointer-events: none !important; }",
+        })
+        .catch(() => {});
+    });
+    await use(page);
+  },
   landingPage: async ({ page }, use) => {
     await use(new LandingPage(page));
   },

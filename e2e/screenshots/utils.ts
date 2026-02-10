@@ -150,7 +150,7 @@ export async function signIn(page: Page, user: ScreenshotUser): Promise<void> {
  */
 export async function signOut(page: Page): Promise<void> {
   const viewport = page.viewportSize();
-  const isMobile = viewport && viewport.width < 768;
+  const isMobile = viewport && viewport.width < 1024;
 
   if (isMobile) {
     // Mobile: Open account sheet via footer nav, then sign out
@@ -250,7 +250,7 @@ export async function switchToTreeView(page: Page): Promise<void> {
  */
 export async function openSettings(page: Page): Promise<void> {
   const viewport = page.viewportSize();
-  const isMobile = viewport && viewport.width < 768;
+  const isMobile = viewport && viewport.width < 1024;
 
   if (isMobile) {
     // Mobile: Open account sheet via footer nav, then settings
@@ -371,8 +371,10 @@ export async function clickItem(page: Page, name: string): Promise<void> {
   const treeItem = page.getByRole("listitem").getByText(name, { exact: true });
   // Grid view: items are buttons with the item name
   const gridButton = page.getByRole("button", { name, exact: true });
-  // Legacy selector for backward compatibility
-  const gridItem = page.locator("[data-id]").getByText(name, { exact: true });
+  // Grid view: unique title element (no hover overlay duplicate)
+  const gridItem = page
+    .locator('[data-testid="grid-item-title"]')
+    .filter({ hasText: name });
 
   await treeItem.or(gridButton).or(gridItem).first().click();
   await page.waitForLoadState("networkidle");

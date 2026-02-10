@@ -28,12 +28,12 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.createItem("Settings Test Folder");
     await itemsPage.switchToTreeView();
 
-    await itemsPage.openSettingsViaContextMenu("Settings Test Folder");
+    await itemsPage.openItemSettings("Settings Test Folder");
 
-    // Verify dialog is open with correct title
-    const dialog = itemsPage.getSettingsDialog();
-    await expect(dialog).toBeVisible();
-    await expect(dialog.getByText("Item Settings")).toBeVisible();
+    // Verify dialog/sheet is open with item name input
+    const container = await itemsPage.getSettingsContainer();
+    await expect(container).toBeVisible();
+    await expect(container.getByLabel(/item name/i)).toBeVisible();
   });
 
   test("shows current item name in settings dialog", async ({
@@ -43,10 +43,11 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.createItem("Current Name");
     await itemsPage.switchToTreeView();
 
-    await itemsPage.openSettingsViaContextMenu("Current Name");
+    await itemsPage.openItemSettings("Current Name");
 
     // Verify the input shows the current name
-    const nameInput = itemsPage.page.getByLabel(/item name/i);
+    const container = await itemsPage.getSettingsContainer();
+    const nameInput = container.getByLabel(/item name/i);
     await expect(nameInput).toHaveValue("Current Name");
   });
 
@@ -54,7 +55,7 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.createItem("Old Name");
     await itemsPage.switchToTreeView();
 
-    await itemsPage.renameItemViaContextMenu("Old Name", "New Name");
+    await itemsPage.renameItem("Old Name", "New Name");
 
     // Verify item is renamed in the view
     await itemsPage.expectItemVisible("New Name");
@@ -68,11 +69,12 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.createItem("Close Test");
     await itemsPage.switchToTreeView();
 
-    await itemsPage.openSettingsViaContextMenu("Close Test");
-    await itemsPage.closeSettingsDialog();
+    await itemsPage.openItemSettings("Close Test");
+    await itemsPage.closeSettings();
 
     // Verify dialog is closed
-    await expect(itemsPage.getSettingsDialog()).not.toBeVisible();
+    const container = await itemsPage.getSettingsContainer();
+    await expect(container).not.toBeVisible();
   });
 
   test("disables save button when name unchanged", async ({
@@ -82,23 +84,24 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.createItem("Unchanged Name");
     await itemsPage.switchToTreeView();
 
-    await itemsPage.openSettingsViaContextMenu("Unchanged Name");
+    await itemsPage.openItemSettings("Unchanged Name");
 
     // "Save Changes" button should be disabled when nothing has changed
-    const saveButton = itemsPage.page.getByRole("button", {
+    const container = await itemsPage.getSettingsContainer();
+    const saveButton = container.getByRole("button", {
       name: /save changes/i,
     });
     await expect(saveButton).toBeDisabled();
 
     // Type something different
-    await itemsPage.page.getByLabel(/item name/i).fill("Changed Name");
+    await container.getByLabel(/item name/i).fill("Changed Name");
     await expect(saveButton).toBeEnabled();
 
     // Change back to original
-    await itemsPage.page.getByLabel(/item name/i).fill("Unchanged Name");
+    await container.getByLabel(/item name/i).fill("Unchanged Name");
     await expect(saveButton).toBeDisabled();
 
-    await itemsPage.closeSettingsDialog();
+    await itemsPage.closeSettings();
   });
 
   test("shows file summary counts in settings dialog", async ({
@@ -108,14 +111,14 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.createItem("Summary Test");
     await itemsPage.switchToTreeView();
 
-    await itemsPage.openSettingsViaContextMenu("Summary Test");
+    await itemsPage.openItemSettings("Summary Test");
 
     // Should show file counts (0 for each type since no files attached)
-    const dialog = itemsPage.getSettingsDialog();
+    const container = await itemsPage.getSettingsContainer();
     // The file summary shows icons with counts
-    await expect(dialog.getByText("0").first()).toBeVisible();
+    await expect(container.getByText("0").first()).toBeVisible();
 
-    await itemsPage.closeSettingsDialog();
+    await itemsPage.closeSettings();
   });
 
   test("shows description field in settings dialog", async ({
@@ -125,33 +128,33 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.createItem("Description Field Test");
     await itemsPage.switchToTreeView();
 
-    await itemsPage.openSettingsViaContextMenu("Description Field Test");
+    await itemsPage.openItemSettings("Description Field Test");
 
     // Verify description input is visible (label includes "(optional)" suffix)
-    // Scope to settings dialog to avoid matching create item dialog's description field
-    const dialog = itemsPage.getSettingsDialog();
-    const descriptionInput = dialog.getByLabel(/description/i);
+    // Scope to settings container to avoid matching create item dialog's description field
+    const container = await itemsPage.getSettingsContainer();
+    const descriptionInput = container.getByLabel(/description/i);
     await expect(descriptionInput).toBeVisible();
     await expect(descriptionInput).toHaveValue("");
 
-    await itemsPage.closeSettingsDialog();
+    await itemsPage.closeSettings();
   });
 
   test("can add description to item", async ({ page, itemsPage }) => {
     await itemsPage.createItem("Add Description Test");
     await itemsPage.switchToTreeView();
 
-    await itemsPage.updateDescriptionViaContextMenu(
+    await itemsPage.updateDescription(
       "Add Description Test",
       "This is a test description"
     );
 
     // Re-open to verify it persisted
-    await itemsPage.openSettingsViaContextMenu("Add Description Test");
-    const description = await itemsPage.getDescriptionFromSettingsDialog();
+    await itemsPage.openItemSettings("Add Description Test");
+    const description = await itemsPage.getDescriptionFromSettings();
     expect(description).toBe("This is a test description");
 
-    await itemsPage.closeSettingsDialog();
+    await itemsPage.closeSettings();
   });
 
   test("can update description", async ({ page, itemsPage }) => {
@@ -159,23 +162,23 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.switchToTreeView();
 
     // Add initial description
-    await itemsPage.updateDescriptionViaContextMenu(
+    await itemsPage.updateDescription(
       "Update Description Test",
       "Initial description"
     );
 
     // Update description
-    await itemsPage.updateDescriptionViaContextMenu(
+    await itemsPage.updateDescription(
       "Update Description Test",
       "Updated description"
     );
 
     // Verify update persisted
-    await itemsPage.openSettingsViaContextMenu("Update Description Test");
-    const description = await itemsPage.getDescriptionFromSettingsDialog();
+    await itemsPage.openItemSettings("Update Description Test");
+    const description = await itemsPage.getDescriptionFromSettings();
     expect(description).toBe("Updated description");
 
-    await itemsPage.closeSettingsDialog();
+    await itemsPage.closeSettings();
   });
 
   test("can clear description", async ({ page, itemsPage }) => {
@@ -183,40 +186,37 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.switchToTreeView();
 
     // Add description first
-    await itemsPage.updateDescriptionViaContextMenu(
+    await itemsPage.updateDescription(
       "Clear Description Test",
       "Will be cleared"
     );
 
     // Clear description
-    await itemsPage.updateDescriptionViaContextMenu(
-      "Clear Description Test",
-      ""
-    );
+    await itemsPage.updateDescription("Clear Description Test", "");
 
     // Verify cleared
-    await itemsPage.openSettingsViaContextMenu("Clear Description Test");
-    const description = await itemsPage.getDescriptionFromSettingsDialog();
+    await itemsPage.openItemSettings("Clear Description Test");
+    const description = await itemsPage.getDescriptionFromSettings();
     expect(description).toBe("");
 
-    await itemsPage.closeSettingsDialog();
+    await itemsPage.closeSettings();
   });
 
   test("shows character count for description", async ({ page, itemsPage }) => {
     await itemsPage.createItem("Char Count Test");
     await itemsPage.switchToTreeView();
 
-    await itemsPage.openSettingsViaContextMenu("Char Count Test");
+    await itemsPage.openItemSettings("Char Count Test");
 
     // Initially shows 0/1000
-    const dialog = itemsPage.getSettingsDialog();
-    await expect(dialog.getByText("0/1000")).toBeVisible();
+    const container = await itemsPage.getSettingsContainer();
+    await expect(container.getByText("0/1000")).toBeVisible();
 
     // Type some text
-    await dialog.getByLabel(/description/i).fill("Hello");
-    await expect(dialog.getByText("5/1000")).toBeVisible();
+    await container.getByLabel(/description/i).fill("Hello");
+    await expect(container.getByText("5/1000")).toBeVisible();
 
-    await itemsPage.closeSettingsDialog();
+    await itemsPage.closeSettings();
   });
 
   test("description save button disabled when unchanged", async ({
@@ -226,24 +226,24 @@ test.describe("Item Settings Dialog", () => {
     await itemsPage.createItem("Disabled Save Test");
     await itemsPage.switchToTreeView();
 
-    await itemsPage.openSettingsViaContextMenu("Disabled Save Test");
+    await itemsPage.openItemSettings("Disabled Save Test");
 
     // "Save Changes" button should be disabled initially
-    const saveButton = itemsPage.page.getByRole("button", {
+    const container = await itemsPage.getSettingsContainer();
+    const saveButton = container.getByRole("button", {
       name: /save changes/i,
     });
     await expect(saveButton).toBeDisabled();
 
     // Type something to enable it
-    const dialog = itemsPage.getSettingsDialog();
-    await dialog.getByLabel(/description/i).fill("New description");
+    await container.getByLabel(/description/i).fill("New description");
     await expect(saveButton).toBeEnabled();
 
     // Clear to original (empty) to disable again
-    await dialog.getByLabel(/description/i).fill("");
+    await container.getByLabel(/description/i).fill("");
     await expect(saveButton).toBeDisabled();
 
-    await itemsPage.closeSettingsDialog();
+    await itemsPage.closeSettings();
   });
 });
 
@@ -265,14 +265,15 @@ test.describe("Item Page Settings", () => {
     // Click into the item to navigate to detail page
     await itemsPage.clickItem("Test Folder");
 
-    // Verify we're on the detail page (breadcrumb is hidden on mobile)
-    if (!isMobile) {
+    if (isMobile) {
+      const optionsTrigger = page.getByRole("button", { name: /^options$/i });
+      await expect(optionsTrigger).toBeVisible();
+    } else {
+      // Verify we're on the detail page (breadcrumb is hidden on mobile)
       await itemsPage.expectBreadcrumb("Test Folder");
+      const settingsButton = page.getByRole("button", { name: /^settings$/i });
+      await expect(settingsButton).toBeVisible();
     }
-
-    // Verify Settings button is visible
-    const settingsButton = page.getByRole("button", { name: /^settings$/i });
-    await expect(settingsButton).toBeVisible();
   });
 
   test("should NOT show Settings button on root my-items page", async ({
@@ -300,16 +301,12 @@ test.describe("Item Page Settings", () => {
     // Navigate to item detail page
     await itemsPage.clickItem("My Test Item");
 
-    // Click Settings button
-    const settingsButton = page.getByRole("button", { name: /^settings$/i });
-    await settingsButton.click();
-
-    // Verify settings dialog is visible
-    const settingsDialog = page.getByRole("dialog", { name: /settings/i });
-    await expect(settingsDialog).toBeVisible({ timeout: 5000 });
+    await itemsPage.openSettingsFromToolbar();
+    const settingsContainer = await itemsPage.getSettingsContainer();
+    await expect(settingsContainer).toBeVisible();
 
     // Verify the name input shows the item name
-    const nameInput = page.getByLabel(/item name/i);
+    const nameInput = settingsContainer.getByLabel(/item name/i);
     await expect(nameInput).toHaveValue("My Test Item");
   });
 
@@ -327,23 +324,22 @@ test.describe("Item Page Settings", () => {
     await itemsPage.clickItem("Original Name");
     await itemsPage.expectBreadcrumb("Original Name");
 
-    // Click Settings button
-    const settingsButton = page.getByRole("button", { name: /^settings$/i });
-    await settingsButton.click();
-
-    // Wait for settings dialog
-    const settingsDialog = page.getByRole("dialog", { name: /settings/i });
-    await expect(settingsDialog).toBeVisible({ timeout: 5000 });
+    // Open settings from toolbar
+    await itemsPage.openSettingsFromToolbar();
+    const settingsContainer = await itemsPage.getSettingsContainer();
+    await expect(settingsContainer).toBeVisible();
 
     // Update the name
-    const nameInput = page.getByLabel(/item name/i);
+    const nameInput = settingsContainer.getByLabel(/item name/i);
     await nameInput.fill("Updated Name");
 
     // Click "Save Changes" button
-    await page.getByRole("button", { name: /save changes/i }).click();
+    await settingsContainer
+      .getByRole("button", { name: /save changes/i })
+      .click();
 
     // Dialog closes automatically on success (after onSettingsChange refetch completes)
-    await expect(settingsDialog).not.toBeVisible({ timeout: 10000 });
+    await expect(settingsContainer).not.toBeVisible({ timeout: 10000 });
 
     // Verify breadcrumb is updated (confirms save succeeded)
     await itemsPage.expectBreadcrumb("Updated Name");
@@ -356,29 +352,28 @@ test.describe("Item Page Settings", () => {
     // Navigate to item detail page
     await itemsPage.clickItem("Description Test");
 
-    // Click Settings button
-    const settingsButton = page.getByRole("button", { name: /^settings$/i });
-    await settingsButton.click();
-
-    // Wait for settings dialog
-    const settingsDialog = page.getByRole("dialog", { name: /settings/i });
-    await expect(settingsDialog).toBeVisible({ timeout: 5000 });
+    await itemsPage.openSettingsFromToolbar();
+    const settingsContainer = await itemsPage.getSettingsContainer();
+    await expect(settingsContainer).toBeVisible();
 
     // Add description (label includes "(optional)" suffix)
-    // Scope to settings dialog to avoid matching create item dialog's description field
-    const descriptionInput = settingsDialog.getByLabel(/description/i);
+    // Scope to settings container to avoid matching create item dialog's description field
+    const descriptionInput = settingsContainer.getByLabel(/description/i);
     await descriptionInput.fill("This is a test description");
 
     // Click "Save Changes" button
-    await page.getByRole("button", { name: /save changes/i }).click();
+    await settingsContainer
+      .getByRole("button", { name: /save changes/i })
+      .click();
 
     // Dialog closes automatically on success (after onSettingsChange refetch completes)
-    await expect(settingsDialog).not.toBeVisible({ timeout: 15000 });
+    await expect(settingsContainer).not.toBeVisible({ timeout: 15000 });
 
     // Re-open settings to verify description was saved
-    await page.getByRole("button", { name: /^settings$/i }).click();
-    await expect(settingsDialog).toBeVisible({ timeout: 5000 });
-    await expect(settingsDialog.getByLabel(/description/i)).toHaveValue(
+    await itemsPage.openSettingsFromToolbar();
+    const reopened = await itemsPage.getSettingsContainer();
+    await expect(reopened).toBeVisible();
+    await expect(reopened.getByLabel(/description/i)).toHaveValue(
       "This is a test description"
     );
   });
@@ -409,20 +404,22 @@ test.describe("File Deletion", () => {
 
     // Navigate to item and open settings
     await itemsPage.clickItem("Delete Test");
-    await page.getByRole("button", { name: /^settings$/i }).click();
+    await itemsPage.openSettingsFromToolbar();
 
     // Switch to Files tab first (tabbed interface)
-    const dialog = page.getByRole("dialog");
-    await dialog.getByRole("tab", { name: /files/i }).click();
+    const container = await itemsPage.getSettingsContainer();
+    await container.getByRole("tab", { name: /files/i }).click();
 
     // Open media combobox
-    const mediaCombobox = dialog.getByRole("combobox").first();
+    const mediaCombobox = container
+      .getByTestId("file-section-primary-media")
+      .getByRole("combobox");
     await mediaCombobox.click();
 
     // Non-selected files should have delete button
     // (This requires files to be uploaded first - skipped in CI without Drive)
-    // Verify combobox opens correctly - use specific selector
-    await expect(dialog.getByText("No files yet")).toBeVisible();
+    // Verify combobox opens correctly - popover portals to body, so use page scope
+    await expect(page.getByText("No files yet")).toBeVisible();
   });
 
   test("should show confirmation dialog when clicking delete", async ({
@@ -439,18 +436,20 @@ test.describe("File Deletion", () => {
 
     // Navigate to item and open settings
     await itemsPage.clickItem("Confirm Delete Test");
-    await page.getByRole("button", { name: /^settings$/i }).click();
+    await itemsPage.openSettingsFromToolbar();
 
-    // Wait for settings dialog
-    const settingsDialog = page.getByRole("dialog", { name: /settings/i });
-    await expect(settingsDialog).toBeVisible({ timeout: 5000 });
+    // Wait for settings container
+    const settingsContainer = await itemsPage.getSettingsContainer();
+    await expect(settingsContainer).toBeVisible({ timeout: 5000 });
 
     // Switch to Files tab first (tabbed interface)
-    await settingsDialog.getByRole("tab", { name: /files/i }).click();
+    await settingsContainer.getByRole("tab", { name: /files/i }).click();
 
     // The dialog should show "No files yet" for empty items
     // When there are files, clicking delete should show confirmation
-    await expect(settingsDialog.getByText("Primary Media")).toBeVisible();
+    await expect(
+      settingsContainer.getByTestId("file-section-primary-media")
+    ).toBeVisible();
   });
 
   test("should close confirmation dialog on cancel without deleting", async ({
@@ -473,20 +472,22 @@ test.describe("File Deletion", () => {
 
     // Navigate to item and open settings
     await itemsPage.clickItem("Cancel Delete Test");
-    await page.getByRole("button", { name: /^settings$/i }).click();
+    await itemsPage.openSettingsFromToolbar();
 
-    const settingsDialog = page.getByRole("dialog", { name: /settings/i });
-    await expect(settingsDialog).toBeVisible({ timeout: 5000 });
+    const settingsContainer = await itemsPage.getSettingsContainer();
+    await expect(settingsContainer).toBeVisible({ timeout: 5000 });
 
     // Switch to Files tab first (tabbed interface)
-    await settingsDialog.getByRole("tab", { name: /files/i }).click();
+    await settingsContainer.getByRole("tab", { name: /files/i }).click();
 
     // Dialog should show file type sections
-    await expect(settingsDialog.getByText("Primary Media")).toBeVisible();
+    await expect(
+      settingsContainer.getByTestId("file-section-primary-media")
+    ).toBeVisible();
 
-    // Close settings dialog
-    await page.getByRole("button", { name: /close/i }).click();
-    await expect(settingsDialog).not.toBeVisible({ timeout: 5000 });
+    // Close settings
+    await itemsPage.closeSettings();
+    await expect(settingsContainer).not.toBeVisible({ timeout: 5000 });
   });
 
   test("should show delete button with confirmation for uploaded files", async ({
@@ -511,20 +512,26 @@ test.describe("File Deletion", () => {
 
     // Navigate to item and open settings
     await itemsPage.clickItem("Upload Delete Flow");
-    await page.getByRole("button", { name: /^settings$/i }).click();
+    await itemsPage.openSettingsFromToolbar();
 
-    const settingsDialog = page.getByRole("dialog", { name: /settings/i });
-    await expect(settingsDialog).toBeVisible({ timeout: 5000 });
+    const settingsContainer = await itemsPage.getSettingsContainer();
+    await expect(settingsContainer).toBeVisible({ timeout: 5000 });
 
     // Switch to Files tab first (tabbed interface)
-    await settingsDialog.getByRole("tab", { name: /files/i }).click();
+    await settingsContainer.getByRole("tab", { name: /files/i }).click();
 
     // Verify the file type sections are present
-    await expect(settingsDialog.getByText("Primary Media")).toBeVisible();
-    await expect(settingsDialog.getByText("Primary Artwork")).toBeVisible();
-    await expect(settingsDialog.getByText("Default Subtitle")).toBeVisible();
+    await expect(
+      settingsContainer.getByTestId("file-section-primary-media")
+    ).toBeVisible();
+    await expect(
+      settingsContainer.getByTestId("file-section-primary-artwork")
+    ).toBeVisible();
+    await expect(
+      settingsContainer.getByTestId("file-section-default-subtitle")
+    ).toBeVisible();
 
-    // Close dialog
-    await page.getByRole("button", { name: /close/i }).click();
+    // Close settings
+    await itemsPage.closeSettings();
   });
 });

@@ -14,8 +14,9 @@ async function openSidebarIfDesktop(page: import("@playwright/test").Page) {
   const toggleButton = page.getByRole("button", { name: "Toggle Sidebar" });
   if (await toggleButton.isVisible()) {
     await toggleButton.click();
-    // Wait for sidebar to animate open
-    await page.waitForTimeout(300);
+    // Wait for sidebar content to appear after animation
+    const sidebarContent = page.locator('[data-slot="sidebar-menu-button"]');
+    await expect(sidebarContent.first()).toBeVisible({ timeout: 5000 });
   }
 }
 

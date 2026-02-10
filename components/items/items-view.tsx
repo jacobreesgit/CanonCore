@@ -54,6 +54,10 @@ const AddItemDialog = dynamic(
   }
 );
 
+const MobileAddItemSheet = dynamic(() => import("./mobile-add-item-sheet"), {
+  ssr: false,
+});
+
 const ItemSettingsDialog = dynamic(
   () =>
     import("./item-settings-dialog").then((mod) => ({
@@ -64,7 +68,7 @@ const ItemSettingsDialog = dynamic(
   }
 );
 
-import { useStoredViewMode } from "./view-toggle";
+import { useStoredViewMode } from "@/hooks/use-stored-view-mode";
 import { EmptyState, type EmptyStateVariant } from "./empty-state";
 import { BulkActionsToolbar } from "./bulk-actions-toolbar";
 import { Button } from "@/components/ui/button";
@@ -102,6 +106,7 @@ import {
   unpinItem,
 } from "@/lib/item-actions";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface CurrentUser {
   id: string;
@@ -231,6 +236,10 @@ export function ItemsView({
     defaultValue: false,
     onChange: onAddItemOpenChange,
   });
+  // Viewport detection for portal-based components (dialogs render to <body>,
+  // bypassing CSS hidden wrappers — must use JS to prevent dual portals)
+  const isMobile = useIsMobile();
+
   // Bulk delete state
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
@@ -715,9 +724,17 @@ export function ItemsView({
         />
       )}
 
-      {/* Add Item Dialog */}
+      {/* Add Item — only one gets open={true} to prevent dual portals
+          (CSS hidden wrappers don't prevent portal-based dialogs rendering to <body>) */}
       <AddItemDialog
-        open={addItemOpen}
+        open={addItemOpen && !isMobile}
+        onOpenChange={setAddItemOpen}
+        onAdd={handleCreateItem}
+        onComplete={refetchItems}
+        hasDriveConnection={hasDriveConnection}
+      />
+      <MobileAddItemSheet
+        open={addItemOpen && isMobile}
         onOpenChange={setAddItemOpen}
         onAdd={handleCreateItem}
         onComplete={refetchItems}

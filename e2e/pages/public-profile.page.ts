@@ -57,7 +57,7 @@ export class PublicProfilePage {
     // There are two breadcrumbs: header (Home) and content (username > item)
     // The content breadcrumb is the second/last one
     this.breadcrumb = page.getByLabel("Breadcrumb").last();
-    // View toggle buttons
+    // View toggle: desktop uses ViewDropdown trigger, mobile uses MobileOptionsSheet
     this.viewToggleTree = page.getByRole("button", { name: /tree view/i });
     this.viewToggleGrid = page.getByRole("button", { name: /grid view/i });
     // Hero carousel fork button (different from toolbar fork button)
@@ -115,8 +115,11 @@ export class PublicProfilePage {
 
   /** Expect items grid to contain an item */
   async expectItemVisible(name: string) {
-    // Use first() since grid items have name in both title and description
-    await expect(this.itemsGrid.getByText(name).first()).toBeVisible();
+    await expect(
+      this.itemsGrid
+        .locator('[data-testid="grid-item-title"]')
+        .filter({ hasText: name })
+    ).toBeVisible();
   }
 
   /** Expect empty state message */
@@ -178,14 +181,51 @@ export class PublicProfilePage {
     await this.breadcrumb.getByRole("link").first().click();
   }
 
-  /** Switch to tree view */
+  /** Switch to tree view. Handles desktop ViewDropdown and mobile MobileOptionsSheet. */
   async switchToTreeView() {
-    await this.viewToggleTree.click();
+    await this.selectViewOption("Tree");
   }
 
-  /** Switch to grid view */
+  /** Switch to grid view. Handles desktop ViewDropdown and mobile MobileOptionsSheet. */
   async switchToGridView() {
-    await this.viewToggleGrid.click();
+    await this.selectViewOption("Grid");
+  }
+
+  /** Select a view option (Grid or Tree). Handles both desktop and mobile. */
+  private async selectViewOption(label: string) {
+    const mobileOptionsButton = this.page.getByRole("button", {
+      name: "Options",
+      exact: true,
+    });
+
+    // Desktop: ViewDropdown trigger shows current view name (Grid/Tree)
+    const viewDropdown = this.page
+      .getByRole("button", { name: /^(Grid|Tree)$/i })
+      .first();
+
+    await expect(mobileOptionsButton.or(viewDropdown).first()).toBeVisible({
+      timeout: 10000,
+    });
+
+    const isMobile = await mobileOptionsButton.isVisible();
+
+    if (isMobile) {
+      await mobileOptionsButton.click();
+      await expect(
+        this.page.getByRole("dialog", { name: /view options/i })
+      ).toBeVisible();
+      const option = this.page.getByRole("option", {
+        name: new RegExp(label, "i"),
+      });
+      await option.click();
+      await expect(option).toHaveAttribute("aria-selected", "true");
+      await this.closeMobileOptionsSheet();
+    } else {
+      await viewDropdown.click();
+      await this.page
+        .getByRole("menuitemradio", { name: new RegExp(label, "i") })
+        .click();
+    }
   }
 
   /** Expect tree view to be visible */
@@ -239,10 +279,15 @@ export class PublicProfilePage {
 
     if (isMobile) {
       await mobileOptionsButton.click();
-      await this.page
-        .getByRole("option", { name: new RegExp(label, "i") })
-        .click();
-      await this.page.keyboard.press("Escape");
+      await expect(
+        this.page.getByRole("dialog", { name: /view options/i })
+      ).toBeVisible();
+      const option = this.page.getByRole("option", {
+        name: new RegExp(label, "i"),
+      });
+      await option.click();
+      await expect(option).toHaveAttribute("aria-selected", "true");
+      await this.closeMobileOptionsSheet();
     } else {
       await this.sortDropdown.click();
       await this.page
@@ -266,16 +311,30 @@ export class PublicProfilePage {
 
     if (isMobile) {
       await mobileOptionsButton.click();
-      await this.page
-        .getByRole("option", { name: new RegExp(label, "i") })
-        .click();
-      await this.page.keyboard.press("Escape");
+      await expect(
+        this.page.getByRole("dialog", { name: /view options/i })
+      ).toBeVisible();
+      const option = this.page.getByRole("option", {
+        name: new RegExp(label, "i"),
+      });
+      await option.click();
+      await expect(option).toHaveAttribute("aria-selected", "true");
+      await this.closeMobileOptionsSheet();
     } else {
       await this.filterDropdown.click();
       await this.page
         .getByRole("menuitemradio", { name: new RegExp(label, "i") })
         .click();
     }
+  }
+
+  /** Close the MobileOptionsSheet by clicking the Vaul overlay. */
+  private async closeMobileOptionsSheet() {
+    const overlay = this.page.locator("[data-vaul-overlay]");
+    await overlay.click({ force: true, position: { x: 10, y: 10 } });
+    await expect(
+      this.page.getByRole("dialog", { name: /view options/i })
+    ).not.toBeVisible({ timeout: 5000 });
   }
 
   /** Expect pinned section to be visible */

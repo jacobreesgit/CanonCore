@@ -11,19 +11,17 @@ import { isMobileViewport } from "../../helpers/mobile-nav-helpers";
 
 // Helper to expand sidebar (collapsed by default on both mobile and desktop)
 async function expandSidebar(page: import("@playwright/test").Page) {
-  // Check if sidebar content is already visible (look for "My Items" text in sidebar)
   const sidebarContent = page.locator('[data-slot="sidebar-menu-button"]', {
     hasText: "My Items",
   });
-  const isExpanded = await sidebarContent.isVisible().catch(() => false);
-  if (isExpanded) return;
+  // If sidebar content is already visible, nothing to do
+  if (await sidebarContent.isVisible().catch(() => false)) return;
 
-  // Click toggle to expand sidebar
+  // Click toggle to expand sidebar, then wait for content to appear
   const toggleButton = page.getByRole("button", { name: "Toggle Sidebar" });
   if (await toggleButton.isVisible()) {
     await toggleButton.click();
-    // Wait for sidebar to animate open
-    await page.waitForTimeout(300);
+    await expect(sidebarContent).toBeVisible({ timeout: 5000 });
   }
 }
 
@@ -31,21 +29,14 @@ async function expandSidebar(page: import("@playwright/test").Page) {
 async function closeSidebarIfMobile(page: import("@playwright/test").Page) {
   // On mobile, the sidebar is a Sheet/Drawer dialog
   const sidebarDialog = page.getByRole("dialog", { name: "Sidebar" });
-  const isDialogVisible = await sidebarDialog.isVisible().catch(() => false);
+  if (!(await sidebarDialog.isVisible().catch(() => false))) return;
 
-  if (isDialogVisible) {
-    // Click on the overlay (right side of viewport) to close the drawer
-    // The sidebar is on the left (w-3/4 = 75%), so clicking at 90% x should hit the overlay
-    const viewport = page.viewportSize();
-    if (viewport) {
-      await page.mouse.click(viewport.width * 0.9, viewport.height / 2);
-    }
-    // Wait for dialog to close
-    await expect(sidebarDialog).not.toBeVisible({ timeout: 5000 });
-    // Wait for content to be interactable
-    await page.waitForTimeout(300);
-    await page.waitForLoadState("domcontentloaded");
+  // Click on the overlay (right side of viewport) to close the drawer
+  const viewport = page.viewportSize();
+  if (viewport) {
+    await page.mouse.click(viewport.width * 0.9, viewport.height / 2);
   }
+  await expect(sidebarDialog).not.toBeVisible({ timeout: 5000 });
 }
 
 test.describe("Pinned Sidebar Items", () => {
@@ -247,17 +238,10 @@ test.describe("Pinned Grid Items (Profile Page)", () => {
     await itemsPage.createItem("Pin B");
     await itemsPage.createItem("Pin C");
 
-    // Pin all items (wait for network and UI to stabilize between pins)
+    // Pin all items (pinItemViaContextMenu waits for each to appear in grid)
     await itemsPage.pinItemViaContextMenu("Pin A");
-    await page.waitForLoadState("domcontentloaded");
-    await page.waitForTimeout(500);
-
     await itemsPage.pinItemViaContextMenu("Pin B");
-    await page.waitForLoadState("domcontentloaded");
-    await page.waitForTimeout(500);
-
     await itemsPage.pinItemViaContextMenu("Pin C");
-    await page.waitForLoadState("domcontentloaded");
 
     // All should appear in pinned grid
     await itemsPage.expectPinnedGridVisible();
@@ -265,12 +249,8 @@ test.describe("Pinned Grid Items (Profile Page)", () => {
     await itemsPage.expectItemInPinnedGrid("Pin B");
     await itemsPage.expectItemInPinnedGrid("Pin C");
 
-    // Wait before counting
-    await page.waitForTimeout(500);
-
-    // Verify count
-    const count = await itemsPage.getPinnedGridItemCount();
-    expect(count).toBe(3);
+    // Verify count with web-first assertion
+    await itemsPage.expectPinnedGridItemCount(3);
   });
 
   test("clicking pinned grid item navigates to it", async ({
@@ -330,11 +310,7 @@ test.describe("Pinned Grid Items (Profile Page)", () => {
     // Verify sections exist: Pinned first, then Library
     await itemsPage.expectPinnedGridVisible();
 
-    // Wait for UI to stabilize after pin operation
-    await page.waitForLoadState("domcontentloaded");
-
     // Check that "Pinned" heading appears before "Library" heading
-    // Use exact match to avoid matching item names like "Pinned Item"
     const pinnedHeading = page.getByRole("heading", {
       name: "Pinned",
       exact: true,
@@ -346,9 +322,6 @@ test.describe("Pinned Grid Items (Profile Page)", () => {
 
     await expect(pinnedHeading).toBeVisible({ timeout: 10000 });
     await expect(libraryHeading).toBeVisible({ timeout: 10000 });
-
-    // Wait for layout to stabilize before measuring positions
-    await page.waitForTimeout(500);
 
     // Verify order by bounding boxes
     const pinnedBox = await pinnedHeading.boundingBox();
@@ -367,16 +340,13 @@ test.describe("Pinned Grid Items (Profile Page)", () => {
       await itemsPage.createItem(`Item ${i}`);
     }
 
-    // Pin first 10 items (wait for each pin to complete)
+    // Pin first 10 items (pinItemViaContextMenu waits for each to appear)
     for (let i = 1; i <= 10; i++) {
       await itemsPage.pinItemViaContextMenu(`Item ${i}`);
-      // Brief wait between pins to let UI update
-      await page.waitForTimeout(300);
     }
 
     // Wait for pinned grid to show all items
     await itemsPage.expectPinnedGridVisible();
-    await page.waitForLoadState("domcontentloaded");
 
     // Try to pin 11th item - should fail (max 10 enforced)
     // Don't use pinItemViaContextMenu here because it waits for the item to appear
@@ -385,11 +355,7 @@ test.describe("Pinned Grid Items (Profile Page)", () => {
     await page.getByRole("menuitem", { name: /pin to sidebar/i }).click();
     await itemsPage.expectErrorToast("Maximum of 10 pinned items");
 
-    // Wait for UI to stabilize
-    await page.waitForTimeout(500);
-
     // Only 10 items should be in pinned grid
-    const count = await itemsPage.getPinnedGridItemCount();
-    expect(count).toBe(10);
+    await itemsPage.expectPinnedGridItemCount(10);
   });
 });

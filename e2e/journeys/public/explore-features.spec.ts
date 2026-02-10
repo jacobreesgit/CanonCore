@@ -54,11 +54,18 @@ test.describe("Explore Features", () => {
     });
   });
 
-  test.afterEach(async () => {
+  test.afterEach(async ({ testUser }) => {
     await prisma.item
       .deleteMany({ where: { userId: ownerId } })
       .catch(() => {});
     await prisma.user.delete({ where: { id: ownerId } }).catch(() => {});
+    // Clean up testUser items and revert isPublic to avoid data pollution on retries
+    await prisma.item
+      .deleteMany({ where: { userId: testUser.id } })
+      .catch(() => {});
+    await prisma.user
+      .update({ where: { id: testUser.id }, data: { isPublic: false } })
+      .catch(() => {});
   });
 
   test("Exclude Yours filter hides own items", async ({
@@ -67,6 +74,9 @@ test.describe("Explore Features", () => {
     itemsPage,
     publicProfilePage,
   }) => {
+    // Use unique name to avoid cross-contamination between parallel projects
+    const myItemName = `My Explore ${testUser.username}`;
+
     // Make test user public so their items show on explore
     await prisma.user.update({
       where: { id: testUser.id },
@@ -76,7 +86,7 @@ test.describe("Explore Features", () => {
     // Create a public item for the test user
     await prisma.item.create({
       data: {
-        name: "My Own Explore Item",
+        name: myItemName,
         userId: testUser.id,
         depth: 0,
         order: 0,
@@ -91,21 +101,28 @@ test.describe("Explore Features", () => {
       timeout: 10000,
     });
 
-    // Own item should be visible initially
-    // Use .first() because GridItem renders name in two <h3> elements (default + hover)
-    await expect(page.getByText("My Own Explore Item").first()).toBeVisible();
+    // Own item should be visible initially (grid-item-title avoids hover overlay duplicate)
+    await expect(
+      page
+        .locator('[data-testid="grid-item-title"]')
+        .filter({ hasText: myItemName })
+    ).toBeVisible();
 
     // Select "Exclude Yours" filter via page object
     await publicProfilePage.selectFilterOption("Exclude Yours");
 
-    // Own item should now be hidden
+    // Own item should now be hidden (allow time for filter to take effect)
     await expect(
-      page.getByText("My Own Explore Item").first()
-    ).not.toBeVisible();
+      page
+        .locator('[data-testid="grid-item-title"]')
+        .filter({ hasText: myItemName })
+    ).not.toBeVisible({ timeout: 10000 });
 
     // Other user's item should still be visible
     await expect(
-      page.getByText("Owner Public Collection").first()
+      page
+        .locator('[data-testid="grid-item-title"]')
+        .filter({ hasText: "Owner Public Collection" })
     ).toBeVisible();
   });
 
@@ -114,6 +131,8 @@ test.describe("Explore Features", () => {
     testUser,
     publicProfilePage,
   }) => {
+    const myItemName = `My Badged ${testUser.username}`;
+
     // Make test user public
     await prisma.user.update({
       where: { id: testUser.id },
@@ -123,7 +142,7 @@ test.describe("Explore Features", () => {
     // Create a public item for the test user
     await prisma.item.create({
       data: {
-        name: "My Badged Item",
+        name: myItemName,
         userId: testUser.id,
         depth: 0,
         order: 0,
@@ -141,7 +160,7 @@ test.describe("Explore Features", () => {
     // (GridItem renders the name in two <h3> elements so locator("../..") is brittle)
     const ownItemCard = page
       .locator("[data-id]")
-      .filter({ hasText: "My Badged Item" })
+      .filter({ hasText: myItemName })
       .first();
     const badge = ownItemCard.getByTestId("ownership-badge");
     await expect(badge).toBeVisible();
@@ -152,6 +171,8 @@ test.describe("Explore Features", () => {
     testUser,
     publicProfilePage,
   }) => {
+    const myItemName = `My CtxMenu ${testUser.username}`;
+
     // Make test user public
     await prisma.user.update({
       where: { id: testUser.id },
@@ -161,7 +182,7 @@ test.describe("Explore Features", () => {
     // Create a public item for the test user
     await prisma.item.create({
       data: {
-        name: "My Context Menu Item",
+        name: myItemName,
         userId: testUser.id,
         depth: 0,
         order: 0,
@@ -176,9 +197,7 @@ test.describe("Explore Features", () => {
     });
 
     // Hover own item and click more options button
-    const itemCard = page
-      .locator("[data-id]")
-      .filter({ hasText: "My Context Menu Item" });
+    const itemCard = page.locator("[data-id]").filter({ hasText: myItemName });
     await itemCard.hover();
     await itemCard.getByRole("button", { name: /more options/i }).click();
 
