@@ -20,6 +20,14 @@ export interface SettingsDialogState {
     inheritVisibility: boolean;
     hasParent: boolean;
     hasChildren: boolean;
+    tmdbId: number | null;
+    tmdbShowTagline: boolean;
+    tmdbShowMetadata: boolean;
+    tmdbShowGenres: boolean;
+    tmdbShowCast: boolean;
+    tmdbShowProviders: boolean;
+    tmdbShowVideos: boolean;
+    tmdbShowRecommendations: boolean;
   };
   files: {
     media: SerializedItemFile[];
@@ -80,6 +88,14 @@ export function useSettingsDialog({
           inheritVisibility: item.inheritVisibility,
           hasParent: item.parentId !== null,
           hasChildren: item.childCount > 0,
+          tmdbId: item.tmdbId,
+          tmdbShowTagline: item.tmdbShowTagline,
+          tmdbShowMetadata: item.tmdbShowMetadata,
+          tmdbShowGenres: item.tmdbShowGenres,
+          tmdbShowCast: item.tmdbShowCast,
+          tmdbShowProviders: item.tmdbShowProviders,
+          tmdbShowVideos: item.tmdbShowVideos,
+          tmdbShowRecommendations: item.tmdbShowRecommendations,
         },
         files,
       });
@@ -126,6 +142,14 @@ export function useSettingsDialog({
           inheritVisibility: updatedItem.inheritVisibility,
           hasParent: updatedItem.parentId !== null,
           hasChildren: updatedItem.childCount > 0,
+          tmdbId: updatedItem.tmdbId,
+          tmdbShowTagline: updatedItem.tmdbShowTagline,
+          tmdbShowMetadata: updatedItem.tmdbShowMetadata,
+          tmdbShowGenres: updatedItem.tmdbShowGenres,
+          tmdbShowCast: updatedItem.tmdbShowCast,
+          tmdbShowProviders: updatedItem.tmdbShowProviders,
+          tmdbShowVideos: updatedItem.tmdbShowVideos,
+          tmdbShowRecommendations: updatedItem.tmdbShowRecommendations,
         },
         files: updatedFiles,
       });

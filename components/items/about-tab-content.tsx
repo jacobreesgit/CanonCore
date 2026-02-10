@@ -43,6 +43,8 @@ interface AboutTabContentProps {
   tmdbDisplayOptions?: TmdbDisplayOptions | null;
   /** Whether the item is a TV show (affects wiki sections). */
   isTV: boolean;
+  /** Right-side toolbar actions (e.g., Settings button). */
+  actions?: React.ReactNode;
 }
 
 /**
@@ -54,6 +56,7 @@ export function AboutTabContent({
   tmdbDetails,
   tmdbDisplayOptions,
   isTV,
+  actions,
 }: AboutTabContentProps) {
   const [sectionFilter, setSectionFilter] = useState("all");
   const isSectionVisible = (sectionId: string) =>
@@ -65,6 +68,7 @@ export function AboutTabContent({
         filterBy={sectionFilter}
         onFilterChange={setSectionFilter as (value: string) => void}
         filterOptions={ABOUT_SECTION_FILTER_OPTIONS}
+        actions={actions}
       />
       <Section
         className="py-8"

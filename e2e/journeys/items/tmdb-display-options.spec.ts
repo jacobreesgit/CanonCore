@@ -196,6 +196,124 @@ test.describe("TMDB Display Options", () => {
     await expect(page.getByTestId("hero-tagline")).not.toBeVisible();
   });
 
+  test.describe("Settings dialog TMDB tab", () => {
+    test("shows TMDB tab for items with TMDB metadata", async ({
+      page,
+      testUser,
+    }) => {
+      const item = await prisma.item.create({
+        data: {
+          name: "TMDB Settings Tab Item",
+          userId: testUser.id,
+          depth: 0,
+          order: 0,
+          tmdbId: 278,
+          tmdbType: "movie",
+        },
+      });
+
+      await page.goto(`/u/${testUser.username}/${item.id}`);
+      await expect(page.getByTestId("hero-carousel")).toBeVisible({
+        timeout: 10000,
+      });
+
+      // Open settings dialog via the toolbar Settings button
+      await page.getByRole("button", { name: "Settings" }).click();
+      await expect(page.getByRole("dialog", { name: /settings/i })).toBeVisible(
+        { timeout: 5000 }
+      );
+
+      // Verify TMDB tab is visible
+      await expect(page.getByRole("tab", { name: /tmdb/i })).toBeVisible();
+    });
+
+    test("does not show TMDB tab for items without TMDB metadata", async ({
+      page,
+      testUser,
+    }) => {
+      const item = await prisma.item.create({
+        data: {
+          name: "No TMDB Item",
+          userId: testUser.id,
+          depth: 0,
+          order: 0,
+        },
+      });
+
+      await page.goto(`/u/${testUser.username}/${item.id}`);
+      await expect(page.getByTestId("hero-carousel")).toBeVisible({
+        timeout: 10000,
+      });
+
+      await page.getByRole("button", { name: "Settings" }).click();
+      await expect(page.getByRole("dialog", { name: /settings/i })).toBeVisible(
+        { timeout: 5000 }
+      );
+
+      // TMDB tab should NOT be present
+      await expect(page.getByRole("tab", { name: /tmdb/i })).not.toBeVisible();
+    });
+
+    test("can toggle display options and changes persist", async ({
+      page,
+      testUser,
+    }) => {
+      const item = await prisma.item.create({
+        data: {
+          name: "Toggle Options Item",
+          userId: testUser.id,
+          depth: 0,
+          order: 0,
+          tmdbId: 278,
+          tmdbType: "movie",
+          tmdbShowCast: true,
+        },
+      });
+
+      await page.goto(`/u/${testUser.username}/${item.id}`);
+      await expect(page.getByTestId("hero-carousel")).toBeVisible({
+        timeout: 10000,
+      });
+
+      // Open settings and navigate to TMDB tab
+      await page.getByRole("button", { name: "Settings" }).click();
+      await expect(page.getByRole("dialog", { name: /settings/i })).toBeVisible(
+        { timeout: 5000 }
+      );
+      await page.getByRole("tab", { name: /tmdb/i }).click();
+
+      // Uncheck "Cast"
+      const castLabel = page.getByText("Cast").locator("..");
+      await castLabel.getByRole("checkbox").click();
+
+      // Wait for debounced save
+      await page.waitForTimeout(500);
+
+      // Close dialog
+      await page.keyboard.press("Escape");
+      await expect(
+        page.getByRole("dialog", { name: /settings/i })
+      ).not.toBeVisible();
+
+      // Reload and reopen settings — verify Cast is still unchecked
+      await page.reload();
+      await expect(page.getByTestId("hero-carousel")).toBeVisible({
+        timeout: 10000,
+      });
+      await page.getByRole("button", { name: "Settings" }).click();
+      await expect(page.getByRole("dialog", { name: /settings/i })).toBeVisible(
+        { timeout: 5000 }
+      );
+      await page.getByRole("tab", { name: /tmdb/i }).click();
+
+      const castCheckbox = page
+        .getByText("Cast")
+        .locator("..")
+        .getByRole("checkbox");
+      await expect(castCheckbox).not.toBeChecked();
+    });
+  });
+
   test("display options respected on public item detail", async ({
     page,
     testUser,

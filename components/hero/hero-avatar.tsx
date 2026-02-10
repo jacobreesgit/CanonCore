@@ -1,6 +1,7 @@
 /**
  * Avatar sub-component for CinematicHero profile mode.
  * Renders profile image with skeleton loading and initials fallback.
+ * Large format with glass-morphism border to match the cinematic hero system.
  */
 
 "use client";
@@ -23,7 +24,7 @@ interface HeroAvatarProps {
 }
 
 /**
- * Avatar with image loading skeleton and initials gradient fallback.
+ * Avatar with glass-morphism border and initials gradient fallback.
  */
 export function HeroAvatar({
   userId,
@@ -44,37 +45,56 @@ export function HeroAvatar({
 
   return (
     <div className="relative shrink-0">
+      {/* Glass border ring */}
       <div
         className={cn(
-          "relative size-20 overflow-hidden rounded-full md:size-28 lg:size-32",
-          "ring-background ring-4"
+          "relative rounded-full p-[3px]",
+          "bg-gradient-to-b from-white/20 via-white/8 to-white/4"
         )}
       >
-        {hasImage && !error ? (
-          <>
-            {!loaded && <Skeleton className="absolute inset-0 rounded-full" />}
-            <Image
-              src={`/api/user/avatar?userId=${userId}`}
-              alt={displayName}
-              fill
-              sizes="(max-width: 768px) 80px, (max-width: 1024px) 112px, 128px"
-              className={cn(
-                "object-cover transition-opacity duration-300",
-                loaded ? "opacity-100" : "opacity-0"
+        {/* Inner avatar */}
+        <div
+          className={cn(
+            "relative size-28 overflow-hidden rounded-full",
+            "sm:size-32 md:size-44 lg:size-48",
+            "ring-1 ring-white/10"
+          )}
+        >
+          {hasImage && !error ? (
+            <>
+              {!loaded && (
+                <Skeleton className="absolute inset-0 rounded-full" />
               )}
-              onLoad={handleLoad}
-              onError={handleError}
-              unoptimized
-            />
-          </>
-        ) : (
-          <div
-            className="flex h-full w-full items-center justify-center text-2xl font-bold text-white md:text-4xl"
-            style={{ background: getInitialsGradient(userId) }}
-          >
-            {getInitials(name, username)}
-          </div>
-        )}
+              <Image
+                src={`/api/user/avatar?userId=${userId}`}
+                alt={displayName}
+                fill
+                sizes="(max-width: 640px) 112px, (max-width: 768px) 128px, (max-width: 1024px) 176px, 192px"
+                className={cn(
+                  "object-cover transition-opacity duration-300",
+                  loaded ? "opacity-100" : "opacity-0"
+                )}
+                onLoad={handleLoad}
+                onError={handleError}
+                unoptimized
+              />
+            </>
+          ) : (
+            <div
+              className="relative flex h-full w-full items-center justify-center text-4xl font-semibold tracking-tight text-white md:text-5xl"
+              style={{ background: getInitialsGradient(userId) }}
+            >
+              {/* Glass overlay on initials */}
+              <div
+                className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent"
+                aria-hidden="true"
+              />
+              <span className="relative drop-shadow-sm">
+                {getInitials(name, username)}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

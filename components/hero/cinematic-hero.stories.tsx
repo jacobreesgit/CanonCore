@@ -20,13 +20,14 @@ const meta: Meta<typeof CinematicHero> = {
 export default meta;
 type Story = StoryObj<typeof CinematicHero>;
 
-/** Multi-slide explore carousel with TMDB metadata. */
+/** Multi-slide explore carousel with TMDB backdrop images. */
 const exploreSlides: HeroSlide[] = [
   {
     id: "1",
     name: "Breaking Bad",
     description: "A chemistry teacher turned methamphetamine manufacturer.",
-    artworkId: "art-bb",
+    backgroundUrl:
+      "https://image.tmdb.org/t/p/original/tsRy63Mu5cu8etL1X7ZLyf7UP1M.jpg",
     link: "/u/demo/item-1",
     attribution: "Shared by @demo",
     tagline: "All Hail the King.",
@@ -37,7 +38,8 @@ const exploreSlides: HeroSlide[] = [
     id: "2",
     name: "The Godfather",
     description: "The aging patriarch of an organized crime dynasty.",
-    artworkId: "art-gf",
+    backgroundUrl:
+      "https://image.tmdb.org/t/p/original/tmU7GeKVybMWFButWEGl2M4GeiP.jpg",
     link: "/u/filmfan/item-2",
     attribution: "Shared by @filmfan",
     tagline: "An offer you can't refuse.",
@@ -53,7 +55,8 @@ const exploreSlides: HeroSlide[] = [
     id: "3",
     name: "Inception",
     description: "A thief who steals corporate secrets through dream-sharing.",
-    artworkId: "art-in",
+    backgroundUrl:
+      "https://image.tmdb.org/t/p/original/8ZTVqvKDQ8emSGUEMjsS4yHAwrp.jpg",
     link: "/u/demo/item-3",
     attribution: "Shared by @demo",
     metadata: {
@@ -66,13 +69,14 @@ const exploreSlides: HeroSlide[] = [
   },
 ];
 
-/** Single item detail slide with TMDB metadata. */
+/** Single item detail slide with TMDB backdrop. */
 const itemSlide: HeroSlide = {
   id: "movie-1",
   name: "Dune: Part Two",
   description:
     "Paul Atreides unites with Chani and the Fremen while on a warpath of revenge against the conspirators who destroyed his family.",
-  artworkId: "art-dune",
+  backgroundUrl:
+    "https://image.tmdb.org/t/p/original/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg",
   tagline: "Long live the fighters.",
   metadata: {
     year: "2024",
@@ -186,7 +190,8 @@ export const ProfileOwner: Story = {
     slides: [
       {
         ...profileSlide,
-        backgroundUrl: "/api/user/hero?userId=user-filmfan",
+        backgroundUrl:
+          "https://image.tmdb.org/t/p/original/suopoADq0k8YZr4dQXcU6pToj6s.jpg",
       },
     ],
   },

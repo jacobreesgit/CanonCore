@@ -70,6 +70,7 @@ pnpm run test-storybook:ci   # CI mode with limited workers
   - `wizards/tv-picker/` - TV show navigation for selecting shows, seasons, or episodes
   - `wizards/tmdb-wizard/` - 4-step metadata wizard (text, poster, hero, summary) plus artwork/image selection steps
   - Detail components: `about-tab-content`, `recommendations`, `wiki-accordion`, `cast-row`, `video-row`, `watch-providers`, `metadata-line`, `expandable-description`
+  - `tmdb-display-options` - Shared TMDB display option toggles (used in wizard summary + settings dialog TMDB tab)
   - Action components: `hero-button`, `item-more-button`, `poster-card`, `playlist-button`
   - `grid-view-content` - Extracted grid view rendering from items-view
 - `components/wizards/` - Reusable wizard infrastructure (state machine hook, step indicator)
@@ -80,7 +81,7 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 - `components/mobile/` - Mobile navigation (footer nav, bottom sheets, search/user/help sheets)
 - `components/providers/` - App-level providers (theme-provider, error-boundary, deferred-analytics)
 - `components/ui/` - shadcn/ui primitives + shared UI (content-toolbar, hero-content-layout, section, underline-tabs, progress-bar)
-- Shared components: `logo.tsx`, `floating-paths.tsx`, `shader-background.tsx`
+- Shared components: `logo.tsx`, `floating-paths.tsx`, `shader-background.tsx`, `feature-card-grid.tsx`
 - Stories: Co-located `*.stories.tsx` files for Storybook component documentation
 
 **Utilities & Helpers:**
@@ -88,7 +89,7 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 - `lib/*-utils.ts` - Feature utilities (item, progress, file-type, upload, sync, avatar, tmdb)
 - `lib/*-client.ts` - External API clients (google-drive, tmdb)
 - `lib/avatar-utils.ts` - Avatar initials and gradient background generation
-- `lib/tmdb-utils.ts` - TMDB resolution for season/episode items (recursive CTE ancestry walk)
+- `lib/tmdb-utils.ts` - TMDB resolution for season/episode items (recursive CTE ancestry walk), `extractTmdbDisplayOptions()` helper
 - `lib/mock-data.ts` - Static data constants for cinematic UI (wiki sections, about tab filters)
 - `lib/audit-context.ts` - AsyncLocalStorage context for audit logging (userId, source, requestId)
 - `lib/audit-logger.ts` - Prisma extension for automatic mutation logging with redaction
@@ -196,7 +197,7 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 
 **Key Features:**
 
-- CinematicHero: Multi-mode hero (carousel with auto-advance on Explore, single-slide on item detail, profile avatar mode). Respects `prefers-reduced-motion`.
+- CinematicHero: Multi-mode hero (carousel with auto-advance on Explore, single-slide on item detail, profile avatar mode). Respects `prefers-reduced-motion`. Attribution text supports linking via `attributionHref`. Screen reader `aria-live` slide announcements.
 - Sort: Custom Order, Name A-Z/Z-A, Newest/Oldest, Recently Updated
 - Filter: All Items, Has Files, No Files, Synced, Pending (Explore adds: Exclude Yours)
 - TMDB display options: Per-item toggles for tagline, metadata, genres, cast, providers, videos, recommendations
@@ -271,6 +272,7 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 - `searchMediaAction`, `getMetadataPreviewAction`, `getImagesAction`
 - `getSeasonsAction`, `getEpisodesAction` for TV shows
 - `applyMetadataAction` - Always persists `tmdbId`/`tmdbType`, accepts optional `TmdbDisplayOptions`
+- `updateTmdbDisplayOptions` - Updates display preference booleans for an item (debounced from settings dialog)
 - Circuit breaker: 5 failures → 60s recovery
 - Graceful degradation if TMDB_API_KEY not set
 
@@ -281,9 +283,10 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 - `getCast()`, `getWatchProviders()`, `getVideos()`, `getRecommendations()`
 - `TMDBMovie`/`TMDBTVShow` include `tagline`, `runtime`, `genres`, `vote_average`
 
-**TMDB Resolution:** `lib/tmdb-utils.ts`
+**TMDB Resolution & Utilities:** `lib/tmdb-utils.ts`
 
 - `resolveTmdbForItem()` - Walks item ancestry via recursive CTE to find parent TV show for season/episode items
+- `extractTmdbDisplayOptions()` - Converts item DB fields (`tmdbShow*`) to `TmdbDisplayOptions` object
 
 **Artwork Handling:**
 

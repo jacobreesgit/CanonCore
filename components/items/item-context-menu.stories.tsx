@@ -37,8 +37,8 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** All menu options visible. Right-click the card to open. */
-export const AllOptions: Story = {
+/** Default — right-click the card to open. */
+export const Default: Story = {
   args: {
     itemName: "Inception",
     showAddChild: true,
@@ -64,49 +64,4 @@ export const AllOptions: Story = {
     await expect(await body.findByText("Open in Drive")).toBeInTheDocument();
     await expect(await body.findByText("Delete")).toBeInTheDocument();
   },
-};
-
-/** Pinned item shows "Unpin from Sidebar" instead of "Pin". */
-export const PinnedItem: Story = {
-  args: {
-    itemName: "The Dark Knight",
-    isPinned: true,
-    onUnpin: fn(async () => {}),
-    driveFileId: null,
-  },
-  render: (args) => (
-    <ItemContextMenu {...args}>
-      <div className="text-muted-foreground flex h-48 w-64 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-sm">
-        Right-click me (pinned item)
-      </div>
-    </ItemContextMenu>
-  ),
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const target = canvas.getByText("Right-click me (pinned item)");
-    await userEvent.pointer({ keys: "[MouseRight]", target });
-    const body = within(document.body);
-    await expect(
-      await body.findByText("Unpin from Sidebar")
-    ).toBeInTheDocument();
-  },
-};
-
-/** Minimal options — settings and delete only. */
-export const MinimalOptions: Story = {
-  args: {
-    itemName: "Interstellar",
-    showAddChild: false,
-    driveFileId: null,
-    isPinned: false,
-    onPin: undefined,
-    onUnpin: undefined,
-  },
-  render: (args) => (
-    <ItemContextMenu {...args}>
-      <div className="text-muted-foreground flex h-48 w-64 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-sm">
-        Right-click me (minimal)
-      </div>
-    </ItemContextMenu>
-  ),
 };

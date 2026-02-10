@@ -36,6 +36,8 @@ export interface HeroSlide {
   progressLabel?: string;
   /** Attribution text above title (e.g., "Shared by @username"). */
   attribution?: string;
+  /** Link destination for the attribution text. */
+  attributionHref?: string;
   /** Profile data — when present, renders avatar layout. */
   profile?: {
     id: string;

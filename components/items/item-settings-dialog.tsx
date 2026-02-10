@@ -52,11 +52,13 @@ import {
   applyMetadataAction,
   getMetadataPreviewAction,
   getEpisodePreviewAction,
+  updateTmdbDisplayOptions,
 } from "@/lib/tmdb-actions";
+import { TmdbDisplayOptionsEditor } from "@/components/items/tmdb-display-options";
 import type { TMDBSearchResult } from "@/lib/tmdb-client";
 import type { TextPreviewData } from "@/components/items/wizards/tmdb-wizard/title-description-step";
 import { toast } from "sonner";
-import type { SerializedItemFile } from "@/lib/types";
+import type { SerializedItemFile, TmdbDisplayOptions } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ITEM_MESSAGES } from "@/lib/constants/messages";
 import { VisibilityToggle } from "@/components/items/visibility-toggle";
@@ -78,6 +80,16 @@ interface ItemSettingsDialogProps {
     inheritVisibility: boolean;
     hasParent: boolean;
     hasChildren: boolean;
+    /** TMDB metadata ID (null = no TMDB data linked) */
+    tmdbId: number | null;
+    /** TMDB display preferences */
+    tmdbShowTagline: boolean;
+    tmdbShowMetadata: boolean;
+    tmdbShowGenres: boolean;
+    tmdbShowCast: boolean;
+    tmdbShowProviders: boolean;
+    tmdbShowVideos: boolean;
+    tmdbShowRecommendations: boolean;
   };
   /** Files attached to this item, grouped by type (serialized for client) */
   files: {
@@ -175,6 +187,20 @@ export function ItemSettingsDialog({
 
   // Track if wizard is applying metadata
   const [isEpisodeMode, setIsEpisodeMode] = useState(false);
+
+  // TMDB display options state (only used when item has TMDB metadata)
+  const [displayOptions, setDisplayOptions] = useState<TmdbDisplayOptions>({
+    showTagline: item.tmdbShowTagline,
+    showMetadata: item.tmdbShowMetadata,
+    showGenres: item.tmdbShowGenres,
+    showCast: item.tmdbShowCast,
+    showProviders: item.tmdbShowProviders,
+    showVideos: item.tmdbShowVideos,
+    showRecommendations: item.tmdbShowRecommendations,
+  });
+  const [isSavingDisplay, setIsSavingDisplay] = useState(false);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
 
   // Original values for dirty checking
   const [originalValues, setOriginalValues] = useState(() => ({
@@ -549,6 +575,76 @@ export function ItemSettingsDialog({
     setCurrentStep("main");
   }, []);
 
+  /**
+   * Handles display option changes with debounced auto-save.
+   * Optimistically updates UI immediately, debounces server call to prevent
+   * race conditions from rapid toggling.
+   */
+  const handleDisplayOptionsChange = useCallback(
+    (updated: TmdbDisplayOptions) => {
+      setDisplayOptions(updated);
+
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      saveTimeoutRef.current = setTimeout(async () => {
+        if (!mountedRef.current) return;
+        setIsSavingDisplay(true);
+        try {
+          const result = await updateTmdbDisplayOptions(item.id, updated);
+          if (!mountedRef.current) return;
+          if (!result.success) {
+            toast.error(result.error);
+          } else {
+            await onSettingsChange?.();
+          }
+        } catch {
+          if (!mountedRef.current) return;
+          toast.error("Failed to update display options");
+        } finally {
+          if (mountedRef.current) {
+            setIsSavingDisplay(false);
+          }
+        }
+      }, 300);
+    },
+    [item.id, onSettingsChange]
+  );
+
+  // Clean up debounce timeout on unmount and prevent stale setState
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Sync display options when item TMDB fields change
+  useEffect(() => {
+    setDisplayOptions({
+      showTagline: item.tmdbShowTagline,
+      showMetadata: item.tmdbShowMetadata,
+      showGenres: item.tmdbShowGenres,
+      showCast: item.tmdbShowCast,
+      showProviders: item.tmdbShowProviders,
+      showVideos: item.tmdbShowVideos,
+      showRecommendations: item.tmdbShowRecommendations,
+    });
+  }, [
+    item.id,
+    item.tmdbShowTagline,
+    item.tmdbShowMetadata,
+    item.tmdbShowGenres,
+    item.tmdbShowCast,
+    item.tmdbShowProviders,
+    item.tmdbShowVideos,
+    item.tmdbShowRecommendations,
+  ]);
+
   // Details tab content
   const detailsContent = (
     <div className="space-y-4">
@@ -701,6 +797,30 @@ export function ItemSettingsDialog({
       />
     </div>
   );
+
+  // TMDB tab content (only when item has TMDB metadata)
+  const tmdbContent = item.tmdbId ? (
+    <div className="space-y-4">
+      <TmdbDisplayOptionsEditor
+        displayOptions={displayOptions}
+        onChange={handleDisplayOptionsChange}
+      />
+      <p
+        className={cn(
+          "text-muted-foreground flex items-center gap-2 text-xs transition-opacity",
+          isSavingDisplay ? "opacity-100" : "opacity-0"
+        )}
+        aria-live="polite"
+      >
+        {isSavingDisplay && (
+          <>
+            <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+            Saving...
+          </>
+        )}
+      </p>
+    </div>
+  ) : undefined;
 
   // Episode picker display
   const displayTitle = pendingTmdbResult
@@ -901,10 +1021,11 @@ export function ItemSettingsDialog({
       case "main":
         return (
           <div className="min-w-0 py-2">
-            {hasDriveConnection ? (
+            {hasDriveConnection || tmdbContent ? (
               <ItemDialogTabs
                 detailsContent={detailsContent}
-                filesContent={filesContent}
+                filesContent={hasDriveConnection ? filesContent : undefined}
+                tmdbContent={tmdbContent}
               />
             ) : (
               <div className="space-y-4">{detailsContent}</div>

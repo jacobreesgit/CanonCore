@@ -14,7 +14,10 @@ import {
   beforeEach,
 } from "vitest";
 import type { Session } from "next-auth";
-import { applyMetadataAction } from "@/lib/tmdb-actions";
+import {
+  applyMetadataAction,
+  updateTmdbDisplayOptions,
+} from "@/lib/tmdb-actions";
 import { createItem, getItem } from "@/lib/item-actions";
 import { prisma } from "@/lib/prisma";
 import "../setup";
@@ -354,5 +357,122 @@ describe("TMDB apply metadata integration", () => {
     if (!getResult.success) throw new Error("Failed to get item");
 
     expect(getResult.data?.item.description?.length).toBeLessThanOrEqual(200);
+  });
+});
+
+describe("updateTmdbDisplayOptions integration", () => {
+  beforeAll(async () => {
+    // Recreate test user (first describe block's afterAll deletes it)
+    await prisma.user.create({
+      data: {
+        id: TEST_USER_ID,
+        email: TEST_USER_EMAIL,
+        passwordHash: "hashed",
+      },
+    });
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuth.mockResolvedValue({
+      user: { id: TEST_USER_ID, email: TEST_USER_EMAIL },
+      expires: new Date().toISOString(),
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.item.deleteMany({ where: { userId: TEST_USER_ID } });
+    await prisma.user.deleteMany({ where: { id: TEST_USER_ID } });
+  });
+
+  it("persists display options to database", async () => {
+    // Create an item with TMDB metadata
+    const createResult = await createItem(null, "Display Options Test");
+    expect(createResult.success).toBe(true);
+    if (!createResult.success) throw new Error("Failed to create item");
+    const itemId = createResult.data!.id;
+
+    // Set tmdbId directly since applyMetadataAction requires TMDB mocks
+    await prisma.item.update({
+      where: { id: itemId },
+      data: { tmdbId: 278, tmdbType: "movie" },
+    });
+
+    // Update display options
+    const result = await updateTmdbDisplayOptions(itemId, {
+      showTagline: true,
+      showMetadata: false,
+      showGenres: true,
+      showCast: false,
+      showProviders: true,
+      showVideos: false,
+      showRecommendations: true,
+    });
+
+    expect(result).toEqual({ success: true });
+
+    // Verify in database
+    const updatedItem = await prisma.item.findUnique({
+      where: { id: itemId },
+      select: {
+        tmdbShowTagline: true,
+        tmdbShowMetadata: true,
+        tmdbShowGenres: true,
+        tmdbShowCast: true,
+        tmdbShowProviders: true,
+        tmdbShowVideos: true,
+        tmdbShowRecommendations: true,
+      },
+    });
+
+    expect(updatedItem).toEqual({
+      tmdbShowTagline: true,
+      tmdbShowMetadata: false,
+      tmdbShowGenres: true,
+      tmdbShowCast: false,
+      tmdbShowProviders: true,
+      tmdbShowVideos: false,
+      tmdbShowRecommendations: true,
+    });
+  });
+
+  it("rejects when item has no TMDB metadata", async () => {
+    // Create a plain item (no TMDB)
+    const createResult = await createItem(null, "No TMDB Item");
+    expect(createResult.success).toBe(true);
+    if (!createResult.success) throw new Error("Failed to create item");
+    const itemId = createResult.data!.id;
+
+    const result = await updateTmdbDisplayOptions(itemId, {
+      showTagline: true,
+      showMetadata: true,
+      showGenres: true,
+      showCast: true,
+      showProviders: true,
+      showVideos: true,
+      showRecommendations: true,
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: "Item has no TMDB metadata",
+    });
+  });
+
+  it("rejects when item does not exist", async () => {
+    const result = await updateTmdbDisplayOptions("nonexistent-id", {
+      showTagline: true,
+      showMetadata: true,
+      showGenres: true,
+      showCast: true,
+      showProviders: true,
+      showVideos: true,
+      showRecommendations: true,
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: "Item not found",
+    });
   });
 });

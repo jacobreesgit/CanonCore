@@ -75,7 +75,7 @@ function mockItem(
     tmdbType: string | null;
     order: number;
     updatedAt: Date;
-    files: Array<{ id: string }>;
+    files: Array<{ id: string; fileType?: string; isPrimary?: boolean }>;
     _count: { sourceForks: number };
     user: { username: string | null };
   }> = {}
@@ -91,7 +91,15 @@ function mockItem(
     inheritVisibility: false,
     tmdbId: null,
     tmdbType: null,
+    tmdbShowTagline: true,
+    tmdbShowMetadata: true,
+    tmdbShowGenres: true,
+    tmdbShowCast: true,
+    tmdbShowProviders: true,
+    tmdbShowVideos: true,
+    tmdbShowRecommendations: true,
     order: 0,
+    pinnedOrder: null,
     updatedAt: new Date("2024-01-15"),
     files: [],
     _count: { sourceForks: 0 },
@@ -347,7 +355,7 @@ describe("getPublicItem", () => {
         userId: "user-1",
         tmdbId: 12345,
         tmdbType: "movie",
-        files: [{ id: "artwork-1" }],
+        files: [{ id: "artwork-1", fileType: "ARTWORK", isPrimary: true }],
         _count: { sourceForks: 5 },
         updatedAt: new Date("2024-01-15"),
       }) as never
@@ -366,8 +374,17 @@ describe("getPublicItem", () => {
       artworkId: "artwork-1",
       tmdbId: 12345,
       tmdbType: "movie",
+      tmdbShowTagline: true,
+      tmdbShowMetadata: true,
+      tmdbShowGenres: true,
+      tmdbShowCast: true,
+      tmdbShowProviders: true,
+      tmdbShowVideos: true,
+      tmdbShowRecommendations: true,
       forkCount: 5,
       updatedAt: new Date("2024-01-15"),
+      pinnedOrder: null,
+      fileCounts: { media: 0, artwork: 1, subtitles: 0 },
     });
   });
 
@@ -438,7 +455,7 @@ describe("getPublicItemsForUser", () => {
       mockItem({
         id: "item-1",
         name: "Movie 1",
-        files: [{ id: "art-1" }],
+        files: [{ id: "art-1", fileType: "ARTWORK", isPrimary: true }],
         _count: { sourceForks: 3 },
       }),
       mockItem({

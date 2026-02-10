@@ -21,7 +21,7 @@ export default function LandingPage() {
   return (
     <>
       <SiteHeader title="Home" titleHref="/" />
-      <main className="flex-1 overflow-y-auto md:overflow-hidden">
+      <main className="flex-1 overflow-y-auto">
         <HeroContent />
       </main>
     </>
