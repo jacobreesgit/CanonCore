@@ -7,11 +7,11 @@
 "use client";
 
 import * as React from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { MobileFooterContainer } from "./mobile-footer-nav";
 import { MobileSearchSheet } from "./mobile-search-sheet";
-import { MobileUserSheet } from "./mobile-user-sheet";
 import { MobileHelpSheet } from "./mobile-help-sheet";
+import { MobileSettingsSheet } from "@/components/profile/mobile-settings-sheet";
 import type { GoogleDriveConnection } from "@/lib/types";
 
 /** Transition delay for sheet mutual exclusion (ms) */
@@ -59,6 +59,7 @@ export function MobileNavProvider({
   children,
 }: MobileNavProviderProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [activeSheet, setActiveSheet] = React.useState<SheetType>(null);
   const pendingSheetRef = React.useRef<SheetType>(null);
   const prevPathnameRef = React.useRef(pathname);
@@ -163,13 +164,21 @@ export function MobileNavProvider({
         onOpenChange={handleSearchOpenChange}
       />
 
-      {/* User Sheet (only for authenticated users) */}
+      {/* Settings Sheet (only for authenticated users) */}
       {user && (
-        <MobileUserSheet
+        <MobileSettingsSheet
           open={activeSheet === "user"}
           onOpenChange={handleUserOpenChange}
-          user={user}
-          driveConnection={driveConnection}
+          user={{
+            name: user.name || null,
+            email: user.email,
+            username: user.username ?? null,
+            isPublic: user.isPublic ?? false,
+            hasImage: user.hasImage ?? false,
+            hasHeroImage: user.hasHeroImage ?? false,
+          }}
+          googleDriveConnection={driveConnection ?? null}
+          onProfileChange={async () => router.refresh()}
         />
       )}
 

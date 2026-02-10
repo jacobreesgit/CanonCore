@@ -98,7 +98,10 @@ test.describe("Heavy Items (serial)", () => {
 
     await itemsPage.switchToGridView();
     await expect(
-      page.getByTestId("items-grid-view").getByText("Progress Item A").first()
+      page
+        .getByTestId("items-grid-view")
+        .locator('[data-testid="grid-item-title"]')
+        .filter({ hasText: "Progress Item A" })
     ).toBeVisible();
 
     // No errors should occur - page should remain stable

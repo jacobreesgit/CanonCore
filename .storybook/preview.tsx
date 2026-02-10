@@ -83,7 +83,7 @@ const customViewports = {
     styles: { width: "844px", height: "390px" },
   },
   tablet: {
-    name: "Tablet (iPad)",
+    name: "Tablet (iPad) — Mobile Layout",
     styles: { width: "768px", height: "1024px" },
   },
   desktop: {

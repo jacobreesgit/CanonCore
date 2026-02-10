@@ -64,11 +64,11 @@ export default async function PublicLayout({
         pinnedItems={pinnedItems}
         driveConnection={driveConnection}
       />
-      <SidebarInset className="md:overflow-hidden">
+      <SidebarInset className="lg:overflow-hidden">
         <main
           id="main-content"
           tabIndex={-1}
-          className="@container/main flex min-h-full flex-col overflow-y-auto pb-16 outline-none md:pb-0"
+          className="@container/main flex min-h-full flex-col overflow-y-auto pb-16 outline-none lg:pb-0"
         >
           <ErrorBoundary>{children}</ErrorBoundary>
         </main>

@@ -145,9 +145,6 @@ export interface TMDBWizardData {
 
   /** Per-item TMDB display preferences */
   displayOptions: TmdbDisplayOptions;
-
-  /** @deprecated Use contentType === 'episode' instead */
-  isEpisodeMode: boolean;
 }
 
 /**
@@ -160,8 +157,6 @@ export interface TMDBWizardInitialData {
   preview: TextPreviewData;
   /** Content type for step configuration */
   contentType?: TMDBWizardContentType;
-  /** @deprecated Use contentType instead */
-  isEpisodeMode?: boolean;
 }
 
 /**
@@ -294,9 +289,6 @@ export interface TMDBWizardResult {
 
   /** Per-item TMDB display preferences */
   displayOptions: TmdbDisplayOptions;
-
-  /** @deprecated Use contentType === 'episode' instead */
-  isEpisodeMode: boolean;
 }
 
 /**
@@ -412,7 +404,6 @@ export function toExistingArtworkFile(
 
 /**
  * Derives content type from initial data.
- * Handles backwards compatibility with isEpisodeMode.
  *
  * @param initialData - Initial data to check
  * @returns Content type for the wizard
@@ -420,13 +411,8 @@ export function toExistingArtworkFile(
 function deriveContentType(
   initialData: TMDBWizardInitialData
 ): TMDBWizardContentType {
-  // Explicit content type takes precedence
   if (initialData.contentType) {
     return initialData.contentType;
-  }
-  // Backwards compatibility with isEpisodeMode
-  if (initialData.isEpisodeMode) {
-    return "episode";
   }
   // Default based on media type
   return initialData.tmdbResult.mediaType === "tv" ? "show" : "movie";
@@ -470,6 +456,5 @@ export function createInitialTMDBWizardData(
       skipped: false,
     },
     displayOptions: { ...DEFAULT_TMDB_DISPLAY },
-    isEpisodeMode: contentType === "episode",
   };
 }

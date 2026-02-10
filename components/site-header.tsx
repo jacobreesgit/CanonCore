@@ -139,7 +139,7 @@ export function SiteHeader({
   return (
     <header
       className={cn(
-        "bg-background sticky top-0 z-50 hidden h-(--header-height) shrink-0 items-center gap-2 border-b transition-all duration-300 ease-out group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height) md:flex",
+        "bg-background sticky top-0 z-50 hidden h-(--header-height) shrink-0 items-center gap-2 border-b transition-all duration-300 ease-out group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height) lg:flex",
         !isVisible && "-translate-y-full opacity-0"
       )}
     >

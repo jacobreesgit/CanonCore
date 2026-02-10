@@ -1,6 +1,9 @@
 /**
  * E2E tests for items CRUD operations.
  * Tests create, rename, and delete item functionality.
+ *
+ * Note: Empty state is covered by empty-states.spec.ts.
+ * Note: Hero visibility is covered by cinematic-hero.spec.ts.
  */
 
 import { test, expect } from "../../fixtures";
@@ -8,26 +11,6 @@ import { test, expect } from "../../fixtures";
 test.describe("Items CRUD Journey", () => {
   // Tests use itemsPage fixture which depends on testUser fixture
   // testUser fixture creates and logs in a user automatically
-
-  test("shows empty state when no items exist", async ({
-    page,
-    testUser,
-    itemsPage,
-  }) => {
-    // Verify we're logged in as the test user
-    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
-    await itemsPage.goto();
-    await itemsPage.expectEmptyState();
-  });
-
-  test("shows hero on root My Items page", async ({
-    page,
-    testUser,
-    itemsPage,
-  }) => {
-    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
-    await itemsPage.expectHeroVisible(`@${testUser.username}`);
-  });
 
   test("can create a new item", async ({ page, testUser, itemsPage }) => {
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });

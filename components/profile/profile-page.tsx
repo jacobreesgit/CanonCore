@@ -180,7 +180,7 @@ function OwnerModeContent({
         aria-label="Add"
       >
         <Plus className="size-4" strokeWidth={2} />
-        <span className="hidden sm:inline">Add</span>
+        <span className="hidden xl:inline">Add</span>
       </Button>
       <EditModeToggle
         isEditing={isEditing}

@@ -47,7 +47,7 @@ export const FullToolbar: Story = {
           className="text-muted-foreground hover:text-foreground gap-1.5"
         >
           <Plus className="size-4" aria-hidden="true" />
-          <span className="hidden sm:inline">Add</span>
+          <span className="hidden xl:inline">Add</span>
         </Button>
         <Button
           size="sm"
@@ -55,7 +55,7 @@ export const FullToolbar: Story = {
           className="text-muted-foreground hover:text-foreground gap-1.5"
         >
           <Settings className="size-4" aria-hidden="true" />
-          <span className="hidden sm:inline">Settings</span>
+          <span className="hidden xl:inline">Settings</span>
         </Button>
       </div>
     ),

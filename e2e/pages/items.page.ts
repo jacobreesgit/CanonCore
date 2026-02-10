@@ -37,8 +37,9 @@ export class ItemsPage {
   constructor(page: Page, username: string) {
     this.page = page;
     this.username = username;
-    this.viewToggleTree = page.getByRole("button", { name: /tree view/i });
-    this.viewToggleGrid = page.getByRole("button", { name: /grid view/i });
+    // View dropdown trigger shows current view name ("Grid" or "Tree")
+    this.viewToggleTree = page.getByRole("menuitemradio", { name: /tree/i });
+    this.viewToggleGrid = page.getByRole("menuitemradio", { name: /grid/i });
     // Use .first() to avoid strict mode violation when both toolbar and empty state buttons are visible
     // Match both "Add Item" (empty state) and "Add" (toolbar with icon)
     this.addFolderButton = page
@@ -85,11 +86,45 @@ export class ItemsPage {
   }
 
   async switchToTreeView() {
-    await this.viewToggleTree.click();
+    if (await this.isMobile()) {
+      await this.selectMobileViewOption("Tree");
+    } else {
+      // Desktop: open the view dropdown then select Tree
+      await this.page
+        .getByRole("button", { name: /grid|tree/i })
+        .first()
+        .click();
+      await this.viewToggleTree.click();
+    }
   }
 
   async switchToGridView() {
-    await this.viewToggleGrid.click();
+    if (await this.isMobile()) {
+      await this.selectMobileViewOption("Grid");
+    } else {
+      // Desktop: open the view dropdown then select Grid
+      await this.page
+        .getByRole("button", { name: /grid|tree/i })
+        .first()
+        .click();
+      await this.viewToggleGrid.click();
+    }
+  }
+
+  /** Open the mobile Options/Item sheet and select a view mode option. */
+  private async selectMobileViewOption(option: "Grid" | "Tree") {
+    // Open the Options bottom sheet
+    await this.page.getByTestId("mobile-options-trigger").click();
+    const viewListbox = this.page.getByRole("listbox", { name: /view mode/i });
+    await expect(viewListbox).toBeVisible({ timeout: 5000 });
+    // Select the view option
+    await viewListbox
+      .getByRole("option", { name: new RegExp(option, "i") })
+      .click();
+    // Dismiss the sheet by clicking the overlay backdrop
+    const overlay = this.page.locator("[data-vaul-overlay]");
+    await overlay.click({ force: true, position: { x: 10, y: 10 } });
+    await expect(viewListbox).not.toBeVisible({ timeout: 3000 });
   }
 
   /** Click the Edit button to enter edit mode */
@@ -121,24 +156,24 @@ export class ItemsPage {
     }
 
     // The TMDB combobox has a 300ms debounce search that opens a Radix popover.
-    // Wait for debounce to fire, then dismiss the popover with Escape if it opened.
-    // Escape is safe here: if the popover IS open, Radix closes the popover first
-    // (not the dialog). If it's NOT open, we skip Escape entirely.
-    await this.page.waitForTimeout(500);
-    const tmdbPopover = this.page.locator(
-      "[data-radix-popper-content-wrapper]"
-    );
-    if (await tmdbPopover.isVisible().catch(() => false)) {
-      await this.page.keyboard.press("Escape");
-      await expect(tmdbPopover).not.toBeVisible({ timeout: 3000 });
-    }
+    // Wait for it to appear (if it does), then dismiss with Escape.
+    // Escape is safe: Radix closes the popover first (not the dialog).
+    const tmdbPopover = this.page.getByTestId("tmdb-search-popover");
+    await tmdbPopover
+      .waitFor({ state: "visible", timeout: 800 })
+      .then(async () => {
+        await this.page.keyboard.press("Escape");
+        await expect(tmdbPopover).not.toBeVisible({ timeout: 3000 });
+      })
+      .catch(() => {
+        // Popover didn't appear (short name or TMDB unavailable) — proceed
+      });
 
     await expect(this.addFolderSubmit).toBeVisible({ timeout: 10000 });
     await expect(this.addFolderSubmit).toBeEnabled({ timeout: 5000 });
-    // Use force: true to bypass re-checking actionability during click.
-    // Under parallel load, React re-renders from TMDB search responses can
-    // detach the button between actionability check and click dispatch.
-    await this.addFolderSubmit.click({ timeout: 15000, force: true });
+    // Use dispatchEvent to bypass viewport checks — Vaul drawer footers
+    // may be outside the viewport when the drawer is at a partial snap point.
+    await this.addFolderSubmit.dispatchEvent("click");
 
     // Wait for dialog to close
     await expect(this.addFolderDialog).not.toBeVisible({ timeout: 15000 });
@@ -156,20 +191,20 @@ export class ItemsPage {
     // Fill and submit
     await this.addFolderInput.fill(name);
     await expect(this.addFolderSubmit).toBeEnabled({ timeout: 2000 });
-    await this.addFolderSubmit.click();
+    await this.addFolderSubmit.dispatchEvent("click");
 
     // Dialog stays open when there's an error - don't wait for it to close
   }
 
   async expectItemVisible(name: string) {
     // Target items in tree/grid views, not breadcrumbs
-    // Use listitem role for tree items or data-id for grid items
+    // Tree: listitem role; Grid: data-testid="grid-item-title" (unique per card)
     const treeItem = this.page
       .getByRole("listitem")
       .getByText(name, { exact: true });
     const gridItem = this.page
-      .locator("[data-id]")
-      .getByText(name, { exact: true });
+      .locator('[data-testid="grid-item-title"]')
+      .filter({ hasText: name });
     await expect(treeItem.or(gridItem).first()).toBeVisible({
       timeout: 10000,
     });
@@ -177,14 +212,12 @@ export class ItemsPage {
 
   async expectItemNotVisible(name: string) {
     // Target items in tree/grid views, not breadcrumbs
-    // Use .first() after .or() because GridItem renders name in two <h3> elements
-    // (default view + hover overlay), both present in the DOM
     const treeItem = this.page
       .getByRole("listitem")
       .getByText(name, { exact: true });
     const gridItem = this.page
-      .locator("[data-id]")
-      .getByText(name, { exact: true });
+      .locator('[data-testid="grid-item-title"]')
+      .filter({ hasText: name });
     await expect(treeItem.or(gridItem).first()).not.toBeVisible();
   }
 
@@ -196,10 +229,10 @@ export class ItemsPage {
       .getByText(name, { exact: true });
     // Grid view: items are buttons with the item name as accessible name
     const gridButton = this.page.getByRole("button", { name, exact: true });
-    // Legacy selector for backward compatibility
+    // Grid view: unique title element (no hover overlay duplicate)
     const gridItem = this.page
-      .locator("[data-id]")
-      .getByText(name, { exact: true });
+      .locator('[data-testid="grid-item-title"]')
+      .filter({ hasText: name });
     await treeItem.or(gridButton).or(gridItem).first().click();
     // Wait for the hero heading to show item name (works on mobile where breadcrumbs collapse)
     await expect(
@@ -237,8 +270,8 @@ export class ItemsPage {
       .getByRole("listitem")
       .getByText(name, { exact: true });
     const gridItem = mainContent
-      .locator("[data-id]")
-      .getByText(name, { exact: true });
+      .locator('[data-testid="grid-item-title"]')
+      .filter({ hasText: name });
     // Also match buttons directly (grid cards render as buttons)
     const gridButton = mainContent.getByRole("button", { name, exact: true });
     return treeItem.or(gridItem).or(gridButton).first();
@@ -333,6 +366,143 @@ export class ItemsPage {
   }
 
   /**
+   * Checks if current viewport is mobile (< 1024px, lg breakpoint).
+   */
+  private async isMobile(): Promise<boolean> {
+    const viewport = this.page.viewportSize();
+    return viewport ? viewport.width < 1024 : false;
+  }
+
+  /**
+   * Opens item settings. Desktop: context menu. Mobile: navigate to item then use Options trigger.
+   * Note: On mobile, this navigates INTO the item (changing URL).
+   */
+  async openItemSettings(name: string) {
+    if (await this.isMobile()) {
+      // Mobile: navigate to item detail, then open Options sheet
+      // clickItem() already waits for hero heading + Add button to be visible
+      await this.clickItem(name);
+      await this.openMobileOptionsSheet();
+    } else {
+      await this.openSettingsViaContextMenu(name);
+    }
+  }
+
+  /**
+   * Opens the MobileItemSheet via the hero Settings button.
+   * Only works on item detail pages where the hero is rendered.
+   */
+  async openMobileOptionsSheet() {
+    const trigger = this.page.getByTestId("hero-settings-button");
+    await expect(trigger).toBeVisible({ timeout: 15000 });
+    await trigger.click();
+    await expect(
+      this.page.getByRole("dialog", { name: /item options/i })
+    ).toBeVisible({ timeout: 5000 });
+  }
+
+  /**
+   * Gets the settings container (desktop dialog or mobile sheet).
+   */
+  async getSettingsContainer() {
+    if (await this.isMobile()) {
+      return this.page.getByRole("dialog", { name: /item options/i });
+    }
+    return this.getSettingsDialog();
+  }
+
+  /**
+   * Closes the settings container (desktop dialog or mobile sheet).
+   */
+  async closeSettings() {
+    if (await this.isMobile()) {
+      // Close mobile sheet by clicking the overlay backdrop
+      const overlay = this.page.locator("[data-vaul-overlay]");
+      await overlay.click({ force: true, position: { x: 10, y: 10 } });
+      // If dirty, a discard alert appears — confirm discard
+      await this.dismissDiscardAlertIfVisible();
+      await expect(
+        this.page.getByRole("dialog", { name: /item options/i })
+      ).not.toBeVisible({ timeout: 5000 });
+    } else {
+      await this.closeSettingsDialog();
+    }
+  }
+
+  /** Dismiss the discard changes alert by clicking "Discard" if it appears. */
+  private async dismissDiscardAlertIfVisible() {
+    const alert = this.page.getByTestId("discard-changes-alert");
+    if (await alert.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await alert.getByRole("button", { name: "Discard" }).click();
+      await expect(alert).not.toBeVisible({ timeout: 3000 });
+    }
+  }
+
+  /**
+   * Opens item settings from the item detail page.
+   * Desktop: clicks hero Settings button → dialog. Mobile: clicks hero Settings button → sheet.
+   * Assumes already on the item's detail page.
+   */
+  async openSettingsFromToolbar() {
+    if (await this.isMobile()) {
+      await this.openMobileOptionsSheet();
+    } else {
+      const settingsButton = this.page.getByTestId("hero-settings-button");
+      await settingsButton.click();
+      await expect(this.getSettingsDialog()).toBeVisible({ timeout: 5000 });
+    }
+  }
+
+  /**
+   * Renames an item via settings. Desktop: context menu path. Mobile: navigate + Options.
+   */
+  async renameItem(oldName: string, newName: string) {
+    if (await this.isMobile()) {
+      await this.clickItem(oldName);
+      await this.openMobileOptionsSheet();
+      const container = this.page.getByRole("dialog", {
+        name: /item options/i,
+      });
+      await container.getByLabel(/item name/i).fill(newName);
+      const saveButton = container.getByRole("button", {
+        name: /save changes/i,
+      });
+      await expect(saveButton).toBeEnabled({ timeout: 5000 });
+      await saveButton.click();
+      await expect(container).not.toBeVisible({ timeout: 15000 });
+      // Navigate back to parent and wait for content
+      await this.page.goBack();
+      await this.waitForLoadingComplete();
+    } else {
+      await this.renameItemViaContextMenu(oldName, newName);
+    }
+  }
+
+  /**
+   * Updates item description via settings.
+   */
+  async updateDescription(itemName: string, description: string) {
+    if (await this.isMobile()) {
+      await this.clickItem(itemName);
+      await this.openMobileOptionsSheet();
+      const container = this.page.getByRole("dialog", {
+        name: /item options/i,
+      });
+      await container.getByLabel(/description/i).fill(description);
+      const saveButton = container.getByRole("button", {
+        name: /save changes/i,
+      });
+      await expect(saveButton).toBeEnabled({ timeout: 5000 });
+      await saveButton.click();
+      await expect(container).not.toBeVisible({ timeout: 15000 });
+      await this.page.goBack();
+      await this.waitForLoadingComplete();
+    } else {
+      await this.updateDescriptionViaContextMenu(itemName, description);
+    }
+  }
+
+  /**
    * Gets the description input value from the settings dialog.
    */
   async getDescriptionFromSettingsDialog(): Promise<string> {
@@ -340,6 +510,14 @@ export class ItemsPage {
     return this.getSettingsDialog()
       .getByLabel(/description/i)
       .inputValue();
+  }
+
+  /**
+   * Gets the description from the currently open settings container (desktop or mobile).
+   */
+  async getDescriptionFromSettings(): Promise<string> {
+    const container = await this.getSettingsContainer();
+    return container.getByLabel(/description/i).inputValue();
   }
 
   /**
@@ -699,7 +877,10 @@ export class ItemsPage {
     } else {
       // Desktop: Use dropdown
       await desktopSortDropdown.click();
-      await this.page.getByRole("menuitemradio", { name: option }).click();
+      const menuItem = this.page.getByRole("menuitemradio", { name: option });
+      await menuItem.click();
+      // Wait for the dropdown menu to close before continuing
+      await expect(menuItem).not.toBeVisible();
     }
   }
 
@@ -737,7 +918,10 @@ export class ItemsPage {
     } else {
       // Desktop: Use dropdown
       await desktopFilterDropdown.click();
-      await this.page.getByRole("menuitemradio", { name: option }).click();
+      const menuItem = this.page.getByRole("menuitemradio", { name: option });
+      await menuItem.click();
+      // Wait for the dropdown menu to close before continuing
+      await expect(menuItem).not.toBeVisible();
     }
   }
 
@@ -933,14 +1117,13 @@ export class ItemsPage {
    */
   private async ensureSidebarOpen(): Promise<void> {
     const sidebar = this.page.locator('[data-sidebar="sidebar"]');
-    const isVisible = await sidebar.isVisible().catch(() => false);
-
-    if (!isVisible) {
-      const trigger = this.page.getByTestId("sidebar-trigger");
-      if (await trigger.isVisible()) {
-        await trigger.click();
-        await expect(sidebar).toBeVisible({ timeout: 5000 });
-      }
+    // Try to detect if sidebar is already open; if not, click the trigger
+    const trigger = this.page.getByTestId("sidebar-trigger");
+    await expect(sidebar.or(trigger).first()).toBeVisible({ timeout: 5000 });
+    // If the sidebar isn't visible, the trigger must be — click it to open
+    if (!(await sidebar.isVisible().catch(() => false))) {
+      await trigger.click();
+      await expect(sidebar).toBeVisible({ timeout: 5000 });
     }
   }
 
@@ -957,7 +1140,9 @@ export class ItemsPage {
     // This is the actual UI change — much more reliable than asserting on a transient toast
     const pinnedGrid = this.getPinnedItemsGrid();
     await expect(
-      pinnedGrid.getByText(name, { exact: true }).first()
+      pinnedGrid
+        .locator('[data-testid="grid-item-title"]')
+        .filter({ hasText: name })
     ).toBeVisible({ timeout: 10000 });
   }
 
@@ -976,7 +1161,9 @@ export class ItemsPage {
     // This is the actual UI change — much more reliable than asserting on a transient toast
     const pinnedGrid = this.getPinnedItemsGrid();
     await expect(
-      pinnedGrid.getByText(name, { exact: true }).first()
+      pinnedGrid
+        .locator('[data-testid="grid-item-title"]')
+        .filter({ hasText: name })
     ).not.toBeVisible({ timeout: 10000 });
   }
 
@@ -1102,10 +1289,10 @@ export class ItemsPage {
    */
   async expectItemInPinnedGrid(name: string): Promise<void> {
     const pinnedGrid = this.getPinnedItemsGrid();
-    // Use .first() because GridItem renders the name in two <h3> elements
-    // (default view + hover overlay), both present in the DOM
     await expect(
-      pinnedGrid.getByText(name, { exact: true }).first()
+      pinnedGrid
+        .locator('[data-testid="grid-item-title"]')
+        .filter({ hasText: name })
     ).toBeVisible({
       timeout: 5000,
     });
@@ -1119,7 +1306,9 @@ export class ItemsPage {
   async expectItemNotInPinnedGrid(name: string): Promise<void> {
     const pinnedGrid = this.getPinnedItemsGrid();
     await expect(
-      pinnedGrid.getByText(name, { exact: true }).first()
+      pinnedGrid
+        .locator('[data-testid="grid-item-title"]')
+        .filter({ hasText: name })
     ).not.toBeVisible();
   }
 
@@ -1136,10 +1325,14 @@ export class ItemsPage {
   /**
    * Gets the count of items in the pinned items grid.
    */
-  async getPinnedGridItemCount(): Promise<number> {
+  /**
+   * Asserts the pinned grid has an expected number of items.
+   * Uses web-first assertion for reliability over raw .count().
+   */
+  async expectPinnedGridItemCount(expected: number): Promise<void> {
     const pinnedGrid = this.getPinnedItemsGrid();
-    // Grid items are buttons with data-id
-    const items = await pinnedGrid.locator("[data-id]").count();
-    return items;
+    await expect(pinnedGrid.locator("[data-id]")).toHaveCount(expected, {
+      timeout: 10000,
+    });
   }
 }

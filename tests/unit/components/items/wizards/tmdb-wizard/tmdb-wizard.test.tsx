@@ -632,14 +632,14 @@ describe("TMDBWizard", () => {
       expect(screen.queryByText("Hero Image")).not.toBeInTheDocument();
     });
 
-    it("uses isEpisodeMode as fallback for episode content type", () => {
+    it("uses contentType='episode' for episode content type", () => {
       const episodeData: TMDBWizardInitialData & {
         seasonNumber: number;
         episodeNumber: number;
       } = {
         tmdbResult: mockTmdbResult,
         preview: mockPreview,
-        isEpisodeMode: true, // Legacy flag
+        contentType: "episode",
         seasonNumber: 1,
         episodeNumber: 1,
       };

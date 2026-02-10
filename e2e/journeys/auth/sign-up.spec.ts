@@ -27,9 +27,11 @@ test.describe("Sign Up Journey", () => {
       await signInLink.click();
       await expect(page).toHaveURL("/sign-in");
     } else {
-      // Desktop: Open sidebar if needed, then click "Get Started"
+      // Desktop: Open sidebar if needed, then click "Get Started" in sidebar
       const sidebarTrigger = page.getByTestId("sidebar-trigger");
-      const getStartedLink = page.getByRole("link", { name: "Get Started" });
+      const getStartedLink = page
+        .locator('[data-slot="sidebar"]')
+        .getByRole("link", { name: "Get Started" });
 
       if (!(await getStartedLink.isVisible())) {
         await sidebarTrigger.click();

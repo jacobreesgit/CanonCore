@@ -73,12 +73,12 @@ export function EditModeToggle({
       {isEditing ? (
         <>
           <Check aria-hidden="true" className="size-4" />
-          <span className="hidden sm:inline">Done</span>
+          <span className="hidden xl:inline">Done</span>
         </>
       ) : (
         <>
           <Pencil aria-hidden="true" className="size-4" />
-          <span className="hidden sm:inline">Edit</span>
+          <span className="hidden xl:inline">Edit</span>
         </>
       )}
     </Button>

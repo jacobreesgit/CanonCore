@@ -57,7 +57,7 @@ describe("useIsMobile", () => {
     });
   });
 
-  it("returns false for desktop viewport (>= 768px)", () => {
+  it("returns false for desktop viewport (>= 1024px)", () => {
     setWindowWidth(1024);
     setupMatchMedia(false);
 
@@ -66,7 +66,7 @@ describe("useIsMobile", () => {
     expect(result.current).toBe(false);
   });
 
-  it("returns true for mobile viewport (< 768px)", () => {
+  it("returns true for mobile viewport (< 1024px)", () => {
     setWindowWidth(375);
     setupMatchMedia(true);
 
@@ -75,8 +75,8 @@ describe("useIsMobile", () => {
     expect(result.current).toBe(true);
   });
 
-  it("returns false at exactly 768px breakpoint", () => {
-    setWindowWidth(768);
+  it("returns false at exactly 1024px breakpoint", () => {
+    setWindowWidth(1024);
     setupMatchMedia(false);
 
     const { result } = renderHook(() => useIsMobile());
@@ -84,8 +84,8 @@ describe("useIsMobile", () => {
     expect(result.current).toBe(false);
   });
 
-  it("returns true at 767px (just below breakpoint)", () => {
-    setWindowWidth(767);
+  it("returns true at 1023px (just below breakpoint)", () => {
+    setWindowWidth(1023);
     setupMatchMedia(true);
 
     const { result } = renderHook(() => useIsMobile());
@@ -156,13 +156,13 @@ describe("useIsMobile", () => {
     expect(result.current).toBe(false);
   });
 
-  it("uses correct media query breakpoint (767px)", () => {
+  it("uses correct media query breakpoint (1023px)", () => {
     setWindowWidth(1024);
     setupMatchMedia(false);
 
     renderHook(() => useIsMobile());
 
-    expect(window.matchMedia).toHaveBeenCalledWith("(max-width: 767px)");
+    expect(window.matchMedia).toHaveBeenCalledWith("(max-width: 1023px)");
   });
 
   it("returns false initially before effect runs (SSR safety)", () => {
