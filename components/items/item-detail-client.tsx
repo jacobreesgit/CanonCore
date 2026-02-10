@@ -79,6 +79,13 @@ interface ItemDetailClientProps {
     childCount: number;
     tmdbId: number | null;
     tmdbType: string | null;
+    tmdbShowTagline: boolean;
+    tmdbShowMetadata: boolean;
+    tmdbShowGenres: boolean;
+    tmdbShowCast: boolean;
+    tmdbShowProviders: boolean;
+    tmdbShowVideos: boolean;
+    tmdbShowRecommendations: boolean;
   };
   /** Child items to display. */
   childItems: ItemWithArtwork[];
@@ -159,13 +166,16 @@ export function ItemDetailClient({
 
   // Fetch files on mount when settings dialog should be open by default
   useEffect(() => {
-    if (defaultSettingsOpen) {
-      getItemFiles(item.id).then((result) => {
-        if (result.success && result.data) {
-          setSettingsFiles(result.data);
-        }
-      });
-    }
+    if (!defaultSettingsOpen) return;
+    let stale = false;
+    getItemFiles(item.id).then((result) => {
+      if (!stale && result.success && result.data) {
+        setSettingsFiles(result.data);
+      }
+    });
+    return () => {
+      stale = true;
+    };
   }, [defaultSettingsOpen, item.id]);
 
   // Resolve hero artwork using fallback chain: isHero -> isPrimary -> first
@@ -290,10 +300,32 @@ export function ItemDetailClient({
     inheritVisibility: item.inheritVisibility,
     hasParent: item.parentId !== null,
     hasChildren: item.childCount > 0,
+    tmdbId: item.tmdbId,
+    tmdbShowTagline: item.tmdbShowTagline,
+    tmdbShowMetadata: item.tmdbShowMetadata,
+    tmdbShowGenres: item.tmdbShowGenres,
+    tmdbShowCast: item.tmdbShowCast,
+    tmdbShowProviders: item.tmdbShowProviders,
+    tmdbShowVideos: item.tmdbShowVideos,
+    tmdbShowRecommendations: item.tmdbShowRecommendations,
   };
 
   // Contents tab toolbar left actions (view toggle)
   const contentsLeftActions = <ViewToggle disabled={!hasChildren} />;
+
+  // Settings button (shared between Contents and About toolbars)
+  const settingsButton = (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={handleOpenSettings}
+      className="gap-1.5"
+      aria-label="Settings"
+    >
+      <Settings2 className="size-4" />
+      <span className="hidden sm:inline">Settings</span>
+    </Button>
+  );
 
   // Contents tab toolbar right actions
   const contentsActions = (
@@ -321,16 +353,7 @@ export function ItemDetailClient({
         }
       />
       <ToolbarDivider />
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleOpenSettings}
-        className="gap-1.5"
-        aria-label="Settings"
-      >
-        <Settings2 className="size-4" />
-        <span className="hidden sm:inline">Settings</span>
-      </Button>
+      {settingsButton}
     </>
   );
 
@@ -376,6 +399,7 @@ export function ItemDetailClient({
       tmdbDetails={tmdbDetails}
       tmdbDisplayOptions={tmdbDisplayOptions}
       isTV={isTV}
+      actions={settingsButton}
     />
   );
 

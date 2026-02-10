@@ -3,7 +3,7 @@
  * Configures viewports, backgrounds, accessibility, decorators, and global types.
  */
 import type { Preview, Decorator } from "@storybook/nextjs";
-import { withThemeByClassName } from "@storybook/addon-themes";
+import { themes } from "storybook/theming";
 import { initialize, mswLoader } from "msw-storybook-addon";
 import { useEffect } from "react";
 
@@ -104,6 +104,7 @@ const preview: Preview = {
   parameters: {
     docs: {
       autodocs: "tag",
+      theme: themes.dark,
     },
     nextjs: {
       appDirectory: true,
@@ -115,11 +116,9 @@ const preview: Preview = {
       options: customViewports,
     },
     backgrounds: {
-      default: "light",
+      default: "dark",
       values: [
-        { name: "light", value: "#ffffff" },
         { name: "dark", value: "#0a0a0a" },
-        { name: "gray", value: "#f5f5f5" },
         { name: "brand", value: "#1a1a2e" },
       ],
     },
@@ -150,13 +149,12 @@ const preview: Preview = {
   },
   decorators: [
     withNoNavigation,
-    withThemeByClassName({
-      themes: {
-        light: "",
-        dark: "dark",
-      },
-      defaultTheme: "light",
-    }),
+    // Force dark mode — app is always dark, no light mode
+    (Story) => (
+      <div className="dark">
+        <Story />
+      </div>
+    ),
   ],
   loaders: [mswLoader],
   initialGlobals: {

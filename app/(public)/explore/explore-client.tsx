@@ -182,6 +182,7 @@ export function ExploreClient({
         artworkId: item.artworkId,
         link: item.link,
         attribution: `Shared by @${item.ownerUsername}`,
+        attributionHref: `/u/${item.ownerUsername}`,
         tagline: item.tmdbMetadata?.tagline,
         metadata: item.tmdbMetadata
           ? {

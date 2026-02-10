@@ -15,6 +15,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import useEmblaCarousel from "embla-carousel-react";
 
 import { cn } from "@/lib/utils";
@@ -72,13 +73,11 @@ export function CinematicHero({
     return () => clearInterval(timer);
   }, [autoAdvanceInterval, isPaused, emblaApi, isSingleSlide]);
 
-  // Check for reduced motion preference
+  // Pause auto-advance when user prefers reduced motion (bidirectional)
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     const handleChange = (e: MediaQueryListEvent | MediaQueryList) => {
-      if (e.matches) {
-        setIsPaused(true);
-      }
+      setIsPaused(e.matches);
     };
     handleChange(mediaQuery);
     mediaQuery.addEventListener("change", handleChange);
@@ -122,6 +121,13 @@ export function CinematicHero({
       role="region"
       aria-label="Featured content carousel"
     >
+      {/* Screen reader announcement for slide changes */}
+      {!isSingleSlide && (
+        <div className="sr-only" aria-live="polite" aria-atomic="true">
+          {`Slide ${activeIndex + 1} of ${slides.length}: ${activeSlide.name}`}
+        </div>
+      )}
+
       {/* Embla Carousel Container — skip ref for single slide to avoid unnecessary init */}
       <div
         ref={isSingleSlide ? undefined : emblaRef}
@@ -207,7 +213,7 @@ export function CinematicHero({
         >
           {/* Profile avatar mode */}
           {activeSlide.profile ? (
-            <div className="flex items-end gap-5 md:gap-6">
+            <div className="flex items-end gap-5 md:gap-8">
               <HeroAvatar
                 userId={activeSlide.profile.id}
                 name={activeSlide.profile.name}
@@ -264,7 +270,16 @@ export function CinematicHero({
                   className="mb-2 text-sm text-white/50"
                   data-testid="hero-attribution"
                 >
-                  {activeSlide.attribution}
+                  {activeSlide.attributionHref ? (
+                    <Link
+                      href={activeSlide.attributionHref}
+                      className="pointer-events-auto underline decoration-white/0 underline-offset-2 transition-[text-decoration-color] hover:decoration-white/50"
+                    >
+                      {activeSlide.attribution}
+                    </Link>
+                  ) : (
+                    activeSlide.attribution
+                  )}
                 </p>
               )}
 

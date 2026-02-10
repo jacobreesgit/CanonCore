@@ -22,7 +22,6 @@ const config: StorybookConfig = {
   addons: [
     "@storybook/addon-docs",
     "@storybook/addon-a11y",
-    "@storybook/addon-themes",
     "storybook/viewport",
     "msw-storybook-addon",
   ],
@@ -97,9 +96,18 @@ const config: StorybookConfig = {
       };
     }
 
+    // Inject TMDB_API_KEY into the browser bundle for story loaders
+    config.plugins = config.plugins || [];
+    config.plugins.push(
+      new webpack.DefinePlugin({
+        "process.env.STORYBOOK_TMDB_API_KEY": JSON.stringify(
+          process.env.TMDB_API_KEY ?? ""
+        ),
+      })
+    );
+
     // Add plugin to rewrite node: protocol imports to bare module names
     // This allows them to hit the fallback configuration above
-    config.plugins = config.plugins || [];
     config.plugins.push(
       new webpack.NormalModuleReplacementPlugin(
         /^node:/,

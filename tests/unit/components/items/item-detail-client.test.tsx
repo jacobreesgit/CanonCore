@@ -105,6 +105,13 @@ describe("ItemDetailClient", () => {
     childCount: 0,
     tmdbId: null,
     tmdbType: null,
+    tmdbShowTagline: true,
+    tmdbShowMetadata: true,
+    tmdbShowGenres: true,
+    tmdbShowCast: true,
+    tmdbShowProviders: true,
+    tmdbShowVideos: true,
+    tmdbShowRecommendations: true,
   };
 
   const defaultChildItems = [

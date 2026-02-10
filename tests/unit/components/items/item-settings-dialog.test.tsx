@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within, waitFor } from "@testing-library/react";
+import { render, screen, within, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ItemSettingsDialog } from "@/components/items/item-settings-dialog";
 import type { SerializedItemFile } from "@/lib/types";
@@ -36,6 +36,7 @@ vi.mock("@/lib/tmdb-actions", () => ({
   getMetadataPreviewAction: vi.fn(),
   getImagesAction: vi.fn(),
   isTMDBAvailable: vi.fn(),
+  updateTmdbDisplayOptions: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 vi.mock("sonner", () => ({
@@ -48,6 +49,7 @@ import {
   getMetadataPreviewAction,
   getImagesAction,
   isTMDBAvailable,
+  updateTmdbDisplayOptions,
 } from "@/lib/tmdb-actions";
 
 describe("ItemSettingsDialog", () => {
@@ -62,6 +64,14 @@ describe("ItemSettingsDialog", () => {
       inheritVisibility: false,
       hasParent: false,
       hasChildren: false,
+      tmdbId: null,
+      tmdbShowTagline: true,
+      tmdbShowMetadata: true,
+      tmdbShowGenres: true,
+      tmdbShowCast: true,
+      tmdbShowProviders: true,
+      tmdbShowVideos: true,
+      tmdbShowRecommendations: true,
     },
     files: { media: [], artwork: [], subtitles: [] },
     hasDriveConnection: true,
@@ -456,13 +466,7 @@ describe("ItemSettingsDialog", () => {
           {...defaultProps}
           files={newFiles}
           item={{
-            id: "item-1",
-            name: "Test Item",
-            description: null,
-            isPublic: false,
-            inheritVisibility: false,
-            hasParent: false,
-            hasChildren: false,
+            ...defaultProps.item,
           }}
         />
       );
@@ -955,6 +959,182 @@ describe("ItemSettingsDialog", () => {
 
       await waitFor(() => {
         expect(toast.error).toHaveBeenCalledWith("Could not fetch preview");
+      });
+    });
+  });
+
+  describe("TMDB Display Options Tab", () => {
+    it("should not show TMDB tab when item has no tmdbId", () => {
+      render(
+        <ItemSettingsDialog
+          {...defaultProps}
+          item={{ ...defaultProps.item, tmdbId: null }}
+        />
+      );
+      expect(
+        screen.queryByRole("tab", { name: /tmdb/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it("should show TMDB tab when item has tmdbId", () => {
+      render(
+        <ItemSettingsDialog
+          {...defaultProps}
+          item={{ ...defaultProps.item, tmdbId: 278 }}
+        />
+      );
+      expect(screen.getByRole("tab", { name: /tmdb/i })).toBeInTheDocument();
+    });
+
+    it("should show TMDB tab even without Drive connection", () => {
+      render(
+        <ItemSettingsDialog
+          {...defaultProps}
+          item={{ ...defaultProps.item, tmdbId: 278 }}
+          hasDriveConnection={false}
+        />
+      );
+      expect(screen.getByRole("tab", { name: /tmdb/i })).toBeInTheDocument();
+    });
+
+    it("should show display option checkboxes in TMDB tab", async () => {
+      const user = userEvent.setup();
+      render(
+        <ItemSettingsDialog
+          {...defaultProps}
+          item={{ ...defaultProps.item, tmdbId: 278 }}
+        />
+      );
+
+      await user.click(screen.getByRole("tab", { name: /tmdb/i }));
+
+      expect(screen.getByText("Tagline")).toBeInTheDocument();
+      expect(screen.getByText("Cast")).toBeInTheDocument();
+      expect(screen.getByText("Where to Watch")).toBeInTheDocument();
+      expect(screen.getByText("Videos")).toBeInTheDocument();
+      expect(screen.getByText("More Like This")).toBeInTheDocument();
+      expect(screen.getByText("Genres")).toBeInTheDocument();
+      expect(screen.getByText(/Metadata/)).toBeInTheDocument();
+    });
+
+    it("should reflect initial display option state from item props", async () => {
+      const user = userEvent.setup();
+      render(
+        <ItemSettingsDialog
+          {...defaultProps}
+          item={{
+            ...defaultProps.item,
+            tmdbId: 278,
+            tmdbShowCast: false,
+            tmdbShowVideos: false,
+          }}
+        />
+      );
+
+      await user.click(screen.getByRole("tab", { name: /tmdb/i }));
+
+      const castCheckbox = screen
+        .getByText("Cast")
+        .closest("label")
+        ?.querySelector("[role=checkbox]");
+      const videosCheckbox = screen
+        .getByText("Videos")
+        .closest("label")
+        ?.querySelector("[role=checkbox]");
+      expect(castCheckbox).toHaveAttribute("aria-checked", "false");
+      expect(videosCheckbox).toHaveAttribute("aria-checked", "false");
+
+      const taglineCheckbox = screen
+        .getByText("Tagline")
+        .closest("label")
+        ?.querySelector("[role=checkbox]");
+      expect(taglineCheckbox).toHaveAttribute("aria-checked", "true");
+    });
+
+    it("should call updateTmdbDisplayOptions when checkbox toggled", async () => {
+      const user = userEvent.setup();
+      const mockUpdate = vi.fn().mockResolvedValue({ success: true });
+      vi.mocked(updateTmdbDisplayOptions).mockImplementation(mockUpdate);
+
+      render(
+        <ItemSettingsDialog
+          {...defaultProps}
+          item={{ ...defaultProps.item, tmdbId: 278 }}
+        />
+      );
+
+      await user.click(screen.getByRole("tab", { name: /tmdb/i }));
+
+      const castCheckbox = screen
+        .getByText("Cast")
+        .closest("label")
+        ?.querySelector("[role=checkbox]");
+      if (castCheckbox) await user.click(castCheckbox);
+
+      await waitFor(() => {
+        expect(mockUpdate).toHaveBeenCalledWith(
+          defaultProps.item.id,
+          expect.objectContaining({ showCast: false })
+        );
+      });
+    });
+
+    it("should show saving indicator during server call", async () => {
+      const user = userEvent.setup();
+      let resolveUpdate: (value: { success: true }) => void;
+      const updatePromise = new Promise<{ success: true }>((resolve) => {
+        resolveUpdate = resolve;
+      });
+      vi.mocked(updateTmdbDisplayOptions).mockReturnValue(updatePromise);
+
+      render(
+        <ItemSettingsDialog
+          {...defaultProps}
+          item={{ ...defaultProps.item, tmdbId: 278 }}
+        />
+      );
+
+      await user.click(screen.getByRole("tab", { name: /tmdb/i }));
+
+      const castCheckbox = screen
+        .getByText("Cast")
+        .closest("label")
+        ?.querySelector("[role=checkbox]");
+      if (castCheckbox) await user.click(castCheckbox);
+
+      await waitFor(() => {
+        expect(screen.getByText("Saving...")).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        resolveUpdate!({ success: true });
+      });
+    });
+
+    it("should show error toast on server action failure", async () => {
+      const user = userEvent.setup();
+      vi.mocked(updateTmdbDisplayOptions).mockResolvedValue({
+        success: false,
+        error: "Item has no TMDB metadata",
+      });
+
+      render(
+        <ItemSettingsDialog
+          {...defaultProps}
+          item={{ ...defaultProps.item, tmdbId: 278 }}
+        />
+      );
+
+      await user.click(screen.getByRole("tab", { name: /tmdb/i }));
+
+      const castCheckbox = screen
+        .getByText("Cast")
+        .closest("label")
+        ?.querySelector("[role=checkbox]");
+      if (castCheckbox) await user.click(castCheckbox);
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith("Item has no TMDB metadata");
       });
     });
   });

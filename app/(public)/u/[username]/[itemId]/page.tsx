@@ -17,8 +17,10 @@ import { getItemFiles } from "@/lib/item-file-actions";
 import { getForkStatus, getForkInfo } from "@/lib/fork-actions";
 import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
 import { getItemTmdbMetadata, getItemTmdbDetails } from "@/lib/tmdb-client";
-import { resolveTmdbForItem } from "@/lib/tmdb-utils";
-import type { TmdbDisplayOptions } from "@/lib/types";
+import {
+  resolveTmdbForItem,
+  extractTmdbDisplayOptions,
+} from "@/lib/tmdb-utils";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SiteHeader } from "@/components/site-header";
@@ -148,20 +150,17 @@ export default async function ItemDetailPage({
     );
 
     // Extract TMDB display preferences from item
-    const tmdbDisplayOptions: TmdbDisplayOptions = {
-      showTagline: item.tmdbShowTagline,
-      showMetadata: item.tmdbShowMetadata,
-      showGenres: item.tmdbShowGenres,
-      showCast: item.tmdbShowCast,
-      showProviders: item.tmdbShowProviders,
-      showVideos: item.tmdbShowVideos,
-      showRecommendations: item.tmdbShowRecommendations,
-    };
+    const tmdbDisplayOptions = extractTmdbDisplayOptions(item);
 
-    // Resolve TMDB ID once (handles season/episode → show resolution)
-    const resolvedTmdb = await resolveTmdbForItem(item);
+    // Start TMDB resolution and non-TMDB fetches concurrently
+    const resolvedTmdbPromise = resolveTmdbForItem(item);
+    const childrenPromise = getDescendants(itemId);
+    const filesPromise = getItemFiles(itemId);
+    const progressPromise = getItemProgress(itemId);
+    const drivePromise = getGoogleDriveConnection();
 
-    // Fetch additional data in parallel
+    // Await TMDB resolution, then fetch TMDB metadata in parallel with remaining work
+    const resolvedTmdb = await resolvedTmdbPromise;
     const [
       childrenResult,
       filesResult,
@@ -170,10 +169,10 @@ export default async function ItemDetailPage({
       tmdbMetadata,
       tmdbDetails,
     ] = await Promise.all([
-      getDescendants(itemId),
-      getItemFiles(itemId),
-      getItemProgress(itemId),
-      getGoogleDriveConnection(),
+      childrenPromise,
+      filesPromise,
+      progressPromise,
+      drivePromise,
       resolvedTmdb
         ? getItemTmdbMetadata(resolvedTmdb.tmdbId, resolvedTmdb.tmdbType)
         : null,
@@ -216,6 +215,13 @@ export default async function ItemDetailPage({
               childCount: childItems.length,
               tmdbId: item.tmdbId,
               tmdbType: item.tmdbType,
+              tmdbShowTagline: item.tmdbShowTagline,
+              tmdbShowMetadata: item.tmdbShowMetadata,
+              tmdbShowGenres: item.tmdbShowGenres,
+              tmdbShowCast: item.tmdbShowCast,
+              tmdbShowProviders: item.tmdbShowProviders,
+              tmdbShowVideos: item.tmdbShowVideos,
+              tmdbShowRecommendations: item.tmdbShowRecommendations,
             }}
             childItems={childItems}
             files={files}
@@ -244,20 +250,23 @@ export default async function ItemDetailPage({
     }
 
     // Extract TMDB display preferences from public item
-    const viewerDisplayOptions: TmdbDisplayOptions = {
-      showTagline: item.tmdbShowTagline,
-      showMetadata: item.tmdbShowMetadata,
-      showGenres: item.tmdbShowGenres,
-      showCast: item.tmdbShowCast,
-      showProviders: item.tmdbShowProviders,
-      showVideos: item.tmdbShowVideos,
-      showRecommendations: item.tmdbShowRecommendations,
-    };
+    const viewerDisplayOptions = extractTmdbDisplayOptions(item);
 
-    // Resolve TMDB ID once (handles season/episode → show resolution)
-    const resolvedTmdb = await resolveTmdbForItem(item);
+    // Start TMDB resolution and non-TMDB fetches concurrently
+    const resolvedTmdbPromise = resolveTmdbForItem(item);
+    const descendantsPromise = getPublicDescendants(itemId);
+    const breadcrumbPromise = getPublicBreadcrumb(itemId);
+    const forkInfoPromise = getForkInfo(itemId);
+    const forkStatusPromise = getForkStatus(itemId); // Safe for unauthenticated - returns error
+    const currentUserPromise = currentUserId
+      ? prisma.user.findUnique({
+          where: { id: currentUserId },
+          select: { username: true },
+        })
+      : null;
 
-    // Get additional data in parallel
+    // Await TMDB resolution, then fetch TMDB metadata in parallel with remaining work
+    const resolvedTmdb = await resolvedTmdbPromise;
     const [
       childItems,
       breadcrumb,
@@ -267,16 +276,11 @@ export default async function ItemDetailPage({
       tmdbMetadata,
       tmdbDetails,
     ] = await Promise.all([
-      getPublicDescendants(itemId),
-      getPublicBreadcrumb(itemId),
-      getForkInfo(itemId),
-      getForkStatus(itemId), // Safe for unauthenticated - returns error
-      currentUserId
-        ? prisma.user.findUnique({
-            where: { id: currentUserId },
-            select: { username: true },
-          })
-        : null,
+      descendantsPromise,
+      breadcrumbPromise,
+      forkInfoPromise,
+      forkStatusPromise,
+      currentUserPromise,
       resolvedTmdb
         ? getItemTmdbMetadata(resolvedTmdb.tmdbId, resolvedTmdb.tmdbType)
         : null,

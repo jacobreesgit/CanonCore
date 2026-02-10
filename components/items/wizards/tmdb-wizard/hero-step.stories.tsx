@@ -1,47 +1,13 @@
 /**
  * Stories for TMDBHeroStep component.
- * Hero/backdrop selection step with 16:9 aspect ratio images.
+ * Fetches real TMDB backdrop galleries via Storybook loaders.
  */
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import { fn } from "storybook/test";
 
 import { TMDBHeroStep } from "./hero-step";
 import type { TMDBWizardData, ArtworkSelection } from "./tmdb-wizard-types";
-import type { TMDBImages } from "@/lib/tmdb-client";
-
-/**
- * Mock TMDB backdrop images.
- */
-const mockBackdrops: TMDBImages["backdrops"] = [
-  {
-    file_path: "/8ZTVqvKDQ8emSGUEMjsS4yHAwrp.jpg",
-    vote_average: 9.2,
-    iso_639_1: null,
-    width: 3840,
-    height: 2160,
-  },
-  {
-    file_path: "/s3TBrRGB1iav7gFOCNx3H31MoES.jpg",
-    vote_average: 8.5,
-    iso_639_1: null,
-    width: 1920,
-    height: 1080,
-  },
-  {
-    file_path: "/ii8QGacT3MXESqBckQlyrATY0lT.jpg",
-    vote_average: 7.8,
-    iso_639_1: "en",
-    width: 1920,
-    height: 1080,
-  },
-  {
-    file_path: "/xJHokMbljvjADYdit5fK5VQsXEG.jpg",
-    vote_average: 7.2,
-    iso_639_1: null,
-    width: 1920,
-    height: 1080,
-  },
-];
+import { fetchTmdbImages } from "../../../../.storybook/lib/tmdb";
 
 /**
  * Creates mock wizard data for hero step stories.
@@ -53,7 +19,7 @@ function createMockData(
     contentType: "movie",
     images: {
       posters: [],
-      backdrops: mockBackdrops,
+      backdrops: [],
     },
     backdrop: {
       value: null,
@@ -69,7 +35,7 @@ const mockCurrentValues = {
   description: "My description",
 };
 
-const meta = {
+const meta: Meta<typeof TMDBHeroStep> = {
   title: "Items/Wizards/TMDB/HeroStep",
   component: TMDBHeroStep,
   tags: ["autodocs"],
@@ -120,33 +86,77 @@ const meta = {
       </div>
     ),
   ],
-} satisfies Meta<typeof TMDBHeroStep>;
+};
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
- * Default hero selection step with available backdrops.
+ * Inception (2010) backdrop gallery from TMDB.
  */
 export const Default: Story = {
-  args: {
-    data: createMockData(),
-  },
+  args: { data: createMockData() },
+  loaders: [
+    async () => {
+      const images = await fetchTmdbImages(27205, "movie");
+      return { images };
+    },
+  ],
+  render: (args, { loaded: { images } }) => (
+    <TMDBHeroStep
+      {...args}
+      data={createMockData({
+        images: images ?? { posters: [], backdrops: [] },
+      })}
+    />
+  ),
+};
+
+/**
+ * Interstellar (2014) backdrop gallery from TMDB.
+ */
+export const Interstellar: Story = {
+  args: { data: createMockData() },
+  loaders: [
+    async () => {
+      const images = await fetchTmdbImages(157336, "movie");
+      return { images };
+    },
+  ],
+  render: (args, { loaded: { images } }) => (
+    <TMDBHeroStep
+      {...args}
+      data={createMockData({
+        images: images ?? { posters: [], backdrops: [] },
+      })}
+    />
+  ),
 };
 
 /**
  * Hero/backdrop already selected.
  */
 export const WithSelection: Story = {
-  args: {
-    data: createMockData({
-      backdrop: {
-        value: "/8ZTVqvKDQ8emSGUEMjsS4yHAwrp.jpg",
-        source: "tmdb",
-        skipped: false,
-      } as ArtworkSelection,
-    }),
-  },
+  args: { data: createMockData() },
+  loaders: [
+    async () => {
+      const images = await fetchTmdbImages(27205, "movie");
+      return { images };
+    },
+  ],
+  render: (args, { loaded: { images } }) => (
+    <TMDBHeroStep
+      {...args}
+      data={createMockData({
+        images: images ?? { posters: [], backdrops: [] },
+        backdrop: {
+          value: images?.backdrops?.[0]?.file_path ?? null,
+          source: "tmdb",
+          skipped: false,
+        } as ArtworkSelection,
+      })}
+    />
+  ),
 };
 
 /**
@@ -193,13 +203,25 @@ export const WithError: Story = {
  * Shows tabs with TMDB images and My Uploads dropzone.
  */
 export const UploadMode: Story = {
-  args: {
-    data: createMockData(),
-    uploadMode: true,
-    hasDriveConnection: true,
-    queuedFiles: [],
-    onFilesQueue: fn(),
-  },
+  args: { data: createMockData(), uploadMode: true },
+  loaders: [
+    async () => {
+      const images = await fetchTmdbImages(27205, "movie");
+      return { images };
+    },
+  ],
+  render: (args, { loaded: { images } }) => (
+    <TMDBHeroStep
+      {...args}
+      data={createMockData({
+        images: images ?? { posters: [], backdrops: [] },
+      })}
+      uploadMode
+      hasDriveConnection
+      queuedFiles={[]}
+      onFilesQueue={fn()}
+    />
+  ),
 };
 
 /**

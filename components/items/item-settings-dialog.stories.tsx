@@ -114,6 +114,14 @@ const defaultItem = {
   inheritVisibility: false,
   hasParent: true,
   hasChildren: false,
+  tmdbId: null as number | null,
+  tmdbShowTagline: true,
+  tmdbShowMetadata: true,
+  tmdbShowGenres: true,
+  tmdbShowCast: true,
+  tmdbShowProviders: true,
+  tmdbShowVideos: true,
+  tmdbShowRecommendations: true,
 };
 
 // Default files
@@ -239,6 +247,42 @@ export const PublicItem: Story = {
     docs: {
       description: {
         story: "Public item. Visibility toggle shows public state.",
+      },
+    },
+  },
+};
+
+export const WithTmdbTab: Story = {
+  args: {
+    item: {
+      ...defaultItem,
+      tmdbId: 27205,
+      tmdbShowTagline: true,
+      tmdbShowMetadata: true,
+      tmdbShowGenres: true,
+      tmdbShowCast: false,
+      tmdbShowProviders: true,
+      tmdbShowVideos: false,
+      tmdbShowRecommendations: true,
+    },
+    files: defaultFiles,
+    hasDriveConnection: true,
+    onSettingsChange: mockOnSettingsChange,
+    buttonLabel: "Edit Item (TMDB)",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const trigger = canvas.getByTestId("dialog-trigger");
+    await userEvent.click(trigger);
+    const body = within(document.body);
+    const tmdbTab = await body.findByRole("tab", { name: /tmdb/i });
+    await userEvent.click(tmdbTab);
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Item with TMDB metadata linked. Shows the TMDB tab with display option toggles for controlling which sections appear on the detail page.",
       },
     },
   },

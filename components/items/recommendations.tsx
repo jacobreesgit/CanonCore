@@ -70,6 +70,7 @@ export function Recommendations({
               key={rec.id}
               role="button"
               tabIndex={0}
+              aria-label={`Add "${rec.title}" to library`}
               onClick={() => handleAddClick(rec)}
               onKeyDown={(e: React.KeyboardEvent) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -79,7 +80,7 @@ export function Recommendations({
               }}
               className="cursor-pointer"
             >
-              <PosterCard posterUrl={posterUrl} title={rec.title} href="#" />
+              <PosterCard posterUrl={posterUrl} title={rec.title} />
             </div>
           );
         })}

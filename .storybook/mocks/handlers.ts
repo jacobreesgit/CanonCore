@@ -97,6 +97,11 @@ export const handlers = [
       "art-v": "/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg", // Video
       "art-a": "/3bhkrj58Vtu7enYsRolD1fZdja1.jpg", // Audio
       "art-m": "/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg", // Mixed
+      // SortableTree stories
+      "artwork-1": "/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg", // Inception
+      "artwork-2": "/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg", // Interstellar
+      "artwork-3": "/qJ2tW6WMUDux911r6m7haRef0WH.jpg", // The Dark Knight
+      "artwork-bb": "/ggFHVNu6YYI5L9pCfOacjizRGt.jpg", // Breaking Bad
     };
 
     const posterPath = posterMap[fileId];

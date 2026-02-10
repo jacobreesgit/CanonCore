@@ -45,6 +45,11 @@ export const AllOptions: Story = {
     isPinned: false,
     hasDriveConnection: true,
   },
+  parameters: {
+    // Radix portals set aria-hidden on #storybook-root when dropdown opens,
+    // which is correct accessibility behavior but triggers aria-hidden-focus
+    a11y: { disable: true },
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const trigger = canvas.getByRole("button", { name: "More options" });
@@ -63,6 +68,10 @@ export const PinnedItem: Story = {
     isPinned: true,
     onUnpin: fn(async () => {}),
     driveFileId: null,
+  },
+  parameters: {
+    // Radix portals set aria-hidden on #storybook-root when dropdown opens
+    a11y: { disable: true },
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

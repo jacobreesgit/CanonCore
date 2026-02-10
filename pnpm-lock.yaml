@@ -216,9 +216,6 @@ importers:
       '@storybook/addon-docs':
         specifier: ^10.2.4
         version: 10.2.4(@types/react@19.0.0)(esbuild@0.27.2)(rollup@4.54.0)(storybook@10.2.4(@testing-library/dom@10.4.1)(prettier@3.7.4)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(vite@7.3.0(@types/node@22.0.0)(jiti@2.6.1)(lightningcss@1.30.1)(terser@5.46.0)(tsx@4.21.0))(webpack@5.104.1(@swc/core@1.15.11)(esbuild@0.27.2))
-      '@storybook/addon-themes':
-        specifier: ^10.2.3
-        version: 10.2.3(storybook@10.2.4(@testing-library/dom@10.4.1)(prettier@3.7.4)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))
       '@storybook/nextjs':
         specifier: ^10.2.3
         version: 10.2.3(@swc/core@1.15.11)(esbuild@0.27.2)(next@16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(storybook@10.2.4(@testing-library/dom@10.4.1)(prettier@3.7.4)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(type-fest@4.41.0)(typescript@5.9.3)(webpack-hot-middleware@2.26.1)(webpack@5.104.1(@swc/core@1.15.11)(esbuild@0.27.2))
@@ -2810,11 +2807,6 @@ packages:
     resolution: {integrity: sha512-FzscAmdBiOGnGrxiEM+8eTg43kjqgjLfObg+lbJVRR/a0DmZ3xfAPNB0+VKYQbN0FacNcWLM9LZ/7U0hRBPBnQ==}
     peerDependencies:
       storybook: ^10.2.4
-
-  '@storybook/addon-themes@10.2.3':
-    resolution: {integrity: sha512-8OVXivm1pDvf2D38RCzzvVqergvFwwG+bNRtevzXW/fjdJ1dG2hMnVlqiONka1Q9w2a2XOxeDBjRxuos0oc3rA==}
-    peerDependencies:
-      storybook: ^10.2.3
 
   '@storybook/builder-webpack5@10.2.3':
     resolution: {integrity: sha512-H6lp7Mc5aTZjVefXfPSxI4ZuimnOEwui/DfEvKC7Rhlig21O501F9+tHl+zHIhrrcXheYxqZCmARJ/hAYwO/0g==}
@@ -11158,11 +11150,6 @@ snapshots:
       - rollup
       - vite
       - webpack
-
-  '@storybook/addon-themes@10.2.3(storybook@10.2.4(@testing-library/dom@10.4.1)(prettier@3.7.4)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))':
-    dependencies:
-      storybook: 10.2.4(@testing-library/dom@10.4.1)(prettier@3.7.4)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      ts-dedent: 2.2.0
 
   '@storybook/builder-webpack5@10.2.3(@swc/core@1.15.11)(esbuild@0.27.2)(storybook@10.2.4(@testing-library/dom@10.4.1)(prettier@3.7.4)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(typescript@5.9.3)':
     dependencies:

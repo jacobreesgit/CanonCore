@@ -369,6 +369,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
               (ownerHref ? (
                 <Link
                   href={ownerHref}
+                  tabIndex={-1}
                   onClick={(e) => e.stopPropagation()}
                   className="mb-1 flex items-center gap-1.5 text-xs text-white/50 hover:text-white/70"
                 >

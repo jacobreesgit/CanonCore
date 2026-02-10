@@ -1,6 +1,6 @@
 {
   "name": "canoncore",
-  "version": "7.0.0",
+  "version": "7.1.0",
   "packageManager": "pnpm@10.15.0",
   "private": true,
   "scripts": {
@@ -108,7 +108,6 @@
     "@prisma/client": "^7.2.0",
     "@storybook/addon-a11y": "^10.2.3",
     "@storybook/addon-docs": "^10.2.4",
-    "@storybook/addon-themes": "^10.2.3",
     "@storybook/nextjs": "^10.2.3",
     "@storybook/test-runner": "^0.24.2",
     "@tailwindcss/postcss": "^4.1.9",

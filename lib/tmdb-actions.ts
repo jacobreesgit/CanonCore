@@ -114,7 +114,12 @@ export async function isTMDBAvailable(): Promise<boolean> {
 export async function searchMediaAction(
   query: string
 ): Promise<ActionResult<TMDBSearchResult[]>> {
-  const session = await auth();
+  // Parallel auth + rate limit (per codebase pattern)
+  const [session, rateLimitResult] = await Promise.all([
+    auth(),
+    checkRateLimit("tmdbSearch"),
+  ]);
+
   if (!session?.user?.id) {
     return { success: false, error: "Not authenticated" };
   }
@@ -123,7 +128,6 @@ export async function searchMediaAction(
     return { success: false, error: "TMDB integration not configured" };
   }
 
-  const rateLimitResult = await checkRateLimit("tmdbSearch");
   if (rateLimitResult) {
     return { success: false, error: rateLimitResult.error };
   }
@@ -377,7 +381,12 @@ export async function getMetadataPreviewAction(
   tmdbId: number,
   mediaType: "movie" | "tv"
 ): Promise<ActionResult<MetadataPreview>> {
-  const session = await auth();
+  // Parallel auth + rate limit (per codebase pattern)
+  const [session, rateLimitResult] = await Promise.all([
+    auth(),
+    checkRateLimit("tmdbPreview"),
+  ]);
+
   if (!session?.user?.id) {
     return { success: false, error: "Not authenticated" };
   }
@@ -386,7 +395,6 @@ export async function getMetadataPreviewAction(
     return { success: false, error: "TMDB integration not configured" };
   }
 
-  const rateLimitResult = await checkRateLimit("tmdbPreview");
   if (rateLimitResult) {
     return { success: false, error: rateLimitResult.error };
   }
@@ -528,7 +536,12 @@ export async function getEpisodesAction(
   tvId: number,
   seasonNumber: number
 ): Promise<ActionResult<TMDBEpisode[]>> {
-  const session = await auth();
+  // Parallel auth + rate limit (per codebase pattern)
+  const [session, rateLimitResult] = await Promise.all([
+    auth(),
+    checkRateLimit("tmdbPreview"),
+  ]);
+
   if (!session?.user?.id) {
     return { success: false, error: "Not authenticated" };
   }
@@ -537,7 +550,6 @@ export async function getEpisodesAction(
     return { success: false, error: "TMDB integration not configured" };
   }
 
-  const rateLimitResult = await checkRateLimit("tmdbPreview");
   if (rateLimitResult) {
     return { success: false, error: rateLimitResult.error };
   }
@@ -591,7 +603,12 @@ export async function getEpisodePreviewAction(
   seasonNumber: number,
   episodeNumber: number
 ): Promise<ActionResult<EpisodeMetadataPreview>> {
-  const session = await auth();
+  // Parallel auth + rate limit (per codebase pattern)
+  const [session, rateLimitResult] = await Promise.all([
+    auth(),
+    checkRateLimit("tmdbPreview"),
+  ]);
+
   if (!session?.user?.id) {
     return { success: false, error: "Not authenticated" };
   }
@@ -600,7 +617,6 @@ export async function getEpisodePreviewAction(
     return { success: false, error: "TMDB integration not configured" };
   }
 
-  const rateLimitResult = await checkRateLimit("tmdbPreview");
   if (rateLimitResult) {
     return { success: false, error: rateLimitResult.error };
   }
@@ -908,4 +924,66 @@ export async function getSeasonDataAction(
     logger.error({ error, tvId, seasonNumber }, "Failed to fetch season data");
     return { success: false, error: "Failed to fetch season data" };
   }
+}
+
+/**
+ * Updates TMDB display options for an item.
+ * Only modifies the 7 boolean display preference fields.
+ *
+ * @param itemId - Item to update
+ * @param displayOptions - New display option values
+ * @returns Success or error result
+ */
+export async function updateTmdbDisplayOptions(
+  itemId: string,
+  displayOptions: TmdbDisplayOptions
+): Promise<ActionResult> {
+  const [rateLimitResult, session] = await Promise.all([
+    checkRateLimit("itemUpdate"),
+    auth(),
+  ]);
+
+  if (rateLimitResult) {
+    return { success: false, error: rateLimitResult.error };
+  }
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const item = await prisma.item.findUnique({
+    where: { id: itemId },
+    select: { userId: true, tmdbId: true },
+  });
+
+  if (!item) {
+    return { success: false, error: "Item not found" };
+  }
+
+  if (item.userId !== session.user.id) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  if (!item.tmdbId) {
+    return { success: false, error: "Item has no TMDB metadata" };
+  }
+
+  try {
+    await prisma.item.update({
+      where: { id: itemId },
+      data: {
+        tmdbShowTagline: displayOptions.showTagline,
+        tmdbShowMetadata: displayOptions.showMetadata,
+        tmdbShowGenres: displayOptions.showGenres,
+        tmdbShowCast: displayOptions.showCast,
+        tmdbShowProviders: displayOptions.showProviders,
+        tmdbShowVideos: displayOptions.showVideos,
+        tmdbShowRecommendations: displayOptions.showRecommendations,
+      },
+    });
+  } catch {
+    return { success: false, error: "Failed to update display options" };
+  }
+
+  return { success: true };
 }
