@@ -37,6 +37,14 @@ const meta = {
           "Spotlight-style global search dialog. Press '/' to open. Searches items, collections, and users with keyboard navigation.",
       },
     },
+    a11y: {
+      config: {
+        rules: [
+          // cmdk library renders role="listbox" without role="option" children
+          { id: "aria-required-children", enabled: false },
+        ],
+      },
+    },
   },
   decorators: [
     (Story) => (

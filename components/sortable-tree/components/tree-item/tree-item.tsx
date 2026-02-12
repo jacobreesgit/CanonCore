@@ -14,6 +14,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { ChevronRight, GripVertical, Folder } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SyncIcon } from "@/components/items/sync-badge";
+import { getTmdbPosterUrl } from "@/lib/tmdb-image-utils";
 import type { FileCounts, SyncStatus } from "@/lib/types";
 import type { ItemMenuActions } from "@/components/items/item-context-menu";
 import { ItemMoreButton } from "@/components/items/item-more-button";
@@ -63,6 +64,8 @@ export interface TreeItemProps extends Omit<
   isSelected?: boolean;
   /** Callback when selection state changes. */
   onSelectChange?: (selected: boolean) => void;
+  /** TMDB poster path for CDN thumbnail (takes precedence over artworkId). */
+  tmdbPosterPath?: string | null;
   /** Artwork file ID for optional poster thumbnail display. */
   artworkId?: string | null;
   /** Whether to show thumbnail. Defaults to false for backward compatibility. */
@@ -99,6 +102,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       totalItems,
       isSelected,
       onSelectChange,
+      tmdbPosterPath,
       artworkId,
       showThumbnail = false,
       // Destructure to prevent passing to DOM element via ...props
@@ -233,32 +237,41 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
           )}
 
           {/* Optional Thumbnail */}
-          {!ghost && showThumbnail && (
-            <div
-              className={cn(
-                "relative flex-shrink-0 overflow-hidden rounded-md",
-                "h-12 w-8 md:h-14 md:w-10",
-                "bg-white/[0.05]"
-              )}
-            >
-              {artworkId ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={`/api/artwork/${artworkId}`}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center">
-                  <Folder
-                    className="size-4 text-[var(--tertiary-foreground)]"
-                    aria-hidden="true"
-                  />
+          {!ghost &&
+            showThumbnail &&
+            (() => {
+              const thumbnailSrc = tmdbPosterPath
+                ? getTmdbPosterUrl(tmdbPosterPath, "w92")
+                : artworkId
+                  ? `/api/artwork/${artworkId}`
+                  : null;
+              return (
+                <div
+                  className={cn(
+                    "relative flex-shrink-0 overflow-hidden rounded-md",
+                    "h-12 w-8 md:h-14 md:w-10",
+                    "bg-white/[0.05]"
+                  )}
+                >
+                  {thumbnailSrc ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={thumbnailSrc}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <Folder
+                        className="size-4 text-[var(--tertiary-foreground)]"
+                        aria-hidden="true"
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
+              );
+            })()}
 
           {/* Item Name and Progress */}
           {!ghost && (

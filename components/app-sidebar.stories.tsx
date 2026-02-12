@@ -267,26 +267,6 @@ export const GuestDocs: Story = {
 };
 
 /**
- * Explore page active.
- * Explore link highlighted.
- */
-export const ExploreActive: Story = {
-  args: {
-    user: mockUser,
-    context: "my-items",
-    driveConnection: mockDriveConnection,
-    pinnedItems: mockPinnedItems,
-  },
-  parameters: {
-    nextjs: {
-      navigation: {
-        pathname: "/explore",
-      },
-    },
-  },
-};
-
-/**
  * Pinned item active.
  * Shows pinned item highlighted in My Items.
  */

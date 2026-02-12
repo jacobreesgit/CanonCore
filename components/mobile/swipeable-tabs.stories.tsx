@@ -1,12 +1,22 @@
 /**
  * Storybook stories for the SwipeableTabs component.
- * Demonstrates horizontal swipeable tab navigation with Framer Motion gestures.
+ * Demonstrates horizontal swipeable tab navigation with Framer Motion gestures,
+ * and Select dropdown fallback for >3 tabs.
  */
 
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import { fn, userEvent, within, expect } from "storybook/test";
-import { Settings2, Film, Sparkles } from "lucide-react";
+import {
+  Settings2,
+  Film,
+  Sparkles,
+  User,
+  Lock,
+  Cloud,
+  SlidersHorizontal,
+  List,
+} from "lucide-react";
 
 import { SwipeableTabs, type SwipeableTab } from "./swipeable-tabs";
 
@@ -98,9 +108,10 @@ Horizontal swipeable tab component using Framer Motion gestures.
 - **Swipe Navigation** - Drag left/right to switch tabs with spring physics
 - **Sliding Indicator** - Animated underline follows the active tab
 - **Keyboard Navigation** - Arrow keys, Home/End for full keyboard control
+- **Select Fallback** - Automatically switches to a dropdown when >3 tabs
 - **Reduced Motion** - Respects \`prefers-reduced-motion\` preference
 - **WCAG Accessible** - Proper tablist/tab/tabpanel roles and aria attributes
-- **Icon Support** - Optional Lucide icons in tab buttons
+- **Icon Support** - Optional Lucide icons in tab buttons and Select items
 - **Sheet Compatible** - Uses \`data-vaul-no-drag\` to prevent Vaul sheet interference
 
         `,
@@ -225,6 +236,155 @@ export const KeyboardNavigation: Story = {
       description: {
         story:
           "Interaction test: ArrowRight moves focus and selection to next tab.",
+      },
+    },
+  },
+};
+
+// === SELECT MODE (>3 TABS) ===
+
+const fiveTabsData: SwipeableTab[] = [
+  {
+    id: "profile",
+    label: "Profile",
+    icon: User,
+    content: (
+      <div className="space-y-3 p-2">
+        <h3 className="text-foreground text-sm font-medium">Profile</h3>
+        <p className="text-muted-foreground text-sm">
+          Manage your display name, avatar, and public profile settings.
+        </p>
+      </div>
+    ),
+  },
+  {
+    id: "account",
+    label: "Account",
+    icon: Lock,
+    content: (
+      <div className="space-y-3 p-2">
+        <h3 className="text-foreground text-sm font-medium">Account</h3>
+        <p className="text-muted-foreground text-sm">
+          Change password, email, or username.
+        </p>
+      </div>
+    ),
+  },
+  {
+    id: "connections",
+    label: "Connections",
+    icon: Cloud,
+    content: (
+      <div className="space-y-3 p-2">
+        <h3 className="text-foreground text-sm font-medium">Connections</h3>
+        <p className="text-muted-foreground text-sm">
+          Connect or disconnect Google Drive.
+        </p>
+      </div>
+    ),
+  },
+  {
+    id: "preferences",
+    label: "Preferences",
+    icon: SlidersHorizontal,
+    content: (
+      <div className="space-y-3 p-2">
+        <h3 className="text-foreground text-sm font-medium">Preferences</h3>
+        <p className="text-muted-foreground text-sm">
+          Set default view mode and sort order.
+        </p>
+      </div>
+    ),
+  },
+  {
+    id: "activity",
+    label: "Activity",
+    icon: List,
+    content: (
+      <div className="space-y-3 p-2">
+        <h3 className="text-foreground text-sm font-medium">Activity</h3>
+        <p className="text-muted-foreground text-sm">
+          View sync history and recent operations.
+        </p>
+      </div>
+    ),
+  },
+];
+
+const fourTabsData: SwipeableTab[] = fiveTabsData.slice(0, 4);
+
+export const FiveTabsSelect: Story = {
+  args: {
+    tabs: fiveTabsData,
+    defaultTab: "profile",
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Five tabs trigger Select dropdown mode. Mirrors MobileSettingsSheet layout with full-length labels.",
+      },
+    },
+  },
+};
+
+export const FourTabsSelect: Story = {
+  args: {
+    tabs: fourTabsData,
+    defaultTab: "profile",
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: "Boundary case: 4 tabs triggers Select mode (threshold is >3).",
+      },
+    },
+  },
+};
+
+export const ThreeTabsSwipeable: Story = {
+  args: {
+    tabs: defaultTabs,
+    defaultTab: "details",
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Explicit boundary: 3 tabs stays in swipeable mode with tab bar and drag gestures.",
+      },
+    },
+  },
+};
+
+// === SELECT MODE INTERACTION TESTS ===
+
+export const SelectDropdownClick: Story = {
+  args: {
+    tabs: fiveTabsData,
+    defaultTab: "profile",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const trigger = canvas.getByRole("combobox");
+    await expect(trigger).toHaveTextContent("Profile");
+
+    // Open the dropdown
+    await userEvent.click(trigger);
+
+    // Select a different tab via the dropdown
+    const body = within(document.body);
+    const accountOption = body.getByRole("option", { name: /Account/i });
+    await userEvent.click(accountOption);
+
+    // Verify the trigger now shows Account
+    await expect(trigger).toHaveTextContent("Account");
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Interaction test: opening the Select dropdown and choosing a tab in Select mode.",
       },
     },
   },

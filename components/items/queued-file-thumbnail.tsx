@@ -109,8 +109,8 @@ export function QueuedFileThumbnail({
           "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
           isSelected &&
             !isSkipped && [
-              "ring-offset-background ring-2 ring-amber-500 ring-offset-2",
-              "shadow-[0_0_20px_rgba(245,158,11,0.3)]",
+              "ring-offset-background ring-brand ring-2 ring-offset-2",
+              "shadow-[0_0_20px_rgba(255,255,255,0.15)]",
             ],
           !isSelected &&
             !isSkipped &&
@@ -134,7 +134,7 @@ export function QueuedFileThumbnail({
         {/* Selection checkmark overlay */}
         {isSelected && !isSkipped && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-            <div className="flex size-8 items-center justify-center rounded-full bg-amber-500 shadow-lg">
+            <div className="bg-brand flex size-8 items-center justify-center rounded-full shadow-lg">
               <Check className="size-5 text-white" />
             </div>
           </div>

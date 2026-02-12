@@ -19,6 +19,7 @@ import { batchDelete } from "@/lib/google-drive-client";
 import { decryptCredential } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
 import { handlePrismaError } from "@/lib/errors";
+import { resolveArtworkId } from "@/lib/tmdb-image-utils";
 import type {
   Item,
   ItemResult,
@@ -389,12 +390,7 @@ export const getItems = cache(async function getItems(
 
   // Transform to ItemWithArtwork with file counts and descendant count
   const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => {
-    // Find primary artwork, or first artwork if no primary
-    const primaryArtwork = item.files.find(
-      (f) => f.fileType === "ARTWORK" && f.isPrimary
-    );
-    const firstArtwork = item.files.find((f) => f.fileType === "ARTWORK");
-    const artworkId = primaryArtwork?.id ?? firstArtwork?.id ?? null;
+    const artworkId = resolveArtworkId(item);
 
     // Find primary media, or first media if no primary
     const primaryMedia = item.files.find(
@@ -449,6 +445,8 @@ export const getItems = cache(async function getItems(
       tmdbShowProviders: item.tmdbShowProviders,
       tmdbShowVideos: item.tmdbShowVideos,
       tmdbShowRecommendations: item.tmdbShowRecommendations,
+      tmdbPosterPath: item.tmdbPosterPath ?? null,
+      tmdbBackdropPath: item.tmdbBackdropPath ?? null,
       artworkId,
       fileCounts,
       childCount: countDescendants(item.id),
@@ -516,11 +514,7 @@ export const getAllItems = cache(async function getAllItems(): Promise<
 
   // Transform to ItemWithArtwork with file counts and descendant count
   const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => {
-    const primaryArtwork = item.files.find(
-      (f) => f.fileType === "ARTWORK" && f.isPrimary
-    );
-    const firstArtwork = item.files.find((f) => f.fileType === "ARTWORK");
-    const artworkId = primaryArtwork?.id ?? firstArtwork?.id ?? null;
+    const artworkId = resolveArtworkId(item);
 
     // Find primary media, or first media if no primary
     const primaryMedia = item.files.find(
@@ -575,6 +569,8 @@ export const getAllItems = cache(async function getAllItems(): Promise<
       tmdbShowProviders: item.tmdbShowProviders,
       tmdbShowVideos: item.tmdbShowVideos,
       tmdbShowRecommendations: item.tmdbShowRecommendations,
+      tmdbPosterPath: item.tmdbPosterPath ?? null,
+      tmdbBackdropPath: item.tmdbBackdropPath ?? null,
       artworkId,
       fileCounts,
       childCount: countDescendants(item.id),
@@ -664,11 +660,7 @@ export const getDescendants = cache(async function getDescendants(
   );
 
   const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => {
-    const primaryArtwork = item.files.find(
-      (f) => f.fileType === "ARTWORK" && f.isPrimary
-    );
-    const firstArtwork = item.files.find((f) => f.fileType === "ARTWORK");
-    const artworkId = primaryArtwork?.id ?? firstArtwork?.id ?? null;
+    const artworkId = resolveArtworkId(item);
 
     // Find primary media, or first media if no primary
     const primaryMedia = item.files.find(
@@ -723,6 +715,8 @@ export const getDescendants = cache(async function getDescendants(
       tmdbShowProviders: item.tmdbShowProviders,
       tmdbShowVideos: item.tmdbShowVideos,
       tmdbShowRecommendations: item.tmdbShowRecommendations,
+      tmdbPosterPath: item.tmdbPosterPath ?? null,
+      tmdbBackdropPath: item.tmdbBackdropPath ?? null,
       artworkId,
       fileCounts,
       childCount: countDescendants(item.id),
@@ -1251,6 +1245,7 @@ export async function getSearchableItems(): Promise<
           parentId: true,
           depth: true,
           description: true,
+          tmdbPosterPath: true,
           files: {
             where: { fileType: "ARTWORK" },
             select: { id: true, isPrimary: true },
@@ -1306,6 +1301,7 @@ export async function getSearchableItems(): Promise<
       parentId: item.parentId,
       depth: item.depth,
       description: item.description,
+      tmdbPosterPath: item.tmdbPosterPath ?? null,
       artworkId: item.files[0]?.id ?? null,
       breadcrumb: buildBreadcrumb(item.parentId),
       ownerUsername,
@@ -2056,11 +2052,7 @@ export const getItemsForProfile = cache(
 
       // Transform to ItemWithArtwork
       const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => {
-        const primaryArtwork = item.files.find(
-          (f) => f.fileType === "ARTWORK" && f.isPrimary
-        );
-        const firstArtwork = item.files.find((f) => f.fileType === "ARTWORK");
-        const artworkId = primaryArtwork?.id ?? firstArtwork?.id ?? null;
+        const artworkId = resolveArtworkId(item);
 
         const primaryMedia = item.files.find(
           (f) => f.fileType === "MEDIA" && f.isPrimary
@@ -2111,6 +2103,8 @@ export const getItemsForProfile = cache(
           tmdbShowProviders: item.tmdbShowProviders,
           tmdbShowVideos: item.tmdbShowVideos,
           tmdbShowRecommendations: item.tmdbShowRecommendations,
+          tmdbPosterPath: item.tmdbPosterPath ?? null,
+          tmdbBackdropPath: item.tmdbBackdropPath ?? null,
           artworkId,
           fileCounts,
           childCount: countDescendants(item.id),
@@ -2165,6 +2159,8 @@ export const getItemsForProfile = cache(
         tmdbShowProviders: true,
         tmdbShowVideos: true,
         tmdbShowRecommendations: true,
+        tmdbPosterPath: item.tmdbPosterPath ?? null,
+        tmdbBackdropPath: item.tmdbBackdropPath ?? null,
         fileCounts: item.fileCounts,
         childCount: 0,
         primaryMediaName: null,
@@ -2282,11 +2278,7 @@ export const getItemChildrenForProfile = cache(
 
       // Transform to ItemWithArtwork
       const items: ItemWithArtwork[] = children.map((item) => {
-        const primaryArtwork = item.files.find(
-          (f) => f.fileType === "ARTWORK" && f.isPrimary
-        );
-        const firstArtwork = item.files.find((f) => f.fileType === "ARTWORK");
-        const artworkId = primaryArtwork?.id ?? firstArtwork?.id ?? null;
+        const artworkId = resolveArtworkId(item);
 
         const primaryMedia = item.files.find(
           (f) => f.fileType === "MEDIA" && f.isPrimary
@@ -2337,6 +2329,8 @@ export const getItemChildrenForProfile = cache(
           tmdbShowProviders: item.tmdbShowProviders,
           tmdbShowVideos: item.tmdbShowVideos,
           tmdbShowRecommendations: item.tmdbShowRecommendations,
+          tmdbPosterPath: item.tmdbPosterPath ?? null,
+          tmdbBackdropPath: item.tmdbBackdropPath ?? null,
           artworkId,
           fileCounts,
           childCount: countDescendants(item.id),
@@ -2393,6 +2387,8 @@ export const getItemChildrenForProfile = cache(
         tmdbShowProviders: true,
         tmdbShowVideos: true,
         tmdbShowRecommendations: true,
+        tmdbPosterPath: item.tmdbPosterPath ?? null,
+        tmdbBackdropPath: item.tmdbBackdropPath ?? null,
         fileCounts: item.fileCounts,
         childCount: 0,
         primaryMediaName: null,

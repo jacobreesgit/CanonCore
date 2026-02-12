@@ -448,39 +448,6 @@ export function getPosterUrl(
   return `${TMDB_IMAGE_BASE}/${size}${posterPath}`;
 }
 
-/**
- * Downloads poster image as Buffer.
- *
- * @param posterPath - TMDB poster path
- * @returns Image buffer or null on error
- */
-export async function downloadPoster(
-  posterPath: string | null
-): Promise<Buffer | null> {
-  const url = getPosterUrl(posterPath);
-  if (!url) return null;
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), TMDB_TIMEOUT_MS);
-
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) return null;
-
-    const arrayBuffer = await response.arrayBuffer();
-    return Buffer.from(arrayBuffer);
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      logger.error({ posterPath }, "Poster download timed out");
-    } else {
-      logger.error({ error, posterPath }, "Failed to download poster");
-    }
-    return null;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
 /** Pattern for valid TMDB image paths (e.g., /abc123XYZ.jpg) */
 const VALID_IMAGE_PATH_PATTERN = /^\/[a-zA-Z0-9]+\.(jpg|png)$/;
 
@@ -509,40 +476,6 @@ export function getBackdropUrl(
 ): string | null {
   if (!backdropPath || !isValidImagePath(backdropPath)) return null;
   return `${TMDB_IMAGE_BASE}/${size}${backdropPath}`;
-}
-
-/**
- * Downloads backdrop image as Buffer.
- * Uses original size for maximum quality.
- *
- * @param backdropPath - TMDB backdrop path
- * @returns Image buffer or null on error
- */
-export async function downloadBackdrop(
-  backdropPath: string | null
-): Promise<Buffer | null> {
-  const url = getBackdropUrl(backdropPath, "original");
-  if (!url) return null;
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), TMDB_TIMEOUT_MS);
-
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) return null;
-
-    const arrayBuffer = await response.arrayBuffer();
-    return Buffer.from(arrayBuffer);
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      logger.error({ backdropPath }, "Backdrop download timed out");
-    } else {
-      logger.error({ error, backdropPath }, "Failed to download backdrop");
-    }
-    return null;
-  } finally {
-    clearTimeout(timeoutId);
-  }
 }
 
 /**

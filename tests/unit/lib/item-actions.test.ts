@@ -85,6 +85,8 @@ const mockItem = (overrides: {
   inheritVisibility: overrides.inheritVisibility ?? false,
   tmdbId: null,
   tmdbType: null,
+  tmdbPosterPath: null,
+  tmdbBackdropPath: null,
   tmdbShowTagline: true,
   tmdbShowMetadata: true,
   tmdbShowGenres: true,
@@ -1058,6 +1060,7 @@ describe("getSearchableItems", () => {
         parentId: true,
         depth: true,
         description: true,
+        tmdbPosterPath: true,
         files: {
           where: { fileType: "ARTWORK" },
           select: { id: true, isPrimary: true },

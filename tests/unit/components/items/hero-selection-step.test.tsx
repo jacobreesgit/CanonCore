@@ -420,10 +420,10 @@ describe("HeroSelectionStep", () => {
 
       await user.click(screen.getAllByRole("tab", { name: /my uploads/i })[0]);
 
-      // Selected thumbnail should have amber ring
+      // Selected thumbnail should have brand ring
       const thumbnailButton = screen
         .getAllByRole("button")
-        .find((b) => b.className.includes("ring-amber-500"));
+        .find((b) => b.className.includes("ring-brand"));
       expect(thumbnailButton).toBeInTheDocument();
     });
 

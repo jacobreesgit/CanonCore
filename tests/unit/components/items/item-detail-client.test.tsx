@@ -105,6 +105,8 @@ describe("ItemDetailClient", () => {
     childCount: 0,
     tmdbId: null,
     tmdbType: null,
+    tmdbPosterPath: null,
+    tmdbBackdropPath: null,
     tmdbShowTagline: true,
     tmdbShowMetadata: true,
     tmdbShowGenres: true,
@@ -131,6 +133,8 @@ describe("ItemDetailClient", () => {
       // TMDB metadata
       tmdbId: null,
       tmdbType: null,
+      tmdbPosterPath: null,
+      tmdbBackdropPath: null,
       tmdbShowTagline: true,
       tmdbShowMetadata: true,
       tmdbShowGenres: true,

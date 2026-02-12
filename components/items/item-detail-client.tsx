@@ -42,6 +42,7 @@ import { getItems } from "@/lib/item-actions";
 import { useGoToItem } from "@/hooks/use-go-to-item";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { formatProgressLabel } from "@/lib/progress-utils";
+import { getTmdbBackdropUrl, getTmdbPosterUrl } from "@/lib/tmdb-image-utils";
 // Lazy-load MobileItemSheet (mobile-only, heavy with Framer Motion)
 const MobileItemSheet = dynamic(
   () =>
@@ -85,6 +86,8 @@ interface ItemDetailClientProps {
     childCount: number;
     tmdbId: number | null;
     tmdbType: string | null;
+    tmdbPosterPath: string | null;
+    tmdbBackdropPath: string | null;
     tmdbShowTagline: boolean;
     tmdbShowMetadata: boolean;
     tmdbShowGenres: boolean;
@@ -425,6 +428,11 @@ export function ItemDetailClient({
   // Show tabs when there are children or TMDB data
   const showTabs = hasChildren || hasTmdb;
 
+  // Resolve hero background URL: TMDB backdrop takes precedence over artwork
+  const heroBackgroundUrl = item.tmdbBackdropPath
+    ? getTmdbBackdropUrl(item.tmdbBackdropPath)
+    : undefined;
+
   // Hero element
   const hero = (
     <CinematicHero
@@ -432,6 +440,7 @@ export function ItemDetailClient({
         {
           id: item.id,
           name: item.name,
+          backgroundUrl: heroBackgroundUrl,
           artworkId: heroArtworkId,
           tagline:
             tmdbDisplayOptions?.showTagline !== false
@@ -510,7 +519,11 @@ export function ItemDetailClient({
           file={playingFile}
           subtitles={files.subtitles}
           posterUrl={
-            heroArtworkId ? `/api/artwork/${heroArtworkId}` : undefined
+            item.tmdbPosterPath
+              ? (getTmdbPosterUrl(item.tmdbPosterPath) ?? undefined)
+              : heroArtworkId
+                ? `/api/artwork/${heroArtworkId}`
+                : undefined
           }
           onClose={() => setPlayingFile(null)}
           onPositionUpdate={handlePositionUpdate}

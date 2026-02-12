@@ -167,7 +167,7 @@ export function MobileSettingsSheet({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <Globe aria-hidden="true" className="h-5 w-5 text-amber-500" />
+              <Globe aria-hidden="true" className="text-brand h-5 w-5" />
               Make your profile public?
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
@@ -685,6 +685,7 @@ export function MobileSettingsSheet({
                   size="icon"
                   variant="secondary"
                   className="size-7 shadow-md"
+                  aria-label="Remove cover"
                   onClick={form.handleRemoveHeroImage}
                 >
                   <X className="size-3.5" />
@@ -733,6 +734,7 @@ export function MobileSettingsSheet({
                   size="icon"
                   variant="secondary"
                   className="absolute -right-1 -bottom-1 size-7 rounded-full shadow-md"
+                  aria-label="Upload avatar"
                 >
                   <Upload className="size-3.5" />
                 </Button>
@@ -891,7 +893,7 @@ export function MobileSettingsSheet({
   );
 
   const activityContent = googleDriveConnection ? (
-    <div className="max-h-60 overflow-y-auto">
+    <div className="space-y-4">
       <SyncHistory />
     </div>
   ) : (
@@ -913,13 +915,13 @@ export function MobileSettingsSheet({
     { id: "account", label: "Account", icon: Lock, content: accountContent },
     {
       id: "connections",
-      label: "Cloud",
+      label: "Connections",
       icon: Cloud,
       content: connectionsContent,
     },
     {
       id: "preferences",
-      label: "Prefs",
+      label: "Preferences",
       icon: SlidersHorizontal,
       content: preferencesContent,
     },
@@ -966,7 +968,7 @@ export function MobileSettingsSheet({
           </div>
         </MobileBottomSheetHeader>
 
-        <MobileBottomSheetContent className="pb-0">
+        <MobileBottomSheetContent className="flex flex-col overflow-hidden pb-0">
           <SwipeableTabs
             tabs={tabs}
             activeTab={activeTab}

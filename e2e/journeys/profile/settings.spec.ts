@@ -60,6 +60,25 @@ const getFooterCancelButton = async (page: import("@playwright/test").Page) => {
     .getByRole("button", { name: /cancel/i });
 };
 
+/**
+ * Selects a settings tab by name.
+ * Desktop uses tab role; mobile uses Select dropdown (>3 tabs in SwipeableTabs).
+ */
+const selectSettingsTab = async (
+  page: import("@playwright/test").Page,
+  tabName: string
+) => {
+  const viewport = page.viewportSize();
+  const isMobile = viewport ? viewport.width < 1024 : false;
+  if (isMobile) {
+    const trigger = page.getByRole("combobox", { name: "Settings tabs" });
+    await trigger.click();
+    await page.getByRole("option", { name: tabName }).click();
+  } else {
+    await page.getByRole("tab", { name: tabName }).click();
+  }
+};
+
 test.describe("Profile Settings Journey", () => {
   test.beforeEach(async ({ page, testUser }) => {
     // Use testUser fixture for consistent test setup (compatible with itemsPage)
@@ -97,7 +116,7 @@ test.describe("Profile Settings Journey", () => {
     await expect(page.getByLabel("Display Name")).toBeVisible();
 
     // Navigate to Account tab to check password/email buttons
-    await page.getByRole("tab", { name: "Account" }).click();
+    await selectSettingsTab(page, "Account");
 
     // Password and Email should be buttons in Account tab
     await expect(
@@ -217,7 +236,7 @@ test.describe("Change Password Step", () => {
     });
 
     // Navigate to Account tab first (Change Password is in Account tab now)
-    await page.getByRole("tab", { name: "Account" }).click();
+    await selectSettingsTab(page, "Account");
 
     // Click Change Password button in main settings
     await page.getByRole("button", { name: /change password/i }).click();
@@ -238,7 +257,7 @@ test.describe("Change Password Step", () => {
     });
 
     // Navigate to Account tab first
-    await page.getByRole("tab", { name: "Account" }).click();
+    await selectSettingsTab(page, "Account");
 
     // Navigate to change password step
     await page.getByRole("button", { name: /change password/i }).click();
@@ -269,7 +288,7 @@ test.describe("Change Password Step", () => {
     });
 
     // Navigate to Account tab first
-    await page.getByRole("tab", { name: "Account" }).click();
+    await selectSettingsTab(page, "Account");
 
     // Navigate to change password step
     await page.getByRole("button", { name: /change password/i }).click();
@@ -297,7 +316,7 @@ test.describe("Change Password Step", () => {
     });
 
     // Navigate to Account tab first
-    await page.getByRole("tab", { name: "Account" }).click();
+    await selectSettingsTab(page, "Account");
 
     // Navigate to change password step
     await page.getByRole("button", { name: /change password/i }).click();
@@ -326,7 +345,7 @@ test.describe("Change Password Step", () => {
     });
 
     // Navigate to Account tab first
-    await page.getByRole("tab", { name: "Account" }).click();
+    await selectSettingsTab(page, "Account");
 
     // Navigate to change password step
     await page.getByRole("button", { name: /change password/i }).click();
@@ -363,7 +382,7 @@ test.describe("Change Email Step", () => {
     });
 
     // Navigate to Account tab first
-    await page.getByRole("tab", { name: "Account" }).click();
+    await selectSettingsTab(page, "Account");
 
     // Click Change Email button in main settings
     await page.getByRole("button", { name: /change email/i }).click();
@@ -383,7 +402,7 @@ test.describe("Change Email Step", () => {
     });
 
     // Navigate to Account tab first
-    await page.getByRole("tab", { name: "Account" }).click();
+    await selectSettingsTab(page, "Account");
 
     // Navigate to change email step
     await page.getByRole("button", { name: /change email/i }).click();
@@ -411,7 +430,7 @@ test.describe("Change Email Step", () => {
     });
 
     // Navigate to Account tab first
-    await page.getByRole("tab", { name: "Account" }).click();
+    await selectSettingsTab(page, "Account");
 
     // Navigate to change email step
     await page.getByRole("button", { name: /change email/i }).click();
@@ -439,7 +458,7 @@ test.describe("Change Email Step", () => {
     });
 
     // Navigate to Account tab first
-    await page.getByRole("tab", { name: "Account" }).click();
+    await selectSettingsTab(page, "Account");
 
     // Navigate to change email step
     await page.getByRole("button", { name: /change email/i }).click();
@@ -470,7 +489,7 @@ test.describe("Change Email Step", () => {
     });
 
     // Navigate to Account tab first
-    await page.getByRole("tab", { name: "Account" }).click();
+    await selectSettingsTab(page, "Account");
 
     // Navigate to change email step
     await page.getByRole("button", { name: /change email/i }).click();

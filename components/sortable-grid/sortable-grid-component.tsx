@@ -149,6 +149,7 @@ export function SortableGrid({
                 onOpenSettings ? () => onOpenSettings(item.id) : undefined
               }
               onDelete={onDeleteItem ? () => onDeleteItem(item.id) : undefined}
+              tmdbPosterPath={item.tmdbPosterPath}
               artworkId={item.artworkId}
               driveFileId={item.driveFileId}
               showDescription={false}
@@ -173,6 +174,7 @@ export function SortableGrid({
               <GridItem
                 id={activeId}
                 name={activeItem.name}
+                tmdbPosterPath={activeItem.tmdbPosterPath}
                 artworkId={activeItem.artworkId}
                 isOverlay
               />

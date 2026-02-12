@@ -6,6 +6,9 @@
 import { test, expect } from "../../fixtures";
 
 test.describe("Items Sort/Filter Journey", () => {
+  // beforeEach creates 3 items; persistence tests also reload the page
+  test.slow();
+
   // Use testUser fixture for consistent test setup (compatible with itemsPage)
   test.beforeEach(async ({ page, testUser, itemsPage }) => {
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
@@ -72,13 +75,14 @@ test.describe("Items Sort/Filter Journey", () => {
     // Change sort to Name Z-A
     await itemsPage.selectSortOption("Name Z-A");
 
-    // Reload the page
-    await page.reload();
-    await page.waitForLoadState("domcontentloaded");
+    // Reload the page (domcontentloaded to avoid slow load timeout)
+    await page.reload({ waitUntil: "domcontentloaded" });
 
-    // Sort should still be Name Z-A
-    const currentSort = await itemsPage.getCurrentSortOption();
-    expect(currentSort).toContain("Name Z-A");
+    // Sort should still be Name Z-A (retry to allow hydration to complete)
+    await expect(async () => {
+      const currentSort = await itemsPage.getCurrentSortOption();
+      expect(currentSort).toContain("Name Z-A");
+    }).toPass({ timeout: 15000 });
 
     // Items should still be in Z-A order
     await itemsPage.expectItemOrder([
@@ -123,16 +127,18 @@ test.describe("Items Sort/Filter Journey", () => {
     page,
     itemsPage,
   }) => {
+    test.slow();
     // Change filter to No Files
     await itemsPage.selectFilterOption("No Files");
 
-    // Reload the page
-    await page.reload();
-    await page.waitForLoadState("domcontentloaded");
+    // Reload the page (domcontentloaded to avoid slow load timeout)
+    await page.reload({ waitUntil: "domcontentloaded" });
 
-    // Filter should still be No Files
-    const currentFilter = await itemsPage.getCurrentFilterOption();
-    expect(currentFilter).toContain("No Files");
+    // Filter should still be No Files (retry to allow hydration to complete)
+    await expect(async () => {
+      const currentFilter = await itemsPage.getCurrentFilterOption();
+      expect(currentFilter).toContain("No Files");
+    }).toPass({ timeout: 15000 });
   });
 
   test("sort and filter work together", async ({ itemsPage }) => {

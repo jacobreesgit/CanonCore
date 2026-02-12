@@ -349,6 +349,7 @@ test.describe("Item Visibility", () => {
         page
           .locator('[data-testid="grid-item-title"]')
           .filter({ hasText: "Explore Visible Item" })
+          .first()
       ).toBeVisible();
     });
 
@@ -387,6 +388,7 @@ test.describe("Item Visibility", () => {
         page
           .locator('[data-testid="grid-item-title"]')
           .filter({ hasText: "Parent On Explore" })
+          .first()
       ).toBeVisible();
       // Child does NOT appear (inherited visibility + not root)
       await expect(

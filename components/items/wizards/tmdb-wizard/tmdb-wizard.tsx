@@ -80,10 +80,10 @@ export function TMDBWizard({
     return initialData.tmdbResult.mediaType === "tv" ? "show" : "movie";
   }, [initialData.contentType, initialData.tmdbResult.mediaType]);
 
-  // Determine visible steps based on content type and Drive connection
+  // Determine visible steps based on content type
   const visibleSteps = useMemo<TMDBWizardStep[]>(
-    () => getVisibleSteps(contentType, hasDriveConnection),
-    [contentType, hasDriveConnection]
+    () => getVisibleSteps(contentType),
+    [contentType]
   );
 
   /**

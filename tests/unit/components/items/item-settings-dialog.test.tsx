@@ -1051,7 +1051,34 @@ describe("ItemSettingsDialog", () => {
       expect(taglineCheckbox).toHaveAttribute("aria-checked", "true");
     });
 
-    it("should call updateTmdbDisplayOptions when checkbox toggled", async () => {
+    it("should enable Save Changes when checkbox toggled", async () => {
+      const user = userEvent.setup();
+
+      render(
+        <ItemSettingsDialog
+          {...defaultProps}
+          item={{ ...defaultProps.item, tmdbId: 278 }}
+        />
+      );
+
+      // Save button should be disabled initially
+      expect(screen.getByRole("button", { name: /save changes/i })).toBeDisabled();
+
+      await user.click(screen.getByRole("tab", { name: /tmdb/i }));
+
+      const castCheckbox = screen
+        .getByText("Cast")
+        .closest("label")
+        ?.querySelector("[role=checkbox]");
+      if (castCheckbox) await user.click(castCheckbox);
+
+      // Save button should now be enabled
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: /save changes/i })).toBeEnabled();
+      });
+    });
+
+    it("should call updateTmdbDisplayOptions on save when options changed", async () => {
       const user = userEvent.setup();
       const mockUpdate = vi.fn().mockResolvedValue({ success: true });
       vi.mocked(updateTmdbDisplayOptions).mockImplementation(mockUpdate);
@@ -1071,6 +1098,11 @@ describe("ItemSettingsDialog", () => {
         ?.querySelector("[role=checkbox]");
       if (castCheckbox) await user.click(castCheckbox);
 
+      // Not called yet — requires explicit save
+      expect(mockUpdate).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole("button", { name: /save changes/i }));
+
       await waitFor(() => {
         expect(mockUpdate).toHaveBeenCalledWith(
           defaultProps.item.id,
@@ -1079,39 +1111,7 @@ describe("ItemSettingsDialog", () => {
       });
     });
 
-    it("should show saving indicator during server call", async () => {
-      const user = userEvent.setup();
-      let resolveUpdate: (value: { success: true }) => void;
-      const updatePromise = new Promise<{ success: true }>((resolve) => {
-        resolveUpdate = resolve;
-      });
-      vi.mocked(updateTmdbDisplayOptions).mockReturnValue(updatePromise);
-
-      render(
-        <ItemSettingsDialog
-          {...defaultProps}
-          item={{ ...defaultProps.item, tmdbId: 278 }}
-        />
-      );
-
-      await user.click(screen.getByRole("tab", { name: /tmdb/i }));
-
-      const castCheckbox = screen
-        .getByText("Cast")
-        .closest("label")
-        ?.querySelector("[role=checkbox]");
-      if (castCheckbox) await user.click(castCheckbox);
-
-      await waitFor(() => {
-        expect(screen.getByText("Saving...")).toBeInTheDocument();
-      });
-
-      await act(async () => {
-        resolveUpdate!({ success: true });
-      });
-    });
-
-    it("should show error toast on server action failure", async () => {
+    it("should show error toast on save failure", async () => {
       const user = userEvent.setup();
       vi.mocked(updateTmdbDisplayOptions).mockResolvedValue({
         success: false,
@@ -1132,6 +1132,8 @@ describe("ItemSettingsDialog", () => {
         .closest("label")
         ?.querySelector("[role=checkbox]");
       if (castCheckbox) await user.click(castCheckbox);
+
+      await user.click(screen.getByRole("button", { name: /save changes/i }));
 
       await waitFor(() => {
         expect(toast.error).toHaveBeenCalledWith("Item has no TMDB metadata");

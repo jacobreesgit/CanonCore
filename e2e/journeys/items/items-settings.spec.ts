@@ -409,11 +409,14 @@ test.describe("File Deletion", () => {
     // Switch to Files tab first (tabbed interface)
     const container = await itemsPage.getSettingsContainer();
     await container.getByRole("tab", { name: /files/i }).click();
+    // Wait for tab animation to settle (AnimatePresence briefly duplicates panels)
+    const mediaSection = container.locator(
+      '[data-testid="file-section-primary-media"]'
+    );
+    await expect(mediaSection).toHaveCount(1, { timeout: 5000 });
 
     // Open media combobox
-    const mediaCombobox = container
-      .getByTestId("file-section-primary-media")
-      .getByRole("combobox");
+    const mediaCombobox = mediaSection.getByRole("combobox");
     await mediaCombobox.click();
 
     // Non-selected files should have delete button
@@ -444,12 +447,15 @@ test.describe("File Deletion", () => {
 
     // Switch to Files tab first (tabbed interface)
     await settingsContainer.getByRole("tab", { name: /files/i }).click();
+    // Wait for tab animation to settle (AnimatePresence briefly duplicates panels)
+    const mediaSection1 = settingsContainer.locator(
+      '[data-testid="file-section-primary-media"]'
+    );
+    await expect(mediaSection1).toHaveCount(1, { timeout: 5000 });
 
     // The dialog should show "No files yet" for empty items
     // When there are files, clicking delete should show confirmation
-    await expect(
-      settingsContainer.getByTestId("file-section-primary-media")
-    ).toBeVisible();
+    await expect(mediaSection1).toBeVisible();
   });
 
   test("should close confirmation dialog on cancel without deleting", async ({
@@ -479,11 +485,14 @@ test.describe("File Deletion", () => {
 
     // Switch to Files tab first (tabbed interface)
     await settingsContainer.getByRole("tab", { name: /files/i }).click();
+    // Wait for tab animation to settle (AnimatePresence briefly duplicates panels)
+    const mediaSection2 = settingsContainer.locator(
+      '[data-testid="file-section-primary-media"]'
+    );
+    await expect(mediaSection2).toHaveCount(1, { timeout: 5000 });
 
     // Dialog should show file type sections
-    await expect(
-      settingsContainer.getByTestId("file-section-primary-media")
-    ).toBeVisible();
+    await expect(mediaSection2).toBeVisible();
 
     // Close settings
     await itemsPage.closeSettings();
@@ -519,11 +528,14 @@ test.describe("File Deletion", () => {
 
     // Switch to Files tab first (tabbed interface)
     await settingsContainer.getByRole("tab", { name: /files/i }).click();
+    // Wait for tab animation to settle (AnimatePresence briefly duplicates panels)
+    const mediaSection3 = settingsContainer.locator(
+      '[data-testid="file-section-primary-media"]'
+    );
+    await expect(mediaSection3).toHaveCount(1, { timeout: 5000 });
 
     // Verify the file type sections are present
-    await expect(
-      settingsContainer.getByTestId("file-section-primary-media")
-    ).toBeVisible();
+    await expect(mediaSection3).toBeVisible();
     await expect(
       settingsContainer.getByTestId("file-section-primary-artwork")
     ).toBeVisible();

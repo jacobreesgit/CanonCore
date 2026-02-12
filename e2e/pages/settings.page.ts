@@ -1,6 +1,7 @@
 /**
  * Page Object Model for the Settings dialog.
  * Handles Google Drive connection, profile settings, and preferences.
+ * On mobile, settings tabs render as a Select dropdown (>3 tabs).
  */
 
 import type { Page } from "@playwright/test";
@@ -11,6 +12,35 @@ import {
 
 export class SettingsPage {
   constructor(private page: Page) {}
+
+  // ==================== Helpers ====================
+
+  /**
+   * Selects a tab by name, handling both desktop (tab role) and
+   * mobile (Select dropdown) navigation modes.
+   *
+   * @param tabName - The tab label to select
+   */
+  private async selectTab(tabName: string): Promise<void> {
+    const isMobile = await isMobileViewport(this.page);
+
+    if (isMobile) {
+      // Mobile: >3 tabs renders as Select dropdown
+      const trigger = this.page.getByRole("combobox", {
+        name: "Settings tabs",
+      });
+      await trigger.click();
+      await this.page
+        .getByRole("option", { name: tabName })
+        .waitFor({ state: "visible", timeout: 3000 });
+      await this.page.getByRole("option", { name: tabName }).click();
+    } else {
+      // Desktop: standard tab role
+      await this.page.getByRole("tab", { name: tabName }).click();
+    }
+  }
+
+  // ==================== Open / Close ====================
 
   /**
    * Opens Settings dialog from the nav user menu.
@@ -40,12 +70,18 @@ export class SettingsPage {
     // Wait for settings dialog to be visible
     await this.page.getByRole("dialog").waitFor({ state: "visible" });
 
-    // Wait for AnimatedDialogContent animation to complete (250ms fade-in)
-    // The Profile tab is the default tab
-    await this.page.getByRole("tab", { name: "Profile" }).waitFor({
-      state: "visible",
-      timeout: 1000,
-    });
+    if (isMobile) {
+      // Mobile: Wait for the Select dropdown trigger (Settings tabs)
+      await this.page
+        .getByRole("combobox", { name: "Settings tabs" })
+        .waitFor({ state: "visible", timeout: 1000 });
+    } else {
+      // Desktop: Wait for the Profile tab button
+      await this.page.getByRole("tab", { name: "Profile" }).waitFor({
+        state: "visible",
+        timeout: 1000,
+      });
+    }
   }
 
   /**
@@ -123,7 +159,7 @@ export class SettingsPage {
    * Switches to the Profile tab.
    */
   async goToProfileTab(): Promise<void> {
-    await this.page.getByRole("tab", { name: "Profile" }).click();
+    await this.selectTab("Profile");
     // Wait for Profile tab content to be visible (Display Name is always in Profile tab)
     await this.page.getByLabel("Display Name").waitFor({
       state: "visible",
@@ -136,7 +172,7 @@ export class SettingsPage {
    * Desktop: "Change Username" button, Mobile: "Username" section with "Change" button.
    */
   async goToAccountTab(): Promise<void> {
-    await this.page.getByRole("tab", { name: "Account" }).click();
+    await this.selectTab("Account");
     const isMobile = await isMobileViewport(this.page);
     if (isMobile) {
       // Mobile: Wait for "Change Password" button (unique to Account tab content)
@@ -159,12 +195,9 @@ export class SettingsPage {
 
   /**
    * Switches to the Connections tab.
-   * Desktop uses "Connections" label, mobile uses "Cloud" label.
    */
   async goToConnectionsTab(): Promise<void> {
-    const isMobile = await isMobileViewport(this.page);
-    const tabName = isMobile ? "Cloud" : "Connections";
-    await this.page.getByRole("tab", { name: tabName }).click();
+    await this.selectTab("Connections");
     // Wait for Google Drive section to be visible (using label which contains the text)
     await this.page.getByTestId("google-drive-section").waitFor({
       state: "visible",
@@ -174,12 +207,9 @@ export class SettingsPage {
 
   /**
    * Switches to the Preferences tab.
-   * Desktop uses "Preferences" label, mobile uses "Prefs" label.
    */
   async goToPreferencesTab(): Promise<void> {
-    const isMobile = await isMobileViewport(this.page);
-    const tabName = isMobile ? "Prefs" : "Preferences";
-    await this.page.getByRole("tab", { name: tabName }).click();
+    await this.selectTab("Preferences");
     // Wait for the Preferences tab content to render (radio buttons)
     await this.page.getByRole("radio", { name: "Grid" }).waitFor({
       state: "visible",
@@ -191,7 +221,7 @@ export class SettingsPage {
    * Switches to the Activity tab.
    */
   async goToActivityTab(): Promise<void> {
-    await this.page.getByRole("tab", { name: "Activity" }).click();
+    await this.selectTab("Activity");
   }
 
   // ==================== Preferences Tab Methods ====================
@@ -224,9 +254,11 @@ export class SettingsPage {
    * @param option - The sort option label to select
    */
   async selectDefaultSort(option: string): Promise<void> {
-    // Click the select trigger (shadcn Select uses combobox role)
-    // The trigger is the only combobox in preferences tab
-    await this.page.getByRole("combobox").click();
+    // The sort select has aria-label="Default sort order" to distinguish
+    // from the tab selector combobox on mobile
+    await this.page
+      .getByRole("combobox", { name: "Default sort order" })
+      .click();
     // Select the option
     await this.page.getByRole("option", { name: option }).click();
     // Wait for auto-save toast to confirm save completed
@@ -237,7 +269,9 @@ export class SettingsPage {
    * Gets the currently selected default sort option.
    */
   async getSelectedDefaultSort(): Promise<string> {
-    const combobox = this.page.getByRole("combobox");
+    const combobox = this.page.getByRole("combobox", {
+      name: "Default sort order",
+    });
     return (await combobox.textContent()) ?? "";
   }
 
@@ -319,11 +353,18 @@ export class SettingsPage {
       timeout: 5000,
     });
 
-    // Wait for main settings to be stable (tabs should be visible)
-    await this.page.getByRole("tab", { name: "Profile" }).waitFor({
-      state: "visible",
-      timeout: 5000,
-    });
+    if (isMobile) {
+      // Mobile: Wait for Select dropdown trigger to reappear
+      await this.page
+        .getByRole("combobox", { name: "Settings tabs" })
+        .waitFor({ state: "visible", timeout: 5000 });
+    } else {
+      // Desktop: Wait for main settings to be stable (tabs should be visible)
+      await this.page.getByRole("tab", { name: "Profile" }).waitFor({
+        state: "visible",
+        timeout: 5000,
+      });
+    }
   }
 
   /**

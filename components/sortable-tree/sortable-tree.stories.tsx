@@ -116,15 +116,15 @@ const mockTreeItems: TreeItems = [
             parentId: "action",
             order: 0,
             depth: 2,
-            artworkId: "artwork-1",
-            fileCounts: { media: 1, artwork: 1, subtitles: 2 },
+            tmdbPosterPath: "/yFihWxQcmqcaBR31QM6Y8gT6aYV.jpg",
+            fileCounts: { media: 1, artwork: 0, subtitles: 2 },
           }),
           createTreeItem("mad-max", "Mad Max: Fury Road", {
             parentId: "action",
             order: 1,
             depth: 2,
-            artworkId: "artwork-2",
-            fileCounts: { media: 1, artwork: 1, subtitles: 1 },
+            tmdbPosterPath: "/hA2ple9q4qnwxp3hKVNhroipsir.jpg",
+            fileCounts: { media: 1, artwork: 0, subtitles: 1 },
           }),
         ],
       }),
@@ -137,7 +137,7 @@ const mockTreeItems: TreeItems = [
             parentId: "drama",
             order: 0,
             depth: 2,
-            artworkId: "artwork-3",
+            tmdbPosterPath: "/9cjIGRiQJBgNTfCUFaziimKLSDb.jpg",
           }),
         ],
       }),
@@ -152,7 +152,7 @@ const mockTreeItems: TreeItems = [
         parentId: "tv-shows",
         order: 0,
         depth: 1,
-        artworkId: "artwork-bb",
+        tmdbPosterPath: "/ztkUQFLlC19CCMYHW9o1zWhJRNq.jpg",
         progressPercentage: 35,
         watchedCount: 18,
         totalMediaCount: 52,
@@ -182,11 +182,21 @@ const mockTreeItems: TreeItems = [
 
 // Flat list (no nesting)
 const flatItems: TreeItems = [
-  createTreeItem("item-1", "The Godfather", { artworkId: "gf" }),
-  createTreeItem("item-2", "Pulp Fiction", { artworkId: "pf" }),
-  createTreeItem("item-3", "The Dark Knight", { artworkId: "dk" }),
-  createTreeItem("item-4", "Inception", { artworkId: "inc" }),
-  createTreeItem("item-5", "Fight Club", { artworkId: "fc" }),
+  createTreeItem("item-1", "The Godfather", {
+    tmdbPosterPath: "/3bhkrj58Vtu7enYsRolD1fZdja1.jpg",
+  }),
+  createTreeItem("item-2", "Pulp Fiction", {
+    tmdbPosterPath: "/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg",
+  }),
+  createTreeItem("item-3", "The Dark Knight", {
+    tmdbPosterPath: "/qJ2tW6WMUDux911BTUgME76Nccf.jpg",
+  }),
+  createTreeItem("item-4", "Inception", {
+    tmdbPosterPath: "/ljsZTbVsrQSqZgWeep2B1QiDKuh.jpg",
+  }),
+  createTreeItem("item-5", "Fight Club", {
+    tmdbPosterPath: "/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+  }),
 ];
 
 // Deep nesting example

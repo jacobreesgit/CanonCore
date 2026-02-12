@@ -97,7 +97,9 @@ export function TMDBHeroStep({
     <div className="space-y-6">
       {/* Step header */}
       <div>
-        <h3 className="text-lg font-semibold">Select Hero Image</h3>
+        <h3 className="text-foreground text-lg font-semibold">
+          Select Hero Image
+        </h3>
         <p className="text-muted-foreground text-sm">
           Choose a backdrop image for the hero banner.
         </p>

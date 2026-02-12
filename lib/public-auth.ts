@@ -13,6 +13,7 @@ import { auth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { COMPLETION_THRESHOLD } from "@/lib/progress-utils";
 import { logger } from "@/lib/logger";
+import { resolveArtworkId } from "@/lib/tmdb-image-utils";
 import type {
   ItemResult,
   SearchableUser,
@@ -56,7 +57,11 @@ export interface PublicItem {
   order: number;
   /** Owner user ID */
   userId: string;
-  /** First artwork file ID for thumbnail */
+  /** TMDB poster path for CDN display (takes precedence over artworkId) */
+  tmdbPosterPath: string | null;
+  /** TMDB backdrop path for CDN display */
+  tmdbBackdropPath: string | null;
+  /** First artwork file ID for thumbnail (fallback when no TMDB path) */
   artworkId: string | null;
   /** TMDB ID for metadata */
   tmdbId: number | null;
@@ -285,6 +290,8 @@ export const getPublicItem = cache(
         userId: true,
         tmdbId: true,
         tmdbType: true,
+        tmdbPosterPath: true,
+        tmdbBackdropPath: true,
         tmdbShowTagline: true,
         tmdbShowMetadata: true,
         tmdbShowGenres: true,
@@ -308,7 +315,6 @@ export const getPublicItem = cache(
       return null;
     }
 
-    const artworkFile = item.files.find((f) => f.fileType === "ARTWORK");
     return {
       id: item.id,
       name: item.name,
@@ -317,7 +323,9 @@ export const getPublicItem = cache(
       depth: item.depth,
       order: item.order,
       userId: item.userId,
-      artworkId: artworkFile?.id ?? null,
+      tmdbPosterPath: item.tmdbPosterPath ?? null,
+      tmdbBackdropPath: item.tmdbBackdropPath ?? null,
+      artworkId: resolveArtworkId(item),
       tmdbId: item.tmdbId,
       tmdbType: item.tmdbType,
       tmdbShowTagline: item.tmdbShowTagline,
@@ -380,6 +388,8 @@ export async function getPublicItemsForUser(
       userId: true,
       tmdbId: true,
       tmdbType: true,
+      tmdbPosterPath: true,
+      tmdbBackdropPath: true,
       tmdbShowTagline: true,
       tmdbShowMetadata: true,
       tmdbShowGenres: true,
@@ -470,7 +480,6 @@ export async function getPublicItemsForUser(
 
   return items.map((item) => {
     const progress = isOwnProfile ? progressMap.get(item.id) : undefined;
-    const artworkFile = item.files.find((f) => f.fileType === "ARTWORK");
     return {
       id: item.id,
       name: item.name,
@@ -479,7 +488,9 @@ export async function getPublicItemsForUser(
       depth: item.depth,
       order: item.order,
       userId: item.userId,
-      artworkId: artworkFile?.id ?? null,
+      tmdbPosterPath: item.tmdbPosterPath ?? null,
+      tmdbBackdropPath: item.tmdbBackdropPath ?? null,
+      artworkId: resolveArtworkId(item),
       tmdbId: item.tmdbId,
       tmdbType: item.tmdbType,
       tmdbShowTagline: item.tmdbShowTagline,
@@ -552,6 +563,8 @@ export async function getPublicChildItems(
       userId: true,
       tmdbId: true,
       tmdbType: true,
+      tmdbPosterPath: true,
+      tmdbBackdropPath: true,
       tmdbShowTagline: true,
       tmdbShowMetadata: true,
       tmdbShowGenres: true,
@@ -575,7 +588,6 @@ export async function getPublicChildItems(
   });
 
   return items.map((item) => {
-    const artworkFile = item.files.find((f) => f.fileType === "ARTWORK");
     return {
       id: item.id,
       name: item.name,
@@ -584,7 +596,9 @@ export async function getPublicChildItems(
       depth: item.depth,
       order: item.order,
       userId: item.userId,
-      artworkId: artworkFile?.id ?? null,
+      tmdbPosterPath: item.tmdbPosterPath ?? null,
+      tmdbBackdropPath: item.tmdbBackdropPath ?? null,
+      artworkId: resolveArtworkId(item),
       tmdbId: item.tmdbId,
       tmdbType: item.tmdbType,
       tmdbShowTagline: item.tmdbShowTagline,
@@ -696,6 +710,8 @@ export const getPublicDescendants = cache(
         userId: true,
         tmdbId: true,
         tmdbType: true,
+        tmdbPosterPath: true,
+        tmdbBackdropPath: true,
         tmdbShowTagline: true,
         tmdbShowMetadata: true,
         tmdbShowGenres: true,
@@ -717,7 +733,6 @@ export const getPublicDescendants = cache(
     });
 
     return items.map((item) => {
-      const artworkFile = item.files.find((f) => f.fileType === "ARTWORK");
       return {
         id: item.id,
         name: item.name,
@@ -726,7 +741,11 @@ export const getPublicDescendants = cache(
         depth: item.depth,
         order: item.order,
         userId: item.userId,
-        artworkId: artworkFile?.id ?? null,
+        tmdbPosterPath: item.tmdbPosterPath ?? null,
+        tmdbBackdropPath: item.tmdbBackdropPath ?? null,
+        artworkId: item.tmdbPosterPath
+          ? null
+          : (item.files.find((f) => f.fileType === "ARTWORK")?.id ?? null),
         tmdbId: item.tmdbId,
         tmdbType: item.tmdbType,
         tmdbShowTagline: item.tmdbShowTagline,
@@ -793,6 +812,8 @@ export async function getExploreItems(
       userId: true,
       tmdbId: true,
       tmdbType: true,
+      tmdbPosterPath: true,
+      tmdbBackdropPath: true,
       tmdbShowTagline: true,
       tmdbShowMetadata: true,
       tmdbShowGenres: true,
@@ -906,7 +927,6 @@ export async function getExploreItems(
     .map((item) => {
       const isOwnItem = currentUserId && item.userId === currentUserId;
       const progress = isOwnItem ? progressMap.get(item.id) : undefined;
-      const artworkFile = item.files.find((f) => f.fileType === "ARTWORK");
       return {
         id: item.id,
         name: item.name,
@@ -915,7 +935,11 @@ export async function getExploreItems(
         depth: item.depth,
         order: item.order,
         userId: item.userId,
-        artworkId: artworkFile?.id ?? null,
+        tmdbPosterPath: item.tmdbPosterPath ?? null,
+        tmdbBackdropPath: item.tmdbBackdropPath ?? null,
+        artworkId: item.tmdbPosterPath
+          ? null
+          : (item.files.find((f) => f.fileType === "ARTWORK")?.id ?? null),
         tmdbId: item.tmdbId,
         tmdbType: item.tmdbType,
         tmdbShowTagline: item.tmdbShowTagline,
@@ -1146,6 +1170,7 @@ export const searchPublicItems = cache(
           id: true,
           name: true,
           description: true,
+          tmdbPosterPath: true,
           // NOTE: updatedAt intentionally NOT selected - not needed for UI
           files: {
             where: { fileType: "ARTWORK" },
@@ -1170,6 +1195,7 @@ export const searchPublicItems = cache(
           id: item.id,
           name: item.name,
           description: item.description,
+          tmdbPosterPath: item.tmdbPosterPath ?? null,
           artworkId: item.files[0]?.id ?? null,
           ownerUsername: item.user.username!,
           ownerName: item.user.name,
@@ -1192,8 +1218,10 @@ export interface FeaturedItem {
   name: string;
   /** Item description */
   description: string | null;
-  /** Artwork file ID for background image */
-  artworkId: string;
+  /** TMDB backdrop path for CDN hero display (takes precedence over artworkId) */
+  tmdbBackdropPath: string | null;
+  /** Artwork file ID for background image (fallback when no TMDB path) */
+  artworkId: string | null;
   /** Owner username for attribution */
   ownerUsername: string;
   /** Owner display name */
@@ -1226,10 +1254,11 @@ export const getFeaturedItems = cache(
         where: {
           isPublic: true,
           inheritVisibility: false,
-          // Must have artwork for carousel display
-          files: {
-            some: { fileType: "ARTWORK" },
-          },
+          // Must have TMDB backdrop or artwork for carousel display
+          OR: [
+            { tmdbBackdropPath: { not: null } },
+            { files: { some: { fileType: "ARTWORK" } } },
+          ],
           user: {
             isPublic: true,
             username: { not: null },
@@ -1242,6 +1271,7 @@ export const getFeaturedItems = cache(
           userId: true,
           tmdbId: true,
           tmdbType: true,
+          tmdbBackdropPath: true,
           files: {
             where: { fileType: "ARTWORK" },
             select: { id: true },
@@ -1260,15 +1290,19 @@ export const getFeaturedItems = cache(
         take: limit,
       });
 
-      // Filter out items without valid artwork ID (prevents /api/artwork/ invalid calls)
+      // Filter out items without valid backdrop or artwork (prevents invalid display)
       // Also filter out items where username is null (stricter than query allows)
       return items
-        .filter((item) => item.files[0]?.id && item.user.username)
+        .filter(
+          (item) =>
+            (item.tmdbBackdropPath || item.files[0]?.id) && item.user.username
+        )
         .map((item) => ({
           id: item.id,
           name: item.name,
           description: item.description,
-          artworkId: item.files[0].id, // Safe due to filter above
+          tmdbBackdropPath: item.tmdbBackdropPath ?? null,
+          artworkId: item.files[0]?.id ?? null,
           ownerUsername: item.user.username as string, // Safe due to filter
           ownerName: item.user.name,
           ownerUserId: item.userId,

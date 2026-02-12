@@ -71,6 +71,8 @@ describe("SortableGrid", () => {
     syncStatus: "SYNCED",
     syncError: null,
     driveConnectionId: null,
+    tmdbPosterPath: null,
+    tmdbBackdropPath: null,
     artworkId: null,
     fileCounts: { media: 0, artwork: 0, subtitles: 0 },
     childCount: 0,

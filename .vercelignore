@@ -19,5 +19,5 @@ seed-media/
 *.mp4
 *.srt
 
-# Portfolio screenshots (large PNG files - not needed for production)
-public/portfolio/*.png
+# Portfolio screenshots (large files - not needed for production)
+public/portfolio/

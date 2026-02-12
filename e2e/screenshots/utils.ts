@@ -1,11 +1,14 @@
 /**
  * Screenshot automation utilities.
- * Provides helpers for consistent screenshot capture across portfolio images.
+ * Reuses E2E page objects and helpers for consistent behavior.
  */
 
-import { Page } from "@playwright/test";
+import { expect, Page } from "@playwright/test";
 import * as path from "path";
 import * as fs from "fs";
+
+import { SignInPage } from "../pages/sign-in.page";
+import { isMobileViewport } from "../helpers/mobile-nav-helpers";
 
 // =============================================================================
 // Timing Constants
@@ -26,7 +29,6 @@ export const SCREENSHOT_NAMES = [
   "01-library-grid",
   "02-tree-view",
   "04-tmdb-wizard",
-  "05-progress-tracking",
   "06-google-drive-sync",
   "07-explore-page",
   "08-spotlight-search",
@@ -96,16 +98,26 @@ export async function captureScreenshot(
   ensureScreenshotDir();
   await page.waitForLoadState("networkidle");
 
-  // Wait for all images to load
+  // Hide Next.js dev error overlay so it doesn't appear in screenshots
+  await page.addStyleTag({
+    content: "nextjs-portal { display: none !important; }",
+  });
+
+  // Wait for all images to load (with 15s timeout per image)
   await page.evaluate(async () => {
     const images = Array.from(document.querySelectorAll("img"));
+    const timeout = (ms: number) =>
+      new Promise((resolve) => setTimeout(resolve, ms));
     await Promise.all(
       images.map((img) => {
         if (img.complete) return Promise.resolve();
-        return new Promise((resolve) => {
-          img.onload = () => resolve(undefined);
-          img.onerror = () => resolve(undefined); // Resolve even on error
-        });
+        return Promise.race([
+          new Promise((resolve) => {
+            img.onload = () => resolve(undefined);
+            img.onerror = () => resolve(undefined);
+          }),
+          timeout(15000),
+        ]);
       })
     );
   });
@@ -129,17 +141,16 @@ export async function captureScreenshot(
 // =============================================================================
 
 /**
- * Signs in a user via the UI.
+ * Signs in a user via the SignInPage page object.
  *
  * @param page - Playwright page
  * @param user - User to sign in
  */
 export async function signIn(page: Page, user: ScreenshotUser): Promise<void> {
-  await page.goto("/sign-in");
-  await page.getByLabel("Email").fill(user.email);
-  await page.getByTestId("sign-in-password-input").fill(SEED_PASSWORD);
-  await page.getByRole("button", { name: "Sign In" }).click();
-  await page.waitForURL(`/u/${user.username}`, { timeout: 15000 });
+  const signInPage = new SignInPage(page);
+  await signInPage.goto();
+  await signInPage.signIn(user.email, SEED_PASSWORD);
+  await page.waitForURL(/\/u\/[a-zA-Z0-9_]+$/, { timeout: 15000 });
 }
 
 /**
@@ -149,18 +160,17 @@ export async function signIn(page: Page, user: ScreenshotUser): Promise<void> {
  * @param page - Playwright page
  */
 export async function signOut(page: Page): Promise<void> {
-  const viewport = page.viewportSize();
-  const isMobile = viewport && viewport.width < 1024;
+  const isMobile = await isMobileViewport(page);
 
   if (isMobile) {
-    // Mobile: Open account sheet via footer nav, then sign out
+    // Mobile: Open settings sheet via footer Account button, then Account tab → Sign out
     const accountButton = page
       .getByRole("navigation", { name: /mobile navigation/i })
       .getByRole("button", { name: /account/i });
     await accountButton.click();
-    const sheet = page.getByRole("dialog", { name: /account/i });
-    await sheet.waitFor({ state: "visible" });
-    await sheet.getByRole("button", { name: /sign out/i }).click();
+    await expect(page.getByRole("dialog", { name: /settings/i })).toBeVisible();
+    await page.getByRole("tab", { name: /account/i }).click();
+    await page.getByRole("button", { name: /sign out/i }).click();
   } else {
     // Desktop: Use sidebar user menu dropdown
     await page.getByTestId("my-items-user-menu").click();
@@ -171,28 +181,11 @@ export async function signOut(page: Page): Promise<void> {
 }
 
 // =============================================================================
-// Theme Helpers
+// Setup
 // =============================================================================
 
 /**
- * Verifies the app is in dark mode.
- * The app is now dark mode only - no light mode support.
- *
- * @param page - Playwright page
- */
-export async function expectDarkMode(page: Page): Promise<void> {
-  const html = page.locator("html");
-  await html.waitFor({ state: "attached" });
-  // Dark mode is now forced - just verify the class is present
-  const isDark = await html.evaluate((el) => el.classList.contains("dark"));
-  if (!isDark) {
-    throw new Error("Expected dark mode but page is not in dark mode");
-  }
-}
-
-/**
  * Sets up page for screenshot capture with sign-in.
- * Dark mode is now the only mode.
  *
  * @param page - Playwright page
  * @param user - User to sign in
@@ -209,33 +202,72 @@ export async function setupForScreenshot(
 // =============================================================================
 
 /**
- * Switches to grid view.
+ * Switches to grid view. Handles both desktop and mobile.
  *
  * @param page - Playwright page
  */
 export async function switchToGridView(page: Page): Promise<void> {
-  // Wait for page to load items first (toolbar appears when items exist)
   await page.waitForLoadState("networkidle");
-  // The button has aria-label="Grid view"
-  const gridButton = page.getByLabel("Grid view");
-  await gridButton.waitFor({ state: "visible", timeout: 5000 });
-  await gridButton.click();
+  await selectViewOption(page, "Grid");
   await page.waitForTimeout(ANIMATION_SETTLE_MS);
 }
 
 /**
- * Switches to tree view.
+ * Switches to tree view. Handles both desktop and mobile.
  *
  * @param page - Playwright page
  */
 export async function switchToTreeView(page: Page): Promise<void> {
-  // Wait for page to load items first (toolbar appears when items exist)
   await page.waitForLoadState("networkidle");
-  // The button has aria-label="Tree view"
-  const treeButton = page.getByLabel("Tree view");
-  await treeButton.waitFor({ state: "visible", timeout: 5000 });
-  await treeButton.click();
+  await selectViewOption(page, "Tree");
   await page.waitForTimeout(ANIMATION_SETTLE_MS);
+}
+
+/**
+ * Selects a view option (Grid or Tree).
+ * Desktop: Opens ViewDropdown and clicks menuitemradio.
+ * Mobile: Opens MobileOptionsSheet, clicks option, closes sheet.
+ * Follows the same pattern as PublicProfilePage.selectViewOption.
+ */
+async function selectViewOption(page: Page, label: string): Promise<void> {
+  const mobileOptionsButton = page.getByRole("button", {
+    name: "Options",
+    exact: true,
+  });
+
+  // Desktop: ViewDropdown trigger shows current view name (Grid/Tree)
+  const viewDropdown = page
+    .getByRole("button", { name: /^(Grid|Tree)$/i })
+    .first();
+
+  await expect(mobileOptionsButton.or(viewDropdown).first()).toBeVisible({
+    timeout: 10000,
+  });
+
+  const isMobile = await mobileOptionsButton.isVisible();
+
+  if (isMobile) {
+    await mobileOptionsButton.click();
+    await expect(
+      page.getByRole("dialog", { name: /(view|item) options/i })
+    ).toBeVisible();
+    const option = page.getByRole("option", {
+      name: new RegExp(label, "i"),
+    });
+    await option.click();
+    await expect(option).toHaveAttribute("aria-selected", "true");
+    // Close sheet via overlay
+    const overlay = page.locator("[data-vaul-overlay]");
+    await overlay.click({ force: true, position: { x: 10, y: 10 } });
+    await expect(
+      page.getByRole("dialog", { name: /(view|item) options/i })
+    ).not.toBeVisible({ timeout: 5000 });
+  } else {
+    await viewDropdown.click();
+    await page
+      .getByRole("menuitemradio", { name: new RegExp(label, "i") })
+      .click();
+  }
 }
 
 // =============================================================================
@@ -243,32 +275,30 @@ export async function switchToTreeView(page: Page): Promise<void> {
 // =============================================================================
 
 /**
- * Opens the settings dialog.
- * Handles both desktop (sidebar) and mobile (footer sheet) viewports.
+ * Opens the settings dialog/sheet.
+ * Desktop: sidebar user menu → settings button.
+ * Mobile: footer Account button → settings sheet (opens directly).
  *
  * @param page - Playwright page
  */
 export async function openSettings(page: Page): Promise<void> {
-  const viewport = page.viewportSize();
-  const isMobile = viewport && viewport.width < 1024;
+  const isMobile = await isMobileViewport(page);
 
   if (isMobile) {
-    // Mobile: Open account sheet via footer nav, then settings
+    // Mobile: Account button opens MobileSettingsSheet directly
     const accountButton = page
       .getByRole("navigation", { name: /mobile navigation/i })
       .getByRole("button", { name: /account/i });
     await accountButton.click();
-    const sheet = page.getByRole("dialog", { name: /account/i });
-    await sheet.waitFor({ state: "visible" });
-    await sheet.getByRole("button", { name: /settings/i }).click();
+    await expect(page.getByRole("dialog", { name: /settings/i })).toBeVisible();
   } else {
-    // Desktop: Open sidebar if collapsed, then user menu
+    // Desktop: Open sidebar if collapsed, then user menu → settings
     const userMenu = page.getByTestId("my-items-user-menu");
     const isUserMenuVisible = await userMenu.isVisible().catch(() => false);
 
     if (!isUserMenuVisible) {
       await page.getByTestId("sidebar-trigger").click();
-      await page.waitForTimeout(500); // Wait for sidebar animation
+      await page.waitForTimeout(500);
     }
 
     await userMenu.click();
@@ -279,7 +309,7 @@ export async function openSettings(page: Page): Promise<void> {
 }
 
 /**
- * Closes any open dialog.
+ * Closes any open dialog or sheet.
  *
  * @param page - Playwright page
  */
@@ -294,7 +324,6 @@ export async function closeDialog(page: Page): Promise<void> {
 
 /**
  * Waits for hero carousel to be visible and loaded.
- * Also waits for hero image to fully load.
  *
  * @param page - Playwright page
  */
@@ -311,33 +340,43 @@ export async function waitForHero(page: Page): Promise<void> {
       if (img.complete) return;
       return new Promise((resolve) => {
         img.onload = resolve;
-        img.onerror = resolve; // Resolve even on error to avoid hanging
+        img.onerror = resolve;
       });
     });
   }
 
-  await page.waitForTimeout(300); // Additional settle time for any CSS transitions
+  await page.waitForTimeout(300);
 }
 
 /**
- * Opens spotlight search via sidebar button.
- * On mobile, opens sidebar first if needed.
+ * Opens spotlight search.
+ * Desktop: clicks search button in sidebar.
+ * Mobile: clicks search button in footer nav.
  *
  * @param page - Playwright page
  */
 export async function openSpotlight(page: Page): Promise<void> {
-  const searchButton = page.getByRole("button", { name: /search/i }).first();
-  const isSearchButtonVisible = await searchButton
-    .isVisible()
-    .catch(() => false);
+  const isMobile = await isMobileViewport(page);
 
-  if (!isSearchButtonVisible) {
-    // Click sidebar trigger to open sidebar on mobile
-    await page.getByTestId("sidebar-trigger").click();
-    await page.waitForTimeout(500); // Wait for sidebar animation
+  if (isMobile) {
+    // Mobile: Use footer search button
+    const searchButton = page
+      .getByRole("navigation", { name: /mobile navigation/i })
+      .getByRole("button", { name: /search/i });
+    await searchButton.click();
+  } else {
+    // Desktop: Use sidebar search button
+    const searchButton = page.getByRole("button", { name: /search/i }).first();
+    const isSearchVisible = await searchButton.isVisible().catch(() => false);
+
+    if (!isSearchVisible) {
+      await page.getByTestId("sidebar-trigger").click();
+      await page.waitForTimeout(500);
+    }
+
+    await searchButton.click();
   }
 
-  await searchButton.click();
   await page.waitForSelector('[role="dialog"]', { timeout: 10000 });
   await page.waitForTimeout(NETWORK_SETTLE_MS);
 }
@@ -361,104 +400,18 @@ export async function enterEditMode(page: Page): Promise<void> {
 
 /**
  * Clicks on an item by name.
- * Handles both tree view (listitem) and grid view (button) elements.
+ * Handles both tree view (listitem) and grid view (button/title) elements.
  *
  * @param page - Playwright page
  * @param name - Item name to click
  */
 export async function clickItem(page: Page, name: string): Promise<void> {
-  // Tree view: items are in listitem elements
   const treeItem = page.getByRole("listitem").getByText(name, { exact: true });
-  // Grid view: items are buttons with the item name
-  const gridButton = page.getByRole("button", { name, exact: true });
-  // Grid view: unique title element (no hover overlay duplicate)
   const gridItem = page
     .locator('[data-testid="grid-item-title"]')
     .filter({ hasText: name });
+  const gridButton = page.getByRole("button", { name, exact: true });
 
   await treeItem.or(gridButton).or(gridItem).first().click();
   await page.waitForLoadState("networkidle");
-}
-
-/**
- * Opens the more options menu for an item by hovering and clicking the "..." button.
- *
- * @param page - Playwright page
- * @param name - Item name to open menu for
- */
-export async function openContextMenu(page: Page, name: string): Promise<void> {
-  const mainContent = page.getByRole("main");
-  const treeContainer = mainContent
-    .getByRole("listitem")
-    .filter({ hasText: name });
-  const gridContainer = mainContent
-    .locator("[data-id]")
-    .filter({ hasText: name });
-  const container = treeContainer.or(gridContainer).first();
-
-  await container.scrollIntoViewIfNeeded();
-  await container.hover();
-  const moreButton = container.getByRole("button", {
-    name: /more options/i,
-  });
-  await moreButton.click();
-  await page.waitForTimeout(ANIMATION_SETTLE_MS);
-}
-
-/**
- * Deletes an item by name via context menu.
- * Used for test cleanup.
- *
- * @param page - Playwright page
- * @param name - Item name to delete
- */
-export async function deleteItem(page: Page, name: string): Promise<void> {
-  await openContextMenu(page, name);
-  await page.getByRole("menuitem", { name: /delete/i }).click();
-  const confirmButton = page.getByRole("button", { name: /confirm|delete/i });
-  if (await confirmButton.isVisible()) {
-    await confirmButton.click();
-  }
-  await page.waitForTimeout(NETWORK_SETTLE_MS);
-}
-
-// =============================================================================
-// Toolbar Helpers
-// =============================================================================
-
-/**
- * Opens the sort dropdown.
- *
- * @param page - Playwright page
- */
-export async function openSortDropdown(page: Page): Promise<void> {
-  // Button text is the current sort label (e.g., "Custom Order" when at default)
-  const sortButton = page.getByRole("button", { name: /custom order/i });
-  await sortButton.click();
-  await page.waitForTimeout(ANIMATION_SETTLE_MS);
-}
-
-/**
- * Opens the filter dropdown.
- *
- * @param page - Playwright page
- */
-export async function openFilterDropdown(page: Page): Promise<void> {
-  // Button text is the current filter label (e.g., "All Items" when at default)
-  const filterButton = page.getByRole("button", { name: /all items/i });
-  await filterButton.click();
-  await page.waitForTimeout(ANIMATION_SETTLE_MS);
-}
-
-/**
- * Selects a filter option.
- *
- * @param page - Playwright page
- * @param option - Filter option text
- */
-export async function selectFilter(page: Page, option: string): Promise<void> {
-  await openFilterDropdown(page);
-  // FilterDropdown uses DropdownMenuRadioItem which has role="menuitemradio"
-  await page.getByRole("menuitemradio", { name: option }).click();
-  await page.waitForTimeout(NETWORK_SETTLE_MS);
 }

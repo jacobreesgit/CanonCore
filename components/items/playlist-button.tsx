@@ -5,8 +5,8 @@
 "use client";
 
 import { Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { HeroButton } from "./hero-button";
 
 interface PlaylistButtonProps {
   /** Additional CSS classes. */
@@ -25,22 +25,9 @@ export function PlaylistButton({ className }: PlaylistButtonProps) {
   };
 
   return (
-    <button
-      onClick={handleClick}
-      className={cn(
-        "inline-flex items-center gap-2",
-        "h-10 rounded-full px-5",
-        "bg-white/10 backdrop-blur-sm",
-        "border border-white/20",
-        "text-sm font-medium text-white",
-        "transition-colors duration-150",
-        "hover:bg-white/20",
-        "focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none",
-        className
-      )}
-    >
+    <HeroButton onClick={handleClick} className={className}>
       <Plus className="size-4" aria-hidden="true" />
       <span>Add to Playlist</span>
-    </button>
+    </HeroButton>
   );
 }

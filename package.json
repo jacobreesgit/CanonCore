@@ -1,6 +1,6 @@
 {
   "name": "canoncore",
-  "version": "7.2.0",
+  "version": "7.3.0",
   "packageManager": "pnpm@10.15.0",
   "private": true,
   "scripts": {
@@ -31,6 +31,9 @@
     "setup:verify": "tsx scripts/verify-drive-setup.ts",
     "setup:all": "npm run setup:e2e && npm run setup:seed",
     "seed": "ALLOW_SEEDING=true npx prisma db seed",
+    "seed:development": "SEED_TARGET=development ALLOW_SEEDING=true npx prisma db seed",
+    "seed:production": "SEED_TARGET=production ALLOW_SEEDING=true npx prisma db seed",
+    "seed:e2e": "SEED_TARGET=e2e ALLOW_SEEDING=true npx prisma db seed",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build -o storybook-static",
     "test-storybook": "test-storybook",
@@ -120,7 +123,6 @@
     "@types/react-dom": "^19",
     "@types/three": "^0.182.0",
     "@vitest/coverage-v8": "^4.0.16",
-    "axe-playwright": "^2.2.2",
     "baseline-browser-mapping": "^2.9.14",
     "concurrently": "^9.2.1",
     "eslint": "^9.39.2",

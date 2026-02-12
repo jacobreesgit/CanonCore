@@ -54,7 +54,8 @@ import {
   type TMDBWizardHeaderProps,
   type TMDBWizardFooterProps,
 } from "./wizards/tmdb-wizard";
-import { WizardStepIndicator } from "@/components/wizards/wizard-step-indicator";
+
+import { WizardProgressBar } from "@/components/wizards/wizard-progress-bar";
 import {
   TVPicker,
   type TVPickerResult,
@@ -946,19 +947,13 @@ export function AddItemDialog({
             </div>
           </DialogHeader>
         );
-      case "tmdb-wizard":
-        // Dialog header shows wizard step indicator above title row
+      case "tmdb-wizard": {
+        const wizardCurrentIndex = wizardHeaderProps
+          ? wizardHeaderProps.steps.indexOf(wizardHeaderProps.currentStep)
+          : 0;
+        const wizardTotalSteps = wizardHeaderProps?.steps.length ?? 0;
         return (
           <DialogHeader>
-            {wizardHeaderProps && (
-              <div className="pb-4">
-                <WizardStepIndicator
-                  steps={wizardHeaderProps.steps}
-                  currentStep={wizardHeaderProps.currentStep}
-                  stepLabels={wizardHeaderProps.stepLabels}
-                />
-              </div>
-            )}
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -972,23 +967,34 @@ export function AddItemDialog({
               <div
                 className={cn(
                   "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                  "bg-amber-500/10 ring-1 ring-amber-500/20"
+                  "bg-brand/10 ring-brand/20 ring-1"
                 )}
               >
-                <Sparkles
-                  aria-hidden="true"
-                  className="size-5 text-amber-500"
-                />
+                <Sparkles aria-hidden="true" className="text-brand size-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
                 <DialogDescription className="text-sm">
                   {displayTitle}
+                  {wizardHeaderProps && (
+                    <span className="text-[var(--tertiary-foreground)]">
+                      {" "}
+                      · Step {wizardCurrentIndex + 1} of {wizardTotalSteps}
+                    </span>
+                  )}
                 </DialogDescription>
               </div>
             </div>
+            {wizardHeaderProps && (
+              <WizardProgressBar
+                steps={wizardHeaderProps.steps}
+                currentStep={wizardHeaderProps.currentStep}
+                stepLabels={wizardHeaderProps.stepLabels}
+              />
+            )}
           </DialogHeader>
         );
+      }
       case "wizard-summary":
         return (
           <DialogHeader>
@@ -1005,13 +1011,10 @@ export function AddItemDialog({
               <div
                 className={cn(
                   "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                  "bg-amber-500/10 ring-1 ring-amber-500/20"
+                  "bg-brand/10 ring-brand/20 ring-1"
                 )}
               >
-                <Sparkles
-                  aria-hidden="true"
-                  className="size-5 text-amber-500"
-                />
+                <Sparkles aria-hidden="true" className="text-brand size-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-lg">Review & Create</DialogTitle>
@@ -1372,7 +1375,7 @@ export function AddItemDialog({
         </div>
         {selectedTmdbOptions && (
           <p className="text-muted-foreground flex items-center gap-1 text-xs">
-            <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+            <span className="bg-brand/20 text-brand rounded px-1.5 py-0.5 text-xs font-medium">
               TMDB
             </span>
             Metadata will be applied on create

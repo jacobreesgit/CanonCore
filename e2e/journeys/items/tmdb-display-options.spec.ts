@@ -288,16 +288,11 @@ test.describe("TMDB Display Options", () => {
       const castCheckboxInTab = container.getByRole("checkbox", {
         name: /cast/i,
       });
-      // Set up response listener before clicking (debounced save fires after 300ms)
-      const savePromise = page.waitForResponse(
-        (resp) => resp.request().method() === "POST" && resp.status() === 200,
-        { timeout: 5000 }
-      );
       await castCheckboxInTab.click();
-      await savePromise;
 
-      // Close settings
-      await itemsPage.closeSettings();
+      // Save the display option change and wait for dialog/sheet to close
+      await container.getByRole("button", { name: /save changes/i }).click();
+      await expect(container).not.toBeVisible();
 
       // Reload and reopen settings — verify Cast is still unchecked
       await page.reload();

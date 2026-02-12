@@ -96,7 +96,9 @@ export function TMDBStillStep({
     <div className="space-y-6">
       {/* Step header */}
       <div>
-        <h3 className="text-lg font-semibold">Select Still Image</h3>
+        <h3 className="text-foreground text-lg font-semibold">
+          Select Still Image
+        </h3>
         <p className="text-muted-foreground text-sm">
           Choose a still image from the episode.
         </p>

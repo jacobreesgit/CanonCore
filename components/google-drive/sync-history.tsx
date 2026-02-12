@@ -160,6 +160,7 @@ export function SyncHistory() {
           onClick={handleRefresh}
           disabled={isRefreshing}
           className="h-6 px-2 text-xs"
+          aria-label="Refresh sync history"
         >
           {isRefreshing ? (
             <Loader2 className="size-3 animate-spin" aria-hidden="true" />
@@ -192,8 +193,7 @@ export function SyncHistory() {
               <div
                 className={cn(
                   "flex size-7 shrink-0 items-center justify-center rounded-md",
-                  isSuccess &&
-                    "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500",
+                  isSuccess && "bg-emerald-500/10 text-emerald-400",
                   isFailed && "bg-destructive/10 text-destructive",
                   !isSuccess && !isFailed && "bg-muted text-muted-foreground"
                 )}
@@ -207,7 +207,7 @@ export function SyncHistory() {
                   <span className="truncate text-sm font-medium">{name}</span>
                   {isSuccess && (
                     <CheckCircle2
-                      className="size-3 shrink-0 text-emerald-700 dark:text-emerald-500"
+                      className="size-3 shrink-0 text-emerald-400"
                       aria-hidden="true"
                     />
                   )}
@@ -223,7 +223,7 @@ export function SyncHistory() {
                   <span
                     className={cn(
                       isFailed && "text-destructive",
-                      isSuccess && "text-emerald-700 dark:text-emerald-500"
+                      isSuccess && "text-emerald-400"
                     )}
                   >
                     {isFailed ? "Failed" : label}

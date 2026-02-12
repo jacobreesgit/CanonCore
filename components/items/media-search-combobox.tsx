@@ -12,8 +12,8 @@ import { useImageLoaded } from "@/hooks/use-image-loaded";
 import { Input } from "@/components/ui/input";
 import {
   Popover,
+  PopoverAnchor,
   PopoverContent,
-  PopoverTrigger,
 } from "@/components/ui/popover";
 import { searchMediaAction, isTMDBAvailable } from "@/lib/tmdb-actions";
 import { getPosterUrl, type TMDBSearchResult } from "@/lib/tmdb-client";
@@ -102,9 +102,9 @@ export function MediaSearchCombobox({
     setQuery(value);
   }, [value]);
 
-  // Debounced search
+  // Debounced search (skip while TMDB availability is unknown)
   useEffect(() => {
-    if (!query.trim() || query.length < 2) {
+    if (!tmdbAvailable || !query.trim() || query.length < 2) {
       setResults([]);
       setHasSearched(false);
       return;
@@ -123,7 +123,7 @@ export function MediaSearchCombobox({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, tmdbAvailable]);
 
   /**
    * Handles result selection.
@@ -160,24 +160,23 @@ export function MediaSearchCombobox({
    * with a valid query but cleared results.
    */
   const handleFocus = useCallback(() => {
-    if (query.length >= 2) {
-      setOpen(true);
-      // Re-trigger search if we have a valid query but no results
-      // (e.g., after returning from TMDB wizard where results were cleared)
-      if (results.length === 0 && !hasSearched && !isLoading) {
-        setIsLoading(true);
-        searchMediaAction(query).then((response) => {
-          if (response.success && response.data) {
-            setResults(response.data);
-          } else {
-            setResults([]);
-          }
-          setIsLoading(false);
-          setHasSearched(true);
-        });
-      }
+    if (!tmdbAvailable || query.length < 2) return;
+    setOpen(true);
+    // Re-trigger search if we have a valid query but no results
+    // (e.g., after returning from TMDB wizard where results were cleared)
+    if (results.length === 0 && !hasSearched && !isLoading) {
+      setIsLoading(true);
+      searchMediaAction(query).then((response) => {
+        if (response.success && response.data) {
+          setResults(response.data);
+        } else {
+          setResults([]);
+        }
+        setIsLoading(false);
+        setHasSearched(true);
+      });
     }
-  }, [query, results.length, hasSearched, isLoading]);
+  }, [tmdbAvailable, query, results.length, hasSearched, isLoading]);
 
   // Fallback to simple input if TMDB not configured
   if (tmdbAvailable === false) {
@@ -196,16 +195,9 @@ export function MediaSearchCombobox({
     );
   }
 
-  // Loading state while checking TMDB availability
-  if (tmdbAvailable === null) {
-    return (
-      <Input id={id} placeholder={placeholder} disabled className={className} />
-    );
-  }
-
   return (
     <Popover open={open} onOpenChange={setOpen} modal={false}>
-      <PopoverTrigger asChild>
+      <PopoverAnchor asChild>
         <div className={cn("relative", className)}>
           <Search
             className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
@@ -217,9 +209,7 @@ export function MediaSearchCombobox({
             role="combobox"
             aria-expanded={open}
             aria-haspopup="listbox"
-            aria-controls={
-              results.length > 0 ? "media-search-listbox" : undefined
-            }
+            aria-controls={open ? "media-search-listbox" : undefined}
             placeholder={placeholder}
             value={query}
             onChange={handleInputChange}
@@ -229,11 +219,11 @@ export function MediaSearchCombobox({
             className="pl-10"
           />
         </div>
-      </PopoverTrigger>
+      </PopoverAnchor>
 
       <PopoverContent
         data-testid="tmdb-search-popover"
-        className="w-[var(--radix-popover-trigger-width)] p-0"
+        className="w-[var(--radix-popover-anchor-width)] p-0"
         align="start"
         sideOffset={4}
         onOpenAutoFocus={(e) => e.preventDefault()}
@@ -275,79 +265,80 @@ export function MediaSearchCombobox({
           </div>
         )}
 
-        {/* Results List */}
-        {!isLoading && results.length > 0 && (
-          <div
-            id="media-search-listbox"
-            className="max-h-[280px] overflow-y-auto p-1"
-            role="listbox"
-            onWheel={(e) => {
-              e.stopPropagation();
-              e.currentTarget.scrollTop += e.deltaY;
-            }}
-          >
-            {results.map((result) => (
-              <button
-                key={`${result.mediaType}-${result.id}`}
-                type="button"
-                role="option"
-                onClick={() => handleSelect(result)}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-md px-2 py-2 text-left",
-                  "hover:bg-accent hover:text-accent-foreground",
-                  "focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:outline-none",
-                  "cursor-pointer transition-colors"
-                )}
-              >
-                {/* Poster Thumbnail */}
-                {result.posterPath ? (
-                  <PosterThumbnail posterPath={result.posterPath} />
-                ) : (
-                  <div className="bg-muted flex h-14 w-10 shrink-0 items-center justify-center rounded">
-                    {result.mediaType === "movie" ? (
-                      <Film
-                        className="text-muted-foreground size-5"
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      <Tv
-                        className="text-muted-foreground size-5"
-                        aria-hidden="true"
-                      />
-                    )}
-                  </div>
-                )}
-
-                {/* Title and Metadata */}
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="truncate font-medium">{result.title}</span>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium",
-                        result.mediaType === "movie"
-                          ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                          : "bg-blue-500/15 text-blue-600 dark:text-blue-400"
-                      )}
-                    >
-                      {result.mediaType === "movie" ? "Movie" : "TV"}
-                    </span>
-                    {result.year && (
-                      <span className="text-muted-foreground text-xs">
-                        {result.year}
-                      </span>
-                    )}
-                  </div>
-                  {result.overview && (
-                    <p className="text-muted-foreground line-clamp-1 text-xs">
-                      {result.overview}
-                    </p>
+        {/* Results List — always present for aria-controls reference */}
+        <div
+          id="media-search-listbox"
+          className={cn(
+            "max-h-[280px] overflow-y-auto p-1",
+            (isLoading || results.length === 0) && "hidden"
+          )}
+          role="listbox"
+          onWheel={(e) => {
+            e.stopPropagation();
+            e.currentTarget.scrollTop += e.deltaY;
+          }}
+        >
+          {results.map((result) => (
+            <button
+              key={`${result.mediaType}-${result.id}`}
+              type="button"
+              role="option"
+              onClick={() => handleSelect(result)}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-md px-2 py-2 text-left",
+                "hover:bg-accent hover:text-accent-foreground",
+                "focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:outline-none",
+                "cursor-pointer transition-colors"
+              )}
+            >
+              {/* Poster Thumbnail */}
+              {result.posterPath ? (
+                <PosterThumbnail posterPath={result.posterPath} />
+              ) : (
+                <div className="bg-muted flex h-14 w-10 shrink-0 items-center justify-center rounded">
+                  {result.mediaType === "movie" ? (
+                    <Film
+                      className="text-muted-foreground size-5"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <Tv
+                      className="text-muted-foreground size-5"
+                      aria-hidden="true"
+                    />
                   )}
                 </div>
-              </button>
-            ))}
-          </div>
-        )}
+              )}
+
+              {/* Title and Metadata */}
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="truncate font-medium">{result.title}</span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium",
+                      result.mediaType === "movie"
+                        ? "bg-brand/15 text-brand"
+                        : "bg-brand/15 text-brand"
+                    )}
+                  >
+                    {result.mediaType === "movie" ? "Movie" : "TV"}
+                  </span>
+                  {result.year && (
+                    <span className="text-muted-foreground text-xs">
+                      {result.year}
+                    </span>
+                  )}
+                </div>
+                {result.overview && (
+                  <p className="text-muted-foreground line-clamp-1 text-xs">
+                    {result.overview}
+                  </p>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
       </PopoverContent>
     </Popover>
   );

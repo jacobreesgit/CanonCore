@@ -30,6 +30,7 @@ vi.mock("next-themes", () => ({
 // Mock useReducedMotion hook
 vi.mock("@/hooks/use-reduced-motion", () => ({
   useReducedMotion: () => false,
+  usePrefersReducedMotion: () => false,
 }));
 
 // Mock SpotlightSearch (imported by MobileSearchSheet)
@@ -40,6 +41,26 @@ vi.mock("@/components/search", () => ({
 // Mock next-auth/react
 vi.mock("next-auth/react", () => ({
   signOut: vi.fn(),
+}));
+
+// Mock MobileSettingsSheet (complex tabbed component with many dependencies)
+vi.mock("@/components/profile/mobile-settings-sheet", () => ({
+  MobileSettingsSheet: ({
+    open,
+    user,
+    googleDriveConnection,
+  }: {
+    open: boolean;
+    user: { name: string | null; email: string } | null;
+    googleDriveConnection: unknown;
+  }) =>
+    open ? (
+      <div data-testid="settings-sheet" role="dialog" aria-label="Settings">
+        {user?.name && <div>{user.name}</div>}
+        <div>{user?.email}</div>
+        {googleDriveConnection ? <div>Google Drive</div> : null}
+      </div>
+    ) : null,
 }));
 
 // Mock useRouter

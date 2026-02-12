@@ -10,7 +10,7 @@ import { Play, Copy, Check } from "lucide-react";
 import type { HeroSlide } from "./types";
 
 const meta: Meta<typeof CinematicHero> = {
-  title: "Layout/CinematicHero",
+  title: "Hero/CinematicHero",
   component: CinematicHero,
   parameters: {
     layout: "fullscreen",

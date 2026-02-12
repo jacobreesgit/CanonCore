@@ -180,15 +180,10 @@ export function CinematicHero({
                   />
                 )}
 
-                {/* Gradient overlays */}
+                {/* Cinematic diagonal overlay — strongest at bottom-left content area */}
                 <div
-                  className="absolute inset-x-0 top-0 h-[30%]"
-                  style={{ background: "var(--gradient-top)" }}
-                  aria-hidden="true"
-                />
-                <div
-                  className="absolute inset-x-0 bottom-0 h-[70%]"
-                  style={{ background: "var(--gradient-hero)" }}
+                  className="absolute inset-0"
+                  style={{ background: "var(--gradient-hero-overlay)" }}
                   aria-hidden="true"
                 />
               </div>

@@ -8,7 +8,7 @@ import { userEvent, within, expect } from "storybook/test";
 import { UnderlineTabs } from "./underline-tabs";
 
 const meta = {
-  title: "Items/Controls/UnderlineTabs",
+  title: "UI/UnderlineTabs",
   component: UnderlineTabs,
   tags: ["autodocs"],
   parameters: {

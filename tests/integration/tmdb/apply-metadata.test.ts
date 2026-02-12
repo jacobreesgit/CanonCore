@@ -32,17 +32,11 @@ vi.mock("@/lib/tmdb-client", () => ({
   searchMedia: vi.fn(),
   getMovie: vi.fn(),
   getTVShow: vi.fn(),
-  downloadPoster: vi.fn(),
   extractYear: vi.fn((date: string) => (date ? date.split("-")[0] : "")),
   truncateOverview: vi.fn((text: string) =>
     text && text.length > 200 ? text.slice(0, 197) + "..." : text || ""
   ),
   isTMDBConfigured: vi.fn(() => true),
-}));
-
-// Mock Google Drive upload (poster upload)
-vi.mock("@/lib/google-drive-upload", () => ({
-  uploadBuffer: vi.fn(),
 }));
 
 // Mock next/cache revalidation
@@ -51,7 +45,7 @@ vi.mock("next/cache", () => ({
 }));
 
 import { auth } from "@/lib/auth";
-import { getMovie, getTVShow, downloadPoster } from "@/lib/tmdb-client";
+import { getMovie, getTVShow } from "@/lib/tmdb-client";
 
 // Cast to bypass complex types
 const mockAuth = auth as unknown as ReturnType<
@@ -82,9 +76,6 @@ describe("TMDB apply metadata integration", () => {
       user: { id: TEST_USER_ID, email: TEST_USER_EMAIL },
       expires: new Date().toISOString(),
     });
-
-    // Default TMDB mocks
-    vi.mocked(downloadPoster).mockResolvedValue(null);
   });
 
   afterAll(async () => {

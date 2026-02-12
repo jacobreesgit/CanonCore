@@ -8,16 +8,15 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Search, Folder, Globe, X } from "lucide-react";
+import { Search, Globe, X } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-import { useImageLoaded } from "@/hooks/use-image-loaded";
 import { getSearchableItems } from "@/lib/item-actions";
 import { searchPublicUsers, searchPublicItems } from "@/lib/public-auth";
 import { MobileBottomSheet } from "./mobile-bottom-sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { UserThumbnail } from "@/components/search/user-thumbnail";
+import { ItemThumbnail } from "@/components/search/item-thumbnail";
 import type {
   SearchableItem,
   SearchableUser,
@@ -45,40 +44,6 @@ let publicItemsCache: CacheEntry<SearchablePublicItem[]> | null = null;
  */
 function isCacheValid<T>(cache: CacheEntry<T> | null): cache is CacheEntry<T> {
   return cache !== null && Date.now() - cache.timestamp < CACHE_TTL;
-}
-
-/**
- * Artwork thumbnail with load state tracking.
- */
-function ArtworkThumbnail({ artworkId }: { artworkId: string }) {
-  const artworkSrc = `/api/artwork/${artworkId}`;
-  const { ref, loaded, onLoad, onError } = useImageLoaded(artworkSrc);
-
-  return (
-    <div className="bg-muted relative size-10 shrink-0 overflow-hidden rounded-lg">
-      {!loaded && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Folder
-            aria-hidden="true"
-            className="text-muted-foreground/50 size-5"
-          />
-        </div>
-      )}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        ref={ref}
-        src={artworkSrc}
-        alt=""
-        loading="lazy"
-        className={cn(
-          "absolute inset-0 h-full w-full object-cover transition-opacity duration-150",
-          loaded ? "opacity-100" : "opacity-0"
-        )}
-        onLoad={onLoad}
-        onError={onError}
-      />
-    </div>
-  );
 }
 
 /**
@@ -399,15 +364,15 @@ export function MobileSearchSheet({
                       onClick={() =>
                         handleSelectItem(item.id, item.ownerUsername)
                       }
-                      className="hover:bg-muted/50 active:bg-muted flex w-full items-center gap-3 rounded-lg px-1 py-2 text-left transition-colors"
+                      className="hover:bg-muted/50 active:bg-muted flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors"
                     >
-                      {item.artworkId ? (
-                        <ArtworkThumbnail artworkId={item.artworkId} />
-                      ) : (
-                        <div className="bg-muted/50 text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-lg">
-                          <Folder className="size-5" aria-hidden="true" />
-                        </div>
-                      )}
+                      <ItemThumbnail
+                        tmdbPosterPath={item.tmdbPosterPath}
+                        artworkId={item.artworkId}
+                        size="size-10"
+                        rounded="rounded-lg"
+                        iconSize="size-5"
+                      />
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium">{item.name}</p>
                         {item.breadcrumb && (
@@ -464,15 +429,16 @@ export function MobileSearchSheet({
                       onClick={() =>
                         handleSelectPublicItem(item.id, item.ownerUsername)
                       }
-                      className="hover:bg-muted/50 active:bg-muted flex w-full items-center gap-3 rounded-lg px-1 py-2 text-left transition-colors"
+                      className="hover:bg-muted/50 active:bg-muted flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors"
                     >
-                      {item.artworkId ? (
-                        <ArtworkThumbnail artworkId={item.artworkId} />
-                      ) : (
-                        <div className="bg-muted/50 text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-lg">
-                          <Globe className="size-5" aria-hidden="true" />
-                        </div>
-                      )}
+                      <ItemThumbnail
+                        tmdbPosterPath={item.tmdbPosterPath}
+                        artworkId={item.artworkId}
+                        size="size-10"
+                        rounded="rounded-lg"
+                        iconSize="size-5"
+                        fallbackIcon={Globe}
+                      />
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium">{item.name}</p>
                         <p className="text-muted-foreground truncate text-xs">
@@ -508,7 +474,7 @@ export function MobileSearchSheet({
                       type="button"
                       role="option"
                       onClick={() => handleSelectUser(user.username)}
-                      className="hover:bg-muted/50 active:bg-muted flex w-full items-center gap-3 rounded-lg px-1 py-2 text-left transition-colors"
+                      className="hover:bg-muted/50 active:bg-muted flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors"
                     >
                       <UserThumbnail
                         userId={user.id}

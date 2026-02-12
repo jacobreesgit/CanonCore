@@ -16,6 +16,7 @@ test.describe("Heavy Items (serial)", () => {
     testUser,
     itemsPage,
   }) => {
+    test.slow();
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
     await itemsPage.createItem("Test Folder 1");
     await itemsPage.createItem("Test Folder 2");

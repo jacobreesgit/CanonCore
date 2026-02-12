@@ -215,6 +215,8 @@ export default async function ItemDetailPage({
               childCount: childItems.length,
               tmdbId: item.tmdbId,
               tmdbType: item.tmdbType,
+              tmdbPosterPath: item.tmdbPosterPath,
+              tmdbBackdropPath: item.tmdbBackdropPath,
               tmdbShowTagline: item.tmdbShowTagline,
               tmdbShowMetadata: item.tmdbShowMetadata,
               tmdbShowGenres: item.tmdbShowGenres,

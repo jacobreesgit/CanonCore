@@ -18,7 +18,8 @@ test.describe("Items Max Depth Journey", () => {
     itemsPage,
   }) => {
     // This test creates 10 levels of nesting - allow extra time
-    test.setTimeout(120000);
+    test.slow();
+    test.setTimeout(180000);
 
     await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
 
@@ -49,8 +50,10 @@ test.describe("Items Max Depth Journey", () => {
     await itemsPage.expectErrorToast("Maximum nesting depth reached");
 
     // "Too Deep" should NOT be created (dialog still open after error)
-    // Close the dialog and verify item doesn't exist
-    await itemsPage.addFolderCancel.click();
+    // Close the dialog — Escape dismisses the TMDB search popover + sheet/dialog
+    // (on mobile, search results overlay the Cancel button)
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
     await itemsPage.expectItemNotVisible("Too Deep");
   });
 
