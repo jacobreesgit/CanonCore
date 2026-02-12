@@ -91,6 +91,7 @@ test.describe("Explore Page Journey", () => {
           .getByTestId("items-grid-view")
           .locator('[data-testid="grid-item-title"]')
           .filter({ hasText: "Public Explore Collection" })
+          .first()
       ).toBeVisible();
 
       // Should show owner username (use .first() since username appears multiple times in grid)
@@ -103,13 +104,10 @@ test.describe("Explore Page Journey", () => {
     }) => {
       await publicProfilePage.gotoExplore();
 
-      // Use dispatchEvent to avoid hover triggering the overlay which contains
-      // an owner profile link that intercepts regular clicks
+      // Use data-id with specific item ID to avoid matching stale items,
+      // and dispatchEvent to avoid hover overlay interception
       await page
-        .getByTestId("items-grid-view")
-        .locator("[data-id]")
-        .filter({ hasText: "Public Explore Collection" })
-        .first()
+        .locator(`[data-id="${publicItemId}"]`)
         .dispatchEvent("click");
 
       // Should navigate to the public item page
@@ -147,6 +145,7 @@ test.describe("Explore Page Journey", () => {
           .getByTestId("items-grid-view")
           .locator('[data-testid="grid-item-title"]')
           .filter({ hasText: "Public Explore Collection" })
+          .first()
       ).toBeVisible();
     });
 
@@ -186,6 +185,7 @@ test.describe("Explore Page Journey", () => {
           .getByTestId("items-grid-view")
           .locator('[data-testid="grid-item-title"]')
           .filter({ hasText: "Public Explore Collection" })
+          .first()
       ).toBeVisible();
     });
   });
@@ -284,6 +284,8 @@ test.describe("Explore Page Journey", () => {
     let owner2Id: string;
     let owner1Username: string;
     let owner2Username: string;
+    let owner1ItemId: string;
+    let owner2ItemId: string;
 
     test.beforeEach(async () => {
       // Generate unique usernames for each test run
@@ -315,7 +317,7 @@ test.describe("Explore Page Journey", () => {
       owner2Id = owner2.id;
 
       // Create items for each owner
-      await prisma.item.create({
+      const item1 = await prisma.item.create({
         data: {
           name: "Owner 1 Collection",
           userId: owner1Id,
@@ -324,8 +326,9 @@ test.describe("Explore Page Journey", () => {
           isPublic: true,
         },
       });
+      owner1ItemId = item1.id;
 
-      await prisma.item.create({
+      const item2 = await prisma.item.create({
         data: {
           name: "Owner 2 Collection",
           userId: owner2Id,
@@ -334,6 +337,7 @@ test.describe("Explore Page Journey", () => {
           isPublic: true,
         },
       });
+      owner2ItemId = item2.id;
     });
 
     test.afterEach(async () => {
@@ -378,26 +382,24 @@ test.describe("Explore Page Journey", () => {
     }) => {
       await publicProfilePage.gotoExplore();
 
-      // Click owner 1's item — use dispatchEvent to avoid hover overlay interception
+      // Use data-id with specific item IDs and dispatchEvent to avoid hover overlay
       await page
-        .getByTestId("items-grid-view")
-        .locator("[data-id]")
-        .filter({ hasText: "Owner 1 Collection" })
-        .first()
+        .locator(`[data-id="${owner1ItemId}"]`)
         .dispatchEvent("click");
-      await expect(page).toHaveURL(new RegExp(`/u/${owner1Username}/`));
+      await expect(page).toHaveURL(
+        `/u/${owner1Username}/${owner1ItemId}`
+      );
 
       // Go back to explore
       await publicProfilePage.gotoExplore();
 
-      // Click owner 2's item — use dispatchEvent to avoid hover overlay interception
+      // Click owner 2's item
       await page
-        .getByTestId("items-grid-view")
-        .locator("[data-id]")
-        .filter({ hasText: "Owner 2 Collection" })
-        .first()
+        .locator(`[data-id="${owner2ItemId}"]`)
         .dispatchEvent("click");
-      await expect(page).toHaveURL(new RegExp(`/u/${owner2Username}/`));
+      await expect(page).toHaveURL(
+        `/u/${owner2Username}/${owner2ItemId}`
+      );
     });
   });
 });

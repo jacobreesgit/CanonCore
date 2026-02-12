@@ -9,6 +9,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Dialog,
   DialogContent,
@@ -283,6 +284,7 @@ export function ForkDestinationDialog({
   onConfirm,
   isForking,
 }: ForkDestinationDialogProps) {
+  const isMobile = useIsMobile();
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -374,154 +376,148 @@ export function ForkDestinationDialog({
 
   return (
     <>
-      {/* Desktop: Dialog */}
-      <div className="hidden lg:contents">
-        <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent
-            className={cn(
-              "sm:max-w-md",
-              "bg-[#1a1a1a]/95 backdrop-blur-xl",
-              "border border-[var(--glass-border)]",
-              "shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
-              "text-foreground"
-            )}
-          >
-            <DialogHeader>
-              <DialogTitle className="text-foreground flex items-center gap-2">
-                <Copy className="h-5 w-5" />
-                Fork to Library
-              </DialogTitle>
-              <DialogDescription className="text-muted-foreground">
-                Choose where to add &ldquo;{itemName}&rdquo; in your library.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="relative mt-4">
-              {isForking && <ForkingOverlay />}
-              <FolderListContent {...sharedListProps} />
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => onOpenChange(false)}
-                disabled={isForking}
-                className={cn(
-                  "rounded-full px-4 py-2",
-                  "text-sm font-medium",
-                  "border border-white/20 bg-white/10",
-                  "text-muted-foreground",
-                  "hover:text-foreground hover:bg-white/20",
-                  "transition-colors duration-150",
-                  "disabled:cursor-not-allowed disabled:opacity-50"
-                )}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirm}
-                disabled={isForking || loading}
-                className={cn(
-                  "inline-flex items-center gap-2 rounded-full px-4 py-2",
-                  "text-sm font-medium",
-                  "bg-white text-black",
-                  "hover:bg-white/90",
-                  "active:scale-[0.97]",
-                  "transition-all duration-150",
-                  "disabled:cursor-not-allowed disabled:opacity-50"
-                )}
-              >
-                {isForking ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Forking…
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4" />
-                    Fork Here
-                  </>
-                )}
-              </button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Mobile: MobileBottomSheet */}
-      <div className="lg:hidden">
-        <MobileBottomSheet
-          open={open}
-          onOpenChange={onOpenChange}
-          snapPoints={[0.85]}
-          repositionInputs
-          title="Fork to Library"
-          description={`Choose where to add "${itemName}" in your library`}
+      {/* Desktop: Dialog — only open when not mobile to prevent dual portals
+          (CSS hidden wrappers don't prevent portal-based dialogs rendering to <body>) */}
+      <Dialog open={open && !isMobile} onOpenChange={onOpenChange}>
+        <DialogContent
           className={cn(
+            "sm:max-w-md",
             "bg-[#1a1a1a]/95 backdrop-blur-xl",
-            "border-t border-white/[0.08]",
+            "border border-[var(--glass-border)]",
+            "shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
             "text-foreground"
           )}
         >
-          <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
-            <div className="flex items-center gap-3">
-              <div
-                className={cn(
-                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                  "bg-primary/10 ring-primary/20 ring-1"
-                )}
-              >
-                <Copy aria-hidden="true" className="text-primary size-5" />
-              </div>
-              <div className="min-w-0">
-                <MobileBottomSheetTitle>Fork to Library</MobileBottomSheetTitle>
-                <p className="text-muted-foreground truncate text-sm">
-                  &ldquo;{itemName}&rdquo;
-                </p>
-              </div>
-            </div>
-          </MobileBottomSheetHeader>
+          <DialogHeader>
+            <DialogTitle className="text-foreground flex items-center gap-2">
+              <Copy className="h-5 w-5" />
+              Fork to Library
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Choose where to add &ldquo;{itemName}&rdquo; in your library.
+            </DialogDescription>
+          </DialogHeader>
 
-          <MobileBottomSheetContent className="relative">
+          <div className="relative mt-4">
             {isForking && <ForkingOverlay />}
             <FolderListContent {...sharedListProps} />
-          </MobileBottomSheetContent>
+          </div>
 
-          <MobileBottomSheetFooter className="pb-[calc(1rem+env(safe-area-inset-bottom))]">
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isForking}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleConfirm}
-                disabled={isForking || loading}
-                className="flex-1"
-              >
-                {isForking ? (
-                  <>
-                    <Loader2
-                      aria-hidden="true"
-                      className="size-4 animate-spin"
-                    />
-                    Forking…
-                  </>
-                ) : (
-                  <>
-                    <Copy aria-hidden="true" className="size-4" />
-                    Fork Here
-                  </>
-                )}
-              </Button>
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              disabled={isForking}
+              className={cn(
+                "rounded-full px-4 py-2",
+                "text-sm font-medium",
+                "border border-white/20 bg-white/10",
+                "text-muted-foreground",
+                "hover:text-foreground hover:bg-white/20",
+                "transition-colors duration-150",
+                "disabled:cursor-not-allowed disabled:opacity-50"
+              )}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={isForking || loading}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full px-4 py-2",
+                "text-sm font-medium",
+                "bg-white text-black",
+                "hover:bg-white/90",
+                "active:scale-[0.97]",
+                "transition-all duration-150",
+                "disabled:cursor-not-allowed disabled:opacity-50"
+              )}
+            >
+              {isForking ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Forking…
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4" />
+                  Fork Here
+                </>
+              )}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Mobile: MobileBottomSheet — only open when mobile */}
+      <MobileBottomSheet
+        open={open && isMobile}
+        onOpenChange={onOpenChange}
+        snapPoints={[0.85]}
+        repositionInputs
+        title="Fork to Library"
+        description={`Choose where to add "${itemName}" in your library`}
+        className={cn(
+          "bg-[#1a1a1a]/95 backdrop-blur-xl",
+          "border-t border-white/[0.08]",
+          "text-foreground"
+        )}
+      >
+        <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
+          <div className="flex items-center gap-3">
+            <div
+              className={cn(
+                "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                "bg-primary/10 ring-primary/20 ring-1"
+              )}
+            >
+              <Copy aria-hidden="true" className="text-primary size-5" />
             </div>
-          </MobileBottomSheetFooter>
-        </MobileBottomSheet>
-      </div>
+            <div className="min-w-0">
+              <MobileBottomSheetTitle>Fork to Library</MobileBottomSheetTitle>
+              <p className="text-muted-foreground truncate text-sm">
+                &ldquo;{itemName}&rdquo;
+              </p>
+            </div>
+          </div>
+        </MobileBottomSheetHeader>
+
+        <MobileBottomSheetContent className="relative">
+          {isForking && <ForkingOverlay />}
+          <FolderListContent {...sharedListProps} />
+        </MobileBottomSheetContent>
+
+        <MobileBottomSheetFooter className="pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isForking}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={isForking || loading}
+              className="flex-1"
+            >
+              {isForking ? (
+                <>
+                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                  Forking…
+                </>
+              ) : (
+                <>
+                  <Copy aria-hidden="true" className="size-4" />
+                  Fork Here
+                </>
+              )}
+            </Button>
+          </div>
+        </MobileBottomSheetFooter>
+      </MobileBottomSheet>
     </>
   );
 }

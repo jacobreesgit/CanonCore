@@ -121,7 +121,7 @@ export function MobileBottomSheet({
             "[transform:translateZ(0)] transform-gpu [will-change:transform] [backface-visibility:hidden]",
             className
           )}
-          style={minHeight ? { minHeight } : undefined}
+          style={minHeight ? { minHeight, maxHeight: minHeight } : undefined}
           aria-describedby={description ? "sheet-description" : undefined}
           data-testid={dataTestId}
         >
@@ -214,7 +214,7 @@ export function MobileBottomSheetFooter({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("mt-auto flex flex-col gap-2 px-4 pb-4", className)}
+      className={cn("mt-auto flex flex-col gap-2 p-4", className)}
       {...props}
     >
       {children}

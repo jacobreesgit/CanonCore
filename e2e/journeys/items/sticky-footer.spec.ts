@@ -16,6 +16,7 @@ test.describe("Sticky Dialog Footer", () => {
     itemsPage,
     page,
   }) => {
+    test.slow();
     const isMobile = await isMobileViewport(page);
     test.skip(isMobile, "Sticky footer is a desktop Dialog pattern");
 

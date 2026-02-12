@@ -387,6 +387,7 @@ function ViewerModeContent({
                     id={item.id}
                     name={item.name}
                     description={item.description}
+                    tmdbPosterPath={item.tmdbPosterPath}
                     artworkId={item.artworkId}
                     onClick={() => handleItemClick(item.id)}
                     onMouseEnter={() => handleMouseEnter(item.id)}
@@ -424,6 +425,7 @@ function ViewerModeContent({
                       id={item.id}
                       name={item.name}
                       description={item.description}
+                      tmdbPosterPath={originalItem?.tmdbPosterPath ?? null}
                       artworkId={originalItem?.artworkId ?? item.artworkId}
                       onClick={() => handleItemClick(item.id)}
                       onMouseEnter={() => handleMouseEnter(item.id)}

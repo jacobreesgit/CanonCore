@@ -36,6 +36,8 @@ function createItem(
     updatedAt: new Date("2024-01-01"),
     tmdbId: null,
     tmdbType: null,
+    tmdbPosterPath: null,
+    tmdbBackdropPath: null,
     tmdbShowTagline: true,
     tmdbShowMetadata: true,
     tmdbShowGenres: true,

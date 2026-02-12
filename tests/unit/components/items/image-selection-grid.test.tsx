@@ -274,7 +274,7 @@ describe("ImageSelectionGrid", () => {
       // Check icon should be visible for the selected image
       const selectedButton = screen
         .getAllByRole("button")
-        .find((b) => b.className.includes("ring-amber-500"));
+        .find((b) => b.className.includes("ring-brand"));
       expect(selectedButton).toBeInTheDocument();
     });
   });

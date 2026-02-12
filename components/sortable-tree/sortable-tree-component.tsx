@@ -307,6 +307,7 @@ export function SortableTree({
               collapsed,
               depth,
               pinnedOrder,
+              tmdbPosterPath,
               driveFileId,
             }) => (
               <SortableTreeItem
@@ -338,6 +339,7 @@ export function SortableTree({
                     : undefined
                 }
                 onAddChildComplete={onAddChildComplete}
+                tmdbPosterPath={tmdbPosterPath}
                 driveFileId={driveFileId}
                 showDescription={false}
                 hasDriveConnection={hasDriveConnection}

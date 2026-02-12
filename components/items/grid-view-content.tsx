@@ -119,7 +119,7 @@ export function GridViewContent({
           </h2>
           <div
             data-testid="pinned-items-grid"
-            className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6"
+            className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6"
           >
             {pinnedItems.map((item, index) => (
               <ItemContextMenu
@@ -139,6 +139,7 @@ export function GridViewContent({
                   name={item.name}
                   description={item.description}
                   onClick={() => onItemClick(item.id)}
+                  tmdbPosterPath={item.tmdbPosterPath}
                   artworkId={item.artworkId}
                   progressPercentage={item.progress?.percentage ?? null}
                   watchedCount={item.progress?.watchedItems}
@@ -175,7 +176,7 @@ export function GridViewContent({
           )}
           <div
             data-testid="items-grid-view"
-            className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6"
+            className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6"
           >
             {unpinnedItems.map((item, index) => (
               <ItemContextMenu
@@ -195,6 +196,7 @@ export function GridViewContent({
                   name={item.name}
                   description={item.description}
                   onClick={() => onItemClick(item.id)}
+                  tmdbPosterPath={item.tmdbPosterPath}
                   artworkId={item.artworkId}
                   progressPercentage={item.progress?.percentage ?? null}
                   watchedCount={item.progress?.watchedItems}

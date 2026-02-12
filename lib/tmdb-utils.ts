@@ -1,11 +1,17 @@
 /**
  * TMDB resolution utilities for mapping season/episode items to their parent show.
  * Used by server pages to resolve TMDB IDs before fetching extended details.
+ *
+ * Re-exports client-safe image URL helpers from tmdb-image-utils.ts so that
+ * server code can import everything from a single module.
  */
 
 import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import type { TmdbDisplayOptions } from "@/lib/types";
+
+// Re-export client-safe image URL utilities
+export { getTmdbPosterUrl, getTmdbBackdropUrl } from "@/lib/tmdb-image-utils";
 
 /** Fields required by extractTmdbDisplayOptions. */
 interface TmdbDisplayFields {

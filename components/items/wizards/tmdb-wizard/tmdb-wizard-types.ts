@@ -65,21 +65,16 @@ export const TMDB_WIZARD_STEP_LABELS: Record<TMDBWizardStep, string> = {
 };
 
 /**
- * Gets the visible steps based on content type and Drive connection.
+ * Gets the visible steps based on content type.
+ * Artwork steps are always shown — TMDB images are served from CDN
+ * and don't require a Google Drive connection.
  *
  * @param contentType - Content type (movie, show, season, episode)
- * @param hasDriveConnection - Whether user has Google Drive connected
  * @returns Array of visible wizard steps
  */
 export function getVisibleSteps(
-  contentType: TMDBWizardContentType,
-  hasDriveConnection: boolean
+  contentType: TMDBWizardContentType
 ): TMDBWizardStep[] {
-  // Without Drive connection, skip all artwork steps
-  if (!hasDriveConnection) {
-    return ["text", "summary"];
-  }
-
   switch (contentType) {
     case "movie":
     case "show":

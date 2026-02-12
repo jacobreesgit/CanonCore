@@ -3,6 +3,9 @@
  * Designed for touch-first use in bottom sheets.
  * Supports drag gestures, keyboard navigation, lazy rendering,
  * and WCAG 2.1 Level A accessibility.
+ *
+ * When more than 3 tabs are provided, automatically switches to a
+ * Select dropdown mode for better usability on mobile.
  */
 
 "use client";
@@ -12,6 +15,13 @@ import { motion, AnimatePresence } from "motion/react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/hooks/use-reduced-motion";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 /** Tab configuration for SwipeableTabs. */
 export interface SwipeableTab {
@@ -40,6 +50,9 @@ interface SwipeableTabsProps {
   className?: string;
 }
 
+/** Maximum number of tabs before switching to Select dropdown mode. */
+const SELECT_THRESHOLD = 3;
+
 /** Spring animation config for tab transitions. */
 const SPRING_CONFIG = { type: "spring" as const, stiffness: 300, damping: 30 };
 
@@ -53,6 +66,9 @@ const VELOCITY_THRESHOLD = 500;
  * Horizontal swipeable tab component with Motion for React gestures.
  * Provides tab bar with sliding indicator, swipe navigation, and full
  * keyboard accessibility (arrow keys, Home/End).
+ *
+ * Automatically switches to a Select dropdown when more than 3 tabs
+ * are provided, improving usability on cramped mobile layouts.
  *
  * @param tabs - Tab configurations with id, label, icon, and content
  * @param activeTab - Currently selected tab ID
@@ -80,6 +96,7 @@ export function SwipeableTabs({
     () => new Set([activeTab])
   );
 
+  const useSelectMode = tabs.length > SELECT_THRESHOLD;
   const activeIndex = tabs.findIndex((t) => t.id === activeTab);
 
   /**
@@ -168,11 +185,104 @@ export function SwipeableTabs({
     [activeIndex, tabs.length, navigateToIndex]
   );
 
+  /**
+   * Handles tab change from the Select dropdown.
+   */
+  const handleSelectChange = useCallback(
+    (value: string) => {
+      const tab = tabs.find((t) => t.id === value);
+      if (tab) {
+        onTabChange(tab.id);
+        setAnnouncement(`${tab.label} tab selected`);
+        if (lazy) {
+          setVisitedTabs((prev) => {
+            if (prev.has(tab.id)) return prev;
+            const next = new Set(prev);
+            next.add(tab.id);
+            return next;
+          });
+        }
+      }
+    },
+    [tabs, onTabChange, lazy]
+  );
+
   const getTabId = (tabId: string) => `${instanceId}-tab-${tabId}`;
   const getPanelId = (tabId: string) => `${instanceId}-panel-${tabId}`;
 
+  // -------------------------------------------------------------------------
+  // Select mode: >3 tabs renders dropdown instead of swipeable tab bar
+  // -------------------------------------------------------------------------
+
+  if (useSelectMode) {
+    const activeTabData = tabs[activeIndex];
+    const ActiveIcon = activeTabData?.icon;
+
+    return (
+      <div className={cn("flex min-h-0 flex-1 flex-col gap-4", className)}>
+        <div data-vaul-no-drag>
+          <Select value={activeTab} onValueChange={handleSelectChange}>
+            <SelectTrigger aria-label={ariaLabel} className="w-full">
+              <SelectValue>
+                {ActiveIcon && (
+                  <ActiveIcon aria-hidden="true" className="size-4 shrink-0" />
+                )}
+                {activeTabData?.label}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <SelectItem key={tab.id} value={tab.id}>
+                    {Icon && (
+                      <Icon aria-hidden="true" className="size-4 shrink-0" />
+                    )}
+                    {tab.label}
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Content panels — map ALL tabs, show/hide to preserve form state */}
+        <div className="relative min-h-0 flex-1 overflow-y-auto">
+          {tabs.map((tab) => {
+            const isActive = tab.id === activeTab;
+            const shouldRender = lazy
+              ? isActive || visitedTabs.has(tab.id)
+              : true;
+
+            return (
+              <div
+                key={tab.id}
+                role="tabpanel"
+                id={getPanelId(tab.id)}
+                aria-labelledby={getTabId(tab.id)}
+                data-testid={`select-panel-${tab.id}`}
+                className={cn(isActive ? "block" : "hidden", "px-1 py-4")}
+              >
+                {shouldRender ? tab.content : null}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Screen reader announcement */}
+        <div aria-live="polite" className="sr-only">
+          {announcement}
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Swipeable mode: ≤3 tabs renders tab bar with drag gestures
+  // -------------------------------------------------------------------------
+
   return (
-    <div className={cn("flex flex-col", className)}>
+    <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
       {/* Tab bar */}
       <div
         ref={tablistRef}

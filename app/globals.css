@@ -30,8 +30,8 @@
   --muted-foreground: rgba(255, 255, 255, 0.6);
   --accent: #1c1c1c;
   --accent-foreground: rgba(255, 255, 255, 0.95);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --destructive: oklch(0.637 0.237 25.331);
+  --destructive-foreground: #ffffff;
   --border: rgba(255, 255, 255, 0.1);
   --input: rgba(255, 255, 255, 0.15);
   --ring: rgba(255, 255, 255, 0.25);
@@ -52,8 +52,11 @@
   --sidebar-border: rgba(255, 255, 255, 0.1);
   --sidebar-ring: rgba(255, 255, 255, 0.25);
 
+  /* Brand accent — unified decorative highlight (monochrome glass) */
+  --brand: #ffffff;
+
   /* Extended tokens — no shadcn equivalent */
-  --tertiary-foreground: rgba(255, 255, 255, 0.4);
+  --tertiary-foreground: rgba(255, 255, 255, 0.55);
   --glow: 0 0 40px rgba(255, 255, 255, 0.05);
   --glass-bg: rgba(255, 255, 255, 0.04);
   --glass-border: rgba(255, 255, 255, 0.06);
@@ -68,22 +71,28 @@
   --section-px-2xl: 6rem; /* 96px */
 
   /* Gradients */
-  --gradient-hero: linear-gradient(
-    to top,
-    rgba(10, 10, 10, 1) 0%,
-    rgba(10, 10, 10, 0.8) 30%,
-    rgba(10, 10, 10, 0.4) 50%,
-    transparent 70%
-  );
+  --gradient-hero-overlay:
+    /* Diagonal sweep from bottom-left — protects floating content */
+    linear-gradient(
+      to top right,
+      rgba(10, 10, 10, 0.95) 0%,
+      rgba(10, 10, 10, 0.7) 25%,
+      rgba(10, 10, 10, 0.3) 50%,
+      transparent 70%
+    ),
+    /* Bottom edge — seamless blend into page background */
+    linear-gradient(
+        to top,
+        rgba(10, 10, 10, 1) 0%,
+        rgba(10, 10, 10, 0.5) 15%,
+        transparent 40%
+      ),
+    /* Top edge — subtle darkening for header/nav */
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, transparent 25%);
   --gradient-card: linear-gradient(
     to top,
     rgba(0, 0, 0, 0.9) 0%,
     rgba(0, 0, 0, 0.6) 40%,
-    transparent 100%
-  );
-  --gradient-top: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.3) 0%,
     transparent 100%
   );
 }
@@ -127,6 +136,7 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-brand: var(--brand);
 }
 
 @layer base {

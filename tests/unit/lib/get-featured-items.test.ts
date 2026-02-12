@@ -55,7 +55,7 @@ describe("getFeaturedItems", () => {
     });
   });
 
-  it("should only include items with artwork files", async () => {
+  it("should only include items with TMDB backdrop or artwork files", async () => {
     vi.mocked(prisma.item.findMany).mockResolvedValue([]);
 
     await getFeaturedItems(5);
@@ -63,7 +63,10 @@ describe("getFeaturedItems", () => {
     expect(prisma.item.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          files: { some: { fileType: "ARTWORK" } },
+          OR: [
+            { tmdbBackdropPath: { not: null } },
+            { files: { some: { fileType: "ARTWORK" } } },
+          ],
         }),
       })
     );

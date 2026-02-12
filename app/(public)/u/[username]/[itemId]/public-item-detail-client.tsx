@@ -25,6 +25,7 @@ import { useItemsSortFilter } from "@/hooks/use-items-sort-filter";
 import { sortItems, filterItems, publicItemsToTree } from "@/lib/item-utils";
 import { Copy, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { getTmdbBackdropUrl } from "@/lib/tmdb-image-utils";
 import type { PublicProfile, PublicItem } from "@/lib/public-auth";
 import type { ForkInfo, ForkStatus } from "@/lib/fork-actions";
 import type { TmdbItemMetadata, TmdbItemDetails } from "@/lib/tmdb-client";
@@ -306,6 +307,7 @@ export function PublicItemClient({
                   id={child.id}
                   name={child.name}
                   description={child.description}
+                  tmdbPosterPath={child.tmdbPosterPath}
                   artworkId={child.artworkId}
                   onClick={() => handleItemClick(child.id)}
                   onMouseEnter={() => handleMouseEnter(child.id)}
@@ -344,6 +346,11 @@ export function PublicItemClient({
   // Determine whether to show tabs
   const showTabs = hasChildren || hasTmdb;
 
+  // Resolve hero background URL: TMDB backdrop takes precedence over artwork
+  const heroBackgroundUrl = item.tmdbBackdropPath
+    ? getTmdbBackdropUrl(item.tmdbBackdropPath)
+    : undefined;
+
   // Hero element
   const hero = (
     <CinematicHero
@@ -351,6 +358,7 @@ export function PublicItemClient({
         {
           id: item.id,
           name: item.name,
+          backgroundUrl: heroBackgroundUrl,
           artworkId: item.artworkId,
           tagline:
             tmdbDisplayOptions?.showTagline !== false

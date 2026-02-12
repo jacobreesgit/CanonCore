@@ -23,8 +23,6 @@ import {
   getSeasonDetails,
   getTVSeasonImages,
   getEpisodeImages,
-  downloadPoster,
-  downloadBackdrop,
   extractYear,
   truncateOverview,
   isTMDBConfigured,
@@ -38,7 +36,6 @@ import {
   type TMDBEpisodeImages,
   type TMDBEpisode,
 } from "@/lib/tmdb-client";
-import { uploadBuffer } from "@/lib/google-drive-upload";
 import { handlePrismaError } from "@/lib/errors";
 import type { TmdbDisplayOptions } from "@/lib/types";
 
@@ -50,10 +47,14 @@ export interface ApplyMetadataOptions {
   updateName?: boolean;
   /** Whether to update the item description */
   updateDescription?: boolean;
-  /** Whether to download and upload poster as primary artwork */
+  /** Whether to store poster path from TMDB */
   updatePoster?: boolean;
-  /** Whether to download and upload backdrop as hero image */
+  /** Whether to store backdrop path from TMDB */
   updateBackdrop?: boolean;
+  /** Selected poster path from wizard gallery (e.g., "/abc123.jpg") */
+  posterPath?: string | null;
+  /** Selected backdrop path from wizard gallery (e.g., "/xyz789.jpg") */
+  backdropPath?: string | null;
 }
 
 /** Default options - update all fields */
@@ -62,6 +63,8 @@ const DEFAULT_METADATA_OPTIONS: Required<ApplyMetadataOptions> = {
   updateDescription: true,
   updatePoster: true,
   updateBackdrop: true,
+  posterPath: null,
+  backdropPath: null,
 };
 
 /**
@@ -168,29 +171,15 @@ export async function applyMetadataAction(
   // Merge with defaults
   const opts = { ...DEFAULT_METADATA_OPTIONS, ...options };
 
-  // Verify item ownership and get existing artwork files
+  // Verify item ownership
   const item = await prisma.item.findUnique({
     where: { id: itemId },
-    select: {
-      userId: true,
-      driveConnectionId: true,
-      files: {
-        where: { fileType: "ARTWORK" },
-        select: { id: true, isPrimary: true, isHero: true },
-      },
-    },
+    select: { userId: true },
   });
 
   if (!item || item.userId !== session.user.id) {
     return { success: false, error: "Item not found" };
   }
-
-  // Check if user has a Drive connection (item may not have driveConnectionId yet
-  // if this is called immediately after item creation, before async Drive folder sync)
-  const userHasDriveConnection = await prisma.googleDriveConnection.findUnique({
-    where: { userId: session.user.id },
-    select: { id: true },
-  });
 
   try {
     // Fetch metadata from TMDB
@@ -228,6 +217,8 @@ export async function applyMetadataAction(
       tmdbType: string;
       name?: string;
       description?: string | null;
+      tmdbPosterPath?: string | null;
+      tmdbBackdropPath?: string | null;
       tmdbShowTagline?: boolean;
       tmdbShowMetadata?: boolean;
       tmdbShowGenres?: boolean;
@@ -242,6 +233,14 @@ export async function applyMetadataAction(
     }
     if (opts.updateDescription) {
       updateData.description = description || null;
+    }
+
+    // Store TMDB image paths directly (wizard-selected path takes precedence)
+    if (opts.updatePoster) {
+      updateData.tmdbPosterPath = opts.posterPath ?? posterPath;
+    }
+    if (opts.updateBackdrop) {
+      updateData.tmdbBackdropPath = opts.backdropPath ?? backdropPath;
     }
 
     // Persist display preferences if provided
@@ -259,100 +258,6 @@ export async function applyMetadataAction(
       where: { id: itemId },
       data: updateData,
     });
-
-    // Find existing artwork files
-    const existingPrimary = item.files?.find((f) => f.isPrimary);
-    const existingHero = item.files?.find((f) => f.isHero);
-
-    // Download poster and backdrop in parallel (async-parallel pattern)
-    const shouldDownloadPoster =
-      opts.updatePoster && userHasDriveConnection && posterPath;
-    const shouldDownloadBackdrop =
-      opts.updateBackdrop && userHasDriveConnection && backdropPath;
-
-    const [posterBuffer, backdropBuffer] = await Promise.all([
-      shouldDownloadPoster
-        ? downloadPoster(posterPath!)
-        : Promise.resolve(null),
-      shouldDownloadBackdrop
-        ? downloadBackdrop(backdropPath!)
-        : Promise.resolve(null),
-    ]);
-
-    // Upload poster if downloaded successfully
-    if (posterBuffer) {
-      const uploadResult = await uploadBuffer(
-        itemId,
-        posterBuffer,
-        "poster.jpg",
-        "image/jpeg"
-      );
-
-      if (uploadResult.success && uploadResult.data?.driveFileId) {
-        if (existingPrimary) {
-          // Update existing primary artwork file
-          await prisma.itemFile.update({
-            where: { id: existingPrimary.id },
-            data: {
-              filename: "poster.jpg",
-              driveFileId: uploadResult.data.driveFileId,
-              size: BigInt(posterBuffer.length),
-            },
-          });
-        } else {
-          // Create new ItemFile record for poster
-          await prisma.itemFile.create({
-            data: {
-              itemId,
-              filename: "poster.jpg",
-              fileType: "ARTWORK",
-              mimeType: "image/jpeg",
-              size: BigInt(posterBuffer.length),
-              driveFileId: uploadResult.data.driveFileId,
-              isPrimary: true,
-            },
-          });
-        }
-      }
-    }
-
-    // Upload backdrop as hero image if downloaded successfully
-    if (backdropBuffer) {
-      const uploadResult = await uploadBuffer(
-        itemId,
-        backdropBuffer,
-        "backdrop.jpg",
-        "image/jpeg"
-      );
-
-      if (uploadResult.success && uploadResult.data?.driveFileId) {
-        if (existingHero) {
-          // Update existing hero artwork file
-          await prisma.itemFile.update({
-            where: { id: existingHero.id },
-            data: {
-              filename: "backdrop.jpg",
-              driveFileId: uploadResult.data.driveFileId,
-              size: BigInt(backdropBuffer.length),
-            },
-          });
-        } else {
-          // Create new ItemFile record for backdrop (hero image)
-          await prisma.itemFile.create({
-            data: {
-              itemId,
-              filename: "backdrop.jpg",
-              fileType: "ARTWORK",
-              mimeType: "image/jpeg",
-              size: BigInt(backdropBuffer.length),
-              driveFileId: uploadResult.data.driveFileId,
-              isPrimary: false,
-              isHero: true,
-            },
-          });
-        }
-      }
-    }
 
     revalidatePath("/u", "layout");
 

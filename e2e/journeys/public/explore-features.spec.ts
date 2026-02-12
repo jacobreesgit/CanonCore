@@ -123,6 +123,7 @@ test.describe("Explore Features", () => {
       page
         .locator('[data-testid="grid-item-title"]')
         .filter({ hasText: "Owner Public Collection" })
+        .first()
     ).toBeVisible();
   });
 

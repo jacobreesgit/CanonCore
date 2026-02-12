@@ -192,14 +192,16 @@ export const FormInteraction: Story = {
     const nameInput = await body.findByLabelText(/name/i);
     await expect(nameInput).toBeInTheDocument();
 
-    // Type a name
+    // Type a name (MediaSearchCombobox updates state async via onChange)
     await userEvent.type(nameInput, "My New Movie");
-    await expect(nameInput).toHaveValue("My New Movie");
+    await waitFor(() => expect(nameInput).toHaveValue("My New Movie"));
 
     // Find and type in description
     const descriptionInput = body.getByLabelText(/description/i);
     await userEvent.type(descriptionInput, "A great film about adventure");
-    await expect(descriptionInput).toHaveValue("A great film about adventure");
+    await waitFor(() =>
+      expect(descriptionInput).toHaveValue("A great film about adventure")
+    );
   },
   parameters: {
     docs: {

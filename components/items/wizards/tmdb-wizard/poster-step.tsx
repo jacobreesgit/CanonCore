@@ -97,7 +97,7 @@ export function TMDBPosterStep({
     <div className="space-y-6">
       {/* Step header */}
       <div>
-        <h3 className="text-lg font-semibold">Select Poster</h3>
+        <h3 className="text-foreground text-lg font-semibold">Select Poster</h3>
         <p className="text-muted-foreground text-sm">
           Choose a poster image for this item.
         </p>

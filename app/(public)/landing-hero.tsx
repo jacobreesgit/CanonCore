@@ -17,11 +17,12 @@ import {
 import Link from "next/link";
 import { SiGoogledrive } from "react-icons/si";
 
+import { useSession } from "next-auth/react";
 import {
   FeatureCardGrid,
   type FeatureItem,
 } from "@/components/feature-card-grid";
-import { Button } from "@/components/ui/button";
+import { HeroButton } from "@/components/items/hero-button";
 
 const features: FeatureItem[] = [
   {
@@ -63,8 +64,8 @@ const features: FeatureItem[] = [
     title: "Public Profiles",
     description:
       "Share collections with a link. Let others fork what they love.",
-    color: "text-orange-500",
-    bgColor: "bg-orange-500/10",
+    color: "text-brand",
+    bgColor: "bg-brand/10",
     href: "/docs/sharing/public-profile",
   },
   {
@@ -83,6 +84,9 @@ const ease = [0.25, 0.46, 0.45, 0.94] as const;
  * Cinematic landing hero with centered typography and feature grid.
  */
 export function HeroContent() {
+  const { data: session, status } = useSession();
+  const username = session?.user?.username as string | undefined;
+  const sessionReady = status !== "loading";
   return (
     <section className="bg-background relative overflow-hidden">
       {/* Atmospheric background — layered gradient orbs */}
@@ -157,15 +161,21 @@ export function HeroContent() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4, ease }}
           >
-            <Button asChild size="lg">
-              <Link href="/sign-up">Get Started</Link>
-            </Button>
-            <Button asChild variant="ghost" size="lg" className="group gap-2">
+            <HeroButton variant="primary" asChild>
+              <Link href={username ? `/u/${username}` : "/sign-up"}>
+                {!sessionReady
+                  ? "\u00A0" /* nbsp placeholder while loading */
+                  : username
+                    ? "My Items"
+                    : "Get Started"}
+              </Link>
+            </HeroButton>
+            <HeroButton asChild className="group">
               <Link href="/explore">
                 Explore Collections
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
               </Link>
-            </Button>
+            </HeroButton>
           </motion.div>
         </div>
 

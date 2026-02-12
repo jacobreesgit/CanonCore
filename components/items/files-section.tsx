@@ -353,7 +353,7 @@ function FileCategoryDropzone({
                     {formatBytes(qf.file.size)}
                   </span>
                   {qf.isPrimary && (
-                    <span className="shrink-0 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                    <span className="bg-brand/20 text-brand shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium">
                       Primary
                     </span>
                   )}

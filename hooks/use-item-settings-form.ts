@@ -143,7 +143,6 @@ export interface UseItemSettingsFormReturn {
   // TMDB display options
   displayOptions: TmdbDisplayOptions;
   handleDisplayOptionsChange: (updated: TmdbDisplayOptions) => void;
-  isSavingDisplay: boolean;
 
   // Current values for wizard
   currentValues: CurrentTextValues;
@@ -229,9 +228,17 @@ export function useItemSettingsForm(
     showVideos: item.tmdbShowVideos,
     showRecommendations: item.tmdbShowRecommendations,
   });
-  const [isSavingDisplay, setIsSavingDisplay] = useState(false);
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const mountedRef = useRef(true);
+  // Original display options for dirty checking
+  const [originalDisplayOptions, setOriginalDisplayOptions] =
+    useState<TmdbDisplayOptions>({
+      showTagline: item.tmdbShowTagline,
+      showMetadata: item.tmdbShowMetadata,
+      showGenres: item.tmdbShowGenres,
+      showCast: item.tmdbShowCast,
+      showProviders: item.tmdbShowProviders,
+      showVideos: item.tmdbShowVideos,
+      showRecommendations: item.tmdbShowRecommendations,
+    });
 
   // Extract stable primitive file IDs to avoid object reference instability
   const initialMediaId = useMemo(
@@ -275,12 +282,30 @@ export function useItemSettingsForm(
       heroArtworkId: initialHeroId,
       primarySubtitleId: initialSubtitleId,
     });
+    const currentDisplayOptions = {
+      showTagline: item.tmdbShowTagline,
+      showMetadata: item.tmdbShowMetadata,
+      showGenres: item.tmdbShowGenres,
+      showCast: item.tmdbShowCast,
+      showProviders: item.tmdbShowProviders,
+      showVideos: item.tmdbShowVideos,
+      showRecommendations: item.tmdbShowRecommendations,
+    };
+    setDisplayOptions(currentDisplayOptions);
+    setOriginalDisplayOptions(currentDisplayOptions);
     setPendingTmdbResult(null);
     setTmdbPreview(null);
     setContentType("movie");
   }, [
     item.name,
     item.description,
+    item.tmdbShowTagline,
+    item.tmdbShowMetadata,
+    item.tmdbShowGenres,
+    item.tmdbShowCast,
+    item.tmdbShowProviders,
+    item.tmdbShowVideos,
+    item.tmdbShowRecommendations,
     initialMediaId,
     initialArtworkId,
     initialHeroId,
@@ -305,13 +330,24 @@ export function useItemSettingsForm(
 
   // Dirty state detection
   const isDirty = useMemo(() => {
+    const displayOptionsDirty =
+      displayOptions.showTagline !== originalDisplayOptions.showTagline ||
+      displayOptions.showMetadata !== originalDisplayOptions.showMetadata ||
+      displayOptions.showGenres !== originalDisplayOptions.showGenres ||
+      displayOptions.showCast !== originalDisplayOptions.showCast ||
+      displayOptions.showProviders !== originalDisplayOptions.showProviders ||
+      displayOptions.showVideos !== originalDisplayOptions.showVideos ||
+      displayOptions.showRecommendations !==
+        originalDisplayOptions.showRecommendations;
+
     return (
       name !== originalValues.name ||
       description !== originalValues.description ||
       primaryMediaId !== originalValues.primaryMediaId ||
       primaryArtworkId !== originalValues.primaryArtworkId ||
       heroArtworkId !== originalValues.heroArtworkId ||
-      primarySubtitleId !== originalValues.primarySubtitleId
+      primarySubtitleId !== originalValues.primarySubtitleId ||
+      displayOptionsDirty
     );
   }, [
     name,
@@ -321,6 +357,8 @@ export function useItemSettingsForm(
     heroArtworkId,
     primarySubtitleId,
     originalValues,
+    displayOptions,
+    originalDisplayOptions,
   ]);
 
   // Current values for wizard
@@ -342,8 +380,9 @@ export function useItemSettingsForm(
     setPrimaryArtworkId(originalValues.primaryArtworkId);
     setHeroArtworkId(originalValues.heroArtworkId);
     setPrimarySubtitleId(originalValues.primarySubtitleId);
+    setDisplayOptions(originalDisplayOptions);
     onClose?.();
-  }, [originalValues, onClose]);
+  }, [originalValues, originalDisplayOptions, onClose]);
 
   /**
    * Saves all changes atomically.
@@ -390,9 +429,29 @@ export function useItemSettingsForm(
         changes.primarySubtitleId = primarySubtitleId;
       }
 
-      const result = await updateItemSettings(item.id, changes);
+      // Save item settings and TMDB display options in parallel
+      const displayOptionsDirty =
+        displayOptions.showTagline !== originalDisplayOptions.showTagline ||
+        displayOptions.showMetadata !== originalDisplayOptions.showMetadata ||
+        displayOptions.showGenres !== originalDisplayOptions.showGenres ||
+        displayOptions.showCast !== originalDisplayOptions.showCast ||
+        displayOptions.showProviders !== originalDisplayOptions.showProviders ||
+        displayOptions.showVideos !== originalDisplayOptions.showVideos ||
+        displayOptions.showRecommendations !==
+          originalDisplayOptions.showRecommendations;
 
-      if (result.success) {
+      const hasFieldChanges = Object.keys(changes).length > 0;
+
+      const [settingsResult, displayResult] = await Promise.all([
+        hasFieldChanges
+          ? updateItemSettings(item.id, changes)
+          : Promise.resolve({ success: true } as const),
+        displayOptionsDirty
+          ? updateTmdbDisplayOptions(item.id, displayOptions)
+          : Promise.resolve({ success: true } as const),
+      ]);
+
+      if (settingsResult.success && displayResult.success) {
         if (uploadCount > 0) {
           const fileWord = uploadCount === 1 ? "file" : "files";
           toast.success(`Settings saved. ${uploadCount} ${fileWord} uploaded.`);
@@ -404,7 +463,15 @@ export function useItemSettingsForm(
           console.warn("[useItemSettingsForm] Refetch failed after save:", err);
         });
       } else {
-        toast.error(result.error || "Failed to save settings");
+        const error =
+          (!settingsResult.success && "error" in settingsResult
+            ? settingsResult.error
+            : undefined) ||
+          (!displayResult.success && "error" in displayResult
+            ? displayResult.error
+            : undefined) ||
+          "Failed to save settings";
+        toast.error(error);
       }
     } catch {
       toast.error("Failed to save settings");
@@ -419,6 +486,8 @@ export function useItemSettingsForm(
     heroArtworkId,
     primarySubtitleId,
     originalValues,
+    displayOptions,
+    originalDisplayOptions,
     uploadCount,
     item.id,
     onSettingsChange,
@@ -621,54 +690,18 @@ export function useItemSettingsForm(
   }, []);
 
   /**
-   * Handles display option changes with debounced auto-save.
+   * Handles display option changes (saved with Save Changes button).
    */
   const handleDisplayOptionsChange = useCallback(
     (updated: TmdbDisplayOptions) => {
       setDisplayOptions(updated);
-
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-
-      saveTimeoutRef.current = setTimeout(async () => {
-        if (!mountedRef.current) return;
-        setIsSavingDisplay(true);
-        try {
-          const result = await updateTmdbDisplayOptions(item.id, updated);
-          if (!mountedRef.current) return;
-          if (!result.success) {
-            toast.error(result.error);
-          } else {
-            await onSettingsChange?.();
-          }
-        } catch {
-          if (!mountedRef.current) return;
-          toast.error("Failed to update display options");
-        } finally {
-          if (mountedRef.current) {
-            setIsSavingDisplay(false);
-          }
-        }
-      }, 300);
     },
-    [item.id, onSettingsChange]
+    []
   );
 
-  // Clean up debounce timeout on unmount
+  // Sync display options when item TMDB fields change (e.g. after wizard apply)
   useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Sync display options when item TMDB fields change
-  useEffect(() => {
-    setDisplayOptions({
+    const updated = {
       showTagline: item.tmdbShowTagline,
       showMetadata: item.tmdbShowMetadata,
       showGenres: item.tmdbShowGenres,
@@ -676,7 +709,9 @@ export function useItemSettingsForm(
       showProviders: item.tmdbShowProviders,
       showVideos: item.tmdbShowVideos,
       showRecommendations: item.tmdbShowRecommendations,
-    });
+    };
+    setDisplayOptions(updated);
+    setOriginalDisplayOptions(updated);
   }, [
     item.id,
     item.tmdbShowTagline,
@@ -758,7 +793,6 @@ export function useItemSettingsForm(
     // TMDB display options
     displayOptions,
     handleDisplayOptionsChange,
-    isSavingDisplay,
 
     // Current values for wizard
     currentValues,

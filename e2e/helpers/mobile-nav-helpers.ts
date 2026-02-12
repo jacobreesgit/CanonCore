@@ -127,8 +127,12 @@ export async function navigateToSignIn(page: Page): Promise<void> {
  */
 export async function signOutViaMobile(page: Page): Promise<void> {
   await openSettingsViaMobile(page);
-  const accountTab = page.getByRole("tab", { name: /account/i });
-  await accountTab.click();
+  // Settings sheet uses Select dropdown when >3 tabs
+  const selectTrigger = page.getByRole("combobox", {
+    name: /settings tabs/i,
+  });
+  await selectTrigger.click();
+  await page.getByRole("option", { name: /account/i }).click();
   const signOutButton = page.getByRole("button", { name: /sign out/i });
   await signOutButton.click();
 }

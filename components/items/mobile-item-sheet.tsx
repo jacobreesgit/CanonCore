@@ -46,8 +46,9 @@ import { MediaSearchCombobox } from "@/components/items/media-search-combobox";
 import { TmdbDisplayOptionsEditor } from "@/components/items/tmdb-display-options";
 import { VisibilityToggle } from "@/components/items/visibility-toggle";
 import { TMDBWizard } from "./wizards/tmdb-wizard";
-import { WizardStepIndicator } from "@/components/wizards/wizard-step-indicator";
+
 import { TVPicker } from "./wizards/tv-picker";
+import { WizardProgressBar } from "@/components/wizards/wizard-progress-bar";
 import {
   useItemSettingsForm,
   type ItemSettingsFormItem,
@@ -173,7 +174,6 @@ export function MobileItemSheet({
     handleMediaSelect,
     displayOptions,
     handleDisplayOptionsChange,
-    isSavingDisplay,
     save,
     handleUploadComplete,
     handleFileDeleted,
@@ -415,26 +415,10 @@ export function MobileItemSheet({
 
   // Settings tab content - TMDB
   const tmdbContent = item.tmdbId ? (
-    <div className="space-y-4">
-      <TmdbDisplayOptionsEditor
-        displayOptions={displayOptions}
-        onChange={handleDisplayOptionsChange}
-      />
-      <p
-        className={cn(
-          "text-muted-foreground flex items-center gap-2 text-xs transition-opacity",
-          isSavingDisplay ? "opacity-100" : "opacity-0"
-        )}
-        aria-live="polite"
-      >
-        {isSavingDisplay && (
-          <>
-            <Loader2 className="size-3 animate-spin" aria-hidden="true" />
-            Saving…
-          </>
-        )}
-      </p>
-    </div>
+    <TmdbDisplayOptionsEditor
+      displayOptions={displayOptions}
+      onChange={handleDisplayOptionsChange}
+    />
   ) : null;
 
   // Build tabs array
@@ -556,15 +540,6 @@ export function MobileItemSheet({
           )}
         >
           <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
-            {wizardHeaderProps && (
-              <div className="pb-4">
-                <WizardStepIndicator
-                  steps={wizardHeaderProps.steps}
-                  currentStep={wizardHeaderProps.currentStep}
-                  stepLabels={wizardHeaderProps.stepLabels}
-                />
-              </div>
-            )}
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -579,21 +554,37 @@ export function MobileItemSheet({
               <div
                 className={cn(
                   "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                  "bg-amber-500/10 ring-1 ring-amber-500/20"
+                  "bg-brand/10 ring-brand/20 ring-1"
                 )}
               >
-                <Sparkles
-                  aria-hidden="true"
-                  className="size-5 text-amber-500"
-                />
+                <Sparkles aria-hidden="true" className="text-brand size-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <MobileBottomSheetTitle>Apply Metadata</MobileBottomSheetTitle>
                 <p className="text-muted-foreground text-sm">
                   {tmdbPreview.name || "Select metadata to apply"}
+                  {wizardHeaderProps &&
+                    (() => {
+                      const idx = wizardHeaderProps.steps.indexOf(
+                        wizardHeaderProps.currentStep
+                      );
+                      return (
+                        <span className="text-[var(--tertiary-foreground)]">
+                          {" "}
+                          · Step {idx + 1} of {wizardHeaderProps.steps.length}
+                        </span>
+                      );
+                    })()}
                 </p>
               </div>
             </div>
+            {wizardHeaderProps && (
+              <WizardProgressBar
+                steps={wizardHeaderProps.steps}
+                currentStep={wizardHeaderProps.currentStep}
+                stepLabels={wizardHeaderProps.stepLabels}
+              />
+            )}
           </MobileBottomSheetHeader>
           <MobileBottomSheetContent>
             <TMDBWizard
@@ -685,7 +676,7 @@ export function MobileItemSheet({
           </MobileBottomSheetTitle>
         </MobileBottomSheetHeader>
 
-        <MobileBottomSheetContent className="space-y-6 pb-0">
+        <MobileBottomSheetContent className="flex flex-col gap-6 overflow-hidden pb-0">
           {/* View Mode Section */}
           {showView && (
             <div className="space-y-2">

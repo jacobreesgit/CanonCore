@@ -558,9 +558,11 @@ test.describe("Media Lookup E2E - Comprehensive Coverage", () => {
       const filesTab = container.getByRole("tab", { name: /files/i });
       await filesTab.click();
 
-      // Use data-testid to avoid matching inactive SwipeableTabs panels
+      // Scope to the Files tabpanel to avoid matching duplicate elements in SwipeableTabs
       await expect(
-        container.getByTestId("file-section-primary-media")
+        container
+          .getByRole("tabpanel", { name: /files/i })
+          .getByTestId("file-section-primary-media")
       ).toBeVisible();
 
       // Click back to Details

@@ -149,6 +149,10 @@ model Item {
   tmdbId      Int?     // TMDB movie/TV ID
   tmdbType    String?  // "movie" | "tv"
 
+  // TMDB image paths (served directly from TMDB CDN)
+  tmdbPosterPath    String?  // e.g., "/abc123.jpg" → https://image.tmdb.org/t/p/w500/abc123.jpg
+  tmdbBackdropPath  String?  // e.g., "/xyz789.jpg" → https://image.tmdb.org/t/p/original/xyz789.jpg
+
   // TMDB display preferences (which sections appear on detail page)
   tmdbShowTagline          Boolean @default(true)
   tmdbShowMetadata         Boolean @default(true)   // year, runtime, rating, vote

@@ -60,35 +60,43 @@ test.describe("Portfolio Screenshots", () => {
 
     test("02 - Tree View", async ({ page }) => {
       await setupForScreenshot(page, USERS.demo);
-      await clickItem(page, "Breaking Bad (2008)");
-      await switchToTreeView(page);
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(1000);
 
-      // Collapse Seasons 1, 2, 3
-      for (const seasonNum of [1, 2, 3]) {
-        const item = page
-          .getByRole("listitem")
-          .filter({ hasText: `Season ${seasonNum}` });
-        const collapseButton = item.getByRole("button", {
-          name: /collapse item/i,
-        });
-        if (await collapseButton.isVisible()) {
-          await collapseButton.click();
-          await page.waitForTimeout(200);
-        }
+      // Navigate to item detail via URL (more reliable than click on mobile)
+      const gridCard = page
+        .locator("[data-id]")
+        .filter({
+          has: page.locator('[data-testid="grid-item-title"]', {
+            hasText: "Breaking Bad",
+          }),
+        })
+        .first();
+      await gridCard.waitFor({ state: "visible", timeout: 10000 });
+      const itemId = await gridCard.getAttribute("data-id");
+      await page.goto(`/u/demo/${itemId}`);
+      await page.waitForLoadState("networkidle");
+      await page.waitForTimeout(500);
+      await switchToTreeView(page);
+
+      // Collapse all seasons (they start expanded), then expand only Season 2
+      const collapseButtons = page.getByRole("button", {
+        name: /collapse item/i,
+      });
+      const count = await collapseButtons.count();
+      for (let i = 0; i < count; i++) {
+        await collapseButtons.first().click();
+        await page.waitForTimeout(150);
       }
 
-      // Expand Season 4
-      const season4Item = page
+      // Expand Season 2
+      const season2Item = page
         .getByRole("listitem")
-        .filter({ hasText: "Season 4" });
-      const expandButton = season4Item.getByRole("button", {
+        .filter({ hasText: "Season 2" });
+      const expandButton = season2Item.getByRole("button", {
         name: /expand item/i,
       });
-      if (await expandButton.isVisible()) {
-        await expandButton.click();
-        await page.waitForTimeout(300);
-      }
+      await expandButton.click();
+      await page.waitForTimeout(300);
       await captureScreenshot(page, "02-tree-view");
     });
 
@@ -116,24 +124,23 @@ test.describe("Portfolio Screenshots", () => {
       await captureScreenshot(page, "04-tmdb-wizard");
     });
 
-    test("05 - Progress Tracking", async ({ page }) => {
-      await setupForScreenshot(page, USERS.demo);
-      await clickItem(page, "Breaking Bad (2008)");
-      await page.waitForLoadState("networkidle");
-      const settingsButton = page.getByRole("button", { name: /settings/i });
-      await settingsButton.click();
-      await page.waitForTimeout(500);
-      await captureScreenshot(page, "05-progress-tracking");
-    });
-
     test("06 - Google Drive Sync", async ({ page }) => {
       await setupForScreenshot(page, USERS.demo);
       await openSettings(page);
+
+      // Desktop: tabs use role="tab"; Mobile: >3 tabs uses Select dropdown
       const activityTab = page.getByRole("tab", { name: /activity/i });
-      if (await activityTab.isVisible()) {
+      if (await activityTab.isVisible({ timeout: 2000 }).catch(() => false)) {
         await activityTab.click();
-        await page.waitForTimeout(500);
+      } else {
+        // Mobile select dropdown
+        const selectTrigger = page.getByRole("combobox", {
+          name: /settings tabs/i,
+        });
+        await selectTrigger.click();
+        await page.getByRole("option", { name: /activity/i }).click();
       }
+      await page.waitForTimeout(500);
       await captureScreenshot(page, "06-google-drive-sync");
     });
 
@@ -148,9 +155,10 @@ test.describe("Portfolio Screenshots", () => {
       await captureScreenshot(page, "07-explore-page");
     });
 
-    test("08 - Spotlight Search", async ({ page }) => {
+    test.only("08 - Spotlight Search", async ({ page }) => {
       await setupForScreenshot(page, USERS.demo);
       await openSpotlight(page);
+      await page.waitForTimeout(4000);
       await captureScreenshot(page, "08-spotlight-search");
     });
 

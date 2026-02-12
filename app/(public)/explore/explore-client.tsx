@@ -27,6 +27,7 @@ import {
 } from "@/lib/item-utils";
 import { deleteItem, pinItem, unpinItem } from "@/lib/item-actions";
 import { forkItem } from "@/lib/fork-actions";
+import { getTmdbBackdropUrl } from "@/lib/tmdb-image-utils";
 import type { PublicItem, FeaturedItem } from "@/lib/public-auth";
 import type { TmdbItemMetadata } from "@/lib/tmdb-client";
 import type { FilterOption } from "@/lib/types";
@@ -179,6 +180,9 @@ export function ExploreClient({
         id: item.id,
         name: item.name,
         description: item.description,
+        backgroundUrl: item.tmdbBackdropPath
+          ? getTmdbBackdropUrl(item.tmdbBackdropPath)
+          : undefined,
         artworkId: item.artworkId,
         link: item.link,
         attribution: `Shared by @${item.ownerUsername}`,
@@ -256,7 +260,10 @@ export function ExploreClient({
           <>
             {/* View Item CTA */}
             {slide.link && (
-              <HeroButton onClick={() => router.push(slide.link!)}>
+              <HeroButton
+                variant="primary"
+                onClick={() => router.push(slide.link!)}
+              >
                 View Item
               </HeroButton>
             )}
@@ -322,6 +329,7 @@ export function ExploreClient({
                       id={item.id}
                       name={item.name}
                       description={item.description}
+                      tmdbPosterPath={item.tmdbPosterPath}
                       artworkId={item.artworkId}
                       onClick={() => handleItemClick(item)}
                       onMouseEnter={() => handleMouseEnter(item)}
@@ -400,6 +408,7 @@ export function ExploreClient({
                     id={item.id}
                     name={item.name}
                     description={item.description}
+                    tmdbPosterPath={item.tmdbPosterPath}
                     artworkId={item.artworkId}
                     onClick={() => handleItemClick(item)}
                     onMouseEnter={() => handleMouseEnter(item)}

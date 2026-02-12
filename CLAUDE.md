@@ -74,7 +74,7 @@ pnpm run test-storybook:ci   # CI mode with limited workers
   - Action components: `hero-button`, `item-more-button`, `poster-card`, `playlist-button`
   - `grid-view-content` - Extracted grid view rendering from items-view
   - Mobile sheets: `mobile-item-sheet` (combined sort/filter/view/settings), `mobile-add-item-sheet` (add item), `mobile-options-sheet` (sort/filter/view)
-- `components/wizards/` - Reusable wizard infrastructure (state machine hook, step indicator)
+- `components/wizards/` - Reusable wizard infrastructure (state machine hook, step indicator, progress bar)
 - `components/google-drive/` - Drive integration UI (oauth-toast, settings-section, sync-history, storage-bar)
 - `components/sortable-grid/` and `sortable-tree/` - dnd-kit drag-drop with view/edit modes (kebab-case filenames)
 - `components/media/` - Media player with Vidstack (media-player, media-player-icons)
@@ -83,6 +83,7 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 - `components/profile/` - Profile UI (settings-dialog, mobile-settings-sheet, preferences-tab, profile-page)
 - `components/providers/` - App-level providers (theme-provider, error-boundary, deferred-analytics)
 - `components/ui/` - shadcn/ui primitives + shared UI (content-toolbar with ViewDropdown, hero-content-layout, section, underline-tabs, progress-bar)
+- `components/search/` - Spotlight search (spotlight-search, global-spotlight, item-thumbnail, user-thumbnail)
 - Shared components: `logo.tsx`, `floating-paths.tsx`, `shader-background.tsx`, `feature-card-grid.tsx`
 - Stories: Co-located `*.stories.tsx` files for Storybook component documentation
 
@@ -91,13 +92,14 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 - `lib/*-utils.ts` - Feature utilities (item, progress, file-type, upload, sync, avatar, tmdb)
 - `lib/*-client.ts` - External API clients (google-drive, tmdb)
 - `lib/avatar-utils.ts` - Avatar initials and gradient background generation
-- `lib/tmdb-utils.ts` - TMDB resolution for season/episode items (recursive CTE ancestry walk), `extractTmdbDisplayOptions()` helper
+- `lib/tmdb-image-utils.ts` - Client-safe TMDB image URL builders (`getTmdbPosterUrl`, `getTmdbBackdropUrl`) and `resolveArtworkId()` for CDN-first image resolution
+- `lib/tmdb-utils.ts` - TMDB resolution for season/episode items (recursive CTE ancestry walk), `extractTmdbDisplayOptions()` helper, re-exports from `tmdb-image-utils.ts`
 - `lib/mock-data.ts` - Static data constants for cinematic UI (wiki sections, about tab filters)
 - `lib/audit-context.ts` - AsyncLocalStorage context for audit logging (userId, source, requestId)
 - `lib/audit-logger.ts` - Prisma extension for automatic mutation logging with redaction
 - `lib/bot-patterns.ts` - Centralised bot lists for robots.txt and proxy middleware
 - `lib/constants/messages.ts` - Centralised user-facing messages (SYNC, SETTINGS, ITEM)
-- `lib/types.ts` - Shared TypeScript types (includes `TmdbDisplayOptions`, `DEFAULT_TMDB_DISPLAY`)
+- `lib/types.ts` - Shared TypeScript types (includes `TmdbDisplayOptions`, `DEFAULT_TMDB_DISPLAY`); `ItemWithArtwork` and `SearchableItem` include `tmdbPosterPath`/`tmdbBackdropPath` for CDN-first image resolution
 - `hooks/use-reduced-motion.ts` - Reduced motion preference detection with localStorage override
 - `hooks/use-settings-dialog.ts` - Item settings dialog lifecycle management
 - `hooks/use-sync-handler.ts` - Sync operation handler for Drive sync
@@ -135,6 +137,7 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 
 - User has optional `username` (unique, case-insensitive), `isPublic`, `image`/`heroImage` blobs, `defaultViewMode`/`defaultSortBy` (String?, not enum)
 - Item has self-referential parent/child hierarchy, `pinnedOrder` (null or 0+), `isPublic`, `inheritVisibility`, `forkedFromId`
+- Item has TMDB image paths: `tmdbPosterPath`, `tmdbBackdropPath` (nullable String, stores TMDB CDN path fragments like `/abc123.jpg`)
 - Item has TMDB display preferences: 7 boolean fields (`tmdbShowTagline`, `tmdbShowMetadata`, `tmdbShowGenres`, `tmdbShowCast`, `tmdbShowProviders`, `tmdbShowVideos`, `tmdbShowRecommendations`) all defaulting to `true`
 - Item has Google Drive fields: `driveFileId`, `driveModifiedAt`, `syncStatus`, `driveConnectionId`
 - ItemFile has `fileType` (MEDIA/ARTWORK/SUBTITLE), `isPrimary`, `isHero`, `playbackPosition`
@@ -165,24 +168,36 @@ Run migrations: `npx prisma migrate dev`
 
 ### Database Seeding
 
-Simple seed script that always does a full wipe and rebuild:
+Seed script supports all 3 Neon branches via `SEED_TARGET`. Same Google Drive account with separate root folders per branch:
 
 ```bash
-pnpm run seed         # Wipes Drive + DB, then creates all content
+pnpm run seed              # Seeds development (default)
+pnpm run seed:production   # Seeds production Neon branch
+pnpm run seed:e2e          # Seeds E2E Neon branch
 ```
+
+**Branch Mapping:**
+
+| SEED_TARGET   | DATABASE_URL source              | Drive Root Folder source         |
+| ------------- | -------------------------------- | -------------------------------- |
+| `development` | `DATABASE_URL`                   | `GOOGLE_SEED_ROOT_FOLDER_ID`     |
+| `production`  | `SEED_PRODUCTION_DATABASE_URL`   | `SEED_PRODUCTION_ROOT_FOLDER_ID` |
+| `e2e`         | `E2E_DATABASE_URL`               | `SEED_E2E_ROOT_FOLDER_ID`        |
 
 **Flow:**
 
-1. Validate environment (ALLOW_SEEDING, TMDB_API_KEY, Drive credentials)
-2. Wipe Google Drive content (delete all files, empty trash)
-3. Delete all seed users from database
-4. Create seed users with TMDB metadata (including `tmdbId`/`tmdbType` on all items), artwork, and progress data
+1. Resolve `SEED_TARGET` to pick correct DATABASE_URL and Drive root folder
+2. Validate environment (ALLOW_SEEDING, TMDB_API_KEY, Drive credentials)
+3. Wipe Google Drive content in the target root folder
+4. Delete all seed users from database
+5. Create seed users with TMDB metadata (including `tmdbId`/`tmdbType` on all items), artwork, and progress data
 
 **Configuration:**
 
 - `prisma/seed-config.ts` - User definitions, content distribution, progress ranges
 - `prisma/seed.ts` - Seeding logic
 - Hardcoded limits: 5 seasons per show, 10 episodes per season
+- TMDB poster/backdrop paths stored directly on items (CDN serving, not downloaded to Drive)
 - Original quality TMDB images for movies/shows (seasons/episodes skip artwork for speed)
 
 **Users created:**
@@ -270,7 +285,8 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 **Wizard Architecture:** `components/wizards/`
 
 - `useWizardMachine` - Generic reducer-based state machine for any multi-step flow
-- `WizardStepIndicator` - Accessible progress indicator (WCAG 2.1 Level A)
+- `WizardStepIndicator` - Accessible step indicator with numbered circles (WCAG 2.1 Level A)
+- `WizardProgressBar` - Minimal segmented progress bar with sr-only announcements
 - TMDB-specific wizard in `components/items/wizards/tmdb-wizard/`
 - TV picker in `components/items/wizards/tv-picker/`
 
@@ -278,28 +294,40 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 
 - `searchMediaAction`, `getMetadataPreviewAction`, `getImagesAction`
 - `getSeasonsAction`, `getEpisodesAction` for TV shows
-- `applyMetadataAction` - Always persists `tmdbId`/`tmdbType`, accepts optional `TmdbDisplayOptions`
+- `applyMetadataAction` - Always persists `tmdbId`/`tmdbType`/`tmdbPosterPath`/`tmdbBackdropPath`, accepts optional `TmdbDisplayOptions`
 - `updateTmdbDisplayOptions` - Updates display preference booleans for an item (debounced from settings dialog)
 - Circuit breaker: 5 failures → 60s recovery
 - Graceful degradation if TMDB_API_KEY not set
 
 **TMDB Client:** `lib/tmdb-client.ts`
 
-- Exported types: `CastMember`, `WatchProvider`, `Video`, `Recommendation`
-- `getItemTmdbMetadata()` - Cached normalised metadata with content ratings
-- `getCast()`, `getWatchProviders()`, `getVideos()`, `getRecommendations()`
+- Exported types: `CastMember`, `WatchProvider`, `Video`, `Recommendation`, `TmdbItemMetadata`, `TmdbItemDetails`
+- `getItemTmdbMetadata()` - Cached normalised metadata (tagline, runtime, genres, content rating) via `React.cache()`
+- `getItemTmdbDetails()` - Cached extended details (cast, providers, videos, recommendations) via `React.cache()`
+- `formatRuntime()` - Format minutes to "2h 46m" display
+- `getBestTextlessBackdrop()` - Select optimal textless backdrop from image collection
 - `TMDBMovie`/`TMDBTVShow` include `tagline`, `runtime`, `genres`, `vote_average`
+- TV season/episode types: `TMDBSeasonSummary`, `TMDBSeasonDetail`, `TMDBEpisodeDetails`, `TMDBSeasonImages`, `TMDBEpisodeImages`
+
+**TMDB Image Utilities:** `lib/tmdb-image-utils.ts`
+
+- `getTmdbPosterUrl(path, size)` - Constructs full TMDB poster URL from stored path fragment
+- `getTmdbBackdropUrl(path, size)` - Constructs full TMDB backdrop URL from stored path fragment
+- `resolveArtworkId(item)` - Returns `null` when TMDB poster exists (CDN), falls back to primary/first Drive artwork file
+- Priority: TMDB CDN → Primary artwork file → First artwork file → null
 
 **TMDB Resolution & Utilities:** `lib/tmdb-utils.ts`
 
 - `resolveTmdbForItem()` - Walks item ancestry via recursive CTE to find parent TV show for season/episode items
 - `extractTmdbDisplayOptions()` - Converts item DB fields (`tmdbShow*`) to `TmdbDisplayOptions` object
+- Re-exports `getTmdbPosterUrl`, `getTmdbBackdropUrl` from `tmdb-image-utils.ts`
 
 **Artwork Handling:**
 
-- Downloads posters/backdrops from TMDB
-- Uploads to Google Drive as ARTWORK files
-- Updates item with new file references
+- TMDB poster/backdrop paths stored directly on items (`tmdbPosterPath`, `tmdbBackdropPath`) for CDN serving
+- `resolveArtworkId()` prioritises TMDB CDN over Drive-hosted artwork across all item-returning functions
+- Drive-hosted artwork used as fallback when no TMDB path available
+- Wizard allows selecting specific poster/backdrop from TMDB galleries
 
 ### Spotlight Search
 
@@ -321,6 +349,7 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 
 - `SpotlightProvider` context manages dialog state and "/" keyboard listener
 - `SpotlightSearch` main dialog, `GlobalSpotlight` wrapper
+- `ItemThumbnail` reusable thumbnail resolving TMDB poster → Drive artwork → fallback icon
 
 ### Google Drive Integration
 
@@ -398,7 +427,7 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 - Stories co-located with components (`*.stories.tsx`)
 - MSW mocking in `.storybook/mocks/` for server actions
 - Decorators: Theme (dark only), auth state, reduced motion
-- Accessibility testing via `@storybook/addon-a11y`
+- Accessibility testing via `@storybook/addon-a11y` with `test: "error"` in `preview.tsx` (no custom test-runner hooks needed)
 - Portal dialogs: Test with `within(document.body)` instead of `canvasElement`
 - Run: `pnpm run storybook` (dev), `pnpm run test-storybook` (tests)
 
@@ -501,7 +530,7 @@ See `docs/deployments/DEPLOYMENT-6.0.2.md` for detailed implementation and monit
   - Glass: `--glass-bg`, `--glass-border`, `--glass-hover`, `--glow`
   - Typography: `--tertiary-foreground` (40% white)
   - Section spacing: `--section-px-mobile` through `--section-px-2xl`
-  - Gradients: `--gradient-hero`, `--gradient-card`, `--gradient-top`
+  - Gradients: `--gradient-hero-overlay` (diagonal 3-layer), `--gradient-card`
 - Keyframe animations: `ken-burns`, `fade-in`, `fade-in-up`, `slide-up`, `shimmer`
 - Utility classes: `.ken-burns`, `.animate-fade-in`, `.animate-slide-up`, `.stagger-grid`, `.skeleton-shimmer`
 - All animations respect `prefers-reduced-motion`
@@ -569,9 +598,13 @@ TMDB (optional - for metadata lookup):
 
 Seed (required for database seeding with Drive integration):
 
-- `GOOGLE_SEED_REFRESH_TOKEN` - Refresh token for seed Drive account
-- `GOOGLE_SEED_ROOT_FOLDER_ID` - Folder ID where seed creates content
+- `GOOGLE_SEED_REFRESH_TOKEN` - Refresh token for seed Drive account (shared across all targets)
+- `GOOGLE_SEED_ROOT_FOLDER_ID` - Folder ID where development seed creates content
 - `GOOGLE_SEED_EMAIL` - Email of seed account (optional, for display)
+- `SEED_TARGET` - Target branch: "development" (default), "production", "e2e"
+- `SEED_PRODUCTION_DATABASE_URL` - Production Neon connection string (for SEED_TARGET=production)
+- `SEED_PRODUCTION_ROOT_FOLDER_ID` - Production Drive root folder (for SEED_TARGET=production)
+- `SEED_E2E_ROOT_FOLDER_ID` - E2E Drive root folder (for SEED_TARGET=e2e, reuses E2E_DATABASE_URL)
 
 E2E Testing (required for E2E tests):
 

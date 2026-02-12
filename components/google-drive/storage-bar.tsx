@@ -117,7 +117,7 @@ export function StorageBar({
             {formatBytes(bytesUsed)} / {formatBytes(bytesTotal)}
           </span>
         ) : (
-          <span className="text-muted-foreground/60">
+          <span className="text-muted-foreground">
             Sync to see storage usage
           </span>
         )}

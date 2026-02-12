@@ -303,6 +303,8 @@ interface ApplyMetadataOptions {
   updateDescription?: boolean;
   updatePoster?: boolean;
   updateBackdrop?: boolean;
+  posterPath?: string | null;
+  backdropPath?: string | null;
 }
 
 /**
@@ -566,5 +568,27 @@ export const getEpisodeImagesAction = fn(
             : "Failed to load episode images",
       };
     }
+  }
+);
+
+interface TmdbDisplayOptions {
+  tmdbShowTagline?: boolean;
+  tmdbShowMetadata?: boolean;
+  tmdbShowGenres?: boolean;
+  tmdbShowCast?: boolean;
+  tmdbShowProviders?: boolean;
+  tmdbShowVideos?: boolean;
+  tmdbShowRecommendations?: boolean;
+}
+
+/**
+ * Update TMDB display options for an item (stub - does nothing in Storybook).
+ */
+export const updateTmdbDisplayOptions = fn(
+  async (
+    _itemId: string,
+    _options: TmdbDisplayOptions
+  ): Promise<{ success: true } | { success: false; error: string }> => {
+    return { success: true };
   }
 );

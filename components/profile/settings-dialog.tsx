@@ -812,6 +812,7 @@ export function SettingsDialog({
                             size="icon"
                             variant="secondary"
                             className="size-8 shadow-md"
+                            aria-label="Remove cover"
                             onClick={() => {
                               setHeroImage(null);
                               setHeroImagePreview(null);
@@ -867,6 +868,7 @@ export function SettingsDialog({
                               size="icon"
                               variant="secondary"
                               className="absolute -right-1 -bottom-1 size-8 rounded-full shadow-md"
+                              aria-label="Upload avatar"
                             >
                               <Upload className="size-4" />
                             </Button>
@@ -1340,7 +1342,7 @@ export function SettingsDialog({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <Globe aria-hidden="true" className="h-5 w-5 text-amber-500" />
+              <Globe aria-hidden="true" className="text-brand h-5 w-5" />
               Make your profile public?
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">

@@ -22,7 +22,7 @@ initialize({
 const PATH_TO_STORY: Record<string, string> = {
   "/": "navigation-appsidebar--guest-home",
   "/docs": "navigation-appsidebar--authenticated-docs",
-  "/explore": "navigation-appsidebar--explore-active",
+  "/explore": "navigation-appsidebar--authenticated-home",
 };
 
 /**
@@ -124,25 +124,21 @@ const preview: Preview = {
     },
     layout: "centered",
     a11y: {
-      config: {
-        rules: [
-          { id: "color-contrast", enabled: true },
-          { id: "label", enabled: true },
-          { id: "button-name", enabled: true },
-          { id: "image-alt", enabled: true },
-          { id: "link-name", enabled: true },
-          { id: "aria-hidden-focus", enabled: true },
-          { id: "focus-order-semantics", enabled: true },
-          { id: "tabindex", enabled: true },
-          { id: "duplicate-id", enabled: true },
-          { id: "heading-order", enabled: true },
-          { id: "landmark-one-main", enabled: true },
-        ],
-      },
+      test: "error",
       options: {
         runOnly: {
           type: "tag",
           values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"],
+        },
+        rules: {
+          // Third-party component structure issues (unfixable in our code):
+          // shadcn Sidebar Collapsible wraps <li> in <div>, breaking <ul>/<li> hierarchy
+          list: { enabled: false },
+          listitem: { enabled: false },
+          // cmdk library renders role="listbox" with div children instead of role="option"
+          "aria-required-children": { enabled: false },
+          // DiceUI file-upload uses Button wrapper with nested interactive elements
+          "nested-interactive": { enabled: false },
         },
       },
     },
@@ -151,7 +147,7 @@ const preview: Preview = {
     withNoNavigation,
     // Force dark mode — app is always dark, no light mode
     (Story) => (
-      <div className="dark">
+      <div className="dark bg-background text-foreground">
         <Story />
       </div>
     ),

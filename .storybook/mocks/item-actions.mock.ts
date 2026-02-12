@@ -21,6 +21,10 @@ interface Item {
   userId: string;
   createdAt: Date;
   updatedAt: Date;
+  tmdbId: number | null;
+  tmdbType: string | null;
+  tmdbPosterPath: string | null;
+  tmdbBackdropPath: string | null;
   driveFileId: string | null;
   driveModifiedAt: Date | null;
   driveThumbnailUrl: string | null;
@@ -37,6 +41,8 @@ interface Item {
 }
 
 interface ItemWithArtwork extends Item {
+  tmdbPosterPath: string | null;
+  tmdbBackdropPath: string | null;
   artworkId: string | null;
   fileCounts: { media: number; artwork: number; subtitles: number };
   childCount: number;
@@ -68,6 +74,7 @@ interface SearchableItem {
   parentId: string | null;
   depth: number;
   description: string | null;
+  tmdbPosterPath: string | null;
   artworkId: string | null;
   breadcrumb: string | null;
   ownerUsername: string | null;
@@ -131,6 +138,10 @@ const createMockItem = (overrides: Partial<Item> = {}): Item => ({
   userId: "mock-user-id",
   createdAt: new Date(),
   updatedAt: new Date(),
+  tmdbId: null,
+  tmdbType: null,
+  tmdbPosterPath: null,
+  tmdbBackdropPath: null,
   driveFileId: null,
   driveModifiedAt: null,
   driveThumbnailUrl: null,
@@ -190,6 +201,10 @@ const mockFolderItems: ItemWithArtwork[] = [
     userId: "mock-user-id",
     createdAt: new Date(),
     updatedAt: new Date(),
+    tmdbId: null,
+    tmdbType: null,
+    tmdbPosterPath: null,
+    tmdbBackdropPath: null,
     driveFileId: null,
     driveModifiedAt: null,
     driveThumbnailUrl: null,
@@ -223,6 +238,10 @@ const mockFolderItems: ItemWithArtwork[] = [
     userId: "mock-user-id",
     createdAt: new Date(),
     updatedAt: new Date(),
+    tmdbId: null,
+    tmdbType: null,
+    tmdbPosterPath: null,
+    tmdbBackdropPath: null,
     driveFileId: null,
     driveModifiedAt: null,
     driveThumbnailUrl: null,
@@ -256,6 +275,10 @@ const mockFolderItems: ItemWithArtwork[] = [
     userId: "mock-user-id",
     createdAt: new Date(),
     updatedAt: new Date(),
+    tmdbId: null,
+    tmdbType: null,
+    tmdbPosterPath: null,
+    tmdbBackdropPath: null,
     driveFileId: null,
     driveModifiedAt: null,
     driveThumbnailUrl: null,
@@ -289,6 +312,10 @@ const mockFolderItems: ItemWithArtwork[] = [
     userId: "mock-user-id",
     createdAt: new Date(),
     updatedAt: new Date(),
+    tmdbId: null,
+    tmdbType: null,
+    tmdbPosterPath: null,
+    tmdbBackdropPath: null,
     driveFileId: null,
     driveModifiedAt: null,
     driveThumbnailUrl: null,
@@ -319,6 +346,19 @@ const mockFolderItems: ItemWithArtwork[] = [
     pinnedOrder: null,
     isPublic: false,
     inheritVisibility: true,
+    userId: "mock-user-id",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    tmdbId: null,
+    tmdbType: null,
+    tmdbPosterPath: null,
+    tmdbBackdropPath: null,
+    driveFileId: null,
+    driveModifiedAt: null,
+    driveThumbnailUrl: null,
+    syncStatus: "SYNCED",
+    syncError: null,
+    driveConnectionId: null,
     tmdbShowTagline: true,
     tmdbShowMetadata: true,
     tmdbShowGenres: true,
@@ -326,15 +366,6 @@ const mockFolderItems: ItemWithArtwork[] = [
     tmdbShowProviders: true,
     tmdbShowVideos: true,
     tmdbShowRecommendations: true,
-    userId: "mock-user-id",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    driveFileId: null,
-    driveModifiedAt: null,
-    driveThumbnailUrl: null,
-    syncStatus: "SYNCED",
-    syncError: null,
-    driveConnectionId: null,
     artworkId: null,
     fileCounts: { media: 0, artwork: 0, subtitles: 0 },
     childCount: 0,

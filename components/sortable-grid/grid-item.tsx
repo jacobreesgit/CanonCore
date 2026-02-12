@@ -17,6 +17,7 @@ import { useLazyImage } from "@/hooks/use-lazy-image";
 import { SyncIcon } from "@/components/items/sync-badge";
 import { UserThumbnail } from "@/components/search/user-thumbnail";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { getTmdbPosterUrl } from "@/lib/tmdb-image-utils";
 import type { SyncStatus } from "@/lib/types";
 import type { ItemMenuActions } from "@/components/items/item-context-menu";
 import { ItemMoreButton } from "@/components/items/item-more-button";
@@ -33,6 +34,8 @@ export interface GridItemProps extends Omit<
   isOverlay?: boolean;
   handleProps?: Record<string, unknown>;
   onClick?(): void;
+  /** TMDB poster path for CDN display (takes precedence over artworkId). */
+  tmdbPosterPath?: string | null;
   /** Artwork file ID for thumbnail display. */
   artworkId?: string | null;
   /** Whether to show artwork thumbnail. Defaults to true. */
@@ -83,6 +86,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       onClick,
       className,
       style,
+      tmdbPosterPath,
       artworkId,
       showArtwork = true,
       showDescription = true,
@@ -105,7 +109,11 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
     },
     ref
   ) {
-    const artworkSrc = artworkId ? `/api/artwork/${artworkId}` : undefined;
+    const artworkSrc = tmdbPosterPath
+      ? (getTmdbPosterUrl(tmdbPosterPath) ?? undefined)
+      : artworkId
+        ? `/api/artwork/${artworkId}`
+        : undefined;
     const shouldShowCheckbox = handleProps && onSelectChange;
 
     // Lazy loading - priority items load immediately, others wait for viewport
@@ -134,7 +142,8 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       onLoad,
       onError,
     } = useImageLoaded(artworkSrc);
-    const shouldShowArtwork = showArtwork && artworkId && !imageError;
+    const shouldShowArtwork =
+      showArtwork && (tmdbPosterPath || artworkId) && !imageError;
     const shouldShowDescription =
       showDescription && description && !handleProps;
     const shouldShowWatched =

@@ -126,16 +126,11 @@ describe("AddItemDialog TMDB Wizard Integration", () => {
     });
     await user.click(screen.getByText("Fight Club"));
 
-    // Wait for wizard to appear - should have accessible step indicator
+    // Wait for wizard to appear - AddItemDialog renders its own step progress bar
+    // in the dialog header (via onHeaderChange callback), not the inline WizardStepIndicator
     await waitFor(() => {
-      // WizardStepIndicator renders with role="list" and step items as role="listitem"
-      const stepList = screen.getByRole("list");
-      expect(stepList).toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent(/Step 1 of 4/);
     });
-
-    // Verify step items are rendered
-    const stepItems = screen.getAllByRole("listitem");
-    expect(stepItems.length).toBe(4); // text, poster, hero, summary
   });
 
   it("navigates through wizard steps using TMDBWizard component", async () => {
@@ -357,7 +352,7 @@ describe("AddItemDialog TMDB Wizard Integration", () => {
     });
   });
 
-  it("shows only 2 steps when no Drive connection", async () => {
+  it("shows all steps even without Drive connection", async () => {
     const user = userEvent.setup();
 
     vi.mocked(searchMediaAction).mockResolvedValue({
@@ -405,13 +400,11 @@ describe("AddItemDialog TMDB Wizard Integration", () => {
     });
     await user.click(screen.getByText("Fight Club"));
 
-    // Without Drive connection, wizard shows only 2 steps (text, summary)
+    // Without Drive connection, wizard still shows all 4 steps
+    // (TMDB images served from CDN, no Drive needed)
+    // AddItemDialog renders step progress in header via onHeaderChange callback
     await waitFor(() => {
-      const stepList = screen.getByRole("list");
-      expect(stepList).toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent(/Step 1 of 4/);
     });
-
-    const stepItems = screen.getAllByRole("listitem");
-    expect(stepItems.length).toBe(2); // text, summary only
   });
 });

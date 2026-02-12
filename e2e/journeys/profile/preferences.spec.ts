@@ -85,6 +85,7 @@ test.describe("User Preferences Journey", () => {
     page,
     itemsPage,
   }) => {
+    test.slow();
     // Create parent container and navigate into it (tree view only on item detail pages)
     await itemsPage.createItem("Parent Item");
     await itemsPage.clickItem("Parent Item");
@@ -126,11 +127,12 @@ test.describe("User Preferences Journey", () => {
     await settingsPage.openFromNavUser();
     const isMobile = await isMobileViewport(page);
 
-    // Helper to get the visible tabpanel
-    // On mobile (SwipeableTabs), multiple tabpanels exist but only active is visible
+    // Helper to get the visible content panel.
+    // Desktop: standard tabpanel role.
+    // Mobile: Select mode uses data-testid panels (no tabpanel role).
     const getVisiblePanel = () =>
       isMobile
-        ? page.locator('[role="tabpanel"]:not(.hidden)').first()
+        ? page.locator('[data-testid^="select-panel-"]:not(.hidden)').first()
         : page.getByRole("tabpanel");
 
     // Should start on Profile tab (has Display Name, Profile Picture, Hero Banner)

@@ -9,7 +9,6 @@ import {
   getTVShow,
   getPosterUrl,
   getBackdropUrl,
-  downloadPoster,
   extractYear,
   truncateOverview,
   isTMDBConfigured,
@@ -286,52 +285,6 @@ describe("tmdb-client", () => {
     it("supports original size", () => {
       const url = getPosterUrl("/poster.jpg", "original");
       expect(url).toBe("https://image.tmdb.org/t/p/original/poster.jpg");
-    });
-  });
-
-  describe("downloadPoster", () => {
-    it("downloads poster as buffer", async () => {
-      const mockImageData = new Uint8Array([1, 2, 3, 4]);
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        arrayBuffer: () => Promise.resolve(mockImageData.buffer),
-      });
-
-      const result = await downloadPoster("/poster.jpg");
-
-      expect(result).toBeInstanceOf(Buffer);
-      expect(result?.length).toBe(4);
-    });
-
-    it("returns null for null path", async () => {
-      const result = await downloadPoster(null);
-      expect(result).toBeNull();
-    });
-
-    it("returns null on download error", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false });
-
-      const result = await downloadPoster("/poster.jpg");
-
-      expect(result).toBeNull();
-    });
-
-    it("returns null on network error", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Network error"));
-
-      const result = await downloadPoster("/poster.jpg");
-
-      expect(result).toBeNull();
-    });
-
-    it("returns null on timeout error", async () => {
-      const abortError = new Error("Aborted");
-      abortError.name = "AbortError";
-      mockFetch.mockRejectedValueOnce(abortError);
-
-      const result = await downloadPoster("/poster.jpg");
-
-      expect(result).toBeNull();
     });
   });
 

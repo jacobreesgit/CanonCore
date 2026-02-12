@@ -1,10 +1,12 @@
 /**
- * About/description section with expandable text.
+ * About/description section with animated expand/collapse.
+ * Uses Framer Motion for smooth height transitions.
  */
 
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 
 interface AboutSectionProps {
@@ -19,7 +21,8 @@ interface AboutSectionProps {
 }
 
 /**
- * About section with expandable long descriptions.
+ * About section with animated expandable descriptions.
+ * Smoothly transitions height when toggling between collapsed and expanded states.
  */
 export function AboutSection({
   description,
@@ -28,9 +31,37 @@ export function AboutSection({
   className,
 }: AboutSectionProps) {
   const [expanded, setExpanded] = useState(false);
+  const textRef = useRef<HTMLParagraphElement>(null);
+  const [collapsedHeight, setCollapsedHeight] = useState<number | null>(null);
+  const prefersReducedMotion = useReducedMotion();
 
-  // Check if text is long enough to need expansion
   const needsExpansion = description.length > 200;
+  const measured = collapsedHeight !== null;
+
+  // Measure collapsed height before browser paints.
+  // CSS line-clamp is applied via style prop on first render (SSR-safe),
+  // then this effect takes over before the user sees anything.
+  useLayoutEffect(() => {
+    const el = textRef.current;
+    if (!el || !needsExpansion) return;
+
+    // Apply clamp to measure collapsed height
+    Object.assign(el.style, {
+      display: "-webkit-box",
+      webkitLineClamp: String(maxLines),
+      webkitBoxOrient: "vertical",
+      overflow: "hidden",
+    });
+    const clamped = el.offsetHeight;
+    const full = el.scrollHeight;
+
+    // Clear inline measurement styles — motion.div takes over clipping
+    el.style.cssText = "";
+
+    if (full > clamped) {
+      setCollapsedHeight(clamped);
+    }
+  }, [description, maxLines, needsExpansion]);
 
   return (
     <section className={className} data-testid="about-description-section">
@@ -44,22 +75,40 @@ export function AboutSection({
       </h2>
 
       <div>
-        <p
-          className={cn(
-            "text-sm leading-relaxed md:text-base",
-            "text-muted-foreground",
-            !expanded && needsExpansion && `line-clamp-${maxLines}`
-          )}
-          style={
-            !expanded && needsExpansion
-              ? { WebkitLineClamp: maxLines, display: "-webkit-box" }
-              : undefined
+        <motion.div
+          initial={false}
+          animate={{
+            height: measured && !expanded ? collapsedHeight : "auto",
+          }}
+          transition={
+            prefersReducedMotion
+              ? { duration: 0 }
+              : { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }
           }
+          className="overflow-hidden"
         >
-          {description}
-        </p>
+          <p
+            ref={textRef}
+            className={cn(
+              "text-sm leading-relaxed md:text-base",
+              "text-muted-foreground"
+            )}
+            style={
+              needsExpansion && !measured
+                ? {
+                    display: "-webkit-box",
+                    WebkitLineClamp: maxLines,
+                    WebkitBoxOrient: "vertical" as const,
+                    overflow: "hidden",
+                  }
+                : undefined
+            }
+          >
+            {description}
+          </p>
+        </motion.div>
 
-        {needsExpansion && (
+        {(needsExpansion || measured) && (
           <button
             data-testid="read-more-button"
             onClick={() => setExpanded(!expanded)}
@@ -70,7 +119,7 @@ export function AboutSection({
               "transition-colors"
             )}
           >
-            {expanded ? "Show less ↑" : "Read more ↓"}
+            {expanded ? "Show less \u2191" : "Read more \u2193"}
           </button>
         )}
       </div>
