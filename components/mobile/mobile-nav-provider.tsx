@@ -8,10 +8,15 @@
 
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { MobileFooterContainer } from "./mobile-footer-nav";
 import { MobileSearchSheet } from "./mobile-search-sheet";
 import { MobileHelpSheet } from "./mobile-help-sheet";
 import { MobileSettingsSheet } from "@/components/profile/mobile-settings-sheet";
+import { initiateGoogleDriveOAuth } from "@/lib/google-drive-actions";
+import { DRIVE_MESSAGES } from "@/lib/constants/messages";
 import type { GoogleDriveConnection } from "@/lib/types";
 
 /** Transition delay for sheet mutual exclusion (ms) */
@@ -38,6 +43,8 @@ export interface MobileNavProviderProps {
   } | null;
   /** Google Drive connection (null if not connected) */
   driveConnection?: GoogleDriveConnection | null;
+  /** Whether Google Drive needs reauthentication (shows reconnect banner) */
+  driveNeedsReauth?: boolean;
   /** Children to render */
   children?: React.ReactNode;
 }
@@ -56,6 +63,7 @@ export interface MobileNavProviderProps {
 export function MobileNavProvider({
   user,
   driveConnection,
+  driveNeedsReauth,
   children,
 }: MobileNavProviderProps) {
   const pathname = usePathname();
@@ -63,6 +71,19 @@ export function MobileNavProvider({
   const [activeSheet, setActiveSheet] = React.useState<SheetType>(null);
   const pendingSheetRef = React.useRef<SheetType>(null);
   const prevPathnameRef = React.useRef(pathname);
+  const [isReconnecting, startReconnectTransition] = React.useTransition();
+
+  /** Initiates Google Drive OAuth flow to reconnect expired tokens. */
+  const handleReconnect = React.useCallback(() => {
+    startReconnectTransition(async () => {
+      const result = await initiateGoogleDriveOAuth();
+      if (result.success && result.url) {
+        window.location.href = result.url;
+      } else {
+        toast.error(result.error || "Failed to start connection");
+      }
+    });
+  }, []);
 
   // Close sheets on route change
   React.useEffect(() => {
@@ -149,6 +170,33 @@ export function MobileNavProvider({
   return (
     <>
       {children}
+
+      {/* Drive reconnect banner (sticky top, mobile only) */}
+      {driveNeedsReauth && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="fixed inset-x-0 top-0 z-40 flex items-center gap-3 border-b border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 backdrop-blur-md lg:hidden"
+          data-testid="mobile-drive-reconnect-banner"
+        >
+          <AlertTriangle
+            className="size-4 shrink-0 text-amber-400"
+            aria-hidden="true"
+          />
+          <p className="flex-1 text-sm text-amber-200">
+            {DRIVE_MESSAGES.DISCONNECTED_BANNER_SHORT}
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="min-h-[44px] shrink-0"
+            disabled={isReconnecting}
+            onClick={handleReconnect}
+          >
+            {isReconnecting ? "Connecting..." : "Reconnect"}
+          </Button>
+        </div>
+      )}
 
       {/* Footer Navigation */}
       <MobileFooterContainer

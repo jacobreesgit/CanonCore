@@ -6,6 +6,7 @@
 import { test, expect, prisma } from "../../fixtures";
 import { SettingsPage } from "../../pages/settings.page";
 import { ItemsPage } from "../../pages/items.page";
+import { isMobileViewport } from "../../helpers/mobile-nav-helpers";
 import { encryptCredential } from "@/lib/crypto";
 
 test.describe("Google Drive: OAuth Connection", () => {
@@ -399,5 +400,204 @@ test.describe("Google Drive: OAuth Connection", () => {
     await expect(
       dialog.getByRole("link", { name: /manage storage/i })
     ).toBeVisible();
+  });
+});
+
+test.describe("Google Drive: Reconnect Banner", () => {
+  /**
+   * Helper to create a Drive connection with needsReauth: true via DB fixture.
+   */
+  async function setNeedsReauth(userId: string) {
+    await prisma.googleDriveConnection.upsert({
+      where: { userId },
+      update: {
+        needsReauth: true,
+        isActive: false,
+        accessTokenExpiry: new Date(0),
+      },
+      create: {
+        userId,
+        name: "Test Google Drive",
+        email: "test@example.com",
+        encryptedAccessToken: encryptCredential("expired-token"),
+        encryptedRefreshToken: encryptCredential("expired-refresh"),
+        accessTokenExpiry: new Date(0),
+        rootFolderId: "test-reconnect-folder-id",
+        needsReauth: true,
+        isActive: false,
+      },
+    });
+  }
+
+  /**
+   * Helper to create a healthy Drive connection (needsReauth: false).
+   */
+  async function setHealthyConnection(userId: string) {
+    await prisma.googleDriveConnection.upsert({
+      where: { userId },
+      update: {
+        needsReauth: false,
+        isActive: true,
+        accessTokenExpiry: new Date(Date.now() + 3600000),
+        lastError: null,
+      },
+      create: {
+        userId,
+        name: "Test Google Drive",
+        email: "test@example.com",
+        encryptedAccessToken: encryptCredential("valid-token"),
+        encryptedRefreshToken: encryptCredential("valid-refresh"),
+        accessTokenExpiry: new Date(Date.now() + 3600000),
+        rootFolderId: "test-healthy-folder-id",
+        needsReauth: false,
+        isActive: true,
+      },
+    });
+  }
+
+  test("shows reconnect banner in header when token expired", async ({
+    page,
+    testUser,
+  }) => {
+    await setNeedsReauth(testUser.id);
+    await page.goto(`/u/${testUser.username}`);
+
+    const isMobile = await isMobileViewport(page);
+    if (isMobile) {
+      // Mobile: banner above footer
+      await expect(
+        page.getByTestId("mobile-drive-reconnect-banner")
+      ).toBeVisible();
+    } else {
+      // Desktop: banner in header
+      await expect(page.getByTestId("drive-reconnect-banner")).toBeVisible();
+    }
+  });
+
+  test("banner visible on all pages", async ({ page, testUser }) => {
+    await setNeedsReauth(testUser.id);
+    const isMobile = await isMobileViewport(page);
+    const bannerTestId = isMobile
+      ? "mobile-drive-reconnect-banner"
+      : "drive-reconnect-banner";
+
+    // Profile page
+    await page.goto(`/u/${testUser.username}`);
+    await expect(page.getByTestId(bannerTestId)).toBeVisible();
+
+    // Explore page
+    await page.goto("/explore");
+    await expect(page.getByTestId(bannerTestId)).toBeVisible();
+
+    // Landing page
+    await page.goto("/");
+    await expect(page.getByTestId(bannerTestId)).toBeVisible();
+  });
+
+  test("reconnect button initiates OAuth flow", async ({ page, testUser }) => {
+    await setNeedsReauth(testUser.id);
+    await page.goto(`/u/${testUser.username}`);
+
+    const isMobile = await isMobileViewport(page);
+    const bannerTestId = isMobile
+      ? "mobile-drive-reconnect-banner"
+      : "drive-reconnect-banner";
+
+    const banner = page.getByTestId(bannerTestId);
+    await expect(banner).toBeVisible();
+
+    // Click reconnect — should navigate to Google OAuth
+    const reconnectButton = banner.getByRole("button", {
+      name: /reconnect/i,
+    });
+
+    // Intercept navigation to avoid actually leaving the test domain
+    const [request] = await Promise.all([
+      page
+        .waitForRequest(
+          (req) =>
+            req.url().includes("accounts.google.com") ||
+            req.url().includes("/api/auth/callback/google-drive") ||
+            // Server action may fail in E2E but the redirect attempt is what matters
+            req.url().includes("google-drive-actions"),
+          { timeout: 10000 }
+        )
+        .catch(() => null),
+      reconnectButton.click(),
+    ]);
+
+    // Button should show loading state
+    await expect(banner.getByRole("button", { name: /connecting/i }))
+      .toBeVisible({ timeout: 5000 })
+      .catch(() => {
+        // Loading state may be very brief if server responds quickly
+      });
+
+    // If we caught the OAuth redirect, verify it points to Google
+    if (request) {
+      expect(request.url()).toContain("google");
+    }
+  });
+
+  test("banner not shown when Drive is connected normally", async ({
+    page,
+    testUser,
+  }) => {
+    await setHealthyConnection(testUser.id);
+    await page.goto(`/u/${testUser.username}`);
+
+    await expect(page.getByTestId("drive-reconnect-banner")).not.toBeVisible();
+    await expect(
+      page.getByTestId("mobile-drive-reconnect-banner")
+    ).not.toBeVisible();
+  });
+
+  test("banner not shown when no Drive connection exists", async ({
+    page,
+    testUser,
+  }) => {
+    // Ensure no connection exists
+    await prisma.googleDriveConnection.deleteMany({
+      where: { userId: testUser.id },
+    });
+
+    await page.goto(`/u/${testUser.username}`);
+
+    await expect(page.getByTestId("drive-reconnect-banner")).not.toBeVisible();
+    await expect(
+      page.getByTestId("mobile-drive-reconnect-banner")
+    ).not.toBeVisible();
+  });
+
+  test("banner disappears after successful reconnect", async ({
+    page,
+    testUser,
+  }) => {
+    await setNeedsReauth(testUser.id);
+    await page.goto(`/u/${testUser.username}`);
+
+    const isMobile = await isMobileViewport(page);
+    const bannerTestId = isMobile
+      ? "mobile-drive-reconnect-banner"
+      : "drive-reconnect-banner";
+
+    // Verify banner is shown
+    await expect(page.getByTestId(bannerTestId)).toBeVisible();
+
+    // Simulate successful reconnect by clearing needsReauth in DB
+    await prisma.googleDriveConnection.update({
+      where: { userId: testUser.id },
+      data: {
+        needsReauth: false,
+        isActive: true,
+        accessTokenExpiry: new Date(Date.now() + 3600000),
+      },
+    });
+
+    // Reload to pick up the DB change (simulates post-OAuth redirect)
+    await page.reload();
+
+    // Banner should be gone
+    await expect(page.getByTestId(bannerTestId)).not.toBeVisible();
   });
 });

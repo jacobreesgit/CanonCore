@@ -19,9 +19,17 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useTransition, useCallback } from "react";
 import Link from "next/link";
-import { ChevronRight, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronRight,
+  MoreVertical,
+  Pencil,
+  Trash2,
+} from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
@@ -30,6 +38,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { initiateGoogleDriveOAuth } from "@/lib/google-drive-actions";
+import { DRIVE_MESSAGES } from "@/lib/constants/messages";
 import { cn } from "@/lib/utils";
 
 /** Breadcrumb item representing a navigation ancestor */
@@ -51,6 +61,8 @@ interface SiteHeaderProps {
   breadcrumbs?: BreadcrumbItem[];
   /** Current item ID when viewing item detail (enables context menu) */
   currentItemId?: string;
+  /** Whether Google Drive needs reauthentication (shows reconnect banner) */
+  driveNeedsReauth?: boolean;
   /** Callback when rename action is triggered */
   onRename?: () => void;
   /** Callback when delete action is triggered */
@@ -71,10 +83,24 @@ export function SiteHeader({
   titleHref = "/",
   breadcrumbs = [],
   currentItemId,
+  driveNeedsReauth,
   onRename,
   onDelete,
 }: SiteHeaderProps) {
   const showContextMenu = currentItemId && (onRename || onDelete);
+  const [isReconnecting, startReconnectTransition] = useTransition();
+
+  /** Initiates Google Drive OAuth flow to reconnect expired tokens. */
+  const handleReconnect = useCallback(() => {
+    startReconnectTransition(async () => {
+      const result = await initiateGoogleDriveOAuth();
+      if (result.success && result.url) {
+        window.location.href = result.url;
+      } else {
+        toast.error(result.error || "Failed to start connection");
+      }
+    });
+  }, []);
 
   // Scroll-based header visibility
   const [isVisible, setIsVisible] = useState(true);
@@ -139,11 +165,11 @@ export function SiteHeader({
   return (
     <header
       className={cn(
-        "bg-background sticky top-0 z-50 hidden h-(--header-height) shrink-0 items-center gap-2 border-b transition-all duration-300 ease-out group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height) lg:flex",
+        "bg-background sticky top-0 z-50 hidden shrink-0 flex-col border-b transition-all duration-300 ease-out lg:flex",
         !isVisible && "-translate-y-full opacity-0"
       )}
     >
-      <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
+      <div className="flex h-(--header-height) w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
         <SidebarTrigger
           className="-ml-1 cursor-pointer"
           data-testid="sidebar-trigger"
@@ -236,6 +262,33 @@ export function SiteHeader({
           </DropdownMenu>
         )}
       </div>
+
+      {/* Drive reconnect banner (below breadcrumb row) */}
+      {driveNeedsReauth && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="flex items-center gap-3 border-t border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 lg:px-6"
+          data-testid="drive-reconnect-banner"
+        >
+          <AlertTriangle
+            className="size-4 shrink-0 text-amber-400"
+            aria-hidden="true"
+          />
+          <p className="flex-1 text-sm text-amber-200">
+            {DRIVE_MESSAGES.DISCONNECTED_BANNER}
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="shrink-0"
+            disabled={isReconnecting}
+            onClick={handleReconnect}
+          >
+            {isReconnecting ? "Connecting..." : "Reconnect"}
+          </Button>
+        </div>
+      )}
     </header>
   );
 }

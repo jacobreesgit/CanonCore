@@ -36,6 +36,13 @@ export const ITEM_MESSAGES = {
   METADATA_FAILED: "Failed to apply metadata",
 } as const;
 
+/** Google Drive connection messages. */
+export const DRIVE_MESSAGES = {
+  DISCONNECTED_BANNER:
+    "Google Drive disconnected. Syncing and streaming are paused until you reconnect",
+  DISCONNECTED_BANNER_SHORT: "Drive disconnected",
+} as const;
+
 /** TMDB wizard error and status messages. */
 export const TMDB_WIZARD_MESSAGES = {
   SEASON_LOAD_ERROR: "Failed to load season details. Please try again",
