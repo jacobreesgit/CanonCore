@@ -3,7 +3,7 @@
  * Covers breadcrumb navigation, context menu, and header states.
  */
 import type { Meta, StoryObj } from "@storybook/nextjs";
-import { fn, userEvent, within } from "storybook/test";
+import { fn, userEvent, within, expect } from "storybook/test";
 import { SiteHeader } from "./site-header";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
@@ -52,6 +52,11 @@ const meta = {
     currentItemId: {
       control: "text",
       description: "Current item ID (enables context menu)",
+    },
+    driveNeedsReauth: {
+      control: "boolean",
+      description:
+        "Whether Google Drive needs reauthentication (shows reconnect banner)",
     },
     onRename: {
       description: "Callback when rename action is triggered",
@@ -176,5 +181,61 @@ export const WithContextMenu: Story = {
   parameters: {
     // Disable a11y checks - Radix dropdown menu portal renders outside main content
     a11y: { disable: true },
+  },
+};
+
+/**
+ * Drive reconnect banner visible.
+ * Amber warning banner appears above breadcrumb row when Drive needs reauthentication.
+ */
+export const DriveReconnectBanner: Story = {
+  args: {
+    title: "My Items",
+    titleHref: "/u/johndoe",
+    breadcrumbs: [{ id: "1", name: "Movies", href: "/u/johndoe/1" }],
+    driveNeedsReauth: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const banner = canvas.getByTestId("drive-reconnect-banner");
+    await expect(banner).toHaveAttribute("role", "alert");
+    await expect(
+      canvas.getByRole("button", { name: /reconnect/i })
+    ).toBeInTheDocument();
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "When Google Drive authentication expires, a glass-styled banner with amber icon appears above the breadcrumb row. The banner includes a Reconnect button that initiates the OAuth flow.",
+      },
+    },
+  },
+};
+
+/**
+ * Drive reconnect banner not shown.
+ * Header renders normally when Drive is connected or not configured.
+ */
+export const NoDriveReconnectBanner: Story = {
+  args: {
+    title: "My Items",
+    titleHref: "/u/johndoe",
+    breadcrumbs: [{ id: "1", name: "Movies", href: "/u/johndoe/1" }],
+    driveNeedsReauth: false,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.queryByTestId("drive-reconnect-banner")
+    ).not.toBeInTheDocument();
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "When Drive is connected normally or not configured, no banner is shown. The header renders with only the breadcrumb row.",
+      },
+    },
   },
 };

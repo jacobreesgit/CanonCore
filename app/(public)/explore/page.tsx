@@ -7,6 +7,7 @@ import { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { getExploreItems, getFeaturedItems } from "@/lib/public-auth";
 import { getProfile } from "@/lib/user-actions";
+import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
 import { getItemTmdbMetadata } from "@/lib/tmdb-client";
 import { SiteHeader } from "@/components/site-header";
 import { ExploreClient } from "./explore-client";
@@ -38,11 +39,14 @@ export default async function ExplorePage() {
   const currentUserId = session?.user?.id ?? null;
 
   // Fetch items with correct userId (avoids double-fetch), plus finish parallel work
-  const [profileResult, featuredItems, items] = await Promise.all([
-    profilePromise,
-    featuredPromise,
-    getExploreItems(50, 0, currentUserId),
-  ]);
+  const [profileResult, featuredItems, items, driveConnection] =
+    await Promise.all([
+      profilePromise,
+      featuredPromise,
+      getExploreItems(50, 0, currentUserId),
+      currentUserId ? getGoogleDriveConnection() : Promise.resolve(null),
+    ]);
+  const driveNeedsReauth = driveConnection?.needsReauth ?? false;
 
   const profile = profileResult.success ? profileResult.data : null;
   const currentUser = profile
@@ -68,7 +72,11 @@ export default async function ExplorePage() {
 
   return (
     <>
-      <SiteHeader title="Explore" titleHref="/explore" />
+      <SiteHeader
+        title="Explore"
+        titleHref="/explore"
+        driveNeedsReauth={driveNeedsReauth}
+      />
       <div className="bg-background text-foreground flex flex-1 flex-col">
         <ExploreClient
           items={items}

@@ -189,6 +189,7 @@ export default async function ItemDetailPage({
         ? filesResult.data
         : { media: [], artwork: [], subtitles: [] };
     const hasDriveConnection = Boolean(driveConnection);
+    const driveNeedsReauth = driveConnection?.needsReauth ?? false;
 
     const currentUser = {
       id: profile.id,
@@ -202,6 +203,7 @@ export default async function ItemDetailPage({
           title="My Items"
           titleHref={`/u/${profile.username}`}
           breadcrumbs={breadcrumbs}
+          driveNeedsReauth={driveNeedsReauth}
         />
         <div className="bg-background text-foreground flex flex-1 flex-col">
           <ItemDetailClient
@@ -266,6 +268,9 @@ export default async function ItemDetailPage({
           select: { username: true },
         })
       : null;
+    const viewerDrivePromise = currentUserId
+      ? getGoogleDriveConnection()
+      : Promise.resolve(null);
 
     // Await TMDB resolution, then fetch TMDB metadata in parallel with remaining work
     const resolvedTmdb = await resolvedTmdbPromise;
@@ -275,6 +280,7 @@ export default async function ItemDetailPage({
       forkInfo,
       forkStatusResult,
       currentUser,
+      viewerDriveConnection,
       tmdbMetadata,
       tmdbDetails,
     ] = await Promise.all([
@@ -283,6 +289,7 @@ export default async function ItemDetailPage({
       forkInfoPromise,
       forkStatusPromise,
       currentUserPromise,
+      viewerDrivePromise,
       resolvedTmdb
         ? getItemTmdbMetadata(resolvedTmdb.tmdbId, resolvedTmdb.tmdbType)
         : null,
@@ -312,6 +319,7 @@ export default async function ItemDetailPage({
           title={`@${profile.username}`}
           titleHref={`/u/${profile.username}`}
           breadcrumbs={headerBreadcrumbs}
+          driveNeedsReauth={viewerDriveConnection?.needsReauth ?? false}
         />
         <div className="bg-background text-foreground flex flex-1 flex-col">
           <PublicItemClient

@@ -5,6 +5,8 @@
 
 import type { Metadata } from "next";
 
+import { auth } from "@/lib/auth";
+import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
 import { SiteHeader } from "@/components/site-header";
 import { HeroContent } from "./landing-hero";
 
@@ -17,10 +19,20 @@ export const metadata: Metadata = {
 /**
  * Renders the landing page with cinematic hero.
  */
-export default function LandingPage() {
+export default async function LandingPage() {
+  const session = await auth();
+  const driveConnection = session?.user
+    ? await getGoogleDriveConnection()
+    : null;
+  const driveNeedsReauth = driveConnection?.needsReauth ?? false;
+
   return (
     <>
-      <SiteHeader title="Home" titleHref="/" />
+      <SiteHeader
+        title="Home"
+        titleHref="/"
+        driveNeedsReauth={driveNeedsReauth}
+      />
       <main className="flex-1 overflow-y-auto">
         <HeroContent />
       </main>

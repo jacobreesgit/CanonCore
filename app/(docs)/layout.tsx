@@ -11,6 +11,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { MobileNavProvider } from "@/components/mobile";
 import { auth, getExtendedSidebarUser } from "@/lib/auth";
+import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
 import { MyItemsProviders } from "@/components/items/my-items-providers";
 import type { ReactNode } from "react";
 
@@ -26,7 +27,11 @@ export default async function DocsLayout({
   children: ReactNode;
 }) {
   const session = await auth();
-  const user = await getExtendedSidebarUser(session);
+  const [user, driveConnection] = await Promise.all([
+    getExtendedSidebarUser(session),
+    session?.user ? getGoogleDriveConnection() : Promise.resolve(null),
+  ]);
+  const driveNeedsReauth = driveConnection?.needsReauth ?? false;
 
   // Prepare user data for mobile nav (null-safe)
   const mobileNavUser = user
@@ -63,13 +68,21 @@ export default async function DocsLayout({
           tabIndex={-1}
           className="@container/main flex min-h-full flex-col overflow-y-auto pb-16 outline-none lg:pb-0"
         >
-          <SiteHeader title="Documentation" titleHref="/docs" />
+          <SiteHeader
+            title="Documentation"
+            titleHref="/docs"
+            driveNeedsReauth={driveNeedsReauth}
+          />
           {children}
         </main>
       </SidebarInset>
 
       {/* Mobile footer navigation (hidden on desktop) */}
-      <MobileNavProvider user={mobileNavUser} driveConnection={null} />
+      <MobileNavProvider
+        user={mobileNavUser}
+        driveConnection={driveConnection}
+        driveNeedsReauth={driveNeedsReauth}
+      />
     </SidebarProvider>
   );
 

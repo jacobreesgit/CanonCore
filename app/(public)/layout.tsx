@@ -33,6 +33,7 @@ export default async function PublicLayout({
     session?.user ? getGoogleDriveConnection() : Promise.resolve(null),
   ]);
   const pinnedItems = pinnedResult.success ? pinnedResult.data : [];
+  const driveNeedsReauth = driveConnection?.needsReauth ?? false;
 
   // Prepare user data for mobile nav (null-safe)
   const mobileNavUser = user
@@ -78,6 +79,7 @@ export default async function PublicLayout({
       <MobileNavProvider
         user={mobileNavUser}
         driveConnection={driveConnection}
+        driveNeedsReauth={driveNeedsReauth}
       />
     </SidebarProvider>
   );

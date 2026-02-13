@@ -98,7 +98,7 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 - `lib/audit-context.ts` - AsyncLocalStorage context for audit logging (userId, source, requestId)
 - `lib/audit-logger.ts` - Prisma extension for automatic mutation logging with redaction
 - `lib/bot-patterns.ts` - Centralised bot lists for robots.txt and proxy middleware
-- `lib/constants/messages.ts` - Centralised user-facing messages (SYNC, SETTINGS, ITEM)
+- `lib/constants/messages.ts` - Centralised user-facing messages (SYNC, SETTINGS, ITEM, DRIVE)
 - `lib/types.ts` - Shared TypeScript types (includes `TmdbDisplayOptions`, `DEFAULT_TMDB_DISPLAY`); `ItemWithArtwork` and `SearchableItem` include `tmdbPosterPath`/`tmdbBackdropPath` for CDN-first image resolution
 - `hooks/use-reduced-motion.ts` - Reduced motion preference detection with localStorage override
 - `hooks/use-settings-dialog.ts` - Item settings dialog lifecycle management
@@ -385,6 +385,14 @@ pnpm run seed:e2e          # Seeds E2E Neon branch
 - `google-drive-sync.ts` - Bidirectional sync
 - `google-drive-upload.ts` - Browser-to-Drive uploads
 
+**Reconnect Banner:**
+
+- When `needsReauth` is true on a Drive connection, a persistent amber banner appears on all pages
+- Desktop: `SiteHeader` renders banner below breadcrumb row (all layouts pass `driveNeedsReauth` prop)
+- Mobile: `MobileNavProvider` renders fixed banner at top of viewport (`lg:hidden`)
+- Both banners use `role="alert"`, `aria-live="assertive"`, and call `initiateGoogleDriveOAuth()` on click
+- Message constant: `DRIVE_MESSAGES.DISCONNECTED_BANNER` in `lib/constants/messages.ts`
+
 **Special Handling:**
 
 - Trashed folder detection with recovery guidance
@@ -537,7 +545,7 @@ See `docs/deployments/DEPLOYMENT-6.0.2.md` for detailed implementation and monit
 - All animations respect `prefers-reduced-motion`
 - Auth pages use split-panel layout (decorative left panel with FloatingPaths, form right panel)
 - Landing page uses hero with feature card grid and Framer Motion animations
-- Site header auto-hides on scroll down, reappears on scroll up
+- Site header auto-hides on scroll down, reappears on scroll up; shows Drive reconnect banner when `driveNeedsReauth` is true
 
 ### Accessibility
 
@@ -550,6 +558,7 @@ See `docs/deployments/DEPLOYMENT-6.0.2.md` for detailed implementation and monit
 - Navigation a11y: `aria-current="page"` on active sidebar and mobile footer items
 - Mobile navigation: Bottom sheets have accessible titles, focus trapping, swipe-to-dismiss gesture support, `SwipeableTabs` and `SwipeableUnderlineTabs` with `role="tablist"`/`role="tabpanel"` semantics, `inert`/`aria-hidden` on inactive panels
 - Discard changes confirmation: `DiscardChangesAlert` shown when closing mobile sheets with unsaved changes
+- Drive reconnect banner: `role="alert"` and `aria-live="assertive"` for immediate screen reader announcement when Drive needs reauthentication
 - Auth form a11y: Error messages use `role="alert"` and `aria-live="polite"` for screen reader announcements; inputs get `aria-invalid` and `aria-describedby` when validation fails
 
 ### Dark Mode

@@ -108,6 +108,7 @@ export default async function ProfilePage({ params }: PageProps) {
 
   // For owners, also fetch Drive connection and library progress
   let hasDriveConnection = false;
+  let driveNeedsReauth = false;
   let libraryProgress = null;
 
   if (isOwner) {
@@ -117,6 +118,7 @@ export default async function ProfilePage({ params }: PageProps) {
     ]);
     hasDriveConnection =
       driveConnection !== null && !driveConnection.needsReauth;
+    driveNeedsReauth = driveConnection?.needsReauth ?? false;
     libraryProgress = progress;
   }
 
@@ -136,6 +138,7 @@ export default async function ProfilePage({ params }: PageProps) {
       <SiteHeader
         title={isOwner ? "My Items" : `@${profile.username}`}
         titleHref={`/u/${profile.username}`}
+        driveNeedsReauth={driveNeedsReauth}
       />
       <div className="bg-background text-foreground flex flex-1 flex-col">
         <ProfilePageContent
