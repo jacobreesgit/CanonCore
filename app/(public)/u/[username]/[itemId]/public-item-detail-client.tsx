@@ -6,8 +6,9 @@
  * Includes fork functionality in hero actions slot.
  */
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { CinematicHero } from "@/components/hero";
 import { HeroButton } from "@/components/items/hero-button";
@@ -19,6 +20,16 @@ import { useStoredViewMode } from "@/hooks/use-stored-view-mode";
 import { EmptyState } from "@/components/items/empty-state";
 import { UnderlineTabs } from "@/components/ui/underline-tabs";
 import { Section } from "@/components/ui/section";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+// Lazy-load swipeable tabs (mobile-only, keeps Embla out of desktop bundle)
+const SwipeableUnderlineTabs = dynamic(
+  () =>
+    import("@/components/ui/swipeable-underline-tabs").then((mod) => ({
+      default: mod.SwipeableUnderlineTabs,
+    })),
+  { ssr: false }
+);
 import { HeroContentLayout } from "@/components/ui/hero-content-layout";
 import { ContentToolbar } from "@/components/ui/content-toolbar";
 import { useItemsSortFilter } from "@/hooks/use-items-sort-filter";
@@ -98,6 +109,13 @@ export function PublicItemClient({
   tmdbDisplayOptions,
 }: PublicItemClientProps) {
   const router = useRouter();
+  const isMobile = useIsMobile();
+
+  // Delay tab component rendering until after mount so isMobile is accurate.
+  // Prevents UnderlineTabs → SwipeableUnderlineTabs swap that causes focus loss.
+  const [tabsMounted, setTabsMounted] = useState(false);
+  useEffect(() => setTabsMounted(true), []);
+
   const [isForking, setIsForking] = useState(false);
 
   // Sort/filter state (same as private item pages)
@@ -346,6 +364,15 @@ export function PublicItemClient({
   // Determine whether to show tabs
   const showTabs = hasChildren || hasTmdb;
 
+  // Active tab for mobile swipeable tabs (controlled)
+  const defaultTabId = hasChildren ? "contents" : "about";
+  const [activeTab, setActiveTab] = useState(defaultTabId);
+
+  // Sync activeTab when defaultTabId changes (e.g. children added/removed)
+  useEffect(() => {
+    setActiveTab(defaultTabId);
+  }, [defaultTabId]);
+
   // Resolve hero background URL: TMDB backdrop takes precedence over artwork
   const heroBackgroundUrl = item.tmdbBackdropPath
     ? getTmdbBackdropUrl(item.tmdbBackdropPath)
@@ -390,18 +417,36 @@ export function PublicItemClient({
   return (
     <HeroContentLayout hero={hero}>
       {/* Tabbed content or simple content */}
-      {showTabs ? (
-        <UnderlineTabs
-          defaultTab={hasChildren ? "contents" : "about"}
-          tabs={[
-            {
-              id: "contents",
-              label: "Contents",
-              content: contentsContent,
-            },
-            { id: "about", label: "About", content: aboutContent },
-          ]}
-        />
+      {showTabs && tabsMounted ? (
+        isMobile ? (
+          <SwipeableUnderlineTabs
+            tabs={[
+              {
+                id: "contents",
+                label: "Contents",
+                content: contentsContent,
+              },
+              { id: "about", label: "About", content: aboutContent },
+            ]}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+          />
+        ) : (
+          <UnderlineTabs
+            defaultTab={defaultTabId}
+            tabs={[
+              {
+                id: "contents",
+                label: "Contents",
+                content: contentsContent,
+              },
+              { id: "about", label: "About", content: aboutContent },
+            ]}
+          />
+        )
+      ) : showTabs ? (
+        // During SSR/initial render, show content directly (tabs appear after mount)
+        contentsContent
       ) : (
         // No tabs needed — just show fork info and empty state
         <div className="flex flex-1 flex-col">

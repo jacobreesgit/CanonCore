@@ -149,7 +149,10 @@ test.describe("Item Settings Dialog", () => {
       "This is a test description"
     );
 
-    // Re-open to verify it persisted
+    // Reload to guarantee fresh server data (RSC revalidation is async)
+    await page.reload();
+    await itemsPage.waitForLoadingComplete();
+
     await itemsPage.openItemSettings("Add Description Test");
     const description = await itemsPage.getDescriptionFromSettings();
     expect(description).toBe("This is a test description");
@@ -167,13 +170,20 @@ test.describe("Item Settings Dialog", () => {
       "Initial description"
     );
 
+    // Reload to guarantee fresh data before next save (form reads from server state)
+    await page.reload();
+    await itemsPage.waitForLoadingComplete();
+
     // Update description
     await itemsPage.updateDescription(
       "Update Description Test",
       "Updated description"
     );
 
-    // Verify update persisted
+    // Reload to guarantee fresh server data
+    await page.reload();
+    await itemsPage.waitForLoadingComplete();
+
     await itemsPage.openItemSettings("Update Description Test");
     const description = await itemsPage.getDescriptionFromSettings();
     expect(description).toBe("Updated description");
@@ -191,10 +201,17 @@ test.describe("Item Settings Dialog", () => {
       "Will be cleared"
     );
 
+    // Reload to guarantee fresh data before clearing (form reads from server state)
+    await page.reload();
+    await itemsPage.waitForLoadingComplete();
+
     // Clear description
     await itemsPage.updateDescription("Clear Description Test", "");
 
-    // Verify cleared
+    // Reload to guarantee fresh server data
+    await page.reload();
+    await itemsPage.waitForLoadingComplete();
+
     await itemsPage.openItemSettings("Clear Description Test");
     const description = await itemsPage.getDescriptionFromSettings();
     expect(description).toBe("");
@@ -366,8 +383,14 @@ test.describe("Item Page Settings", () => {
       .getByRole("button", { name: /save changes/i })
       .click();
 
-    // Dialog closes automatically on success (after onSettingsChange refetch completes)
+    // Dialog closes automatically on success
     await expect(settingsContainer).not.toBeVisible({ timeout: 15000 });
+
+    // Reload to guarantee fresh server data (RSC revalidation is async)
+    await page.reload();
+    await expect(page.getByTestId("hero-carousel")).toBeVisible({
+      timeout: 10000,
+    });
 
     // Re-open settings to verify description was saved
     await itemsPage.openSettingsFromToolbar();
@@ -409,7 +432,7 @@ test.describe("File Deletion", () => {
     // Switch to Files tab first (tabbed interface)
     const container = await itemsPage.getSettingsContainer();
     await container.getByRole("tab", { name: /files/i }).click();
-    // Wait for tab animation to settle (AnimatePresence briefly duplicates panels)
+    // Wait for Files tab content to be available
     const mediaSection = container.locator(
       '[data-testid="file-section-primary-media"]'
     );
@@ -447,7 +470,7 @@ test.describe("File Deletion", () => {
 
     // Switch to Files tab first (tabbed interface)
     await settingsContainer.getByRole("tab", { name: /files/i }).click();
-    // Wait for tab animation to settle (AnimatePresence briefly duplicates panels)
+    // Wait for Files tab content to be available
     const mediaSection1 = settingsContainer.locator(
       '[data-testid="file-section-primary-media"]'
     );
@@ -485,7 +508,7 @@ test.describe("File Deletion", () => {
 
     // Switch to Files tab first (tabbed interface)
     await settingsContainer.getByRole("tab", { name: /files/i }).click();
-    // Wait for tab animation to settle (AnimatePresence briefly duplicates panels)
+    // Wait for Files tab content to be available
     const mediaSection2 = settingsContainer.locator(
       '[data-testid="file-section-primary-media"]'
     );
@@ -528,7 +551,7 @@ test.describe("File Deletion", () => {
 
     // Switch to Files tab first (tabbed interface)
     await settingsContainer.getByRole("tab", { name: /files/i }).click();
-    // Wait for tab animation to settle (AnimatePresence briefly duplicates panels)
+    // Wait for Files tab content to be available
     const mediaSection3 = settingsContainer.locator(
       '[data-testid="file-section-primary-media"]'
     );

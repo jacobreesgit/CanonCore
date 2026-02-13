@@ -79,10 +79,10 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 - `components/sortable-grid/` and `sortable-tree/` - dnd-kit drag-drop with view/edit modes (kebab-case filenames)
 - `components/media/` - Media player with Vidstack (media-player, media-player-icons)
 - `components/diceui/` - Third-party DiceUI components (file-upload with drag-drop, previews)
-- `components/mobile/` - Mobile navigation and shared mobile components (footer nav, bottom sheets, swipeable-tabs, discard-changes-alert, search/help sheets)
+- `components/mobile/` - Mobile navigation and shared mobile components (footer nav, bottom sheets, swipeable-tabs with Embla Carousel, discard-changes-alert, search/help sheets)
 - `components/profile/` - Profile UI (settings-dialog, mobile-settings-sheet, preferences-tab, profile-page)
 - `components/providers/` - App-level providers (theme-provider, error-boundary, deferred-analytics)
-- `components/ui/` - shadcn/ui primitives + shared UI (content-toolbar with ViewDropdown, hero-content-layout, section, underline-tabs, progress-bar)
+- `components/ui/` - shadcn/ui primitives + shared UI (content-toolbar with ViewDropdown, hero-content-layout, section, underline-tabs, swipeable-underline-tabs, progress-bar)
 - `components/search/` - Spotlight search (spotlight-search, global-spotlight, item-thumbnail, user-thumbnail)
 - Shared components: `logo.tsx`, `floating-paths.tsx`, `shader-background.tsx`, `feature-card-grid.tsx`
 - Stories: Co-located `*.stories.tsx` files for Storybook component documentation
@@ -216,6 +216,7 @@ pnpm run seed:e2e          # Seeds E2E Neon branch
 - View mode: Full background artwork with dark overlay
 - Edit mode: Simplified icons with drag handles
 - Mobile (< 1024px): Bottom sheets replace desktop dialogs; `MobileItemSheet` combines sort/filter/view/settings; `MobileAddItemSheet` for item creation
+- Item detail tabs: Desktop uses `UnderlineTabs`, mobile uses `SwipeableUnderlineTabs` (Embla Carousel) for Contents/About with swipe gestures; loaded via `next/dynamic` to keep Embla out of desktop bundle
 
 **Key Features:**
 
@@ -414,7 +415,7 @@ pnpm run seed:e2e          # Seeds E2E Neon branch
 
 **E2E Tests (Playwright):**
 
-- ~548 tests across desktop Chrome and mobile Chrome (iPhone 14)
+- ~650 tests across desktop Chrome and mobile Chrome (iPhone 14)
 - Page Object Model pattern in `e2e/pages/` (includes `mobile-footer.page.ts`)
 - Helpers in `e2e/helpers/` (includes `mobile-nav-helpers.ts`)
 - Fixtures in `e2e/fixtures/` for auth, DB, Google Drive
@@ -547,7 +548,7 @@ See `docs/deployments/DEPLOYMENT-6.0.2.md` for detailed implementation and monit
 - Safe area support: CSS variables for notched devices (iPhone X+), mobile footer respects safe areas
 - Decorative icons: `aria-hidden="true"` on non-interactive icons
 - Navigation a11y: `aria-current="page"` on active sidebar and mobile footer items
-- Mobile navigation: Bottom sheets have accessible titles, focus trapping, swipe-to-dismiss gesture support, `SwipeableTabs` with `role="tablist"`/`role="tabpanel"` semantics
+- Mobile navigation: Bottom sheets have accessible titles, focus trapping, swipe-to-dismiss gesture support, `SwipeableTabs` and `SwipeableUnderlineTabs` with `role="tablist"`/`role="tabpanel"` semantics, `inert`/`aria-hidden` on inactive panels
 - Discard changes confirmation: `DiscardChangesAlert` shown when closing mobile sheets with unsaved changes
 - Auth form a11y: Error messages use `role="alert"` and `aria-live="polite"` for screen reader announcements; inputs get `aria-invalid` and `aria-describedby` when validation fails
 

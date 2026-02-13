@@ -106,9 +106,7 @@ test.describe("Explore Page Journey", () => {
 
       // Use data-id with specific item ID to avoid matching stale items,
       // and dispatchEvent to avoid hover overlay interception
-      await page
-        .locator(`[data-id="${publicItemId}"]`)
-        .dispatchEvent("click");
+      await page.locator(`[data-id="${publicItemId}"]`).dispatchEvent("click");
 
       // Should navigate to the public item page
       await expect(page).toHaveURL(`/u/${ownerUsername}/${publicItemId}`);
@@ -383,23 +381,15 @@ test.describe("Explore Page Journey", () => {
       await publicProfilePage.gotoExplore();
 
       // Use data-id with specific item IDs and dispatchEvent to avoid hover overlay
-      await page
-        .locator(`[data-id="${owner1ItemId}"]`)
-        .dispatchEvent("click");
-      await expect(page).toHaveURL(
-        `/u/${owner1Username}/${owner1ItemId}`
-      );
+      await page.locator(`[data-id="${owner1ItemId}"]`).dispatchEvent("click");
+      await expect(page).toHaveURL(`/u/${owner1Username}/${owner1ItemId}`);
 
       // Go back to explore
       await publicProfilePage.gotoExplore();
 
       // Click owner 2's item
-      await page
-        .locator(`[data-id="${owner2ItemId}"]`)
-        .dispatchEvent("click");
-      await expect(page).toHaveURL(
-        `/u/${owner2Username}/${owner2ItemId}`
-      );
+      await page.locator(`[data-id="${owner2ItemId}"]`).dispatchEvent("click");
+      await expect(page).toHaveURL(`/u/${owner2Username}/${owner2ItemId}`);
     });
   });
 });
