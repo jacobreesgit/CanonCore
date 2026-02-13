@@ -24,6 +24,15 @@ import { HeroButton } from "@/components/items/hero-button";
 import { PlaylistButton } from "@/components/items/playlist-button";
 import { UnderlineTabs } from "@/components/ui/underline-tabs";
 import { HeroContentLayout } from "@/components/ui/hero-content-layout";
+
+// Lazy-load swipeable tabs (mobile-only, keeps Embla out of desktop bundle)
+const SwipeableUnderlineTabs = dynamic(
+  () =>
+    import("@/components/ui/swipeable-underline-tabs").then((mod) => ({
+      default: mod.SwipeableUnderlineTabs,
+    })),
+  { ssr: false }
+);
 import { ContentToolbar } from "@/components/ui/content-toolbar";
 import { Button } from "@/components/ui/button";
 import { MediaOverlay } from "@/components/media/media-overlay";
@@ -150,6 +159,11 @@ export function ItemDetailClient({
   // Viewport detection for portal-based components (dialogs render to <body>,
   // bypassing CSS hidden wrappers — must use JS to prevent dual portals)
   const isMobile = useIsMobile();
+
+  // Delay tab component rendering until after mount so isMobile is accurate.
+  // Prevents UnderlineTabs → SwipeableUnderlineTabs swap that causes focus loss.
+  const [tabsMounted, setTabsMounted] = useState(false);
+  useEffect(() => setTabsMounted(true), []);
 
   // Settings dialog state — route to correct surface based on viewport at init
   const [settingsOpen, setSettingsOpen] = useState(() => {
@@ -428,6 +442,15 @@ export function ItemDetailClient({
   // Show tabs when there are children or TMDB data
   const showTabs = hasChildren || hasTmdb;
 
+  // Active tab for mobile swipeable tabs (controlled).
+  // Synced via useEffect so adding/removing children switches to the correct tab.
+  const defaultTabId = hasChildren ? "contents" : "about";
+  const [activeTab, setActiveTab] = useState(defaultTabId);
+
+  useEffect(() => {
+    setActiveTab(defaultTabId);
+  }, [defaultTabId]);
+
   // Resolve hero background URL: TMDB backdrop takes precedence over artwork
   const heroBackgroundUrl = item.tmdbBackdropPath
     ? getTmdbBackdropUrl(item.tmdbBackdropPath)
@@ -473,18 +496,34 @@ export function ItemDetailClient({
   return (
     <HeroContentLayout hero={hero} isPending={isPending}>
       {/* Tabbed content or direct toolbar */}
-      {showTabs ? (
-        <UnderlineTabs
-          defaultTab={hasChildren ? "contents" : "about"}
-          tabs={[
-            {
-              id: "contents",
-              label: "Contents",
-              content: contentsContent,
-            },
-            { id: "about", label: "About", content: aboutContent },
-          ]}
-        />
+      {showTabs && tabsMounted ? (
+        isMobile ? (
+          <SwipeableUnderlineTabs
+            tabs={[
+              {
+                id: "contents",
+                label: "Contents",
+                content: contentsContent,
+              },
+              { id: "about", label: "About", content: aboutContent },
+            ]}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            swipeEnabled={!isEditing}
+          />
+        ) : (
+          <UnderlineTabs
+            defaultTab={defaultTabId}
+            tabs={[
+              {
+                id: "contents",
+                label: "Contents",
+                content: contentsContent,
+              },
+              { id: "about", label: "About", content: aboutContent },
+            ]}
+          />
+        )
       ) : (
         contentsContent
       )}

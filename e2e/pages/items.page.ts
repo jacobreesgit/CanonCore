@@ -113,8 +113,11 @@ export class ItemsPage {
 
   /** Open the mobile Options/Item sheet and select a view mode option. */
   private async selectMobileViewOption(option: "Grid" | "Tree") {
-    // Open the Options bottom sheet
-    await this.page.getByTestId("mobile-options-trigger").click();
+    // Open the Options bottom sheet.
+    // Use .first() because item detail pages render SwipeableUnderlineTabs
+    // with both Contents and About panels in the DOM (Embla carousel), each
+    // containing a ContentToolbar with its own mobile-options-trigger.
+    await this.page.getByTestId("mobile-options-trigger").first().click();
     const viewListbox = this.page.getByRole("listbox", { name: /view mode/i });
     await expect(viewListbox).toBeVisible({ timeout: 5000 });
     // Select the view option

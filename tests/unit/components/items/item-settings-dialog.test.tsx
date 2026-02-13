@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within, waitFor, act } from "@testing-library/react";
+import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ItemSettingsDialog } from "@/components/items/item-settings-dialog";
 import type { SerializedItemFile } from "@/lib/types";
@@ -1062,7 +1062,9 @@ describe("ItemSettingsDialog", () => {
       );
 
       // Save button should be disabled initially
-      expect(screen.getByRole("button", { name: /save changes/i })).toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: /save changes/i })
+      ).toBeDisabled();
 
       await user.click(screen.getByRole("tab", { name: /tmdb/i }));
 
@@ -1074,7 +1076,9 @@ describe("ItemSettingsDialog", () => {
 
       // Save button should now be enabled
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: /save changes/i })).toBeEnabled();
+        expect(
+          screen.getByRole("button", { name: /save changes/i })
+        ).toBeEnabled();
       });
     });
 

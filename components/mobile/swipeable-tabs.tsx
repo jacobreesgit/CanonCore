@@ -1,7 +1,7 @@
 /**
- * Reusable horizontal swipeable tab component using Motion for React.
+ * Reusable horizontal swipeable tab component using Embla Carousel.
  * Designed for touch-first use in bottom sheets.
- * Supports drag gestures, keyboard navigation, lazy rendering,
+ * Supports swipe gestures, keyboard navigation, lazy rendering,
  * and WCAG 2.1 Level A accessibility.
  *
  * When more than 3 tabs are provided, automatically switches to a
@@ -10,8 +10,15 @@
 
 "use client";
 
-import { useCallback, useId, useRef, useState, type ReactNode } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import useEmblaCarousel from "embla-carousel-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/hooks/use-reduced-motion";
@@ -53,17 +60,8 @@ interface SwipeableTabsProps {
 /** Maximum number of tabs before switching to Select dropdown mode. */
 const SELECT_THRESHOLD = 3;
 
-/** Spring animation config for tab transitions. */
-const SPRING_CONFIG = { type: "spring" as const, stiffness: 300, damping: 30 };
-
-/** Swipe threshold in pixels. */
-const SWIPE_THRESHOLD = 75;
-
-/** Velocity threshold in px/s for fast flicks. */
-const VELOCITY_THRESHOLD = 500;
-
 /**
- * Horizontal swipeable tab component with Motion for React gestures.
+ * Horizontal swipeable tab component with Embla Carousel.
  * Provides tab bar with sliding indicator, swipe navigation, and full
  * keyboard accessibility (arrow keys, Home/End).
  *
@@ -89,7 +87,6 @@ export function SwipeableTabs({
   const prefersReducedMotion = usePrefersReducedMotion();
   const tablistRef = useRef<HTMLDivElement>(null);
   const [announcement, setAnnouncement] = useState("");
-  const [direction, setDirection] = useState(1);
 
   // Track which tabs have been visited (for lazy rendering)
   const [visitedTabs, setVisitedTabs] = useState<Set<string>>(
@@ -99,25 +96,64 @@ export function SwipeableTabs({
   const useSelectMode = tabs.length > SELECT_THRESHOLD;
   const activeIndex = tabs.findIndex((t) => t.id === activeTab);
 
-  /**
-   * Navigates to a tab by index and announces the change.
-   */
-  const navigateToIndex = useCallback(
-    (index: number) => {
-      const tab = tabs[index];
-      if (tab) {
-        const currentIndex = tabs.findIndex((t) => t.id === activeTab);
-        setDirection(index >= currentIndex ? 1 : -1);
+  // Capture initial index once to avoid Embla reinit on every tab change
+  const [initialIndex] = useState(() =>
+    tabs.findIndex((t) => t.id === activeTab)
+  );
+
+  // Initialize Embla — only prefersReducedMotion is reactive
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    align: "start",
+    containScroll: false,
+    watchDrag: !prefersReducedMotion,
+    duration: prefersReducedMotion ? 0 : 20,
+    startIndex: initialIndex,
+  });
+
+  // Single source of truth: select + reinit event handlers
+  useEffect(() => {
+    if (!emblaApi) return;
+
+    const onSelect = () => {
+      const newIndex = emblaApi.selectedScrollSnap();
+      const tab = tabs[newIndex];
+      if (tab && tab.id !== activeTab) {
         onTabChange(tab.id);
         setAnnouncement(`${tab.label} tab selected`);
         if (lazy) {
           setVisitedTabs((prev) => {
             if (prev.has(tab.id)) return prev;
-            const next = new Set(prev);
-            next.add(tab.id);
-            return next;
+            return new Set(prev).add(tab.id);
           });
         }
+      }
+    };
+
+    emblaApi.on("select", onSelect);
+    emblaApi.on("reInit", onSelect);
+    return () => {
+      emblaApi.off("select", onSelect);
+      emblaApi.off("reInit", onSelect);
+    };
+  }, [emblaApi, tabs, activeTab, onTabChange, lazy]);
+
+  // Sync external activeTab prop → carousel position
+  useEffect(() => {
+    if (!emblaApi) return;
+    if (emblaApi.selectedScrollSnap() !== activeIndex) {
+      emblaApi.scrollTo(activeIndex);
+    }
+  }, [emblaApi, activeIndex]);
+
+  /**
+   * Navigates to a tab by index via Embla scrollTo.
+   * Does not call onTabChange directly — state flows through the select event.
+   */
+  const navigateToIndex = useCallback(
+    (index: number) => {
+      const tab = tabs[index];
+      if (tab) {
+        emblaApi?.scrollTo(index);
         // Focus the tab button
         const tabButton = tablistRef.current?.querySelector(
           `[data-tab-index="${index}"]`
@@ -125,7 +161,7 @@ export function SwipeableTabs({
         tabButton?.focus();
       }
     },
-    [tabs, activeTab, onTabChange, lazy]
+    [tabs, emblaApi]
   );
 
   /**
@@ -156,30 +192,6 @@ export function SwipeableTabs({
 
       if (nextIndex !== null) {
         navigateToIndex(nextIndex);
-      }
-    },
-    [activeIndex, tabs.length, navigateToIndex]
-  );
-
-  /**
-   * Handles drag end to determine tab change from swipe gesture.
-   */
-  const handleDragEnd = useCallback(
-    (
-      _event: MouseEvent | TouchEvent | PointerEvent,
-      info: { offset: { x: number }; velocity: { x: number } }
-    ) => {
-      const { offset, velocity } = info;
-
-      const swipedLeft =
-        offset.x < -SWIPE_THRESHOLD || velocity.x < -VELOCITY_THRESHOLD;
-      const swipedRight =
-        offset.x > SWIPE_THRESHOLD || velocity.x > VELOCITY_THRESHOLD;
-
-      if (swipedLeft && activeIndex < tabs.length - 1) {
-        navigateToIndex(activeIndex + 1);
-      } else if (swipedRight && activeIndex > 0) {
-        navigateToIndex(activeIndex - 1);
       }
     },
     [activeIndex, tabs.length, navigateToIndex]
@@ -278,7 +290,7 @@ export function SwipeableTabs({
   }
 
   // -------------------------------------------------------------------------
-  // Swipeable mode: ≤3 tabs renders tab bar with drag gestures
+  // Swipeable mode: ≤3 tabs renders tab bar with Embla Carousel
   // -------------------------------------------------------------------------
 
   return (
@@ -323,60 +335,50 @@ export function SwipeableTabs({
             </button>
           );
         })}
-        {/* Sliding indicator */}
+        {/* Sliding indicator — plain div with CSS translate */}
         {activeIndex >= 0 && (
-          <motion.div
+          <div
             className="bg-primary absolute bottom-0 left-0 h-0.5"
-            style={{ width: `${100 / tabs.length}%` }}
-            animate={{ x: `${activeIndex * 100}%` }}
-            transition={prefersReducedMotion ? { duration: 0 } : SPRING_CONFIG}
+            style={{
+              width: `${100 / tabs.length}%`,
+              translate: `${activeIndex * 100}% 0`,
+              transition: prefersReducedMotion
+                ? "none"
+                : "translate 200ms ease",
+            }}
           />
         )}
       </div>
 
-      {/* Content panels */}
-      <div className="relative flex-1 overflow-hidden" data-vaul-no-drag>
-        <AnimatePresence mode="popLayout" initial={false} custom={direction}>
-          <motion.div
-            key={activeTab}
-            className="overflow-y-auto"
-            custom={direction}
-            initial={
-              prefersReducedMotion ? false : { x: direction * 100, opacity: 0 }
-            }
-            animate={{ x: 0, opacity: 1 }}
-            exit={
-              prefersReducedMotion
-                ? undefined
-                : { x: direction * -100, opacity: 0 }
-            }
-            transition={prefersReducedMotion ? { duration: 0 } : SPRING_CONFIG}
-            drag={prefersReducedMotion ? false : "x"}
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.2}
-            onDragEnd={handleDragEnd}
-          >
-            {tabs.map((tab) => {
-              const isActive = tab.id === activeTab;
-              const shouldRender = lazy
-                ? isActive || visitedTabs.has(tab.id)
-                : true;
+      {/* Content panels — Embla Carousel */}
+      <div
+        className="relative min-h-0 flex-1 overflow-hidden"
+        data-vaul-no-drag
+        ref={emblaRef}
+      >
+        <div className="flex h-full">
+          {tabs.map((tab) => {
+            const isActive = tab.id === activeTab;
+            const shouldRender = lazy
+              ? isActive || visitedTabs.has(tab.id)
+              : true;
 
-              return (
-                <div
-                  key={tab.id}
-                  id={getPanelId(tab.id)}
-                  role="tabpanel"
-                  aria-labelledby={getTabId(tab.id)}
-                  tabIndex={0}
-                  className={cn(isActive ? "block" : "hidden", "px-1 py-4")}
-                >
-                  {shouldRender ? tab.content : null}
-                </div>
-              );
-            })}
-          </motion.div>
-        </AnimatePresence>
+            return (
+              <div
+                key={tab.id}
+                id={getPanelId(tab.id)}
+                role="tabpanel"
+                aria-labelledby={getTabId(tab.id)}
+                tabIndex={isActive ? 0 : undefined}
+                inert={!isActive ? true : undefined}
+                aria-hidden={!isActive ? true : undefined}
+                className="min-w-0 flex-[0_0_100%] overflow-y-auto overscroll-y-contain px-1 py-4"
+              >
+                {shouldRender ? tab.content : null}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Screen reader announcement */}

@@ -1,6 +1,6 @@
 /**
  * Storybook stories for the SwipeableTabs component.
- * Demonstrates horizontal swipeable tab navigation with Framer Motion gestures,
+ * Demonstrates horizontal swipeable tab navigation with Embla Carousel,
  * and Select dropdown fallback for >3 tabs.
  */
 
@@ -101,16 +101,17 @@ const meta = {
     docs: {
       description: {
         component: `
-Horizontal swipeable tab component using Framer Motion gestures.
+Horizontal swipeable tab component using Embla Carousel.
 
 ## Features
 
-- **Swipe Navigation** - Drag left/right to switch tabs with spring physics
-- **Sliding Indicator** - Animated underline follows the active tab
+- **Swipe Navigation** - Embla Carousel handles touch/drag gestures with native-feeling physics
+- **Peek at Adjacent Content** - Adjacent tab content slides in during swipe, like native iOS/Android tabs
+- **Sliding Indicator** - CSS translate underline snaps on carousel settle
 - **Keyboard Navigation** - Arrow keys, Home/End for full keyboard control
 - **Select Fallback** - Automatically switches to a dropdown when >3 tabs
-- **Reduced Motion** - Respects \`prefers-reduced-motion\` preference
-- **WCAG Accessible** - Proper tablist/tab/tabpanel roles and aria attributes
+- **Reduced Motion** - Respects \`prefers-reduced-motion\` preference (instant transitions, no drag)
+- **WCAG Accessible** - Proper tablist/tab/tabpanel roles, aria attributes, and inert on off-screen panels
 - **Icon Support** - Optional Lucide icons in tab buttons and Select items
 - **Sheet Compatible** - Uses \`data-vaul-no-drag\` to prevent Vaul sheet interference
 
