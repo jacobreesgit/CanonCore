@@ -104,7 +104,8 @@ describe("MobileBottomSheet", () => {
       const description = screen.getByText("Manage your account settings");
       expect(description).toBeInTheDocument();
       expect(description).toHaveClass("sr-only");
-      expect(description).toHaveAttribute("id", "sheet-description");
+      // useId() generates unique IDs — just verify the element has an id attribute
+      expect(description).toHaveAttribute("id");
     });
 
     it("does not render description when not provided", () => {

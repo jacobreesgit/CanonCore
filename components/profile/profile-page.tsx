@@ -19,16 +19,22 @@ import { Section } from "@/components/ui/section";
 import { HeroContentLayout } from "@/components/ui/hero-content-layout";
 import { ContentToolbar } from "@/components/ui/content-toolbar";
 import { Button } from "@/components/ui/button";
-import { useExploreSortFilter } from "@/hooks/use-explore-sort";
-import { useItemsSortFilter } from "@/hooks/use-items-sort-filter";
+import { useItemsUrlState } from "@/hooks/use-items-url-state";
+import { useExploreUrlState } from "@/hooks/use-explore-url-state";
 import { useSyncHandler } from "@/hooks/use-sync-handler";
 import {
   EXPLORE_SORT_OPTIONS,
   sortPublicItems,
   filterItems,
+  toggleContentFilter,
 } from "@/lib/item-utils";
 import { formatProgressLabel } from "@/lib/progress-utils";
-import type { ItemWithArtwork, ItemProgress, FilterOption } from "@/lib/types";
+import type {
+  ItemWithArtwork,
+  ItemProgress,
+  ContentFilter,
+  SortOption,
+} from "@/lib/types";
 
 /**
  * Profile data for unified display.
@@ -132,8 +138,15 @@ function OwnerModeContent({
   const [isPending, startTransition] = useTransition();
   const [items, setItems] = useState(initialItems);
 
-  // Sort/filter state (persisted to localStorage)
-  const { sortBy, setSortBy, filterBy, setFilterBy } = useItemsSortFilter();
+  // Sort/filter state (URL + localStorage backup)
+  const {
+    sortBy,
+    setSortBy,
+    filters,
+    toggleFilter,
+    clearFilters,
+    isCustomSort,
+  } = useItemsUrlState();
 
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -153,9 +166,6 @@ function OwnerModeContent({
   const { isSyncing, handleSync } = useSyncHandler({
     onSuccess: handleSyncSuccess,
   });
-
-  // Disable edit mode when not using custom sort
-  const isCustomSort = sortBy === "custom";
 
   // Build hero URL with userId
   const heroBackgroundUrl = profile.hasHeroImage
@@ -225,8 +235,9 @@ function OwnerModeContent({
       <ContentToolbar
         sortBy={sortBy}
         onSortChange={setSortBy}
-        filterBy={filterBy}
-        onFilterChange={setFilterBy}
+        filters={filters}
+        toggleFilter={toggleFilter}
+        clearFilters={clearFilters}
         showSync
         isSyncing={isSyncing}
         onSync={handleSync}
@@ -243,8 +254,8 @@ function OwnerModeContent({
         onAddItemOpenChange={setAddItemOpen}
         sortBy={sortBy}
         onSortChange={setSortBy}
-        filterBy={filterBy}
-        onFilterChange={setFilterBy}
+        filters={filters}
+        clearFilters={clearFilters}
         hasDriveConnection={hasDriveConnection}
         currentUser={currentUser}
         disableTreeView
@@ -268,8 +279,14 @@ function ViewerModeContent({
   viewerProgress?: { percentage: number } | null;
 }) {
   const router = useRouter();
-  const { sortBy, setSortBy } = useExploreSortFilter();
-  const [filterBy, setFilterBy] = useState<FilterOption>("all");
+  const { sortBy, setSortBy } = useExploreUrlState();
+  const [filters, setFilters] = useState<ContentFilter[]>([]);
+
+  const toggleFilter = useCallback((filter: ContentFilter) => {
+    setFilters((prev) => toggleContentFilter(prev, filter));
+  }, []);
+
+  const clearFilters = useCallback(() => setFilters([]), []);
 
   // Create O(1) lookup map for original items (avoids O(n²) find in render loop)
   const itemsById = useMemo(
@@ -293,7 +310,7 @@ function ViewerModeContent({
 
   // Filter unpinned items, then transform to sortable format and sort
   const sortableItems = useMemo(() => {
-    const filtered = filterItems(unpinnedItems, filterBy);
+    const filtered = filterItems(unpinnedItems, filters);
     const publicItems = filtered.map((item) => ({
       id: item.id,
       name: item.name,
@@ -310,7 +327,7 @@ function ViewerModeContent({
       forkCount: 0,
     }));
     return sortPublicItems(publicItems, sortBy);
-  }, [unpinnedItems, sortBy, filterBy]);
+  }, [unpinnedItems, sortBy, filters]);
 
   // Preload on hover for faster navigation
   const handleMouseEnter = useCallback(
@@ -360,9 +377,10 @@ function ViewerModeContent({
     <HeroContentLayout hero={hero} className={!hasItems ? "flex-1" : undefined}>
       <ContentToolbar
         sortBy={sortBy}
-        onSortChange={setSortBy}
-        filterBy={filterBy}
-        onFilterChange={setFilterBy}
+        onSortChange={setSortBy as (value: SortOption) => void}
+        filters={filters}
+        toggleFilter={toggleFilter}
+        clearFilters={clearFilters}
         disabled={!hasItems}
         sortOptions={EXPLORE_SORT_OPTIONS}
         defaultSort="updated-desc"

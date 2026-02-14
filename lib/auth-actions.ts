@@ -20,6 +20,9 @@ import {
 import { logger } from "@/lib/logger";
 import { handlePrismaError } from "@/lib/errors";
 
+/** Standardised bcrypt cost factor for all password hashing. */
+const BCRYPT_ROUNDS = 12;
+
 /**
  * Result type for auth actions.
  * Either success or error, never both.
@@ -111,7 +114,7 @@ export async function signUp(
       return { error: "This username is already taken" };
     }
 
-    const passwordHash = await hash(password, 10);
+    const passwordHash = await hash(password, BCRYPT_ROUNDS);
 
     await prisma.user.create({
       data: {
@@ -225,6 +228,16 @@ export async function resetPassword(
   token: string,
   newPassword: string
 ): Promise<AuthResult> {
+  // Rate limiting
+  const rateLimitResult = await checkRateLimit("forgotPassword");
+  if (rateLimitResult) {
+    await logSecurityEvent("RATE_LIMIT_EXCEEDED", {
+      action: "resetPassword",
+      tokenPrefix: token.substring(0, 8),
+    });
+    return rateLimitResult;
+  }
+
   // Validation
   const validation = resetPasswordSchema.safeParse({
     token,
@@ -257,17 +270,21 @@ export async function resetPassword(
     return { error: "Reset link has expired" };
   }
 
-  const passwordHash = await hash(newPassword, 10);
+  const passwordHash = await hash(newPassword, BCRYPT_ROUNDS);
 
-  await prisma.user.update({
-    where: { id: passwordReset.userId },
-    data: { passwordHash },
-  });
-
-  // Delete the used token
-  await prisma.passwordReset.delete({
-    where: { id: passwordReset.id },
-  });
+  // Parallelize independent DB operations: update password + delete token
+  // NOTE: Existing JWT sessions remain valid after password reset because JWTs are
+  // stateless and not checked against the database on each request. Full session
+  // invalidation would require a server-side session store or token blocklist.
+  await Promise.all([
+    prisma.user.update({
+      where: { id: passwordReset.userId },
+      data: { passwordHash },
+    }),
+    prisma.passwordReset.delete({
+      where: { id: passwordReset.id },
+    }),
+  ]);
 
   await logSecurityEvent("PASSWORD_RESET_SUCCESS", {
     email: passwordReset.user.email,

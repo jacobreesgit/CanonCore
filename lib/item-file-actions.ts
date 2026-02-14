@@ -36,16 +36,18 @@ export async function updatePlaybackPosition(
   duration?: number | null
 ): Promise<ItemFileResult> {
   try {
-    const session = await auth();
+    // Parallelize auth + file fetch
+    const [session, file] = await Promise.all([
+      auth(),
+      prisma.itemFile.findUnique({
+        where: { id: fileId },
+        include: { item: true },
+      }),
+    ]);
+
     if (!session?.user?.id) {
       return { success: false, error: "Unauthorized" };
     }
-
-    // Verify ownership
-    const file = await prisma.itemFile.findUnique({
-      where: { id: fileId },
-      include: { item: true },
-    });
 
     if (!file) {
       return { success: false, error: "File not found" };
@@ -127,15 +129,18 @@ export async function getItemFile(
   fileId: string
 ): Promise<ItemFileResult<SerializedItemFile>> {
   try {
-    const session = await auth();
+    // Parallelize auth + file fetch
+    const [session, file] = await Promise.all([
+      auth(),
+      prisma.itemFile.findUnique({
+        where: { id: fileId },
+        include: { item: true },
+      }),
+    ]);
+
     if (!session?.user?.id) {
       return { success: false, error: "Unauthorized" };
     }
-
-    const file = await prisma.itemFile.findUnique({
-      where: { id: fileId },
-      include: { item: true },
-    });
 
     if (!file) {
       return { success: false, error: "File not found" };
@@ -162,15 +167,18 @@ export async function getItemFile(
  */
 export async function setPrimaryFile(fileId: string): Promise<ItemFileResult> {
   try {
-    const session = await auth();
+    // Parallelize auth + file fetch
+    const [session, file] = await Promise.all([
+      auth(),
+      prisma.itemFile.findUnique({
+        where: { id: fileId },
+        include: { item: true },
+      }),
+    ]);
+
     if (!session?.user?.id) {
       return { success: false, error: "Unauthorized" };
     }
-
-    const file = await prisma.itemFile.findUnique({
-      where: { id: fileId },
-      include: { item: true },
-    });
 
     if (!file) {
       return { success: false, error: "File not found" };

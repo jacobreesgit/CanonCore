@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { getDriveClient, withRateLimit } from "@/lib/google-drive-client";
 import { getMimeTypeByExtension } from "@/lib/file-type-utils";
 import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 /**
  * Parses HTTP Range header for partial content requests.
@@ -101,6 +102,12 @@ export async function GET(
   { params }: { params: Promise<{ fileId: string }> }
 ) {
   try {
+    // Rate limit API access
+    const rateLimitResult = await checkRateLimit("apiRoute");
+    if (rateLimitResult) {
+      return new NextResponse("Too many requests", { status: 429 });
+    }
+
     // Start auth and params in parallel (async-api-routes pattern)
     const [session, { fileId }] = await Promise.all([auth(), params]);
     if (!session?.user?.id) {

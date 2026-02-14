@@ -22,13 +22,12 @@ import { MobileOptionsSheet } from "@/components/items/mobile-options-sheet";
 import { Button } from "@/components/ui/button";
 import { Section } from "@/components/ui/section";
 import { cn } from "@/lib/utils";
-import type { SortOptionConfig, FilterOptionConfig } from "@/lib/item-utils";
-import type { SortOption, FilterOption, ViewMode } from "@/lib/types";
+import type { SortOptionConfig } from "@/lib/item-utils";
+import type { SortOption, ContentFilter, ViewMode } from "@/lib/types";
 import type {
   ItemSettingsFormItem,
   ItemSettingsFormFiles,
 } from "@/hooks/use-item-settings-form";
-import type { NormalizedFilterOption } from "@/components/items/mobile-item-sheet";
 
 // Lazy-load MobileItemSheet (mobile-only, pulls in Framer Motion)
 const MobileItemSheet = dynamic(
@@ -122,6 +121,7 @@ function ViewDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger
         disabled={disabled}
+        aria-label={`View mode: ${current.label}`}
         className={cn(
           "inline-flex items-center gap-2 rounded-md px-3 py-1.5",
           "text-sm",
@@ -191,13 +191,13 @@ interface ContentToolbarProps {
   /** Default sort for MobileOptionsSheet active indicator. */
   defaultSort?: SortOption;
 
-  // --- Filter (optional) ---
-  /** Current filter option. */
-  filterBy?: FilterOption | string;
-  /** Callback when filter option changes. */
-  onFilterChange?: (value: FilterOption) => void;
-  /** Custom filter options to display. Accepts standard FilterOptionConfig or generic string-value options. */
-  filterOptions?: FilterOptionConfig[] | { value: string; label: string }[];
+  // --- Filter (optional, multi-select) ---
+  /** Active content filters. */
+  filters?: ContentFilter[];
+  /** Toggle a single filter on/off. */
+  toggleFilter?: (filter: ContentFilter) => void;
+  /** Clear all active filters. */
+  clearFilters?: () => void;
 
   // --- Sync (optional) ---
   /** Show sync button. */
@@ -247,9 +247,9 @@ export function ContentToolbar({
   onSortChange,
   sortOptions,
   defaultSort,
-  filterBy,
-  onFilterChange,
-  filterOptions,
+  filters,
+  toggleFilter,
+  clearFilters,
   viewMode,
   onViewChange,
   showSync,
@@ -262,7 +262,10 @@ export function ContentToolbar({
   mobileSettings,
 }: ContentToolbarProps) {
   const hasSort = sortBy !== undefined && onSortChange !== undefined;
-  const hasFilter = filterBy !== undefined && onFilterChange !== undefined;
+  const hasFilter =
+    filters !== undefined &&
+    toggleFilter !== undefined &&
+    clearFilters !== undefined;
   const hasView = viewMode !== undefined && onViewChange !== undefined;
   const hasMobileSheet = hasSort || hasFilter || hasView;
 
@@ -271,15 +274,8 @@ export function ContentToolbar({
   // Calculate active options for trigger indicator
   const hasActiveSort =
     sortBy !== undefined && sortBy !== (defaultSort ?? "custom");
-  const hasActiveFilter = filterBy !== undefined && filterBy !== "all";
+  const hasActiveFilter = filters !== undefined && filters.length > 0;
   const hasActiveOptions = hasActiveSort || hasActiveFilter;
-
-  // Normalize filter options for MobileItemSheet
-  const normalizedFilterOptions: NormalizedFilterOption[] | undefined =
-    filterOptions?.map((opt) => ({
-      value: opt.value,
-      label: opt.label,
-    }));
 
   return (
     <Section className="py-4" aria-label="Content controls">
@@ -307,12 +303,10 @@ export function ContentToolbar({
                   onOpenChange={mobileSettings.onSettingsOpenChange}
                   sortBy={sortBy}
                   onSortChange={onSortChange}
-                  filterBy={filterBy}
-                  onFilterChange={
-                    onFilterChange as ((value: string) => void) | undefined
-                  }
+                  filters={filters}
+                  toggleFilter={toggleFilter}
+                  clearFilters={clearFilters}
                   sortOptions={sortOptions}
-                  filterOptions={normalizedFilterOptions}
                   defaultSort={defaultSort}
                   viewMode={viewMode}
                   onViewChange={onViewChange}
@@ -328,11 +322,11 @@ export function ContentToolbar({
                 <MobileOptionsSheet
                   sortBy={sortBy}
                   onSortChange={onSortChange}
-                  filterBy={filterBy}
-                  onFilterChange={onFilterChange}
+                  filters={filters}
+                  toggleFilter={toggleFilter}
+                  clearFilters={clearFilters}
                   disabled={disabled}
                   sortOptions={sortOptions}
-                  filterOptions={filterOptions}
                   defaultSort={defaultSort}
                   viewMode={viewMode}
                   onViewChange={onViewChange}
@@ -364,12 +358,12 @@ export function ContentToolbar({
                 options={sortOptions}
               />
             )}
-            {filterBy !== undefined && onFilterChange && (
+            {hasFilter && (
               <FilterDropdown
-                value={filterBy}
-                onChange={onFilterChange as (value: string) => void}
+                filters={filters!}
+                toggleFilter={toggleFilter!}
+                clearFilters={clearFilters!}
                 disabled={disabled}
-                options={filterOptions}
               />
             )}
             {leftActions && (

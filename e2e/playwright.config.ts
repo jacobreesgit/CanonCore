@@ -43,6 +43,7 @@ export default defineConfig({
       name: "setup",
       testMatch: /global\.setup\.ts/,
       timeout: 5 * 60 * 1000, // 5 minutes for large file uploads
+      teardown: "teardown",
     },
     {
       name: "chromium",
@@ -57,7 +58,6 @@ export default defineConfig({
     {
       name: "teardown",
       testMatch: /global\.teardown\.ts/,
-      use: { ...devices["Desktop Chrome"] },
     },
   ],
 

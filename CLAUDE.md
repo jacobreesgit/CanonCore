@@ -40,7 +40,7 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 
 ## Architecture
 
-**Stack:** Next.js 16 (App Router, Turbopack), React 19, TypeScript, Tailwind CSS 4, NextAuth.js v5, Prisma, shadcn/ui
+**Stack:** Next.js 16 (App Router, Turbopack), React 19, TypeScript, Tailwind CSS 4, NextAuth.js v5, Prisma, shadcn/ui, nuqs (URL state)
 
 ### Project Structure Patterns
 
@@ -56,6 +56,7 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 - `app/api/artwork/[fileId]/route.ts` - Artwork streaming from Google Drive
 - `app/api/stream/[fileId]/route.ts` - Media streaming with Range header support
 - `app/api/user/avatar/route.ts` and `hero/route.ts` - User image endpoints
+- All API routes are rate limited via `apiRoute` limiter (60/min per IP)
 
 **Server Actions Convention:**
 
@@ -80,8 +81,8 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 - `components/media/` - Media player with Vidstack (media-player, media-player-icons)
 - `components/diceui/` - Third-party DiceUI components (file-upload with drag-drop, previews)
 - `components/mobile/` - Mobile navigation and shared mobile components (footer nav, bottom sheets, swipeable-tabs with Embla Carousel, discard-changes-alert, search/help sheets)
-- `components/profile/` - Profile UI (settings-dialog, mobile-settings-sheet, preferences-tab, profile-page)
-- `components/providers/` - App-level providers (theme-provider, error-boundary, deferred-analytics)
+- `components/profile/` - Profile UI (settings-dialog with 4 tabs: Profile/Account/Connections/Activity, mobile-settings-sheet, profile-page)
+- `components/providers/` - App-level providers (theme-provider, error-boundary, deferred-analytics); `NuqsAdapter` wraps app in root layout for URL state management
 - `components/ui/` - shadcn/ui primitives + shared UI (content-toolbar with ViewDropdown, hero-content-layout, section, underline-tabs, swipeable-underline-tabs, progress-bar)
 - `components/search/` - Spotlight search (spotlight-search, global-spotlight, item-thumbnail, user-thumbnail)
 - Shared components: `logo.tsx`, `floating-paths.tsx`, `shader-background.tsx`, `feature-card-grid.tsx`
@@ -89,7 +90,7 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 
 **Utilities & Helpers:**
 
-- `lib/*-utils.ts` - Feature utilities (item, progress, file-type, upload, sync, avatar, tmdb)
+- `lib/*-utils.ts` - Feature utilities (item, progress, file-type, upload, sync, avatar, tmdb); `lib/item-utils.ts` exports `toggleContentFilter()` and `CONTENT_FILTER_OPTIONS` for filter state management
 - `lib/*-client.ts` - External API clients (google-drive, tmdb)
 - `lib/avatar-utils.ts` - Avatar initials and gradient background generation
 - `lib/tmdb-image-utils.ts` - Client-safe TMDB image URL builders (`getTmdbPosterUrl`, `getTmdbBackdropUrl`) and `resolveArtworkId()` for CDN-first image resolution
@@ -99,14 +100,16 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 - `lib/audit-logger.ts` - Prisma extension for automatic mutation logging with redaction
 - `lib/bot-patterns.ts` - Centralised bot lists for robots.txt and proxy middleware
 - `lib/constants/messages.ts` - Centralised user-facing messages (SYNC, SETTINGS, ITEM, DRIVE)
-- `lib/types.ts` - Shared TypeScript types (includes `TmdbDisplayOptions`, `DEFAULT_TMDB_DISPLAY`); `ItemWithArtwork` and `SearchableItem` include `tmdbPosterPath`/`tmdbBackdropPath` for CDN-first image resolution
+- `lib/types.ts` - Shared TypeScript types (includes `TmdbDisplayOptions`, `DEFAULT_TMDB_DISPLAY`, `ContentFilter`, `CONTENT_FILTERS`, `SORT_OPTIONS_TUPLE`, `VIEW_MODES`); `ItemWithArtwork` and `SearchableItem` include `tmdbPosterPath`/`tmdbBackdropPath` for CDN-first image resolution
+- `hooks/search-params.ts` - Shared nuqs parser definitions for URL query state (`itemsParsers`, `exploreParsers`)
+- `hooks/use-items-url-state.ts` - URL-backed sort/filter/view/tab state for items pages (replaces useItemsSortFilter + useStoredViewMode), with localStorage backup and migration
+- `hooks/use-explore-url-state.ts` - URL-backed sort and exclude-mine state for explore page (replaces useExploreSortFilter)
 - `hooks/use-reduced-motion.ts` - Reduced motion preference detection with localStorage override
 - `hooks/use-settings-dialog.ts` - Item settings dialog lifecycle management
 - `hooks/use-sync-handler.ts` - Sync operation handler for Drive sync
 - `hooks/use-add-item-form.ts` - Add item form state (TMDB search, wizard, file uploads) shared by desktop dialog and mobile sheet
 - `hooks/use-item-settings-form.ts` - Item settings form state (dirty detection, TMDB display, save/cancel) shared by desktop dialog and mobile sheet
 - `hooks/use-settings-form.ts` - Profile settings form state (avatar/hero uploads, password/email changes) shared by desktop dialog and mobile sheet
-- `hooks/use-stored-view-mode.ts` - localStorage-synced view mode with `useSyncExternalStore`
 
 **Testing:**
 
@@ -124,8 +127,8 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 - Server-side: `await auth()` from `lib/auth.ts`, redirect unauthenticated users
 - Client-side: `signIn()` and `signOut()` from `next-auth/react`
 - Server actions: `signUp()`, `forgotPassword()`, `resetPassword()` in `lib/auth-actions.ts`
-- Password hashing with bcryptjs, password reset emails via Resend (30 min expiry)
-- **Rate limiting**: Upstash Redis (sign-in: 5/min, sign-up: 3/min, forgot: 2/min, botCrawl: 120/min)
+- Password hashing with bcryptjs (12 rounds), password reset emails via Resend (30 min expiry)
+- **Rate limiting**: Upstash Redis (sign-in: 5/min, sign-up: 3/min, forgot/resetPassword: 2/min, botCrawl: 120/min)
 - **Validation**: Zod schemas in `lib/validations.ts` (8+ chars, uppercase, lowercase, number)
 - **Security logging**: All auth events logged with IP and timestamp via Pino
 
@@ -135,7 +138,7 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 
 **Key Schema Patterns:**
 
-- User has optional `username` (unique, case-insensitive), `isPublic`, `image`/`heroImage` blobs, `defaultViewMode`/`defaultSortBy` (String?, not enum)
+- User has optional `username` (unique, case-insensitive), `isPublic`, `image`/`heroImage` blobs
 - Item has self-referential parent/child hierarchy, `pinnedOrder` (null or 0+), `isPublic`, `inheritVisibility`, `forkedFromId`
 - Item has TMDB image paths: `tmdbPosterPath`, `tmdbBackdropPath` (nullable String, stores TMDB CDN path fragments like `/abc123.jpg`)
 - Item has TMDB display preferences: 7 boolean fields (`tmdbShowTagline`, `tmdbShowMetadata`, `tmdbShowGenres`, `tmdbShowCast`, `tmdbShowProviders`, `tmdbShowVideos`, `tmdbShowRecommendations`) all defaulting to `true`
@@ -222,7 +225,8 @@ pnpm run seed:e2e          # Seeds E2E Neon branch
 
 - CinematicHero: Multi-mode hero (carousel with auto-advance on Explore, single-slide on item detail, profile avatar mode). Respects `prefers-reduced-motion`. Attribution text supports linking via `attributionHref`. Screen reader `aria-live` slide announcements.
 - Sort: Custom Order, Name A-Z/Z-A, Newest/Oldest, Recently Updated
-- Filter: All Items, Has Files, No Files, Synced, Pending (Explore adds: Exclude Yours)
+- Filter: Multi-select grouped checkboxes (File Status: Has Files, No Files; Sync Status: Synced, Pending, Error). AND across groups, OR within groups. Explore page has "Exclude Mine" toggle button instead.
+- URL state: Sort/filter/view/tab persisted to URL via `nuqs` (`NuqsAdapter` in root layout), with localStorage backup for direct navigation
 - TMDB display options: Per-item toggles for tagline, metadata, genres, cast, providers, videos, recommendations
 - Pinned items: Max 10, shown in sidebar with folder icons
 - Progress tracking: 90% threshold for "watched", DFS traversal for first incomplete
@@ -476,6 +480,7 @@ done
 - X-Frame-Options: DENY (prevents clickjacking)
 - X-Content-Type-Options: nosniff
 - Referrer-Policy: strict-origin-when-cross-origin
+- **API route rate limiting**: All `/api/*` routes protected by `apiRoute` limiter (60/min per IP) to prevent abuse of streaming and image endpoints
 
 ### Bot Protection
 
@@ -511,6 +516,7 @@ Multi-layer defense against aggressive AI crawlers to prevent cost overruns whil
 **Rate Limiting**: `lib/rate-limit.ts`
 
 - `botCrawl`: 120 requests/minute (2 req/sec)
+- `apiRoute`: 60 requests/minute per IP (protects artwork/stream/avatar/hero routes)
 - Key composition: IP + user-agent (prevents single bot with multiple IPs)
 - Based on Google/Bing recommendations (typical crawl rate: 5-10 req/sec)
 
@@ -559,7 +565,12 @@ See `docs/deployments/DEPLOYMENT-6.0.2.md` for detailed implementation and monit
 - Mobile navigation: Bottom sheets have accessible titles, focus trapping, swipe-to-dismiss gesture support, `SwipeableTabs` and `SwipeableUnderlineTabs` with `role="tablist"`/`role="tabpanel"` semantics, `inert`/`aria-hidden` on inactive panels
 - Discard changes confirmation: `DiscardChangesAlert` shown when closing mobile sheets with unsaved changes
 - Drive reconnect banner: `role="alert"` and `aria-live="assertive"` for immediate screen reader announcement when Drive needs reauthentication
-- Auth form a11y: Error messages use `role="alert"` and `aria-live="polite"` for screen reader announcements; inputs get `aria-invalid` and `aria-describedby` when validation fails
+- Auth form a11y: Error messages use `role="alert"` and `aria-live="polite"` for screen reader announcements; inputs get `aria-invalid` and `aria-describedby` when validation fails; auth pages have `id="main-content"` on `<main>` for skip link target
+- MobileBottomSheet: Uses `React.useId()` for unique `aria-describedby` IDs
+- Sort options: `role="radiogroup"`/`role="radio"` semantics in mobile sheets
+- Filter options: `role="group"`/`role="checkbox"` semantics in mobile sheets
+- TreeItem: Interactive items get `role="button"`, `tabIndex={0}`, and Enter/Space keyboard handlers
+- Username validation: Error messages use `role="alert"` in settings dialog
 
 ### Dark Mode
 

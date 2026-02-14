@@ -1,41 +1,36 @@
 ---
-title: Default Settings
-description: Set your preferred view mode and sort order
+title: Remembering Your Settings
+description: How CanonCore saves your view, sort, and filter choices
 ---
 
-Configure defaults for how your items appear when you sign in. These preferences sync across devices with your account.
+CanonCore automatically remembers your view mode, sort order, and filter selections — no manual configuration needed.
 
-## Open preferences
+## How it works
 
-1. Click your avatar or name in the bottom-left corner
-2. Click **Settings**
-3. Click the **Preferences** tab
+Your choices for sort, filter, and view mode are saved in two places:
 
-## Choose your default view
+1. **URL parameters** — Your current settings appear in the page URL (e.g. `?sort=name-asc&view=grid`). This means you can bookmark or share a specific view.
+2. **Browser storage** — When you navigate directly to a page without URL parameters, your last-used settings are restored from local storage.
 
-Pick which view you see when opening your items:
+## What gets saved
 
-- **Grid** - Visual cards with artwork (default)
-- **Tree** - Compact hierarchical list
+- **Sort order** — Which sort option you last selected (e.g. Name A-Z, Newest First)
+- **Filters** — Which content filters are active (e.g. Has Files, Synced)
+- **View mode** — Grid or Tree view
 
-This sets the starting view. You can still switch between views anytime using the **View** dropdown in the toolbar.
+## Share a specific view
 
-## Choose your default sort
+Because settings live in the URL, you can copy the address bar to share a filtered, sorted view with someone else. For example:
 
-Pick how items are ordered when you sign in:
+```
+/u/yourname?sort=name-asc&filter=has-files&view=grid
+```
 
-- **Custom Order** - Your manual arrangement (default)
-- **Name A-Z** - Alphabetical
-- **Name Z-A** - Reverse alphabetical
-- **Newest First** - Recently created first
-- **Oldest First** - Oldest items first
-- **Recently Updated** - Most recent changes first
+This opens your library sorted alphabetically, filtered to items with files, in grid view.
 
-This sets the starting sort. You can change the sort anytime using the sort dropdown in the toolbar.
+## Switching devices
 
-## How preferences sync
-
-Your default view and sort preferences are stored with your account. When you sign in on a different device, these defaults apply automatically. Changes you make during a session (like switching views) are saved locally and don't change your account defaults.
+Settings are stored in your browser, so they don't sync across devices. When you visit on a new device, you'll start with the defaults (Custom Order, no filters, Grid view) and your choices will be saved from there.
 
 ## Related
 

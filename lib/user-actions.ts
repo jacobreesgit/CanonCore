@@ -9,6 +9,7 @@
 import { compare, hash } from "bcryptjs";
 import { headers } from "next/headers";
 import sharp from "sharp";
+import { z } from "zod";
 import { fileTypeFromBuffer } from "file-type";
 
 import { auth } from "@/lib/auth";
@@ -16,13 +17,9 @@ import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { emailSchema, passwordSchema, usernameSchema } from "@/lib/validations";
 import { logger } from "@/lib/logger";
-import type { ViewMode, SortOption } from "@/lib/types";
-import {
-  VALID_VIEW_MODES,
-  VALID_SORT_OPTIONS,
-  isValidViewMode,
-  isValidSortOption,
-} from "@/lib/types";
+
+/** Standardised bcrypt cost factor for all password hashing. */
+const BCRYPT_ROUNDS = 12;
 
 /** Result type for user actions. */
 type ActionResult<T = void> =
@@ -119,12 +116,34 @@ export async function updateProfile(data: {
   isPublic?: boolean;
   currentPassword?: string;
 }): Promise<ActionResult<void>> {
-  const userId = await getAuthUserId();
+  // Run auth and rate limit in parallel (async-parallel pattern)
+  const [userId, rateLimitResult] = await Promise.all([
+    getAuthUserId(),
+    checkRateLimit("profileUpdate"),
+  ]);
+
   if (!userId) {
     return { success: false, error: "Not authenticated" };
   }
 
+  if (rateLimitResult) {
+    await logSecurityEvent("PROFILE_UPDATE_RATE_LIMITED", { userId });
+    return { success: false, ...rateLimitResult };
+  }
+
   try {
+    // Validate name if provided
+    if (data.name !== undefined) {
+      const nameSchema = z.string().max(100).optional();
+      const nameValidation = nameSchema.safeParse(data.name);
+      if (!nameValidation.success) {
+        return {
+          success: false,
+          error: nameValidation.error.issues[0].message,
+        };
+      }
+    }
+
     // Validate username if provided
     if (data.username !== undefined && data.username !== null) {
       const usernameValidation = usernameSchema.safeParse(data.username);
@@ -204,6 +223,15 @@ export async function updateProfile(data: {
       });
     }
 
+    // Fetch current values for change detection before updating
+    const currentUser =
+      data.username !== undefined || data.isPublic !== undefined
+        ? await prisma.user.findUnique({
+            where: { id: userId },
+            select: { username: true, isPublic: true },
+          })
+        : null;
+
     // Update profile
     await prisma.user.update({
       where: { id: userId },
@@ -214,6 +242,30 @@ export async function updateProfile(data: {
         ...(data.isPublic !== undefined && { isPublic: data.isPublic }),
       },
     });
+
+    // Log security events for username and visibility changes
+    if (
+      data.username !== undefined &&
+      currentUser &&
+      data.username !== currentUser.username
+    ) {
+      await logSecurityEvent("USERNAME_CHANGE", {
+        userId,
+        oldUsername: currentUser.username,
+        newUsername: data.username,
+      });
+    }
+
+    if (
+      data.isPublic !== undefined &&
+      currentUser &&
+      data.isPublic !== currentUser.isPublic
+    ) {
+      await logSecurityEvent("PROFILE_VISIBILITY_CHANGE", {
+        userId,
+        isPublic: data.isPublic,
+      });
+    }
 
     return { success: true };
   } catch (error) {
@@ -278,7 +330,7 @@ export async function changePassword(data: {
     }
 
     // Hash new password
-    const newPasswordHash = await hash(data.newPassword, 12);
+    const newPasswordHash = await hash(data.newPassword, BCRYPT_ROUNDS);
 
     await prisma.user.update({
       where: { id: userId },
@@ -305,9 +357,22 @@ export async function changePassword(data: {
 export async function uploadProfileImage(
   formData: FormData
 ): Promise<ActionResult<void>> {
-  const userId = await getAuthUserId();
+  // Run auth and rate limit in parallel (async-parallel pattern)
+  const [userId, rateLimitResult] = await Promise.all([
+    getAuthUserId(),
+    checkRateLimit("imageUpload"),
+  ]);
+
   if (!userId) {
     return { success: false, error: "Not authenticated" };
+  }
+
+  if (rateLimitResult) {
+    await logSecurityEvent("IMAGE_UPLOAD_RATE_LIMITED", {
+      userId,
+      type: "profile",
+    });
+    return { success: false, ...rateLimitResult };
   }
 
   try {
@@ -351,9 +416,22 @@ export async function uploadProfileImage(
 export async function uploadHeroImage(
   formData: FormData
 ): Promise<ActionResult<void>> {
-  const userId = await getAuthUserId();
+  // Run auth and rate limit in parallel (async-parallel pattern)
+  const [userId, rateLimitResult] = await Promise.all([
+    getAuthUserId(),
+    checkRateLimit("imageUpload"),
+  ]);
+
   if (!userId) {
     return { success: false, error: "Not authenticated" };
+  }
+
+  if (rateLimitResult) {
+    await logSecurityEvent("IMAGE_UPLOAD_RATE_LIMITED", {
+      userId,
+      type: "hero",
+    });
+    return { success: false, ...rateLimitResult };
   }
 
   try {
@@ -491,125 +569,5 @@ export async function getProfile(): Promise<
   } catch (error) {
     logger.error({ err: error }, "Get profile error");
     return { success: false, error: "Failed to get profile" };
-  }
-}
-
-// =============================================================================
-// User Preferences
-// =============================================================================
-
-/** User preferences data. */
-export interface UserPreferences {
-  viewMode: ViewMode;
-  sortBy: SortOption;
-}
-
-/**
- * Get current user's preferences.
- * Returns defaults if no preferences are set.
- *
- * @returns User preferences or error
- *
- * @example
- * const result = await getPreferences();
- * if (result.success) {
- *   console.log(result.data.viewMode); // "grid" | "tree"
- *   console.log(result.data.sortBy);   // "custom" | "name-asc" | ...
- * }
- */
-export async function getPreferences(): Promise<ActionResult<UserPreferences>> {
-  const userId = await getAuthUserId();
-  if (!userId) {
-    return { success: false, error: "Not authenticated" };
-  }
-
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        defaultViewMode: true,
-        defaultSortBy: true,
-      },
-    });
-
-    if (!user) {
-      return { success: false, error: "User not found" };
-    }
-
-    // Validate stored values, fall back to defaults if invalid
-    const viewMode =
-      user.defaultViewMode && isValidViewMode(user.defaultViewMode)
-        ? user.defaultViewMode
-        : "grid";
-    const sortBy =
-      user.defaultSortBy && isValidSortOption(user.defaultSortBy)
-        ? user.defaultSortBy
-        : "custom";
-
-    return {
-      success: true,
-      data: { viewMode, sortBy },
-    };
-  } catch (error) {
-    logger.error({ err: error }, "Get preferences error");
-    return { success: false, error: "Failed to get preferences" };
-  }
-}
-
-/**
- * Update user preferences.
- * Only updates provided fields.
- *
- * @param data - Preferences to update
- * @returns Success or error result
- *
- * @example
- * // Update view mode only
- * await updatePreferences({ viewMode: "tree" });
- *
- * @example
- * // Update multiple preferences
- * await updatePreferences({ viewMode: "grid", sortBy: "name-asc" });
- */
-export async function updatePreferences(data: {
-  viewMode?: ViewMode;
-  sortBy?: SortOption;
-}): Promise<ActionResult<void>> {
-  const userId = await getAuthUserId();
-  if (!userId) {
-    return { success: false, error: "Not authenticated" };
-  }
-
-  // Validate inputs
-  if (
-    data.viewMode !== undefined &&
-    !VALID_VIEW_MODES.includes(data.viewMode)
-  ) {
-    return { success: false, error: "Invalid view mode" };
-  }
-
-  if (data.sortBy !== undefined && !VALID_SORT_OPTIONS.includes(data.sortBy)) {
-    return { success: false, error: "Invalid sort option" };
-  }
-
-  try {
-    const updateData: Record<string, string> = {};
-
-    if (data.viewMode !== undefined) {
-      updateData.defaultViewMode = data.viewMode;
-    }
-    if (data.sortBy !== undefined) {
-      updateData.defaultSortBy = data.sortBy;
-    }
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: updateData,
-    });
-
-    return { success: true };
-  } catch (error) {
-    logger.error({ err: error }, "Update preferences error");
-    return { success: false, error: "Failed to update preferences" };
   }
 }

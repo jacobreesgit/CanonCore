@@ -7,14 +7,14 @@ Sort your items by name, date, or custom order. Filter to show only items that m
 
 ## Sort your items
 
-Click the sort dropdown in the toolbar (it shows the current sort option, e.g. "Custom Order") to change how items are ordered. On mobile, tap the options button in the toolbar to open a bottom sheet with sort, filter, and view options.
+Click the sort dropdown in the toolbar (it shows the current sort option, e.g. "Custom Order") to change how items are ordered. On mobile, tap **Options** in the toolbar to open a bottom sheet with sort, filter, and view options.
 
-- **Custom Order** - Manual arrangement (drag and drop enabled)
-- **Name A-Z** - Alphabetical order
-- **Name Z-A** - Reverse alphabetical
-- **Newest First** - Recently created items at top
-- **Oldest First** - Oldest items at top
-- **Recently Updated** - Most recently modified items first
+- **Custom Order** — Manual arrangement (drag and drop enabled)
+- **Name A-Z** — Alphabetical order
+- **Name Z-A** — Reverse alphabetical
+- **Newest First** — Recently created items at top
+- **Oldest First** — Oldest items at top
+- **Recently Updated** — Most recently modified items first
 
 ### About custom order
 
@@ -22,25 +22,37 @@ Custom Order is the default. It lets you arrange items exactly where you want th
 
 ## Filter your items
 
-Click the filter dropdown to show only certain items:
+Click the **Filter** button in the toolbar to open a multi-select dropdown with two groups of checkboxes.
 
-- **All Items** - Show everything (default)
-- **Has Files** - Only items with attached media, artwork, or subtitles
-- **No Files** - Only items without any files
-- **Synced** - Items that are synced with Google Drive
-- **Pending Sync** - Items waiting to sync
-- **Sync Error** - Items that failed to sync
+### File Status
 
-A small dot appears on the filter button when a filter is active, so you remember one is applied.
+- **Has Files** — Only items with attached media, artwork, or subtitles
+- **No Files** — Only items without any files
 
-### When no items match
+### Sync Status
 
-If your filter doesn't match any items, you'll see a message letting you know. Click **Clear Filter** to remove the filter and see all your items again.
+- **Synced** — Items that are synced with Google Drive
+- **Pending Sync** — Items waiting to sync
+- **Sync Error** — Items that failed to sync
+
+You can select multiple filters at once. Filters within the same group use OR logic (e.g. selecting both "Synced" and "Pending" shows items matching either status). Filters across groups use AND logic (e.g. "Has Files" + "Synced" shows only items that have files **and** are synced).
+
+### Active filter indicator
+
+When filters are active, the button shows the count — for example, **Filter (2)** means two filters are applied. A small dot also appears on the button.
+
+### Clear filters
+
+To remove all active filters, click the **Clear filters** button at the bottom of the dropdown. On mobile, tap **Clear all** in the filter section of the Options sheet.
+
+If your filters don't match any items, you'll see a message with a button to clear them.
 
 ## Sort and filter together
 
 Sorting and filtering work together. For example, you could filter to "Has Files" and sort by "Recently Updated" to see your most recently changed items that have files attached.
 
-## Your preferences are remembered
+## Your choices are saved in the URL
 
-CanonCore saves your sort and filter choices in your browser. When you return, they're automatically applied. You can also set a default sort order in [Settings](/docs/preferences/default-settings) that applies when you first sign in.
+CanonCore saves your sort, filter, and view mode in the page URL. This means you can bookmark or share a specific view — for example, a link with `?sort=name-asc&filter=has-files&view=grid` opens your library sorted alphabetically, filtered to items with files, in grid view.
+
+When you navigate directly to a page without URL parameters, your last-used settings are restored from your browser's local storage.

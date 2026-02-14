@@ -1,1 +1,2 @@
-export * from "./tree-item";
+export { TreeItem } from "./tree-item";
+export { SortableTreeItem } from "./tree-item";

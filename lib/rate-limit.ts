@@ -39,6 +39,16 @@ export const rateLimiters = {
     limiter: Ratelimit.slidingWindow(5, "1 h"),
     prefix: "ratelimit:password-change",
   }),
+  profileUpdate: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(10, "1 m"),
+    prefix: "ratelimit:profile-update",
+  }),
+  imageUpload: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(10, "1 m"),
+    prefix: "ratelimit:image-upload",
+  }),
 
   // Item rate limiters (generous - normal user operations)
   itemCreate: new Ratelimit({
@@ -109,6 +119,13 @@ export const rateLimiters = {
     redis,
     limiter: Ratelimit.slidingWindow(30, "1 m"),
     prefix: "ratelimit:explore",
+  }),
+
+  // API route rate limiters (IP-based)
+  apiRoute: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(60, "1 m"),
+    prefix: "ratelimit:api:route",
   }),
 
   // Public search rate limiters

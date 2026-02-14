@@ -14,6 +14,7 @@ import {
   ArrowUpDown,
   Filter,
   Check,
+  X,
   Settings2,
   Loader2,
   ImageIcon,
@@ -55,16 +56,17 @@ import {
   type ItemSettingsFormFiles,
 } from "@/hooks/use-item-settings-form";
 import { cn } from "@/lib/utils";
-import type { SortOption, ViewMode } from "@/lib/types";
-import type { SortOptionConfig } from "@/lib/item-utils";
+import type { SortOption, ContentFilter, ViewMode } from "@/lib/types";
+import {
+  CONTENT_FILTER_OPTIONS,
+  type SortOptionConfig,
+} from "@/lib/item-utils";
 
-/** Normalized filter option for MobileItemSheet. */
-export interface NormalizedFilterOption {
-  /** Option value. */
-  value: string;
-  /** Display label. */
-  label: string;
-}
+/** File status filter options. */
+const FILE_OPTIONS = CONTENT_FILTER_OPTIONS.filter((o) => o.group === "file");
+
+/** Sync status filter options. */
+const SYNC_OPTIONS = CONTENT_FILTER_OPTIONS.filter((o) => o.group === "sync");
 
 export interface MobileItemSheetProps {
   // --- Sort/filter (from MobileOptionsSheet) ---
@@ -72,14 +74,14 @@ export interface MobileItemSheetProps {
   sortBy?: SortOption;
   /** Callback when sort option changes. */
   onSortChange?: (value: SortOption) => void;
-  /** Current filter value. */
-  filterBy?: string;
-  /** Callback when filter value changes. */
-  onFilterChange?: (value: string) => void;
+  /** Active content filters. */
+  filters?: ContentFilter[];
+  /** Toggle a single filter on/off. */
+  toggleFilter?: (filter: ContentFilter) => void;
+  /** Clear all active filters. */
+  clearFilters?: () => void;
   /** Custom sort options. */
   sortOptions?: SortOptionConfig[];
-  /** Normalized filter options. */
-  filterOptions?: NormalizedFilterOption[];
   /** Default sort for active indicator. */
   defaultSort?: SortOption;
 
@@ -124,10 +126,10 @@ export interface MobileItemSheetProps {
 export function MobileItemSheet({
   sortBy,
   onSortChange,
-  filterBy,
-  onFilterChange,
+  filters,
+  toggleFilter,
+  clearFilters,
   sortOptions,
-  filterOptions,
   defaultSort: _defaultSort = "custom",
   viewMode,
   onViewChange,
@@ -142,7 +144,6 @@ export function MobileItemSheet({
   const [activeSettingsTab, setActiveSettingsTab] = useState("details");
   const [showDiscardAlert, setShowDiscardAlert] = useState(false);
   const sortRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const filterRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const form = useItemSettingsForm(item, files, onSettingsChange, () =>
     onOpenChange(false)
@@ -207,7 +208,8 @@ export function MobileItemSheet({
 
   const showView = viewMode !== undefined && onViewChange !== undefined;
   const showSort = sortBy !== undefined && onSortChange !== undefined;
-  const showFilter = filterBy !== undefined && onFilterChange !== undefined;
+  const showFilter = filters !== undefined && toggleFilter !== undefined;
+  const hasActiveFilter = filters !== undefined && filters.length > 0;
 
   /**
    * Handles dismiss with dirty state check.
@@ -750,7 +752,7 @@ export function MobileItemSheet({
               </div>
               <div
                 className="-mx-2 space-y-1"
-                role="listbox"
+                role="radiogroup"
                 aria-label="Sort options"
               >
                 {sortOptions.map((option, index) => (
@@ -760,8 +762,8 @@ export function MobileItemSheet({
                       sortRefs.current[index] = el;
                     }}
                     type="button"
-                    role="option"
-                    aria-selected={sortBy === option.value}
+                    role="radio"
+                    aria-checked={sortBy === option.value}
                     onClick={() => onSortChange?.(option.value)}
                     onKeyDown={(e) => handleKeyDown(e, sortRefs, index)}
                     className={cn(
@@ -785,42 +787,97 @@ export function MobileItemSheet({
             </div>
           )}
 
-          {/* Filter Section */}
-          {showFilter && filterOptions && (
+          {/* Filter Section - multi-select checkboxes grouped by type */}
+          {showFilter && (
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-xs font-medium tracking-wider text-[var(--tertiary-foreground)] uppercase">
-                <Filter aria-hidden="true" className="size-4" />
-                <span>{showSort ? "Filter" : "Show Sections"}</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-medium tracking-wider text-[var(--tertiary-foreground)] uppercase">
+                  <Filter aria-hidden="true" className="size-4" />
+                  <span>
+                    Filter{hasActiveFilter ? ` (${filters!.length})` : ""}
+                  </span>
+                </div>
+                {hasActiveFilter && clearFilters && (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    aria-label="Clear all filters"
+                    className={cn(
+                      "flex items-center gap-1 text-xs",
+                      "text-muted-foreground hover:text-foreground",
+                      "transition-colors"
+                    )}
+                  >
+                    <X aria-hidden="true" className="size-3" />
+                    Clear all
+                  </button>
+                )}
               </div>
+
+              {/* File Status Group */}
               <div
                 className="-mx-2 space-y-1"
-                role="listbox"
-                aria-label="Filter options"
+                role="group"
+                aria-label="File status filters"
               >
-                {filterOptions.map((option, index) => (
+                <span className="text-muted-foreground px-4 text-[11px] font-medium tracking-wider uppercase">
+                  File Status
+                </span>
+                {FILE_OPTIONS.map((option) => (
                   <button
                     key={option.value}
-                    ref={(el) => {
-                      filterRefs.current[index] = el;
-                    }}
                     type="button"
-                    role="option"
-                    aria-selected={filterBy === option.value}
-                    onClick={() => onFilterChange?.(option.value)}
-                    onKeyDown={(e) => handleKeyDown(e, filterRefs, index)}
+                    role="checkbox"
+                    aria-checked={filters!.includes(option.value)}
+                    onClick={() => toggleFilter!(option.value)}
                     className={cn(
                       "flex w-full items-center justify-between rounded-lg px-4 py-3",
                       "text-sm font-medium",
                       "transition-colors duration-150",
                       "min-h-[44px]",
-                      filterBy === option.value
+                      filters!.includes(option.value)
                         ? "text-foreground bg-white/20"
                         : "text-muted-foreground hover:bg-white/10",
                       "focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
                     )}
                   >
                     <span>{option.label}</span>
-                    {filterBy === option.value && (
+                    {filters!.includes(option.value) && (
+                      <Check aria-hidden="true" className="size-4" />
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Sync Status Group */}
+              <div
+                className="-mx-2 space-y-1 pt-1"
+                role="group"
+                aria-label="Sync status filters"
+              >
+                <span className="text-muted-foreground px-4 text-[11px] font-medium tracking-wider uppercase">
+                  Sync Status
+                </span>
+                {SYNC_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="checkbox"
+                    aria-checked={filters!.includes(option.value)}
+                    onClick={() => toggleFilter!(option.value)}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-lg px-4 py-3",
+                      "text-sm font-medium",
+                      "transition-colors duration-150",
+                      "min-h-[44px]",
+                      filters!.includes(option.value)
+                        ? "text-foreground bg-white/20"
+                        : "text-muted-foreground hover:bg-white/10",
+                      "focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
+                    )}
+                  >
+                    <span>{option.label}</span>
+                    {filters!.includes(option.value) && (
                       <Check aria-hidden="true" className="size-4" />
                     )}
                   </button>
@@ -895,6 +952,7 @@ export function MobileItemSheetTrigger({
       onClick={onClick}
       className={cn(
         "relative inline-flex items-center gap-2 rounded-md px-3 py-1.5",
+        "min-h-[44px]",
         "text-sm",
         "text-muted-foreground",
         "hover:bg-white/5",
@@ -906,7 +964,9 @@ export function MobileItemSheetTrigger({
       <SlidersHorizontal aria-hidden="true" className="size-4" />
       <span>Options</span>
       {hasActiveOptions && (
-        <span className="bg-primary absolute -top-1 -right-1 size-2 rounded-full" />
+        <span className="bg-primary absolute -top-1 -right-1 size-2 rounded-full">
+          <span className="sr-only">(active filters)</span>
+        </span>
       )}
     </button>
   );

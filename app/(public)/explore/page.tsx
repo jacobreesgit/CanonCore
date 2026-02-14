@@ -32,17 +32,34 @@ export default async function ExplorePage() {
   // Start auth, profile, and featured items immediately
   const sessionPromise = auth();
   const profilePromise = getProfile();
-  const featuredPromise = getFeaturedItems(5);
+
+  // Chain TMDB enrichment on featured items so metadata fetching starts
+  // as soon as featured items resolve, without waiting for the full items list.
+  const enrichedFeaturedPromise = getFeaturedItems(5).then(
+    async (featuredItems) => {
+      const tmdbResults = await Promise.all(
+        featuredItems.map((item) =>
+          item.tmdbId && item.tmdbType
+            ? getItemTmdbMetadata(item.tmdbId, item.tmdbType)
+            : Promise.resolve(null)
+        )
+      );
+      return featuredItems.map((item, i) => ({
+        ...item,
+        tmdbMetadata: tmdbResults[i] ?? null,
+      }));
+    }
+  );
 
   // Await session first so we can pass the correct userId to getExploreItems
   const session = await sessionPromise;
   const currentUserId = session?.user?.id ?? null;
 
   // Fetch items with correct userId (avoids double-fetch), plus finish parallel work
-  const [profileResult, featuredItems, items, driveConnection] =
+  const [profileResult, enrichedFeaturedItems, items, driveConnection] =
     await Promise.all([
       profilePromise,
-      featuredPromise,
+      enrichedFeaturedPromise,
       getExploreItems(50, 0, currentUserId),
       currentUserId ? getGoogleDriveConnection() : Promise.resolve(null),
     ]);
@@ -56,19 +73,6 @@ export default async function ExplorePage() {
         name: profile.name,
       }
     : null;
-
-  // Batch-fetch TMDB metadata for featured items (parallel, graceful failures)
-  const tmdbResults = await Promise.all(
-    featuredItems.map((item) =>
-      item.tmdbId && item.tmdbType
-        ? getItemTmdbMetadata(item.tmdbId, item.tmdbType)
-        : Promise.resolve(null)
-    )
-  );
-  const enrichedFeaturedItems = featuredItems.map((item, i) => ({
-    ...item,
-    tmdbMetadata: tmdbResults[i] ?? null,
-  }));
 
   return (
     <>

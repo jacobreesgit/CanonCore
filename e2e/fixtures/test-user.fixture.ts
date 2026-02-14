@@ -56,17 +56,6 @@ function generateTestUserData(): {
 
 export const testUserFixture = base.extend<{ testUser: TestUserWithId }>({
   testUser: async ({ page }, use) => {
-    // Clean up orphaned test users from previous interrupted runs (older than 5 minutes)
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    await prisma.user
-      .deleteMany({
-        where: {
-          email: { contains: "@example.com" },
-          createdAt: { lt: fiveMinutesAgo },
-        },
-      })
-      .catch(() => {});
-
     // Generate unique test user
     const userData = generateTestUserData();
     const passwordHash = await hash(userData.password, 10);

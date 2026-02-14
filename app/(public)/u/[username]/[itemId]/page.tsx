@@ -152,34 +152,32 @@ export default async function ItemDetailPage({
     // Extract TMDB display preferences from item
     const tmdbDisplayOptions = extractTmdbDisplayOptions(item);
 
-    // Start TMDB resolution and non-TMDB fetches concurrently
-    const resolvedTmdbPromise = resolveTmdbForItem(item);
-    const childrenPromise = getDescendants(itemId);
-    const filesPromise = getItemFiles(itemId);
-    const progressPromise = getItemProgress(itemId);
-    const drivePromise = getGoogleDriveConnection();
+    // Chain TMDB resolution → metadata/details fetch as single promise
+    const tmdbPromise = resolveTmdbForItem(
+      item.id,
+      item.tmdbId,
+      item.tmdbType
+    ).then(async (resolved) => {
+      if (!resolved) return { metadata: null, details: null };
+      const [metadata, details] = await Promise.all([
+        getItemTmdbMetadata(resolved.tmdbId, resolved.tmdbType),
+        getItemTmdbDetails(resolved.tmdbId, resolved.tmdbType),
+      ]);
+      return { metadata, details };
+    });
 
-    // Await TMDB resolution, then fetch TMDB metadata in parallel with remaining work
-    const resolvedTmdb = await resolvedTmdbPromise;
-    const [
-      childrenResult,
-      filesResult,
-      itemProgress,
-      driveConnection,
-      tmdbMetadata,
-      tmdbDetails,
-    ] = await Promise.all([
-      childrenPromise,
-      filesPromise,
-      progressPromise,
-      drivePromise,
-      resolvedTmdb
-        ? getItemTmdbMetadata(resolvedTmdb.tmdbId, resolvedTmdb.tmdbType)
-        : null,
-      resolvedTmdb
-        ? getItemTmdbDetails(resolvedTmdb.tmdbId, resolvedTmdb.tmdbType)
-        : null,
-    ]);
+    // All fetches run concurrently — TMDB chain doesn't block other work
+    const [childrenResult, filesResult, itemProgress, driveConnection, tmdb] =
+      await Promise.all([
+        getDescendants(itemId),
+        getItemFiles(itemId),
+        getItemProgress(itemId),
+        getGoogleDriveConnection(),
+        tmdbPromise,
+      ]);
+
+    const tmdbMetadata = tmdb.metadata;
+    const tmdbDetails = tmdb.details;
 
     const childItems = childrenResult.success
       ? (childrenResult.data ?? [])
@@ -256,24 +254,21 @@ export default async function ItemDetailPage({
     // Extract TMDB display preferences from public item
     const viewerDisplayOptions = extractTmdbDisplayOptions(item);
 
-    // Start TMDB resolution and non-TMDB fetches concurrently
-    const resolvedTmdbPromise = resolveTmdbForItem(item);
-    const descendantsPromise = getPublicDescendants(itemId);
-    const breadcrumbPromise = getPublicBreadcrumb(itemId);
-    const forkInfoPromise = getForkInfo(itemId);
-    const forkStatusPromise = getForkStatus(itemId); // Safe for unauthenticated - returns error
-    const currentUserPromise = currentUserId
-      ? prisma.user.findUnique({
-          where: { id: currentUserId },
-          select: { username: true },
-        })
-      : null;
-    const viewerDrivePromise = currentUserId
-      ? getGoogleDriveConnection()
-      : Promise.resolve(null);
+    // Chain TMDB resolution → metadata/details fetch as single promise
+    const tmdbPromise = resolveTmdbForItem(
+      item.id,
+      item.tmdbId,
+      item.tmdbType
+    ).then(async (resolved) => {
+      if (!resolved) return { metadata: null, details: null };
+      const [metadata, details] = await Promise.all([
+        getItemTmdbMetadata(resolved.tmdbId, resolved.tmdbType),
+        getItemTmdbDetails(resolved.tmdbId, resolved.tmdbType),
+      ]);
+      return { metadata, details };
+    });
 
-    // Await TMDB resolution, then fetch TMDB metadata in parallel with remaining work
-    const resolvedTmdb = await resolvedTmdbPromise;
+    // All fetches run concurrently — TMDB chain doesn't block other work
     const [
       childItems,
       breadcrumb,
@@ -281,22 +276,24 @@ export default async function ItemDetailPage({
       forkStatusResult,
       currentUser,
       viewerDriveConnection,
-      tmdbMetadata,
-      tmdbDetails,
+      tmdb,
     ] = await Promise.all([
-      descendantsPromise,
-      breadcrumbPromise,
-      forkInfoPromise,
-      forkStatusPromise,
-      currentUserPromise,
-      viewerDrivePromise,
-      resolvedTmdb
-        ? getItemTmdbMetadata(resolvedTmdb.tmdbId, resolvedTmdb.tmdbType)
+      getPublicDescendants(itemId),
+      getPublicBreadcrumb(itemId),
+      getForkInfo(itemId),
+      getForkStatus(itemId), // Safe for unauthenticated - returns error
+      currentUserId
+        ? prisma.user.findUnique({
+            where: { id: currentUserId },
+            select: { username: true },
+          })
         : null,
-      resolvedTmdb
-        ? getItemTmdbDetails(resolvedTmdb.tmdbId, resolvedTmdb.tmdbType)
-        : null,
+      currentUserId ? getGoogleDriveConnection() : Promise.resolve(null),
+      tmdbPromise,
     ]);
+
+    const tmdbMetadata = tmdb.metadata;
+    const tmdbDetails = tmdb.details;
 
     // Extract fork status if authenticated and request succeeded
     const forkStatus =
@@ -323,7 +320,11 @@ export default async function ItemDetailPage({
         />
         <div className="bg-background text-foreground flex flex-1 flex-col">
           <PublicItemClient
-            profile={profile}
+            profile={{
+              id: profile.id,
+              name: profile.name,
+              username: profile.username,
+            }}
             item={item}
             childItems={childItems}
             forkInfo={"data" in forkInfo ? (forkInfo.data ?? null) : null}

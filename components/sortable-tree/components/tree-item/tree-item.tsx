@@ -150,12 +150,24 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
         <div
           ref={ref}
           onClick={handleClick}
+          role={handleClick && !ghost ? "button" : undefined}
+          tabIndex={handleClick && !ghost ? 0 : undefined}
+          onKeyDown={
+            handleClick && !ghost
+              ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleClick();
+                  }
+                }
+              : undefined
+          }
           className={cn(
             // Glassmorphism base styling
             "group relative flex items-center gap-2 rounded-lg px-3 py-2",
             "bg-white/[0.03] backdrop-blur-sm",
             "border border-white/[0.04]",
-            "transition-all duration-200 ease-out",
+            "transition-[color,background-color,border-color,opacity] duration-200 ease-out",
             "hover:border-white/[0.08] hover:bg-white/[0.06]",
             "focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none",
             clone && [
@@ -189,6 +201,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
           {!ghost && showDragHandle && (
             <button
               type="button"
+              data-testid="tree-item-drag-handle"
               aria-label="Drag handle"
               className={cn(
                 "flex-shrink-0 touch-none rounded",
@@ -212,6 +225,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
           {!ghost && onCollapse && (
             <button
               type="button"
+              data-testid="tree-item-collapse-toggle"
               aria-label={collapsed ? "Expand item" : "Collapse item"}
               onClick={(e) => {
                 e.stopPropagation();

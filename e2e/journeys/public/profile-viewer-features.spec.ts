@@ -213,8 +213,8 @@ test.describe("Profile Viewer Features", () => {
       gridTitle.filter({ hasText: "Item Without Files" })
     ).not.toBeVisible();
 
-    // Reset filter to "All Items"
-    await publicProfilePage.selectFilterOption("All Items");
+    // Clear filters to show all items again
+    await publicProfilePage.clearFilters();
     await expect(
       gridTitle.filter({ hasText: "Item Without Files" })
     ).toBeVisible();

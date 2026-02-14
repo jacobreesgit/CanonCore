@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: January 2026 (v6.0.0)
+Last updated: February 2026 (v7.6.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -32,6 +32,9 @@ This doc covers architecture, implementation patterns, and design decisions for 
 - shadcn/ui (radix-ui primitives)
 - dnd-kit for drag-and-drop
 - Vidstack for media playback
+- nuqs for URL state management
+- Embla Carousel for swipeable tabs
+- cmdk for spotlight search
 
 **Backend:**
 
@@ -118,7 +121,6 @@ Built on PostgreSQL with Prisma ORM. Key tables:
 
 - Authentication (email, passwordHash via bcryptjs)
 - Profile (username, isPublic, image/heroImage blobs)
-- Settings (defaultViewMode, defaultSortBy as strings not enums)
 - Seeding (seedContentHash for incremental updates)
 
 **Item (hierarchical tree):**
@@ -127,6 +129,8 @@ Built on PostgreSQL with Prisma ORM. Key tables:
 - Metadata: name, description, depth, order, pinnedOrder
 - Visibility: isPublic, inheritVisibility
 - Google Drive: driveFileId, syncStatus, driveModifiedAt, driveConnectionId
+- TMDB: tmdbId, tmdbType, tmdbPosterPath, tmdbBackdropPath (CDN image paths)
+- TMDB Display: 7 boolean fields (tmdbShowTagline, tmdbShowMetadata, tmdbShowGenres, tmdbShowCast, tmdbShowProviders, tmdbShowVideos, tmdbShowRecommendations) defaulting to true
 - Forking: forkedFromId to track copies
 
 **ItemFile:**
@@ -151,6 +155,14 @@ Built on PostgreSQL with Prisma ORM. Key tables:
 - Operation history: action (CREATE/RENAME/DELETE/MOVE/UPLOAD/etc)
 - Status tracking: SUCCESS/FAILED/PENDING
 - Performance: durationMs for each operation
+
+**AuditLog:**
+
+- Automatic mutation tracking via Prisma extension
+- Fields: environment, database (hashed), model, action, recordId, userId, source, requestId
+- Sensitive fields (password, token, secret) automatically redacted
+- Fire-and-forget logging (non-blocking)
+- 90-day retention production, 7-day development
 
 ### Entity-Relationship Diagram
 
@@ -188,6 +200,16 @@ Built on PostgreSQL with Prisma ORM. Key tables:
     │ playback │
     │ Position │
     └──────────┘
+
+    ┌────────────┐
+    │ AuditLog   │
+    ├────────────┤
+    │ model      │
+    │ action     │
+    │ recordId   │
+    │ userId     │
+    │ changes    │
+    └────────────┘
 ```
 
 ### Key Schema Decisions
@@ -296,7 +318,7 @@ Server Actions can't stream responses, so these use API Routes:
 
 **Credentials Provider:**
 
-- Email/password auth (bcryptjs hashing, 10 rounds)
+- Email/password auth (bcryptjs hashing, 12 rounds)
 - JWT sessions (not database sessions)
 - Session token in HTTP-only cookie
 
@@ -321,9 +343,11 @@ Upstash Redis with different thresholds per action:
 
 - Sign-in: 5 requests/minute
 - Sign-up: 3 requests/minute
-- Forgot password: 2 requests/minute
+- Forgot/reset password: 2 requests/minute
 - Item mutations: 30 requests/minute
 - Search: 30-60 requests/minute per section
+- API routes (artwork/stream/avatar/hero): 60 requests/minute
+- Bot crawlers: 120 requests/minute
 
 Implementation in `lib/rate-limit.ts` with exponential backoff.
 
@@ -367,6 +391,30 @@ Implementation in `lib/rate-limit.ts` with exponential backoff.
 - Structured logging via Pino
 - Request ID injection in middleware
 
+### Bot Protection
+
+Multi-layer defence against aggressive AI crawlers:
+
+**Layer 1 — robots.txt (Polite):**
+
+- `app/robots.ts` dynamically generates robots.txt
+- Blocks AI scrapers, allows search engines
+
+**Layer 2 — Edge Blocking (Enforcement):**
+
+- `proxy.ts` blocks non-compliant bots at edge with 403
+- Zero compute cost (rejected before app logic)
+
+**Layer 3 — Rate Limiting (Control):**
+
+- Beneficial bots throttled to 120 req/min via Upstash Redis
+- Key: IP + user-agent
+
+**Bot Lists** (`lib/bot-patterns.ts`):
+
+- Blocked (35+): GPTBot, ClaudeBot, Perplexity, Meta, SEO tools
+- Allowed (7): Googlebot, Bingbot, Applebot, DuckDuckBot, Slurp, Yandex, Baiduspider
+
 ---
 
 ## Feature Implementation
@@ -399,9 +447,18 @@ Implementation in `lib/rate-limit.ts` with exponential backoff.
 
 **Filtering:**
 
-- All Items
-- Has Files / No Files
-- Synced / Pending (Google Drive sync status)
+- Multi-select grouped checkboxes with active filter count badge
+- File Status group: Has Files, No Files
+- Sync Status group: Synced, Pending Sync, Sync Error
+- AND logic across groups, OR within groups
+- "Clear filters" button when filters are active
+
+**URL State (nuqs):**
+
+- Sort, filter, view mode, and tab persisted to URL query parameters
+- Pattern: `?sort=name-asc&filter=has-files&view=grid&tab=contents`
+- localStorage backup for direct navigation (no query params)
+- Shareable/bookmarkable views
 
 **Pinning:**
 
@@ -421,6 +478,18 @@ Implementation in `lib/rate-limit.ts` with exponential backoff.
 - Select all / deselect all in toolbar
 - Batch delete with recursive CTE (single query for entire hierarchy)
 - Cascading selection: selecting parent selects all children
+
+### Cinematic Hero
+
+**CinematicHero Component:**
+
+- Multi-mode: carousel (explore page), single-slide (item detail), profile avatar mode
+- Auto-advance every 5 seconds with pause on hover
+- Respects `prefers-reduced-motion` (disables autoplay, ken-burns effect)
+- TMDB metadata display: tagline, year, runtime, genres, content rating, vote average
+- Navigation dots with `role="tablist"` semantics
+- Screen reader `aria-live` slide announcements
+- Attribution text with optional linking via `attributionHref`
 
 ### Google Drive Integration
 
@@ -449,6 +518,13 @@ Implementation in `lib/rate-limit.ts` with exponential backoff.
 - Quota display in settings
 - Warning at 80% (yellow), critical at 95% (red)
 
+**Reconnect Banner:**
+
+- Persistent amber banner when Drive connection needs reauthentication (`needsReauth`)
+- Desktop: rendered in site header below breadcrumbs
+- Mobile: fixed banner at top of viewport
+- `role="alert"` and `aria-live="assertive"` for screen reader announcement
+
 **Special Cases:**
 
 - Trashed folder detection with recovery guidance
@@ -456,22 +532,31 @@ Implementation in `lib/rate-limit.ts` with exponential backoff.
 
 ### TMDB Metadata
 
-**3-Step Wizard:**
+**4-Step Wizard:**
 
-1. Search by title (movie or TV show)
+1. Search by title, review description and metadata
 2. Select poster from multiple options
 3. Choose hero/backdrop image
+4. Review and apply (selective field application)
 
-**Selective Application:**
+**TV Show Support:**
 
-- Choose which fields to update (title, description, artwork)
-- TV show support: seasons and episodes with full hierarchy
+- Episode picker: navigate shows → seasons → episodes
+- "Use Show" applies show-level metadata, "Use Season" applies show-level
+- Episode selection skips artwork steps (stills only, no poster/backdrop galleries)
+
+**TMDB Display Options:**
+
+- Per-item toggles: tagline, metadata, genres, cast, providers, videos, recommendations
+- All default to true, configurable in item settings dialog
+- Debounced save via `updateTmdbDisplayOptions` server action
 
 **Artwork Handling:**
 
-- Download poster/backdrop from TMDB
-- Upload to Google Drive as ARTWORK files
-- Link to item via ItemFile records
+- TMDB poster/backdrop paths stored directly on items (`tmdbPosterPath`, `tmdbBackdropPath`)
+- CDN-first resolution: TMDB CDN → Drive-hosted artwork → fallback icon
+- Drive artwork used as fallback when no TMDB path available
+- Wizard allows selecting specific poster/backdrop from TMDB image galleries
 
 **Error Handling:**
 
@@ -524,6 +609,29 @@ Implementation in `lib/rate-limit.ts` with exponential backoff.
 - Cannot fork own items, cannot fork same item twice
 - Forked items start private with `inheritVisibility: false`
 
+### Mobile Experience
+
+**Bottom Sheets:**
+
+- Replace desktop dialogs on mobile (< 1024px)
+- `MobileItemSheet`: combines sort, filter, view, and settings
+- `MobileAddItemSheet`: item creation with TMDB search
+- `MobileOptionsSheet`: sort, filter, and view controls
+- Swipe-to-dismiss gesture support
+
+**Bottom Navigation:**
+
+- Fixed footer: My Items, Explore, Search, Help, Account
+- `aria-current="page"` on active items
+- Safe area support for notched devices
+
+**Swipeable Tabs:**
+
+- Embla Carousel-powered horizontal swiping between tabs
+- `SwipeableUnderlineTabs` for item detail (Contents/About)
+- `role="tablist"` / `role="tabpanel"` semantics
+- `inert` / `aria-hidden` on inactive panels
+
 ### Media Playback
 
 **Vidstack Player:**
@@ -541,6 +649,25 @@ Implementation in `lib/rate-limit.ts` with exponential backoff.
 
 - Tabbed navigation for multiple files
 - Keyboard shortcuts (Space = play/pause, F = fullscreen)
+
+### Audit Logging
+
+**Automatic Tracking:**
+
+- Prisma Client Extension logs every mutation (create, update, delete)
+- AsyncLocalStorage context passes userId, source, requestId through call stack
+- Non-blocking fire-and-forget (doesn't fail main operation)
+
+**Data Captured:**
+
+- Environment, database (hashed), model, action, recordId
+- userId, source (server action name), requestId
+- Full changes payload (JSON, truncated for large values)
+
+**Security:**
+
+- Sensitive fields (password, token, secret) automatically redacted
+- 90-day retention in production, 7-day in development
 
 ---
 
@@ -603,6 +730,15 @@ const AddItemDialog = dynamic(
 );
 ```
 
+**TMDB Promise Chaining:**
+Resolution and metadata fetch chained as a single promise running concurrently with other server-side fetches. Eliminates sequential await waterfalls on explore and item detail pages.
+
+**CSS Transitions over JS Animation:**
+Sidebar animation migrated from framer-motion AnimatePresence to CSS `grid-template-rows` transition. Poster cards, tree items, and site header use specific `transition-property` instead of `transition-all`.
+
+**useSyncExternalStore:**
+Tab mount state uses `useSyncExternalStore` instead of `useState` + `useEffect` for synchronous hydration-safe reads.
+
 **useMemo for Expensive Derivations:**
 
 ```typescript
@@ -641,7 +777,7 @@ export const BulkActionsToolbar = memo(function BulkActionsToolbar({ ... }) {
 
 ```
         ┌─────────┐
-        │   E2E   │  ~50 tests (Playwright)
+        │   E2E   │  ~650 tests (Playwright)
         │  Tests  │  Real browser, real APIs
         └─────────┘
       ┌─────────────┐
@@ -649,7 +785,7 @@ export const BulkActionsToolbar = memo(function BulkActionsToolbar({ ... }) {
       │    Tests    │  Real database
       └─────────────┘
     ┌─────────────────┐
-    │   Unit Tests    │  ~2200 tests (Vitest)
+    │   Unit Tests    │  ~2400 tests (Vitest)
     │   (Mocked deps) │  Fast, isolated
     └─────────────────┘
 ```
@@ -917,7 +1053,7 @@ See [README.md](./README.md) for full environment variable list.
 **Tradeoff:**
 
 - More code to maintain (password hashing, session management)
-- Added 15+ rate limiters via Upstash Redis
+- Added 20+ rate limiters via Upstash Redis
 
 ### Why Google Drive over SFTP?
 

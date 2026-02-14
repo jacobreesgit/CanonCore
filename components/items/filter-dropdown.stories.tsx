@@ -1,10 +1,11 @@
 /**
  * Storybook stories for the FilterDropdown component.
- * Demonstrates filter options with active state indicator.
+ * Demonstrates multi-select filter options with active state indicator and grouped checkboxes.
  */
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import { fn } from "storybook/test";
 import { FilterDropdown } from "./filter-dropdown";
+import type { ContentFilter } from "@/lib/types";
 
 const meta = {
   title: "Items/Controls/FilterDropdown",
@@ -15,20 +16,20 @@ const meta = {
     docs: {
       description: {
         component:
-          "Dropdown for filtering items by various criteria. Shows a visual indicator when a filter is active.",
+          "Multi-select dropdown for filtering items by file and sync status. Uses grouped checkboxes with active count badge and clear button.",
       },
     },
   },
   argTypes: {
-    value: {
-      control: "select",
-      options: ["all", "has-files", "no-files", "synced", "pending", "error"],
-      description: "Current filter option",
+    filters: {
+      control: "object",
+      description: "Currently active content filters",
     },
     disabled: { control: "boolean" },
   },
   args: {
-    onChange: fn(),
+    toggleFilter: fn(),
+    clearFilters: fn(),
   },
 } satisfies Meta<typeof FilterDropdown>;
 
@@ -39,57 +40,66 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    value: "all",
+    filters: [] as ContentFilter[],
     disabled: false,
   },
 };
 
-export const FilterByFiles: Story = {
+export const SingleFileFilter: Story = {
   args: {
-    value: "has-files",
+    filters: ["has-files"] as ContentFilter[],
     disabled: false,
   },
   parameters: {
     docs: {
       description: {
         story:
-          "Shows active indicator (dot) when a filter other than 'all' is selected.",
+          "Shows active count badge 'Filter (1)' and dot indicator when a filter is selected.",
       },
     },
   },
 };
 
-export const FilterNoFiles: Story = {
+export const SingleSyncFilter: Story = {
   args: {
-    value: "no-files",
+    filters: ["synced"] as ContentFilter[],
     disabled: false,
   },
 };
 
-export const FilterSynced: Story = {
+export const MultipleFilters: Story = {
   args: {
-    value: "synced",
+    filters: ["has-files", "synced"] as ContentFilter[],
     disabled: false,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Multiple filters active across groups. Shows 'Filter (2)' badge. AND logic across groups, OR within groups.",
+      },
+    },
   },
 };
 
-export const FilterPending: Story = {
+export const AllSyncFilters: Story = {
   args: {
-    value: "pending",
+    filters: ["synced", "pending", "error"] as ContentFilter[],
     disabled: false,
   },
-};
-
-export const FilterError: Story = {
-  args: {
-    value: "error",
-    disabled: false,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Multiple sync status filters selected. Items matching any selected sync status are shown.",
+      },
+    },
   },
 };
 
 export const Disabled: Story = {
   args: {
-    value: "all",
+    filters: [] as ContentFilter[],
     disabled: true,
   },
 };

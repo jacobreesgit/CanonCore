@@ -43,14 +43,14 @@ const meta = {
     docs: {
       description: {
         component:
-          "Comprehensive settings dialog with profile, account, connections, preferences, and activity tabs. Supports step-based navigation for password/email/username changes.",
+          "Comprehensive settings dialog with profile, account, connections, and activity tabs. Supports step-based navigation for password/email/username changes.",
       },
     },
   },
   argTypes: {
     defaultTab: {
       control: "select",
-      options: ["profile", "account", "connections", "preferences", "activity"],
+      options: ["profile", "account", "connections", "activity"],
       description: "Default tab to show",
     },
     googleDriveConnection: {
@@ -152,25 +152,6 @@ export const ConnectionsTab: Story = {
 };
 
 /**
- * Preferences tab - manage default view mode and sort order.
- */
-export const PreferencesTab: Story = {
-  args: {
-    user: defaultUser,
-    googleDriveConnection: null,
-    defaultTab: "preferences",
-    buttonLabel: "Preferences Settings",
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
-    await userEvent.click(trigger);
-    const body = within(document.body);
-    await body.findByRole("tab", { name: /preferences/i });
-  },
-};
-
-/**
  * Activity tab - view sync history (requires Google Drive connection).
  */
 export const ActivityTab: Story = {
@@ -225,11 +206,6 @@ export const TabNavigation: Story = {
     const connectionsTab = body.getByRole("tab", { name: /connections/i });
     await userEvent.click(connectionsTab);
     await expect(connectionsTab).toHaveAttribute("aria-selected", "true");
-
-    // Click Preferences tab
-    const preferencesTab = body.getByRole("tab", { name: /preferences/i });
-    await userEvent.click(preferencesTab);
-    await expect(preferencesTab).toHaveAttribute("aria-selected", "true");
 
     // Click Activity tab
     const activityTab = body.getByRole("tab", { name: /activity/i });

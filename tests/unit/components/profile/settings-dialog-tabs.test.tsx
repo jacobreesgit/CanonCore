@@ -15,11 +15,6 @@ vi.mock("@/lib/user-actions", () => ({
   removeProfileImage: vi.fn().mockResolvedValue({ success: true }),
   removeHeroImage: vi.fn().mockResolvedValue({ success: true }),
   changePassword: vi.fn().mockResolvedValue({ success: true }),
-  getPreferences: vi.fn().mockResolvedValue({
-    success: true,
-    data: { viewMode: "grid", sortBy: "custom" },
-  }),
-  updatePreferences: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 const mockUser = {
@@ -46,11 +41,13 @@ describe("SettingsDialog Tabs", () => {
       />
     );
 
-    // Should have Profile and Preferences tabs
+    // Should have Profile, Account, Connections, and Activity tabs
     expect(screen.getByRole("tab", { name: /profile/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /account/i })).toBeInTheDocument();
     expect(
-      screen.getByRole("tab", { name: /preferences/i })
+      screen.getByRole("tab", { name: /connections/i })
     ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /activity/i })).toBeInTheDocument();
   });
 
   it("shows Profile tab content by default", async () => {
@@ -71,7 +68,7 @@ describe("SettingsDialog Tabs", () => {
     expect(screen.getByText("Display Name")).toBeInTheDocument();
   });
 
-  it("switches to Preferences tab when clicked", async () => {
+  it("switches to Account tab when clicked", async () => {
     const user = userEvent.setup();
     render(
       <SettingsDialog
@@ -82,18 +79,13 @@ describe("SettingsDialog Tabs", () => {
       />
     );
 
-    // Click Preferences tab
-    await user.click(screen.getByRole("tab", { name: /preferences/i }));
+    // Click Account tab
+    await user.click(screen.getByRole("tab", { name: /account/i }));
 
-    // Preferences tab should now be active
+    // Account tab should now be active
     await waitFor(() => {
-      const prefsTab = screen.getByRole("tab", { name: /preferences/i });
-      expect(prefsTab).toHaveAttribute("data-state", "active");
-    });
-
-    // Preferences content should be visible
-    await waitFor(() => {
-      expect(screen.getByText("View Mode")).toBeInTheDocument();
+      const accountTab = screen.getByRole("tab", { name: /account/i });
+      expect(accountTab).toHaveAttribute("data-state", "active");
     });
   });
 
@@ -108,11 +100,12 @@ describe("SettingsDialog Tabs", () => {
       />
     );
 
-    // Switch to Preferences tab
-    await user.click(screen.getByRole("tab", { name: /preferences/i }));
+    // Switch to Account tab
+    await user.click(screen.getByRole("tab", { name: /account/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("View Mode")).toBeInTheDocument();
+      const accountTab = screen.getByRole("tab", { name: /account/i });
+      expect(accountTab).toHaveAttribute("data-state", "active");
     });
 
     // Switch back to Profile

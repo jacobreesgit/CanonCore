@@ -59,7 +59,7 @@ test.describe("Context Menu Add Child Item", () => {
 
     const createButton = page.getByRole("button", { name: /^create$/i });
     await expect(createButton).toBeEnabled({ timeout: 5000 });
-    await createButton.dispatchEvent("click");
+    await createButton.click({ force: true });
     await expect(
       page.getByRole("dialog", { name: /create item/i })
     ).not.toBeVisible({ timeout: 15000 });

@@ -49,7 +49,7 @@ export function PosterCard({
     "group relative block overflow-hidden rounded-lg",
     "aspect-[2/3]",
     "bg-card",
-    "transition-all duration-300 ease-out",
+    "transition-[color,background-color,border-color,opacity,transform,box-shadow] duration-300 ease-out",
     "hover:z-10 hover:scale-105",
     "hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]",
     "focus-visible:z-10 focus-visible:scale-105",

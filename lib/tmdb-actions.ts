@@ -361,7 +361,12 @@ export async function getImagesAction(
   tmdbId: number,
   mediaType: "movie" | "tv"
 ): Promise<ActionResult<TMDBImages>> {
-  const session = await auth();
+  // Parallel auth + rate limit (per codebase pattern)
+  const [session, rateLimitResult] = await Promise.all([
+    auth(),
+    checkRateLimit("tmdbImages"),
+  ]);
+
   if (!session?.user?.id) {
     return { success: false, error: "Not authenticated" };
   }
@@ -370,7 +375,6 @@ export async function getImagesAction(
     return { success: false, error: "TMDB integration not configured" };
   }
 
-  const rateLimitResult = await checkRateLimit("tmdbImages");
   if (rateLimitResult) {
     return { success: false, error: rateLimitResult.error };
   }
@@ -401,7 +405,12 @@ export async function getImagesAction(
 export async function getSeasonsAction(
   tvId: number
 ): Promise<ActionResult<TMDBSeasonSummary[]>> {
-  const session = await auth();
+  // Parallel auth + rate limit (per codebase pattern)
+  const [session, rateLimitResult] = await Promise.all([
+    auth(),
+    checkRateLimit("tmdbPreview"),
+  ]);
+
   if (!session?.user?.id) {
     return { success: false, error: "Not authenticated" };
   }
@@ -410,7 +419,6 @@ export async function getSeasonsAction(
     return { success: false, error: "TMDB integration not configured" };
   }
 
-  const rateLimitResult = await checkRateLimit("tmdbPreview");
   if (rateLimitResult) {
     return { success: false, error: rateLimitResult.error };
   }

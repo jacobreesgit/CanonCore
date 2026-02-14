@@ -1064,13 +1064,19 @@ export function useAddItemForm(
     tempPosterValue,
     tempPosterSource,
     tempPosterSkipped,
-    setTempPosterSkipped: (skipped: boolean) =>
-      setTempArtwork((prev) => ({ ...prev, posterSkipped: skipped })),
+    setTempPosterSkipped: useCallback(
+      (skipped: boolean) =>
+        setTempArtwork((prev) => ({ ...prev, posterSkipped: skipped })),
+      []
+    ),
     tempBackdropValue,
     tempBackdropSource,
     tempBackdropSkipped,
-    setTempBackdropSkipped: (skipped: boolean) =>
-      setTempArtwork((prev) => ({ ...prev, backdropSkipped: skipped })),
+    setTempBackdropSkipped: useCallback(
+      (skipped: boolean) =>
+        setTempArtwork((prev) => ({ ...prev, backdropSkipped: skipped })),
+      []
+    ),
 
     // Handlers
     handleMediaSelect,

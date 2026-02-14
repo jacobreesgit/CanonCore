@@ -165,7 +165,7 @@ export function SiteHeader({
   return (
     <header
       className={cn(
-        "bg-background sticky top-0 z-50 hidden shrink-0 flex-col border-b transition-all duration-300 ease-out lg:flex",
+        "bg-background sticky top-0 z-50 hidden shrink-0 flex-col border-b transition-[transform,opacity] duration-300 ease-out lg:flex",
         !isVisible && "-translate-y-full opacity-0"
       )}
     >

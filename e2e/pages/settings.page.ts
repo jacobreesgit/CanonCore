@@ -1,6 +1,6 @@
 /**
  * Page Object Model for the Settings dialog.
- * Handles Google Drive connection, profile settings, and preferences.
+ * Handles Google Drive connection, profile settings, and account management.
  * On mobile, settings tabs render as a Select dropdown (>3 tabs).
  */
 
@@ -206,83 +206,10 @@ export class SettingsPage {
   }
 
   /**
-   * Switches to the Preferences tab.
-   */
-  async goToPreferencesTab(): Promise<void> {
-    await this.selectTab("Preferences");
-    // Wait for the Preferences tab content to render (radio buttons)
-    await this.page.getByRole("radio", { name: "Grid" }).waitFor({
-      state: "visible",
-      timeout: 5000,
-    });
-  }
-
-  /**
    * Switches to the Activity tab.
    */
   async goToActivityTab(): Promise<void> {
     await this.selectTab("Activity");
-  }
-
-  // ==================== Preferences Tab Methods ====================
-
-  /**
-   * Selects a view mode (grid or tree) in preferences.
-   *
-   * @param mode - The view mode to select
-   */
-  async selectViewMode(mode: "grid" | "tree"): Promise<void> {
-    // Radio buttons are labeled "Grid" and "Tree" in the UI
-    const label = mode === "grid" ? "Grid" : "Tree";
-    await this.page.getByRole("radio", { name: label }).click();
-    // Wait for auto-save toast to confirm save completed
-    await this.expectPreferencesSavedToast();
-  }
-
-  /**
-   * Gets the currently selected view mode.
-   */
-  async getSelectedViewMode(): Promise<"grid" | "tree"> {
-    const gridRadio = this.page.getByRole("radio", { name: "Grid" });
-    const isGridChecked = await gridRadio.isChecked();
-    return isGridChecked ? "grid" : "tree";
-  }
-
-  /**
-   * Selects a default sort option in preferences.
-   *
-   * @param option - The sort option label to select
-   */
-  async selectDefaultSort(option: string): Promise<void> {
-    // The sort select has aria-label="Default sort order" to distinguish
-    // from the tab selector combobox on mobile
-    await this.page
-      .getByRole("combobox", { name: "Default sort order" })
-      .click();
-    // Select the option
-    await this.page.getByRole("option", { name: option }).click();
-    // Wait for auto-save toast to confirm save completed
-    await this.expectPreferencesSavedToast();
-  }
-
-  /**
-   * Gets the currently selected default sort option.
-   */
-  async getSelectedDefaultSort(): Promise<string> {
-    const combobox = this.page.getByRole("combobox", {
-      name: "Default sort order",
-    });
-    return (await combobox.textContent()) ?? "";
-  }
-
-  /**
-   * Expects a success toast for preferences saved.
-   */
-  async expectPreferencesSavedToast(): Promise<void> {
-    const toast = this.page
-      .locator("[data-sonner-toast]")
-      .filter({ hasText: /preferences saved/i });
-    await toast.waitFor({ state: "visible", timeout: 5000 });
   }
 
   // ==================== Profile Tab Methods ====================

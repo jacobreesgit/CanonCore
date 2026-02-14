@@ -8,7 +8,7 @@
 import { useMemo, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Copy } from "lucide-react";
+import { Copy, UserX } from "lucide-react";
 import { CinematicHero, type HeroSlide } from "@/components/hero";
 import { HeroButton } from "@/components/items/hero-button";
 import { PlaylistButton } from "@/components/items/playlist-button";
@@ -19,18 +19,15 @@ import { ForkDestinationDialog } from "@/components/items/fork-destination-dialo
 import { Section } from "@/components/ui/section";
 import { HeroContentLayout } from "@/components/ui/hero-content-layout";
 import { ContentToolbar } from "@/components/ui/content-toolbar";
-import { useExploreSortFilter } from "@/hooks/use-explore-sort";
-import {
-  EXPLORE_SORT_OPTIONS,
-  EXPLORE_FILTER_OPTIONS,
-  sortPublicItems,
-} from "@/lib/item-utils";
+import { cn } from "@/lib/utils";
+import { useExploreUrlState } from "@/hooks/use-explore-url-state";
+import { EXPLORE_SORT_OPTIONS, sortPublicItems } from "@/lib/item-utils";
 import { deleteItem, pinItem, unpinItem } from "@/lib/item-actions";
 import { forkItem } from "@/lib/fork-actions";
 import { getTmdbBackdropUrl } from "@/lib/tmdb-image-utils";
 import type { PublicItem, FeaturedItem } from "@/lib/public-auth";
 import type { TmdbItemMetadata } from "@/lib/tmdb-client";
-import type { FilterOption } from "@/lib/types";
+import type { SortOption } from "@/lib/types";
 
 interface CurrentUser {
   id: string;
@@ -64,8 +61,8 @@ export function ExploreClient({
   currentUser,
 }: ExploreClientProps) {
   const router = useRouter();
-  const { sortBy, setSortBy } = useExploreSortFilter();
-  const [filterBy, setFilterBy] = useState<FilterOption>("all");
+  const { sortBy, setSortBy, excludeMine, setExcludeMine } =
+    useExploreUrlState();
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(
     () => new Set(items.filter((i) => i.pinnedOrder != null).map((i) => i.id))
@@ -204,15 +201,15 @@ export function ExploreClient({
   );
 
   // Use shared sort utility (DRY - no duplicate sort function)
-  // Filter out deleted items, then apply user filter and sort
+  // Filter out deleted items, then apply exclude-mine toggle and sort
   const sortedItems = useMemo(() => {
     const activeItems = items.filter((i) => !deletedIds.has(i.id));
     const filtered =
-      filterBy === "exclude-yours" && currentUser
+      excludeMine && currentUser
         ? activeItems.filter((i) => i.userId !== currentUser.id)
         : activeItems;
     return sortPublicItems(filtered, sortBy);
-  }, [items, sortBy, filterBy, deletedIds, currentUser]);
+  }, [items, sortBy, excludeMine, deletedIds, currentUser]);
 
   // Split into pinned (current user's only) and unpinned for section rendering
   const pinnedExploreItems = useMemo(
@@ -297,13 +294,30 @@ export function ExploreClient({
     <HeroContentLayout hero={hero} className={!hasItems ? "flex-1" : undefined}>
       <ContentToolbar
         sortBy={sortBy}
-        onSortChange={setSortBy}
-        filterBy={filterBy}
-        onFilterChange={setFilterBy}
+        onSortChange={setSortBy as (value: SortOption) => void}
         disabled={!hasItems}
         sortOptions={EXPLORE_SORT_OPTIONS}
-        filterOptions={EXPLORE_FILTER_OPTIONS}
         defaultSort="updated-desc"
+        leftActions={
+          currentUser ? (
+            <button
+              type="button"
+              onClick={() => setExcludeMine(!excludeMine)}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-md px-3 py-1.5",
+                "text-sm transition-colors",
+                excludeMine
+                  ? "text-foreground bg-white/10"
+                  : "text-muted-foreground hover:bg-white/5"
+              )}
+              aria-pressed={excludeMine}
+              aria-label="Exclude my items"
+            >
+              <UserX aria-hidden="true" className="size-4" />
+              <span className="hidden sm:inline">Exclude Mine</span>
+            </button>
+          ) : undefined
+        }
       />
 
       {/* Items grid or empty state */}

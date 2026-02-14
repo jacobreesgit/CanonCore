@@ -6,6 +6,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ContentToolbar } from "@/components/ui/content-toolbar";
+import type { ContentFilter } from "@/lib/types";
 
 // Mock MobileOptionsSheet to simplify tests
 vi.mock("@/components/items/mobile-options-sheet", () => ({
@@ -24,8 +25,9 @@ describe("ContentToolbar Sort/Filter", () => {
       <ContentToolbar
         sortBy="custom"
         onSortChange={() => {}}
-        filterBy="all"
-        onFilterChange={() => {}}
+        filters={[] as ContentFilter[]}
+        toggleFilter={() => {}}
+        clearFilters={() => {}}
       />
     );
 
@@ -37,12 +39,13 @@ describe("ContentToolbar Sort/Filter", () => {
       <ContentToolbar
         sortBy="custom"
         onSortChange={() => {}}
-        filterBy="all"
-        onFilterChange={() => {}}
+        filters={[] as ContentFilter[]}
+        toggleFilter={() => {}}
+        clearFilters={() => {}}
       />
     );
 
-    expect(screen.getByText("All Items")).toBeInTheDocument();
+    expect(screen.getByText("Filter")).toBeInTheDocument();
   });
 
   it("calls onSortChange when sort option is selected", async () => {
@@ -53,8 +56,9 @@ describe("ContentToolbar Sort/Filter", () => {
       <ContentToolbar
         sortBy="custom"
         onSortChange={onSortChange}
-        filterBy="all"
-        onFilterChange={() => {}}
+        filters={[] as ContentFilter[]}
+        toggleFilter={() => {}}
+        clearFilters={() => {}}
       />
     );
 
@@ -66,25 +70,26 @@ describe("ContentToolbar Sort/Filter", () => {
     expect(onSortChange).toHaveBeenCalledWith("name-asc");
   });
 
-  it("calls onFilterChange when filter option is selected", async () => {
-    const onFilterChange = vi.fn();
+  it("calls toggleFilter when filter checkbox is toggled", async () => {
+    const toggleFilter = vi.fn();
     const user = userEvent.setup();
 
     render(
       <ContentToolbar
         sortBy="custom"
         onSortChange={() => {}}
-        filterBy="all"
-        onFilterChange={onFilterChange}
+        filters={[] as ContentFilter[]}
+        toggleFilter={toggleFilter}
+        clearFilters={() => {}}
       />
     );
 
     // Open filter dropdown
-    await user.click(screen.getByText("All Items"));
-    // Select different option
+    await user.click(screen.getByText("Filter"));
+    // Click a checkbox item
     await user.click(screen.getByText("Has Files"));
 
-    expect(onFilterChange).toHaveBeenCalledWith("has-files");
+    expect(toggleFilter).toHaveBeenCalledWith("has-files");
   });
 
   it("disables sort dropdown when no items", () => {
@@ -92,8 +97,9 @@ describe("ContentToolbar Sort/Filter", () => {
       <ContentToolbar
         sortBy="custom"
         onSortChange={() => {}}
-        filterBy="all"
-        onFilterChange={() => {}}
+        filters={[] as ContentFilter[]}
+        toggleFilter={() => {}}
+        clearFilters={() => {}}
         disabled
       />
     );

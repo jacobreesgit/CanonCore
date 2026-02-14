@@ -14,7 +14,7 @@ test.describe("Items Hierarchy Journey", () => {
 
   test("displays full hierarchy in tree view", async ({ page, itemsPage }) => {
     // Deep hierarchy creation (4 creates + 4 navigations) needs more than 30s
-    test.setTimeout(60000);
+    test.setTimeout(90000);
     // Create hierarchy: Top Level > Parent > Child > Grandchild
     await itemsPage.createItem("Top Level");
 
@@ -30,7 +30,8 @@ test.describe("Items Hierarchy Journey", () => {
     await itemsPage.createItem("Grandchild");
 
     // Navigate back to Top Level via URL (works on mobile where breadcrumbs are hidden)
-    await page.goto(topLevelUrl);
+    await page.goto(topLevelUrl, { waitUntil: "networkidle" });
+    await itemsPage.expectHeroVisible("Top Level");
     await itemsPage.switchToTreeView();
 
     // All descendants should be visible in tree view
@@ -41,7 +42,7 @@ test.describe("Items Hierarchy Journey", () => {
 
   test("can collapse and expand items in tree", async ({ page, itemsPage }) => {
     // Deep hierarchy creation + collapse/expand needs more than 30s
-    test.setTimeout(60000);
+    test.setTimeout(90000);
     // Create Top Level container to view tree in
     await itemsPage.createItem("Top Level");
 
@@ -55,7 +56,8 @@ test.describe("Items Hierarchy Journey", () => {
     await itemsPage.createItem("Nested Child");
 
     // Navigate back to Top Level via URL (works on mobile where breadcrumbs are hidden)
-    await page.goto(topLevelUrl);
+    await page.goto(topLevelUrl, { waitUntil: "networkidle" });
+    await itemsPage.expectHeroVisible("Top Level");
     await itemsPage.switchToTreeView();
 
     // Both items should be visible in tree

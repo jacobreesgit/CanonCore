@@ -8,4 +8,3 @@ export { ItemSettingsDialog } from "./item-settings-dialog";
 export { ItemStats } from "./item-stats";
 export { ItemsView } from "./items-view";
 export { SyncBadge, SyncIcon } from "./sync-badge";
-export { useStoredViewMode } from "@/hooks/use-stored-view-mode";

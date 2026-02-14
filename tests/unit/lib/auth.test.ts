@@ -213,8 +213,6 @@ describe("getExtendedSidebarUser", () => {
       imageMime: null,
       heroImageMime: null,
       seedContentHash: null,
-      defaultViewMode: null,
-      defaultSortBy: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -254,8 +252,6 @@ describe("getExtendedSidebarUser", () => {
       imageMime: null,
       heroImageMime: null,
       seedContentHash: null,
-      defaultViewMode: null,
-      defaultSortBy: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -287,8 +283,6 @@ describe("getExtendedSidebarUser", () => {
       imageMime: null,
       heroImageMime: null,
       seedContentHash: null,
-      defaultViewMode: null,
-      defaultSortBy: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     });

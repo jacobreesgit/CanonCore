@@ -84,6 +84,23 @@ vi.mock("@/components/media/media-overlay", () => ({
   MediaOverlay: () => <div data-testid="media-overlay">Media overlay</div>,
 }));
 
+// Mock useItemsUrlState (uses nuqs which requires adapter in tests)
+vi.mock("@/hooks/use-items-url-state", () => ({
+  useItemsUrlState: () => ({
+    sortBy: "custom",
+    setSortBy: vi.fn(),
+    filters: [],
+    toggleFilter: vi.fn(),
+    clearFilters: vi.fn(),
+    hasActiveFilters: false,
+    viewMode: "grid",
+    setViewMode: vi.fn(),
+    tab: null,
+    setTab: vi.fn(),
+    isCustomSort: true,
+  }),
+}));
+
 // Mock sonner toast
 vi.mock("sonner", () => ({
   toast: {
