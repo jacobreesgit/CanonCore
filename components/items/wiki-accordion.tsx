@@ -23,7 +23,7 @@ export function WikiAccordion({
   className,
 }: WikiAccordionProps) {
   return (
-    <section className={className} data-testid="about-wiki-section">
+    <section className={className}>
       <h2
         className={cn(
           "mb-4 text-xs font-medium tracking-[0.2em] uppercase",

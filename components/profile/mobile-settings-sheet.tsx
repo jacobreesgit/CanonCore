@@ -81,7 +81,7 @@ export interface MobileSettingsSheetProps {
 }
 
 /**
- * Mobile settings bottom sheet with 5 swipeable tabs.
+ * Mobile settings bottom sheet with 4 swipeable tabs.
  * Supports step takeover for password/email/username changes.
  *
  * @param open - Whether the sheet is visible
@@ -185,8 +185,12 @@ export function MobileSettingsSheet({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep Private</AlertDialogCancel>
-            <AlertDialogAction onClick={form.handlePublicConfirm}>
+            <AlertDialogCancel>
+              Keep Private
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={form.handlePublicConfirm}
+            >
               Make Public
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -662,7 +666,6 @@ export function MobileSettingsSheet({
           maxSize={5 * 1024 * 1024}
         >
           <div
-            data-testid="hero-dropzone"
             className="bg-muted relative h-28 overflow-hidden rounded-lg bg-cover bg-center"
             style={{
               backgroundImage: form.heroImageSrc
@@ -706,7 +709,7 @@ export function MobileSettingsSheet({
             maxFiles={1}
             maxSize={2 * 1024 * 1024}
           >
-            <div className="relative" data-testid="profile-dropzone">
+            <div className="relative">
               <Avatar className="size-16 border-2 border-white/10 shadow-lg">
                 <AvatarImage
                   src={form.profileImageSrc || undefined}
@@ -801,7 +804,6 @@ export function MobileSettingsSheet({
           </div>
           <Switch
             id="mobile-settings-public"
-            data-testid="settings-public-toggle"
             checked={form.isPublic}
             onCheckedChange={form.handlePublicToggle}
           />
@@ -903,15 +905,30 @@ export function MobileSettingsSheet({
   );
 
   const tabs: SwipeableTab[] = [
-    { id: "profile", label: "Profile", icon: User, content: profileContent },
-    { id: "account", label: "Account", icon: Lock, content: accountContent },
+    {
+      id: "profile",
+      label: "Profile",
+      icon: User,
+      content: profileContent,
+    },
+    {
+      id: "account",
+      label: "Account",
+      icon: Lock,
+      content: accountContent,
+    },
     {
       id: "connections",
       label: "Connections",
       icon: Cloud,
       content: connectionsContent,
     },
-    { id: "activity", label: "Activity", icon: List, content: activityContent },
+    {
+      id: "activity",
+      label: "Activity",
+      icon: List,
+      content: activityContent,
+    },
   ];
 
   // -------------------------------------------------------------------------
@@ -928,7 +945,6 @@ export function MobileSettingsSheet({
         swipeable
         title="Settings"
         description="Manage your account and connections"
-        data-testid="settings-dialog"
         className={cn(
           "bg-[#1a1a1a]/95 backdrop-blur-xl",
           "border-t border-white/[0.08]",

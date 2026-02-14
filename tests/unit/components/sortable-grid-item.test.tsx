@@ -49,7 +49,7 @@ vi.mock("@/components/items/item-context-menu", () => ({
     children: React.ReactNode;
     itemName: string;
   }) => (
-    <div data-testid="context-menu" data-item-name={itemName}>
+    <div className="context-menu" data-item-name={itemName}>
       {children}
     </div>
   ),
@@ -76,19 +76,20 @@ describe("SortableGridItem", () => {
   });
 
   it("wraps content in ItemContextMenu", () => {
-    renderWithDnd(<SortableGridItem id="item-1" name="Test Item" />);
-    expect(screen.getByTestId("context-menu")).toBeInTheDocument();
-    expect(screen.getByTestId("context-menu")).toHaveAttribute(
+    const { container } = renderWithDnd(<SortableGridItem id="item-1" name="Test Item" />);
+    const contextMenu = container.querySelector(".context-menu");
+    expect(contextMenu).toBeInTheDocument();
+    expect(contextMenu).toHaveAttribute(
       "data-item-name",
       "Test Item"
     );
   });
 
   it("passes driveFileId to context menu", () => {
-    renderWithDnd(
+    const { container } = renderWithDnd(
       <SortableGridItem id="item-1" name="Test" driveFileId="drive-123" />
     );
-    expect(screen.getByTestId("context-menu")).toBeInTheDocument();
+    expect(container.querySelector(".context-menu")).toBeInTheDocument();
   });
 
   it("renders drag handle (via handleProps)", () => {

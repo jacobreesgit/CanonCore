@@ -43,7 +43,7 @@ vi.mock("sonner", () => ({
 // Mock sidebar context
 vi.mock("@/components/ui/sidebar", () => ({
   SidebarGroup: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sidebar-group">{children}</div>
+    <div>{children}</div>
   ),
   SidebarGroupContent: ({
     children,
@@ -52,15 +52,15 @@ vi.mock("@/components/ui/sidebar", () => ({
     children: React.ReactNode;
     className?: string;
   }) => (
-    <div data-testid="sidebar-group-content" className={className}>
+    <div className={className}>
       {children}
     </div>
   ),
   SidebarMenu: ({ children }: { children: React.ReactNode }) => (
-    <ul data-testid="sidebar-menu">{children}</ul>
+    <ul>{children}</ul>
   ),
   SidebarMenuItem: ({ children }: { children: React.ReactNode }) => (
-    <li data-testid="sidebar-menu-item">{children}</li>
+    <li>{children}</li>
   ),
   SidebarMenuButton: ({
     children,
@@ -78,10 +78,9 @@ vi.mock("@/components/ui/sidebar", () => ({
     onClick?: () => void;
   }) => (
     <button
-      data-testid="sidebar-menu-button"
+      className={`sidebar-menu-button ${className || ""}`}
       data-active={isActive}
       data-tooltip={tooltip}
-      className={className}
       onClick={onClick}
       aria-current={isActive ? "page" : undefined}
     >
@@ -89,10 +88,10 @@ vi.mock("@/components/ui/sidebar", () => ({
     </button>
   ),
   SidebarMenuSub: ({ children }: { children: React.ReactNode }) => (
-    <ul data-testid="sidebar-menu-sub">{children}</ul>
+    <ul className="sidebar-menu-sub">{children}</ul>
   ),
   SidebarMenuSubItem: ({ children }: { children: React.ReactNode }) => (
-    <li data-testid="sidebar-menu-sub-item">{children}</li>
+    <li>{children}</li>
   ),
   SidebarMenuSubButton: ({
     children,
@@ -104,7 +103,7 @@ vi.mock("@/components/ui/sidebar", () => ({
     asChild?: boolean;
   }) => (
     <button
-      data-testid="sidebar-menu-sub-button"
+      className="sidebar-menu-sub-button"
       data-active={isActive}
       aria-current={isActive ? "page" : undefined}
     >
@@ -130,7 +129,7 @@ describe("NavMain", () => {
     mockPathname.mockReturnValue("/u/testuser");
     render(<NavMain items={testItems} username={testUsername} />);
 
-    const button = screen.getByTestId("sidebar-menu-button");
+    const button = document.querySelector(".sidebar-menu-button")!;
     expect(button.getAttribute("data-active")).toBe("true");
   });
 
@@ -138,7 +137,7 @@ describe("NavMain", () => {
     mockPathname.mockReturnValue("/u/testuser/abc123");
     render(<NavMain items={testItems} username={testUsername} />);
 
-    const button = screen.getByTestId("sidebar-menu-button");
+    const button = document.querySelector(".sidebar-menu-button")!;
     expect(button.getAttribute("data-active")).toBe("true");
   });
 
@@ -146,7 +145,7 @@ describe("NavMain", () => {
     mockPathname.mockReturnValue("/u/testuser/connections");
     render(<NavMain items={testItems} username={testUsername} />);
 
-    const button = screen.getByTestId("sidebar-menu-button");
+    const button = document.querySelector(".sidebar-menu-button")!;
     expect(button.getAttribute("data-active")).toBe("true");
   });
 
@@ -154,7 +153,7 @@ describe("NavMain", () => {
     mockPathname.mockReturnValue("/docs");
     render(<NavMain items={testItems} username={testUsername} />);
 
-    const button = screen.getByTestId("sidebar-menu-button");
+    const button = document.querySelector(".sidebar-menu-button")!;
     expect(button.getAttribute("data-active")).toBe("false");
   });
 
@@ -162,7 +161,7 @@ describe("NavMain", () => {
     mockPathname.mockReturnValue("/");
     render(<NavMain items={testItems} username={testUsername} />);
 
-    const button = screen.getByTestId("sidebar-menu-button");
+    const button = document.querySelector(".sidebar-menu-button")!;
     expect(button.getAttribute("data-active")).toBe("false");
   });
 
@@ -171,7 +170,7 @@ describe("NavMain", () => {
     mockPathname.mockReturnValue("/u/otherusername");
     render(<NavMain items={testItems} username={testUsername} />);
 
-    const button = screen.getByTestId("sidebar-menu-button");
+    const button = document.querySelector(".sidebar-menu-button")!;
     expect(button.getAttribute("data-active")).toBe("false");
   });
 
@@ -179,7 +178,7 @@ describe("NavMain", () => {
     mockPathname.mockReturnValue("/u/testuser/abc/def/ghi");
     render(<NavMain items={testItems} username={testUsername} />);
 
-    const button = screen.getByTestId("sidebar-menu-button");
+    const button = document.querySelector(".sidebar-menu-button")!;
     expect(button.getAttribute("data-active")).toBe("true");
   });
 
@@ -195,8 +194,8 @@ describe("NavMain", () => {
       render(<NavMain items={testItems} username={testUsername} />);
 
       // Should have search button with "/" shortcut
-      const buttons = screen.getAllByTestId("sidebar-menu-button");
-      const searchButton = buttons.find((btn) =>
+      const buttons = document.querySelectorAll(".sidebar-menu-button");
+      const searchButton = Array.from(buttons).find((btn) =>
         btn.textContent?.includes("Search")
       );
       expect(searchButton).toBeDefined();
@@ -209,8 +208,8 @@ describe("NavMain", () => {
 
       render(<NavMain items={testItems} username={testUsername} />);
 
-      const buttons = screen.getAllByTestId("sidebar-menu-button");
-      const searchButton = buttons.find((btn) =>
+      const buttons = document.querySelectorAll(".sidebar-menu-button");
+      const searchButton = Array.from(buttons).find((btn) =>
         btn.textContent?.includes("Search")
       );
       expect(searchButton).toBeUndefined();
@@ -227,8 +226,8 @@ describe("NavMain", () => {
 
       render(<NavMain items={testItems} username={testUsername} />);
 
-      const buttons = screen.getAllByTestId("sidebar-menu-button");
-      const searchButton = buttons.find((btn) =>
+      const buttons = document.querySelectorAll(".sidebar-menu-button");
+      const searchButton = Array.from(buttons).find((btn) =>
         btn.textContent?.includes("Search")
       );
 
@@ -247,7 +246,7 @@ describe("NavMain", () => {
 
       render(<NavMain items={testItems} username={testUsername} />);
 
-      const buttons = screen.getAllByTestId("sidebar-menu-button");
+      const buttons = document.querySelectorAll(".sidebar-menu-button");
       expect(buttons[0].textContent).toContain("Search");
       expect(buttons[1].textContent).toContain("My Items");
     });
@@ -258,7 +257,7 @@ describe("NavMain", () => {
       mockPathname.mockReturnValue("/u/testuser");
       render(<NavMain items={testItems} username={testUsername} />);
 
-      const button = screen.getByTestId("sidebar-menu-button");
+      const button = document.querySelector(".sidebar-menu-button")!;
       expect(button.getAttribute("aria-current")).toBe("page");
     });
 
@@ -266,7 +265,7 @@ describe("NavMain", () => {
       mockPathname.mockReturnValue("/docs");
       render(<NavMain items={testItems} username={testUsername} />);
 
-      const button = screen.getByTestId("sidebar-menu-button");
+      const button = document.querySelector(".sidebar-menu-button")!;
       expect(button.getAttribute("aria-current")).toBeNull();
     });
   });
@@ -278,7 +277,7 @@ describe("NavMain", () => {
       mockPathname.mockReturnValue("/explore");
       render(<NavMain items={exploreItems} />);
 
-      const button = screen.getByTestId("sidebar-menu-button");
+      const button = document.querySelector(".sidebar-menu-button")!;
       expect(button.getAttribute("data-active")).toBe("true");
     });
 
@@ -287,7 +286,7 @@ describe("NavMain", () => {
       mockPathname.mockReturnValue("/u/john_doe");
       render(<NavMain items={exploreItems} />);
 
-      const button = screen.getByTestId("sidebar-menu-button");
+      const button = document.querySelector(".sidebar-menu-button")!;
       expect(button.getAttribute("data-active")).toBe("true");
     });
 
@@ -295,7 +294,7 @@ describe("NavMain", () => {
       mockPathname.mockReturnValue("/u/john_doe/abc123");
       render(<NavMain items={exploreItems} />);
 
-      const button = screen.getByTestId("sidebar-menu-button");
+      const button = document.querySelector(".sidebar-menu-button")!;
       expect(button.getAttribute("data-active")).toBe("true");
     });
 
@@ -303,7 +302,7 @@ describe("NavMain", () => {
       mockPathname.mockReturnValue("/u/john_doe/abc123/def456/ghi789");
       render(<NavMain items={exploreItems} />);
 
-      const button = screen.getByTestId("sidebar-menu-button");
+      const button = document.querySelector(".sidebar-menu-button")!;
       expect(button.getAttribute("data-active")).toBe("true");
     });
 
@@ -312,7 +311,7 @@ describe("NavMain", () => {
       mockPathname.mockReturnValue("/u/testuser");
       render(<NavMain items={exploreItems} username={testUsername} />);
 
-      const button = screen.getByTestId("sidebar-menu-button");
+      const button = document.querySelector(".sidebar-menu-button")!;
       expect(button.getAttribute("data-active")).toBe("false");
     });
   });
@@ -395,7 +394,7 @@ describe("NavMain", () => {
       );
 
       // Sub-menu should be visible (expanded)
-      expect(screen.getByTestId("sidebar-menu-sub")).toBeInTheDocument();
+      expect(document.querySelector(".sidebar-menu-sub")).toBeInTheDocument();
     });
 
     it("expands by default when a pinned item is active", () => {
@@ -409,7 +408,7 @@ describe("NavMain", () => {
       );
 
       // Sub-menu should be visible (expanded)
-      expect(screen.getByTestId("sidebar-menu-sub")).toBeInTheDocument();
+      expect(document.querySelector(".sidebar-menu-sub")).toBeInTheDocument();
     });
 
     it("highlights active pinned item", () => {
@@ -423,8 +422,8 @@ describe("NavMain", () => {
       );
 
       // Find the sub-button for Movies
-      const subButtons = screen.getAllByTestId("sidebar-menu-sub-button");
-      const moviesButton = subButtons.find((btn) =>
+      const subButtons = document.querySelectorAll(".sidebar-menu-sub-button");
+      const moviesButton = Array.from(subButtons).find((btn) =>
         btn.textContent?.includes("Movies")
       );
       expect(moviesButton?.getAttribute("data-active")).toBe("true");
@@ -441,8 +440,8 @@ describe("NavMain", () => {
       );
 
       // Find the sub-button for TV Shows
-      const subButtons = screen.getAllByTestId("sidebar-menu-sub-button");
-      const tvButton = subButtons.find((btn) =>
+      const subButtons = document.querySelectorAll(".sidebar-menu-sub-button");
+      const tvButton = Array.from(subButtons).find((btn) =>
         btn.textContent?.includes("TV Shows")
       );
       expect(tvButton?.getAttribute("data-active")).toBe("false");
@@ -460,7 +459,7 @@ describe("NavMain", () => {
       );
 
       // Initially expanded (on My Items path)
-      expect(screen.getByTestId("sidebar-menu-sub")).toBeInTheDocument();
+      expect(document.querySelector(".sidebar-menu-sub")).toBeInTheDocument();
 
       // Click to collapse
       const toggleButton = screen.getByRole("button", {
@@ -478,7 +477,7 @@ describe("NavMain", () => {
 
       // Without username, initial state is collapsed, but the useEffect
       // auto-expands when hasPinnedItems is true (regardless of username)
-      const subButtons = screen.queryAllByTestId("sidebar-menu-sub-button");
+      const subButtons = document.querySelectorAll(".sidebar-menu-sub-button");
       expect(subButtons.length).toBe(2);
     });
   });

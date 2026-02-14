@@ -160,7 +160,11 @@ export function PosterCard({
   }
 
   return (
-    <Link href={href} aria-label={ariaLabel} className={sharedClassName}>
+    <Link
+      href={href}
+      aria-label={ariaLabel}
+      className={sharedClassName}
+    >
       {content}
     </Link>
   );

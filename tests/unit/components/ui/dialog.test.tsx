@@ -12,14 +12,16 @@ describe("DialogFooter", () => {
     render(
       <Dialog open>
         <DialogContent>
-          <DialogFooter data-testid="footer">
+          <DialogFooter>
             <button>Save</button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     );
 
-    const footer = screen.getByTestId("footer");
+    // Footer is the parent of the Save button
+    const saveButton = screen.getByRole("button", { name: "Save" });
+    const footer = saveButton.closest("[data-slot='dialog-footer']") || saveButton.parentElement!;
     expect(footer.className).toContain("shrink-0");
   });
 
@@ -27,14 +29,15 @@ describe("DialogFooter", () => {
     render(
       <Dialog open>
         <DialogContent>
-          <DialogFooter data-testid="footer">
+          <DialogFooter>
             <button>Save</button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     );
 
-    const footer = screen.getByTestId("footer");
+    const saveButton = screen.getByRole("button", { name: "Save" });
+    const footer = saveButton.closest("[data-slot='dialog-footer']") || saveButton.parentElement!;
     expect(footer.className).toContain("gap-2");
   });
 });
@@ -43,11 +46,11 @@ describe("DialogContent", () => {
   it("uses flex-col layout", () => {
     render(
       <Dialog open>
-        <DialogContent data-testid="content">Content</DialogContent>
+        <DialogContent>Content</DialogContent>
       </Dialog>
     );
 
-    const content = screen.getByTestId("content");
+    const content = screen.getByRole("dialog");
     expect(content.className).toContain("flex");
     expect(content.className).toContain("flex-col");
   });

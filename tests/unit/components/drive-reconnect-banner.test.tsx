@@ -54,7 +54,7 @@ describe("Drive Reconnect Banner (Desktop)", () => {
   it("renders banner when driveNeedsReauth is true", () => {
     render(<SiteHeader driveNeedsReauth={true} />);
 
-    expect(screen.getByTestId("drive-reconnect-banner")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /reconnect/i })
     ).toBeInTheDocument();
@@ -63,17 +63,13 @@ describe("Drive Reconnect Banner (Desktop)", () => {
   it("does NOT render banner when driveNeedsReauth is false", () => {
     render(<SiteHeader driveNeedsReauth={false} />);
 
-    expect(
-      screen.queryByTestId("drive-reconnect-banner")
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("does NOT render banner when driveNeedsReauth is undefined", () => {
     render(<SiteHeader />);
 
-    expect(
-      screen.queryByTestId("drive-reconnect-banner")
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("displays the correct warning message text", () => {
@@ -135,8 +131,7 @@ describe("Drive Reconnect Banner (Desktop)", () => {
   it("has role='alert' and aria-live='assertive' attributes", () => {
     render(<SiteHeader driveNeedsReauth={true} />);
 
-    const banner = screen.getByTestId("drive-reconnect-banner");
-    expect(banner).toHaveAttribute("role", "alert");
+    const banner = screen.getByRole("alert");
     expect(banner).toHaveAttribute("aria-live", "assertive");
   });
 });

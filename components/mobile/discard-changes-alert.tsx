@@ -46,7 +46,7 @@ export function DiscardChangesAlert({
 }: DiscardChangesAlertProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent data-testid="discard-changes-alert">
+      <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>

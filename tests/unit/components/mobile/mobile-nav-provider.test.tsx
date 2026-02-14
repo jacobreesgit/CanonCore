@@ -35,7 +35,7 @@ vi.mock("@/hooks/use-reduced-motion", () => ({
 
 // Mock SpotlightSearch (imported by MobileSearchSheet)
 vi.mock("@/components/search", () => ({
-  SpotlightSearch: () => <div data-testid="spotlight-search">Search</div>,
+  SpotlightSearch: () => <div>Search</div>,
 }));
 
 // Mock next-auth/react
@@ -55,7 +55,7 @@ vi.mock("@/components/profile/mobile-settings-sheet", () => ({
     googleDriveConnection: unknown;
   }) =>
     open ? (
-      <div data-testid="settings-sheet" role="dialog" aria-label="Settings">
+      <div role="dialog" aria-label="Settings">
         {user?.name && <div>{user.name}</div>}
         <div>{user?.email}</div>
         {googleDriveConnection ? <div>Google Drive</div> : null}
@@ -88,11 +88,11 @@ describe("MobileNavProvider", () => {
     it("renders children", () => {
       render(
         <MobileNavProvider user={null}>
-          <main data-testid="main-content">App Content</main>
+          <main>App Content</main>
         </MobileNavProvider>
       );
 
-      expect(screen.getByTestId("main-content")).toBeInTheDocument();
+      expect(screen.getByRole("main")).toBeInTheDocument();
       expect(screen.getByText("App Content")).toBeInTheDocument();
     });
 

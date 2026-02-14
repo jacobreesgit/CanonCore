@@ -317,7 +317,10 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
   ]);
 
   return (
-    <CommandDialog open={open} onOpenChange={handleOpenChange}>
+    <CommandDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+    >
       <CommandInput
         placeholder="Search items and people…"
         className="border-none focus:ring-0"

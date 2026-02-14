@@ -177,7 +177,6 @@ export function MobileNavProvider({
           role="alert"
           aria-live="assertive"
           className="fixed inset-x-0 top-0 z-40 flex items-center gap-3 border-b border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 backdrop-blur-md lg:hidden"
-          data-testid="mobile-drive-reconnect-banner"
         >
           <AlertTriangle
             className="size-4 shrink-0 text-amber-400"

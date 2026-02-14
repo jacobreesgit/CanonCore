@@ -471,7 +471,6 @@ function ExistingFileThumbnail({
         src={src}
         alt={file.filename}
         loading="lazy"
-        data-testid="image"
         className={cn(
           "absolute inset-0 z-10 h-full w-full object-cover transition-opacity duration-150",
           isLoaded ? "opacity-100" : "opacity-0"

@@ -330,7 +330,6 @@ export function ItemDetailClient({
         <HeroButton
           variant="primary"
           onClick={handlePlay}
-          data-testid="hero-play-button"
         >
           <Play className="size-4" />
           {hasProgress ? `Resume ${primaryMedia?.filename ?? ""}` : "Play"}
@@ -339,7 +338,6 @@ export function ItemDetailClient({
       {nextItem && (
         <HeroButton
           onClick={() => goToNext(nextItem)}
-          data-testid="hero-goto-button"
         >
           <SkipForward className="size-4" />
           Next Up: {nextItem.name}
@@ -350,7 +348,6 @@ export function ItemDetailClient({
       <HeroButton
         onClick={handleOpenSettings}
         aria-label="Settings"
-        data-testid="hero-settings-button"
       >
         <Settings2 className="size-4" />
         Settings

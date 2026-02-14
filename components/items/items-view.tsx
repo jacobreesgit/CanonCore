@@ -420,8 +420,10 @@ export function ItemsView({
       // Fix: On detail pages, the tree treats descendants as "root" nodes with parentId=null
       // and depth=0. We need to correct these based on actual context.
       // Get the base depth from initial items (they have correct DB depths).
+      // Use itemsRef.current to avoid stale closure and keep this callback stable.
+      const currentItems = itemsRef.current;
       const directChildren = parentId
-        ? items.filter((i) => i.parentId === parentId)
+        ? currentItems.filter((i) => i.parentId === parentId)
         : [];
       const baseDepth =
         directChildren.length > 0
@@ -460,7 +462,7 @@ export function ItemsView({
         toast.error(result.error || "Failed to save changes");
       }
     },
-    [setItems, parentId, items]
+    [setItems, parentId]
   );
 
   // Handle grid reordering (same level only)
@@ -652,7 +654,9 @@ export function ItemsView({
 
       {/* Items display */}
       {currentLevelItems.length === 0 ? (
-        <Section className="flex flex-1 flex-col">
+        <Section
+          className="flex flex-1 flex-col"
+        >
           <EmptyState
             variant={emptyStateVariant}
             onAction={handleEmptyStateAction}

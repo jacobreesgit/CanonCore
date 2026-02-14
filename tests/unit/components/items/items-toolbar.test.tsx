@@ -10,9 +10,7 @@ import type { ContentFilter } from "@/lib/types";
 
 // Mock MobileOptionsSheet to simplify tests
 vi.mock("@/components/items/mobile-options-sheet", () => ({
-  MobileOptionsSheet: () => (
-    <div data-testid="mobile-options-sheet">Mobile Sheet</div>
-  ),
+  MobileOptionsSheet: () => <div>Mobile Sheet</div>,
 }));
 
 describe("ContentToolbar", () => {
@@ -51,11 +49,11 @@ describe("ContentToolbar", () => {
     it("should render actions slot content", () => {
       render(
         <ContentToolbar
-          actions={<button data-testid="custom-action">Custom</button>}
+          actions={<button>Custom</button>}
         />
       );
 
-      expect(screen.getByTestId("custom-action")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Custom" })).toBeInTheDocument();
     });
   });
 

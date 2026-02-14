@@ -118,10 +118,7 @@ function ResetPasswordFormInner() {
                 <h1 className="text-2xl font-bold tracking-wide">
                   Password reset successful
                 </h1>
-                <p
-                  data-testid="reset-password-success-message"
-                  className="text-muted-foreground text-base"
-                >
+                <p className="text-muted-foreground text-base">
                   Your password has been reset. You can now sign in with your
                   new password.
                 </p>
@@ -131,7 +128,6 @@ function ResetPasswordFormInner() {
                 asChild
                 className="w-full"
                 size="lg"
-                data-testid="reset-password-sign-in-link"
               >
                 <Link href="/sign-in">Sign in</Link>
               </Button>
@@ -149,7 +145,6 @@ function ResetPasswordFormInner() {
 
               <div
                 id="reset-password-error"
-                data-testid="reset-password-error-message"
                 className={
                   error
                     ? "bg-destructive/10 text-destructive w-full rounded-md px-4 py-3 text-center text-sm"
@@ -177,7 +172,6 @@ function ResetPasswordFormInner() {
                     aria-describedby={
                       error ? "reset-password-error" : undefined
                     }
-                    data-testid="reset-password-password-input"
                   />
                 </div>
 
@@ -195,7 +189,6 @@ function ResetPasswordFormInner() {
                     aria-describedby={
                       error ? "reset-password-error" : undefined
                     }
-                    data-testid="reset-password-confirm-password-input"
                   />
                 </div>
 
@@ -204,7 +197,6 @@ function ResetPasswordFormInner() {
                   className="w-full"
                   size="lg"
                   disabled={loading}
-                  data-testid="reset-password-submit-button"
                 >
                   {loading ? "Resetting..." : "Reset password"}
                 </Button>

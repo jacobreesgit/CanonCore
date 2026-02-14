@@ -27,7 +27,7 @@ function DialogWithTrigger(
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} data-testid="dialog-trigger">
+      <Button onClick={() => setOpen(true)}>
         {buttonLabel}
       </Button>
       <AddItemDialog {...dialogProps} open={open} onOpenChange={setOpen} />
@@ -100,7 +100,7 @@ export const Default: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
     // Dialog renders in portal, search in document.body
     const body = within(document.body);
@@ -126,7 +126,7 @@ export const WithParent: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
     const body = within(document.body);
     await body.findByLabelText(/name/i);
@@ -150,7 +150,7 @@ export const WithDriveConnection: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
     const body = within(document.body);
     await body.findByLabelText(/name/i);
@@ -182,7 +182,7 @@ export const FormInteraction: Story = {
     const canvas = within(canvasElement);
 
     // Open dialog
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
 
     // Dialog renders in portal, search in document.body
@@ -228,7 +228,7 @@ export const TMDBSearchInteraction: Story = {
     const canvas = within(canvasElement);
 
     // Open dialog
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
 
     // Dialog renders in portal, search in document.body
@@ -270,7 +270,7 @@ export const TabSwitching: Story = {
     const canvas = within(canvasElement);
 
     // Open dialog
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
 
     // Dialog renders in portal, search in document.body

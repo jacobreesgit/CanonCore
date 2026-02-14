@@ -84,7 +84,6 @@ export function ItemStats({
     return (
       <span
         className={cn("text-sm", emptyClass, className)}
-        data-testid="empty-state"
       >
         Empty
       </span>
@@ -112,7 +111,6 @@ export function ItemStats({
     return (
       <span
         className={cn("text-sm", textClass, className)}
-        data-testid="item-stats"
       >
         {parts.join(", ")}
       </span>
@@ -127,10 +125,9 @@ export function ItemStats({
         textClass,
         className
       )}
-      data-testid="item-stats"
     >
       {hasChildren && (
-        <span className="flex items-center gap-1.5" data-testid="child-count">
+        <span className="flex items-center gap-1.5">
           <Folder className="size-4" />
           <span>
             {childCount} {childCount === 1 ? "child" : "children"}
@@ -138,22 +135,19 @@ export function ItemStats({
         </span>
       )}
       {fileCounts.media > 0 && (
-        <span className="flex items-center gap-1.5" data-testid="media-count">
+        <span className="flex items-center gap-1.5">
           <MediaIcon className="size-4" />
           <span>{fileCounts.media}</span>
         </span>
       )}
       {fileCounts.artwork > 0 && (
-        <span className="flex items-center gap-1.5" data-testid="artwork-count">
+        <span className="flex items-center gap-1.5">
           <ImageIcon className="size-4" />
           <span>{fileCounts.artwork}</span>
         </span>
       )}
       {fileCounts.subtitles > 0 && (
-        <span
-          className="flex items-center gap-1.5"
-          data-testid="subtitle-count"
-        >
+        <span className="flex items-center gap-1.5">
           <FileText className="size-4" />
           <span>{fileCounts.subtitles}</span>
         </span>

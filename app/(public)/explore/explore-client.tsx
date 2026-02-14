@@ -328,13 +328,11 @@ export function ExploreClient({
             <Section
               className="py-8"
               aria-label="Pinned items"
-              data-testid="explore-pinned-section"
             >
               <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
                 Pinned
               </h2>
               <div
-                data-testid="pinned-items-grid"
                 className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6"
               >
                 {pinnedExploreItems.map((item, index) => {
@@ -398,7 +396,6 @@ export function ExploreClient({
           <Section
             className="py-8"
             aria-label="Library"
-            data-testid="explore-library-section"
           >
             {pinnedExploreItems.length > 0 && (
               <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
@@ -406,7 +403,6 @@ export function ExploreClient({
               </h2>
             )}
             <div
-              data-testid="items-grid-view"
               className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6"
             >
               {unpinnedExploreItems.map((item, index) => {

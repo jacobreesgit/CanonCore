@@ -146,7 +146,6 @@ export function SignUpForm() {
 
           <div
             id="sign-up-error"
-            data-testid="sign-up-error-message"
             className={
               error
                 ? "bg-destructive/10 text-destructive w-full rounded-md px-4 py-3 text-center text-sm"
@@ -173,7 +172,6 @@ export function SignUpForm() {
                 required
                 aria-invalid={!!error}
                 aria-describedby={error ? "sign-up-error" : undefined}
-                data-testid="sign-up-email-input"
               />
             </div>
 
@@ -211,7 +209,6 @@ export function SignUpForm() {
                         ? "username-success"
                         : undefined
                   }
-                  data-testid="sign-up-username-input"
                 />
                 {username && (
                   <div className="absolute top-1/2 right-3 -translate-y-1/2">
@@ -258,7 +255,6 @@ export function SignUpForm() {
                 minLength={8}
                 aria-invalid={!!error}
                 aria-describedby={error ? "sign-up-error" : undefined}
-                data-testid="sign-up-password-input"
               />
             </div>
 
@@ -274,7 +270,6 @@ export function SignUpForm() {
                 required
                 aria-invalid={!!error}
                 aria-describedby={error ? "sign-up-error" : undefined}
-                data-testid="sign-up-confirm-password-input"
               />
             </div>
 
@@ -283,7 +278,6 @@ export function SignUpForm() {
               className="w-full"
               size="lg"
               disabled={loading}
-              data-testid="sign-up-submit-button"
             >
               {loading ? "Creating account..." : "Create account"}
             </Button>
@@ -294,7 +288,6 @@ export function SignUpForm() {
             <Link
               href="/sign-in"
               className="text-primary font-medium hover:underline"
-              data-testid="sign-up-sign-in-link"
             >
               Sign in
             </Link>

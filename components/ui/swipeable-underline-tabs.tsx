@@ -210,7 +210,6 @@ export function SwipeableUnderlineTabs({
             <button
               key={tab.id}
               id={getTabId(tab.id)}
-              data-testid={`tab-${tab.id}`}
               data-tab-index={index}
               role="tab"
               tabIndex={activeTab === tab.id ? 0 : -1}
@@ -260,7 +259,6 @@ export function SwipeableUnderlineTabs({
               <div
                 key={tab.id}
                 id={getPanelId(tab.id)}
-                data-testid={`tabpanel-${tab.id}`}
                 role="tabpanel"
                 aria-labelledby={getTabId(tab.id)}
                 tabIndex={isActive ? 0 : undefined}

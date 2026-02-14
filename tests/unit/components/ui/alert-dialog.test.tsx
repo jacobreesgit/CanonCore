@@ -17,14 +17,16 @@ describe("AlertDialogFooter", () => {
     render(
       <AlertDialog open>
         <AlertDialogContent>
-          <AlertDialogFooter data-testid="footer">
+          <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     );
 
-    const footer = screen.getByTestId("footer");
+    // Footer is the parent of the Cancel button
+    const cancelButton = screen.getByRole("button", { name: "Cancel" });
+    const footer = cancelButton.closest("[data-slot='alert-dialog-footer']") || cancelButton.parentElement!;
     expect(footer.className).toContain("shrink-0");
   });
 
@@ -32,14 +34,15 @@ describe("AlertDialogFooter", () => {
     render(
       <AlertDialog open>
         <AlertDialogContent>
-          <AlertDialogFooter data-testid="footer">
+          <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     );
 
-    const footer = screen.getByTestId("footer");
+    const cancelButton = screen.getByRole("button", { name: "Cancel" });
+    const footer = cancelButton.closest("[data-slot='alert-dialog-footer']") || cancelButton.parentElement!;
     expect(footer.className).toContain("gap-2");
   });
 });
@@ -48,11 +51,11 @@ describe("AlertDialogContent", () => {
   it("uses flex-col layout", () => {
     render(
       <AlertDialog open>
-        <AlertDialogContent data-testid="content">Content</AlertDialogContent>
+        <AlertDialogContent>Content</AlertDialogContent>
       </AlertDialog>
     );
 
-    const content = screen.getByTestId("content");
+    const content = screen.getByRole("alertdialog");
     expect(content.className).toContain("flex");
     expect(content.className).toContain("flex-col");
   });

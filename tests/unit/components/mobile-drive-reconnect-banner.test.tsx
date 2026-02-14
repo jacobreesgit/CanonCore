@@ -41,7 +41,7 @@ vi.mock("@/hooks/use-reduced-motion", () => ({
 
 // Mock SpotlightSearch
 vi.mock("@/components/search", () => ({
-  SpotlightSearch: () => <div data-testid="spotlight-search">Search</div>,
+  SpotlightSearch: () => <div>Search</div>,
 }));
 
 // Mock next-auth/react
@@ -53,7 +53,7 @@ vi.mock("next-auth/react", () => ({
 vi.mock("@/components/profile/mobile-settings-sheet", () => ({
   MobileSettingsSheet: ({ open }: { open: boolean }) =>
     open ? (
-      <div data-testid="settings-sheet" role="dialog" aria-label="Settings">
+      <div role="dialog" aria-label="Settings">
         Settings
       </div>
     ) : null,
@@ -90,9 +90,7 @@ describe("Drive Reconnect Banner (Mobile)", () => {
       </MobileNavProvider>
     );
 
-    expect(
-      screen.getByTestId("mobile-drive-reconnect-banner")
-    ).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /reconnect/i })
     ).toBeInTheDocument();
@@ -105,9 +103,7 @@ describe("Drive Reconnect Banner (Mobile)", () => {
       </MobileNavProvider>
     );
 
-    expect(
-      screen.queryByTestId("mobile-drive-reconnect-banner")
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("displays the correct warning message text", () => {
@@ -180,8 +176,7 @@ describe("Drive Reconnect Banner (Mobile)", () => {
       </MobileNavProvider>
     );
 
-    const banner = screen.getByTestId("mobile-drive-reconnect-banner");
-    expect(banner).toHaveAttribute("role", "alert");
+    const banner = screen.getByRole("alert");
     expect(banner).toHaveAttribute("aria-live", "assertive");
   });
 
@@ -192,7 +187,7 @@ describe("Drive Reconnect Banner (Mobile)", () => {
       </MobileNavProvider>
     );
 
-    const banner = screen.getByTestId("mobile-drive-reconnect-banner");
+    const banner = screen.getByRole("alert");
     expect(banner.className).toContain("lg:hidden");
   });
 });

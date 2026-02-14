@@ -201,7 +201,6 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
           {!ghost && showDragHandle && (
             <button
               type="button"
-              data-testid="tree-item-drag-handle"
               aria-label="Drag handle"
               className={cn(
                 "flex-shrink-0 touch-none rounded",
@@ -225,7 +224,6 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
           {!ghost && onCollapse && (
             <button
               type="button"
-              data-testid="tree-item-collapse-toggle"
               aria-label={collapsed ? "Expand item" : "Collapse item"}
               onClick={(e) => {
                 e.stopPropagation();
@@ -331,7 +329,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
               )}
               {/* Progress bar - only in view mode */}
               {!showDragHandle && progressPercentage !== null && (
-                <div className="mt-2" data-testid="tree-item-progress-bar">
+                <div className="mt-2">
                   <ProgressBar progress={progressPercentage ?? 0} compact />
                 </div>
               )}

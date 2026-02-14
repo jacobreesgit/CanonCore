@@ -117,10 +117,7 @@ export function GridViewContent({
           <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
             Pinned
           </h2>
-          <div
-            data-testid="pinned-items-grid"
-            className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6"
-          >
+          <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
             {pinnedItems.map((item, index) => (
               <ItemContextMenu
                 key={item.id}
@@ -174,10 +171,7 @@ export function GridViewContent({
               Library
             </h2>
           )}
-          <div
-            data-testid="items-grid-view"
-            className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6"
-          >
+          <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
             {unpinnedItems.map((item, index) => (
               <ItemContextMenu
                 key={item.id}

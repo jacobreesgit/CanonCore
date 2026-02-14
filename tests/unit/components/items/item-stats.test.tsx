@@ -10,63 +10,60 @@ import { ItemStats } from "@/components/items/item-stats";
 describe("ItemStats", () => {
   describe("mediaIconType icon selection", () => {
     it("renders Film icon when mediaIconType is 'film'", () => {
-      render(
+      const { container } = render(
         <ItemStats
           fileCounts={{ media: 2, artwork: 0, subtitles: 0 }}
           mediaIconType="film"
         />
       );
 
-      const mediaCount = screen.getByTestId("media-count");
-      // Film icon should be present (lucide adds role="img" or we check SVG)
-      const svg = mediaCount.querySelector("svg");
+      // Media stat span has an SVG icon
+      const svg = container.querySelector("svg");
       expect(svg).toBeInTheDocument();
     });
 
     it("renders Music icon when mediaIconType is 'music'", () => {
-      render(
+      const { container } = render(
         <ItemStats
           fileCounts={{ media: 3, artwork: 0, subtitles: 0 }}
           mediaIconType="music"
         />
       );
 
-      const mediaCount = screen.getByTestId("media-count");
-      const svg = mediaCount.querySelector("svg");
+      const svg = container.querySelector("svg");
       expect(svg).toBeInTheDocument();
     });
 
     it("renders FolderOpen icon when mediaIconType is 'mixed'", () => {
-      render(
+      const { container } = render(
         <ItemStats
           fileCounts={{ media: 4, artwork: 0, subtitles: 0 }}
           mediaIconType="mixed"
         />
       );
 
-      const mediaCount = screen.getByTestId("media-count");
-      const svg = mediaCount.querySelector("svg");
+      const svg = container.querySelector("svg");
       expect(svg).toBeInTheDocument();
     });
 
     it("renders Film icon when mediaIconType is null (default)", () => {
-      render(
+      const { container } = render(
         <ItemStats
           fileCounts={{ media: 1, artwork: 0, subtitles: 0 }}
           mediaIconType={null}
         />
       );
 
-      const mediaCount = screen.getByTestId("media-count");
-      const svg = mediaCount.querySelector("svg");
+      const svg = container.querySelector("svg");
       expect(svg).toBeInTheDocument();
     });
 
     it("renders Film icon when mediaIconType is undefined", () => {
-      render(<ItemStats fileCounts={{ media: 1, artwork: 0, subtitles: 0 }} />);
+      const { container } = render(
+        <ItemStats fileCounts={{ media: 1, artwork: 0, subtitles: 0 }} />
+      );
 
-      const mediaCount = screen.getByTestId("media-count");
-      const svg = mediaCount.querySelector("svg");
+      const svg = container.querySelector("svg");
       expect(svg).toBeInTheDocument();
     });
   });
@@ -75,31 +72,31 @@ describe("ItemStats", () => {
     it("shows child count with correct text", () => {
       render(<ItemStats childCount={5} />);
 
-      expect(screen.getByTestId("child-count")).toHaveTextContent("5 children");
+      expect(screen.getByText("5 children")).toBeInTheDocument();
     });
 
     it("shows singular 'child' for count of 1", () => {
       render(<ItemStats childCount={1} />);
 
-      expect(screen.getByTestId("child-count")).toHaveTextContent("1 child");
+      expect(screen.getByText("1 child")).toBeInTheDocument();
     });
 
     it("shows media count", () => {
       render(<ItemStats fileCounts={{ media: 3, artwork: 0, subtitles: 0 }} />);
 
-      expect(screen.getByTestId("media-count")).toHaveTextContent("3");
+      expect(screen.getByText("3")).toBeInTheDocument();
     });
 
     it("shows artwork count", () => {
       render(<ItemStats fileCounts={{ media: 0, artwork: 2, subtitles: 0 }} />);
 
-      expect(screen.getByTestId("artwork-count")).toHaveTextContent("2");
+      expect(screen.getByText("2")).toBeInTheDocument();
     });
 
     it("shows subtitle count", () => {
       render(<ItemStats fileCounts={{ media: 0, artwork: 0, subtitles: 4 }} />);
 
-      expect(screen.getByTestId("subtitle-count")).toHaveTextContent("4");
+      expect(screen.getByText("4")).toBeInTheDocument();
     });
 
     it("returns null when no content and showEmpty is false", () => {
@@ -111,13 +108,13 @@ describe("ItemStats", () => {
     it("shows 'Empty' when no content and showEmpty is true", () => {
       render(<ItemStats showEmpty={true} />);
 
-      expect(screen.getByTestId("empty-state")).toHaveTextContent("Empty");
+      expect(screen.getByText("Empty")).toBeInTheDocument();
     });
   });
 
   describe("text format", () => {
     it("renders text format with proper labels", () => {
-      render(
+      const { container } = render(
         <ItemStats
           childCount={2}
           fileCounts={{ media: 3, artwork: 1, subtitles: 2 }}
@@ -125,7 +122,7 @@ describe("ItemStats", () => {
         />
       );
 
-      const stats = screen.getByTestId("item-stats");
+      const stats = container.firstChild as HTMLElement;
       expect(stats).toHaveTextContent("x2 children");
       expect(stats).toHaveTextContent("x3 media");
       expect(stats).toHaveTextContent("x1 artwork");
@@ -133,7 +130,7 @@ describe("ItemStats", () => {
     });
 
     it("uses singular form in text format for single items", () => {
-      render(
+      const { container } = render(
         <ItemStats
           childCount={1}
           fileCounts={{ media: 0, artwork: 0, subtitles: 1 }}
@@ -141,7 +138,7 @@ describe("ItemStats", () => {
         />
       );
 
-      const stats = screen.getByTestId("item-stats");
+      const stats = container.firstChild as HTMLElement;
       expect(stats).toHaveTextContent("x1 child");
       expect(stats).toHaveTextContent("x1 subtitle");
     });
@@ -149,26 +146,26 @@ describe("ItemStats", () => {
 
   describe("variants", () => {
     it("applies overlay variant styles", () => {
-      render(
+      const { container } = render(
         <ItemStats
           fileCounts={{ media: 1, artwork: 0, subtitles: 0 }}
           variant="overlay"
         />
       );
 
-      const stats = screen.getByTestId("item-stats");
+      const stats = container.firstChild as HTMLElement;
       expect(stats).toHaveClass("text-white/90");
     });
 
     it("applies muted variant styles", () => {
-      render(
+      const { container } = render(
         <ItemStats
           fileCounts={{ media: 1, artwork: 0, subtitles: 0 }}
           variant="muted"
         />
       );
 
-      const stats = screen.getByTestId("item-stats");
+      const stats = container.firstChild as HTMLElement;
       expect(stats).toHaveClass("text-muted-foreground");
     });
   });

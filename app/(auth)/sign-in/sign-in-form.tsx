@@ -107,7 +107,6 @@ export function SignInForm() {
 
           <div
             id="sign-in-error"
-            data-testid="sign-in-error-message"
             className={
               error
                 ? "bg-destructive/10 text-destructive w-full rounded-md px-4 py-3 text-center text-sm"
@@ -134,7 +133,6 @@ export function SignInForm() {
                 required
                 aria-invalid={!!error}
                 aria-describedby={error ? "sign-in-error" : undefined}
-                data-testid="sign-in-email-input"
               />
             </div>
 
@@ -144,7 +142,6 @@ export function SignInForm() {
                 <Link
                   href="/forgot-password"
                   className="text-muted-foreground text-xs hover:underline"
-                  data-testid="sign-in-forgot-password-link"
                 >
                   Forgot password?
                 </Link>
@@ -159,7 +156,6 @@ export function SignInForm() {
                 required
                 aria-invalid={!!error}
                 aria-describedby={error ? "sign-in-error" : undefined}
-                data-testid="sign-in-password-input"
               />
             </div>
 
@@ -168,7 +164,6 @@ export function SignInForm() {
               className="w-full"
               size="lg"
               disabled={loading}
-              data-testid="sign-in-submit-button"
             >
               {loading ? "Signing in..." : "Sign in"}
             </Button>
@@ -179,7 +174,6 @@ export function SignInForm() {
             <Link
               href="/sign-up"
               className="text-primary font-medium hover:underline"
-              data-testid="sign-in-sign-up-link"
             >
               Sign up
             </Link>

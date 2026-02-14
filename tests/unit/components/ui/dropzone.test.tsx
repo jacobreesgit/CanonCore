@@ -61,12 +61,12 @@ describe("Dropzone", () => {
 
     it("should apply custom className", () => {
       render(
-        <Dropzone className="custom-class" data-testid="dropzone">
+        <Dropzone className="custom-class">
           <span>Upload</span>
         </Dropzone>
       );
 
-      expect(screen.getByTestId("dropzone")).toHaveClass("custom-class");
+      expect(screen.getByRole("button")).toHaveClass("custom-class");
     });
 
     it("should be disabled when disabled prop is true", () => {

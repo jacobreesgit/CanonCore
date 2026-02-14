@@ -64,7 +64,7 @@ export function AboutSection({
   }, [description, maxLines, needsExpansion]);
 
   return (
-    <section className={className} data-testid="about-description-section">
+    <section className={className}>
       <h2
         className={cn(
           "mb-4 text-xs font-medium tracking-[0.2em] uppercase",
@@ -110,7 +110,6 @@ export function AboutSection({
 
         {(needsExpansion || measured) && (
           <button
-            data-testid="read-more-button"
             onClick={() => setExpanded(!expanded)}
             className={cn(
               "mt-2 text-sm font-medium",

@@ -44,7 +44,7 @@ export function VideoRow({
   };
 
   return (
-    <section className={className} data-testid="about-videos-section">
+    <section className={className}>
       <h2
         className={cn(
           "mb-4 text-xs font-medium tracking-[0.2em] uppercase",

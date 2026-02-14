@@ -499,15 +499,23 @@ describe("SwipeableTabs — Select mode (>3 tabs)", () => {
       />
     );
 
-    // Active panel is visible
-    const activePanel = screen.getByTestId("select-panel-tab2");
+    // Get all panels (including hidden ones)
+    const allPanels = screen.getAllByRole("tabpanel", { hidden: true });
+
+    // Active panel (Account) is visible
+    const activePanel = allPanels.find(
+      (p) => p.getAttribute("aria-label") === "Account"
+    );
     expect(activePanel).toHaveClass("block");
 
     // Other panels exist in DOM but are hidden
-    expect(screen.getByTestId("select-panel-tab1")).toHaveClass("hidden");
-    expect(screen.getByTestId("select-panel-tab3")).toHaveClass("hidden");
-    expect(screen.getByTestId("select-panel-tab4")).toHaveClass("hidden");
-    expect(screen.getByTestId("select-panel-tab5")).toHaveClass("hidden");
+    const hiddenLabels = ["Profile", "Connections", "Preferences", "Activity"];
+    for (const label of hiddenLabels) {
+      const panel = allPanels.find(
+        (p) => p.getAttribute("aria-label") === label
+      );
+      expect(panel).toHaveClass("hidden");
+    }
   });
 
   it("lazy rendering — unvisited tab content not mounted until selected", () => {
@@ -564,7 +572,7 @@ describe("SwipeableTabs — Select mode (>3 tabs)", () => {
       />
     );
 
-    expect(screen.queryAllByRole("tabpanel")).toHaveLength(5);
+    expect(screen.getAllByRole("tabpanel", { hidden: true })).toHaveLength(5);
   });
 
   it("exactly 3 tabs still renders swipeable tabs", () => {

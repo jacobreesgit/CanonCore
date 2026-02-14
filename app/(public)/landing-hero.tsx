@@ -136,7 +136,6 @@ export function HeroContent() {
         <div className="flex flex-col items-center py-24 text-center md:py-32 lg:py-40">
           {/* Headline */}
           <motion.h1
-            data-testid="landing-hero-title"
             className="max-w-3xl text-5xl leading-[1.08] font-semibold tracking-tight md:text-6xl lg:text-7xl"
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
