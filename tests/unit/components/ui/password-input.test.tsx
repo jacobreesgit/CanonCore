@@ -51,14 +51,14 @@ describe("PasswordInput", () => {
         placeholder="Enter password"
         required
         disabled
-        data-testid="password-field"
+        aria-describedby="help-text"
       />
     );
 
     const input = screen.getByPlaceholderText("Enter password");
     expect(input).toBeRequired();
     expect(input).toBeDisabled();
-    expect(input).toHaveAttribute("data-testid", "password-field");
+    expect(input).toHaveAttribute("aria-describedby", "help-text");
   });
 
   it("applies custom className", () => {

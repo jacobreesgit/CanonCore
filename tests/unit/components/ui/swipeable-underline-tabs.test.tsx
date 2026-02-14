@@ -195,16 +195,16 @@ describe("SwipeableUnderlineTabs", () => {
     );
 
     const panels = screen.getAllByRole("tabpanel", { hidden: true });
-    // Active panel (contents) should NOT have inert
+    // Active panel (contents) should NOT have inert — find by text content
     const activePanel = panels.find((p) =>
-      p.getAttribute("data-testid")?.includes("contents")
+      p.textContent?.includes("Contents Panel")
     );
     expect(activePanel).not.toHaveAttribute("inert");
     expect(activePanel).not.toHaveAttribute("aria-hidden");
 
     // Inactive panel (about) should have inert and aria-hidden
     const inactivePanel = panels.find((p) =>
-      p.getAttribute("data-testid")?.includes("about")
+      p.textContent?.includes("About Panel")
     );
     expect(inactivePanel).toHaveAttribute("inert");
     expect(inactivePanel).toHaveAttribute("aria-hidden", "true");
@@ -219,7 +219,10 @@ describe("SwipeableUnderlineTabs", () => {
       />
     );
 
-    const aboutPanel = screen.getByTestId("tabpanel-about");
+    const panels = screen.getAllByRole("tabpanel", { hidden: true });
+    const aboutPanel = panels.find((p) =>
+      p.textContent?.includes("About Panel")
+    );
     expect(aboutPanel).not.toHaveAttribute("inert");
     expect(aboutPanel).not.toHaveAttribute("aria-hidden");
   });

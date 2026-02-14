@@ -25,11 +25,7 @@ function DialogWithTrigger(
 
   return (
     <>
-      <Button
-        variant="outline"
-        onClick={() => setOpen(true)}
-        data-testid="dialog-trigger"
-      >
+      <Button variant="outline" onClick={() => setOpen(true)}>
         {buttonLabel}
       </Button>
       <ReparentWarningDialog
@@ -85,7 +81,7 @@ export const Default: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
     const body = within(document.body);
     await body.findByRole("alertdialog");
@@ -104,7 +100,7 @@ export const WillBecomePublic: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
     const body = within(document.body);
     await body.findByRole("alertdialog");
@@ -131,7 +127,7 @@ export const WillBecomePrivate: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
     const body = within(document.body);
     await body.findByRole("alertdialog");
@@ -158,7 +154,7 @@ export const MovingFromRoot: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
     const body = within(document.body);
     await body.findByRole("alertdialog");
@@ -184,7 +180,7 @@ export const MovingToRoot: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
     const body = within(document.body);
     await body.findByRole("alertdialog");
@@ -210,7 +206,7 @@ export const Loading: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
     const body = within(document.body);
     await body.findByRole("alertdialog");

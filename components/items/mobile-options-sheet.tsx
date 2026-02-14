@@ -139,7 +139,6 @@ export function MobileOptionsSheet({
       {/* Trigger button - glassmorphism styling */}
       <button
         type="button"
-        data-testid="mobile-options-trigger"
         disabled={disabled}
         onClick={() => setOpen(true)}
         className={cn(
@@ -298,7 +297,7 @@ export function MobileOptionsSheet({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-medium tracking-wider text-[var(--tertiary-foreground)] uppercase">
                   <Filter aria-hidden="true" className="size-4" />
-                  <span data-testid="mobile-filter-header">
+                  <span>
                     Filter{hasActiveFilter ? ` (${filters!.length})` : ""}
                   </span>
                 </div>

@@ -121,6 +121,7 @@ function ViewDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger
         disabled={disabled}
+
         aria-label={`View mode: ${current.label}`}
         className={cn(
           "inline-flex items-center gap-2 rounded-md px-3 py-1.5",

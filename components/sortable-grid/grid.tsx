@@ -58,10 +58,7 @@ export function Grid({
   currentUser: _currentUser,
 }: GridProps) {
   return (
-    <div
-      data-testid="items-grid-view"
-      className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-5"
-    >
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-5">
       {items.map((item, index) => (
         <ItemContextMenu
           key={item.id}

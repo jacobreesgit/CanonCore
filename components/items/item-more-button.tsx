@@ -69,7 +69,6 @@ export function ItemMoreButton({ className, ...actions }: ItemMoreButtonProps) {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            data-testid="item-more-button"
             aria-label="More options"
             onClick={(e) => e.stopPropagation()}
             className={cn(

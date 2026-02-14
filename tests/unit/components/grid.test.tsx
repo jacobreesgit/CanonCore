@@ -134,17 +134,18 @@ describe("Grid", () => {
   });
 
   it("should render empty grid when no items provided", () => {
-    render(<Grid items={[]} />);
+    const { container } = render(<Grid items={[]} />);
 
-    const grid = screen.getByTestId("items-grid-view");
+    const grid = container.querySelector(".grid");
     expect(grid).toBeInTheDocument();
-    expect(grid.children).toHaveLength(0);
+    expect(grid!.children).toHaveLength(0);
   });
 
   it("should render grid layout with correct CSS classes", () => {
-    render(<Grid items={mockItems} />);
+    const { container } = render(<Grid items={mockItems} />);
 
-    const grid = screen.getByTestId("items-grid-view");
+    const grid = container.querySelector(".grid");
+    expect(grid).toBeInTheDocument();
     expect(grid).toHaveClass("grid");
     expect(grid).toHaveClass("grid-cols-1");
   });

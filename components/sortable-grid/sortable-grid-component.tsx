@@ -134,10 +134,7 @@ export function SortableGrid({
         items={items.map((i) => i.id)}
         strategy={rectSortingStrategy}
       >
-        <div
-          data-testid="items-grid-view"
-          className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5"
-        >
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
           {items.map((item) => (
             <SortableGridItem
               key={item.id}

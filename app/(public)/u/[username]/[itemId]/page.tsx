@@ -330,7 +330,7 @@ export default async function ItemDetailPage({
             forkInfo={"data" in forkInfo ? (forkInfo.data ?? null) : null}
             forkStatus={forkStatus}
             isAuthenticated={!!currentUserId}
-            isOwnItem={false}
+            isOwnItem={currentUserId === profile.id}
             currentUserUsername={currentUserUsername}
             currentUserId={currentUserId}
             tmdbMetadata={tmdbMetadata}

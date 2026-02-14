@@ -10,9 +10,7 @@ import type { ContentFilter } from "@/lib/types";
 
 // Mock MobileOptionsSheet to simplify tests
 vi.mock("@/components/items/mobile-options-sheet", () => ({
-  MobileOptionsSheet: () => (
-    <div data-testid="mobile-options-sheet">Mobile Sheet</div>
-  ),
+  MobileOptionsSheet: () => <div>Mobile Sheet</div>,
 }));
 
 describe("ContentToolbar Sort/Filter", () => {

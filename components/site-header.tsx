@@ -172,7 +172,6 @@ export function SiteHeader({
       <div className="flex h-(--header-height) w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
         <SidebarTrigger
           className="-ml-1 cursor-pointer"
-          data-testid="sidebar-trigger"
         />
         <Separator
           orientation="vertical"
@@ -187,7 +186,6 @@ export function SiteHeader({
           {/* Root link */}
           <Link
             href={titleHref}
-            data-testid="site-header-breadcrumb-root"
             className={cn(
               "shrink-0 transition-colors duration-150",
               "hover:text-foreground focus-visible:ring-ring rounded-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
@@ -211,7 +209,6 @@ export function SiteHeader({
                 />
                 <Link
                   href={crumb.href}
-                  data-testid="site-header-breadcrumb-item"
                   className={cn(
                     "truncate transition-colors duration-150",
                     "hover:text-foreground focus-visible:ring-ring rounded-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
@@ -269,7 +266,6 @@ export function SiteHeader({
           role="alert"
           aria-live="assertive"
           className="flex items-center gap-3 border-t border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 lg:px-6"
-          data-testid="drive-reconnect-banner"
         >
           <AlertTriangle
             className="size-4 shrink-0 text-amber-400"

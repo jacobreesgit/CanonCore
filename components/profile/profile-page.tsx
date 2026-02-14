@@ -396,7 +396,6 @@ function ViewerModeContent({
                 Pinned
               </h2>
               <div
-                data-testid="pinned-items-grid"
                 className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6"
               >
                 {pinnedItems.map((item, index) => (
@@ -424,14 +423,16 @@ function ViewerModeContent({
 
           {/* Library section (items not pinned) */}
           {sortableItems.length > 0 && (
-            <Section className="py-8" aria-label="Library">
+            <Section
+              className="py-8"
+              aria-label="Library"
+            >
               {pinnedItems.length > 0 && (
                 <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
                   Library
                 </h2>
               )}
               <div
-                data-testid="items-grid-view"
                 className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6"
               >
                 {sortableItems.map((item, index) => {

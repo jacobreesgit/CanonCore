@@ -26,7 +26,7 @@ export function WatchProviders({
 }: WatchProvidersProps) {
   if (providers.length === 0) {
     return (
-      <section className={className} data-testid="about-providers-section">
+      <section className={className}>
         <h2
           className={cn(
             "mb-4 text-xs font-medium tracking-[0.2em] uppercase",
@@ -43,7 +43,7 @@ export function WatchProviders({
   }
 
   return (
-    <section className={className} data-testid="about-providers-section">
+    <section className={className}>
       <h2
         className={cn(
           "mb-4 text-xs font-medium tracking-[0.2em] uppercase",

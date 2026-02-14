@@ -25,11 +25,7 @@ function DialogWithTrigger(
 
   return (
     <>
-      <Button
-        variant="outline"
-        onClick={() => setOpen(true)}
-        data-testid="dialog-trigger"
-      >
+      <Button variant="outline" onClick={() => setOpen(true)}>
         {buttonLabel}
       </Button>
       <ParentPrivacyWarningDialog
@@ -79,7 +75,7 @@ export const Default: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
     const body = within(document.body);
     await body.findByText(/will also hide/i);
@@ -95,7 +91,7 @@ export const SingleChild: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
     const body = within(document.body);
     await body.findByText(/will also hide/i);
@@ -118,7 +114,7 @@ export const ManyChildren: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
     const body = within(document.body);
     await body.findByText(/will also hide/i);
@@ -141,7 +137,7 @@ export const Loading: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
     const body = within(document.body);
     await body.findByText(/will also hide/i);

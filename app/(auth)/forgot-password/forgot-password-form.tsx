@@ -99,10 +99,7 @@ export function ForgotPasswordForm() {
                 <h1 className="text-2xl font-bold tracking-wide">
                   Check your email
                 </h1>
-                <p
-                  data-testid="forgot-password-success-message"
-                  className="text-muted-foreground text-base"
-                >
+                <p className="text-muted-foreground text-base">
                   {message}
                 </p>
               </div>
@@ -112,7 +109,6 @@ export function ForgotPasswordForm() {
                 variant="outline"
                 className="w-full"
                 size="lg"
-                data-testid="forgot-password-back-to-sign-in-link"
               >
                 <Link href="/sign-in">Back to sign in</Link>
               </Button>
@@ -130,7 +126,6 @@ export function ForgotPasswordForm() {
 
               <div
                 id="forgot-password-error"
-                data-testid="forgot-password-error-message"
                 className={
                   error
                     ? "bg-destructive/10 text-destructive w-full rounded-md px-4 py-3 text-center text-sm"
@@ -159,7 +154,6 @@ export function ForgotPasswordForm() {
                     aria-describedby={
                       error ? "forgot-password-error" : undefined
                     }
-                    data-testid="forgot-password-email-input"
                   />
                 </div>
 
@@ -168,7 +162,6 @@ export function ForgotPasswordForm() {
                   className="w-full"
                   size="lg"
                   disabled={loading}
-                  data-testid="forgot-password-submit-button"
                 >
                   {loading ? "Sending..." : "Send reset link"}
                 </Button>
@@ -177,7 +170,6 @@ export function ForgotPasswordForm() {
                   asChild
                   variant="ghost"
                   className="w-full"
-                  data-testid="forgot-password-back-to-sign-in-link"
                 >
                   <Link href="/sign-in">Back to sign in</Link>
                 </Button>

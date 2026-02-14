@@ -36,8 +36,6 @@ export interface MobileBottomSheetProps {
   /** When true, enforce min-height from the first snap point so the sheet
    *  doesn't collapse when swipeable tab content is shorter than the snap. */
   swipeable?: boolean;
-  /** Optional test ID for E2E testing */
-  "data-testid"?: string;
 }
 
 /**
@@ -71,7 +69,6 @@ export function MobileBottomSheet({
   title,
   description,
   onAnimationEnd,
-  "data-testid": dataTestId,
 }: MobileBottomSheetProps) {
   const { reducedMotion: prefersReducedMotion } = useReducedMotion();
   const descriptionId = React.useId();
@@ -124,7 +121,6 @@ export function MobileBottomSheet({
           )}
           style={minHeight ? { minHeight, maxHeight: minHeight } : undefined}
           aria-describedby={description ? descriptionId : undefined}
-          data-testid={dataTestId}
         >
           {/* Handle - with handleOnly, this is the only draggable area */}
           <DrawerPrimitive.Handle className="bg-muted mx-auto mt-4 h-1.5 w-12 shrink-0 rounded-full" />

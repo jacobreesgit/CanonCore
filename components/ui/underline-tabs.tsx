@@ -49,7 +49,6 @@ export function UnderlineTabs({
             <button
               key={tab.id}
               id={`tab-${tab.id}`}
-              data-testid={`tab-${tab.id}`}
               role="tab"
               tabIndex={activeTab === tab.id ? 0 : -1}
               aria-selected={activeTab === tab.id}
@@ -96,7 +95,6 @@ export function UnderlineTabs({
       {/* Tab panel */}
       <div
         id={`tabpanel-${activeTab}`}
-        data-testid={`tabpanel-${activeTab}`}
         role="tabpanel"
         aria-labelledby={`tab-${activeTab}`}
       >

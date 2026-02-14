@@ -947,7 +947,6 @@ export function MobileItemSheetTrigger({
   return (
     <button
       type="button"
-      data-testid="mobile-options-trigger"
       disabled={disabled}
       onClick={onClick}
       className={cn(

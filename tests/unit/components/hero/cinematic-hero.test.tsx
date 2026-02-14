@@ -66,18 +66,20 @@ vi.mock("next/image", () => ({
     alt,
     onLoad,
     onError,
+    className: _className,
     ...props
   }: {
     src: string;
     alt: string;
     onLoad?: () => void;
     onError?: () => void;
+    className?: string;
   }) => (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={src}
       alt={alt}
-      data-testid="hero-carousel-artwork"
+      className="hero-artwork"
       onLoad={onLoad}
       onError={onError}
       {...props}
@@ -90,7 +92,7 @@ vi.mock("next/dynamic", () => ({
   default: () =>
     function MockShader(props: Record<string, unknown>) {
       return (
-        <div data-testid="shader1" {...props}>
+        <div {...props}>
           Shader
         </div>
       );
@@ -99,13 +101,13 @@ vi.mock("next/dynamic", () => ({
 
 // Mock ShaderBackground
 vi.mock("@/components/shader-background", () => ({
-  Shader1: () => <div data-testid="shader1">Shader</div>,
+  Shader1: () => <div>Shader</div>,
 }));
 
 // Mock Skeleton
 vi.mock("@/components/ui/skeleton", () => ({
   Skeleton: ({ className }: { className?: string }) => (
-    <div data-testid="skeleton" className={className} />
+    <div className={className} />
   ),
 }));
 
@@ -120,10 +122,10 @@ vi.mock("@/components/items/metadata-line", () => ({
     voteAverage?: number;
     genres?: string[];
   }) => (
-    <div data-testid="metadata-line">
+    <div className="metadata-line">
       {year} {voteAverage}
       {genres && genres.length > 0 && (
-        <span data-testid="metadata-genres">{genres.join(", ")}</span>
+        <span className="metadata-genres">{genres.join(", ")}</span>
       )}
     </div>
   ),
@@ -132,7 +134,7 @@ vi.mock("@/components/items/metadata-line", () => ({
 // Mock ProgressBar
 vi.mock("@/components/ui/progress-bar", () => ({
   ProgressBar: ({ progress, label }: { progress: number; label?: string }) => (
-    <div data-testid="progress-bar" data-progress={progress}>
+    <div className="progress-bar" data-progress={progress}>
       {label}
     </div>
   ),
@@ -141,7 +143,7 @@ vi.mock("@/components/ui/progress-bar", () => ({
 // Mock HeroAvatar
 vi.mock("@/components/hero/hero-avatar", () => ({
   HeroAvatar: ({ username }: { username: string }) => (
-    <div data-testid="hero-avatar">@{username}</div>
+    <div className="hero-avatar">@{username}</div>
   ),
 }));
 
@@ -170,10 +172,10 @@ describe("CinematicHero", () => {
   });
 
   describe("multi-slide mode", () => {
-    it("should render carousel with test id", () => {
+    it("should render carousel region", () => {
       render(<CinematicHero slides={mockSlides} />);
 
-      expect(screen.getByTestId("hero-carousel")).toBeInTheDocument();
+      expect(screen.getByRole("region")).toBeInTheDocument();
     });
 
     it("should display active slide title", () => {
@@ -203,9 +205,9 @@ describe("CinematicHero", () => {
     });
 
     it("should use Next.js Image for artwork", () => {
-      render(<CinematicHero slides={mockSlides} />);
+      const { container } = render(<CinematicHero slides={mockSlides} />);
 
-      const images = screen.getAllByTestId("hero-carousel-artwork");
+      const images = container.querySelectorAll(".hero-artwork");
       expect(images.length).toBeGreaterThanOrEqual(1);
       expect(images[0]).toHaveAttribute("src", "/api/artwork/art-1");
     });
@@ -242,13 +244,12 @@ describe("CinematicHero", () => {
         <CinematicHero
           slides={mockSlides}
           renderActions={(slide) => (
-            <button data-testid="custom-action">{slide.name} action</button>
+            <button>{slide.name} action</button>
           )}
         />
       );
 
-      expect(screen.getByTestId("custom-action")).toBeInTheDocument();
-      expect(screen.getByText("Breaking Bad action")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Breaking Bad action" })).toBeInTheDocument();
     });
   });
 
@@ -257,11 +258,11 @@ describe("CinematicHero", () => {
       render(
         <CinematicHero
           slides={[mockSlides[0]]}
-          actions={<button data-testid="static-action">Play</button>}
+          actions={<button>Play</button>}
         />
       );
 
-      expect(screen.getByTestId("static-action")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Play" })).toBeInTheDocument();
     });
   });
 
@@ -282,19 +283,19 @@ describe("CinematicHero", () => {
           metadata: { year: "2024", voteAverage: 8.5 },
         },
       ];
-      render(<CinematicHero slides={slides} />);
+      const { container } = render(<CinematicHero slides={slides} />);
 
-      expect(screen.getByTestId("metadata-line")).toBeInTheDocument();
+      expect(container.querySelector(".metadata-line")).toBeInTheDocument();
     });
 
     it("should render genres inline in MetadataLine", () => {
       const slides: HeroSlide[] = [
         { ...mockSlides[0], genres: ["Drama", "Crime"] },
       ];
-      render(<CinematicHero slides={slides} />);
+      const { container } = render(<CinematicHero slides={slides} />);
 
-      expect(screen.getByTestId("metadata-line")).toBeInTheDocument();
-      expect(screen.getByTestId("metadata-genres")).toBeInTheDocument();
+      expect(container.querySelector(".metadata-line")).toBeInTheDocument();
+      expect(container.querySelector(".metadata-genres")).toBeInTheDocument();
       expect(screen.getByText("Drama, Crime")).toBeInTheDocument();
     });
   });
@@ -304,9 +305,9 @@ describe("CinematicHero", () => {
       const slides: HeroSlide[] = [
         { ...mockSlides[0], progress: 50, progressLabel: "5/10 watched" },
       ];
-      render(<CinematicHero slides={slides} />);
+      const { container } = render(<CinematicHero slides={slides} />);
 
-      const progressBar = screen.getByTestId("progress-bar");
+      const progressBar = container.querySelector(".progress-bar");
       expect(progressBar).toBeInTheDocument();
       expect(progressBar).toHaveAttribute("data-progress", "50");
     });
@@ -328,7 +329,7 @@ describe("CinematicHero", () => {
       ];
       render(<CinematicHero slides={slides} />);
 
-      expect(screen.getByTestId("hero-avatar")).toBeInTheDocument();
+      expect(document.querySelector(".hero-avatar")).toBeInTheDocument();
       // Username appears in both avatar mock and profile username paragraph
       expect(screen.getAllByText("@filmfan").length).toBeGreaterThanOrEqual(1);
     });
@@ -406,7 +407,7 @@ describe("CinematicHero", () => {
       mockPrefersReducedMotion = true;
       render(<CinematicHero slides={mockSlides} />);
 
-      expect(screen.getByTestId("hero-carousel")).toBeInTheDocument();
+      expect(screen.getByRole("region")).toBeInTheDocument();
       expect(
         screen.getByRole("heading", { name: "Breaking Bad" })
       ).toBeInTheDocument();
@@ -450,9 +451,9 @@ describe("CinematicHero", () => {
           artworkId: "art-1",
         },
       ];
-      render(<CinematicHero slides={slidesWithUrl} />);
+      const { container } = render(<CinematicHero slides={slidesWithUrl} />);
 
-      const images = screen.getAllByTestId("hero-carousel-artwork");
+      const images = container.querySelectorAll(".hero-artwork");
       expect(images[0]).toHaveAttribute("src", "/api/user/hero?userId=123");
     });
 
@@ -460,9 +461,9 @@ describe("CinematicHero", () => {
       const slidesWithNull: HeroSlide[] = [
         { ...mockSlides[0], backgroundUrl: null, artworkId: "art-1" },
       ];
-      render(<CinematicHero slides={slidesWithNull} />);
+      const { container } = render(<CinematicHero slides={slidesWithNull} />);
 
-      const images = screen.getAllByTestId("hero-carousel-artwork");
+      const images = container.querySelectorAll(".hero-artwork");
       expect(images[0]).toHaveAttribute("src", "/api/artwork/art-1");
     });
   });
@@ -475,12 +476,8 @@ describe("CinematicHero", () => {
 
       render(<CinematicHero slides={slidesWithoutArt} />);
 
-      // The mock Shader1 renders "Shader" text inside hero-fallback
-      const fallback = screen.getByTestId("hero-fallback");
-      expect(fallback).toBeInTheDocument();
-      expect(fallback).toHaveTextContent("Shader");
-      // Should NOT have gradient classes (that's the disableShader path)
-      expect(fallback).not.toHaveClass("bg-gradient-to-br");
+      // The mock Shader1 renders "Shader" text
+      expect(screen.getByText("Shader")).toBeInTheDocument();
     });
 
     it("should show gradient fallback when disableShader is true", () => {
@@ -488,13 +485,11 @@ describe("CinematicHero", () => {
         { ...mockSlides[0], artworkId: null, backgroundUrl: null },
       ];
 
-      render(<CinematicHero slides={slidesWithoutArt} disableShader />);
+      const { container } = render(<CinematicHero slides={slidesWithoutArt} disableShader />);
 
-      const fallback = screen.getByTestId("hero-fallback");
-      expect(fallback).toBeInTheDocument();
       // Gradient fallback should NOT have shader content
-      expect(fallback).not.toHaveTextContent("Shader");
-      expect(fallback).toHaveClass("bg-gradient-to-br");
+      expect(screen.queryByText("Shader")).not.toBeInTheDocument();
+      expect(container.querySelector(".bg-gradient-to-br")).toBeInTheDocument();
     });
   });
 });

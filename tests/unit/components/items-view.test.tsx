@@ -81,31 +81,31 @@ vi.mock("next/navigation", () => ({
 // Mock tree/grid components
 vi.mock("@/components/sortable-tree", () => ({
   SortableTree: ({ items }: { items: unknown[] }) => (
-    <div data-testid="sortable-tree">{items.length} items</div>
+    <div aria-label="sortable tree">{items.length} items</div>
   ),
   Tree: ({ items }: { items: unknown[] }) => (
-    <div data-testid="tree-view">{items.length} items</div>
+    <div aria-label="tree view">{items.length} items</div>
   ),
 }));
 
 vi.mock("@/components/sortable-grid", () => ({
   SortableGrid: ({ items }: { items: unknown[] }) => (
-    <div data-testid="sortable-grid">{items.length} items</div>
+    <div aria-label="sortable grid">{items.length} items</div>
   ),
   Grid: ({ items }: { items: unknown[] }) => (
-    <div data-testid="grid-view">{items.length} items</div>
+    <div aria-label="grid view">{items.length} items</div>
   ),
 }));
 
 // Mock dialogs
 vi.mock("@/components/items/add-item-dialog", () => ({
   AddItemDialog: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="add-dialog">Add Dialog</div> : null,
+    open ? <div>Add Dialog</div> : null,
 }));
 
 vi.mock("@/components/items/item-settings-dialog", () => ({
   ItemSettingsDialog: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="settings-dialog">Settings Dialog</div> : null,
+    open ? <div>Settings Dialog</div> : null,
 }));
 
 describe("ItemsView", () => {
@@ -163,7 +163,7 @@ describe("ItemsView", () => {
   describe("rendering", () => {
     it("renders tree view by default", () => {
       render(<ItemsView items={mockItems} />);
-      expect(screen.getByTestId("tree-view")).toBeInTheDocument();
+      expect(screen.getByLabelText("tree view")).toBeInTheDocument();
     });
 
     it("renders empty state when no items", () => {
@@ -184,9 +184,9 @@ describe("ItemsView", () => {
         />
       );
       // When isEditing=true, SortableTree is dynamically imported
-      // Wait for it to appear (mocked as sortable-tree testid)
+      // Wait for it to appear
       await waitFor(() => {
-        expect(screen.getByTestId("sortable-tree")).toBeInTheDocument();
+        expect(screen.getByLabelText("sortable tree")).toBeInTheDocument();
       });
     });
   });

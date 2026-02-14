@@ -39,7 +39,8 @@ vi.mock("@/components/shader1", () => ({
 vi.mock("@/components/media/media-player", () => ({
   VideoPlayer: vi.fn(({ onTimeUpdate, onEnded }) => (
     <div
-      data-testid="video-player"
+      role="application"
+      aria-label="Video player"
       onClick={() => onTimeUpdate?.(100, 300)}
       onDoubleClick={() => onEnded?.()}
     />
@@ -192,7 +193,7 @@ describe("MediaOverlay", () => {
 
     // Simulate time update by clicking the player mock
     await act(async () => {
-      fireEvent.click(screen.getByTestId("video-player"));
+      fireEvent.click(screen.getByRole("application", { name: "Video player" }));
     });
 
     // Close the overlay
@@ -218,12 +219,12 @@ describe("MediaOverlay", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId("video-player")).toBeInTheDocument();
+      expect(screen.getByRole("application", { name: "Video player" })).toBeInTheDocument();
     });
 
     // Simulate ended event by double-clicking the player mock
     await act(async () => {
-      fireEvent.doubleClick(screen.getByTestId("video-player"));
+      fireEvent.doubleClick(screen.getByRole("application", { name: "Video player" }));
     });
 
     expect(onPositionUpdate).toHaveBeenCalledWith("file-123", 0, null);
@@ -246,7 +247,7 @@ describe("MediaOverlay", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId("video-player")).toBeInTheDocument();
+      expect(screen.getByRole("application", { name: "Video player" })).toBeInTheDocument();
     });
   });
 });

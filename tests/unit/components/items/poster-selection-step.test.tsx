@@ -29,7 +29,7 @@ vi.mock("next/image", () => ({
     [key: string]: unknown;
   }) => (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} onError={onError} data-testid="image" {...props} />
+    <img src={src} alt={alt} onError={onError} {...props} />
   ),
 }));
 

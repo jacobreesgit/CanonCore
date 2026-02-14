@@ -62,7 +62,6 @@ export function ProgressBar({
       {label && !compact && (
         <span
           className={cn("text-sm tracking-wide tabular-nums", "text-white/50")}
-          data-testid="hero-progress-label"
         >
           {label}
         </span>

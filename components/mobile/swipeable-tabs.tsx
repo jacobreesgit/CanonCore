@@ -234,7 +234,10 @@ export function SwipeableTabs({
       <div className={cn("flex min-h-0 flex-1 flex-col gap-4", className)}>
         <div data-vaul-no-drag>
           <Select value={activeTab} onValueChange={handleSelectChange}>
-            <SelectTrigger aria-label={ariaLabel} className="w-full">
+            <SelectTrigger
+              aria-label={ariaLabel}
+              className="w-full"
+            >
               <SelectValue>
                 {ActiveIcon && (
                   <ActiveIcon aria-hidden="true" className="size-4 shrink-0" />
@@ -246,7 +249,10 @@ export function SwipeableTabs({
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
-                  <SelectItem key={tab.id} value={tab.id}>
+                  <SelectItem
+                    key={tab.id}
+                    value={tab.id}
+                  >
                     {Icon && (
                       <Icon aria-hidden="true" className="size-4 shrink-0" />
                     )}
@@ -271,8 +277,9 @@ export function SwipeableTabs({
                 key={tab.id}
                 role="tabpanel"
                 id={getPanelId(tab.id)}
-                aria-labelledby={getTabId(tab.id)}
-                data-testid={`select-panel-${tab.id}`}
+                aria-label={tab.label}
+                inert={!isActive ? true : undefined}
+                aria-hidden={!isActive ? true : undefined}
                 className={cn(isActive ? "block" : "hidden", "px-1 py-4")}
               >
                 {shouldRender ? tab.content : null}

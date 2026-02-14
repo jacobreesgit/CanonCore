@@ -38,7 +38,7 @@ export function CastRow({
   };
 
   return (
-    <section className={className} data-testid="about-cast-section">
+    <section className={className}>
       {/* Section header */}
       <div className="mb-4 flex items-center justify-between">
         <h2

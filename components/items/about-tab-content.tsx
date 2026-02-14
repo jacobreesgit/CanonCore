@@ -141,7 +141,6 @@ export function AboutTabContent({
       <Section
         className="py-8"
         aria-label="About"
-        data-testid="about-tab-content"
       >
         <div className="space-y-12">
           {tmdbDisplayOptions?.showCast !== false &&
