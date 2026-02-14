@@ -49,6 +49,31 @@ vi.mock("@vidstack/react/player/layouts/default", () => ({
 vi.mock("@vidstack/react/player/styles/default/theme.css", () => ({}));
 vi.mock("@vidstack/react/player/styles/default/layouts/video.css", () => ({}));
 
+// Mock next/dynamic to eagerly resolve dynamic imports in tests
+vi.mock("next/dynamic", () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const React = require("react") as typeof import("react");
+  return {
+    default: (importFn: () => Promise<{ default: React.ComponentType }>) => {
+      return function DynamicComponent(props: Record<string, unknown>) {
+        const [Comp, setComp] = React.useState<React.ComponentType | null>(
+          null
+        );
+        React.useEffect(() => {
+          let mounted = true;
+          importFn().then((mod: { default: React.ComponentType }) => {
+            if (mounted) setComp(() => mod.default);
+          });
+          return () => {
+            mounted = false;
+          };
+        }, []);
+        return Comp ? React.createElement(Comp, props) : null;
+      };
+    },
+  };
+});
+
 vi.mock("@/components/shader-background", () => ({
   Shader1: vi.fn(() => <div data-testid="shader-background" />),
 }));
@@ -156,14 +181,15 @@ describe("VideoPlayer", () => {
     expect(onEnded).toHaveBeenCalledTimes(1);
   });
 
-  it("shows shader background for audio without artwork", () => {
+  it("shows shader background for audio without artwork", async () => {
     render(
       <VideoPlayer
         file={createMockFile({ mimeType: "audio/mpeg", filename: "song.mp3" })}
       />
     );
 
-    expect(screen.getByTestId("shader-background")).toBeInTheDocument();
+    // Shader1 is loaded via next/dynamic — wait for the async import to resolve
+    expect(await screen.findByTestId("shader-background")).toBeInTheDocument();
   });
 
   it("does not show shader background for video files", () => {

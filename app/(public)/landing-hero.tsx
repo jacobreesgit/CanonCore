@@ -5,7 +5,7 @@
 
 "use client";
 
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import {
   ArrowRight,
   Clapperboard,
@@ -18,10 +18,16 @@ import Link from "next/link";
 import { SiGoogledrive } from "react-icons/si";
 
 import { useSession } from "next-auth/react";
-import {
-  FeatureCardGrid,
-  type FeatureItem,
-} from "@/components/feature-card-grid";
+import dynamic from "next/dynamic";
+import type { FeatureItem } from "@/components/feature-card-grid";
+
+const FeatureCardGrid = dynamic(
+  () =>
+    import("@/components/feature-card-grid").then((mod) => ({
+      default: mod.FeatureCardGrid,
+    })),
+  { ssr: false }
+);
 import { HeroButton } from "@/components/items/hero-button";
 
 const features: FeatureItem[] = [

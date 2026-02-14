@@ -23,7 +23,6 @@ import {
   ChevronLeft,
   List,
   LogOut,
-  SlidersHorizontal,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { toast } from "sonner";
@@ -61,7 +60,6 @@ import {
   GoogleDriveSettingsSection,
   SyncHistory,
 } from "@/components/google-drive";
-import { PreferencesTab } from "@/components/profile/preferences-tab";
 import {
   useSettingsForm,
   type SettingsFormUser,
@@ -565,14 +563,14 @@ export function MobileSettingsSheet({
                   )}
                 </div>
                 {form.newUsername && form.usernameValidation.error && (
-                  <p className="text-destructive text-xs">
+                  <p role="alert" className="text-destructive text-xs">
                     {form.usernameValidation.error}
                   </p>
                 )}
                 {form.newUsername &&
                   form.usernameValidation.isAvailable === false &&
                   !form.usernameValidation.error && (
-                    <p className="text-destructive text-xs">
+                    <p role="alert" className="text-destructive text-xs">
                       Username is already taken
                     </p>
                   )}
@@ -886,12 +884,6 @@ export function MobileSettingsSheet({
     </div>
   );
 
-  const preferencesContent = (
-    <div className="space-y-4">
-      <PreferencesTab />
-    </div>
-  );
-
   const activityContent = googleDriveConnection ? (
     <div className="space-y-4">
       <SyncHistory />
@@ -918,12 +910,6 @@ export function MobileSettingsSheet({
       label: "Connections",
       icon: Cloud,
       content: connectionsContent,
-    },
-    {
-      id: "preferences",
-      label: "Preferences",
-      icon: SlidersHorizontal,
-      content: preferencesContent,
     },
     { id: "activity", label: "Activity", icon: List, content: activityContent },
   ];

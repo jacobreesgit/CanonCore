@@ -226,6 +226,8 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
             ref={imgRef}
             src={artworkSrc}
             alt=""
+            width={200}
+            height={300}
             loading={priority ? "eager" : "lazy"}
             className={cn(
               "absolute inset-0 z-0 h-full w-full object-cover",

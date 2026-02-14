@@ -8,7 +8,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/logo";
-import { FloatingPaths } from "@/components/floating-paths";
+import dynamic from "next/dynamic";
+
+const FloatingPaths = dynamic(
+  () =>
+    import("@/components/floating-paths").then((mod) => ({
+      default: mod.FloatingPaths,
+    })),
+  { ssr: false }
+);
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,7 +54,10 @@ export function ForgotPasswordForm() {
   };
 
   return (
-    <main className="relative md:h-screen md:overflow-hidden lg:grid lg:grid-cols-2">
+    <main
+      id="main-content"
+      className="relative md:h-screen md:overflow-hidden lg:grid lg:grid-cols-2"
+    >
       {/* Left panel - decorative */}
       <div className="bg-secondary dark:bg-secondary/20 relative hidden h-full flex-col border-r p-10 lg:flex">
         <div className="to-background absolute inset-0 bg-gradient-to-b from-transparent via-transparent" />

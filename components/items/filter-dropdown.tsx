@@ -1,53 +1,65 @@
 /**
- * Dropdown component for filtering items.
- * Glassmorphism styling with generic string values.
+ * Multi-select dropdown for filtering items by content criteria.
+ * Grouped checkboxes with glassmorphism styling matching the cinematic design system.
  */
 
 "use client";
 
-import { Filter } from "lucide-react";
+import { Filter, X } from "lucide-react";
+
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { CONTENT_FILTER_OPTIONS } from "@/lib/item-utils";
+import type { ContentFilter } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { FILTER_OPTIONS } from "@/lib/item-utils";
 
-interface FilterDropdownProps<T extends string = string> {
-  /** Current filter value. */
-  value: T;
-  /** Callback when filter value changes. */
-  onChange: (value: T) => void;
+interface FilterDropdownProps {
+  /** Currently active content filters. */
+  filters: ContentFilter[];
+  /** Toggle a single filter on/off (handles mutual exclusion). */
+  toggleFilter: (filter: ContentFilter) => void;
+  /** Clear all active filters. */
+  clearFilters: () => void;
   /** Whether the dropdown is disabled. */
   disabled?: boolean;
-  /** Custom filter options to display. Defaults to FILTER_OPTIONS. */
-  options?: { value: T; label: string }[];
   /** Additional CSS classes for trigger. */
   className?: string;
 }
 
+/** File status filter options. */
+const FILE_OPTIONS = CONTENT_FILTER_OPTIONS.filter((o) => o.group === "file");
+
+/** Sync status filter options. */
+const SYNC_OPTIONS = CONTENT_FILTER_OPTIONS.filter((o) => o.group === "sync");
+
 /**
- * Dropdown for filtering items by various criteria.
- * Shows a visual indicator (dot) when a filter is active.
+ * Multi-select dropdown for filtering items by file and sync status.
+ * Uses grouped checkboxes with "File Status" and "Sync Status" sections.
+ * Shows active filter count badge and a clear button when filters are active.
+ *
+ * @param props - Filter dropdown props
  */
-export function FilterDropdown<T extends string = string>({
-  value,
-  onChange,
+export function FilterDropdown({
+  filters,
+  toggleFilter,
+  clearFilters,
   disabled,
-  options = FILTER_OPTIONS as { value: T; label: string }[],
   className,
-}: FilterDropdownProps<T>) {
-  const currentLabel =
-    options.find((opt) => opt.value === value)?.label ?? "Filter";
-  const isActive = value !== "all";
+}: FilterDropdownProps) {
+  const activeCount = filters.length;
+  const hasActive = activeCount > 0;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         disabled={disabled}
+        aria-label={hasActive ? `Filter, ${activeCount} active` : "Filter"}
         className={cn(
           "inline-flex items-center gap-2 rounded-md px-3 py-1.5",
           "text-sm",
@@ -62,8 +74,8 @@ export function FilterDropdown<T extends string = string>({
         )}
       >
         <Filter aria-hidden="true" className="size-4" />
-        <span>{currentLabel}</span>
-        {isActive && (
+        <span>Filter{hasActive ? ` (${activeCount})` : ""}</span>
+        {hasActive && (
           <span
             data-active="true"
             aria-hidden="true"
@@ -76,23 +88,65 @@ export function FilterDropdown<T extends string = string>({
         className={cn(
           "bg-[#1a1a1a]/90 backdrop-blur-xl",
           "border border-white/[0.08]",
-          "shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+          "shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
+          "min-w-[180px]"
         )}
       >
-        <DropdownMenuRadioGroup
-          value={value}
-          onValueChange={(v) => onChange(v as T)}
-        >
-          {options.map((option) => (
-            <DropdownMenuRadioItem
-              key={option.value}
-              value={option.value}
-              className="focus:bg-white/10"
+        {/* File Status Group */}
+        <DropdownMenuLabel className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+          File Status
+        </DropdownMenuLabel>
+        {FILE_OPTIONS.map((option) => (
+          <DropdownMenuCheckboxItem
+            key={option.value}
+            checked={filters.includes(option.value)}
+            onCheckedChange={() => toggleFilter(option.value)}
+            onSelect={(e) => e.preventDefault()}
+            className="focus:bg-white/10"
+          >
+            {option.label}
+          </DropdownMenuCheckboxItem>
+        ))}
+
+        <DropdownMenuSeparator className="bg-white/[0.08]" />
+
+        {/* Sync Status Group */}
+        <DropdownMenuLabel className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+          Sync Status
+        </DropdownMenuLabel>
+        {SYNC_OPTIONS.map((option) => (
+          <DropdownMenuCheckboxItem
+            key={option.value}
+            checked={filters.includes(option.value)}
+            onCheckedChange={() => toggleFilter(option.value)}
+            onSelect={(e) => e.preventDefault()}
+            className="focus:bg-white/10"
+          >
+            {option.label}
+          </DropdownMenuCheckboxItem>
+        ))}
+
+        {/* Clear Filters */}
+        {hasActive && (
+          <>
+            <DropdownMenuSeparator className="bg-white/[0.08]" />
+            <button
+              type="button"
+              onClick={clearFilters}
+              aria-label="Clear all filters"
+              className={cn(
+                "flex w-full items-center gap-2 px-2 py-1.5",
+                "text-muted-foreground text-sm",
+                "hover:text-foreground hover:bg-white/10",
+                "rounded-sm transition-colors",
+                "cursor-pointer"
+              )}
             >
-              {option.label}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
+              <X aria-hidden="true" className="size-4" />
+              Clear filters
+            </button>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -11,6 +11,12 @@ export { SyncStatus } from "@prisma/client";
 export type { ItemProgress } from "./progress-utils";
 
 /**
+ * Lightweight item identifier type for public pages that don't need dnd-kit.
+ * Equivalent to UniqueIdentifier from @dnd-kit/core.
+ */
+export type ItemId = string | number;
+
+/**
  * Database Item type (from Prisma).
  * Represents a container in the item hierarchy.
  * Items can have children (sub-items) and attached files (ItemFile).
@@ -440,7 +446,7 @@ export type SortOption =
   | "created-asc"
   | "updated-desc";
 
-/** Filter option for items list. */
+/** Filter option for items list (legacy single-select, kept for Explore page). */
 export type FilterOption =
   | "all"
   | "has-files"
@@ -450,18 +456,50 @@ export type FilterOption =
   | "error"
   | "exclude-yours";
 
-/** Valid view modes for validation. */
-export const VALID_VIEW_MODES: ViewMode[] = ["grid", "tree"];
+/** Content filter for multi-select filter UI. */
+export type ContentFilter =
+  | "has-files"
+  | "no-files"
+  | "synced"
+  | "pending"
+  | "error";
 
-/** Valid sort options for validation. */
-export const VALID_SORT_OPTIONS: SortOption[] = [
+/** All valid content filter values for runtime validation. */
+export const CONTENT_FILTERS = [
+  "has-files",
+  "no-files",
+  "synced",
+  "pending",
+  "error",
+] as const;
+
+/** All valid view mode values as readonly tuple (for nuqs parsers). */
+export const VIEW_MODES = ["grid", "tree"] as const;
+
+/** Valid view modes for validation. */
+export const VALID_VIEW_MODES: ViewMode[] = [...VIEW_MODES];
+
+/** All valid sort option values as readonly tuple (for nuqs parsers). */
+export const SORT_OPTIONS_TUPLE = [
   "custom",
   "name-asc",
   "name-desc",
   "created-desc",
   "created-asc",
   "updated-desc",
-];
+] as const;
+
+/** Explore sort options (no "custom" since explore has no user ordering). */
+export const EXPLORE_SORT_OPTIONS_TUPLE = [
+  "name-asc",
+  "name-desc",
+  "created-desc",
+  "created-asc",
+  "updated-desc",
+] as const;
+
+/** Valid sort options for validation. */
+export const VALID_SORT_OPTIONS: SortOption[] = [...SORT_OPTIONS_TUPLE];
 
 /** Valid filter options for validation. */
 export const VALID_FILTER_OPTIONS: FilterOption[] = [
@@ -600,8 +638,4 @@ export interface UserProfileSettings {
   name: string | null;
   /** Email address (read-only display) */
   email: string;
-  /** Default view mode preference */
-  defaultViewMode: ViewMode | null;
-  /** Default sort preference */
-  defaultSortBy: SortOption | null;
 }

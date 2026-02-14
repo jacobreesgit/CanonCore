@@ -93,7 +93,7 @@ test.describe("Items Sort/Filter Journey", () => {
   });
 
   test("filter dropdown filters visible items", async ({ itemsPage }) => {
-    // All items visible by default
+    // All items visible by default (no filters active)
     await itemsPage.expectItemVisible("Alpha Item");
     await itemsPage.expectItemVisible("Beta Item");
     await itemsPage.expectItemVisible("Charlie Item");
@@ -106,7 +106,7 @@ test.describe("Items Sort/Filter Journey", () => {
     await itemsPage.expectItemVisible("Beta Item");
     await itemsPage.expectItemVisible("Charlie Item");
 
-    // Filter to "Has Files" - no items have files, so none should be visible
+    // Clear "No Files" and check "Has Files" - mutual exclusion auto-unchecks "No Files"
     await itemsPage.selectFilterOption("Has Files");
 
     // Items should not be visible (or empty state shown)
@@ -114,8 +114,8 @@ test.describe("Items Sort/Filter Journey", () => {
     await itemsPage.expectItemNotVisible("Beta Item");
     await itemsPage.expectItemNotVisible("Charlie Item");
 
-    // Reset filter to All Items
-    await itemsPage.selectFilterOption("All Items");
+    // Clear all filters to reset
+    await itemsPage.clearFilters();
 
     // All items visible again
     await itemsPage.expectItemVisible("Alpha Item");
@@ -134,10 +134,10 @@ test.describe("Items Sort/Filter Journey", () => {
     // Reload the page (domcontentloaded to avoid slow load timeout)
     await page.reload({ waitUntil: "domcontentloaded" });
 
-    // Filter should still be No Files (retry to allow hydration to complete)
+    // Filter should still show active count (retry to allow hydration to complete)
     await expect(async () => {
       const currentFilter = await itemsPage.getCurrentFilterOption();
-      expect(currentFilter).toContain("No Files");
+      expect(currentFilter).toContain("Filter (1)");
     }).toPass({ timeout: 15000 });
   });
 

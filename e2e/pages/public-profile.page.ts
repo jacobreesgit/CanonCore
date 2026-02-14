@@ -70,7 +70,7 @@ export class PublicProfilePage {
       .first();
     this.filterDropdown = page
       .getByRole("button", {
-        name: /all items|exclude yours|has files|no files|synced|pending sync|sync error/i,
+        name: /^filter/i,
       })
       .first();
     // Profile sections
@@ -194,13 +194,12 @@ export class PublicProfilePage {
   /** Select a view option (Grid or Tree). Handles both desktop and mobile. */
   private async selectViewOption(label: string) {
     const mobileOptionsButton = this.page.getByRole("button", {
-      name: "Options",
-      exact: true,
+      name: /^Options/,
     });
 
     // Desktop: ViewDropdown trigger shows current view name (Grid/Tree)
     const viewDropdown = this.page
-      .getByRole("button", { name: /^(Grid|Tree)$/i })
+      .getByRole("button", { name: /view mode: (grid|tree)/i })
       .first();
 
     await expect(mobileOptionsButton.or(viewDropdown).first()).toBeVisible({
@@ -267,8 +266,7 @@ export class PublicProfilePage {
   /** Select a sort option. Handles both desktop dropdown and mobile Options sheet. */
   async selectSortOption(label: string) {
     const mobileOptionsButton = this.page.getByRole("button", {
-      name: "Options",
-      exact: true,
+      name: /^Options/,
     });
 
     await expect(mobileOptionsButton.or(this.sortDropdown).first()).toBeVisible(
@@ -282,11 +280,11 @@ export class PublicProfilePage {
       await expect(
         this.page.getByRole("dialog", { name: /view options/i })
       ).toBeVisible();
-      const option = this.page.getByRole("option", {
+      const option = this.page.getByRole("radio", {
         name: new RegExp(label, "i"),
       });
       await option.click();
-      await expect(option).toHaveAttribute("aria-selected", "true");
+      await expect(option).toBeChecked();
       await this.closeMobileOptionsSheet();
     } else {
       await this.sortDropdown.click();
@@ -296,11 +294,13 @@ export class PublicProfilePage {
     }
   }
 
-  /** Select a filter option. Handles both desktop dropdown and mobile Options sheet. */
+  /**
+   * Toggles a filter option in the multi-select filter dropdown.
+   * Handles both desktop dropdown and mobile Options sheet.
+   */
   async selectFilterOption(label: string) {
     const mobileOptionsButton = this.page.getByRole("button", {
-      name: "Options",
-      exact: true,
+      name: /^Options/,
     });
 
     await expect(
@@ -314,17 +314,45 @@ export class PublicProfilePage {
       await expect(
         this.page.getByRole("dialog", { name: /view options/i })
       ).toBeVisible();
-      const option = this.page.getByRole("option", {
-        name: new RegExp(label, "i"),
-      });
-      await option.click();
-      await expect(option).toHaveAttribute("aria-selected", "true");
+      await this.page
+        .getByRole("checkbox", { name: new RegExp(label, "i") })
+        .click();
       await this.closeMobileOptionsSheet();
     } else {
       await this.filterDropdown.click();
       await this.page
-        .getByRole("menuitemradio", { name: new RegExp(label, "i") })
+        .getByRole("menuitemcheckbox", { name: new RegExp(label, "i") })
         .click();
+      // Close dropdown (multi-select keeps it open)
+      await this.page.keyboard.press("Escape");
+    }
+  }
+
+  /**
+   * Clears all active filters via the "Clear all filters" button.
+   * Handles both desktop dropdown and mobile Options sheet.
+   */
+  async clearFilters() {
+    const mobileOptionsButton = this.page.getByRole("button", {
+      name: /^Options/,
+    });
+
+    await expect(
+      mobileOptionsButton.or(this.filterDropdown).first()
+    ).toBeVisible({ timeout: 10000 });
+
+    const isMobile = await mobileOptionsButton.isVisible();
+
+    if (isMobile) {
+      await mobileOptionsButton.click();
+      await this.page.getByRole("button", { name: /clear all/i }).click();
+      await this.closeMobileOptionsSheet();
+    } else {
+      await this.filterDropdown.click();
+      await this.page
+        .getByRole("button", { name: /clear all filters/i })
+        .click();
+      await this.page.keyboard.press("Escape");
     }
   }
 

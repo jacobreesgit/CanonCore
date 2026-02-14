@@ -85,6 +85,18 @@ vi.mock("next/image", () => ({
   ),
 }));
 
+// Mock next/dynamic — the only dynamic import in cinematic-hero is Shader1
+vi.mock("next/dynamic", () => ({
+  default: () =>
+    function MockShader(props: Record<string, unknown>) {
+      return (
+        <div data-testid="shader1" {...props}>
+          Shader
+        </div>
+      );
+    },
+}));
+
 // Mock ShaderBackground
 vi.mock("@/components/shader-background", () => ({
   Shader1: () => <div data-testid="shader1">Shader</div>,
@@ -463,7 +475,12 @@ describe("CinematicHero", () => {
 
       render(<CinematicHero slides={slidesWithoutArt} />);
 
-      expect(screen.getByTestId("shader1")).toBeInTheDocument();
+      // The mock Shader1 renders "Shader" text inside hero-fallback
+      const fallback = screen.getByTestId("hero-fallback");
+      expect(fallback).toBeInTheDocument();
+      expect(fallback).toHaveTextContent("Shader");
+      // Should NOT have gradient classes (that's the disableShader path)
+      expect(fallback).not.toHaveClass("bg-gradient-to-br");
     });
 
     it("should show gradient fallback when disableShader is true", () => {
@@ -473,8 +490,11 @@ describe("CinematicHero", () => {
 
       render(<CinematicHero slides={slidesWithoutArt} disableShader />);
 
-      expect(screen.getByTestId("hero-fallback")).toBeInTheDocument();
-      expect(screen.queryByTestId("shader1")).not.toBeInTheDocument();
+      const fallback = screen.getByTestId("hero-fallback");
+      expect(fallback).toBeInTheDocument();
+      // Gradient fallback should NOT have shader content
+      expect(fallback).not.toHaveTextContent("Shader");
+      expect(fallback).toHaveClass("bg-gradient-to-br");
     });
   });
 });

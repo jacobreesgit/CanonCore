@@ -16,12 +16,20 @@
 import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import useEmblaCarousel from "embla-carousel-react";
 
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shader1 } from "@/components/shader-background";
 import { MetadataLine } from "@/components/items/metadata-line";
+
+const Shader1 = dynamic(
+  () =>
+    import("@/components/shader-background").then((mod) => ({
+      default: mod.Shader1,
+    })),
+  { ssr: false }
+);
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { HeroAvatar } from "./hero-avatar";
 import type { CinematicHeroProps } from "./types";
@@ -154,7 +162,7 @@ export function CinematicHero({
                 {hasBackground ? (
                   <Image
                     src={backgroundSrc}
-                    alt=""
+                    alt={isSingleSlide ? slide.name : ""}
                     fill
                     priority={index === 0}
                     sizes="100vw"

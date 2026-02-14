@@ -68,7 +68,7 @@ const ItemSettingsDialog = dynamic(
   }
 );
 
-import { useStoredViewMode } from "@/hooks/use-stored-view-mode";
+import { useItemsUrlState } from "@/hooks/use-items-url-state";
 import { EmptyState, type EmptyStateVariant } from "./empty-state";
 import { BulkActionsToolbar } from "./bulk-actions-toolbar";
 import { Button } from "@/components/ui/button";
@@ -86,7 +86,7 @@ import type {
   TreeItems,
   TMDBMetadataSelection,
   SortOption,
-  FilterOption,
+  ContentFilter,
 } from "@/lib/types";
 import {
   itemsToTree,
@@ -94,7 +94,6 @@ import {
   sortItems,
   filterItems,
 } from "@/lib/item-utils";
-import { useItemsSortFilter } from "@/hooks/use-items-sort-filter";
 import {
   createItem,
   createItemWithMetadata,
@@ -131,10 +130,10 @@ interface ItemsViewProps {
   sortBy?: SortOption;
   /** Callback when sort changes (for external control). */
   onSortChange?: (sort: SortOption) => void;
-  /** External filter control - when provided, overrides internal state. */
-  filterBy?: FilterOption;
-  /** Callback when filter changes (for external control). */
-  onFilterChange?: (filter: FilterOption) => void;
+  /** External filter control - active content filters. */
+  filters?: ContentFilter[];
+  /** Clear all active filters (for empty state action). */
+  clearFilters?: () => void;
   /** Callback when items change (for parent state sync). */
   onItemsChange?: (items: ItemWithArtwork[]) => void;
   /** Whether user has Google Drive connected (shows Upload button in settings). */
@@ -169,8 +168,8 @@ export function ItemsView({
   onAddItemOpenChange,
   sortBy: externalSortBy,
   onSortChange: _onSortChange,
-  filterBy: externalFilterBy,
-  onFilterChange,
+  filters: externalFilters,
+  clearFilters: externalClearFilters,
   onItemsChange,
   hasDriveConnection = false,
   currentUser,
@@ -205,24 +204,22 @@ export function ItemsView({
     },
     [onItemsChange]
   );
-  // Single source of truth for view mode - hydration-safe via useSyncExternalStore
-  const [storedViewMode] = useStoredViewMode();
-  // Force grid view when tree is disabled
-  const viewMode = disableTreeView ? "grid" : storedViewMode;
-
-  // Sort/filter state from hook (persisted to localStorage)
+  // URL-backed sort/filter/view state (used as fallback when no external control)
   const {
     sortBy: internalSortBy,
-    setSortBy: _setInternalSortBy,
-    filterBy: internalFilterBy,
-    setFilterBy: setInternalFilterBy,
-  } = useItemsSortFilter();
+    filters: internalFilters,
+    clearFilters: internalClearFilters,
+    viewMode: internalViewMode,
+  } = useItemsUrlState();
 
   // Support external or internal control for sort/filter
   const sortBy = externalSortBy ?? internalSortBy;
-  const filterBy = externalFilterBy ?? internalFilterBy;
-  const setFilterBy = onFilterChange ?? setInternalFilterBy;
-  const hasActiveFilter = filterBy !== "all";
+  const filters = externalFilters ?? internalFilters;
+  const clearFilters = externalClearFilters ?? internalClearFilters;
+  const hasActiveFilter = filters.length > 0;
+
+  // Force grid view when tree is disabled
+  const viewMode = disableTreeView ? "grid" : internalViewMode;
 
   // Edit mode state - supports external control or internal state via useControllableState
   const [isEditing, setIsEditing] = useControllableState({
@@ -491,8 +488,8 @@ export function ItemsView({
   // Memoized to avoid recalculating on every render (rerender-memo, rerender-derived-state)
   const sortedItems = useMemo(() => sortItems(items, sortBy), [items, sortBy]);
   const processedItems = useMemo(
-    () => filterItems(sortedItems, filterBy),
-    [sortedItems, filterBy]
+    () => filterItems(sortedItems, filters),
+    [sortedItems, filters]
   );
 
   // Convert flat items to tree structure for SortableTree (uses processed items)
@@ -613,26 +610,25 @@ export function ItemsView({
   }, [bulkSelection, setItems, refetchItems]);
 
   /**
-   * Determines empty state variant based on context.
+   * Empty state variant based on context (memoized).
    * Priority: filter-empty > no-children > first-time
    */
-  const getEmptyStateVariant = (): EmptyStateVariant => {
+  const emptyStateVariant: EmptyStateVariant = useMemo(() => {
     if (hasActiveFilter) return "filter-empty";
     if (parentId) return "no-children";
     return "first-time";
-  };
+  }, [hasActiveFilter, parentId]);
 
   /**
-   * Handles empty state action based on variant.
+   * Handles empty state action based on variant (memoized callback).
    */
-  const handleEmptyStateAction = () => {
-    const variant = getEmptyStateVariant();
-    if (variant === "filter-empty") {
-      setFilterBy("all");
+  const handleEmptyStateAction = useCallback(() => {
+    if (emptyStateVariant === "filter-empty") {
+      clearFilters();
     } else {
       setAddItemOpen(true);
     }
-  };
+  }, [emptyStateVariant, clearFilters, setAddItemOpen]);
 
   return (
     <div
@@ -658,7 +654,7 @@ export function ItemsView({
       {currentLevelItems.length === 0 ? (
         <Section className="flex flex-1 flex-col">
           <EmptyState
-            variant={getEmptyStateVariant()}
+            variant={emptyStateVariant}
             onAction={handleEmptyStateAction}
           />
         </Section>

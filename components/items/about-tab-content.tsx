@@ -8,8 +8,17 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import { Filter } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ContentToolbar } from "@/components/ui/content-toolbar";
 import { Section } from "@/components/ui/section";
+import { cn } from "@/lib/utils";
 import {
   MOCK_WIKI_SECTIONS_MOVIE,
   MOCK_WIKI_SECTIONS_TV,
@@ -33,6 +42,62 @@ const WikiAccordion = dynamic(
 const Recommendations = dynamic(
   () => import("@/components/items/recommendations")
 );
+
+/**
+ * Single-select dropdown for filtering About tab sections.
+ * Uses radio group to select which sections to display.
+ */
+function SectionFilterDropdown({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const current =
+    ABOUT_SECTION_FILTER_OPTIONS.find((opt) => opt.value === value) ??
+    ABOUT_SECTION_FILTER_OPTIONS[0];
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className={cn(
+          "inline-flex items-center gap-2 rounded-md px-3 py-1.5",
+          "text-sm",
+          "text-muted-foreground",
+          "border border-transparent",
+          "hover:bg-white/5",
+          "transition-colors",
+          "data-[state=open]:text-foreground data-[state=open]:border-white/20 data-[state=open]:bg-white/10 data-[state=open]:backdrop-blur-sm",
+          "focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
+        )}
+      >
+        <Filter aria-hidden="true" className="size-4" />
+        <span>{current.label}</span>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        className={cn(
+          "bg-[#1a1a1a]/90 backdrop-blur-xl",
+          "border border-white/[0.08]",
+          "shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+        )}
+      >
+        <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
+          {ABOUT_SECTION_FILTER_OPTIONS.map((option) => (
+            <DropdownMenuRadioItem
+              key={option.value}
+              value={option.value}
+              className="focus:bg-white/10"
+            >
+              {option.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 interface AboutTabContentProps {
   /** Item description for the About section. */
@@ -65,9 +130,12 @@ export function AboutTabContent({
   return (
     <>
       <ContentToolbar
-        filterBy={sectionFilter}
-        onFilterChange={setSectionFilter as (value: string) => void}
-        filterOptions={ABOUT_SECTION_FILTER_OPTIONS}
+        leftActions={
+          <SectionFilterDropdown
+            value={sectionFilter}
+            onChange={setSectionFilter}
+          />
+        }
         actions={actions}
       />
       <Section

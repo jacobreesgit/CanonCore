@@ -12,12 +12,13 @@ import {
   useTransition,
   useMemo,
   useEffect,
+  useSyncExternalStore,
 } from "react";
 import dynamic from "next/dynamic";
 import { Play, Plus, Settings2, SkipForward } from "lucide-react";
 import { ItemsView } from "./items-view";
 import { EditModeToggle } from "./edit-mode-toggle";
-import { useStoredViewMode } from "@/hooks/use-stored-view-mode";
+import { useItemsUrlState } from "@/hooks/use-items-url-state";
 import { AboutTabContent } from "./about-tab-content";
 import { CinematicHero } from "@/components/hero";
 import { HeroButton } from "@/components/items/hero-button";
@@ -46,7 +47,6 @@ import type {
 } from "@/lib/types";
 import type { TmdbItemMetadata, TmdbItemDetails } from "@/lib/tmdb-client";
 import type { TmdbDisplayOptions } from "@/lib/types";
-import { useItemsSortFilter } from "@/hooks/use-items-sort-filter";
 import { getItems } from "@/lib/item-actions";
 import { useGoToItem } from "@/hooks/use-go-to-item";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -69,6 +69,9 @@ const ItemSettingsDialog = dynamic(
     })),
   { ssr: false }
 );
+
+/** No-op subscribe for useSyncExternalStore (value never changes) */
+const emptySubscribe = () => () => {};
 
 /** Empty files state for initial dialog load */
 const emptyFiles = {
@@ -162,8 +165,11 @@ export function ItemDetailClient({
 
   // Delay tab component rendering until after mount so isMobile is accurate.
   // Prevents UnderlineTabs → SwipeableUnderlineTabs swap that causes focus loss.
-  const [tabsMounted, setTabsMounted] = useState(false);
-  useEffect(() => setTabsMounted(true), []);
+  const tabsMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   // Settings dialog state — route to correct surface based on viewport at init
   const [settingsOpen, setSettingsOpen] = useState(() => {
@@ -180,8 +186,19 @@ export function ItemDetailClient({
     return false;
   });
 
-  // Sort/filter state (persisted to localStorage)
-  const { sortBy, setSortBy, filterBy, setFilterBy } = useItemsSortFilter();
+  // Sort/filter/view state (URL + localStorage backup)
+  const {
+    sortBy,
+    setSortBy,
+    filters,
+    toggleFilter,
+    clearFilters,
+    viewMode,
+    setViewMode,
+    tab,
+    setTab,
+    isCustomSort,
+  } = useItemsUrlState();
 
   // Sync with post-sync item refresh
   const handleSyncSuccess = useCallback(() => {
@@ -254,8 +271,7 @@ export function ItemDetailClient({
     ? (formatProgressLabel(itemProgress) ?? undefined)
     : undefined;
 
-  // Disable edit mode when not using custom sort
-  const isCustomSort = sortBy === "custom";
+  // isCustomSort comes from useItemsUrlState
 
   /**
    * Opens settings dialog (desktop) or mobile sheet based on viewport.
@@ -342,27 +358,29 @@ export function ItemDetailClient({
     </>
   );
 
-  // Settings item data for dialog
-  const settingsItem = {
-    id: item.id,
-    name: item.name,
-    description: item.description,
-    isPublic: item.isPublic,
-    inheritVisibility: item.inheritVisibility,
-    hasParent: item.parentId !== null,
-    hasChildren: item.childCount > 0,
-    tmdbId: item.tmdbId,
-    tmdbShowTagline: item.tmdbShowTagline,
-    tmdbShowMetadata: item.tmdbShowMetadata,
-    tmdbShowGenres: item.tmdbShowGenres,
-    tmdbShowCast: item.tmdbShowCast,
-    tmdbShowProviders: item.tmdbShowProviders,
-    tmdbShowVideos: item.tmdbShowVideos,
-    tmdbShowRecommendations: item.tmdbShowRecommendations,
-  };
+  // Settings item data for dialog (memoized to avoid re-creating on every render)
+  const settingsItem = useMemo(
+    () => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      isPublic: item.isPublic,
+      inheritVisibility: item.inheritVisibility,
+      hasParent: item.parentId !== null,
+      hasChildren: item.childCount > 0,
+      tmdbId: item.tmdbId,
+      tmdbShowTagline: item.tmdbShowTagline,
+      tmdbShowMetadata: item.tmdbShowMetadata,
+      tmdbShowGenres: item.tmdbShowGenres,
+      tmdbShowCast: item.tmdbShowCast,
+      tmdbShowProviders: item.tmdbShowProviders,
+      tmdbShowVideos: item.tmdbShowVideos,
+      tmdbShowRecommendations: item.tmdbShowRecommendations,
+    }),
+    [item]
+  );
 
-  // View mode (persisted in localStorage)
-  const [viewMode, setViewMode] = useStoredViewMode();
+  // viewMode comes from useItemsUrlState
 
   // Contents tab toolbar right actions
   const contentsActions = (
@@ -398,8 +416,9 @@ export function ItemDetailClient({
       <ContentToolbar
         sortBy={sortBy}
         onSortChange={setSortBy}
-        filterBy={filterBy}
-        onFilterChange={setFilterBy}
+        filters={filters}
+        toggleFilter={toggleFilter}
+        clearFilters={clearFilters}
         viewMode={viewMode}
         onViewChange={setViewMode}
         showSync
@@ -419,8 +438,8 @@ export function ItemDetailClient({
         onAddItemOpenChange={setAddItemOpen}
         sortBy={sortBy}
         onSortChange={setSortBy}
-        filterBy={filterBy}
-        onFilterChange={setFilterBy}
+        filters={filters}
+        clearFilters={clearFilters}
         onItemsChange={setChildItems}
         hasDriveConnection={hasDriveConnection}
         currentUser={currentUser}
@@ -442,14 +461,9 @@ export function ItemDetailClient({
   // Show tabs when there are children or TMDB data
   const showTabs = hasChildren || hasTmdb;
 
-  // Active tab for mobile swipeable tabs (controlled).
-  // Synced via useEffect so adding/removing children switches to the correct tab.
+  // Active tab - URL-backed via useItemsUrlState, falls back to context-based default.
   const defaultTabId = hasChildren ? "contents" : "about";
-  const [activeTab, setActiveTab] = useState(defaultTabId);
-
-  useEffect(() => {
-    setActiveTab(defaultTabId);
-  }, [defaultTabId]);
+  const activeTab = tab ?? defaultTabId;
 
   // Resolve hero background URL: TMDB backdrop takes precedence over artwork
   const heroBackgroundUrl = item.tmdbBackdropPath
@@ -508,7 +522,7 @@ export function ItemDetailClient({
               { id: "about", label: "About", content: aboutContent },
             ]}
             activeTab={activeTab}
-            onTabChange={setActiveTab}
+            onTabChange={(id) => setTab(id as "contents" | "about")}
             swipeEnabled={!isEditing}
           />
         ) : (

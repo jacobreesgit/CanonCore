@@ -210,12 +210,12 @@ export async function createFolderInGoogleDrive(
 ): Promise<ActionResult<{ itemId: string; driveFileId: string }>> {
   const timer = startSyncTimer();
 
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { success: false, error: "Not authenticated" };
-    }
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
 
+  try {
     const connection = await prisma.googleDriveConnection.findUnique({
       where: { userId: session.user.id },
     });
@@ -294,18 +294,15 @@ export async function createFolderInGoogleDrive(
       error instanceof Error ? error.message : "Failed to create folder";
     logger.error({ err: error }, "[GoogleDrive] Create folder error");
 
-    // Log failed create (get user ID from auth if available)
-    const session = await auth();
-    if (session?.user?.id) {
-      await logSyncOperation({
-        userId: session.user.id,
-        action: SyncLogAction.CREATE,
-        itemName: name,
-        status: SyncLogStatus.FAILED,
-        error: message,
-        duration: timer(),
-      });
-    }
+    // Log failed create
+    await logSyncOperation({
+      userId: session.user.id,
+      action: SyncLogAction.CREATE,
+      itemName: name,
+      status: SyncLogStatus.FAILED,
+      error: message,
+      duration: timer(),
+    });
 
     return { success: false, error: message };
   }
@@ -324,12 +321,12 @@ export async function deleteItemFromGoogleDrive(
   const timer = startSyncTimer();
   let itemName: string | undefined;
 
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { success: false, error: "Not authenticated" };
-    }
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
 
+  try {
     const item = await prisma.item.findFirst({
       where: { id: itemId, userId: session.user.id },
       select: { name: true, driveFileId: true, driveConnectionId: true },
@@ -378,18 +375,15 @@ export async function deleteItemFromGoogleDrive(
     logger.error({ err: error }, "[GoogleDrive] Delete item error");
 
     // Log failed delete
-    const session = await auth();
-    if (session?.user?.id) {
-      await logSyncOperation({
-        userId: session.user.id,
-        action: SyncLogAction.DELETE,
-        itemId,
-        itemName,
-        status: SyncLogStatus.FAILED,
-        error: message,
-        duration: timer(),
-      });
-    }
+    await logSyncOperation({
+      userId: session.user.id,
+      action: SyncLogAction.DELETE,
+      itemId,
+      itemName,
+      status: SyncLogStatus.FAILED,
+      error: message,
+      duration: timer(),
+    });
 
     return { success: false, error: message };
   }
@@ -446,12 +440,12 @@ export async function renameItemInGoogleDrive(
 ): Promise<ActionResult> {
   const timer = startSyncTimer();
 
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { success: false, error: "Not authenticated" };
-    }
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
 
+  try {
     const item = await prisma.item.findFirst({
       where: { id: itemId, userId: session.user.id },
       select: { driveFileId: true },
@@ -493,18 +487,15 @@ export async function renameItemInGoogleDrive(
     logger.error({ err: error }, "[GoogleDrive] Rename error");
 
     // Log failed rename
-    const session = await auth();
-    if (session?.user?.id) {
-      await logSyncOperation({
-        userId: session.user.id,
-        action: SyncLogAction.RENAME,
-        itemId,
-        itemName: newName,
-        status: SyncLogStatus.FAILED,
-        error: message,
-        duration: timer(),
-      });
-    }
+    await logSyncOperation({
+      userId: session.user.id,
+      action: SyncLogAction.RENAME,
+      itemId,
+      itemName: newName,
+      status: SyncLogStatus.FAILED,
+      error: message,
+      duration: timer(),
+    });
 
     return { success: false, error: message };
   }
@@ -526,12 +517,12 @@ export async function moveItemInGoogleDrive(
   const timer = startSyncTimer();
   let itemName: string | undefined;
 
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { success: false, error: "Not authenticated" };
-    }
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "Not authenticated" };
+  }
 
+  try {
     const item = await prisma.item.findFirst({
       where: { id: itemId, userId: session.user.id },
       select: { name: true, driveFileId: true },
@@ -612,18 +603,15 @@ export async function moveItemInGoogleDrive(
     logger.error({ err: error }, "[GoogleDrive] Move error");
 
     // Log failed move
-    const session = await auth();
-    if (session?.user?.id) {
-      await logSyncOperation({
-        userId: session.user.id,
-        action: SyncLogAction.MOVE,
-        itemId,
-        itemName,
-        status: SyncLogStatus.FAILED,
-        error: message,
-        duration: timer(),
-      });
-    }
+    await logSyncOperation({
+      userId: session.user.id,
+      action: SyncLogAction.MOVE,
+      itemId,
+      itemName,
+      status: SyncLogStatus.FAILED,
+      error: message,
+      duration: timer(),
+    });
 
     return { success: false, error: message };
   }

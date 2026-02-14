@@ -226,11 +226,11 @@ describe("GET /api/auth/callback/google-drive", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toContain(
-      "/u/testuser?error=Token%20exchange%20failed"
+      "/u/testuser?error=Connection%20failed.%20Please%20try%20again."
     );
   });
 
-  it("redirects with error when user email fetch fails", async () => {
+  it("redirects with generic error when user email fetch fails", async () => {
     mockAuth.mockResolvedValue({ user: { id: "user-1" } } as never);
     mockVerifyState.mockReturnValue({
       userId: "user-1",
@@ -249,11 +249,11 @@ describe("GET /api/auth/callback/google-drive", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toContain(
-      "/u/testuser?error=Failed%20to%20get%20email"
+      "/u/testuser?error=Connection%20failed.%20Please%20try%20again."
     );
   });
 
-  it("redirects with error when root folder creation fails", async () => {
+  it("redirects with generic error when root folder creation fails", async () => {
     mockAuth.mockResolvedValue({ user: { id: "user-1" } } as never);
     mockVerifyState.mockReturnValue({
       userId: "user-1",
@@ -275,11 +275,11 @@ describe("GET /api/auth/callback/google-drive", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toContain(
-      "/u/testuser?error=Failed%20to%20create%20folder"
+      "/u/testuser?error=Connection%20failed.%20Please%20try%20again."
     );
   });
 
-  it("redirects with Unknown error when non-Error is thrown", async () => {
+  it("redirects with generic error when non-Error is thrown", async () => {
     mockAuth.mockResolvedValue({ user: { id: "user-1" } } as never);
     mockVerifyState.mockReturnValue({
       userId: "user-1",
@@ -293,7 +293,7 @@ describe("GET /api/auth/callback/google-drive", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toContain(
-      "/u/testuser?error=Unknown%20error"
+      "/u/testuser?error=Connection%20failed.%20Please%20try%20again."
     );
   });
 

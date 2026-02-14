@@ -130,12 +130,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.redirect(redirectUrl);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
     logger.error({ err }, "[GoogleDrive] OAuth callback error");
 
     return NextResponse.redirect(
       new URL(
-        `${profilePath}?error=${encodeURIComponent(message)}`,
+        `${profilePath}?error=${encodeURIComponent("Connection failed. Please try again.")}`,
         request.url
       )
     );

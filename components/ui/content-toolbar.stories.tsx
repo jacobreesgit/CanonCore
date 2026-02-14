@@ -10,6 +10,7 @@ import { Plus, Settings2 } from "lucide-react";
 import { ContentToolbar } from "@/components/ui/content-toolbar";
 import { Button } from "@/components/ui/button";
 import { EditModeToggle } from "@/components/items/edit-mode-toggle";
+import type { ContentFilter } from "@/lib/types";
 
 const meta = {
   title: "UI/ContentToolbar",
@@ -20,7 +21,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Unified toolbar for content pages with sync, sort, filter, and action controls. Responsive layout collapses options into sheet on mobile.",
+          "Unified toolbar for content pages with sync, sort, multi-select filter, and action controls. Responsive layout collapses options into sheet on mobile.",
       },
     },
   },
@@ -37,11 +38,6 @@ const meta = {
       ],
       description: "Current sort option",
     },
-    filterBy: {
-      control: "select",
-      options: ["all", "has-files", "no-files", "synced", "pending", "error"],
-      description: "Current filter option",
-    },
     showSync: {
       control: "boolean",
       description: "Whether to show sync button",
@@ -57,12 +53,13 @@ const meta = {
   },
   args: {
     sortBy: "custom",
-    filterBy: "all",
+    filters: [] as ContentFilter[],
     showSync: true,
     hasDriveConnection: true,
     disabled: false,
     onSortChange: fn(),
-    onFilterChange: fn(),
+    toggleFilter: fn(),
+    clearFilters: fn(),
     onSync: fn(),
   },
 } satisfies Meta<typeof ContentToolbar>;
@@ -102,12 +99,27 @@ export const NoDriveConnection: Story = {
 
 export const ActiveFilter: Story = {
   args: {
-    filterBy: "has-files",
+    filters: ["has-files"] as ContentFilter[],
   },
   parameters: {
     docs: {
       description: {
-        story: "Toolbar showing active filter indicator.",
+        story:
+          "Toolbar showing active filter indicator with 'Filter (1)' badge.",
+      },
+    },
+  },
+};
+
+export const MultipleActiveFilters: Story = {
+  args: {
+    filters: ["has-files", "synced"] as ContentFilter[],
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Toolbar showing multiple active filters with 'Filter (2)' badge.",
       },
     },
   },

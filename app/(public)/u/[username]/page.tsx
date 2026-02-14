@@ -69,8 +69,11 @@ export async function generateMetadata({
 export default async function ProfilePage({ params }: PageProps) {
   const { username } = await params;
 
-  // Rate limit first
-  const rateLimitResult = await checkRateLimit("publicProfile");
+  // Parallelize rate limit + auth check
+  const [rateLimitResult, session] = await Promise.all([
+    checkRateLimit("publicProfile"),
+    auth(),
+  ]);
 
   if (rateLimitResult) {
     return (
@@ -81,9 +84,6 @@ export default async function ProfilePage({ params }: PageProps) {
       </div>
     );
   }
-
-  // Get session to check if viewer might be the owner
-  const session = await auth();
   const sessionUsername = session?.user?.username;
 
   // Check if this is the owner viewing their own profile (case-insensitive)

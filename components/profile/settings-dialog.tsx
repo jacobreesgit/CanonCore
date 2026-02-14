@@ -68,7 +68,6 @@ import {
   SyncHistory,
 } from "@/components/google-drive";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PreferencesTab } from "@/components/profile/preferences-tab";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SETTINGS_MESSAGES } from "@/lib/constants/messages";
@@ -78,12 +77,7 @@ import type { GoogleDriveConnection } from "@/lib/types";
 type SettingsStep = "main" | "password" | "email" | "username";
 
 /** Available settings tabs */
-type SettingsTab =
-  | "profile"
-  | "account"
-  | "connections"
-  | "preferences"
-  | "activity";
+type SettingsTab = "profile" | "account" | "connections" | "activity";
 
 interface SettingsDialogProps {
   /** Whether the dialog is open */
@@ -762,11 +756,10 @@ export function SettingsDialog({
       case "main":
         return (
           <Tabs defaultValue={defaultTab} className="w-full">
-            <TabsList className="mb-4 grid w-full grid-cols-5">
+            <TabsList className="mb-4 grid w-full grid-cols-4">
               <TabsTrigger value="profile">Profile</TabsTrigger>
               <TabsTrigger value="account">Account</TabsTrigger>
               <TabsTrigger value="connections">Connections</TabsTrigger>
-              <TabsTrigger value="preferences">Preferences</TabsTrigger>
               <TabsTrigger value="activity">Activity</TabsTrigger>
             </TabsList>
 
@@ -1087,10 +1080,6 @@ export function SettingsDialog({
               </div>
             </TabsContent>
 
-            <TabsContent value="preferences" className="mt-0">
-              <PreferencesTab />
-            </TabsContent>
-
             <TabsContent value="activity" className="mt-0">
               {googleDriveConnection ? (
                 <div className="max-h-80 overflow-y-auto">
@@ -1277,14 +1266,14 @@ export function SettingsDialog({
                 )}
               </div>
               {newUsername && usernameValidation.error && (
-                <p className="text-destructive text-xs">
+                <p role="alert" className="text-destructive text-xs">
                   {usernameValidation.error}
                 </p>
               )}
               {newUsername &&
                 usernameValidation.isAvailable === false &&
                 !usernameValidation.error && (
-                  <p className="text-destructive text-xs">
+                  <p role="alert" className="text-destructive text-xs">
                     Username is already taken
                   </p>
                 )}

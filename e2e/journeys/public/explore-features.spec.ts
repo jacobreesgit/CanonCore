@@ -1,6 +1,6 @@
 /**
  * E2E tests for explore page enhancements.
- * Tests "Exclude Yours" filter, ownership badges, TMDB metadata in carousel,
+ * Tests "Exclude Mine" toggle, ownership badges, TMDB metadata in carousel,
  * playlist button, and context menu on own items.
  */
 
@@ -68,7 +68,7 @@ test.describe("Explore Features", () => {
       .catch(() => {});
   });
 
-  test("Exclude Yours filter hides own items", async ({
+  test("Exclude Mine toggle hides own items", async ({
     page,
     testUser,
     itemsPage,
@@ -108,8 +108,8 @@ test.describe("Explore Features", () => {
         .filter({ hasText: myItemName })
     ).toBeVisible();
 
-    // Select "Exclude Yours" filter via page object
-    await publicProfilePage.selectFilterOption("Exclude Yours");
+    // Click "Exclude Mine" toggle button in toolbar
+    await page.getByRole("button", { name: /exclude my items/i }).click();
 
     // Own item should now be hidden (allow time for filter to take effect)
     await expect(

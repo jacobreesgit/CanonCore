@@ -14,9 +14,9 @@ import { CinematicHero } from "@/components/hero";
 import { HeroButton } from "@/components/items/hero-button";
 import { PlaylistButton } from "@/components/items/playlist-button";
 import { AboutTabContent } from "@/components/items/about-tab-content";
-import { GridItem } from "@/components/sortable-grid";
+import { GridItem } from "@/components/sortable-grid/grid-item";
 import { Tree } from "@/components/sortable-tree";
-import { useStoredViewMode } from "@/hooks/use-stored-view-mode";
+import { useItemsUrlState } from "@/hooks/use-items-url-state";
 import { EmptyState } from "@/components/items/empty-state";
 import { UnderlineTabs } from "@/components/ui/underline-tabs";
 import { Section } from "@/components/ui/section";
@@ -32,19 +32,17 @@ const SwipeableUnderlineTabs = dynamic(
 );
 import { HeroContentLayout } from "@/components/ui/hero-content-layout";
 import { ContentToolbar } from "@/components/ui/content-toolbar";
-import { useItemsSortFilter } from "@/hooks/use-items-sort-filter";
 import { sortItems, filterItems, publicItemsToTree } from "@/lib/item-utils";
 import { Copy, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { getTmdbBackdropUrl } from "@/lib/tmdb-image-utils";
-import type { PublicProfile, PublicItem } from "@/lib/public-auth";
+import type { PublicItem } from "@/lib/public-auth";
 import type { ForkInfo, ForkStatus } from "@/lib/fork-actions";
 import type { TmdbItemMetadata, TmdbItemDetails } from "@/lib/tmdb-client";
-import type { TmdbDisplayOptions } from "@/lib/types";
-import type { UniqueIdentifier } from "@dnd-kit/core";
+import type { TmdbDisplayOptions, ItemId } from "@/lib/types";
 
 interface PublicItemClientProps {
-  profile: PublicProfile;
+  profile: { id: string; name: string | null; username: string };
   item: PublicItem;
   childItems: (PublicItem & {
     progressPercentage?: number | null;
@@ -118,11 +116,16 @@ export function PublicItemClient({
 
   const [isForking, setIsForking] = useState(false);
 
-  // Sort/filter state (same as private item pages)
-  const { sortBy, setSortBy, filterBy, setFilterBy } = useItemsSortFilter();
-
-  // View mode state (persisted to localStorage)
-  const [viewMode, setViewMode] = useStoredViewMode();
+  // Sort/filter/view state (URL + localStorage backup)
+  const {
+    sortBy,
+    setSortBy,
+    filters,
+    toggleFilter,
+    clearFilters,
+    viewMode,
+    setViewMode,
+  } = useItemsUrlState();
 
   // Filter to get only direct children of this item, then apply sort and filter
   type ChildItem = (typeof childItems)[number];
@@ -136,9 +139,9 @@ export function PublicItemClient({
     ) as unknown as ChildItem[];
     return filterItems(
       sortedChildren as unknown as Parameters<typeof filterItems>[0],
-      filterBy
+      filters
     ) as unknown as ChildItem[];
-  }, [childItems, item.id, sortBy, filterBy]);
+  }, [childItems, item.id, sortBy, filters]);
 
   // Convert to tree structure for Tree component (includes all descendants)
   // Only include progress data for own items
@@ -164,7 +167,7 @@ export function PublicItemClient({
   );
 
   const handleItemClick = useCallback(
-    (id: UniqueIdentifier) => {
+    (id: ItemId) => {
       router.push(`/u/${profile.username}/${id}`);
     },
     [router, profile.username]
@@ -276,8 +279,9 @@ export function PublicItemClient({
       <ContentToolbar
         sortBy={sortBy}
         onSortChange={setSortBy}
-        filterBy={filterBy}
-        onFilterChange={setFilterBy}
+        filters={filters}
+        toggleFilter={toggleFilter}
+        clearFilters={clearFilters}
         viewMode={viewMode}
         onViewChange={setViewMode}
         disabled={!hasChildren}

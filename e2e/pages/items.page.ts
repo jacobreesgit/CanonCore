@@ -64,10 +64,10 @@ export class ItemsPage {
         name: /custom order|name a-z|name z-a|newest first|oldest first|recently updated/i,
       })
       .first();
-    // Filter dropdown shows current filter option (All Items, Has Files, etc.)
+    // Filter dropdown trigger (multi-select, shows "Filter" or "Filter (N)")
     this.filterDropdown = page
       .getByRole("button", {
-        name: /all items|has files|no files|synced|pending sync|sync error/i,
+        name: /^filter/i,
       })
       .first();
     this.editModeButton = page.getByRole("button", { name: /edit mode/i });
@@ -91,7 +91,7 @@ export class ItemsPage {
     } else {
       // Desktop: open the view dropdown then select Tree
       await this.page
-        .getByRole("button", { name: /grid|tree/i })
+        .getByRole("button", { name: /view mode: (grid|tree)/i })
         .first()
         .click();
       await this.viewToggleTree.click();
@@ -104,7 +104,7 @@ export class ItemsPage {
     } else {
       // Desktop: open the view dropdown then select Grid
       await this.page
-        .getByRole("button", { name: /grid|tree/i })
+        .getByRole("button", { name: /view mode: (grid|tree)/i })
         .first()
         .click();
       await this.viewToggleGrid.click();
@@ -174,9 +174,10 @@ export class ItemsPage {
 
     await expect(this.addFolderSubmit).toBeVisible({ timeout: 10000 });
     await expect(this.addFolderSubmit).toBeEnabled({ timeout: 5000 });
-    // Use dispatchEvent to bypass viewport checks — Vaul drawer footers
+    // Use force:true to bypass viewport checks — Vaul drawer footers
     // may be outside the viewport when the drawer is at a partial snap point.
-    await this.addFolderSubmit.dispatchEvent("click");
+    // Note: .click() (not dispatchEvent) is required for Radix Dialog on desktop.
+    await this.addFolderSubmit.click({ force: true });
 
     // Wait for dialog to close
     await expect(this.addFolderDialog).not.toBeVisible({ timeout: 15000 });
@@ -194,7 +195,7 @@ export class ItemsPage {
     // Fill and submit
     await this.addFolderInput.fill(name);
     await expect(this.addFolderSubmit).toBeEnabled({ timeout: 2000 });
-    await this.addFolderSubmit.dispatchEvent("click");
+    await this.addFolderSubmit.click({ force: true });
 
     // Dialog stays open when there's an error - don't wait for it to close
   }
@@ -300,9 +301,7 @@ export class ItemsPage {
     // visible (they have bounding boxes), so no explicit hover needed.
     // This avoids the hover → scale-105 → dropdown-shifts instability loop
     // that causes "element is not stable" failures.
-    const moreButton = container.getByRole("button", {
-      name: /more options/i,
-    });
+    const moreButton = container.getByTestId("item-more-button").first();
     await moreButton.click();
 
     // Wait for the dropdown menu to fully open before callers interact with items
@@ -625,11 +624,11 @@ export class ItemsPage {
 
   /**
    * Gets a tree item's drag handle locator by item name.
-   * Uses aria-label to specifically target the drag handle button.
+   * Uses data-testid to avoid strict mode violations from nested listitems.
    */
   getTreeItemDragHandle(name: string): Locator {
     const item = this.page.locator(`li`).filter({ hasText: name }).first();
-    return item.getByRole("button", { name: "Drag handle" });
+    return item.getByTestId("tree-item-drag-handle").first();
   }
 
   /**
@@ -784,9 +783,9 @@ export class ItemsPage {
    */
   async collapseItem(name: string): Promise<void> {
     const item = this.page.getByRole("listitem").filter({ hasText: name });
-    const collapseButton = item.getByRole("button", {
-      name: /collapse item/i,
-    });
+    const collapseButton = item
+      .getByTestId("tree-item-collapse-toggle")
+      .first();
     await collapseButton.click();
   }
 
@@ -797,7 +796,7 @@ export class ItemsPage {
    */
   async expandItem(name: string): Promise<void> {
     const item = this.page.getByRole("listitem").filter({ hasText: name });
-    const expandButton = item.getByRole("button", { name: /expand item/i });
+    const expandButton = item.getByTestId("tree-item-collapse-toggle").first();
     await expandButton.click();
   }
 
@@ -854,10 +853,9 @@ export class ItemsPage {
    */
   async selectSortOption(option: string): Promise<void> {
     // Wait for either mobile or desktop control to be visible
-    // Use exact: true to prevent matching "More options" buttons on grid items
+    // Use anchored regex to prevent matching "More options" buttons on grid items
     const mobileOptionsButton = this.page.getByRole("button", {
-      name: "Options",
-      exact: true,
+      name: /^Options/,
     });
     const desktopSortDropdown = this.sortDropdown;
 
@@ -874,7 +872,7 @@ export class ItemsPage {
     if (isMobile) {
       // Mobile: Use Options sheet
       await mobileOptionsButton.click();
-      await this.page.getByRole("option", { name: option }).click();
+      await this.page.getByRole("radio", { name: option }).click();
       // Close drawer by clicking outside or pressing escape
       await this.page.keyboard.press("Escape");
     } else {
@@ -888,17 +886,17 @@ export class ItemsPage {
   }
 
   /**
-   * Opens the filter dropdown and selects a filter option.
+   * Toggles a filter option in the multi-select filter dropdown.
    * Handles both desktop dropdown and mobile Options sheet.
+   * Multi-select: clicking a checked item unchecks it, clicking unchecked checks it.
    *
-   * @param option - The filter option label to select (e.g., "All Items", "Has Files")
+   * @param option - The filter option label to toggle (e.g., "Has Files", "No Files")
    */
   async selectFilterOption(option: string): Promise<void> {
     // Wait for either mobile or desktop control to be visible
-    // Use exact: true to prevent matching "More options" buttons on grid items
+    // Use anchored regex to prevent matching "More options" buttons on grid items
     const mobileOptionsButton = this.page.getByRole("button", {
-      name: "Options",
-      exact: true,
+      name: /^Options/,
     });
     const desktopFilterDropdown = this.filterDropdown;
 
@@ -913,18 +911,49 @@ export class ItemsPage {
     const isMobile = await mobileOptionsButton.isVisible();
 
     if (isMobile) {
-      // Mobile: Use Options sheet
+      // Mobile: Use Options sheet (checkboxes)
       await mobileOptionsButton.click();
-      await this.page.getByRole("option", { name: option }).click();
+      await this.page.getByRole("checkbox", { name: option }).click();
       // Close drawer by clicking outside or pressing escape
       await this.page.keyboard.press("Escape");
     } else {
-      // Desktop: Use dropdown
+      // Desktop: Use dropdown (multi-select checkboxes, stays open)
       await desktopFilterDropdown.click();
-      const menuItem = this.page.getByRole("menuitemradio", { name: option });
+      const menuItem = this.page.getByRole("menuitemcheckbox", {
+        name: option,
+      });
       await menuItem.click();
-      // Wait for the dropdown menu to close before continuing
-      await expect(menuItem).not.toBeVisible();
+      // Close dropdown by pressing escape (multi-select keeps dropdown open)
+      await this.page.keyboard.press("Escape");
+    }
+  }
+
+  /**
+   * Clears all active filters via the "Clear all filters" button.
+   * Handles both desktop dropdown and mobile Options sheet.
+   */
+  async clearFilters(): Promise<void> {
+    const mobileOptionsButton = this.page.getByRole("button", {
+      name: /^Options/,
+    });
+    const desktopFilterDropdown = this.filterDropdown;
+
+    await expect(
+      mobileOptionsButton.or(desktopFilterDropdown).first()
+    ).toBeVisible({ timeout: 10000 });
+
+    const isMobile = await mobileOptionsButton.isVisible();
+
+    if (isMobile) {
+      await mobileOptionsButton.click();
+      await this.page.getByRole("button", { name: /clear all/i }).click();
+      await this.page.keyboard.press("Escape");
+    } else {
+      await desktopFilterDropdown.click();
+      await this.page
+        .getByRole("button", { name: /clear all filters/i })
+        .click();
+      await this.page.keyboard.press("Escape");
     }
   }
 
@@ -934,10 +963,9 @@ export class ItemsPage {
    */
   async getCurrentSortOption(): Promise<string> {
     // Check if mobile Options button exists
-    // Use exact: true to prevent matching "More options" buttons on grid items
+    // Use anchored regex to prevent matching "More options" buttons on grid items
     const mobileOptionsButton = this.page.getByRole("button", {
-      name: "Options",
-      exact: true,
+      name: /^Options/,
     });
     const isMobile = await mobileOptionsButton.isVisible();
 
@@ -945,8 +973,8 @@ export class ItemsPage {
       // Mobile: Open Options sheet and find selected sort option
       await mobileOptionsButton.click();
       const selectedOption = this.page
-        .getByRole("listbox", { name: /sort options/i })
-        .getByRole("option", { selected: true });
+        .getByRole("radiogroup", { name: /sort options/i })
+        .getByRole("radio", { checked: true });
       const text = (await selectedOption.textContent()) ?? "";
       await this.page.keyboard.press("Escape");
       return text;
@@ -956,29 +984,27 @@ export class ItemsPage {
   }
 
   /**
-   * Gets the current filter option displayed in the dropdown.
+   * Gets the current filter text displayed in the dropdown trigger.
+   * Returns "Filter" when no filters active, "Filter (N)" when N filters active.
    * Handles both desktop dropdown and mobile Options sheet.
    */
   async getCurrentFilterOption(): Promise<string> {
     // Check if mobile Options button exists
-    // Use exact: true to prevent matching "More options" buttons on grid items
+    // Use anchored regex to prevent matching "More options" buttons on grid items
     const mobileOptionsButton = this.page.getByRole("button", {
-      name: "Options",
-      exact: true,
+      name: /^Options/,
     });
     const isMobile = await mobileOptionsButton.isVisible();
 
     if (isMobile) {
-      // Mobile: Open Options sheet and find selected filter option
+      // Mobile: Open Options sheet and read filter header text
       await mobileOptionsButton.click();
-      const selectedOption = this.page
-        .getByRole("listbox", { name: /filter options/i })
-        .getByRole("option", { selected: true });
-      const text = (await selectedOption.textContent()) ?? "";
+      const filterHeader = this.page.getByTestId("mobile-filter-header");
+      const text = (await filterHeader.textContent()) ?? "";
       await this.page.keyboard.press("Escape");
       return text;
     }
-    // Desktop: Read from dropdown button
+    // Desktop: Read from dropdown button (shows "Filter" or "Filter (N)")
     return (await this.filterDropdown.textContent()) ?? "";
   }
 

@@ -262,6 +262,7 @@ async function tmdbFetch<T>(endpoint: string): Promise<T | null> {
         "Content-Type": "application/json",
       },
       signal: controller.signal,
+      next: { revalidate: 3600 },
     });
 
     if (!response.ok) {

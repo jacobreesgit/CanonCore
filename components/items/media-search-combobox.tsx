@@ -223,7 +223,7 @@ export function MediaSearchCombobox({
 
       <PopoverContent
         data-testid="tmdb-search-popover"
-        className="w-[var(--radix-popover-anchor-width)] p-0"
+        className="w-[var(--radix-popover-trigger-width)] p-0"
         align="start"
         sideOffset={4}
         onOpenAutoFocus={(e) => e.preventDefault()}
