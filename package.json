@@ -27,6 +27,9 @@
     "seed:e2e": "SEED_TARGET=e2e ALLOW_SEEDING=true npx prisma db seed",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build -o storybook-static",
+    "test:e2e": "playwright test --config=e2e/playwright.config.ts",
+    "test:e2e:ui": "playwright test --config=e2e/playwright.config.ts --ui",
+    "test:e2e:debug": "playwright test --config=e2e/playwright.config.ts --debug",
     "test-storybook": "test-storybook",
     "test-storybook:ci": "test-storybook --ci --maxWorkers=2"
   },
@@ -97,6 +100,7 @@
     "@emotion/is-prop-valid": "^1.4.0",
     "@eslint/js": "^9.39.2",
     "@next/eslint-plugin-next": "^16.1.1",
+    "@playwright/test": "^1.58.2",
     "@prisma/client": "^7.2.0",
     "@storybook/addon-a11y": "^10.2.3",
     "@storybook/addon-docs": "^10.2.4",
