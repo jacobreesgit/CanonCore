@@ -10,7 +10,8 @@
     "components/items/visibility-toggle.tsx",
     "mdx-components.tsx",
     ".storybook/**",
-    ".github/**"
+    ".github/**",
+    "e2e/**"
   ],
   "ignoreBinaries": [],
   "ignoreDependencies": [
