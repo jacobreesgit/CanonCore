@@ -8,7 +8,7 @@
 
 CanonCore turns Google Drive into a fully featured media library: visual browsing, metadata enrichment, progress tracking, and public sharing, without moving or duplicating your files. Create folder structures for movies and TV shows, reorganise with drag and drop, enrich items from TMDB, track what you've watched, and share collections publicly. Your files live in your storage, not ours.
 
-I use this daily for my own movie and TV library. Active development continues with planned features including character tagging and native iOS and tvOS apps.
+I use this daily for my own movie and TV library. Active development continues.
 
 ---
 
@@ -38,7 +38,7 @@ Vidstack-powered player streams media directly from Google Drive via HTTP range 
 
 ### One-Click Metadata
 
-You can enrich movies and TV shows with TMDB metadata. A four-step wizard lets you search for a title, review the description, select from multiple poster options, choose a backdrop image, and review everything before applying. For TV shows, an episode picker lets you navigate into seasons and episodes. Per-item display toggles control what metadata appears: tagline, cast, genres, providers, videos, and recommendations.
+You can enrich movies and TV shows with TMDB metadata. A four-step wizard lets you search for a title, review the description, select from multiple poster options, choose a backdrop image, and review everything before applying. For TV shows, an episode picker lets you navigate into seasons and episodes. Per-item display toggles control what metadata appears: tagline, cast, genres, providers, and videos.
 
 ### Progress Tracking
 
@@ -84,43 +84,27 @@ Every database mutation is automatically logged via a Prisma extension. Context 
 
 **Google Drive migration:** I originally built this on SFTP, but path-based matching meant every rename or move created duplicates. No stable IDs, no change detection API, read-only from the web. Google Drive solved all of it: permanent file IDs survive renames and moves, Changes API for incremental sync, full read/write access so users can create folders directly from CanonCore. Should have started here.
 
-**Stack Auth → NextAuth.js v5:** I started with managed auth, then migrated to self-hosted JWT sessions after hitting rate limits. I added 20+ rate limiters via Upstash Redis with different thresholds per action (strict for auth, generous for browsing).
+**Stack Auth → NextAuth.js v5:** I started with managed auth, then migrated to self-hosted JWT sessions after hitting rate limits. I added 15+ rate limiters via Upstash Redis with different thresholds per action (strict for auth, generous for browsing).
 
 ### Security & Resilience
 
-**OAuth Token Encryption:** AES-256-GCM with random IVs per encryption.
-
-**Upload Security:** HMAC-SHA256 signed session tokens with timing-safe comparison, token expiry validation, and filename sanitisation.
-
-**Circuit Breaker:** I wrapped TMDB and Google Drive calls in a custom circuit breaker that opens after consecutive failures and tests recovery in half-open state.
-
-**Security Headers:** OWASP-compliant headers including HSTS with preload, CSP with trusted sources, and X-Frame-Options: DENY.
-
-**CSRF Protection:** Signed OAuth state parameter to prevent authorization code interception.
+AES-256-GCM encryption for OAuth tokens with random IVs, HMAC-SHA256 signed upload tokens with timing-safe comparison, and OWASP-compliant security headers (HSTS with preload, CSP, X-Frame-Options: DENY). TMDB and Google Drive calls wrapped in a custom circuit breaker that opens after consecutive failures and tests recovery in half-open state. Multi-layer bot protection blocks 35+ AI scrapers at the edge while rate-limiting beneficial search engines.
 
 ### Performance
 
-**Edit Mode Separation:** I extracted a view-only Grid from SortableGrid to avoid dnd-kit overhead in browse mode.
-
-**Bulk Delete:** Recursive CTE for deleting nested hierarchies in a single query.
-
-**Lazy Loading:** Intersection Observer with 200px preload margin and priority mode for above-fold images.
-
-**Request Deduplication:** React.cache() on the server, module-level caching on client for search results.
-
-**Offline Queue:** Actions queue to IndexedDB when offline, replay on reconnect with exponential backoff and jitter.
-
-**Structured Logging:** Pino with request ID injection for distributed tracing.
-
-**Batch API:** Google Drive operations batched up to 100 per request. Reduced sync time for large folders from ~45s to ~3s.
+Google Drive operations batched up to 100 per request, reducing sync time for large folders from ~45s to ~3s. Edit mode separation extracts a view-only Grid from SortableGrid to avoid dnd-kit overhead in browse mode (~40KB saved). TMDB resolution and metadata fetches chained as a single promise running concurrently with other server-side fetches, eliminating sequential await waterfalls. Offline queue persists actions to IndexedDB when offline, replaying on reconnect with exponential backoff and jitter.
 
 ### Accessibility
 
-WCAG 2.1 AA compliant throughout. Reduced motion support via a custom hook that disables carousel autoplay and animations. Skip link to main content. ARIA live regions for drag-and-drop announcements.
+WCAG 2.1 AA compliant throughout, enforced by automated testing. Every component has a Storybook story tested against axe-core — any a11y violation fails the build. Semantic roles for tabs, drag-and-drop, and carousel navigation. Live regions announce slide changes and drag operations to screen readers. Skip link, scrollable region focus management, and reduced motion support that disables autoplay and animations.
 
 ### Testing
 
-Over 2,400 unit tests with Vitest cover auth, items, Google Drive sync, and crypto operations. Integration tests run against real PostgreSQL. 31 E2E spec files across desktop and mobile Chrome with Playwright use 15 focused Page Object Models, composable fixtures with per-test user creation, and curated `data-testid` attributes for targeted selectors. Unit tests use role-based and text-based selectors following Testing Library best practices.
+2,400+ tests across unit, integration, Storybook component, and E2E layers. Unit tests (Vitest) cover auth, items, Drive sync, and crypto operations. ~200 integration tests run against real PostgreSQL. 58 Storybook stories with 312 component tests enforce accessibility via axe-core and verify interaction correctness. 31 E2E spec files across desktop and mobile Chrome with Playwright use 15 focused Page Object Models and composable fixtures with per-test user creation.
+
+### Component Documentation
+
+All custom components are documented in Storybook with stories, accessibility checks, and interaction tests.
 
 ---
 
@@ -136,222 +120,11 @@ Over 2,400 unit tests with Vitest cover auth, items, Google Drive sync, and cryp
 
 ---
 
-## Development
+## In Progress
 
-### Commands
-
-#### Development
-
-```bash
-pnpm run dev          # Start dev server with Turbopack
-pnpm run build        # Production build
-pnpm run start        # Start production server
-pnpm run check        # Run all checks (format, lint, type-check, knip, build)
-```
-
-#### Database
-
-```bash
-npx prisma migrate dev      # Create and apply migrations
-npx prisma generate         # Generate Prisma Client
-npx prisma studio           # Open Prisma Studio
-pnpm run seed               # Seed development (default)
-pnpm run seed:production    # Seed production branch
-pnpm run seed:e2e           # Seed E2E branch
-```
-
-#### Code Quality
-
-```bash
-pnpm run format       # Format with Prettier
-pnpm run lint         # Lint with ESLint
-pnpm run type-check   # TypeScript type checking
-pnpm run knip         # Check for unused code/dependencies
-```
-
-#### Testing
-
-```bash
-# Unit & Integration Tests (Vitest)
-pnpm run test              # Run unit tests
-pnpm run test:unit         # Explicit unit tests
-pnpm run test:integration  # Integration tests with real DB
-pnpm run test:coverage     # Coverage report
-pnpm run test:watch        # Watch mode
-
-# E2E Tests (Playwright)
-pnpm run test:e2e                           # All E2E tests
-pnpm run test:e2e --project=chromium        # Desktop only
-pnpm run test:e2e --project=mobile-chrome   # Mobile only
-pnpm run test:e2e:debug                     # Debug mode
-pnpm run test:e2e:ui                        # UI mode
-
-# Storybook
-pnpm run storybook           # Dev server at localhost:6006
-pnpm run build-storybook     # Build static Storybook
-pnpm run test-storybook      # Run smoke & a11y tests
-pnpm run test-storybook:ci   # CI mode with 2 workers
-```
-
-#### Setup Scripts
-
-```bash
-pnpm run setup:e2e       # Setup E2E Drive account
-pnpm run setup:seed      # Setup seed Drive account
-pnpm run setup:e2e-drive # Setup E2E test data
-pnpm run setup:verify    # Verify Drive accounts
-pnpm run setup:all       # Run both OAuth setups
-```
-
-## Project Structure
-
-```
-app/
-├── (auth)/              # Auth pages (sign-in, sign-up, forgot/reset-password)
-├── (public)/            # Public pages (landing, explore, /u/[username])
-├── (docs)/              # Fumadocs documentation
-├── api/                 # API routes
-│   ├── artwork/[fileId]/route.ts  # Artwork streaming
-│   ├── stream/[fileId]/route.ts   # Media streaming (Range headers)
-│   └── user/avatar|hero/route.ts  # User images
-└── globals.css
-
-components/
-├── hero/                # Cinematic hero system (carousel, avatar)
-├── items/               # Items feature (60+ components, wizards, detail sections)
-├── wizards/             # Reusable wizard infrastructure (state machine, indicators)
-├── google-drive/        # Drive integration UI
-├── sortable-grid/       # Grid drag-and-drop (dnd-kit)
-├── sortable-tree/       # Tree drag-and-drop (dnd-kit)
-├── media/               # Media player (Vidstack)
-├── mobile/              # Mobile navigation, bottom sheets, swipeable tabs
-├── search/              # Spotlight search
-├── profile/             # User profile and settings
-├── providers/           # App-level providers (theme, error boundary, nuqs)
-├── diceui/              # File upload with drag-drop and previews
-└── ui/                  # shadcn/ui primitives + shared UI
-
-hooks/
-├── search-params.ts     # Shared nuqs URL state parsers
-├── use-items-url-state.ts  # URL-backed sort/filter/view/tab state
-├── use-explore-url-state.ts # URL-backed explore page state
-├── use-add-item-form.ts    # Add item form state (shared desktop/mobile)
-├── use-settings-form.ts    # Profile settings form state
-└── use-reduced-motion.ts   # Reduced motion preference detection
-
-lib/
-├── *-actions.ts         # Server actions
-├── *-client.ts          # External API clients (google-drive, tmdb)
-├── *-utils.ts           # Feature utilities
-├── auth.ts              # NextAuth config
-├── prisma.ts            # Prisma client
-├── types.ts             # Shared TypeScript types
-└── validations.ts       # Zod schemas
-
-prisma/
-├── schema.prisma        # Database schema
-├── seed.ts              # Seeding logic
-└── seed-config.ts       # Seed user definitions
-
-tests/unit/              # Vitest unit tests (mocked)
-tests/integration/       # Vitest integration tests (real DB)
-e2e/journeys/            # Playwright E2E tests by feature (31 spec files)
-e2e/pages/               # 15 focused Page Object Models
-e2e/fixtures/            # Composable test fixtures (authenticated, public, drive)
-e2e/config/              # Centralised timeouts and test data utilities
-```
-
-## Environment Variables
-
-Required:
-
-- `DATABASE_URL` - Neon PostgreSQL connection string
-- `AUTH_SECRET` - NextAuth secret (generate: `openssl rand -base64 32`)
-- `RESEND_API_KEY` - Resend API key for password reset emails
-- `EMAIL_FROM` - Sender email (default: `noreply@canoncore.com`)
-- `UPSTASH_REDIS_REST_URL` - Upstash Redis URL
-- `UPSTASH_REDIS_REST_TOKEN` - Upstash Redis token
-- `ENCRYPTION_KEY` - Base64 32-byte key (generate: `openssl rand -base64 32`)
-
-Google Drive (required for Drive integration):
-
-- `GOOGLE_CLIENT_ID` - OAuth client ID
-- `GOOGLE_CLIENT_SECRET` - OAuth client secret
-
-TMDB (optional):
-
-- `TMDB_API_KEY` - TMDB v3 API key for metadata
-
-Seed (required for seeding):
-
-- `GOOGLE_SEED_REFRESH_TOKEN` - Seed Drive account token
-- `GOOGLE_SEED_ROOT_FOLDER_ID` - Development Drive root folder
-- `GOOGLE_SEED_EMAIL` - Email of seed account (optional)
-- `SEED_TARGET` - Target branch: development (default), production, e2e
-- `SEED_PRODUCTION_DATABASE_URL` - Production Neon connection string
-- `SEED_PRODUCTION_ROOT_FOLDER_ID` - Production Drive root folder
-- `SEED_E2E_ROOT_FOLDER_ID` - E2E Drive root folder
-
-E2E Testing (optional):
-
-- `E2E_DATABASE_URL` - Neon connection string for E2E branch
-- `GOOGLE_E2E_REFRESH_TOKEN` - E2E test Drive account token
-- `GOOGLE_E2E_ROOT_FOLDER_ID` - Folder ID for E2E tests
-- `GOOGLE_E2E_EMAIL` - Email of E2E test account (optional)
-
-Optional:
-
-- `BYPASS_RATE_LIMIT` - Set to `"true"` to skip rate limiting (E2E tests only)
-- `NEXT_PUBLIC_APP_URL` - Base URL for email links (default: `http://localhost:3000`)
-- `LOG_LEVEL` - Pino log level: debug, info, warn, error (default: info)
-
-## Branching Strategy
-
-| Git Branch    | Neon Branch   | Vercel Environment |
-| ------------- | ------------- | ------------------ |
-| `development` | `development` | Preview            |
-| `production`  | `production`  | Production         |
-
-Local dev uses `.env.local` pointing to Neon `development` branch.
-Vercel production uses environment variables for Neon `production` branch.
+- **Native iOS & tvOS apps** — React Native with Expo for mobile and living room playback
+- **3D Graph Visualisation** — Three.js-powered interactive graph of your library hierarchy
 
 ---
-
-## Implementation Patterns
-
-**Server Actions Convention:**
-
-- All server actions in `lib/*-actions.ts`
-- Parallel async execution for rate limit + auth checks
-- Zod schemas from `lib/validations.ts`
-
-**Route Groups:**
-
-- `app/(auth)/` - Auth pages with redirect guard layout
-- `app/(public)/` - Public pages (landing, explore, profiles)
-- `app/(docs)/` - Fumadocs documentation
-
-**Component Organization:**
-
-- Items feature: 60+ components in `components/items/`
-- Google Drive UI: `components/google-drive/`
-- Drag-and-drop: `sortable-grid/` and `sortable-tree/` (dnd-kit)
-- shadcn/ui: `components/ui/` (don't document these)
-
-**Database Schema:**
-
-- Self-referential hierarchy: `Item.parentId` for unlimited nesting
-- Inherited visibility: `Item.inheritVisibility` for public/private cascading
-- Google Drive sync: `Item.driveFileId`, `syncStatus`, `driveModifiedAt`
-- Progress tracking: `ItemFile.playbackPosition` (90% threshold for "watched")
-
-**Testing:**
-
-- Unit tests: `tests/unit/` with mocked Prisma, email, rate-limit (role-based selectors)
-- Integration tests: `tests/integration/` with real database
-- E2E tests: `e2e/journeys/` with 15 focused Page Object Models and composable fixtures
-- Coverage configured for `lib/**` only
-
-## Documentation
 
 See [DESIGN.md](./DESIGN.md) for detailed architecture, API design, and implementation decisions.

@@ -22,7 +22,6 @@ const DISPLAY_OPTION_LABELS: {
   { key: "showCast", label: "Cast" },
   { key: "showProviders", label: "Where to Watch" },
   { key: "showVideos", label: "Videos" },
-  { key: "showRecommendations", label: "More Like This" },
 ];
 
 interface TmdbDisplayOptionsEditorProps {

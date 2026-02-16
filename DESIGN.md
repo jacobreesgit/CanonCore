@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: February 2026 (v7.8.0)
+Last updated: February 2026 (v7.9.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -547,7 +547,7 @@ Multi-layer defence against aggressive AI crawlers:
 
 **TMDB Display Options:**
 
-- Per-item toggles: tagline, metadata, genres, cast, providers, videos, recommendations
+- Per-item toggles: tagline, metadata, genres, cast, providers, videos (recommendations toggle soft-disabled)
 - All default to true, configurable in item settings dialog
 - Debounced save via `updateTmdbDisplayOptions` server action
 
@@ -776,18 +776,22 @@ export const BulkActionsToolbar = memo(function BulkActionsToolbar({ ... }) {
 ### Test Pyramid
 
 ```
-        ┌─────────┐
-        │   E2E   │  31 spec files (Playwright)
-        │  Tests  │  Real browser, real APIs
-        └─────────┘
-      ┌─────────────┐
-      │ Integration │  ~100 tests (Vitest)
-      │    Tests    │  Real database
-      └─────────────┘
-    ┌─────────────────┐
-    │   Unit Tests    │  ~2400 tests (Vitest)
-    │   (Mocked deps) │  Fast, isolated
-    └─────────────────┘
+          ┌─────────┐
+          │   E2E   │  31 spec files (Playwright)
+          │  Tests  │  Real browser, real APIs
+          └─────────┘
+        ┌─────────────┐
+        │  Storybook  │  58 stories, 312 tests
+        │  Component  │  axe a11y + interactions
+        └─────────────┘
+      ┌─────────────────┐
+      │  Integration    │  ~200 tests (Vitest)
+      │     Tests       │  Real database
+      └─────────────────┘
+    ┌─────────────────────┐
+    │     Unit Tests      │  ~2400 tests (Vitest)
+    │    (Mocked deps)    │  Fast, isolated
+    └─────────────────────┘
 ```
 
 ### Unit Tests (Vitest)
@@ -803,14 +807,6 @@ export const BulkActionsToolbar = memo(function BulkActionsToolbar({ ... }) {
 - TMDB API
 
 **Coverage:** Configured for `lib/**` only
-
-**Run:**
-
-```bash
-pnpm run test              # Run all unit tests
-pnpm run test:watch        # Watch mode
-pnpm run test:coverage     # Coverage report
-```
 
 ### Integration Tests (Vitest)
 
@@ -832,11 +828,22 @@ pnpm run test:coverage     # Coverage report
 - Database cleanup between tests
 - Transaction rollback for isolation
 
-**Run:**
+### Storybook Component Tests
 
-```bash
-pnpm run test:integration
-```
+**Location:** Co-located `*.stories.tsx` files (58 stories)
+
+**What's tested:**
+
+- Accessibility: Every story tested against axe-core with `test: "error"` in `preview.tsx` — any a11y violation fails the build
+- Interaction tests: `play` functions verify tab switching, keyboard navigation, dialog flows, dropdown selection
+- Visual variants: Default states, edge cases, boundary conditions (e.g. 3 tabs = swipeable, 4 tabs = select dropdown)
+
+**Key patterns:**
+
+- Portal dialogs tested with `within(document.body)` instead of `canvasElement` (Radix portals render outside story root)
+- Embla Carousel initialisation: Click active tab first to trigger React render cycle before asserting on target tab
+- MSW mocking in `.storybook/mocks/` for server actions (items, TMDB, Drive, auth)
+- Decorators: Theme (dark only), auth state, reduced motion
 
 ### E2E Tests (Playwright)
 
@@ -897,118 +904,21 @@ pnpm run test:integration
 - `slugify()` utility for deterministic item testids: `item-card-${slug}`, `item-tree-${slug}`
 - Unit tests use role-based and text-based selectors (Testing Library best practices)
 
-**Run:**
-
-```bash
-pnpm run test:e2e                           # All tests
-pnpm run test:e2e --project=chromium        # Desktop only
-pnpm run test:e2e --project=mobile-chrome   # Mobile only
-pnpm run test:e2e:debug                     # Debug mode (headed)
-pnpm run test:e2e:ui                        # UI mode (interactive)
-```
-
 ### Screenshot Automation
 
-**Location:** `e2e/screenshots/`
-
-Portfolio screenshots for marketing/documentation using new POM patterns and fixtures.
-
-**Run:**
-
-```bash
-npx playwright test --config=e2e/screenshots/playwright.config.ts
-```
-
-**Output:** `public/portfolio/*.png`
+Portfolio screenshots for marketing/documentation using POM patterns and fixtures. Outputs to `public/portfolio/*.png`.
 
 ---
 
-## Documentation Standards
+## Infrastructure
 
-All custom code follows JSDoc conventions (excluding `components/ui/*` shadcn components).
+**Hosting:** Vercel — automatic deployments, edge network, serverless functions
 
-### File Headers
+**Database:** Neon PostgreSQL — serverless, auto-scaling, branch-per-environment
 
-Every file starts with a brief comment:
+**Redis:** Upstash — rate limiting, serverless, pay-per-request
 
-```typescript
-/**
- * Brief description of what this file does.
- * Optional second line for additional context.
- */
-```
-
-### Function Documentation
-
-Standard JSDoc with `@param`, `@returns`, `@example`:
-
-```typescript
-/**
- * Brief description of what the function does.
- *
- * @param paramName - Description of parameter
- * @returns Description of return value
- *
- * @example
- * const result = myFunction("input");
- */
-```
-
-### Guidelines
-
-- **File headers:** Required for all files (lib, hooks, components, app pages)
-- **Function JSDoc:** Required for exported functions and React components
-- **`@example`:** Include for complex utilities and server actions; skip for simple functions
-- **React props:** Document inline with TypeScript types, not JSDoc
-- **Skip:** `components/ui/*` (shadcn generated code - don't document)
-
----
-
-## Deployment
-
-### Infrastructure
-
-**Hosting:** Vercel
-
-- Automatic deployments from git branches
-- Edge network for static assets
-- Serverless functions for API routes and Server Actions
-
-**Database:** Neon PostgreSQL
-
-- Serverless, auto-scaling
-- Branch-per-environment (development, production)
-- Connection pooling via Prisma
-
-**Redis:** Upstash
-
-- Rate limiting
-- Serverless, pay-per-request
-
-**Email:** Resend
-
-- Transactional emails (password reset)
-- React Email templates
-
-### Branching Strategy
-
-| Git Branch    | Neon Branch   | Vercel Environment |
-| ------------- | ------------- | ------------------ |
-| `development` | `development` | Preview            |
-| `production`  | `production`  | Production         |
-
-**Workflow:**
-
-1. Local development → `development` branch → Vercel Preview
-2. Merge to `production` → Vercel Production deployment
-3. Database migrations run automatically on Vercel build
-
-### Environment Variables
-
-**Local:** `.env.local` (gitignored)
-**Vercel:** Environment Variables in project settings
-
-See [README.md](./README.md) for full environment variable list.
+**Email:** Resend — transactional emails (password reset)
 
 ---
 
@@ -1144,4 +1054,4 @@ await itemsPage.createItem("Movies");
 
 ---
 
-That's the technical reference. For quick commands and setup, see [README.md](./README.md).
+That's the technical reference. For a product overview, see [README.md](./README.md).

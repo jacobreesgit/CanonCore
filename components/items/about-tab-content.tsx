@@ -1,6 +1,6 @@
 /**
  * Shared About tab content for item detail pages.
- * Renders TMDB metadata sections (cast, providers, videos, wiki, recommendations)
+ * Renders TMDB metadata sections (cast, providers, videos)
  * with a section filter toolbar.
  */
 
@@ -19,11 +19,7 @@ import {
 import { ContentToolbar } from "@/components/ui/content-toolbar";
 import { Section } from "@/components/ui/section";
 import { cn } from "@/lib/utils";
-import {
-  MOCK_WIKI_SECTIONS_MOVIE,
-  MOCK_WIKI_SECTIONS_TV,
-  ABOUT_SECTION_FILTER_OPTIONS,
-} from "@/lib/mock-data";
+import { ABOUT_SECTION_FILTER_OPTIONS } from "@/lib/mock-data";
 import type { TmdbItemDetails } from "@/lib/tmdb-client";
 import type { TmdbDisplayOptions } from "@/lib/types";
 
@@ -36,12 +32,6 @@ const WatchProviders = dynamic(
   () => import("@/components/items/watch-providers")
 );
 const VideoRow = dynamic(() => import("@/components/items/video-row"));
-const WikiAccordion = dynamic(
-  () => import("@/components/items/wiki-accordion")
-);
-const Recommendations = dynamic(
-  () => import("@/components/items/recommendations")
-);
 
 /**
  * Single-select dropdown for filtering About tab sections.
@@ -61,7 +51,6 @@ function SectionFilterDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        data-testid="about-section-filter"
         className={cn(
           "inline-flex items-center gap-2 rounded-md px-3 py-1.5",
           "text-sm",
@@ -103,12 +92,10 @@ function SectionFilterDropdown({
 interface AboutTabContentProps {
   /** Item description for the About section. */
   description: string | null;
-  /** TMDB details (cast, providers, videos, recommendations). */
+  /** TMDB details (cast, providers, videos). */
   tmdbDetails?: TmdbItemDetails | null;
   /** Per-item TMDB display preferences. */
   tmdbDisplayOptions?: TmdbDisplayOptions | null;
-  /** Whether the item is a TV show (affects wiki sections). */
-  isTV: boolean;
   /** Right-side actions for the toolbar (e.g., Add, Edit, Sync). */
   actions?: React.ReactNode;
 }
@@ -121,7 +108,6 @@ export function AboutTabContent({
   description,
   tmdbDetails,
   tmdbDisplayOptions,
-  isTV,
   actions,
 }: AboutTabContentProps) {
   const [sectionFilter, setSectionFilter] = useState("all");
@@ -129,7 +115,7 @@ export function AboutTabContent({
     sectionFilter === "all" || sectionFilter === sectionId;
 
   return (
-    <>
+    <div data-testid="about-tab-content">
       <ContentToolbar
         leftActions={
           <SectionFilterDropdown
@@ -139,11 +125,7 @@ export function AboutTabContent({
         }
         actions={actions}
       />
-      <Section
-        className="py-8"
-        aria-label="About"
-        data-testid="about-tab-content"
-      >
+      <Section className="py-8" aria-label="About">
         <div className="space-y-12">
           {tmdbDisplayOptions?.showCast !== false &&
             isSectionVisible("cast") &&
@@ -164,20 +146,9 @@ export function AboutTabContent({
             tmdbDetails.videos.length > 0 && (
               <VideoRow videos={tmdbDetails.videos} />
             )}
-          {isSectionVisible("wiki") && (
-            <WikiAccordion
-              sections={isTV ? MOCK_WIKI_SECTIONS_TV : MOCK_WIKI_SECTIONS_MOVIE}
-            />
-          )}
-          {tmdbDisplayOptions?.showRecommendations !== false &&
-            isSectionVisible("recommendations") &&
-            tmdbDetails?.recommendations &&
-            tmdbDetails.recommendations.length > 0 && (
-              <Recommendations recommendations={tmdbDetails.recommendations} />
-            )}
         </div>
       </Section>
-    </>
+    </div>
   );
 }
 
