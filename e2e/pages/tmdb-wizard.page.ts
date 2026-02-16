@@ -41,7 +41,9 @@ export class TmdbWizardPage {
     await combobox.waitFor({ state: "visible", timeout: Timeouts.api });
     await combobox.fill(query);
 
-    // Wait for first result option directly (listbox container is always in DOM, hidden via CSS)
+    // Wait for first result option directly (listbox container is always in DOM, hidden via CSS).
+    // .first() is acceptable here: we intentionally want the top search result
+    // and multiple options are expected (e.g., "The Matrix" returns sequels too).
     const firstResult = this.page.getByRole("option").first();
     await firstResult.waitFor({ state: "visible", timeout: Timeouts.api });
     await firstResult.click();

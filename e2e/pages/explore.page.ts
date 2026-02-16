@@ -60,10 +60,7 @@ export class ExplorePage {
 
   /** Toggle the "Exclude Mine" button (rendered in both mobile and desktop toolbars). */
   async toggleExcludeMine() {
-    const btn = this.page
-      .getByRole("button", { name: "Exclude my items" })
-      .and(this.page.locator(":visible"));
-    await btn.click();
+    await this.page.getByTestId("explore-exclude-mine").click();
   }
 
   // ── Item Assertions ─────────────────────────────────────

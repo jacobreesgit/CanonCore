@@ -132,11 +132,7 @@ export class ItemsSortFilterPage {
       await this.openMobileOptionsSheet();
       await this.page.getByRole("option", { name: /grid/i }).click();
     } else {
-      // Open view dropdown by aria-label (matches "View mode: Grid" or "View mode: Tree")
-      await this.page
-        .getByRole("button", { name: /view mode: (grid|tree)/i })
-        .first()
-        .click();
+      await this.page.getByTestId("items-view-dropdown").click();
       await this.page.getByRole("menuitemradio", { name: /grid/i }).click();
     }
   }
@@ -151,10 +147,7 @@ export class ItemsSortFilterPage {
       await this.openMobileOptionsSheet();
       await this.page.getByRole("option", { name: /tree/i }).click();
     } else {
-      await this.page
-        .getByRole("button", { name: /view mode: (grid|tree)/i })
-        .first()
-        .click();
+      await this.page.getByTestId("items-view-dropdown").click();
       await this.page.getByRole("menuitemradio", { name: /tree/i }).click();
     }
   }

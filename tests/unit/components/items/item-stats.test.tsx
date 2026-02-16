@@ -3,68 +3,88 @@
  * Tests icon selection based on mediaIconType and stat display.
  */
 
-import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, within } from "@testing-library/react";
 import { ItemStats } from "@/components/items/item-stats";
+
+// Mock lucide-react icons with distinguishable aria-labels
+vi.mock("lucide-react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("lucide-react")>();
+  return {
+    ...actual,
+    Film: (props: React.SVGProps<SVGSVGElement>) => (
+      <svg {...props} aria-label="film-icon" />
+    ),
+    Music: (props: React.SVGProps<SVGSVGElement>) => (
+      <svg {...props} aria-label="music-icon" />
+    ),
+    FolderOpen: (props: React.SVGProps<SVGSVGElement>) => (
+      <svg {...props} aria-label="folder-open-icon" />
+    ),
+    Folder: (props: React.SVGProps<SVGSVGElement>) => (
+      <svg {...props} aria-label="folder-icon" />
+    ),
+    ImageIcon: (props: React.SVGProps<SVGSVGElement>) => (
+      <svg {...props} aria-label="image-icon" />
+    ),
+    FileText: (props: React.SVGProps<SVGSVGElement>) => (
+      <svg {...props} aria-label="file-text-icon" />
+    ),
+  };
+});
 
 describe("ItemStats", () => {
   describe("mediaIconType icon selection", () => {
     it("renders Film icon when mediaIconType is 'film'", () => {
-      const { container } = render(
+      render(
         <ItemStats
           fileCounts={{ media: 2, artwork: 0, subtitles: 0 }}
           mediaIconType="film"
         />
       );
 
-      // Media stat span has an SVG icon
-      const svg = container.querySelector("svg");
-      expect(svg).toBeInTheDocument();
+      expect(screen.getByLabelText("film-icon")).toBeInTheDocument();
     });
 
     it("renders Music icon when mediaIconType is 'music'", () => {
-      const { container } = render(
+      render(
         <ItemStats
           fileCounts={{ media: 3, artwork: 0, subtitles: 0 }}
           mediaIconType="music"
         />
       );
 
-      const svg = container.querySelector("svg");
-      expect(svg).toBeInTheDocument();
+      expect(screen.getByLabelText("music-icon")).toBeInTheDocument();
+      expect(screen.queryByLabelText("film-icon")).not.toBeInTheDocument();
     });
 
     it("renders FolderOpen icon when mediaIconType is 'mixed'", () => {
-      const { container } = render(
+      render(
         <ItemStats
           fileCounts={{ media: 4, artwork: 0, subtitles: 0 }}
           mediaIconType="mixed"
         />
       );
 
-      const svg = container.querySelector("svg");
-      expect(svg).toBeInTheDocument();
+      expect(screen.getByLabelText("folder-open-icon")).toBeInTheDocument();
+      expect(screen.queryByLabelText("film-icon")).not.toBeInTheDocument();
     });
 
     it("renders Film icon when mediaIconType is null (default)", () => {
-      const { container } = render(
+      render(
         <ItemStats
           fileCounts={{ media: 1, artwork: 0, subtitles: 0 }}
           mediaIconType={null}
         />
       );
 
-      const svg = container.querySelector("svg");
-      expect(svg).toBeInTheDocument();
+      expect(screen.getByLabelText("film-icon")).toBeInTheDocument();
     });
 
     it("renders Film icon when mediaIconType is undefined", () => {
-      const { container } = render(
-        <ItemStats fileCounts={{ media: 1, artwork: 0, subtitles: 0 }} />
-      );
+      render(<ItemStats fileCounts={{ media: 1, artwork: 0, subtitles: 0 }} />);
 
-      const svg = container.querySelector("svg");
-      expect(svg).toBeInTheDocument();
+      expect(screen.getByLabelText("film-icon")).toBeInTheDocument();
     });
   });
 
@@ -81,22 +101,29 @@ describe("ItemStats", () => {
       expect(screen.getByText("1 child")).toBeInTheDocument();
     });
 
-    it("shows media count", () => {
+    it("shows media count next to media icon", () => {
       render(<ItemStats fileCounts={{ media: 3, artwork: 0, subtitles: 0 }} />);
 
-      expect(screen.getByText("3")).toBeInTheDocument();
+      // The count "3" is next to the film icon - verify via sibling relationship
+      const filmIcon = screen.getByLabelText("film-icon");
+      const mediaSpan = filmIcon.closest("span")!;
+      expect(within(mediaSpan).getByText("3")).toBeInTheDocument();
     });
 
-    it("shows artwork count", () => {
+    it("shows artwork count next to image icon", () => {
       render(<ItemStats fileCounts={{ media: 0, artwork: 2, subtitles: 0 }} />);
 
-      expect(screen.getByText("2")).toBeInTheDocument();
+      const imageIcon = screen.getByLabelText("image-icon");
+      const artworkSpan = imageIcon.closest("span")!;
+      expect(within(artworkSpan).getByText("2")).toBeInTheDocument();
     });
 
-    it("shows subtitle count", () => {
+    it("shows subtitle count next to file text icon", () => {
       render(<ItemStats fileCounts={{ media: 0, artwork: 0, subtitles: 4 }} />);
 
-      expect(screen.getByText("4")).toBeInTheDocument();
+      const fileTextIcon = screen.getByLabelText("file-text-icon");
+      const subtitleSpan = fileTextIcon.closest("span")!;
+      expect(within(subtitleSpan).getByText("4")).toBeInTheDocument();
     });
 
     it("returns null when no content and showEmpty is false", () => {

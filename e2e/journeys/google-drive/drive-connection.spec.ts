@@ -6,8 +6,12 @@ import { test, expect } from "../../fixtures";
 import { Timeouts } from "../../config/timeouts";
 
 test.describe("Drive Connection", () => {
-  test("should display Drive connection status", // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async ({ page, settings, testUser: _testUser }) => {
+  test("should display Drive connection status", async ({
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    page,
+    settings,
+    testUser: _testUser,
+  }) => {
     await settings.open();
     await settings.expectOpen();
     await settings.switchToTab("connections");

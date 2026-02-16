@@ -79,7 +79,7 @@ vi.mock("next/image", () => ({
     <img
       src={src}
       alt={alt}
-      className="hero-artwork"
+      aria-label="hero artwork"
       onLoad={onLoad}
       onError={onError}
       {...props}
@@ -118,10 +118,10 @@ vi.mock("@/components/items/metadata-line", () => ({
     voteAverage?: number;
     genres?: string[];
   }) => (
-    <div className="metadata-line">
+    <div aria-label="metadata line">
       {year} {voteAverage}
       {genres && genres.length > 0 && (
-        <span className="metadata-genres">{genres.join(", ")}</span>
+        <span aria-label="metadata genres">{genres.join(", ")}</span>
       )}
     </div>
   ),
@@ -130,7 +130,7 @@ vi.mock("@/components/items/metadata-line", () => ({
 // Mock ProgressBar
 vi.mock("@/components/ui/progress-bar", () => ({
   ProgressBar: ({ progress, label }: { progress: number; label?: string }) => (
-    <div className="progress-bar" data-progress={progress}>
+    <div aria-label="progress bar" data-progress={progress}>
       {label}
     </div>
   ),
@@ -139,7 +139,7 @@ vi.mock("@/components/ui/progress-bar", () => ({
 // Mock HeroAvatar
 vi.mock("@/components/hero/hero-avatar", () => ({
   HeroAvatar: ({ username }: { username: string }) => (
-    <div className="hero-avatar">@{username}</div>
+    <div aria-label="hero avatar">@{username}</div>
   ),
 }));
 
@@ -201,9 +201,9 @@ describe("CinematicHero", () => {
     });
 
     it("should use Next.js Image for artwork", () => {
-      const { container } = render(<CinematicHero slides={mockSlides} />);
+      render(<CinematicHero slides={mockSlides} />);
 
-      const images = container.querySelectorAll(".hero-artwork");
+      const images = screen.getAllByLabelText("hero artwork");
       expect(images.length).toBeGreaterThanOrEqual(1);
       expect(images[0]).toHaveAttribute("src", "/api/artwork/art-1");
     });
@@ -279,19 +279,19 @@ describe("CinematicHero", () => {
           metadata: { year: "2024", voteAverage: 8.5 },
         },
       ];
-      const { container } = render(<CinematicHero slides={slides} />);
+      render(<CinematicHero slides={slides} />);
 
-      expect(container.querySelector(".metadata-line")).toBeInTheDocument();
+      expect(screen.getByLabelText("metadata line")).toBeInTheDocument();
     });
 
     it("should render genres inline in MetadataLine", () => {
       const slides: HeroSlide[] = [
         { ...mockSlides[0], genres: ["Drama", "Crime"] },
       ];
-      const { container } = render(<CinematicHero slides={slides} />);
+      render(<CinematicHero slides={slides} />);
 
-      expect(container.querySelector(".metadata-line")).toBeInTheDocument();
-      expect(container.querySelector(".metadata-genres")).toBeInTheDocument();
+      expect(screen.getByLabelText("metadata line")).toBeInTheDocument();
+      expect(screen.getByLabelText("metadata genres")).toBeInTheDocument();
       expect(screen.getByText("Drama, Crime")).toBeInTheDocument();
     });
   });
@@ -301,9 +301,9 @@ describe("CinematicHero", () => {
       const slides: HeroSlide[] = [
         { ...mockSlides[0], progress: 50, progressLabel: "5/10 watched" },
       ];
-      const { container } = render(<CinematicHero slides={slides} />);
+      render(<CinematicHero slides={slides} />);
 
-      const progressBar = container.querySelector(".progress-bar");
+      const progressBar = screen.getByLabelText("progress bar");
       expect(progressBar).toBeInTheDocument();
       expect(progressBar).toHaveAttribute("data-progress", "50");
     });
@@ -325,7 +325,7 @@ describe("CinematicHero", () => {
       ];
       render(<CinematicHero slides={slides} />);
 
-      expect(document.querySelector(".hero-avatar")).toBeInTheDocument();
+      expect(screen.getByLabelText("hero avatar")).toBeInTheDocument();
       // Username appears in both avatar mock and profile username paragraph
       expect(screen.getAllByText("@filmfan").length).toBeGreaterThanOrEqual(1);
     });
@@ -447,9 +447,9 @@ describe("CinematicHero", () => {
           artworkId: "art-1",
         },
       ];
-      const { container } = render(<CinematicHero slides={slidesWithUrl} />);
+      render(<CinematicHero slides={slidesWithUrl} />);
 
-      const images = container.querySelectorAll(".hero-artwork");
+      const images = screen.getAllByLabelText("hero artwork");
       expect(images[0]).toHaveAttribute("src", "/api/user/hero?userId=123");
     });
 
@@ -457,9 +457,9 @@ describe("CinematicHero", () => {
       const slidesWithNull: HeroSlide[] = [
         { ...mockSlides[0], backgroundUrl: null, artworkId: "art-1" },
       ];
-      const { container } = render(<CinematicHero slides={slidesWithNull} />);
+      render(<CinematicHero slides={slidesWithNull} />);
 
-      const images = container.querySelectorAll(".hero-artwork");
+      const images = screen.getAllByLabelText("hero artwork");
       expect(images[0]).toHaveAttribute("src", "/api/artwork/art-1");
     });
   });

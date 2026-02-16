@@ -25,7 +25,7 @@ export class ItemDetailPage {
     await this.page.goto(`/u/${this.username}`);
     const link = this.page.getByRole("link", { name: itemName });
     const button = this.page.getByRole("button", { name: itemName });
-    const target = link.or(button).first();
+    const target = link.or(button);
     await target.waitFor({ state: "visible", timeout: Timeouts.api });
     await target.click();
     await expect(this.page.getByTestId("item-detail-container")).toBeVisible({
@@ -77,31 +77,17 @@ export class ItemDetailPage {
 
   // ── Tab Switching ───────────────────────────────────────
 
-  /**
-   * Switch to the About tab.
-   * Desktop: clicks the tab by role. Mobile: taps the About tab trigger.
-   */
+  /** Switch to the About tab. */
   async switchToAboutTab() {
-    if (this.isMobile) {
-      await this.page.getByRole("tab", { name: "About" }).click();
-    } else {
-      await this.page.getByRole("tab", { name: "About" }).click();
-    }
+    await this.page.getByRole("tab", { name: "About" }).click();
     await expect(this.page.getByTestId("about-tab-content")).toBeVisible({
       timeout: Timeouts.api,
     });
   }
 
-  /**
-   * Switch to the Contents tab.
-   * Desktop: clicks the tab by role. Mobile: taps the Contents tab trigger.
-   */
+  /** Switch to the Contents tab. */
   async switchToContentsTab() {
-    if (this.isMobile) {
-      await this.page.getByRole("tab", { name: "Contents" }).click();
-    } else {
-      await this.page.getByRole("tab", { name: "Contents" }).click();
-    }
+    await this.page.getByRole("tab", { name: "Contents" }).click();
     await expect(this.page.getByTestId("about-tab-content")).not.toBeVisible({
       timeout: Timeouts.animation,
     });
