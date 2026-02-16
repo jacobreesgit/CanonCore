@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: February 2026 (v7.6.0)
+Last updated: February 2026 (v7.7.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -777,7 +777,7 @@ export const BulkActionsToolbar = memo(function BulkActionsToolbar({ ... }) {
 
 ```
         ┌─────────┐
-        │   E2E   │  ~650 tests (Playwright)
+        │   E2E   │  31 spec files (Playwright)
         │  Tests  │  Real browser, real APIs
         └─────────┘
       ┌─────────────┐
@@ -840,38 +840,62 @@ pnpm run test:integration
 
 ### E2E Tests (Playwright)
 
-**Location:** `e2e/journeys/`
+**Location:** `e2e/journeys/` (31 spec files)
 
-**Pattern:** Page Object Model
+**Pattern:** Page Object Model with composable fixtures
 
 **Test Accounts:**
 
 - 3 seeded users (demo, filmfan for screenshots; testuser for E2E)
 - Password: `SeedPassword123!` for all
+- Per-test user creation via `authenticated.fixture.ts` (unique user per test, cleaned up after)
 
 **Real dependencies:**
 
-- Full Next.js application
-- Real PostgreSQL database
-- Real Google Drive account (test account with refresh token)
+- Full Next.js application (webServer block starts dev server)
+- Real PostgreSQL database (E2E branch via `E2E_DATABASE_URL`)
 - Real TMDB API (uses production API key)
 
 **Fixtures:**
 
-- `e2e/fixtures/auth.ts` - Authentication helpers
-- `e2e/fixtures/database.ts` - Database setup/teardown
-- `e2e/fixtures/google-drive.ts` - Drive API helpers
+- `e2e/fixtures/authenticated.fixture.ts` - Per-test user creation, browser auth injection, cleanup
+- `e2e/fixtures/public.fixture.ts` - Unauthenticated tests (landing, explore, sign-in/up)
+- `e2e/fixtures/drive.fixture.ts` - Drive-specific test fixture
+- `e2e/fixtures/index.ts` - Composed fixture wiring all POMs as fixture properties
 
-**Page Objects:**
+**Page Objects (15 focused POMs):**
 
-- `e2e/pages/items-page.ts` - Items feature interactions
-- `e2e/pages/profile-page.ts` - Profile interactions
-- `e2e/pages/settings-page.ts` - Settings interactions
+- `auth.page.ts` - Sign-in, sign-up, forgot/reset password
+- `explore.page.ts` - Explore carousel, grid, filtering
+- `item-detail.page.ts` - Item detail hero, tabs, metadata
+- `items-crud.page.ts` - Create, delete, empty state, counts
+- `items-drag.page.ts` - Grid and tree drag-and-drop
+- `items-hierarchy.page.ts` - Parent/child navigation, breadcrumbs
+- `items-pinned.page.ts` - Pin/unpin, sidebar list
+- `items-settings.page.ts` - Item settings dialog
+- `items-sort-filter.page.ts` - Sort, filter, view toggle
+- `media.page.ts` - Media player overlay
+- `nav.page.ts` - Sidebar, header, mobile footer
+- `public-profile.page.ts` - Public profile, fork button
+- `settings.page.ts` - Profile settings tabs
+- `spotlight.page.ts` - Spotlight search dialog
+- `tmdb-wizard.page.ts` - TMDB metadata wizard
+
+**Config:**
+
+- `e2e/config/timeouts.ts` - Centralised timeout constants (animation, navigation, api, upload, heavy)
+- `e2e/config/test-data.ts` - Collision-free test data (UUID-based IDs, emails, usernames)
 
 **Projects:**
 
-- Desktop: Chromium 1920x1080
-- Mobile: Chrome (iPhone 14) 390x844
+- Desktop: Chrome (Desktop Chrome)
+- Mobile: Chrome (Pixel 7)
+
+**Selectors:**
+
+- Curated `data-testid` attributes on ~30 components (~85 testids)
+- `slugify()` utility for deterministic item testids: `item-card-${slug}`, `item-tree-${slug}`
+- Unit tests use role-based and text-based selectors (Testing Library best practices)
 
 **Run:**
 
@@ -887,19 +911,11 @@ pnpm run test:e2e:ui                        # UI mode (interactive)
 
 **Location:** `e2e/screenshots/`
 
-35 portfolio screenshots for marketing/documentation:
-
-- 9 main features
-- 4 example libraries
-- 4 dark mode variants
-- 5 detail views
-- 13 UI states
+Portfolio screenshots for marketing/documentation using new POM patterns and fixtures.
 
 **Run:**
 
 ```bash
-pnpm run screenshots
-# or
 npx playwright test --config=e2e/screenshots/playwright.config.ts
 ```
 
@@ -1108,8 +1124,10 @@ See [README.md](./README.md) for full environment variable list.
 
 **Chose POM because:**
 
-- Centralized selectors (change once, updates all tests)
-- Reusable methods (`itemsPage.createItem()` used in 20+ tests)
+- Centralised selectors (change once, updates all tests)
+- 15 focused POMs replace monolithic page objects (single-responsibility per feature area)
+- Reusable methods (`itemsCrud.createItem()` used across multiple tests)
+- Composable fixtures wire POMs as properties — tests destructure only what they need
 - Easier to maintain than inline selectors
 
 **Example:**

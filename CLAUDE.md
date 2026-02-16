@@ -98,6 +98,7 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 - `lib/mock-data.ts` - Static data constants for cinematic UI (wiki sections, about tab filters)
 - `lib/audit-context.ts` - AsyncLocalStorage context for audit logging (userId, source, requestId)
 - `lib/audit-logger.ts` - Prisma extension for automatic mutation logging with redaction
+- `lib/slugify.ts` - URL-safe kebab-case slug generation (used for deterministic `data-testid` values on tree/grid items)
 - `lib/bot-patterns.ts` - Centralised bot lists for robots.txt and proxy middleware
 - `lib/constants/messages.ts` - Centralised user-facing messages (SYNC, SETTINGS, ITEM, DRIVE)
 - `lib/types.ts` - Shared TypeScript types (includes `TmdbDisplayOptions`, `DEFAULT_TMDB_DISPLAY`, `ContentFilter`, `CONTENT_FILTERS`, `SORT_OPTIONS_TUPLE`, `VIEW_MODES`); `ItemWithArtwork` and `SearchableItem` include `tmdbPosterPath`/`tmdbBackdropPath` for CDN-first image resolution
@@ -116,10 +117,10 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 - `tests/unit/` - Vitest unit tests with mocks
 - `tests/integration/` - Vitest integration tests with real DB
 - `tests/integration/audit/` - Audit logger integration tests
-- `e2e/journeys/` - Playwright E2E tests by feature
-- `e2e/journeys/items/heavy-serial.spec.ts` - Heavy tests forced serial (`test.describe.configure({ mode: "serial" })`) to avoid parallel timeout failures
-- `e2e/pages/` - Page Object Models
-- `e2e/fixtures/` - Reusable test fixtures
+- `e2e/journeys/` - Playwright E2E tests by feature (31 spec files)
+- `e2e/pages/` - 15 focused Page Object Models (auth, explore, item-detail, items-crud, items-drag, items-hierarchy, items-pinned, items-settings, items-sort-filter, media, nav, public-profile, settings, spotlight, tmdb-wizard)
+- `e2e/fixtures/` - Composable test fixtures (authenticated, public, drive)
+- `e2e/config/` - Centralised timeouts and collision-free test data utilities
 
 ### Authentication
 
@@ -427,11 +428,12 @@ pnpm run seed:e2e          # Seeds E2E Neon branch
 
 **E2E Tests (Playwright):**
 
-- ~650 tests across desktop Chrome and mobile Chrome (iPhone 14)
-- Page Object Model pattern in `e2e/pages/` (includes `mobile-footer.page.ts`)
-- Helpers in `e2e/helpers/` (includes `mobile-nav-helpers.ts`)
-- Fixtures in `e2e/fixtures/` for auth, DB, Google Drive
-- Google Drive tests use real test account with refresh token
+- 31 spec files across desktop Chrome and mobile Chrome (Pixel 7)
+- 15 focused Page Object Models in `e2e/pages/` (auth, explore, item-detail, items-crud, items-drag, items-hierarchy, items-pinned, items-settings, items-sort-filter, media, nav, public-profile, settings, spotlight, tmdb-wizard)
+- Composable fixtures in `e2e/fixtures/` (authenticated, public, drive) with per-test user creation and cleanup
+- Centralised timeouts (`e2e/config/timeouts.ts`) and collision-free test data (`e2e/config/test-data.ts`)
+- Curated `data-testid` attributes on ~30 components for targeted E2E selectors
+- `slugify()` utility generates deterministic testids: `item-card-${slugify(name)}`, `item-tree-${slugify(name)}`
 - Run: `pnpm run test:e2e`
 
 **Storybook (Component Documentation):**
