@@ -27,6 +27,7 @@ import {
 import { AddItemDialog } from "./add-item-dialog";
 import { MoreHorizontal, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { slugify } from "@/lib/slugify";
 import { renderMenuItems, type ItemMenuActions } from "./item-context-menu";
 
 interface ItemMoreButtonProps extends ItemMenuActions {
@@ -70,6 +71,7 @@ export function ItemMoreButton({ className, ...actions }: ItemMoreButtonProps) {
           <button
             type="button"
             aria-label="More options"
+            data-testid={`item-more-${slugify(itemName)}`}
             onClick={(e) => e.stopPropagation()}
             className={cn(
               "flex size-7 items-center justify-center",

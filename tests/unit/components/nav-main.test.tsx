@@ -51,11 +51,7 @@ vi.mock("@/components/ui/sidebar", () => ({
   }: {
     children: React.ReactNode;
     className?: string;
-  }) => (
-    <div className={className}>
-      {children}
-    </div>
-  ),
+  }) => <div className={className}>{children}</div>,
   SidebarMenu: ({ children }: { children: React.ReactNode }) => (
     <ul>{children}</ul>
   ),

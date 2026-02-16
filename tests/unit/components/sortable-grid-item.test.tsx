@@ -76,13 +76,12 @@ describe("SortableGridItem", () => {
   });
 
   it("wraps content in ItemContextMenu", () => {
-    const { container } = renderWithDnd(<SortableGridItem id="item-1" name="Test Item" />);
+    const { container } = renderWithDnd(
+      <SortableGridItem id="item-1" name="Test Item" />
+    );
     const contextMenu = container.querySelector(".context-menu");
     expect(contextMenu).toBeInTheDocument();
-    expect(contextMenu).toHaveAttribute(
-      "data-item-name",
-      "Test Item"
-    );
+    expect(contextMenu).toHaveAttribute("data-item-name", "Test Item");
   });
 
   it("passes driveFileId to context menu", () => {

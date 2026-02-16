@@ -68,6 +68,7 @@ export const BulkActionsToolbar = memo(function BulkActionsToolbar({
               damping: 30,
             }
       }
+      data-testid="items-bulk-toolbar"
       className={cn(
         "fixed right-0 bottom-0 left-0 z-50",
         "pointer-events-none flex justify-center",
@@ -122,6 +123,7 @@ export const BulkActionsToolbar = memo(function BulkActionsToolbar({
               variant="ghost"
               size="sm"
               onClick={isAllSelected ? onDeselectAll : onSelectAll}
+              data-testid="items-bulk-select-all"
             >
               {isAllSelected ? "Deselect All" : "Select All"}
             </Button>
@@ -131,6 +133,7 @@ export const BulkActionsToolbar = memo(function BulkActionsToolbar({
               size="sm"
               onClick={onDelete}
               disabled={isDeleting || selectionCount === 0}
+              data-testid="items-bulk-delete"
               className={cn(
                 "gap-2 shadow-sm transition-all",
                 "hover:shadow-md"

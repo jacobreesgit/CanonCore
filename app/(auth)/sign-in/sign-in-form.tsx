@@ -107,6 +107,7 @@ export function SignInForm() {
 
           <div
             id="sign-in-error"
+            data-testid="sign-in-error-message"
             className={
               error
                 ? "bg-destructive/10 text-destructive w-full rounded-md px-4 py-3 text-center text-sm"
@@ -128,6 +129,7 @@ export function SignInForm() {
                 autoComplete="email"
                 spellCheck={false}
                 placeholder="your.email@example.com"
+                data-testid="sign-in-email-input"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -151,6 +153,7 @@ export function SignInForm() {
                 name="password"
                 autoComplete="current-password"
                 placeholder="Password"
+                data-testid="sign-in-password-input"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -164,6 +167,7 @@ export function SignInForm() {
               className="w-full"
               size="lg"
               disabled={loading}
+              data-testid="sign-in-submit-button"
             >
               {loading ? "Signing in..." : "Sign in"}
             </Button>

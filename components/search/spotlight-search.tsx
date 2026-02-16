@@ -320,12 +320,14 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
     <CommandDialog
       open={open}
       onOpenChange={handleOpenChange}
+      data-testid="spotlight-dialog"
     >
       <CommandInput
         placeholder="Search items and people…"
         className="border-none focus:ring-0"
         value={searchValue}
         onValueChange={setSearchValue}
+        data-testid="spotlight-input"
       />
       <CommandList
         ref={listRef}

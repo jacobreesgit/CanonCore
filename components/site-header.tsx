@@ -164,6 +164,7 @@ export function SiteHeader({
 
   return (
     <header
+      data-testid="nav-header"
       className={cn(
         "bg-background sticky top-0 z-50 hidden shrink-0 flex-col border-b transition-[transform,opacity] duration-300 ease-out lg:flex",
         !isVisible && "-translate-y-full opacity-0"
@@ -171,6 +172,7 @@ export function SiteHeader({
     >
       <div className="flex h-(--header-height) w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
         <SidebarTrigger
+          data-testid="sidebar-trigger"
           className="-ml-1 cursor-pointer"
         />
         <Separator
@@ -181,6 +183,7 @@ export function SiteHeader({
         {/* Breadcrumb Navigation */}
         <nav
           aria-label="Breadcrumb"
+          data-testid="nav-breadcrumb"
           className="flex min-w-0 flex-1 items-center gap-1 text-sm"
         >
           {/* Root link */}

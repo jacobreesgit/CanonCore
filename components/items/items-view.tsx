@@ -656,6 +656,7 @@ export function ItemsView({
       {currentLevelItems.length === 0 ? (
         <Section
           className="flex flex-1 flex-col"
+          data-testid="items-empty-state"
         >
           <EmptyState
             variant={emptyStateVariant}
@@ -672,6 +673,8 @@ export function ItemsView({
           onItemClick={handleItemClick}
           onOpenSettings={handleOpenSettings}
           onDeleteItem={handleDeleteItem}
+          onAddChild={handleAddChild}
+          onAddChildComplete={refetchItems}
           onPinItem={handlePinItem}
           onUnpinItem={handleUnpinItem}
           hasDriveConnection={hasDriveConnection}

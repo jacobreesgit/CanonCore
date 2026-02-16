@@ -1272,6 +1272,7 @@ export function AddItemDialog({
                 variant="ghost"
                 onClick={wizardFooterProps.onSkipAll}
                 disabled={wizardFooterProps.isDisabled}
+                data-testid="tmdb-wizard-skip-all"
               >
                 Skip All
               </Button>
@@ -1280,6 +1281,7 @@ export function AddItemDialog({
               type="button"
               onClick={wizardFooterProps.onNext}
               disabled={wizardFooterProps.isDisabled}
+              data-testid="tmdb-wizard-next"
             >
               {wizardFooterProps.isLastStep ? "Apply" : "Next"}
               {!wizardFooterProps.isLastStep && (
@@ -1303,6 +1305,7 @@ export function AddItemDialog({
               <Button
                 onClick={handleSubmit}
                 disabled={!name.trim() || isLoading || isUploading}
+                data-testid="wizard-summary-create"
               >
                 {isLoading ? (
                   <>

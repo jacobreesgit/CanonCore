@@ -7,6 +7,12 @@ import { randomUUID } from "crypto";
 /** Default test password meeting validation requirements (8+ chars, uppercase, lowercase, number). */
 export const TEST_PASSWORD = "TestPassword123!";
 
+/** E2E Drive test user credentials (pre-created by setup:e2e-drive). */
+export const E2E_DRIVE_USER = {
+  email: "e2e-drive-test@canoncore.test",
+  password: "TestPassword123",
+} as const;
+
 /** Seed user credentials (pre-seeded in E2E database). */
 export const SEED_USERS = {
   demo: {

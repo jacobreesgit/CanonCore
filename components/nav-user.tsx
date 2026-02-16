@@ -78,6 +78,7 @@ export function NavUser({ user, driveConnection }: NavUserProps) {
             <SidebarMenuButton
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer"
+              data-testid="my-items-user-menu"
             >
               <Avatar className="size-8 rounded-full grayscale">
                 <AvatarImage src={user.avatar} alt={user.name} />
@@ -135,12 +136,14 @@ export function NavUser({ user, driveConnection }: NavUserProps) {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => setProfileDialogOpen(true)}
+              data-testid="my-items-settings-button"
             >
               <Settings aria-hidden="true" />
               Settings
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={handleSignOut}
+              data-testid="my-items-sign-out-button"
             >
               <LogOut aria-hidden="true" />
               Log out

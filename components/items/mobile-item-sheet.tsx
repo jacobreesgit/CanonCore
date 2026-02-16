@@ -666,6 +666,7 @@ export function MobileItemSheet({
         swipeable
         title="Item Options"
         description="Sort, filter, and configure your item"
+        data-testid="sheet-item-options"
         className={cn(
           "bg-[#1a1a1a]/95 backdrop-blur-xl",
           "border-t border-white/[0.08]",

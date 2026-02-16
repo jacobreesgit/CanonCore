@@ -121,7 +121,7 @@ function ViewDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger
         disabled={disabled}
-
+        data-testid="items-view-dropdown"
         aria-label={`View mode: ${current.label}`}
         className={cn(
           "inline-flex items-center gap-2 rounded-md px-3 py-1.5",
@@ -227,6 +227,10 @@ interface ContentToolbarProps {
   // --- Mobile settings (optional) ---
   /** When provided, mobile renders combined MobileItemSheet instead of MobileOptionsSheet. */
   mobileSettings?: MobileSettingsConfig;
+
+  // --- Test IDs (optional) ---
+  /** Test ID for the sort dropdown trigger. */
+  sortTestId?: string;
 }
 
 /**
@@ -261,6 +265,7 @@ export function ContentToolbar({
   leftActions,
   actions,
   mobileSettings,
+  sortTestId,
 }: ContentToolbarProps) {
   const hasSort = sortBy !== undefined && onSortChange !== undefined;
   const hasFilter =
@@ -357,6 +362,7 @@ export function ContentToolbar({
                 onChange={onSortChange}
                 disabled={disabled}
                 options={sortOptions}
+                data-testid={sortTestId}
               />
             )}
             {hasFilter && (

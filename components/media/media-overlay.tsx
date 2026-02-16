@@ -125,6 +125,7 @@ export function MediaOverlay({
     <div
       ref={overlayRef}
       className="fixed inset-0 z-50 bg-black"
+      data-testid="media-player"
       role="dialog"
       aria-modal="true"
       aria-label={`Playing ${file.filename}`}

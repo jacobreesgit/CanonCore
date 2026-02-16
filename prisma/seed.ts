@@ -24,7 +24,7 @@
  *   SEED_TARGET selects which DATABASE_URL and root folder to use:
  *     - development: DATABASE_URL + GOOGLE_SEED_ROOT_FOLDER_ID (defaults)
  *     - production:  SEED_PRODUCTION_DATABASE_URL + SEED_PRODUCTION_ROOT_FOLDER_ID
- *     - e2e:         E2E_DATABASE_URL + SEED_E2E_ROOT_FOLDER_ID
+ *     - e2e:         SCREENSHOT_DATABASE_URL + SEED_E2E_ROOT_FOLDER_ID
  *
  * Required Environment Variables:
  *   - ALLOW_SEEDING: Must be "true" to run (prevents accidental seeding)
@@ -97,11 +97,13 @@ function resolveSeedTarget(): SeedTarget {
     }
 
     case "e2e": {
-      const e2eDbUrl = process.env.E2E_DATABASE_URL;
+      const e2eDbUrl = process.env.SCREENSHOT_DATABASE_URL;
       const e2eRootFolder = process.env.SEED_E2E_ROOT_FOLDER_ID;
 
       if (!e2eDbUrl) {
-        console.error("❌ E2E_DATABASE_URL is required when SEED_TARGET=e2e");
+        console.error(
+          "❌ SCREENSHOT_DATABASE_URL is required when SEED_TARGET=e2e"
+        );
         process.exit(1);
       }
       if (!e2eRootFolder) {

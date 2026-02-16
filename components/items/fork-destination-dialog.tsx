@@ -380,6 +380,7 @@ export function ForkDestinationDialog({
           (CSS hidden wrappers don't prevent portal-based dialogs rendering to <body>) */}
       <Dialog open={open && !isMobile} onOpenChange={onOpenChange}>
         <DialogContent
+          data-testid="dialog-fork-destination"
           className={cn(
             "sm:max-w-md",
             "bg-[#1a1a1a]/95 backdrop-blur-xl",
@@ -458,6 +459,7 @@ export function ForkDestinationDialog({
         repositionInputs
         title="Fork to Library"
         description={`Choose where to add "${itemName}" in your library`}
+        data-testid="sheet-fork-destination"
         className={cn(
           "bg-[#1a1a1a]/95 backdrop-blur-xl",
           "border-t border-white/[0.08]",

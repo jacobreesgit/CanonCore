@@ -664,7 +664,6 @@ export function SettingsDialog({
             <Button
               onClick={handleMainSave}
               disabled={!isDirty || isMainSaving}
-
             >
               {isMainSaving ? (
                 <>
@@ -687,11 +686,7 @@ export function SettingsDialog({
             >
               Cancel
             </Button>
-            <Button
-              onClick={handlePasswordSubmit}
-              disabled={isPasswordSaving}
-
-            >
+            <Button onClick={handlePasswordSubmit} disabled={isPasswordSaving}>
               {isPasswordSaving ? (
                 <>
                   <Loader2 aria-hidden="true" className="size-4 animate-spin" />
@@ -735,11 +730,7 @@ export function SettingsDialog({
             >
               Cancel
             </Button>
-            <Button
-              onClick={handleUsernameSubmit}
-              disabled={isUsernameSaving}
-
-            >
+            <Button onClick={handleUsernameSubmit} disabled={isUsernameSaving}>
               {isUsernameSaving ? (
                 <>
                   <Loader2 aria-hidden="true" className="size-4 animate-spin" />
@@ -766,16 +757,19 @@ export function SettingsDialog({
         return (
           <Tabs defaultValue={defaultTab} className="w-full">
             <TabsList className="mb-4 grid w-full grid-cols-4">
-              <TabsTrigger value="profile">
+              <TabsTrigger value="profile" data-testid="settings-tab-profile">
                 Profile
               </TabsTrigger>
-              <TabsTrigger value="account">
+              <TabsTrigger value="account" data-testid="settings-tab-account">
                 Account
               </TabsTrigger>
-              <TabsTrigger value="connections">
+              <TabsTrigger
+                value="connections"
+                data-testid="settings-tab-connections"
+              >
                 Connections
               </TabsTrigger>
-              <TabsTrigger value="activity">
+              <TabsTrigger value="activity" data-testid="settings-tab-activity">
                 Activity
               </TabsTrigger>
             </TabsList>
@@ -803,7 +797,6 @@ export function SettingsDialog({
                           ? `url(${heroImageSrc})`
                           : undefined,
                       }}
-
                     >
                       <div className="absolute inset-0 bg-black/20" />
                       <div className="absolute right-3 bottom-3 flex gap-2">
@@ -849,10 +842,7 @@ export function SettingsDialog({
                         maxFiles={1}
                         maxSize={2 * 1024 * 1024}
                       >
-                        <div
-                          className="relative"
-
-                        >
+                        <div className="relative">
                           <Avatar className="border-card size-24 border-4 shadow-lg sm:size-28">
                             <AvatarImage
                               src={profileImageSrc || undefined}
@@ -989,7 +979,6 @@ export function SettingsDialog({
                     </div>
                     <Switch
                       id="settings-public"
-
                       checked={isPublic}
                       onCheckedChange={handlePublicToggle}
                     />
@@ -1024,7 +1013,6 @@ export function SettingsDialog({
                         type="button"
                         variant="outline"
                         size="sm"
-
                         onClick={() => setCurrentStep("username")}
                       >
                         Change Username
@@ -1143,7 +1131,6 @@ export function SettingsDialog({
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="Enter current password"
                 className="h-10"
-
               />
             </div>
 
@@ -1157,7 +1144,6 @@ export function SettingsDialog({
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Enter new password"
                 className="h-10"
-
               />
             </div>
 
@@ -1173,7 +1159,6 @@ export function SettingsDialog({
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Repeat new password"
                 className="h-10"
-
               />
             </div>
 
@@ -1251,7 +1236,6 @@ export function SettingsDialog({
                     )
                   }
                   placeholder="Enter new username"
-
                   className={cn(
                     "h-10 pr-10",
                     newUsername &&
@@ -1288,29 +1272,21 @@ export function SettingsDialog({
                 )}
               </div>
               {newUsername && usernameValidation.error && (
-                <p
-                  role="alert"
-                  className="text-destructive text-xs"
-                >
+                <p role="alert" className="text-destructive text-xs">
                   {usernameValidation.error}
                 </p>
               )}
               {newUsername &&
                 usernameValidation.isAvailable === false &&
                 !usernameValidation.error && (
-                  <p
-                    role="alert"
-                    className="text-destructive text-xs"
-                  >
+                  <p role="alert" className="text-destructive text-xs">
                     Username is already taken
                   </p>
                 )}
               {newUsername &&
                 usernameValidation.isValidFormat &&
                 usernameValidation.isAvailable === true && (
-                  <p
-                    className="text-xs text-green-500"
-                  >
+                  <p className="text-xs text-green-500">
                     Username is available
                   </p>
                 )}
@@ -1330,7 +1306,6 @@ export function SettingsDialog({
                 onChange={(e) => setUsernamePassword(e.target.value)}
                 placeholder="Verify with your password"
                 className="h-10"
-
               />
               <p className="text-muted-foreground text-xs">
                 Password required to confirm this change.
@@ -1349,7 +1324,7 @@ export function SettingsDialog({
         <AnimatedDialogContent
           stepKey={currentStep}
           className="max-h-[90vh] sm:max-w-2xl"
-
+          data-testid="dialog-settings"
           header={getStepHeader()}
           footer={getStepFooter()}
         >
@@ -1382,13 +1357,8 @@ export function SettingsDialog({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>
-              Keep Private
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handlePublicConfirm}
-
-            >
+            <AlertDialogCancel>Keep Private</AlertDialogCancel>
+            <AlertDialogAction onClick={handlePublicConfirm}>
               Make Public
             </AlertDialogAction>
           </AlertDialogFooter>

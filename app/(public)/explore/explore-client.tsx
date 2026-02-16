@@ -61,7 +61,7 @@ export function ExploreClient({
   currentUser,
 }: ExploreClientProps) {
   const router = useRouter();
-  const { sortBy, setSortBy, excludeMine, setExcludeMine } =
+  const { sortBy, setSortBy, excludeMine, setExcludeMine, autoplay } =
     useExploreUrlState();
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(
@@ -249,6 +249,7 @@ export function ExploreClient({
   const hero = hasFeatured ? (
     <CinematicHero
       slides={carouselSlides}
+      autoAdvanceInterval={autoplay ? 5000 : 0}
       renderActions={(slide) => {
         const item = featuredItems.find((i) => i.id === slide.id);
         if (!item) return null;
@@ -269,7 +270,10 @@ export function ExploreClient({
             {item.ownerUserId !== currentUser?.id && (
               <>
                 {currentUser ? (
-                  <HeroButton onClick={() => handleForkClick(slide.id)}>
+                  <HeroButton
+                    data-testid="hero-fork-button"
+                    onClick={() => handleForkClick(slide.id)}
+                  >
                     <Copy className="size-4" aria-hidden="true" />
                     Fork
                   </HeroButton>
@@ -298,6 +302,7 @@ export function ExploreClient({
         disabled={!hasItems}
         sortOptions={EXPLORE_SORT_OPTIONS}
         defaultSort="updated-desc"
+        sortTestId="explore-sort-dropdown"
         leftActions={
           currentUser ? (
             <button
@@ -312,6 +317,7 @@ export function ExploreClient({
               )}
               aria-pressed={excludeMine}
               aria-label="Exclude my items"
+              data-testid="explore-exclude-mine"
             >
               <UserX aria-hidden="true" className="size-4" />
               <span className="hidden sm:inline">Exclude Mine</span>
@@ -325,16 +331,11 @@ export function ExploreClient({
         <div className="flex flex-col">
           {/* Pinned section (current user's pinned items only) */}
           {pinnedExploreItems.length > 0 && (
-            <Section
-              className="py-8"
-              aria-label="Pinned items"
-            >
+            <Section className="py-8" aria-label="Pinned items">
               <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
                 Pinned
               </h2>
-              <div
-                className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6"
-              >
+              <div className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6">
                 {pinnedExploreItems.map((item, index) => {
                   const gridItem = (
                     <GridItem
@@ -393,18 +394,13 @@ export function ExploreClient({
           )}
 
           {/* Library section */}
-          <Section
-            className="py-8"
-            aria-label="Library"
-          >
+          <Section className="py-8" aria-label="Library">
             {pinnedExploreItems.length > 0 && (
               <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
                 Library
               </h2>
             )}
-            <div
-              className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6"
-            >
+            <div className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6">
               {unpinnedExploreItems.map((item, index) => {
                 const isOwnItem = currentUser?.id === item.userId;
                 const ownerHref = isOwnItem

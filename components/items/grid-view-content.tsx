@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ItemContextMenu } from "./item-context-menu";
 import { GridItem } from "@/components/sortable-grid/grid-item";
 import type { ItemWithArtwork } from "@/lib/types";
+import type { CreateItemResult } from "./add-item-dialog";
 
 /** Loading skeleton for grid view during edit mode chunk load. */
 function GridSkeleton() {
@@ -58,6 +59,14 @@ interface GridViewContentProps {
   onPinItem: (id: string) => Promise<void>;
   /** Callback to unpin an item from the sidebar. */
   onUnpinItem: (id: string) => Promise<void>;
+  /** Callback to add a child item. */
+  onAddChild?(
+    parentId: string,
+    name: string,
+    description?: string
+  ): Promise<CreateItemResult>;
+  /** Callback to refresh data after child item is created. */
+  onAddChildComplete?(): Promise<void>;
   /** Whether Google Drive is connected. */
   hasDriveConnection: boolean;
   /** Check if an item is selected (for bulk operations). */
@@ -84,6 +93,8 @@ export function GridViewContent({
   onDeleteItem,
   onPinItem,
   onUnpinItem,
+  onAddChild,
+  onAddChildComplete,
   hasDriveConnection,
   isItemSelected,
   onItemSelectChange,
@@ -123,10 +134,14 @@ export function GridViewContent({
                 key={item.id}
                 itemName={item.name}
                 driveFileId={item.driveFileId}
-                showAddChild={false}
+                showAddChild={true}
                 isPinned={true}
                 onSettings={() => onOpenSettings(item.id)}
                 onDelete={() => onDeleteItem(item.id)}
+                onAddChild={
+                  onAddChild ? (n, d) => onAddChild(item.id, n, d) : undefined
+                }
+                onAddChildComplete={onAddChildComplete}
                 hasDriveConnection={hasDriveConnection}
                 onPin={() => onPinItem(item.id)}
                 onUnpin={() => onUnpinItem(item.id)}
@@ -150,9 +165,13 @@ export function GridViewContent({
                     driveFileId: item.driveFileId,
                     hasDriveConnection,
                     isPinned: true,
-                    showAddChild: false,
+                    showAddChild: true,
                     onSettings: () => onOpenSettings(item.id),
                     onDelete: () => onDeleteItem(item.id),
+                    onAddChild: onAddChild
+                      ? (n, d) => onAddChild(item.id, n, d)
+                      : undefined,
+                    onAddChildComplete,
                     onPin: () => onPinItem(item.id),
                     onUnpin: () => onUnpinItem(item.id),
                   }}
@@ -177,10 +196,14 @@ export function GridViewContent({
                 key={item.id}
                 itemName={item.name}
                 driveFileId={item.driveFileId}
-                showAddChild={false}
+                showAddChild={true}
                 isPinned={false}
                 onSettings={() => onOpenSettings(item.id)}
                 onDelete={() => onDeleteItem(item.id)}
+                onAddChild={
+                  onAddChild ? (n, d) => onAddChild(item.id, n, d) : undefined
+                }
+                onAddChildComplete={onAddChildComplete}
                 hasDriveConnection={hasDriveConnection}
                 onPin={() => onPinItem(item.id)}
                 onUnpin={() => onUnpinItem(item.id)}
@@ -204,9 +227,13 @@ export function GridViewContent({
                     driveFileId: item.driveFileId,
                     hasDriveConnection,
                     isPinned: false,
-                    showAddChild: false,
+                    showAddChild: true,
                     onSettings: () => onOpenSettings(item.id),
                     onDelete: () => onDeleteItem(item.id),
+                    onAddChild: onAddChild
+                      ? (n, d) => onAddChild(item.id, n, d)
+                      : undefined,
+                    onAddChildComplete,
                     onPin: () => onPinItem(item.id),
                     onUnpin: () => onUnpinItem(item.id),
                   }}

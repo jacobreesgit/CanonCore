@@ -6,6 +6,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { slugify } from "@/lib/slugify";
 import { ProgressBar } from "@/components/ui/progress-bar";
 
 interface PosterCardProps {
@@ -152,6 +153,7 @@ export function PosterCard({
         type="button"
         onClick={onClick}
         aria-label={ariaLabel}
+        data-testid={`item-card-${slugify(title)}`}
         className={sharedClassName}
       >
         {content}
@@ -163,6 +165,7 @@ export function PosterCard({
     <Link
       href={href}
       aria-label={ariaLabel}
+      data-testid={`item-card-${slugify(title)}`}
       className={sharedClassName}
     >
       {content}

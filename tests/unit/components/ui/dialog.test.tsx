@@ -21,7 +21,9 @@ describe("DialogFooter", () => {
 
     // Footer is the parent of the Save button
     const saveButton = screen.getByRole("button", { name: "Save" });
-    const footer = saveButton.closest("[data-slot='dialog-footer']") || saveButton.parentElement!;
+    const footer =
+      saveButton.closest("[data-slot='dialog-footer']") ||
+      saveButton.parentElement!;
     expect(footer.className).toContain("shrink-0");
   });
 
@@ -37,7 +39,9 @@ describe("DialogFooter", () => {
     );
 
     const saveButton = screen.getByRole("button", { name: "Save" });
-    const footer = saveButton.closest("[data-slot='dialog-footer']") || saveButton.parentElement!;
+    const footer =
+      saveButton.closest("[data-slot='dialog-footer']") ||
+      saveButton.parentElement!;
     expect(footer.className).toContain("gap-2");
   });
 });

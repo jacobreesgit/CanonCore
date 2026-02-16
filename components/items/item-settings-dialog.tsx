@@ -538,6 +538,7 @@ export function ItemSettingsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <AnimatedDialogContent
+        data-testid="dialog-item-settings"
         stepKey={form.currentStep}
         className="max-h-[90vh] sm:max-w-2xl"
         header={getStepHeader()}

@@ -91,11 +91,7 @@ vi.mock("next/image", () => ({
 vi.mock("next/dynamic", () => ({
   default: () =>
     function MockShader(props: Record<string, unknown>) {
-      return (
-        <div {...props}>
-          Shader
-        </div>
-      );
+      return <div {...props}>Shader</div>;
     },
 }));
 
@@ -243,13 +239,13 @@ describe("CinematicHero", () => {
       render(
         <CinematicHero
           slides={mockSlides}
-          renderActions={(slide) => (
-            <button>{slide.name} action</button>
-          )}
+          renderActions={(slide) => <button>{slide.name} action</button>}
         />
       );
 
-      expect(screen.getByRole("button", { name: "Breaking Bad action" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Breaking Bad action" })
+      ).toBeInTheDocument();
     });
   });
 
@@ -485,7 +481,9 @@ describe("CinematicHero", () => {
         { ...mockSlides[0], artworkId: null, backgroundUrl: null },
       ];
 
-      const { container } = render(<CinematicHero slides={slidesWithoutArt} disableShader />);
+      const { container } = render(
+        <CinematicHero slides={slidesWithoutArt} disableShader />
+      );
 
       // Gradient fallback should NOT have shader content
       expect(screen.queryByText("Shader")).not.toBeInTheDocument();

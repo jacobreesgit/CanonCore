@@ -81,13 +81,7 @@ export function ItemStats({
     variant === "overlay" ? "text-white/60" : "text-muted-foreground";
 
   if (!hasContent && showEmpty) {
-    return (
-      <span
-        className={cn("text-sm", emptyClass, className)}
-      >
-        Empty
-      </span>
-    );
+    return <span className={cn("text-sm", emptyClass, className)}>Empty</span>;
   }
 
   // Text format: "x2 children, x3 media, x1 artwork"
@@ -109,9 +103,7 @@ export function ItemStats({
     }
 
     return (
-      <span
-        className={cn("text-sm", textClass, className)}
-      >
+      <span className={cn("text-sm", textClass, className)}>
         {parts.join(", ")}
       </span>
     );

@@ -146,12 +146,13 @@ export function NavMain({ items, pinnedItems = [], username }: NavMainProps) {
 
   return (
     <>
-      <SidebarGroup>
+      <SidebarGroup data-testid="nav-sidebar">
         <SidebarGroupContent>
           <SidebarMenu>
             {spotlight && (
               <SidebarMenuItem>
                 <SidebarMenuButton
+                  data-testid="nav-search-button"
                   onClick={spotlight.openSpotlight}
                   tooltip="Search"
                   className="group"

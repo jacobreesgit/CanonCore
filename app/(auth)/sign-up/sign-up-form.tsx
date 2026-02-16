@@ -146,6 +146,7 @@ export function SignUpForm() {
 
           <div
             id="sign-up-error"
+            data-testid="sign-up-error-message"
             className={
               error
                 ? "bg-destructive/10 text-destructive w-full rounded-md px-4 py-3 text-center text-sm"
@@ -162,6 +163,7 @@ export function SignUpForm() {
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
+                data-testid="sign-up-email-input"
                 name="email"
                 type="email"
                 autoComplete="email"
@@ -185,6 +187,7 @@ export function SignUpForm() {
               <div className="relative">
                 <Input
                   id="username"
+                  data-testid="sign-up-username-input"
                   name="username"
                   type="text"
                   autoComplete="username"
@@ -246,13 +249,13 @@ export function SignUpForm() {
               <Label htmlFor="password">Password</Label>
               <PasswordInput
                 id="password"
+                data-testid="sign-up-password-input"
                 name="new-password"
                 autoComplete="new-password"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={8}
                 aria-invalid={!!error}
                 aria-describedby={error ? "sign-up-error" : undefined}
               />
@@ -262,6 +265,7 @@ export function SignUpForm() {
               <Label htmlFor="confirmPassword">Confirm password</Label>
               <PasswordInput
                 id="confirmPassword"
+                data-testid="sign-up-confirm-password-input"
                 name="confirm-password"
                 autoComplete="new-password"
                 placeholder="Confirm password"
@@ -275,6 +279,7 @@ export function SignUpForm() {
 
             <Button
               type="submit"
+              data-testid="sign-up-submit-button"
               className="w-full"
               size="lg"
               disabled={loading}

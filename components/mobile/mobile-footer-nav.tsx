@@ -79,6 +79,16 @@ export function MobileFooterNav({
   const isMobile = useIsMobile();
   const pathname = usePathname();
 
+  // Map item labels to data-testid values
+  const labelToTestId: Record<string, string> = {
+    "My Items": "nav-mobile-my-items",
+    Explore: "nav-mobile-explore",
+    Search: "nav-mobile-search",
+    Help: "nav-mobile-help",
+    Account: "nav-mobile-account",
+    "Sign In": "nav-mobile-sign-in",
+  };
+
   // Don't render on desktop (unless forceShow is true for Storybook)
   if (!isMobile && !forceShow) {
     return null;
@@ -87,6 +97,7 @@ export function MobileFooterNav({
   return (
     <nav
       aria-label="Mobile navigation"
+      data-testid="nav-mobile-footer"
       className={cn(
         "fixed inset-x-0 bottom-0 z-40",
         "flex h-16 items-center justify-around",
@@ -121,6 +132,7 @@ export function MobileFooterNav({
               href={item.href}
               aria-label={item.ariaLabel}
               aria-current={isActive ? "page" : undefined}
+              data-testid={labelToTestId[item.label]}
               className={cn(
                 "flex flex-1 flex-col items-center justify-center gap-0.5",
                 "min-h-[44px] min-w-[44px]",
@@ -154,6 +166,7 @@ export function MobileFooterNav({
             key={item.label}
             type="button"
             aria-label={item.ariaLabel}
+            data-testid={labelToTestId[item.label]}
             onClick={() => item.sheet && onSheetOpen?.(item.sheet)}
             className={cn(
               "flex flex-1 flex-col items-center justify-center gap-0.5",

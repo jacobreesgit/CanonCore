@@ -37,4 +37,5 @@ export const exploreParsers = {
     "updated-desc"
   ),
   excludeMine: parseAsBoolean.withDefault(false),
+  autoplay: parseAsBoolean.withDefault(true),
 };
