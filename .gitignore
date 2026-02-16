@@ -75,7 +75,7 @@ CLAUDE.md
 skills/
 
 # Internal development docs (not for portfolio)
-docs/
+/docs
 
 # Portfolio documents (personal use only)
 CV.md
@@ -84,5 +84,3 @@ portfolio.md
 
 # Production screenshots (temporary, not for repo)
 production-*.png
-
-/docs

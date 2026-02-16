@@ -120,7 +120,7 @@ WCAG 2.1 AA compliant throughout. Reduced motion support via a custom hook that 
 
 ### Testing
 
-Over 2,400 unit tests with Vitest cover auth, items, Google Drive sync, and crypto operations. Integration tests run against real PostgreSQL. Over 650 E2E tests across desktop and mobile Chrome with Playwright use the Page Object Model pattern and test against a real Google Drive account, not mocked. Tests automatically create missing fixtures for self-healing reliability.
+Over 2,400 unit tests with Vitest cover auth, items, Google Drive sync, and crypto operations. Integration tests run against real PostgreSQL. 31 E2E spec files across desktop and mobile Chrome with Playwright use 15 focused Page Object Models, composable fixtures with per-test user creation, and curated `data-testid` attributes for targeted selectors. Unit tests use role-based and text-based selectors following Testing Library best practices.
 
 ---
 
@@ -255,9 +255,10 @@ prisma/
 
 tests/unit/              # Vitest unit tests (mocked)
 tests/integration/       # Vitest integration tests (real DB)
-e2e/journeys/            # Playwright E2E tests by feature
-e2e/pages/               # Page Object Models
-e2e/fixtures/            # Reusable test fixtures
+e2e/journeys/            # Playwright E2E tests by feature (31 spec files)
+e2e/pages/               # 15 focused Page Object Models
+e2e/fixtures/            # Composable test fixtures (authenticated, public, drive)
+e2e/config/              # Centralised timeouts and test data utilities
 ```
 
 ## Environment Variables
@@ -346,9 +347,9 @@ Vercel production uses environment variables for Neon `production` branch.
 
 **Testing:**
 
-- Unit tests: `tests/unit/` with mocked Prisma, email, rate-limit
+- Unit tests: `tests/unit/` with mocked Prisma, email, rate-limit (role-based selectors)
 - Integration tests: `tests/integration/` with real database
-- E2E tests: `e2e/journeys/` with Page Object Model pattern
+- E2E tests: `e2e/journeys/` with 15 focused Page Object Models and composable fixtures
 - Coverage configured for `lib/**` only
 
 ## Documentation

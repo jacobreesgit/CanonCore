@@ -1,6 +1,6 @@
 {
   "name": "canoncore",
-  "version": "7.6.0",
+  "version": "7.7.0",
   "packageManager": "pnpm@10.15.0",
   "private": true,
   "scripts": {
@@ -19,8 +19,11 @@
     "test:coverage": "vitest run --coverage --config tests/unit/vitest.config.ts",
     "test:unit": "vitest run --config tests/unit/vitest.config.ts",
     "test:integration": "vitest run --config tests/integration/vitest.config.ts",
+    "setup:e2e": "tsx scripts/generate-refresh-token.ts --purpose=e2e",
     "setup:seed": "tsx scripts/generate-refresh-token.ts --purpose=seed",
+    "setup:e2e-drive": "tsx scripts/setup-e2e-drive.ts",
     "setup:verify": "tsx scripts/verify-drive-setup.ts",
+    "setup:all": "npm run setup:e2e && npm run setup:seed",
     "seed": "ALLOW_SEEDING=true npx prisma db seed",
     "seed:development": "SEED_TARGET=development ALLOW_SEEDING=true npx prisma db seed",
     "seed:production": "SEED_TARGET=production ALLOW_SEEDING=true npx prisma db seed",
