@@ -10,8 +10,8 @@ publicTest.describe("Docs Navigation", () => {
     await page.goto("/docs");
     await page.waitForLoadState("domcontentloaded");
 
-    await expect(
-      page.locator("#main-content")
-    ).toBeVisible({ timeout: Timeouts.navigation });
+    await expect(page.locator("#main-content")).toBeVisible({
+      timeout: Timeouts.navigation,
+    });
   });
 });

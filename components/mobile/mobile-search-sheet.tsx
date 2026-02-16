@@ -318,7 +318,11 @@ export function MobileSearchSheet({
       </div>
 
       {/* Results - data-vaul-no-drag prevents swipe-to-dismiss when scrolling */}
-      <div className="flex-1 overflow-y-auto px-4 pb-4" data-vaul-no-drag>
+      <div
+        className="flex-1 overflow-y-auto px-4 pb-4"
+        data-vaul-no-drag
+        tabIndex={0}
+      >
         {/* Empty state */}
         {hasInitialized && !isAnyLoading && !hasResults && (
           <div className="flex flex-col items-center justify-center py-12">

@@ -274,7 +274,7 @@ export function SwipeableTabs({
         </div>
 
         {/* Content panels — map ALL tabs, show/hide to preserve form state */}
-        <div className="relative min-h-0 flex-1 overflow-y-auto">
+        <div className="relative min-h-0 flex-1 overflow-y-auto" tabIndex={0}>
           {tabs.map((tab) => {
             const isActive = tab.id === activeTab;
             const shouldRender = lazy

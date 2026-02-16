@@ -66,9 +66,7 @@ export class ExplorePage {
    * tree which excludes display:none elements, resolving to the single visible button.
    */
   async toggleExcludeMine() {
-    await this.page
-      .getByRole("button", { name: "Exclude my items" })
-      .click();
+    await this.page.getByRole("button", { name: "Exclude my items" }).click();
   }
 
   // ── Item Assertions ─────────────────────────────────────
