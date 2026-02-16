@@ -336,9 +336,7 @@ export function useItemSettingsForm(
       displayOptions.showGenres !== originalDisplayOptions.showGenres ||
       displayOptions.showCast !== originalDisplayOptions.showCast ||
       displayOptions.showProviders !== originalDisplayOptions.showProviders ||
-      displayOptions.showVideos !== originalDisplayOptions.showVideos ||
-      displayOptions.showRecommendations !==
-        originalDisplayOptions.showRecommendations;
+      displayOptions.showVideos !== originalDisplayOptions.showVideos;
 
     return (
       name !== originalValues.name ||
@@ -436,9 +434,7 @@ export function useItemSettingsForm(
         displayOptions.showGenres !== originalDisplayOptions.showGenres ||
         displayOptions.showCast !== originalDisplayOptions.showCast ||
         displayOptions.showProviders !== originalDisplayOptions.showProviders ||
-        displayOptions.showVideos !== originalDisplayOptions.showVideos ||
-        displayOptions.showRecommendations !==
-          originalDisplayOptions.showRecommendations;
+        displayOptions.showVideos !== originalDisplayOptions.showVideos;
 
       const hasFieldChanges = Object.keys(changes).length > 0;
 

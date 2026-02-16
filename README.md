@@ -38,7 +38,7 @@ Vidstack-powered player streams media directly from Google Drive via HTTP range 
 
 ### One-Click Metadata
 
-You can enrich movies and TV shows with TMDB metadata. A four-step wizard lets you search for a title, review the description, select from multiple poster options, choose a backdrop image, and review everything before applying. For TV shows, an episode picker lets you navigate into seasons and episodes. Per-item display toggles control what metadata appears: tagline, cast, genres, providers, videos, and recommendations.
+You can enrich movies and TV shows with TMDB metadata. A four-step wizard lets you search for a title, review the description, select from multiple poster options, choose a backdrop image, and review everything before applying. For TV shows, an episode picker lets you navigate into seasons and episodes. Per-item display toggles control what metadata appears: tagline, cast, genres, providers, and videos.
 
 ### Progress Tracking
 

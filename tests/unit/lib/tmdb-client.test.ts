@@ -1113,8 +1113,8 @@ describe("tmdb-client", () => {
   });
 
   describe("getItemTmdbDetails", () => {
-    it("fetches cast, providers, videos, and recommendations in parallel", async () => {
-      // Mock 4 sequential fetch calls (credits, providers, videos, recommendations)
+    it("fetches cast, providers, and videos in parallel", async () => {
+      // Mock 3 sequential fetch calls (credits, providers, videos)
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
@@ -1176,21 +1176,6 @@ describe("tmdb-client", () => {
                 },
               ],
             }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              results: [
-                {
-                  id: 100,
-                  title: "Similar Movie",
-                  poster_path: "/similar.jpg",
-                  backdrop_path: "/similar-bd.jpg",
-                  media_type: "movie",
-                },
-              ],
-            }),
         });
 
       const result = await getItemTmdbDetails(278, "movie");
@@ -1210,8 +1195,8 @@ describe("tmdb-client", () => {
       expect(result!.videos).toHaveLength(1);
       expect(result!.videos[0].key).toBe("abc123");
 
-      expect(result!.recommendations).toHaveLength(1);
-      expect(result!.recommendations[0].title).toBe("Similar Movie");
+      // Recommendations disabled — always returns empty array
+      expect(result!.recommendations).toEqual([]);
     });
 
     it("returns null when TMDB_API_KEY not set", async () => {
@@ -1239,10 +1224,6 @@ describe("tmdb-client", () => {
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({ results: {} }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ results: [] }),
         })
         .mockResolvedValueOnce({
           ok: true,
@@ -1277,47 +1258,11 @@ describe("tmdb-client", () => {
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({ results: videos }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ results: [] }),
         });
 
       const result = await getItemTmdbDetails(278, "movie");
 
       expect(result!.videos).toHaveLength(4);
-    });
-
-    it("limits recommendations to 6", async () => {
-      const recs = Array.from({ length: 10 }, (_, i) => ({
-        id: i,
-        title: `Movie ${i}`,
-        poster_path: null,
-        backdrop_path: null,
-        media_type: "movie",
-      }));
-
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ cast: [] }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ results: {} }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ results: [] }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ results: recs }),
-        });
-
-      const result = await getItemTmdbDetails(278, "movie");
-
-      expect(result!.recommendations).toHaveLength(6);
     });
 
     it("uses tv prefix for TV shows", async () => {
@@ -1329,10 +1274,6 @@ describe("tmdb-client", () => {
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({ results: {} }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ results: [] }),
         })
         .mockResolvedValueOnce({
           ok: true,
@@ -1355,7 +1296,6 @@ describe("tmdb-client", () => {
       mockFetch
         .mockResolvedValueOnce({ ok: false, status: 500 })
         .mockResolvedValueOnce({ ok: false, status: 500 })
-        .mockResolvedValueOnce({ ok: false, status: 500 })
         .mockResolvedValueOnce({ ok: false, status: 500 });
 
       const result = await getItemTmdbDetails(278, "movie");
@@ -1364,7 +1304,7 @@ describe("tmdb-client", () => {
       expect(result!.cast).toHaveLength(0);
       expect(result!.providers).toHaveLength(0);
       expect(result!.videos).toHaveLength(0);
-      expect(result!.recommendations).toHaveLength(0);
+      expect(result!.recommendations).toEqual([]);
     });
   });
 });
