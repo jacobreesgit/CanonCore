@@ -24,6 +24,7 @@ const meta = {
     id: { control: "text" },
     name: { control: "text" },
     description: { control: "text" },
+    tmdbPosterPath: { control: "text" },
     artworkId: { control: "text" },
     showArtwork: { control: "boolean" },
     showDescription: { control: "boolean" },
@@ -47,7 +48,7 @@ const meta = {
     name: "Inception",
     description:
       "A thief who steals corporate secrets through dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O.",
-    artworkId: "artwork-inception",
+    tmdbPosterPath: "/ljsZTbVsrQSqZgWeep2B1QiDKuh.jpg",
     onClick: fn(),
     onSelectChange: fn(),
   },
@@ -64,8 +65,8 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
- * Default grid item with artwork.
- * Uses TMDB poster via MSW mock.
+ * Default grid item with TMDB poster.
+ * Uses TMDB CDN image URL.
  */
 export const Default: Story = {
   args: {
@@ -119,7 +120,7 @@ export const WithOwner: Story = {
   args: {
     name: "The Dark Knight",
     description: "Batman raises the stakes in his war on crime.",
-    artworkId: "artwork-dark-knight",
+    tmdbPosterPath: "/qJ2tW6WMUDux911BTUgME76Nccf.jpg",
     ownerLabel: "@filmfan",
     ownerHref: "/u/filmfan",
     ownerUserId: "user-123",
@@ -138,7 +139,7 @@ export const OwnedByYou: Story = {
   args: {
     name: "Interstellar",
     description: "A team of explorers travel through a wormhole in space.",
-    artworkId: "artwork-interstellar",
+    tmdbPosterPath: "/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg",
     ownerLabel: "You",
     progressPercentage: 60,
     watchedCount: 6,
@@ -155,7 +156,6 @@ export const FullyWatched: Story = {
     name: "The Godfather",
     description:
       "The aging patriarch of an organized crime dynasty transfers control to his reluctant son.",
-    artworkId: "artwork-godfather",
     progressPercentage: 100,
     watchedCount: 5,
     totalMediaCount: 5,
@@ -170,7 +170,7 @@ export const NotStarted: Story = {
   args: {
     name: "The Matrix",
     description: "A computer hacker learns about the true nature of reality.",
-    artworkId: "artwork-matrix",
+    tmdbPosterPath: "/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg",
     progressPercentage: 0,
     watchedCount: 0,
     totalMediaCount: 5,
@@ -186,7 +186,7 @@ export const SyncPending: Story = {
     name: "Breaking Bad",
     description:
       "A chemistry teacher diagnosed with terminal lung cancer turns to manufacturing methamphetamine.",
-    artworkId: "artwork-breaking-bad",
+    tmdbPosterPath: "/ztkUQFLlC19CCMYHW9o1zWhJRNq.jpg",
     syncStatus: "PENDING",
     progressPercentage: 50,
     watchedCount: 2,
@@ -200,7 +200,7 @@ export const SyncPending: Story = {
  */
 export const SyncError: Story = {
   args: {
-    artworkId: "artwork-pulp-fiction",
+    tmdbPosterPath: "/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg",
     name: "Pulp Fiction",
     description:
       "The lives of two mob hitmen, a boxer, a gangster and his wife intertwine.",
@@ -236,7 +236,7 @@ export const LongTitle: Story = {
     name: "The Lord of the Rings: The Return of the King Extended Edition",
     description:
       "Gandalf and Aragorn lead the World of Men against Sauron's army to draw his gaze from Frodo and Sam as they approach Mount Doom with the One Ring.",
-    artworkId: "artwork-lotr",
+    tmdbPosterPath: "/rCzpDGLbOoPwLjy3OAm5NUPOTrC.jpg",
     progressPercentage: 33,
     watchedCount: 1,
     totalMediaCount: 3,

@@ -34,6 +34,7 @@ next-env.d.ts
 playwright-report/
 test-results/
 e2e/.auth/
+.playwright-mcp/
 
 # Test coverage reports
 coverage/
@@ -74,16 +75,12 @@ CLAUDE.md
 skills/
 
 # Internal development docs (not for portfolio)
-docs/
+/docs
 
 # Portfolio documents (personal use only)
 CV.md
 portfolio.md
 
-# Portfolio screenshots (large PNG files - generate locally, don't commit)
-public/portfolio/*.png
 
 # Production screenshots (temporary, not for repo)
 production-*.png
-
-/docs

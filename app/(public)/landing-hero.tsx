@@ -5,7 +5,7 @@
 
 "use client";
 
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import {
   ArrowRight,
   Clapperboard,
@@ -17,11 +17,18 @@ import {
 import Link from "next/link";
 import { SiGoogledrive } from "react-icons/si";
 
-import {
-  FeatureCardGrid,
-  type FeatureItem,
-} from "@/components/feature-card-grid";
-import { Button } from "@/components/ui/button";
+import { useSession } from "next-auth/react";
+import dynamic from "next/dynamic";
+import type { FeatureItem } from "@/components/feature-card-grid";
+
+const FeatureCardGrid = dynamic(
+  () =>
+    import("@/components/feature-card-grid").then((mod) => ({
+      default: mod.FeatureCardGrid,
+    })),
+  { ssr: false }
+);
+import { HeroButton } from "@/components/items/hero-button";
 
 const features: FeatureItem[] = [
   {
@@ -63,8 +70,8 @@ const features: FeatureItem[] = [
     title: "Public Profiles",
     description:
       "Share collections with a link. Let others fork what they love.",
-    color: "text-orange-500",
-    bgColor: "bg-orange-500/10",
+    color: "text-brand",
+    bgColor: "bg-brand/10",
     href: "/docs/sharing/public-profile",
   },
   {
@@ -83,6 +90,9 @@ const ease = [0.25, 0.46, 0.45, 0.94] as const;
  * Cinematic landing hero with centered typography and feature grid.
  */
 export function HeroContent() {
+  const { data: session, status } = useSession();
+  const username = session?.user?.username as string | undefined;
+  const sessionReady = status !== "loading";
   return (
     <section className="bg-background relative overflow-hidden">
       {/* Atmospheric background — layered gradient orbs */}
@@ -126,7 +136,6 @@ export function HeroContent() {
         <div className="flex flex-col items-center py-24 text-center md:py-32 lg:py-40">
           {/* Headline */}
           <motion.h1
-            data-testid="landing-hero-title"
             className="max-w-3xl text-5xl leading-[1.08] font-semibold tracking-tight md:text-6xl lg:text-7xl"
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
@@ -157,15 +166,21 @@ export function HeroContent() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4, ease }}
           >
-            <Button asChild size="lg">
-              <Link href="/sign-up">Get Started</Link>
-            </Button>
-            <Button asChild variant="ghost" size="lg" className="group gap-2">
+            <HeroButton variant="primary" asChild>
+              <Link href={username ? `/u/${username}` : "/sign-up"}>
+                {!sessionReady
+                  ? "\u00A0" /* nbsp placeholder while loading */
+                  : username
+                    ? "My Items"
+                    : "Get Started"}
+              </Link>
+            </HeroButton>
+            <HeroButton asChild className="group">
               <Link href="/explore">
                 Explore Collections
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
               </Link>
-            </Button>
+            </HeroButton>
           </motion.div>
         </div>
 

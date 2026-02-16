@@ -17,7 +17,7 @@ function TestConsumer() {
   const { isOpen, openSpotlight, closeSpotlight } = useSpotlight();
   return (
     <div>
-      <span data-testid="is-open">{isOpen ? "open" : "closed"}</span>
+      <span>{isOpen ? "spotlight-open" : "spotlight-closed"}</span>
       <button onClick={openSpotlight}>Open</button>
       <button onClick={closeSpotlight}>Close</button>
     </div>
@@ -46,7 +46,7 @@ describe("SpotlightContext", () => {
         </SpotlightProvider>
       );
 
-      expect(screen.getByTestId("is-open")).toHaveTextContent("closed");
+      expect(screen.getByText("spotlight-closed")).toBeInTheDocument();
     });
 
     it("opens spotlight via openSpotlight", async () => {
@@ -58,7 +58,7 @@ describe("SpotlightContext", () => {
       );
 
       await user.click(screen.getByRole("button", { name: "Open" }));
-      expect(screen.getByTestId("is-open")).toHaveTextContent("open");
+      expect(screen.getByText("spotlight-open")).toBeInTheDocument();
     });
 
     it("closes spotlight via closeSpotlight", async () => {
@@ -71,19 +71,19 @@ describe("SpotlightContext", () => {
 
       await user.click(screen.getByRole("button", { name: "Open" }));
       await user.click(screen.getByRole("button", { name: "Close" }));
-      expect(screen.getByTestId("is-open")).toHaveTextContent("closed");
+      expect(screen.getByText("spotlight-closed")).toBeInTheDocument();
     });
   });
 
   describe("useSpotlightOptional", () => {
     function OptionalConsumer() {
       const context = useSpotlightOptional();
-      return <span data-testid="has-context">{context ? "yes" : "no"}</span>;
+      return <span>{context ? "context-yes" : "context-no"}</span>;
     }
 
     it("returns null outside provider", () => {
       render(<OptionalConsumer />);
-      expect(screen.getByTestId("has-context")).toHaveTextContent("no");
+      expect(screen.getByText("context-no")).toBeInTheDocument();
     });
 
     it("returns context inside provider", () => {
@@ -92,7 +92,7 @@ describe("SpotlightContext", () => {
           <OptionalConsumer />
         </SpotlightProvider>
       );
-      expect(screen.getByTestId("has-context")).toHaveTextContent("yes");
+      expect(screen.getByText("context-yes")).toBeInTheDocument();
     });
   });
 
@@ -108,18 +108,18 @@ describe("SpotlightContext", () => {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "/" }));
       });
 
-      expect(screen.getByTestId("is-open")).toHaveTextContent("open");
+      expect(screen.getByText("spotlight-open")).toBeInTheDocument();
     });
 
     it("does not open spotlight when typing in input", async () => {
       render(
         <SpotlightProvider>
           <TestConsumer />
-          <input data-testid="text-input" />
+          <input aria-label="text input" />
         </SpotlightProvider>
       );
 
-      const input = screen.getByTestId("text-input");
+      const input = screen.getByRole("textbox", { name: "text input" });
       input.focus();
 
       await act(async () => {
@@ -127,7 +127,7 @@ describe("SpotlightContext", () => {
       });
 
       // Should remain closed when focus is in an input
-      expect(screen.getByTestId("is-open")).toHaveTextContent("closed");
+      expect(screen.getByText("spotlight-closed")).toBeInTheDocument();
     });
 
     it("toggles spotlight when already open", async () => {
@@ -141,13 +141,13 @@ describe("SpotlightContext", () => {
       await act(async () => {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "/" }));
       });
-      expect(screen.getByTestId("is-open")).toHaveTextContent("open");
+      expect(screen.getByText("spotlight-open")).toBeInTheDocument();
 
       // Toggle closed
       await act(async () => {
         window.dispatchEvent(new KeyboardEvent("keydown", { key: "/" }));
       });
-      expect(screen.getByTestId("is-open")).toHaveTextContent("closed");
+      expect(screen.getByText("spotlight-closed")).toBeInTheDocument();
     });
   });
 });

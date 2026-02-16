@@ -1,57 +1,39 @@
 /**
- * E2E tests for items view toggle.
- * Tests switching between tree and grid views.
- *
- * Note: Tree view is only available on item detail pages (when viewing children).
+ * E2E tests for toggling between tree and grid view modes.
+ * Verifies that items remain visible after switching views.
+ * Note: View toggle only exists on item detail pages, not My Items root.
  */
+import { test } from "../../fixtures";
+import { testId } from "../../config/test-data";
 
-import { test, expect } from "../../fixtures";
+test.describe("Items View Toggle", () => {
+  test("should toggle between tree and grid views", async ({
+    itemsCrud,
+    itemsHierarchy,
+    itemDetail,
+    itemsSortFilter,
+  }) => {
+    // View dropdown only exists on item detail pages, not My Items root.
+    // Create a parent with a child, then navigate into the parent.
+    const parentName = testId("folder");
+    const childName = testId("movie");
 
-test.describe("Items View Toggle Journey", () => {
-  // Use testUser fixture for consistent test setup (compatible with itemsPage)
-  test.beforeEach(async ({ page, testUser }) => {
-    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
-  });
+    await itemsCrud.goto();
+    await itemsCrud.createItem(parentName);
+    await itemsHierarchy.addChildItem(parentName, childName);
 
-  test("can switch between tree and grid view", async ({ itemsPage }) => {
-    // Create parent container and navigate into it (tree view only on item detail pages)
-    await itemsPage.createItem("View Container");
-    await itemsPage.clickItem("View Container");
+    // Navigate fresh to ensure stable DOM after mutation, then into detail
+    await itemsCrud.goto();
+    await itemsCrud.expectItemVisible(parentName);
+    await itemsHierarchy.clickItem(parentName);
+    await itemDetail.expectDetailVisible();
 
-    // Create some test items inside the container
-    await itemsPage.createItem("Folder A");
-    await itemsPage.createItem("Folder B");
+    // Switch to tree and verify child is visible
+    await itemsSortFilter.switchToTree();
+    await itemsHierarchy.expectItemVisible(childName);
 
-    // Default is grid view on item detail pages
-    await expect(itemsPage.gridView).toBeVisible();
-
-    // Switch to tree (available on item detail pages)
-    await itemsPage.switchToTreeView();
-    await expect(itemsPage.treeView).toBeVisible();
-
-    // Switch back to grid
-    await itemsPage.switchToGridView();
-    await expect(itemsPage.gridView).toBeVisible();
-  });
-
-  // "view preference persists across navigation" moved to heavy-serial.spec.ts
-
-  test("items visible in both views", async ({ itemsPage }) => {
-    // Create parent container and navigate into it (tree view only on item detail pages)
-    await itemsPage.createItem("Visibility Container");
-    await itemsPage.clickItem("Visibility Container");
-
-    // Create some test items inside the container
-    await itemsPage.createItem("Folder A");
-    await itemsPage.createItem("Folder B");
-
-    // Check grid view (default on item detail pages)
-    await itemsPage.expectItemVisible("Folder A");
-    await itemsPage.expectItemVisible("Folder B");
-
-    // Check tree view (available on item detail pages)
-    await itemsPage.switchToTreeView();
-    await itemsPage.expectItemVisible("Folder A");
-    await itemsPage.expectItemVisible("Folder B");
+    // Switch to grid and verify child is still visible
+    await itemsSortFilter.switchToGrid();
+    await itemsHierarchy.expectItemVisible(childName);
   });
 });

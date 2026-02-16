@@ -10,7 +10,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Logo } from "@/components/logo";
-import { FloatingPaths } from "@/components/floating-paths";
+import dynamic from "next/dynamic";
+
+const FloatingPaths = dynamic(
+  () =>
+    import("@/components/floating-paths").then((mod) => ({
+      default: mod.FloatingPaths,
+    })),
+  { ssr: false }
+);
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -96,7 +104,10 @@ export function SignUpForm() {
   };
 
   return (
-    <main className="relative md:h-screen md:overflow-hidden lg:grid lg:grid-cols-2">
+    <main
+      id="main-content"
+      className="relative md:h-screen md:overflow-hidden lg:grid lg:grid-cols-2"
+    >
       {/* Left panel - decorative */}
       <div className="bg-secondary dark:bg-secondary/20 relative hidden h-full flex-col border-r p-10 lg:flex">
         <div className="to-background absolute inset-0 bg-gradient-to-b from-transparent via-transparent" />
@@ -152,6 +163,7 @@ export function SignUpForm() {
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
+                data-testid="sign-up-email-input"
                 name="email"
                 type="email"
                 autoComplete="email"
@@ -162,7 +174,6 @@ export function SignUpForm() {
                 required
                 aria-invalid={!!error}
                 aria-describedby={error ? "sign-up-error" : undefined}
-                data-testid="sign-up-email-input"
               />
             </div>
 
@@ -176,6 +187,7 @@ export function SignUpForm() {
               <div className="relative">
                 <Input
                   id="username"
+                  data-testid="sign-up-username-input"
                   name="username"
                   type="text"
                   autoComplete="username"
@@ -200,7 +212,6 @@ export function SignUpForm() {
                         ? "username-success"
                         : undefined
                   }
-                  data-testid="sign-up-username-input"
                 />
                 {username && (
                   <div className="absolute top-1/2 right-3 -translate-y-1/2">
@@ -238,16 +249,15 @@ export function SignUpForm() {
               <Label htmlFor="password">Password</Label>
               <PasswordInput
                 id="password"
+                data-testid="sign-up-password-input"
                 name="new-password"
                 autoComplete="new-password"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={8}
                 aria-invalid={!!error}
                 aria-describedby={error ? "sign-up-error" : undefined}
-                data-testid="sign-up-password-input"
               />
             </div>
 
@@ -255,6 +265,7 @@ export function SignUpForm() {
               <Label htmlFor="confirmPassword">Confirm password</Label>
               <PasswordInput
                 id="confirmPassword"
+                data-testid="sign-up-confirm-password-input"
                 name="confirm-password"
                 autoComplete="new-password"
                 placeholder="Confirm password"
@@ -263,16 +274,15 @@ export function SignUpForm() {
                 required
                 aria-invalid={!!error}
                 aria-describedby={error ? "sign-up-error" : undefined}
-                data-testid="sign-up-confirm-password-input"
               />
             </div>
 
             <Button
               type="submit"
+              data-testid="sign-up-submit-button"
               className="w-full"
               size="lg"
               disabled={loading}
-              data-testid="sign-up-submit-button"
             >
               {loading ? "Creating account..." : "Create account"}
             </Button>
@@ -283,7 +293,6 @@ export function SignUpForm() {
             <Link
               href="/sign-in"
               className="text-primary font-medium hover:underline"
-              data-testid="sign-up-sign-in-link"
             >
               Sign in
             </Link>

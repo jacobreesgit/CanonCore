@@ -9,7 +9,15 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Logo } from "@/components/logo";
-import { FloatingPaths } from "@/components/floating-paths";
+import dynamic from "next/dynamic";
+
+const FloatingPaths = dynamic(
+  () =>
+    import("@/components/floating-paths").then((mod) => ({
+      default: mod.FloatingPaths,
+    })),
+  { ssr: false }
+);
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -65,7 +73,10 @@ function ResetPasswordFormInner() {
   };
 
   return (
-    <main className="relative md:h-screen md:overflow-hidden lg:grid lg:grid-cols-2">
+    <main
+      id="main-content"
+      className="relative md:h-screen md:overflow-hidden lg:grid lg:grid-cols-2"
+    >
       {/* Left panel - decorative */}
       <div className="bg-secondary dark:bg-secondary/20 relative hidden h-full flex-col border-r p-10 lg:flex">
         <div className="to-background absolute inset-0 bg-gradient-to-b from-transparent via-transparent" />
@@ -103,25 +114,20 @@ function ResetPasswordFormInner() {
                 </div>
               </div>
 
-              <div className="flex flex-col space-y-1 text-center">
+              <div
+                className="flex flex-col space-y-1 text-center"
+                data-testid="reset-password-success-message"
+              >
                 <h1 className="text-2xl font-bold tracking-wide">
                   Password reset successful
                 </h1>
-                <p
-                  data-testid="reset-password-success-message"
-                  className="text-muted-foreground text-base"
-                >
+                <p className="text-muted-foreground text-base">
                   Your password has been reset. You can now sign in with your
                   new password.
                 </p>
               </div>
 
-              <Button
-                asChild
-                className="w-full"
-                size="lg"
-                data-testid="reset-password-sign-in-link"
-              >
+              <Button asChild className="w-full" size="lg">
                 <Link href="/sign-in">Sign in</Link>
               </Button>
             </>
@@ -155,6 +161,7 @@ function ResetPasswordFormInner() {
                   <Label htmlFor="password">New password</Label>
                   <PasswordInput
                     id="password"
+                    data-testid="reset-password-password-input"
                     name="new-password"
                     autoComplete="new-password"
                     placeholder="New password"
@@ -166,7 +173,6 @@ function ResetPasswordFormInner() {
                     aria-describedby={
                       error ? "reset-password-error" : undefined
                     }
-                    data-testid="reset-password-password-input"
                   />
                 </div>
 
@@ -174,6 +180,7 @@ function ResetPasswordFormInner() {
                   <Label htmlFor="confirmPassword">Confirm new password</Label>
                   <PasswordInput
                     id="confirmPassword"
+                    data-testid="reset-password-confirm-password-input"
                     name="confirm-password"
                     autoComplete="new-password"
                     placeholder="Confirm new password"
@@ -184,16 +191,15 @@ function ResetPasswordFormInner() {
                     aria-describedby={
                       error ? "reset-password-error" : undefined
                     }
-                    data-testid="reset-password-confirm-password-input"
                   />
                 </div>
 
                 <Button
                   type="submit"
+                  data-testid="reset-password-submit-button"
                   className="w-full"
                   size="lg"
                   disabled={loading}
-                  data-testid="reset-password-submit-button"
                 >
                   {loading ? "Resetting..." : "Reset password"}
                 </Button>
@@ -213,7 +219,10 @@ export function ResetPasswordForm() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-screen items-center justify-center">
+        <main
+          id="main-content"
+          className="flex min-h-screen items-center justify-center"
+        >
           <div className="text-muted-foreground">Loading...</div>
         </main>
       }

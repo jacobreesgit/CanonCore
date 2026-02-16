@@ -221,7 +221,7 @@ describe("TMDBWizard", () => {
       expect(screen.getByText("Review")).toBeInTheDocument();
     });
 
-    it("shows only text and summary steps without Drive connection", async () => {
+    it("shows all steps even without Drive connection", async () => {
       const movieData: TMDBWizardInitialData = {
         tmdbResult: { ...mockTmdbResult, mediaType: "movie" },
         preview: mockPreview,
@@ -238,10 +238,10 @@ describe("TMDBWizard", () => {
         />
       );
 
-      // Should show step indicator with only 2 steps
+      // Should show all 4 steps — TMDB images served from CDN, no Drive needed
       expect(screen.getAllByText("Title & Description")).toHaveLength(2);
-      expect(screen.queryByText("Poster")).not.toBeInTheDocument();
-      expect(screen.queryByText("Hero Image")).not.toBeInTheDocument();
+      expect(screen.getByText("Poster")).toBeInTheDocument();
+      expect(screen.getByText("Hero Image")).toBeInTheDocument();
       expect(screen.getByText("Review")).toBeInTheDocument();
     });
   });

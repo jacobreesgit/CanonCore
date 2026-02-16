@@ -104,7 +104,9 @@ describe("FileTypeCombobox Delete", () => {
     await user.click(screen.getByRole("combobox"));
 
     // The non-selected file (m2) should have a delete button
-    const deleteButton = screen.getByTestId("delete-file-m2");
+    const deleteButton = screen.getByRole("button", {
+      name: "Delete movie-hd.mkv",
+    });
     expect(deleteButton).toBeInTheDocument();
   });
 
@@ -116,7 +118,9 @@ describe("FileTypeCombobox Delete", () => {
     await user.click(screen.getByRole("combobox"));
 
     // The selected file (m1) should NOT have a delete button
-    const deleteButton = screen.queryByTestId("delete-file-m1");
+    const deleteButton = screen.queryByRole("button", {
+      name: "Delete movie.mp4",
+    });
     expect(deleteButton).not.toBeInTheDocument();
   });
 
@@ -128,7 +132,9 @@ describe("FileTypeCombobox Delete", () => {
     await user.click(screen.getByRole("combobox"));
 
     // Click delete button for non-selected file
-    const deleteButton = screen.getByTestId("delete-file-m2");
+    const deleteButton = screen.getByRole("button", {
+      name: "Delete movie-hd.mkv",
+    });
     await user.click(deleteButton);
 
     // Confirmation dialog should appear with Delete File title
@@ -154,7 +160,9 @@ describe("FileTypeCombobox Delete", () => {
     await user.click(screen.getByRole("combobox"));
 
     // Click delete button to open dialog
-    await user.click(screen.getByTestId("delete-file-m2"));
+    await user.click(
+      screen.getByRole("button", { name: "Delete movie-hd.mkv" })
+    );
 
     // Click confirm button in dialog
     const confirmButton = await screen.findByRole("button", {
@@ -173,7 +181,9 @@ describe("FileTypeCombobox Delete", () => {
     await user.click(screen.getByRole("combobox"));
 
     // Click delete button to open dialog
-    await user.click(screen.getByTestId("delete-file-m2"));
+    await user.click(
+      screen.getByRole("button", { name: "Delete movie-hd.mkv" })
+    );
 
     // Wait for dialog
     await screen.findByRole("dialog");
@@ -198,7 +208,9 @@ describe("FileTypeCombobox Delete", () => {
     await user.click(screen.getByRole("combobox"));
 
     // Click delete button to open dialog
-    await user.click(screen.getByTestId("delete-file-m2"));
+    await user.click(
+      screen.getByRole("button", { name: "Delete movie-hd.mkv" })
+    );
 
     // Click confirm button
     const confirmButton = await screen.findByRole("button", {
@@ -224,7 +236,9 @@ describe("FileTypeCombobox Delete", () => {
     await user.click(screen.getByRole("combobox"));
 
     // Click delete button to open dialog
-    await user.click(screen.getByTestId("delete-file-m2"));
+    await user.click(
+      screen.getByRole("button", { name: "Delete movie-hd.mkv" })
+    );
 
     // Click confirm button
     const confirmButton = await screen.findByRole("button", {
@@ -255,7 +269,9 @@ describe("FileTypeCombobox Delete", () => {
     await user.click(screen.getByRole("combobox"));
 
     // Click delete button to open dialog
-    await user.click(screen.getByTestId("delete-file-m2"));
+    await user.click(
+      screen.getByRole("button", { name: "Delete movie-hd.mkv" })
+    );
 
     // Click confirm button
     const confirmButton = await screen.findByRole("button", {
@@ -285,7 +301,9 @@ describe("FileTypeCombobox Delete", () => {
     await user.click(screen.getByRole("combobox"));
 
     // Click delete button to open dialog
-    await user.click(screen.getByTestId("delete-file-m2"));
+    await user.click(
+      screen.getByRole("button", { name: "Delete movie-hd.mkv" })
+    );
 
     // Click confirm button
     const confirmButton = await screen.findByRole("button", {
@@ -335,7 +353,7 @@ describe("FileTypeCombobox Drive Link", () => {
 
     await user.click(screen.getByRole("combobox"));
 
-    const driveLink = screen.getByTestId("drive-link-m1");
+    const driveLink = screen.getByTitle("Open in Google Drive");
     expect(driveLink).toBeInTheDocument();
     expect(driveLink).toHaveAttribute(
       "href",
@@ -358,7 +376,7 @@ describe("FileTypeCombobox Drive Link", () => {
 
     await user.click(screen.getByRole("combobox"));
 
-    expect(screen.queryByTestId("drive-link-m1")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Open in Google Drive")).not.toBeInTheDocument();
   });
 
   it("should open Drive link in new tab with security attributes", async () => {
@@ -375,7 +393,7 @@ describe("FileTypeCombobox Drive Link", () => {
 
     await user.click(screen.getByRole("combobox"));
 
-    const driveLink = screen.getByTestId("drive-link-m1");
+    const driveLink = screen.getByTitle("Open in Google Drive");
     expect(driveLink).toHaveAttribute("target", "_blank");
     expect(driveLink).toHaveAttribute("rel", "noopener noreferrer");
   });

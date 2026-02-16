@@ -34,7 +34,7 @@ vi.mock("@/components/sortable-grid/sortable-grid-item", () => ({
     name: string;
     onClick?: () => void;
   }) => (
-    <div data-testid={`sortable-item-${id}`} onClick={onClick}>
+    <div role="listitem" data-item-id={id} onClick={onClick}>
       {name}
     </div>
   ),
@@ -43,7 +43,7 @@ vi.mock("@/components/sortable-grid/sortable-grid-item", () => ({
 // Mock GridItem for DragOverlay
 vi.mock("@/components/sortable-grid/grid-item", () => ({
   GridItem: ({ id, name }: { id: string; name: string }) => (
-    <div data-testid={`overlay-item-${id}`}>{name}</div>
+    <div data-item-id={id}>{name}</div>
   ),
 }));
 
@@ -71,6 +71,8 @@ describe("SortableGrid", () => {
     syncStatus: "SYNCED",
     syncError: null,
     driveConnectionId: null,
+    tmdbPosterPath: null,
+    tmdbBackdropPath: null,
     artworkId: null,
     fileCounts: { media: 0, artwork: 0, subtitles: 0 },
     childCount: 0,
@@ -98,41 +100,43 @@ describe("SortableGrid", () => {
     vi.clearAllMocks();
   });
 
-  it("renders grid container with correct testid", () => {
+  it("renders grid container", () => {
     render(<SortableGrid items={mockItems} />);
-    expect(screen.getByTestId("items-grid-view")).toBeInTheDocument();
+    // Grid contains listitem children from the mock
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
   });
 
   it("renders all items", () => {
     render(<SortableGrid items={mockItems} />);
-    expect(screen.getByTestId("sortable-item-item-1")).toBeInTheDocument();
-    expect(screen.getByTestId("sortable-item-item-2")).toBeInTheDocument();
-    expect(screen.getByTestId("sortable-item-item-3")).toBeInTheDocument();
+    expect(screen.getByText("Item 1")).toBeInTheDocument();
+    expect(screen.getByText("Item 2")).toBeInTheDocument();
+    expect(screen.getByText("Item 3")).toBeInTheDocument();
   });
 
   it("renders correct number of items", () => {
     render(<SortableGrid items={mockItems} />);
-    expect(screen.getAllByTestId(/^sortable-item-/)).toHaveLength(3);
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
   });
 
   it("syncs with external items on prop change", () => {
     const { rerender } = render(<SortableGrid items={mockItems} />);
-    expect(screen.getAllByTestId(/^sortable-item-/)).toHaveLength(3);
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
 
     const newItems = [...mockItems, createMockItem("item-4", "Item 4", 3)];
     rerender(<SortableGrid items={newItems} />);
-    expect(screen.getAllByTestId(/^sortable-item-/)).toHaveLength(4);
+    expect(screen.getAllByRole("listitem")).toHaveLength(4);
   });
 
   it("renders empty grid when no items", () => {
     render(<SortableGrid items={[]} />);
-    expect(screen.getByTestId("items-grid-view")).toBeInTheDocument();
-    expect(screen.queryAllByTestId(/^sortable-item-/)).toHaveLength(0);
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
   });
 
   it("applies grid layout classes", () => {
     render(<SortableGrid items={mockItems} />);
-    const grid = screen.getByTestId("items-grid-view");
+    // The grid container is the parent of the listitem elements
+    const firstItem = screen.getAllByRole("listitem")[0];
+    const grid = firstItem.parentElement!;
     expect(grid).toHaveClass("grid");
     expect(grid).toHaveClass("grid-cols-2");
   });

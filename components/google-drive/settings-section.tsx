@@ -151,7 +151,7 @@ export function GoogleDriveSettingsSection({
     connection?.lastError === "ROOT_FOLDER_DELETED";
 
   return (
-    <div className="space-y-3" data-testid="google-drive-section">
+    <div className="space-y-3">
       <div className="flex items-center gap-2">
         <div
           className={cn(

@@ -36,7 +36,7 @@ export interface MobileBottomSheetProps {
   /** When true, enforce min-height from the first snap point so the sheet
    *  doesn't collapse when swipeable tab content is shorter than the snap. */
   swipeable?: boolean;
-  /** Optional test ID for E2E testing */
+  /** Optional data-testid for E2E test targeting */
   "data-testid"?: string;
 }
 
@@ -74,6 +74,7 @@ export function MobileBottomSheet({
   "data-testid": dataTestId,
 }: MobileBottomSheetProps) {
   const { reducedMotion: prefersReducedMotion } = useReducedMotion();
+  const descriptionId = React.useId();
 
   // When swipeable, enforce a min-height from the snap point so tab content
   // that's shorter than the snap doesn't collapse the sheet.
@@ -121,8 +122,8 @@ export function MobileBottomSheet({
             "[transform:translateZ(0)] transform-gpu [will-change:transform] [backface-visibility:hidden]",
             className
           )}
-          style={minHeight ? { minHeight } : undefined}
-          aria-describedby={description ? "sheet-description" : undefined}
+          style={minHeight ? { minHeight, maxHeight: minHeight } : undefined}
+          aria-describedby={description ? descriptionId : undefined}
           data-testid={dataTestId}
         >
           {/* Handle - with handleOnly, this is the only draggable area */}
@@ -135,10 +136,7 @@ export function MobileBottomSheet({
 
           {/* Optional description */}
           {description && (
-            <DrawerPrimitive.Description
-              id="sheet-description"
-              className="sr-only"
-            >
+            <DrawerPrimitive.Description id={descriptionId} className="sr-only">
               {description}
             </DrawerPrimitive.Description>
           )}
@@ -214,7 +212,7 @@ export function MobileBottomSheetFooter({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("mt-auto flex flex-col gap-2 px-4 pb-4", className)}
+      className={cn("mt-auto flex flex-col gap-2 p-4", className)}
       {...props}
     >
       {children}

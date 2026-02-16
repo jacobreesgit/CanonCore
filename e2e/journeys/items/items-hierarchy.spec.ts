@@ -1,77 +1,74 @@
 /**
- * E2E tests for hierarchical tree display.
- * Tests that full hierarchy is displayed with collapse/expand functionality.
- * Note: Tree view is only on item detail pages (when viewing children).
+ * E2E tests for item hierarchy (parent-child relationships).
+ * Covers adding child items via more menu and collapsing/expanding tree nodes.
  */
-
 import { test, expect } from "../../fixtures";
+import { testId } from "../../config/test-data";
 
-test.describe("Items Hierarchy Journey", () => {
-  // Use testUser fixture for consistent test setup (compatible with itemsPage)
-  test.beforeEach(async ({ page, testUser }) => {
-    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
+test.describe("Items Hierarchy", () => {
+  test("should add a child item via more menu", async ({
+    itemsCrud,
+    itemsHierarchy,
+    itemDetail,
+  }) => {
+    const parentName = testId("folder");
+    const childName = testId("movie");
+
+    await itemsCrud.goto();
+    await itemsCrud.createItem(parentName);
+
+    await itemsHierarchy.addChildItem(parentName, childName);
+
+    // Navigate into parent to verify child
+    // Go back to My Items first (addChildItem may have navigated away)
+    await itemsCrud.goto();
+    await itemsHierarchy.clickItem(parentName);
+    await itemDetail.expectDetailVisible();
+    await itemsHierarchy.expectItemVisible(childName);
   });
 
-  test("displays full hierarchy in tree view", async ({ page, itemsPage }) => {
-    // Deep hierarchy creation (4 creates + 4 navigations) needs more than 30s
-    test.setTimeout(60000);
-    // Create hierarchy: Top Level > Parent > Child > Grandchild
-    await itemsPage.createItem("Top Level");
+  test("should collapse and expand tree items", async ({
+    itemsCrud,
+    itemsHierarchy,
+    itemDetail,
+  }) => {
+    // Need 3 levels: root > subfolder > movie
+    // On root's detail page in tree view, subfolder has children
+    // so it gets a collapse/expand toggle.
+    const rootName = testId("folder");
+    const subfolderName = testId("folder");
+    const childName = testId("movie");
 
-    await itemsPage.clickItem("Top Level");
-    // Store URL to navigate back (breadcrumbs hidden on mobile)
-    const topLevelUrl = page.url();
-    await itemsPage.createItem("Parent");
+    await itemsCrud.goto();
+    await itemsCrud.createItem(rootName);
+    await itemsHierarchy.addChildItem(rootName, subfolderName);
 
-    await itemsPage.clickItem("Parent");
-    await itemsPage.createItem("Child");
+    // Navigate into root to see subfolder
+    // Go back to My Items first (addChildItem may have navigated away)
+    await itemsCrud.goto();
+    await itemsHierarchy.clickItem(rootName);
+    await itemDetail.expectDetailVisible();
+    await itemsHierarchy.expectItemVisible(subfolderName);
 
-    await itemsPage.clickItem("Child");
-    await itemsPage.createItem("Grandchild");
+    // Add child to subfolder (creates 3rd level)
+    await itemsHierarchy.addChildItem(subfolderName, childName);
 
-    // Navigate back to Top Level via URL (works on mobile where breadcrumbs are hidden)
-    await page.goto(topLevelUrl);
-    await itemsPage.switchToTreeView();
+    // Navigate back to root's detail page (addChildItem may navigate away)
+    await itemsCrud.goto();
+    await itemsHierarchy.clickItem(rootName);
+    await itemDetail.expectDetailVisible();
 
-    // All descendants should be visible in tree view
-    await itemsPage.expectItemVisible("Parent");
-    await itemsPage.expectItemVisible("Child");
-    await itemsPage.expectItemVisible("Grandchild");
-  });
+    // Switch to tree view to see nested hierarchy
+    await itemsHierarchy.switchToTree();
+    await itemsHierarchy.expectItemVisible(subfolderName);
+    await itemsHierarchy.expectItemVisible(childName);
 
-  test("can collapse and expand items in tree", async ({ page, itemsPage }) => {
-    // Deep hierarchy creation + collapse/expand needs more than 30s
-    test.setTimeout(60000);
-    // Create Top Level container to view tree in
-    await itemsPage.createItem("Top Level");
+    // Collapse subfolder — child should disappear
+    await itemsHierarchy.collapseItem(subfolderName);
+    await itemsHierarchy.expectItemNotVisible(childName);
 
-    await itemsPage.clickItem("Top Level");
-    // Store URL to navigate back (breadcrumbs hidden on mobile)
-    const topLevelUrl = page.url();
-    // Create hierarchy: Parent > Child
-    await itemsPage.createItem("Collapsible Parent");
-
-    await itemsPage.clickItem("Collapsible Parent");
-    await itemsPage.createItem("Nested Child");
-
-    // Navigate back to Top Level via URL (works on mobile where breadcrumbs are hidden)
-    await page.goto(topLevelUrl);
-    await itemsPage.switchToTreeView();
-
-    // Both items should be visible in tree
-    await itemsPage.expectItemVisible("Collapsible Parent");
-    await itemsPage.expectItemVisible("Nested Child");
-
-    // Collapse parent
-    await itemsPage.collapseItem("Collapsible Parent");
-
-    // Child should now be hidden
-    await itemsPage.expectItemNotVisible("Nested Child");
-
-    // Expand parent
-    await itemsPage.expandItem("Collapsible Parent");
-
-    // Child should be visible again
-    await itemsPage.expectItemVisible("Nested Child");
+    // Expand subfolder — child should reappear
+    await itemsHierarchy.expandItem(subfolderName);
+    await itemsHierarchy.expectItemVisible(childName);
   });
 });

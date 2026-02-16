@@ -68,7 +68,6 @@ import {
   SyncHistory,
 } from "@/components/google-drive";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PreferencesTab } from "@/components/profile/preferences-tab";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SETTINGS_MESSAGES } from "@/lib/constants/messages";
@@ -78,12 +77,7 @@ import type { GoogleDriveConnection } from "@/lib/types";
 type SettingsStep = "main" | "password" | "email" | "username";
 
 /** Available settings tabs */
-type SettingsTab =
-  | "profile"
-  | "account"
-  | "connections"
-  | "preferences"
-  | "activity";
+type SettingsTab = "profile" | "account" | "connections" | "activity";
 
 interface SettingsDialogProps {
   /** Whether the dialog is open */
@@ -762,12 +756,22 @@ export function SettingsDialog({
       case "main":
         return (
           <Tabs defaultValue={defaultTab} className="w-full">
-            <TabsList className="mb-4 grid w-full grid-cols-5">
-              <TabsTrigger value="profile">Profile</TabsTrigger>
-              <TabsTrigger value="account">Account</TabsTrigger>
-              <TabsTrigger value="connections">Connections</TabsTrigger>
-              <TabsTrigger value="preferences">Preferences</TabsTrigger>
-              <TabsTrigger value="activity">Activity</TabsTrigger>
+            <TabsList className="mb-4 grid w-full grid-cols-4">
+              <TabsTrigger value="profile" data-testid="settings-tab-profile">
+                Profile
+              </TabsTrigger>
+              <TabsTrigger value="account" data-testid="settings-tab-account">
+                Account
+              </TabsTrigger>
+              <TabsTrigger
+                value="connections"
+                data-testid="settings-tab-connections"
+              >
+                Connections
+              </TabsTrigger>
+              <TabsTrigger value="activity" data-testid="settings-tab-activity">
+                Activity
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="profile" className="mt-0">
@@ -793,7 +797,6 @@ export function SettingsDialog({
                           ? `url(${heroImageSrc})`
                           : undefined,
                       }}
-                      data-testid="hero-dropzone"
                     >
                       <div className="absolute inset-0 bg-black/20" />
                       <div className="absolute right-3 bottom-3 flex gap-2">
@@ -812,6 +815,7 @@ export function SettingsDialog({
                             size="icon"
                             variant="secondary"
                             className="size-8 shadow-md"
+                            aria-label="Remove cover"
                             onClick={() => {
                               setHeroImage(null);
                               setHeroImagePreview(null);
@@ -838,10 +842,7 @@ export function SettingsDialog({
                         maxFiles={1}
                         maxSize={2 * 1024 * 1024}
                       >
-                        <div
-                          className="relative"
-                          data-testid="profile-dropzone"
-                        >
+                        <div className="relative">
                           <Avatar className="border-card size-24 border-4 shadow-lg sm:size-28">
                             <AvatarImage
                               src={profileImageSrc || undefined}
@@ -867,6 +868,7 @@ export function SettingsDialog({
                               size="icon"
                               variant="secondary"
                               className="absolute -right-1 -bottom-1 size-8 rounded-full shadow-md"
+                              aria-label="Upload avatar"
                             >
                               <Upload className="size-4" />
                             </Button>
@@ -977,7 +979,6 @@ export function SettingsDialog({
                     </div>
                     <Switch
                       id="settings-public"
-                      data-testid="settings-public-toggle"
                       checked={isPublic}
                       onCheckedChange={handlePublicToggle}
                     />
@@ -1083,10 +1084,6 @@ export function SettingsDialog({
                   </CardContent>
                 </Card>
               </div>
-            </TabsContent>
-
-            <TabsContent value="preferences" className="mt-0">
-              <PreferencesTab />
             </TabsContent>
 
             <TabsContent value="activity" className="mt-0">
@@ -1275,21 +1272,21 @@ export function SettingsDialog({
                 )}
               </div>
               {newUsername && usernameValidation.error && (
-                <p className="text-destructive text-xs">
+                <p role="alert" className="text-destructive text-xs">
                   {usernameValidation.error}
                 </p>
               )}
               {newUsername &&
                 usernameValidation.isAvailable === false &&
                 !usernameValidation.error && (
-                  <p className="text-destructive text-xs">
+                  <p role="alert" className="text-destructive text-xs">
                     Username is already taken
                   </p>
                 )}
               {newUsername &&
                 usernameValidation.isValidFormat &&
                 usernameValidation.isAvailable === true && (
-                  <p className="text-xs text-green-600 dark:text-green-500">
+                  <p className="text-xs text-green-500">
                     Username is available
                   </p>
                 )}
@@ -1327,7 +1324,7 @@ export function SettingsDialog({
         <AnimatedDialogContent
           stepKey={currentStep}
           className="max-h-[90vh] sm:max-w-2xl"
-          data-testid="settings-dialog"
+          data-testid="dialog-settings"
           header={getStepHeader()}
           footer={getStepFooter()}
         >
@@ -1340,7 +1337,7 @@ export function SettingsDialog({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <Globe aria-hidden="true" className="h-5 w-5 text-amber-500" />
+              <Globe aria-hidden="true" className="text-brand h-5 w-5" />
               Make your profile public?
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">

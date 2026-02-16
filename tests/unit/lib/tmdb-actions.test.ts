@@ -48,16 +48,11 @@ vi.mock("@/lib/tmdb-client", () => ({
   getStillUrl: vi.fn((p: string | null) =>
     p ? `https://image.tmdb.org/t/p/w300${p}` : null
   ),
-  downloadPoster: vi.fn(),
-  downloadBackdrop: vi.fn(),
   extractYear: vi.fn((d: string) => d?.split("-")[0] || ""),
   truncateOverview: vi.fn((t: string) => t?.slice(0, 200) || ""),
   isTMDBConfigured: vi.fn(() => true),
 }));
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: vi.fn() }));
-vi.mock("@/lib/google-drive-upload", () => ({
-  uploadBuffer: vi.fn(),
-}));
 vi.mock("@/lib/circuit-breaker", () => ({
   CircuitBreaker: class MockCircuitBreaker {
     execute = vi.fn((fn: () => unknown) => fn());
@@ -81,12 +76,9 @@ import {
   getTVShowImages,
   getTVSeasonImages,
   getEpisodeImages,
-  downloadPoster,
-  downloadBackdrop,
   isTMDBConfigured,
 } from "@/lib/tmdb-client";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { uploadBuffer } from "@/lib/google-drive-upload";
 
 describe("tmdb-actions", () => {
   beforeEach(() => {
@@ -214,12 +206,6 @@ describe("tmdb-actions", () => {
         vote_average: 0,
         genres: [],
       });
-      vi.mocked(downloadPoster).mockResolvedValue(Buffer.from([1, 2, 3]));
-      vi.mocked(downloadBackdrop).mockResolvedValue(Buffer.from([4, 5, 6]));
-      vi.mocked(uploadBuffer).mockResolvedValue({
-        success: true,
-        data: { driveFileId: "drive-123" },
-      });
     });
 
     it("updates item with movie metadata and tmdbId/tmdbType", async () => {
@@ -233,53 +219,42 @@ describe("tmdb-actions", () => {
           tmdbType: "movie",
           name: "The Shawshank Redemption (1994)",
           description: expect.any(String),
+          tmdbPosterPath: "/poster.jpg",
+          tmdbBackdropPath: "/backdrop.jpg",
         },
       });
     });
 
-    it("uploads poster to Google Drive", async () => {
+    it("stores TMDB poster and backdrop paths on item", async () => {
       await applyMetadataAction("item-1", 278, "movie");
 
-      expect(downloadPoster).toHaveBeenCalledWith("/poster.jpg");
-      expect(uploadBuffer).toHaveBeenCalled();
-    });
-
-    it("creates ItemFile for poster", async () => {
-      await applyMetadataAction("item-1", 278, "movie");
-
-      expect(prisma.itemFile.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          itemId: "item-1",
-          filename: "poster.jpg",
-          fileType: "ARTWORK",
-          isPrimary: true,
-        }),
-      });
-    });
-
-    it("skips poster when item has no Drive connection", async () => {
-      vi.mocked(prisma.item.findUnique).mockResolvedValue({
-        ...mockItem,
-        driveConnectionId: null,
-      } as never);
-      // User has no Drive connection
-      vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue(
-        null as never
+      expect(prisma.item.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            tmdbPosterPath: "/poster.jpg",
+            tmdbBackdropPath: "/backdrop.jpg",
+          }),
+        })
       );
-
-      const result = await applyMetadataAction("item-1", 278, "movie");
-
-      expect(result.success).toBe(true);
-      expect(downloadPoster).not.toHaveBeenCalled();
     });
 
-    it("continues without poster when download fails", async () => {
-      vi.mocked(downloadPoster).mockResolvedValue(null);
+    it("skips poster/backdrop paths when updatePoster/updateBackdrop are false", async () => {
+      await applyMetadataAction("item-1", 278, "movie", {
+        updateName: true,
+        updateDescription: true,
+        updatePoster: false,
+        updateBackdrop: false,
+      });
 
-      const result = await applyMetadataAction("item-1", 278, "movie");
-
-      expect(result.success).toBe(true);
-      expect(prisma.item.update).toHaveBeenCalled();
+      expect(prisma.item.update).toHaveBeenCalledWith({
+        where: { id: "item-1" },
+        data: {
+          tmdbId: 278,
+          tmdbType: "movie",
+          name: "The Shawshank Redemption (1994)",
+          description: expect.any(String),
+        },
+      });
     });
 
     it("verifies item ownership", async () => {
@@ -320,26 +295,10 @@ describe("tmdb-actions", () => {
           tmdbType: "tv",
           name: "Breaking Bad (2008)",
           description: expect.any(String),
+          tmdbPosterPath: "/bb.jpg",
+          tmdbBackdropPath: "/bb-backdrop.jpg",
         },
       });
-    });
-
-    it("updates existing artwork instead of creating duplicate", async () => {
-      vi.mocked(prisma.item.findUnique).mockResolvedValue({
-        ...mockItem,
-        files: [{ id: "existing-artwork-id", isPrimary: true, isHero: false }],
-      } as never);
-
-      await applyMetadataAction("item-1", 278, "movie");
-
-      expect(prisma.itemFile.update).toHaveBeenCalledWith({
-        where: { id: "existing-artwork-id" },
-        data: expect.objectContaining({
-          filename: "poster.jpg",
-          driveFileId: "drive-123",
-        }),
-      });
-      // Note: backdrop still creates new file since there's no existing hero
     });
 
     it("returns error when movie not found on TMDB", async () => {
@@ -386,17 +345,24 @@ describe("tmdb-actions", () => {
       }
     });
 
-    it("continues when upload fails", async () => {
-      vi.mocked(uploadBuffer).mockResolvedValue({
-        success: false,
-        error: "Upload failed",
+    it("uses wizard-selected poster path when provided", async () => {
+      await applyMetadataAction("item-1", 278, "movie", {
+        updateName: true,
+        updateDescription: true,
+        updatePoster: true,
+        updateBackdrop: true,
+        posterPath: "/custom-poster.jpg",
+        backdropPath: "/custom-backdrop.jpg",
       });
 
-      const result = await applyMetadataAction("item-1", 278, "movie");
-
-      // Should still succeed - poster is optional
-      expect(result.success).toBe(true);
-      expect(prisma.item.update).toHaveBeenCalled();
+      expect(prisma.item.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            tmdbPosterPath: "/custom-poster.jpg",
+            tmdbBackdropPath: "/custom-backdrop.jpg",
+          }),
+        })
+      );
     });
   });
 

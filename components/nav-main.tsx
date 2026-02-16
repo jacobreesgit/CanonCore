@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { usePrefersReducedMotion } from "@/hooks/use-reduced-motion";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -81,7 +81,7 @@ export function NavMain({ items, pinnedItems = [], username }: NavMainProps) {
   const pathname = usePathname();
   const router = useRouter();
   const spotlight = useSpotlightOptional();
-  const prefersReducedMotion = useReducedMotion();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -146,12 +146,13 @@ export function NavMain({ items, pinnedItems = [], username }: NavMainProps) {
 
   return (
     <>
-      <SidebarGroup>
+      <SidebarGroup data-testid="nav-sidebar">
         <SidebarGroupContent>
           <SidebarMenu>
             {spotlight && (
               <SidebarMenuItem>
                 <SidebarMenuButton
+                  data-testid="nav-search-button"
                   onClick={spotlight.openSpotlight}
                   tooltip="Search"
                   className="group"
@@ -213,104 +214,92 @@ export function NavMain({ items, pinnedItems = [], username }: NavMainProps) {
                         />
                       </button>
                     </div>
-                    <AnimatePresence initial={false}>
-                      {isOpen && (
-                        <motion.div
-                          initial={
-                            prefersReducedMotion
-                              ? false
-                              : { height: 0, opacity: 0 }
-                          }
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={
-                            prefersReducedMotion
-                              ? undefined
-                              : { height: 0, opacity: 0 }
-                          }
-                          transition={
-                            prefersReducedMotion
-                              ? { duration: 0 }
-                              : { duration: 0.2, ease: "easeInOut" }
-                          }
-                          style={{ overflow: "hidden" }}
-                        >
-                          <SidebarMenuSub>
-                            {pinnedItems.map((pinnedItem) => {
-                              const href = myItemsBaseUrl
-                                ? `${myItemsBaseUrl}/${pinnedItem.id}`
-                                : "#";
-                              const isPinnedActive =
-                                pathname === href ||
-                                pathname.startsWith(`${href}/`);
-
-                              return (
-                                <ContextMenu key={pinnedItem.id}>
-                                  <ContextMenuTrigger asChild>
-                                    <SidebarMenuSubItem>
-                                      <SidebarMenuSubButton
-                                        asChild
-                                        isActive={isPinnedActive}
-                                      >
-                                        <Link href={href}>
-                                          <Pin
-                                            className="size-4"
-                                            aria-hidden="true"
-                                          />
-                                          <span>{pinnedItem.name}</span>
-                                        </Link>
-                                      </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                  </ContextMenuTrigger>
-                                  <ContextMenuContent className="w-52">
-                                    <ContextMenuItem
-                                      onClick={() =>
-                                        router.push(`${href}?settings=true`)
-                                      }
-                                      className="gap-2"
-                                    >
-                                      <Settings
-                                        aria-hidden="true"
-                                        className="size-4"
-                                        strokeWidth={2}
-                                      />
-                                      <span>Settings</span>
-                                    </ContextMenuItem>
-                                    <ContextMenuItem
-                                      onClick={() => handleUnpin(pinnedItem.id)}
-                                      className="gap-2"
-                                    >
-                                      <PinOff
-                                        aria-hidden="true"
-                                        className="size-4"
-                                        strokeWidth={2}
-                                      />
-                                      <span>Unpin from Sidebar</span>
-                                    </ContextMenuItem>
-                                    <ContextMenuSeparator />
-                                    <ContextMenuItem
-                                      onClick={() =>
-                                        openDeleteDialog(pinnedItem)
-                                      }
-                                      className={cn(
-                                        "gap-2",
-                                        "text-destructive focus:text-destructive focus:bg-destructive/10"
-                                      )}
-                                    >
-                                      <Trash2
-                                        aria-hidden="true"
-                                        className="size-4"
-                                        strokeWidth={2}
-                                      />
-                                      <span>Delete</span>
-                                    </ContextMenuItem>
-                                  </ContextMenuContent>
-                                </ContextMenu>
-                              );
-                            })}
-                          </SidebarMenuSub>
-                        </motion.div>
+                    <div
+                      className={cn(
+                        "grid overflow-hidden",
+                        prefersReducedMotion
+                          ? ""
+                          : "transition-[grid-template-rows,opacity] duration-200 ease-in-out",
+                        isOpen
+                          ? "grid-rows-[1fr] opacity-100"
+                          : "grid-rows-[0fr] opacity-0"
                       )}
-                    </AnimatePresence>
+                    >
+                      <div className="min-h-0">
+                        <SidebarMenuSub>
+                          {pinnedItems.map((pinnedItem) => {
+                            const href = myItemsBaseUrl
+                              ? `${myItemsBaseUrl}/${pinnedItem.id}`
+                              : "#";
+                            const isPinnedActive =
+                              pathname === href ||
+                              pathname.startsWith(`${href}/`);
+
+                            return (
+                              <ContextMenu key={pinnedItem.id}>
+                                <ContextMenuTrigger asChild>
+                                  <SidebarMenuSubItem>
+                                    <SidebarMenuSubButton
+                                      asChild
+                                      isActive={isPinnedActive}
+                                    >
+                                      <Link href={href}>
+                                        <Pin
+                                          className="size-4"
+                                          aria-hidden="true"
+                                        />
+                                        <span>{pinnedItem.name}</span>
+                                      </Link>
+                                    </SidebarMenuSubButton>
+                                  </SidebarMenuSubItem>
+                                </ContextMenuTrigger>
+                                <ContextMenuContent className="w-52">
+                                  <ContextMenuItem
+                                    onClick={() =>
+                                      router.push(`${href}?settings=true`)
+                                    }
+                                    className="gap-2"
+                                  >
+                                    <Settings
+                                      aria-hidden="true"
+                                      className="size-4"
+                                      strokeWidth={2}
+                                    />
+                                    <span>Settings</span>
+                                  </ContextMenuItem>
+                                  <ContextMenuItem
+                                    onClick={() => handleUnpin(pinnedItem.id)}
+                                    className="gap-2"
+                                  >
+                                    <PinOff
+                                      aria-hidden="true"
+                                      className="size-4"
+                                      strokeWidth={2}
+                                    />
+                                    <span>Unpin from Sidebar</span>
+                                  </ContextMenuItem>
+                                  <ContextMenuSeparator />
+                                  <ContextMenuItem
+                                    onClick={() => openDeleteDialog(pinnedItem)}
+                                    className={cn(
+                                      "gap-2",
+                                      "text-destructive focus:text-destructive focus:bg-destructive/10"
+                                    )}
+                                  >
+                                    <Trash2
+                                      aria-hidden="true"
+                                      className="size-4"
+                                      strokeWidth={2}
+                                    />
+                                    <span>Delete</span>
+                                  </ContextMenuItem>
+                                </ContextMenuContent>
+                              </ContextMenu>
+                            );
+                          })}
+                        </SidebarMenuSub>
+                      </div>
+                    </div>
                   </SidebarMenuItem>
                 );
               }

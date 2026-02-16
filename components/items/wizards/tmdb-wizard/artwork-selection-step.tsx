@@ -127,10 +127,7 @@ export function ArtworkSelectionStep({
 }: ArtworkSelectionStepProps) {
   const config = getTypeConfig(type);
 
-  // Default to uploads tab in upload mode, otherwise TMDB
-  const [activeTab, setActiveTab] = useState<"tmdb" | "uploads">(
-    uploadMode ? "uploads" : "tmdb"
-  );
+  const [activeTab, setActiveTab] = useState<"tmdb" | "uploads">("tmdb");
 
   const { handleFileDrop, handleRemoveFile, handleQueuedSelect, totalSize } =
     useArtworkUpload({

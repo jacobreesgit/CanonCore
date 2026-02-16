@@ -7,25 +7,35 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ItemsView } from "@/components/items/items-view";
-import type { ItemWithArtwork, SortOption, FilterOption } from "@/lib/types";
+import type {
+  ItemWithArtwork,
+  SortOption,
+  ContentFilter,
+  ViewMode,
+} from "@/lib/types";
 import { sortItems, filterItems } from "@/lib/item-utils";
 
-// Sort/filter state module - must be separate to avoid hoisting issues
-const sortFilterState = {
+// URL state module - must be separate to avoid hoisting issues
+const urlState = {
   sortBy: "custom" as SortOption,
-  filterBy: "all" as FilterOption,
+  filters: [] as ContentFilter[],
+  viewMode: "tree" as ViewMode,
 };
 
-// Mock useItemsSortFilter hook
-vi.mock("@/hooks/use-items-sort-filter", () => ({
-  useItemsSortFilter: () => ({
-    sortBy: sortFilterState.sortBy,
-    filterBy: sortFilterState.filterBy,
+// Mock useItemsUrlState hook
+vi.mock("@/hooks/use-items-url-state", () => ({
+  useItemsUrlState: () => ({
+    sortBy: urlState.sortBy,
     setSortBy: vi.fn(),
-    setFilterBy: vi.fn(),
-    isCustomSort: sortFilterState.sortBy === "custom",
-    hasActiveFilter: sortFilterState.filterBy !== "all",
-    reset: vi.fn(),
+    filters: urlState.filters,
+    toggleFilter: vi.fn(),
+    clearFilters: vi.fn(),
+    hasActiveFilters: urlState.filters.length > 0,
+    viewMode: urlState.viewMode,
+    setViewMode: vi.fn(),
+    tab: null,
+    setTab: vi.fn(),
+    isCustomSort: urlState.sortBy === "custom",
   }),
 }));
 
@@ -68,39 +78,34 @@ vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: vi.fn() })),
 }));
 
-// Mock view mode hook - default to tree view
-vi.mock("@/hooks/use-stored-view-mode", () => ({
-  useStoredViewMode: vi.fn(() => ["tree"]),
-}));
-
 // Mock tree/grid components
 vi.mock("@/components/sortable-tree", () => ({
   SortableTree: ({ items }: { items: unknown[] }) => (
-    <div data-testid="sortable-tree">{items.length} items</div>
+    <div aria-label="sortable tree">{items.length} items</div>
   ),
   Tree: ({ items }: { items: unknown[] }) => (
-    <div data-testid="tree-view">{items.length} items</div>
+    <div aria-label="tree view">{items.length} items</div>
   ),
 }));
 
 vi.mock("@/components/sortable-grid", () => ({
   SortableGrid: ({ items }: { items: unknown[] }) => (
-    <div data-testid="sortable-grid">{items.length} items</div>
+    <div aria-label="sortable grid">{items.length} items</div>
   ),
   Grid: ({ items }: { items: unknown[] }) => (
-    <div data-testid="grid-view">{items.length} items</div>
+    <div aria-label="grid view">{items.length} items</div>
   ),
 }));
 
 // Mock dialogs
 vi.mock("@/components/items/add-item-dialog", () => ({
   AddItemDialog: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="add-dialog">Add Dialog</div> : null,
+    open ? <div>Add Dialog</div> : null,
 }));
 
 vi.mock("@/components/items/item-settings-dialog", () => ({
   ItemSettingsDialog: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="settings-dialog">Settings Dialog</div> : null,
+    open ? <div>Settings Dialog</div> : null,
 }));
 
 describe("ItemsView", () => {
@@ -123,6 +128,8 @@ describe("ItemsView", () => {
     syncStatus: "SYNCED",
     syncError: null,
     driveConnectionId: null,
+    tmdbPosterPath: null,
+    tmdbBackdropPath: null,
     artworkId: null,
     fileCounts: { media: 0, artwork: 0, subtitles: 0 },
     childCount: 0,
@@ -147,15 +154,16 @@ describe("ItemsView", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset sort/filter state to defaults
-    sortFilterState.sortBy = "custom";
-    sortFilterState.filterBy = "all";
+    // Reset URL state to defaults
+    urlState.sortBy = "custom";
+    urlState.filters = [];
+    urlState.viewMode = "tree";
   });
 
   describe("rendering", () => {
     it("renders tree view by default", () => {
       render(<ItemsView items={mockItems} />);
-      expect(screen.getByTestId("tree-view")).toBeInTheDocument();
+      expect(screen.getByLabelText("tree view")).toBeInTheDocument();
     });
 
     it("renders empty state when no items", () => {
@@ -176,17 +184,10 @@ describe("ItemsView", () => {
         />
       );
       // When isEditing=true, SortableTree is dynamically imported
-      // Wait for it to appear (mocked as sortable-tree testid)
+      // Wait for it to appear
       await waitFor(() => {
-        expect(screen.getByTestId("sortable-tree")).toBeInTheDocument();
+        expect(screen.getByLabelText("sortable tree")).toBeInTheDocument();
       });
-    });
-
-    // Note: AddItemDialog is dynamically imported, so we can't test its rendering in unit tests
-    // The actual dynamic loading behavior is better tested in E2E
-    it.skip("uses external addItemOpen state when provided", () => {
-      render(<ItemsView items={mockItems} addItemOpen={true} />);
-      expect(screen.getByTestId("add-dialog")).toBeInTheDocument();
     });
   });
 
@@ -206,15 +207,15 @@ describe("ItemsView", () => {
       // sortItems should be called first, then filterItems
       expect(sortItems).toHaveBeenCalled();
       expect(filterItems).toHaveBeenCalled();
-      // Filter should receive the sorted result
+      // Filter should receive the sorted result with empty filters array
       const sortResult = vi.mocked(sortItems).mock.results[0]?.value;
-      expect(filterItems).toHaveBeenCalledWith(sortResult, "all");
+      expect(filterItems).toHaveBeenCalledWith(sortResult, []);
     });
   });
 
   describe("empty states", () => {
     it("shows first-time empty state when no items and no filter", () => {
-      sortFilterState.filterBy = "all";
+      urlState.filters = [];
       render(
         <ItemsView items={[]} parentId={null} hasDriveConnection={false} />
       );
@@ -224,7 +225,7 @@ describe("ItemsView", () => {
     });
 
     it("shows no-children empty state on detail page with no children", () => {
-      sortFilterState.filterBy = "all";
+      urlState.filters = [];
       render(
         <ItemsView
           items={[]}
@@ -237,7 +238,7 @@ describe("ItemsView", () => {
     });
 
     it("shows filter-empty state when filter active and no results", () => {
-      sortFilterState.filterBy = "has-files";
+      urlState.filters = ["has-files"];
       render(
         <ItemsView items={[]} parentId={null} hasDriveConnection={false} />
       );

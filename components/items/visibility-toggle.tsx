@@ -228,7 +228,7 @@ export function VisibilityToggle({
         <div
           className={cn(
             "flex items-center justify-between rounded-lg border p-4",
-            currentInherit && "opacity-50"
+            currentInherit && "pointer-events-none"
           )}
         >
           <div className="flex items-center gap-3">

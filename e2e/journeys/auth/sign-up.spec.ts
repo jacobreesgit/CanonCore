@@ -1,88 +1,78 @@
-import { test, expect } from "../../fixtures";
-import { generateUniqueEmail, TEST_PASSWORD } from "../../helpers/test-user";
-import { isMobileViewport } from "../../helpers/mobile-nav-helpers";
+/**
+ * E2E tests for the sign-up flow.
+ * Covers successful sign-up, validation errors, and duplicate detection.
+ */
+import { publicTest, expect, prisma } from "../../fixtures";
+import { testEmail, testUsername, TEST_PASSWORD } from "../../config/test-data";
+import { Timeouts } from "../../config/timeouts";
 
-test.describe("Sign Up Journey", () => {
-  test("new user can create account and reach my-items", async ({
-    page,
-    landingPage,
-    signUpPage,
-  }) => {
-    const email = generateUniqueEmail("newuser");
-    const password = TEST_PASSWORD;
-    // Username is required for profile page redirect
-    const username = `nu_${Math.random().toString(36).slice(2, 10)}`;
+publicTest.describe("Sign Up (happy path)", () => {
+  publicTest(
+    "should create account and redirect to profile",
+    async ({ page, auth }) => {
+      const email = testEmail();
+      const username = testUsername();
 
-    // Start from landing page
-    await landingPage.goto();
-    await landingPage.expectVisible();
+      try {
+        await auth.gotoSignUp();
 
-    const isMobile = await isMobileViewport(page);
+        // Fill email and username first, then wait for async username
+        // validation to complete before filling passwords and submitting.
+        const emailInput = page.getByTestId("sign-up-email-input");
+        await emailInput.waitFor({
+          state: "visible",
+          timeout: Timeouts.upload,
+        });
+        await emailInput.fill(email);
+        await page.getByTestId("sign-up-username-input").fill(username);
 
-    if (isMobile) {
-      // Mobile: Use footer nav "Sign In" link, then navigate to sign-up
-      const signInLink = page
-        .getByRole("navigation", { name: /mobile navigation/i })
-        .getByRole("link", { name: /sign in/i });
-      await signInLink.click();
-      await expect(page).toHaveURL("/sign-in");
-    } else {
-      // Desktop: Open sidebar if needed, then click "Get Started" in sidebar
-      const sidebarTrigger = page.getByTestId("sidebar-trigger");
-      const getStartedLink = page
-        .locator('[data-slot="sidebar"]')
-        .getByRole("link", { name: "Get Started" });
+        // Wait for username validation to resolve (success indicator appears)
+        await expect(page.locator("#username-success")).toBeVisible({
+          timeout: Timeouts.api,
+        });
 
-      if (!(await getStartedLink.isVisible())) {
-        await sidebarTrigger.click();
-        await expect(getStartedLink).toBeVisible({ timeout: 5000 });
+        // Now fill passwords and submit
+        await page.getByTestId("sign-up-password-input").fill(TEST_PASSWORD);
+        await page
+          .getByTestId("sign-up-confirm-password-input")
+          .fill(TEST_PASSWORD);
+        await page.getByTestId("sign-up-submit-button").click();
+
+        // Should redirect to the new user's profile page
+        await expect(page).toHaveURL(`/u/${username}`, {
+          timeout: Timeouts.upload,
+        });
+      } finally {
+        // Clean up created user even if assertions fail
+        await prisma.user.delete({ where: { email } }).catch(() => {});
       }
-
-      await getStartedLink.click();
-      await expect(page).toHaveURL("/sign-in");
     }
+  );
+});
 
-    // Navigate from sign-in to sign-up
-    await page.getByTestId("sign-in-sign-up-link").click();
-    await expect(page).toHaveURL("/sign-up");
-
-    // Fill sign up form with username
-    await signUpPage.signUp(email, password, password, username);
-
-    // Wait for navigation away from sign-up page
-    await page.waitForURL((url) => !url.pathname.includes("/sign-up"), {
-      timeout: 15000,
-    });
-
-    // Should be on user profile
-    await expect(page).toHaveURL(/\/u\/[a-zA-Z0-9_]+$/);
+publicTest.describe("Sign Up (validation)", () => {
+  publicTest("should show error for short password", async ({ auth }) => {
+    await auth.gotoSignUp();
+    await auth.signUp(testEmail(), "abc", "abc", testUsername());
+    await auth.expectSignUpError("at least 8 characters");
   });
 
-  test("shows error for mismatched passwords", async ({ signUpPage }) => {
-    await signUpPage.goto();
-    await signUpPage.signUp(
-      "test@example.com",
-      "Password123!",
-      "Different123!"
+  publicTest("should show error for mismatched passwords", async ({ auth }) => {
+    await auth.gotoSignUp();
+    await auth.signUp(
+      testEmail(),
+      TEST_PASSWORD,
+      "DifferentPassword456!",
+      testUsername()
     );
-    await signUpPage.expectError("Passwords do not match");
+    await auth.expectSignUpError("Passwords do not match");
   });
+});
 
-  test("shows error for short password", async ({ page, signUpPage }) => {
-    await signUpPage.goto();
-    // HTML5 minLength validation prevents form submission for short passwords
-    // so we test that the password input has the minLength attribute
-    await expect(signUpPage.passwordInput).toHaveAttribute("minLength", "8");
-  });
-
-  test("can navigate to sign in page", async ({ page, signUpPage }) => {
-    await signUpPage.goto();
-    await signUpPage.signInLink.click();
-    await expect(page).toHaveURL("/sign-in");
-  });
-
-  test("shows sign up form elements", async ({ signUpPage }) => {
-    await signUpPage.goto();
-    await signUpPage.expectVisible();
+publicTest.describe("Sign Up (duplicate)", () => {
+  publicTest("should show error for duplicate email", async ({ auth }) => {
+    await auth.gotoSignUp();
+    await auth.signUp("demo@canoncore.com", TEST_PASSWORD, TEST_PASSWORD);
+    await auth.expectSignUpError("already exists");
   });
 });

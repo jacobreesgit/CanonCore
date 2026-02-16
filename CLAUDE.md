@@ -40,7 +40,7 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 
 ## Architecture
 
-**Stack:** Next.js 16 (App Router, Turbopack), React 19, TypeScript, Tailwind CSS 4, NextAuth.js v5, Prisma, shadcn/ui
+**Stack:** Next.js 16 (App Router, Turbopack), React 19, TypeScript, Tailwind CSS 4, NextAuth.js v5, Prisma, shadcn/ui, nuqs (URL state)
 
 ### Project Structure Patterns
 
@@ -56,6 +56,7 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 - `app/api/artwork/[fileId]/route.ts` - Artwork streaming from Google Drive
 - `app/api/stream/[fileId]/route.ts` - Media streaming with Range header support
 - `app/api/user/avatar/route.ts` and `hero/route.ts` - User image endpoints
+- All API routes are rate limited via `apiRoute` limiter (60/min per IP)
 
 **Server Actions Convention:**
 
@@ -74,47 +75,52 @@ pnpm run test-storybook:ci   # CI mode with limited workers
   - Action components: `hero-button`, `item-more-button`, `poster-card`, `playlist-button`
   - `grid-view-content` - Extracted grid view rendering from items-view
   - Mobile sheets: `mobile-item-sheet` (combined sort/filter/view/settings), `mobile-add-item-sheet` (add item), `mobile-options-sheet` (sort/filter/view)
-- `components/wizards/` - Reusable wizard infrastructure (state machine hook, step indicator)
+- `components/wizards/` - Reusable wizard infrastructure (state machine hook, step indicator, progress bar)
 - `components/google-drive/` - Drive integration UI (oauth-toast, settings-section, sync-history, storage-bar)
 - `components/sortable-grid/` and `sortable-tree/` - dnd-kit drag-drop with view/edit modes (kebab-case filenames)
 - `components/media/` - Media player with Vidstack (media-player, media-player-icons)
 - `components/diceui/` - Third-party DiceUI components (file-upload with drag-drop, previews)
-- `components/mobile/` - Mobile navigation and shared mobile components (footer nav, bottom sheets, swipeable-tabs, discard-changes-alert, search/help sheets)
-- `components/profile/` - Profile UI (settings-dialog, mobile-settings-sheet, preferences-tab, profile-page)
-- `components/providers/` - App-level providers (theme-provider, error-boundary, deferred-analytics)
-- `components/ui/` - shadcn/ui primitives + shared UI (content-toolbar with ViewDropdown, hero-content-layout, section, underline-tabs, progress-bar)
+- `components/mobile/` - Mobile navigation and shared mobile components (footer nav, bottom sheets, swipeable-tabs with Embla Carousel, discard-changes-alert, search/help sheets)
+- `components/profile/` - Profile UI (settings-dialog with 4 tabs: Profile/Account/Connections/Activity, mobile-settings-sheet, profile-page)
+- `components/providers/` - App-level providers (theme-provider, error-boundary, deferred-analytics); `NuqsAdapter` wraps app in root layout for URL state management
+- `components/ui/` - shadcn/ui primitives + shared UI (content-toolbar with ViewDropdown, hero-content-layout, section, underline-tabs, swipeable-underline-tabs, progress-bar)
+- `components/search/` - Spotlight search (spotlight-search, global-spotlight, item-thumbnail, user-thumbnail)
 - Shared components: `logo.tsx`, `floating-paths.tsx`, `shader-background.tsx`, `feature-card-grid.tsx`
 - Stories: Co-located `*.stories.tsx` files for Storybook component documentation
 
 **Utilities & Helpers:**
 
-- `lib/*-utils.ts` - Feature utilities (item, progress, file-type, upload, sync, avatar, tmdb)
+- `lib/*-utils.ts` - Feature utilities (item, progress, file-type, upload, sync, avatar, tmdb); `lib/item-utils.ts` exports `toggleContentFilter()` and `CONTENT_FILTER_OPTIONS` for filter state management
 - `lib/*-client.ts` - External API clients (google-drive, tmdb)
 - `lib/avatar-utils.ts` - Avatar initials and gradient background generation
-- `lib/tmdb-utils.ts` - TMDB resolution for season/episode items (recursive CTE ancestry walk), `extractTmdbDisplayOptions()` helper
+- `lib/tmdb-image-utils.ts` - Client-safe TMDB image URL builders (`getTmdbPosterUrl`, `getTmdbBackdropUrl`) and `resolveArtworkId()` for CDN-first image resolution
+- `lib/tmdb-utils.ts` - TMDB resolution for season/episode items (recursive CTE ancestry walk), `extractTmdbDisplayOptions()` helper, re-exports from `tmdb-image-utils.ts`
 - `lib/mock-data.ts` - Static data constants for cinematic UI (wiki sections, about tab filters)
 - `lib/audit-context.ts` - AsyncLocalStorage context for audit logging (userId, source, requestId)
 - `lib/audit-logger.ts` - Prisma extension for automatic mutation logging with redaction
+- `lib/slugify.ts` - URL-safe kebab-case slug generation (used for deterministic `data-testid` values on tree/grid items)
 - `lib/bot-patterns.ts` - Centralised bot lists for robots.txt and proxy middleware
-- `lib/constants/messages.ts` - Centralised user-facing messages (SYNC, SETTINGS, ITEM)
-- `lib/types.ts` - Shared TypeScript types (includes `TmdbDisplayOptions`, `DEFAULT_TMDB_DISPLAY`)
+- `lib/constants/messages.ts` - Centralised user-facing messages (SYNC, SETTINGS, ITEM, DRIVE)
+- `lib/types.ts` - Shared TypeScript types (includes `TmdbDisplayOptions`, `DEFAULT_TMDB_DISPLAY`, `ContentFilter`, `CONTENT_FILTERS`, `SORT_OPTIONS_TUPLE`, `VIEW_MODES`); `ItemWithArtwork` and `SearchableItem` include `tmdbPosterPath`/`tmdbBackdropPath` for CDN-first image resolution
+- `hooks/search-params.ts` - Shared nuqs parser definitions for URL query state (`itemsParsers`, `exploreParsers`)
+- `hooks/use-items-url-state.ts` - URL-backed sort/filter/view/tab state for items pages (replaces useItemsSortFilter + useStoredViewMode), with localStorage backup and migration
+- `hooks/use-explore-url-state.ts` - URL-backed sort and exclude-mine state for explore page (replaces useExploreSortFilter)
 - `hooks/use-reduced-motion.ts` - Reduced motion preference detection with localStorage override
 - `hooks/use-settings-dialog.ts` - Item settings dialog lifecycle management
 - `hooks/use-sync-handler.ts` - Sync operation handler for Drive sync
 - `hooks/use-add-item-form.ts` - Add item form state (TMDB search, wizard, file uploads) shared by desktop dialog and mobile sheet
 - `hooks/use-item-settings-form.ts` - Item settings form state (dirty detection, TMDB display, save/cancel) shared by desktop dialog and mobile sheet
 - `hooks/use-settings-form.ts` - Profile settings form state (avatar/hero uploads, password/email changes) shared by desktop dialog and mobile sheet
-- `hooks/use-stored-view-mode.ts` - localStorage-synced view mode with `useSyncExternalStore`
 
 **Testing:**
 
 - `tests/unit/` - Vitest unit tests with mocks
 - `tests/integration/` - Vitest integration tests with real DB
 - `tests/integration/audit/` - Audit logger integration tests
-- `e2e/journeys/` - Playwright E2E tests by feature
-- `e2e/journeys/items/heavy-serial.spec.ts` - Heavy tests forced serial (`test.describe.configure({ mode: "serial" })`) to avoid parallel timeout failures
-- `e2e/pages/` - Page Object Models
-- `e2e/fixtures/` - Reusable test fixtures
+- `e2e/journeys/` - Playwright E2E tests by feature (31 spec files)
+- `e2e/pages/` - 15 focused Page Object Models (auth, explore, item-detail, items-crud, items-drag, items-hierarchy, items-pinned, items-settings, items-sort-filter, media, nav, public-profile, settings, spotlight, tmdb-wizard)
+- `e2e/fixtures/` - Composable test fixtures (authenticated, public, drive)
+- `e2e/config/` - Centralised timeouts and collision-free test data utilities
 
 ### Authentication
 
@@ -122,8 +128,8 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 - Server-side: `await auth()` from `lib/auth.ts`, redirect unauthenticated users
 - Client-side: `signIn()` and `signOut()` from `next-auth/react`
 - Server actions: `signUp()`, `forgotPassword()`, `resetPassword()` in `lib/auth-actions.ts`
-- Password hashing with bcryptjs, password reset emails via Resend (30 min expiry)
-- **Rate limiting**: Upstash Redis (sign-in: 5/min, sign-up: 3/min, forgot: 2/min, botCrawl: 120/min)
+- Password hashing with bcryptjs (12 rounds), password reset emails via Resend (30 min expiry)
+- **Rate limiting**: Upstash Redis (sign-in: 5/min, sign-up: 3/min, forgot/resetPassword: 2/min, botCrawl: 120/min)
 - **Validation**: Zod schemas in `lib/validations.ts` (8+ chars, uppercase, lowercase, number)
 - **Security logging**: All auth events logged with IP and timestamp via Pino
 
@@ -133,8 +139,9 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 
 **Key Schema Patterns:**
 
-- User has optional `username` (unique, case-insensitive), `isPublic`, `image`/`heroImage` blobs, `defaultViewMode`/`defaultSortBy` (String?, not enum)
+- User has optional `username` (unique, case-insensitive), `isPublic`, `image`/`heroImage` blobs
 - Item has self-referential parent/child hierarchy, `pinnedOrder` (null or 0+), `isPublic`, `inheritVisibility`, `forkedFromId`
+- Item has TMDB image paths: `tmdbPosterPath`, `tmdbBackdropPath` (nullable String, stores TMDB CDN path fragments like `/abc123.jpg`)
 - Item has TMDB display preferences: 7 boolean fields (`tmdbShowTagline`, `tmdbShowMetadata`, `tmdbShowGenres`, `tmdbShowCast`, `tmdbShowProviders`, `tmdbShowVideos`, `tmdbShowRecommendations`) all defaulting to `true`
 - Item has Google Drive fields: `driveFileId`, `driveModifiedAt`, `syncStatus`, `driveConnectionId`
 - ItemFile has `fileType` (MEDIA/ARTWORK/SUBTITLE), `isPrimary`, `isHero`, `playbackPosition`
@@ -165,24 +172,36 @@ Run migrations: `npx prisma migrate dev`
 
 ### Database Seeding
 
-Simple seed script that always does a full wipe and rebuild:
+Seed script supports all 3 Neon branches via `SEED_TARGET`. Same Google Drive account with separate root folders per branch:
 
 ```bash
-pnpm run seed         # Wipes Drive + DB, then creates all content
+pnpm run seed              # Seeds development (default)
+pnpm run seed:production   # Seeds production Neon branch
+pnpm run seed:e2e          # Seeds E2E Neon branch
 ```
+
+**Branch Mapping:**
+
+| SEED_TARGET   | DATABASE_URL source              | Drive Root Folder source         |
+| ------------- | -------------------------------- | -------------------------------- |
+| `development` | `DATABASE_URL`                   | `GOOGLE_SEED_ROOT_FOLDER_ID`     |
+| `production`  | `SEED_PRODUCTION_DATABASE_URL`   | `SEED_PRODUCTION_ROOT_FOLDER_ID` |
+| `e2e`         | `E2E_DATABASE_URL`               | `SEED_E2E_ROOT_FOLDER_ID`        |
 
 **Flow:**
 
-1. Validate environment (ALLOW_SEEDING, TMDB_API_KEY, Drive credentials)
-2. Wipe Google Drive content (delete all files, empty trash)
-3. Delete all seed users from database
-4. Create seed users with TMDB metadata (including `tmdbId`/`tmdbType` on all items), artwork, and progress data
+1. Resolve `SEED_TARGET` to pick correct DATABASE_URL and Drive root folder
+2. Validate environment (ALLOW_SEEDING, TMDB_API_KEY, Drive credentials)
+3. Wipe Google Drive content in the target root folder
+4. Delete all seed users from database
+5. Create seed users with TMDB metadata (including `tmdbId`/`tmdbType` on all items), artwork, and progress data
 
 **Configuration:**
 
 - `prisma/seed-config.ts` - User definitions, content distribution, progress ranges
 - `prisma/seed.ts` - Seeding logic
 - Hardcoded limits: 5 seasons per show, 10 episodes per season
+- TMDB poster/backdrop paths stored directly on items (CDN serving, not downloaded to Drive)
 - Original quality TMDB images for movies/shows (seasons/episodes skip artwork for speed)
 
 **Users created:**
@@ -201,12 +220,14 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 - View mode: Full background artwork with dark overlay
 - Edit mode: Simplified icons with drag handles
 - Mobile (< 1024px): Bottom sheets replace desktop dialogs; `MobileItemSheet` combines sort/filter/view/settings; `MobileAddItemSheet` for item creation
+- Item detail tabs: Desktop uses `UnderlineTabs`, mobile uses `SwipeableUnderlineTabs` (Embla Carousel) for Contents/About with swipe gestures; loaded via `next/dynamic` to keep Embla out of desktop bundle
 
 **Key Features:**
 
 - CinematicHero: Multi-mode hero (carousel with auto-advance on Explore, single-slide on item detail, profile avatar mode). Respects `prefers-reduced-motion`. Attribution text supports linking via `attributionHref`. Screen reader `aria-live` slide announcements.
 - Sort: Custom Order, Name A-Z/Z-A, Newest/Oldest, Recently Updated
-- Filter: All Items, Has Files, No Files, Synced, Pending (Explore adds: Exclude Yours)
+- Filter: Multi-select grouped checkboxes (File Status: Has Files, No Files; Sync Status: Synced, Pending, Error). AND across groups, OR within groups. Explore page has "Exclude Mine" toggle button instead.
+- URL state: Sort/filter/view/tab persisted to URL via `nuqs` (`NuqsAdapter` in root layout), with localStorage backup for direct navigation
 - TMDB display options: Per-item toggles for tagline, metadata, genres, cast, providers, videos, recommendations
 - Pinned items: Max 10, shown in sidebar with folder icons
 - Progress tracking: 90% threshold for "watched", DFS traversal for first incomplete
@@ -270,7 +291,8 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 **Wizard Architecture:** `components/wizards/`
 
 - `useWizardMachine` - Generic reducer-based state machine for any multi-step flow
-- `WizardStepIndicator` - Accessible progress indicator (WCAG 2.1 Level A)
+- `WizardStepIndicator` - Accessible step indicator with numbered circles (WCAG 2.1 Level A)
+- `WizardProgressBar` - Minimal segmented progress bar with sr-only announcements
 - TMDB-specific wizard in `components/items/wizards/tmdb-wizard/`
 - TV picker in `components/items/wizards/tv-picker/`
 
@@ -278,28 +300,40 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 
 - `searchMediaAction`, `getMetadataPreviewAction`, `getImagesAction`
 - `getSeasonsAction`, `getEpisodesAction` for TV shows
-- `applyMetadataAction` - Always persists `tmdbId`/`tmdbType`, accepts optional `TmdbDisplayOptions`
+- `applyMetadataAction` - Always persists `tmdbId`/`tmdbType`/`tmdbPosterPath`/`tmdbBackdropPath`, accepts optional `TmdbDisplayOptions`
 - `updateTmdbDisplayOptions` - Updates display preference booleans for an item (debounced from settings dialog)
 - Circuit breaker: 5 failures → 60s recovery
 - Graceful degradation if TMDB_API_KEY not set
 
 **TMDB Client:** `lib/tmdb-client.ts`
 
-- Exported types: `CastMember`, `WatchProvider`, `Video`, `Recommendation`
-- `getItemTmdbMetadata()` - Cached normalised metadata with content ratings
-- `getCast()`, `getWatchProviders()`, `getVideos()`, `getRecommendations()`
+- Exported types: `CastMember`, `WatchProvider`, `Video`, `Recommendation`, `TmdbItemMetadata`, `TmdbItemDetails`
+- `getItemTmdbMetadata()` - Cached normalised metadata (tagline, runtime, genres, content rating) via `React.cache()`
+- `getItemTmdbDetails()` - Cached extended details (cast, providers, videos, recommendations) via `React.cache()`
+- `formatRuntime()` - Format minutes to "2h 46m" display
+- `getBestTextlessBackdrop()` - Select optimal textless backdrop from image collection
 - `TMDBMovie`/`TMDBTVShow` include `tagline`, `runtime`, `genres`, `vote_average`
+- TV season/episode types: `TMDBSeasonSummary`, `TMDBSeasonDetail`, `TMDBEpisodeDetails`, `TMDBSeasonImages`, `TMDBEpisodeImages`
+
+**TMDB Image Utilities:** `lib/tmdb-image-utils.ts`
+
+- `getTmdbPosterUrl(path, size)` - Constructs full TMDB poster URL from stored path fragment
+- `getTmdbBackdropUrl(path, size)` - Constructs full TMDB backdrop URL from stored path fragment
+- `resolveArtworkId(item)` - Returns `null` when TMDB poster exists (CDN), falls back to primary/first Drive artwork file
+- Priority: TMDB CDN → Primary artwork file → First artwork file → null
 
 **TMDB Resolution & Utilities:** `lib/tmdb-utils.ts`
 
 - `resolveTmdbForItem()` - Walks item ancestry via recursive CTE to find parent TV show for season/episode items
 - `extractTmdbDisplayOptions()` - Converts item DB fields (`tmdbShow*`) to `TmdbDisplayOptions` object
+- Re-exports `getTmdbPosterUrl`, `getTmdbBackdropUrl` from `tmdb-image-utils.ts`
 
 **Artwork Handling:**
 
-- Downloads posters/backdrops from TMDB
-- Uploads to Google Drive as ARTWORK files
-- Updates item with new file references
+- TMDB poster/backdrop paths stored directly on items (`tmdbPosterPath`, `tmdbBackdropPath`) for CDN serving
+- `resolveArtworkId()` prioritises TMDB CDN over Drive-hosted artwork across all item-returning functions
+- Drive-hosted artwork used as fallback when no TMDB path available
+- Wizard allows selecting specific poster/backdrop from TMDB galleries
 
 ### Spotlight Search
 
@@ -321,6 +355,7 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 
 - `SpotlightProvider` context manages dialog state and "/" keyboard listener
 - `SpotlightSearch` main dialog, `GlobalSpotlight` wrapper
+- `ItemThumbnail` reusable thumbnail resolving TMDB poster → Drive artwork → fallback icon
 
 ### Google Drive Integration
 
@@ -355,6 +390,14 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 - `google-drive-sync.ts` - Bidirectional sync
 - `google-drive-upload.ts` - Browser-to-Drive uploads
 
+**Reconnect Banner:**
+
+- When `needsReauth` is true on a Drive connection, a persistent amber banner appears on all pages
+- Desktop: `SiteHeader` renders banner below breadcrumb row (all layouts pass `driveNeedsReauth` prop)
+- Mobile: `MobileNavProvider` renders fixed banner at top of viewport (`lg:hidden`)
+- Both banners use `role="alert"`, `aria-live="assertive"`, and call `initiateGoogleDriveOAuth()` on click
+- Message constant: `DRIVE_MESSAGES.DISCONNECTED_BANNER` in `lib/constants/messages.ts`
+
 **Special Handling:**
 
 - Trashed folder detection with recovery guidance
@@ -385,11 +428,12 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 
 **E2E Tests (Playwright):**
 
-- ~548 tests across desktop Chrome and mobile Chrome (iPhone 14)
-- Page Object Model pattern in `e2e/pages/` (includes `mobile-footer.page.ts`)
-- Helpers in `e2e/helpers/` (includes `mobile-nav-helpers.ts`)
-- Fixtures in `e2e/fixtures/` for auth, DB, Google Drive
-- Google Drive tests use real test account with refresh token
+- 31 spec files across desktop Chrome and mobile Chrome (Pixel 7)
+- 15 focused Page Object Models in `e2e/pages/` (auth, explore, item-detail, items-crud, items-drag, items-hierarchy, items-pinned, items-settings, items-sort-filter, media, nav, public-profile, settings, spotlight, tmdb-wizard)
+- Composable fixtures in `e2e/fixtures/` (authenticated, public, drive) with per-test user creation and cleanup
+- Centralised timeouts (`e2e/config/timeouts.ts`) and collision-free test data (`e2e/config/test-data.ts`)
+- Curated `data-testid` attributes on ~30 components for targeted E2E selectors
+- `slugify()` utility generates deterministic testids: `item-card-${slugify(name)}`, `item-tree-${slugify(name)}`
 - Run: `pnpm run test:e2e`
 
 **Storybook (Component Documentation):**
@@ -398,7 +442,7 @@ pnpm run seed         # Wipes Drive + DB, then creates all content
 - Stories co-located with components (`*.stories.tsx`)
 - MSW mocking in `.storybook/mocks/` for server actions
 - Decorators: Theme (dark only), auth state, reduced motion
-- Accessibility testing via `@storybook/addon-a11y`
+- Accessibility testing via `@storybook/addon-a11y` with `test: "error"` in `preview.tsx` (no custom test-runner hooks needed)
 - Portal dialogs: Test with `within(document.body)` instead of `canvasElement`
 - Run: `pnpm run storybook` (dev), `pnpm run test-storybook` (tests)
 
@@ -438,6 +482,7 @@ done
 - X-Frame-Options: DENY (prevents clickjacking)
 - X-Content-Type-Options: nosniff
 - Referrer-Policy: strict-origin-when-cross-origin
+- **API route rate limiting**: All `/api/*` routes protected by `apiRoute` limiter (60/min per IP) to prevent abuse of streaming and image endpoints
 
 ### Bot Protection
 
@@ -473,6 +518,7 @@ Multi-layer defense against aggressive AI crawlers to prevent cost overruns whil
 **Rate Limiting**: `lib/rate-limit.ts`
 
 - `botCrawl`: 120 requests/minute (2 req/sec)
+- `apiRoute`: 60 requests/minute per IP (protects artwork/stream/avatar/hero routes)
 - Key composition: IP + user-agent (prevents single bot with multiple IPs)
 - Based on Google/Bing recommendations (typical crawl rate: 5-10 req/sec)
 
@@ -501,13 +547,13 @@ See `docs/deployments/DEPLOYMENT-6.0.2.md` for detailed implementation and monit
   - Glass: `--glass-bg`, `--glass-border`, `--glass-hover`, `--glow`
   - Typography: `--tertiary-foreground` (40% white)
   - Section spacing: `--section-px-mobile` through `--section-px-2xl`
-  - Gradients: `--gradient-hero`, `--gradient-card`, `--gradient-top`
+  - Gradients: `--gradient-hero-overlay` (diagonal 3-layer), `--gradient-card`
 - Keyframe animations: `ken-burns`, `fade-in`, `fade-in-up`, `slide-up`, `shimmer`
 - Utility classes: `.ken-burns`, `.animate-fade-in`, `.animate-slide-up`, `.stagger-grid`, `.skeleton-shimmer`
 - All animations respect `prefers-reduced-motion`
 - Auth pages use split-panel layout (decorative left panel with FloatingPaths, form right panel)
 - Landing page uses hero with feature card grid and Framer Motion animations
-- Site header auto-hides on scroll down, reappears on scroll up
+- Site header auto-hides on scroll down, reappears on scroll up; shows Drive reconnect banner when `driveNeedsReauth` is true
 
 ### Accessibility
 
@@ -518,9 +564,15 @@ See `docs/deployments/DEPLOYMENT-6.0.2.md` for detailed implementation and monit
 - Safe area support: CSS variables for notched devices (iPhone X+), mobile footer respects safe areas
 - Decorative icons: `aria-hidden="true"` on non-interactive icons
 - Navigation a11y: `aria-current="page"` on active sidebar and mobile footer items
-- Mobile navigation: Bottom sheets have accessible titles, focus trapping, swipe-to-dismiss gesture support, `SwipeableTabs` with `role="tablist"`/`role="tabpanel"` semantics
+- Mobile navigation: Bottom sheets have accessible titles, focus trapping, swipe-to-dismiss gesture support, `SwipeableTabs` and `SwipeableUnderlineTabs` with `role="tablist"`/`role="tabpanel"` semantics, `inert`/`aria-hidden` on inactive panels
 - Discard changes confirmation: `DiscardChangesAlert` shown when closing mobile sheets with unsaved changes
-- Auth form a11y: Error messages use `role="alert"` and `aria-live="polite"` for screen reader announcements; inputs get `aria-invalid` and `aria-describedby` when validation fails
+- Drive reconnect banner: `role="alert"` and `aria-live="assertive"` for immediate screen reader announcement when Drive needs reauthentication
+- Auth form a11y: Error messages use `role="alert"` and `aria-live="polite"` for screen reader announcements; inputs get `aria-invalid` and `aria-describedby` when validation fails; auth pages have `id="main-content"` on `<main>` for skip link target
+- MobileBottomSheet: Uses `React.useId()` for unique `aria-describedby` IDs
+- Sort options: `role="radiogroup"`/`role="radio"` semantics in mobile sheets
+- Filter options: `role="group"`/`role="checkbox"` semantics in mobile sheets
+- TreeItem: Interactive items get `role="button"`, `tabIndex={0}`, and Enter/Space keyboard handlers
+- Username validation: Error messages use `role="alert"` in settings dialog
 
 ### Dark Mode
 
@@ -569,9 +621,13 @@ TMDB (optional - for metadata lookup):
 
 Seed (required for database seeding with Drive integration):
 
-- `GOOGLE_SEED_REFRESH_TOKEN` - Refresh token for seed Drive account
-- `GOOGLE_SEED_ROOT_FOLDER_ID` - Folder ID where seed creates content
+- `GOOGLE_SEED_REFRESH_TOKEN` - Refresh token for seed Drive account (shared across all targets)
+- `GOOGLE_SEED_ROOT_FOLDER_ID` - Folder ID where development seed creates content
 - `GOOGLE_SEED_EMAIL` - Email of seed account (optional, for display)
+- `SEED_TARGET` - Target branch: "development" (default), "production", "e2e"
+- `SEED_PRODUCTION_DATABASE_URL` - Production Neon connection string (for SEED_TARGET=production)
+- `SEED_PRODUCTION_ROOT_FOLDER_ID` - Production Drive root folder (for SEED_TARGET=production)
+- `SEED_E2E_ROOT_FOLDER_ID` - E2E Drive root folder (for SEED_TARGET=e2e, reuses E2E_DATABASE_URL)
 
 E2E Testing (required for E2E tests):
 

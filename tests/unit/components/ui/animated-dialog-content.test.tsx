@@ -35,12 +35,10 @@ describe("AnimatedDialogContent", () => {
   it("applies consistent width class", () => {
     render(
       <Dialog open>
-        <AnimatedDialogContent stepKey="step1" data-testid="dialog">
-          Content
-        </AnimatedDialogContent>
+        <AnimatedDialogContent stepKey="step1">Content</AnimatedDialogContent>
       </Dialog>
     );
-    const dialog = screen.getByTestId("dialog");
+    const dialog = screen.getByRole("dialog");
     expect(dialog.className).toContain("sm:max-w-lg");
   });
 
@@ -91,16 +89,13 @@ describe("AnimatedDialogContent slot-based API", () => {
   it("renders header outside animated area", () => {
     render(
       <Dialog open>
-        <AnimatedDialogContent
-          stepKey="step1"
-          header={<div data-testid="slot-header">Header</div>}
-        >
+        <AnimatedDialogContent stepKey="step1" header={<div>Header</div>}>
           Body content
         </AnimatedDialogContent>
       </Dialog>
     );
 
-    const header = screen.getByTestId("slot-header");
+    const header = screen.getByText("Header");
     expect(header).toBeInTheDocument();
     // Header should be inside header wrapper with shrink-0
     const headerWrapper = header.closest("[data-slot='dialog-header-wrapper']");
@@ -110,16 +105,13 @@ describe("AnimatedDialogContent slot-based API", () => {
   it("renders footer outside animated area", () => {
     render(
       <Dialog open>
-        <AnimatedDialogContent
-          stepKey="step1"
-          footer={<div data-testid="slot-footer">Footer</div>}
-        >
+        <AnimatedDialogContent stepKey="step1" footer={<div>Footer</div>}>
           Body content
         </AnimatedDialogContent>
       </Dialog>
     );
 
-    const footer = screen.getByTestId("slot-footer");
+    const footer = screen.getByText("Footer");
     expect(footer).toBeInTheDocument();
     // Footer should be inside footer wrapper with shrink-0
     const footerWrapper = footer.closest("[data-slot='dialog-footer-wrapper']");
@@ -161,8 +153,8 @@ describe("AnimatedDialogContent slot-based API", () => {
       <Dialog open>
         <AnimatedDialogContent
           stepKey="step1"
-          header={<div data-testid="slot-header">Header</div>}
-          footer={<div data-testid="slot-footer">Footer</div>}
+          header={<div>Header</div>}
+          footer={<div>Footer</div>}
         >
           Body
         </AnimatedDialogContent>
@@ -170,10 +162,10 @@ describe("AnimatedDialogContent slot-based API", () => {
     );
 
     const headerWrapper = screen
-      .getByTestId("slot-header")
+      .getByText("Header")
       .closest("[data-slot='dialog-header-wrapper']");
     const footerWrapper = screen
-      .getByTestId("slot-footer")
+      .getByText("Footer")
       .closest("[data-slot='dialog-footer-wrapper']");
 
     expect(headerWrapper?.className).toContain("shrink-0");
@@ -187,7 +179,6 @@ describe("AnimatedDialogContent slot-based API", () => {
           stepKey="step1"
           header={<div>Header</div>}
           footer={<div>Footer</div>}
-          data-testid="dialog"
         >
           Body
         </AnimatedDialogContent>
@@ -195,7 +186,7 @@ describe("AnimatedDialogContent slot-based API", () => {
     );
 
     // The body wrapper should have min-h-0 and overflow-y-auto
-    const dialog = screen.getByTestId("dialog");
+    const dialog = screen.getByRole("dialog");
     const bodyWrapper = dialog.querySelector("[data-slot='dialog-body']");
     expect(bodyWrapper?.className).toContain("min-h-0");
     expect(bodyWrapper?.className).toContain("overflow-y-auto");

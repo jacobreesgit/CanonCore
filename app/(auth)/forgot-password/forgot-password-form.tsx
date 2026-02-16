@@ -8,7 +8,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/logo";
-import { FloatingPaths } from "@/components/floating-paths";
+import dynamic from "next/dynamic";
+
+const FloatingPaths = dynamic(
+  () =>
+    import("@/components/floating-paths").then((mod) => ({
+      default: mod.FloatingPaths,
+    })),
+  { ssr: false }
+);
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,7 +54,10 @@ export function ForgotPasswordForm() {
   };
 
   return (
-    <main className="relative md:h-screen md:overflow-hidden lg:grid lg:grid-cols-2">
+    <main
+      id="main-content"
+      className="relative md:h-screen md:overflow-hidden lg:grid lg:grid-cols-2"
+    >
       {/* Left panel - decorative */}
       <div className="bg-secondary dark:bg-secondary/20 relative hidden h-full flex-col border-r p-10 lg:flex">
         <div className="to-background absolute inset-0 bg-gradient-to-b from-transparent via-transparent" />
@@ -84,25 +95,17 @@ export function ForgotPasswordForm() {
                 </div>
               </div>
 
-              <div className="flex flex-col space-y-1 text-center">
+              <div
+                className="flex flex-col space-y-1 text-center"
+                data-testid="forgot-password-success-message"
+              >
                 <h1 className="text-2xl font-bold tracking-wide">
                   Check your email
                 </h1>
-                <p
-                  data-testid="forgot-password-success-message"
-                  className="text-muted-foreground text-base"
-                >
-                  {message}
-                </p>
+                <p className="text-muted-foreground text-base">{message}</p>
               </div>
 
-              <Button
-                asChild
-                variant="outline"
-                className="w-full"
-                size="lg"
-                data-testid="forgot-password-back-to-sign-in-link"
-              >
+              <Button asChild variant="outline" className="w-full" size="lg">
                 <Link href="/sign-in">Back to sign in</Link>
               </Button>
             </>
@@ -136,6 +139,7 @@ export function ForgotPasswordForm() {
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
+                    data-testid="forgot-password-email-input"
                     name="email"
                     type="email"
                     autoComplete="email"
@@ -148,26 +152,20 @@ export function ForgotPasswordForm() {
                     aria-describedby={
                       error ? "forgot-password-error" : undefined
                     }
-                    data-testid="forgot-password-email-input"
                   />
                 </div>
 
                 <Button
                   type="submit"
+                  data-testid="forgot-password-submit-button"
                   className="w-full"
                   size="lg"
                   disabled={loading}
-                  data-testid="forgot-password-submit-button"
                 >
                   {loading ? "Sending..." : "Send reset link"}
                 </Button>
 
-                <Button
-                  asChild
-                  variant="ghost"
-                  className="w-full"
-                  data-testid="forgot-password-back-to-sign-in-link"
-                >
+                <Button asChild variant="ghost" className="w-full">
                   <Link href="/sign-in">Back to sign in</Link>
                 </Button>
               </form>

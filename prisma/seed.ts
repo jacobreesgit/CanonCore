@@ -1,28 +1,46 @@
 /**
  * Database seed script for populating demo content with Google Drive integration.
- * Fetches TMDB metadata, downloads posters/backdrops, and uploads to Google Drive.
+ * Fetches TMDB metadata and stores poster/backdrop paths directly on items.
  *
  * IMPORTANT: Google Drive is REQUIRED for seeding. Run setup first:
  *   pnpm run setup:seed
  *
  * Usage:
- *   pnpm run seed
+ *   pnpm run seed                          # Seeds development (default)
+ *   SEED_TARGET=production pnpm run seed   # Seeds production
+ *   SEED_TARGET=e2e pnpm run seed          # Seeds e2e
+ *   pnpm run seed:production               # Convenience script
+ *   pnpm run seed:e2e                      # Convenience script
  *
  * Flow:
- *   1. Validate environment (required vars, production DB check, Drive setup)
- *   2. Clean ALL Google Drive content (delete files, empty trash)
- *   3. Cleanup ALL seed users from database
- *   4. Create all seed users with content
+ *   1. Resolve SEED_TARGET to pick correct DATABASE_URL and Drive root folder
+ *   2. Validate environment (required vars, production DB check, Drive setup)
+ *   3. Clean ALL Google Drive content in the target root folder
+ *   4. Cleanup ALL seed users from database
+ *   5. Create all seed users with content
+ *
+ * Branching Strategy:
+ *   Same Google Drive account with separate root folders per Neon branch.
+ *   SEED_TARGET selects which DATABASE_URL and root folder to use:
+ *     - development: DATABASE_URL + GOOGLE_SEED_ROOT_FOLDER_ID (defaults)
+ *     - production:  SEED_PRODUCTION_DATABASE_URL + SEED_PRODUCTION_ROOT_FOLDER_ID
+ *     - e2e:         SCREENSHOT_DATABASE_URL + SEED_E2E_ROOT_FOLDER_ID
  *
  * Required Environment Variables:
  *   - ALLOW_SEEDING: Must be "true" to run (prevents accidental seeding)
  *   - TMDB_API_KEY: Required for fetching metadata (v3 API key)
- *   - DATABASE_URL: Database connection string (must not be production)
- *   - GOOGLE_SEED_REFRESH_TOKEN: Refresh token for Drive integration
- *   - GOOGLE_SEED_ROOT_FOLDER_ID: Root folder for Drive storage
+ *   - DATABASE_URL: Database connection string (development, or overridden by SEED_TARGET)
+ *   - GOOGLE_SEED_REFRESH_TOKEN: Refresh token for Drive integration (shared across targets)
+ *   - GOOGLE_SEED_ROOT_FOLDER_ID: Root folder for Drive storage (development)
  *   - GOOGLE_CLIENT_ID: OAuth client ID
  *   - GOOGLE_CLIENT_SECRET: OAuth client secret
  *   - ENCRYPTION_KEY: For encrypting Drive tokens
+ *
+ * Optional (for non-development targets):
+ *   - SEED_TARGET: "development" | "production" | "e2e" (default: "development")
+ *   - SEED_PRODUCTION_DATABASE_URL: Production Neon connection string
+ *   - SEED_PRODUCTION_ROOT_FOLDER_ID: Production Drive root folder
+ *   - SEED_E2E_ROOT_FOLDER_ID: E2E Drive root folder
  */
 
 // Load environment variables before any other imports
@@ -30,6 +48,82 @@ import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
 dotenv.config({ path: path.resolve(__dirname, "../.env.local") });
+
+/** Valid seed target branches. */
+type SeedTarget = "development" | "production" | "e2e";
+
+const VALID_SEED_TARGETS: SeedTarget[] = ["development", "production", "e2e"];
+
+/**
+ * Resolves SEED_TARGET to the correct DATABASE_URL and Drive root folder ID.
+ * Overrides process.env so downstream code (Prisma, Drive client) uses the right values.
+ *
+ * @returns The resolved seed target name
+ */
+function resolveSeedTarget(): SeedTarget {
+  const target = (process.env.SEED_TARGET || "development") as SeedTarget;
+
+  if (!VALID_SEED_TARGETS.includes(target)) {
+    console.error(`❌ Invalid SEED_TARGET: "${target}"`);
+    console.error(`   Valid targets: ${VALID_SEED_TARGETS.join(", ")}`);
+    process.exit(1);
+  }
+
+  switch (target) {
+    case "development":
+      // Uses existing DATABASE_URL and GOOGLE_SEED_ROOT_FOLDER_ID (no override needed)
+      break;
+
+    case "production": {
+      const prodDbUrl = process.env.SEED_PRODUCTION_DATABASE_URL;
+      const prodRootFolder = process.env.SEED_PRODUCTION_ROOT_FOLDER_ID;
+
+      if (!prodDbUrl) {
+        console.error(
+          "❌ SEED_PRODUCTION_DATABASE_URL is required when SEED_TARGET=production"
+        );
+        process.exit(1);
+      }
+      if (!prodRootFolder) {
+        console.error(
+          "❌ SEED_PRODUCTION_ROOT_FOLDER_ID is required when SEED_TARGET=production"
+        );
+        process.exit(1);
+      }
+
+      process.env.DATABASE_URL = prodDbUrl;
+      process.env.GOOGLE_SEED_ROOT_FOLDER_ID = prodRootFolder;
+      break;
+    }
+
+    case "e2e": {
+      const e2eDbUrl = process.env.SCREENSHOT_DATABASE_URL;
+      const e2eRootFolder = process.env.SEED_E2E_ROOT_FOLDER_ID;
+
+      if (!e2eDbUrl) {
+        console.error(
+          "❌ SCREENSHOT_DATABASE_URL is required when SEED_TARGET=e2e"
+        );
+        process.exit(1);
+      }
+      if (!e2eRootFolder) {
+        console.error(
+          "❌ SEED_E2E_ROOT_FOLDER_ID is required when SEED_TARGET=e2e"
+        );
+        process.exit(1);
+      }
+
+      process.env.DATABASE_URL = e2eDbUrl;
+      process.env.GOOGLE_SEED_ROOT_FOLDER_ID = e2eRootFolder;
+      break;
+    }
+  }
+
+  return target;
+}
+
+// Resolve target before any other imports that read env vars
+const seedTarget = resolveSeedTarget();
 
 import { FileType, SyncStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -61,7 +155,6 @@ let prisma: ExtendedPrismaClient;
 
 // TMDB API configuration
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
-const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p";
 const TMDB_TIMEOUT_MS = 10000;
 
 // Local media files for Breaking Bad S1E1 (optional - for video player screenshots)
@@ -159,31 +252,6 @@ async function tmdbFetch<T>(endpoint: string): Promise<T | null> {
     } else {
       console.error("TMDB fetch failed:", error);
     }
-    return null;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
-/**
- * Downloads a poster image from TMDB at original quality.
- */
-async function downloadPoster(
-  posterPath: string | null
-): Promise<Buffer | null> {
-  if (!posterPath) return null;
-
-  const url = `${TMDB_IMAGE_BASE}/original${posterPath}`;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), TMDB_TIMEOUT_MS);
-
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) return null;
-
-    const arrayBuffer = await response.arrayBuffer();
-    return Buffer.from(arrayBuffer);
-  } catch {
     return null;
   } finally {
     clearTimeout(timeoutId);
@@ -400,31 +468,6 @@ Generated for testing purposes.
 `;
 }
 
-/**
- * Downloads a backdrop image from TMDB at original quality.
- */
-async function downloadBackdrop(
-  backdropPath: string | null
-): Promise<Buffer | null> {
-  if (!backdropPath) return null;
-
-  const url = `${TMDB_IMAGE_BASE}/original${backdropPath}`;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), TMDB_TIMEOUT_MS);
-
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) return null;
-
-    const arrayBuffer = await response.arrayBuffer();
-    return Buffer.from(arrayBuffer);
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
 /** Downloaded image data with MIME type. */
 interface ImageData {
   data: Uint8Array<ArrayBuffer>;
@@ -617,9 +660,11 @@ function calculateWatchPoint(
 
 /**
  * Attaches files to an item.
- * - Artwork: Poster as primary, backdrop as hero image (movies/shows only)
  * - Subtitles: Generated placeholder SRT files
  * - Media: Placeholder entries with null driveFileId (episodes/movies only)
+ *
+ * Note: Poster and backdrop images are stored as TMDB paths directly on the item
+ * (tmdbPosterPath, tmdbBackdropPath) rather than downloaded and uploaded to Drive.
  *
  * @param progressRange - Optional progress range for playback simulation (0-1).
  *                        If provided, uses range to determine completion percentage.
@@ -630,8 +675,6 @@ async function attachRandomFiles(
   itemId: string,
   itemName: string,
   level: ItemLevel,
-  primaryImagePath: string | null,
-  backdropPath: string | null,
   ctx: DriveContext | null,
   driveFolderId: string | null,
   progressRange?: ProgressRangeParam,
@@ -640,83 +683,6 @@ async function attachRandomFiles(
   const subtitleCount = getRandomCount(1, 2);
   const mediaCount =
     level === "episode" || level === "movie" ? getRandomCount(1, 2) : 0;
-
-  // --- PRIMARY ARTWORK (poster) - movies and shows only (skip seasons/episodes) ---
-  if (
-    primaryImagePath &&
-    (level === "movie" || level === "show") &&
-    ctx &&
-    driveFolderId
-  ) {
-    const posterBuffer = await downloadPoster(primaryImagePath);
-    if (posterBuffer) {
-      try {
-        const uploaded = await uploadToDrive(
-          ctx,
-          "poster.jpg",
-          posterBuffer,
-          "image/jpeg",
-          driveFolderId
-        );
-
-        await prisma.itemFile.create({
-          data: {
-            itemId,
-            filename: "poster.jpg",
-            driveFileId: uploaded.id,
-            fileType: FileType.ARTWORK,
-            mimeType: "image/jpeg",
-            size: BigInt(posterBuffer.length),
-            isPrimary: true,
-            isHero: false,
-            syncStatus: SyncStatus.SYNCED,
-          },
-        });
-      } catch {
-        // Continue even if upload fails
-      }
-    }
-  }
-
-  // --- HERO IMAGE (backdrop for movies/shows only - skip seasons/episodes) ---
-  if (ctx && driveFolderId) {
-    let heroBuffer: Buffer | null = null;
-    let filename: string | null = null;
-
-    if (backdropPath && (level === "movie" || level === "show")) {
-      // Movies and shows use backdrop as hero image
-      heroBuffer = await downloadBackdrop(backdropPath);
-      filename = "backdrop.jpg";
-    }
-
-    if (heroBuffer && filename) {
-      try {
-        const uploaded = await uploadToDrive(
-          ctx,
-          filename,
-          heroBuffer,
-          "image/jpeg",
-          driveFolderId
-        );
-
-        await prisma.itemFile.create({
-          data: {
-            itemId,
-            filename,
-            driveFileId: uploaded.id,
-            fileType: FileType.ARTWORK,
-            mimeType: "image/jpeg",
-            size: BigInt(heroBuffer.length),
-            isPrimary: false,
-            isHero: true,
-            syncStatus: SyncStatus.SYNCED,
-          },
-        });
-      } catch {
-        // Continue even if upload fails
-      }
-    }
-  }
 
   // --- SUBTITLES (skip if no Drive) ---
   if (ctx && driveFolderId) {
@@ -882,44 +848,53 @@ function validateEnvironment(): void {
     process.exit(1);
   }
 
-  // Block production database - check against known production Neon endpoint
+  // Block production database UNLESS explicitly targeting production via SEED_TARGET
   const dbUrl = process.env.DATABASE_URL || "";
   const PRODUCTION_NEON_ENDPOINT = "ep-dry-poetry-ab4m7vi1";
 
-  if (dbUrl.includes(PRODUCTION_NEON_ENDPOINT)) {
+  if (dbUrl.includes(PRODUCTION_NEON_ENDPOINT) && seedTarget !== "production") {
     console.error("❌ DATABASE_URL is the production database");
-    console.error("   Seeding is only allowed on development/test databases");
+    console.error(
+      "   Use SEED_TARGET=production to explicitly seed production"
+    );
     process.exit(1);
   }
 
-  // Additional safety: require explicit dev/test/local pattern for extra confidence
-  const safePatterns = [
-    "development",
-    "dev.",
-    "-dev-",
-    "_dev_",
-    "devdb",
-    "test",
-    "staging",
-    "local",
-    "localhost",
-    "127.0.0.1",
-  ];
-
-  const hasSafePattern = safePatterns.some((pattern) =>
-    dbUrl.includes(pattern)
-  );
-
-  if (!hasSafePattern) {
-    console.warn(
-      "⚠️  DATABASE_URL does not contain a recognized dev/test pattern"
-    );
-    console.warn(
-      "   Proceeding because ALLOW_SEEDING=true, but please verify this is not production"
-    );
+  if (seedTarget === "production") {
+    console.warn("⚠️  SEED_TARGET=production — seeding PRODUCTION database");
+    console.warn("   This will wipe all seed users and Drive content!");
   }
 
-  console.log("✅ Environment validated");
+  // Additional safety for non-explicit targets: require dev/test/local pattern
+  if (seedTarget === "development") {
+    const safePatterns = [
+      "development",
+      "dev.",
+      "-dev-",
+      "_dev_",
+      "devdb",
+      "test",
+      "staging",
+      "local",
+      "localhost",
+      "127.0.0.1",
+    ];
+
+    const hasSafePattern = safePatterns.some((pattern) =>
+      dbUrl.includes(pattern)
+    );
+
+    if (!hasSafePattern) {
+      console.warn(
+        "⚠️  DATABASE_URL does not contain a recognized dev/test pattern"
+      );
+      console.warn(
+        "   Proceeding because ALLOW_SEEDING=true, but please verify this is not production"
+      );
+    }
+  }
+
+  console.log(`✅ Environment validated (target: ${seedTarget})`);
 }
 
 /**
@@ -1274,19 +1249,19 @@ async function seedMoviesForUser(
         inheritVisibility: false,
         tmdbId: movieId,
         tmdbType: "movie",
+        tmdbPosterPath: movie.poster_path,
+        tmdbBackdropPath: movie.backdrop_path,
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: movieDriveFolderId,
         syncStatus: movieDriveFolderId ? SyncStatus.SYNCED : SyncStatus.PENDING,
       },
     });
 
-    // Attach files (artwork, subtitles, media placeholders)
+    // Attach files (subtitles, media placeholders)
     await attachRandomFiles(
       item.id,
       name,
       "movie",
-      movie.poster_path,
-      movie.backdrop_path,
       ctx,
       movieDriveFolderId,
       progressRange
@@ -1387,6 +1362,8 @@ async function seedEpisodes(
         inheritVisibility: true, // Episodes inherit from season
         tmdbId: episode.id,
         tmdbType: "episode",
+        tmdbPosterPath: episode.still_path ?? null,
+        tmdbBackdropPath: episode.still_path ?? null,
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: episodeDriveFolderId,
         syncStatus: episodeDriveFolderId
@@ -1483,8 +1460,6 @@ async function seedEpisodes(
           episodeItem.id,
           episodeName,
           "episode",
-          episode.still_path || null,
-          null,
           ctx,
           episodeDriveFolderId,
           progressRange,
@@ -1497,8 +1472,6 @@ async function seedEpisodes(
         episodeItem.id,
         episodeName,
         "episode",
-        episode.still_path || null,
-        null, // No backdrop for episodes
         ctx,
         episodeDriveFolderId,
         progressRange,
@@ -1617,6 +1590,8 @@ async function seedSeasons(
         inheritVisibility: true, // Seasons inherit from show
         tmdbId: season.id,
         tmdbType: "season",
+        tmdbPosterPath: season.poster_path,
+        tmdbBackdropPath: season.poster_path,
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: seasonDriveFolderId,
         syncStatus: seasonDriveFolderId
@@ -1630,8 +1605,6 @@ async function seedSeasons(
       seasonItem.id,
       seasonName,
       "season",
-      null, // Season poster skipped
-      null, // Season backdrop skipped
       ctx,
       seasonDriveFolderId,
       progressRange
@@ -1727,19 +1700,19 @@ async function seedTVShowsForUser(
         inheritVisibility: false,
         tmdbId: showId,
         tmdbType: "tv",
+        tmdbPosterPath: show.poster_path,
+        tmdbBackdropPath: show.backdrop_path,
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: showDriveFolderId,
         syncStatus: showDriveFolderId ? SyncStatus.SYNCED : SyncStatus.PENDING,
       },
     });
 
-    // Attach files (artwork, subtitles - no media for shows)
+    // Attach files (subtitles - no media for shows)
     await attachRandomFiles(
       item.id,
       name,
       "show",
-      show.poster_path,
-      show.backdrop_path,
       ctx,
       showDriveFolderId,
       progressRange
@@ -1988,7 +1961,9 @@ async function main(): Promise<void> {
   // Validate configuration before seeding
   validateContentDistribution();
 
-  log(`\n🌱 Starting database seed with Google Drive integration...\n`);
+  log(
+    `\n🌱 Starting database seed (target: ${seedTarget}) with Google Drive integration...\n`
+  );
 
   // Pre-flight check: Drive is REQUIRED for seeding
   // This will throw with clear instructions if not configured

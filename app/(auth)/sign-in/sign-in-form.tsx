@@ -10,7 +10,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn, getSession } from "next-auth/react";
 import { Logo } from "@/components/logo";
-import { FloatingPaths } from "@/components/floating-paths";
+import dynamic from "next/dynamic";
+
+const FloatingPaths = dynamic(
+  () =>
+    import("@/components/floating-paths").then((mod) => ({
+      default: mod.FloatingPaths,
+    })),
+  { ssr: false }
+);
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,7 +65,10 @@ export function SignInForm() {
   };
 
   return (
-    <main className="relative md:h-screen md:overflow-hidden lg:grid lg:grid-cols-2">
+    <main
+      id="main-content"
+      className="relative md:h-screen md:overflow-hidden lg:grid lg:grid-cols-2"
+    >
       {/* Left panel - decorative */}
       <div className="bg-secondary dark:bg-secondary/20 relative hidden h-full flex-col border-r p-10 lg:flex">
         <div className="to-background absolute inset-0 bg-gradient-to-b from-transparent via-transparent" />
@@ -118,12 +129,12 @@ export function SignInForm() {
                 autoComplete="email"
                 spellCheck={false}
                 placeholder="your.email@example.com"
+                data-testid="sign-in-email-input"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 aria-invalid={!!error}
                 aria-describedby={error ? "sign-in-error" : undefined}
-                data-testid="sign-in-email-input"
               />
             </div>
 
@@ -133,7 +144,6 @@ export function SignInForm() {
                 <Link
                   href="/forgot-password"
                   className="text-muted-foreground text-xs hover:underline"
-                  data-testid="sign-in-forgot-password-link"
                 >
                   Forgot password?
                 </Link>
@@ -143,12 +153,12 @@ export function SignInForm() {
                 name="password"
                 autoComplete="current-password"
                 placeholder="Password"
+                data-testid="sign-in-password-input"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 aria-invalid={!!error}
                 aria-describedby={error ? "sign-in-error" : undefined}
-                data-testid="sign-in-password-input"
               />
             </div>
 
@@ -168,7 +178,6 @@ export function SignInForm() {
             <Link
               href="/sign-up"
               className="text-primary font-medium hover:underline"
-              data-testid="sign-in-sign-up-link"
             >
               Sign up
             </Link>

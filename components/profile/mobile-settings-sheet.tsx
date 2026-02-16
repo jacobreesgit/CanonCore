@@ -23,7 +23,6 @@ import {
   ChevronLeft,
   List,
   LogOut,
-  SlidersHorizontal,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { toast } from "sonner";
@@ -61,7 +60,6 @@ import {
   GoogleDriveSettingsSection,
   SyncHistory,
 } from "@/components/google-drive";
-import { PreferencesTab } from "@/components/profile/preferences-tab";
 import {
   useSettingsForm,
   type SettingsFormUser,
@@ -83,7 +81,7 @@ export interface MobileSettingsSheetProps {
 }
 
 /**
- * Mobile settings bottom sheet with 5 swipeable tabs.
+ * Mobile settings bottom sheet with 4 swipeable tabs.
  * Supports step takeover for password/email/username changes.
  *
  * @param open - Whether the sheet is visible
@@ -167,7 +165,7 @@ export function MobileSettingsSheet({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <Globe aria-hidden="true" className="h-5 w-5 text-amber-500" />
+              <Globe aria-hidden="true" className="text-brand h-5 w-5" />
               Make your profile public?
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
@@ -565,14 +563,14 @@ export function MobileSettingsSheet({
                   )}
                 </div>
                 {form.newUsername && form.usernameValidation.error && (
-                  <p className="text-destructive text-xs">
+                  <p role="alert" className="text-destructive text-xs">
                     {form.usernameValidation.error}
                   </p>
                 )}
                 {form.newUsername &&
                   form.usernameValidation.isAvailable === false &&
                   !form.usernameValidation.error && (
-                    <p className="text-destructive text-xs">
+                    <p role="alert" className="text-destructive text-xs">
                       Username is already taken
                     </p>
                   )}
@@ -664,7 +662,6 @@ export function MobileSettingsSheet({
           maxSize={5 * 1024 * 1024}
         >
           <div
-            data-testid="hero-dropzone"
             className="bg-muted relative h-28 overflow-hidden rounded-lg bg-cover bg-center"
             style={{
               backgroundImage: form.heroImageSrc
@@ -685,6 +682,7 @@ export function MobileSettingsSheet({
                   size="icon"
                   variant="secondary"
                   className="size-7 shadow-md"
+                  aria-label="Remove cover"
                   onClick={form.handleRemoveHeroImage}
                 >
                   <X className="size-3.5" />
@@ -707,7 +705,7 @@ export function MobileSettingsSheet({
             maxFiles={1}
             maxSize={2 * 1024 * 1024}
           >
-            <div className="relative" data-testid="profile-dropzone">
+            <div className="relative">
               <Avatar className="size-16 border-2 border-white/10 shadow-lg">
                 <AvatarImage
                   src={form.profileImageSrc || undefined}
@@ -733,6 +731,7 @@ export function MobileSettingsSheet({
                   size="icon"
                   variant="secondary"
                   className="absolute -right-1 -bottom-1 size-7 rounded-full shadow-md"
+                  aria-label="Upload avatar"
                 >
                   <Upload className="size-3.5" />
                 </Button>
@@ -801,7 +800,6 @@ export function MobileSettingsSheet({
           </div>
           <Switch
             id="mobile-settings-public"
-            data-testid="settings-public-toggle"
             checked={form.isPublic}
             onCheckedChange={form.handlePublicToggle}
           />
@@ -857,6 +855,7 @@ export function MobileSettingsSheet({
       {/* Sign Out */}
       <Button
         variant="outline"
+        data-testid="settings-sign-out-button"
         onClick={async () => {
           try {
             clearSearchCache();
@@ -884,14 +883,8 @@ export function MobileSettingsSheet({
     </div>
   );
 
-  const preferencesContent = (
-    <div className="space-y-4">
-      <PreferencesTab />
-    </div>
-  );
-
   const activityContent = googleDriveConnection ? (
-    <div className="max-h-60 overflow-y-auto">
+    <div className="space-y-4">
       <SyncHistory />
     </div>
   ) : (
@@ -909,21 +902,30 @@ export function MobileSettingsSheet({
   );
 
   const tabs: SwipeableTab[] = [
-    { id: "profile", label: "Profile", icon: User, content: profileContent },
-    { id: "account", label: "Account", icon: Lock, content: accountContent },
+    {
+      id: "profile",
+      label: "Profile",
+      icon: User,
+      content: profileContent,
+    },
+    {
+      id: "account",
+      label: "Account",
+      icon: Lock,
+      content: accountContent,
+    },
     {
       id: "connections",
-      label: "Cloud",
+      label: "Connections",
       icon: Cloud,
       content: connectionsContent,
     },
     {
-      id: "preferences",
-      label: "Prefs",
-      icon: SlidersHorizontal,
-      content: preferencesContent,
+      id: "activity",
+      label: "Activity",
+      icon: List,
+      content: activityContent,
     },
-    { id: "activity", label: "Activity", icon: List, content: activityContent },
   ];
 
   // -------------------------------------------------------------------------
@@ -940,7 +942,7 @@ export function MobileSettingsSheet({
         swipeable
         title="Settings"
         description="Manage your account and connections"
-        data-testid="settings-dialog"
+        data-testid="sheet-settings"
         className={cn(
           "bg-[#1a1a1a]/95 backdrop-blur-xl",
           "border-t border-white/[0.08]",
@@ -966,12 +968,13 @@ export function MobileSettingsSheet({
           </div>
         </MobileBottomSheetHeader>
 
-        <MobileBottomSheetContent className="pb-0">
+        <MobileBottomSheetContent className="flex flex-col overflow-hidden pb-0">
           <SwipeableTabs
             tabs={tabs}
             activeTab={activeTab}
             onTabChange={setActiveTab}
             ariaLabel="Settings tabs"
+            testIdPrefix="settings-tab"
           />
         </MobileBottomSheetContent>
 

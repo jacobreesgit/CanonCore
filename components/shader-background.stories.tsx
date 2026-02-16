@@ -20,7 +20,7 @@ import { Shader1 } from "./shader-background";
  * gradient instead of the animated shader.
  */
 const meta = {
-  title: "Items/Misc/HeroShaderFallback",
+  title: "Shared/ShaderBackground",
   component: Shader1,
   tags: ["autodocs"],
   parameters: {

@@ -8,7 +8,7 @@
 import { useMemo, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Copy } from "lucide-react";
+import { Copy, UserX } from "lucide-react";
 import { CinematicHero, type HeroSlide } from "@/components/hero";
 import { HeroButton } from "@/components/items/hero-button";
 import { PlaylistButton } from "@/components/items/playlist-button";
@@ -19,17 +19,15 @@ import { ForkDestinationDialog } from "@/components/items/fork-destination-dialo
 import { Section } from "@/components/ui/section";
 import { HeroContentLayout } from "@/components/ui/hero-content-layout";
 import { ContentToolbar } from "@/components/ui/content-toolbar";
-import { useExploreSortFilter } from "@/hooks/use-explore-sort";
-import {
-  EXPLORE_SORT_OPTIONS,
-  EXPLORE_FILTER_OPTIONS,
-  sortPublicItems,
-} from "@/lib/item-utils";
+import { cn } from "@/lib/utils";
+import { useExploreUrlState } from "@/hooks/use-explore-url-state";
+import { EXPLORE_SORT_OPTIONS, sortPublicItems } from "@/lib/item-utils";
 import { deleteItem, pinItem, unpinItem } from "@/lib/item-actions";
 import { forkItem } from "@/lib/fork-actions";
+import { getTmdbBackdropUrl } from "@/lib/tmdb-image-utils";
 import type { PublicItem, FeaturedItem } from "@/lib/public-auth";
 import type { TmdbItemMetadata } from "@/lib/tmdb-client";
-import type { FilterOption } from "@/lib/types";
+import type { SortOption } from "@/lib/types";
 
 interface CurrentUser {
   id: string;
@@ -63,8 +61,8 @@ export function ExploreClient({
   currentUser,
 }: ExploreClientProps) {
   const router = useRouter();
-  const { sortBy, setSortBy } = useExploreSortFilter();
-  const [filterBy, setFilterBy] = useState<FilterOption>("all");
+  const { sortBy, setSortBy, excludeMine, setExcludeMine, autoplay } =
+    useExploreUrlState();
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(
     () => new Set(items.filter((i) => i.pinnedOrder != null).map((i) => i.id))
@@ -179,6 +177,9 @@ export function ExploreClient({
         id: item.id,
         name: item.name,
         description: item.description,
+        backgroundUrl: item.tmdbBackdropPath
+          ? getTmdbBackdropUrl(item.tmdbBackdropPath)
+          : undefined,
         artworkId: item.artworkId,
         link: item.link,
         attribution: `Shared by @${item.ownerUsername}`,
@@ -200,15 +201,15 @@ export function ExploreClient({
   );
 
   // Use shared sort utility (DRY - no duplicate sort function)
-  // Filter out deleted items, then apply user filter and sort
+  // Filter out deleted items, then apply exclude-mine toggle and sort
   const sortedItems = useMemo(() => {
     const activeItems = items.filter((i) => !deletedIds.has(i.id));
     const filtered =
-      filterBy === "exclude-yours" && currentUser
+      excludeMine && currentUser
         ? activeItems.filter((i) => i.userId !== currentUser.id)
         : activeItems;
     return sortPublicItems(filtered, sortBy);
-  }, [items, sortBy, filterBy, deletedIds, currentUser]);
+  }, [items, sortBy, excludeMine, deletedIds, currentUser]);
 
   // Split into pinned (current user's only) and unpinned for section rendering
   const pinnedExploreItems = useMemo(
@@ -248,6 +249,7 @@ export function ExploreClient({
   const hero = hasFeatured ? (
     <CinematicHero
       slides={carouselSlides}
+      autoAdvanceInterval={autoplay ? 5000 : 0}
       renderActions={(slide) => {
         const item = featuredItems.find((i) => i.id === slide.id);
         if (!item) return null;
@@ -256,7 +258,10 @@ export function ExploreClient({
           <>
             {/* View Item CTA */}
             {slide.link && (
-              <HeroButton onClick={() => router.push(slide.link!)}>
+              <HeroButton
+                variant="primary"
+                onClick={() => router.push(slide.link!)}
+              >
                 View Item
               </HeroButton>
             )}
@@ -265,7 +270,10 @@ export function ExploreClient({
             {item.ownerUserId !== currentUser?.id && (
               <>
                 {currentUser ? (
-                  <HeroButton onClick={() => handleForkClick(slide.id)}>
+                  <HeroButton
+                    data-testid="hero-fork-button"
+                    onClick={() => handleForkClick(slide.id)}
+                  >
                     <Copy className="size-4" aria-hidden="true" />
                     Fork
                   </HeroButton>
@@ -290,13 +298,32 @@ export function ExploreClient({
     <HeroContentLayout hero={hero} className={!hasItems ? "flex-1" : undefined}>
       <ContentToolbar
         sortBy={sortBy}
-        onSortChange={setSortBy}
-        filterBy={filterBy}
-        onFilterChange={setFilterBy}
+        onSortChange={setSortBy as (value: SortOption) => void}
         disabled={!hasItems}
         sortOptions={EXPLORE_SORT_OPTIONS}
-        filterOptions={EXPLORE_FILTER_OPTIONS}
         defaultSort="updated-desc"
+        sortTestId="explore-sort-dropdown"
+        leftActions={
+          currentUser ? (
+            <button
+              type="button"
+              onClick={() => setExcludeMine(!excludeMine)}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-md px-3 py-1.5",
+                "text-sm transition-colors",
+                excludeMine
+                  ? "text-foreground bg-white/10"
+                  : "text-muted-foreground hover:bg-white/5"
+              )}
+              aria-pressed={excludeMine}
+              aria-label="Exclude my items"
+              data-testid="explore-exclude-mine"
+            >
+              <UserX aria-hidden="true" className="size-4" />
+              <span className="hidden sm:inline">Exclude Mine</span>
+            </button>
+          ) : undefined
+        }
       />
 
       {/* Items grid or empty state */}
@@ -304,24 +331,18 @@ export function ExploreClient({
         <div className="flex flex-col">
           {/* Pinned section (current user's pinned items only) */}
           {pinnedExploreItems.length > 0 && (
-            <Section
-              className="py-8"
-              aria-label="Pinned items"
-              data-testid="explore-pinned-section"
-            >
+            <Section className="py-8" aria-label="Pinned items">
               <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
                 Pinned
               </h2>
-              <div
-                data-testid="pinned-items-grid"
-                className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6"
-              >
+              <div className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6">
                 {pinnedExploreItems.map((item, index) => {
                   const gridItem = (
                     <GridItem
                       id={item.id}
                       name={item.name}
                       description={item.description}
+                      tmdbPosterPath={item.tmdbPosterPath}
                       artworkId={item.artworkId}
                       onClick={() => handleItemClick(item)}
                       onMouseEnter={() => handleMouseEnter(item)}
@@ -373,20 +394,13 @@ export function ExploreClient({
           )}
 
           {/* Library section */}
-          <Section
-            className="py-8"
-            aria-label="Library"
-            data-testid="explore-library-section"
-          >
+          <Section className="py-8" aria-label="Library">
             {pinnedExploreItems.length > 0 && (
               <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
                 Library
               </h2>
             )}
-            <div
-              data-testid="items-grid-view"
-              className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6"
-            >
+            <div className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6">
               {unpinnedExploreItems.map((item, index) => {
                 const isOwnItem = currentUser?.id === item.userId;
                 const ownerHref = isOwnItem
@@ -400,6 +414,7 @@ export function ExploreClient({
                     id={item.id}
                     name={item.name}
                     description={item.description}
+                    tmdbPosterPath={item.tmdbPosterPath}
                     artworkId={item.artworkId}
                     onClick={() => handleItemClick(item)}
                     onMouseEnter={() => handleMouseEnter(item)}

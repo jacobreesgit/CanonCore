@@ -1,156 +1,103 @@
 /**
- * Page object for media detail view and playback.
- * Provides helpers for verifying hero stats and media player interactions.
- * File cards removed - now only hero shows file stats.
+ * Page object for media playback and item detail hero interactions.
+ * Covers navigation to item detail, media player controls,
+ * hero metadata assertions, and file tab switching.
  */
-
-import type { Locator, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
+import { Timeouts } from "../config/timeouts";
 
 export class MediaPage {
-  readonly page: Page;
-  private username: string;
-  readonly heroSection: Locator;
-  readonly heroTitle: Locator;
-  readonly emptyState: Locator;
-  readonly mediaOverlay: Locator;
-  readonly videoPlayer: Locator;
-  readonly closeOverlayButton: Locator;
+  constructor(
+    private page: Page,
+    private username: string,
+    private isMobile: boolean
+  ) {}
 
-  constructor(page: Page, username: string) {
-    this.page = page;
-    this.username = username;
-    // Hero section with artwork (uses data-testid from CinematicHero)
-    this.heroSection = page.getByTestId("hero-carousel");
-    this.heroTitle = page.getByRole("heading", { level: 1 });
-    this.emptyState = page.getByText("No items yet");
-    // Media overlay components
-    this.mediaOverlay = page.getByRole("dialog");
-    this.videoPlayer = page.locator("video");
-    this.closeOverlayButton = page.getByRole("button", {
-      name: "Close player",
-    });
-  }
+  // ── Navigation ────────────────────────────────────────
 
   /**
-   * Navigates to an item detail page.
+   * Navigate directly to a public item detail page by item ID.
+   * Waits for the page to finish loading before returning.
    *
-   * @param itemId - The item ID to view
+   * @param itemId - The unique identifier of the item
    */
-  async gotoItem(itemId: string): Promise<void> {
+  async goto(itemId: string) {
     await this.page.goto(`/u/${this.username}/${itemId}`);
+    await this.page.waitForLoadState("domcontentloaded");
   }
 
-  /**
-   * Expects the hero section to be visible with the given title.
-   *
-   * @param title - Expected item title
-   */
-  async expectHeroWithTitle(title: string): Promise<void> {
-    await expect(this.heroTitle).toBeVisible({ timeout: 10000 });
-    await expect(this.heroTitle).toHaveText(title);
-  }
+  // ── Player Assertions ────────────────────────────────
 
   /**
-   * Expects hero stats to show media file count.
-   *
-   * @param count - Expected media file count
+   * Assert that the media player element is visible on the page.
+   * Looks for the Vidstack media-player custom element.
    */
-  async expectHeroMediaCount(count: number): Promise<void> {
-    await expect(this.heroSection).toBeVisible({ timeout: 10000 });
-    const mediaText = count === 1 ? "1 media file" : `${count} media files`;
-    await expect(this.heroSection.getByText(mediaText)).toBeVisible();
-  }
-
-  /**
-   * Expects hero stats to show artwork count.
-   *
-   * @param count - Expected artwork count
-   */
-  async expectHeroArtworkCount(count: number): Promise<void> {
-    await expect(this.heroSection).toBeVisible({ timeout: 10000 });
-    await expect(this.heroSection.getByText(`${count} artwork`)).toBeVisible();
-  }
-
-  /**
-   * Expects hero stats to show subtitle count.
-   *
-   * @param count - Expected subtitle count
-   */
-  async expectHeroSubtitleCount(count: number): Promise<void> {
-    await expect(this.heroSection).toBeVisible({ timeout: 10000 });
-    const subtitleText = count === 1 ? "1 subtitle" : `${count} subtitles`;
-    await expect(this.heroSection.getByText(subtitleText)).toBeVisible();
-  }
-
-  /**
-   * Expects hero stats to show item count.
-   *
-   * @param count - Expected item count
-   */
-  async expectHeroItemCount(count: number): Promise<void> {
-    await expect(this.heroSection).toBeVisible({ timeout: 10000 });
-    const itemText = count === 1 ? "1 item" : `${count} items`;
-    await expect(this.heroSection.getByText(itemText)).toBeVisible();
-  }
-
-  /**
-   * Clicks the play button in the hero section.
-   * Now the only way to play media (no file card play buttons).
-   */
-  async clickPlayButton(): Promise<void> {
-    await this.clickHeroPlayButton();
-  }
-
-  /**
-   * Expects the media overlay to be visible.
-   */
-  async expectMediaOverlayVisible(): Promise<void> {
-    await expect(this.mediaOverlay).toBeVisible({ timeout: 10000 });
-  }
-
-  /**
-   * Expects the media overlay to not be visible.
-   */
-  async expectMediaOverlayNotVisible(): Promise<void> {
-    await expect(this.mediaOverlay).not.toBeVisible();
-  }
-
-  /**
-   * Closes the media overlay.
-   */
-  async closeMediaOverlay(): Promise<void> {
-    // Try close button first (with exact aria-label), then escape key
-    const closeButton = this.page.getByRole("button", { name: "Close player" });
-    if (await closeButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await closeButton.click();
-    } else {
-      await this.page.keyboard.press("Escape");
-    }
-    await this.expectMediaOverlayNotVisible();
-  }
-
-  /**
-   * Expects the empty state to be visible.
-   */
-  async expectEmptyState(): Promise<void> {
-    await expect(this.emptyState).toBeVisible({ timeout: 10000 });
-  }
-
-  /**
-   * Expects the hero section to be visible.
-   */
-  async expectHeroVisible(): Promise<void> {
-    await expect(this.heroSection).toBeVisible({ timeout: 10000 });
-  }
-
-  /**
-   * Clicks the play button in the hero.
-   */
-  async clickHeroPlayButton(): Promise<void> {
-    const playButton = this.heroSection.getByRole("button", {
-      name: /play|resume/i,
+  async expectPlayerVisible() {
+    await expect(this.page.getByTestId("media-player")).toBeVisible({
+      timeout: Timeouts.api,
     });
+  }
+
+  /**
+   * Assert that the hero section with runtime/metadata stats is visible.
+   * Checks for the hero carousel element which contains metadata overlays.
+   */
+  async expectHeroStatsVisible() {
+    await expect(this.page.getByTestId("hero-carousel")).toBeVisible({
+      timeout: Timeouts.navigation,
+    });
+  }
+
+  // ── Player Controls ───────────────────────────────────
+
+  /**
+   * Click the play button on the media player.
+   * Waits for the button to be visible before clicking.
+   */
+  async play() {
+    const playButton = this.page.getByTestId("media-play-button");
+    await playButton.waitFor({ state: "visible", timeout: Timeouts.api });
     await playButton.click();
+  }
+
+  /**
+   * Click the pause button on the media player.
+   * Waits for the button to be visible before clicking.
+   */
+  async pause() {
+    const pauseButton = this.page.getByTestId("media-pause-button");
+    await pauseButton.waitFor({ state: "visible", timeout: Timeouts.api });
+    await pauseButton.click();
+  }
+
+  /**
+   * Assert that the playback progress approximately matches the expected value.
+   * Uses a tolerance of +/- 5% to account for timing variations.
+   *
+   * @param percent - The expected progress percentage (0-100)
+   */
+  async expectProgress(percent: number) {
+    const progressBar = this.page.getByTestId("media-progress");
+    await progressBar.waitFor({ state: "visible", timeout: Timeouts.api });
+
+    const value = await progressBar.getAttribute("aria-valuenow");
+    const actual = Number(value ?? 0);
+    expect(actual).toBeGreaterThanOrEqual(percent - 5);
+    expect(actual).toBeLessThanOrEqual(percent + 5);
+  }
+
+  // ── File Tabs ─────────────────────────────────────────
+
+  /**
+   * Switch to a different file tab when multiple files are available.
+   * Clicks the tab matching the provided name within the media overlay.
+   *
+   * @param tabName - The label of the file tab to activate
+   */
+  async openFileTab(tabName: string) {
+    const tab = this.page.getByTestId(`media-file-tab-${tabName}`);
+    await tab.waitFor({ state: "visible", timeout: Timeouts.api });
+    await tab.click();
   }
 }

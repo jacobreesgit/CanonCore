@@ -297,7 +297,7 @@ export function SortableTree({
       onDragCancel={handleDragCancel}
     >
       <SortableContext items={sortedIds} strategy={verticalListSortingStrategy}>
-        <ul data-testid="sortable-tree" className="space-y-1">
+        <ul className="space-y-1">
           {flattenedItems.map(
             ({
               id,
@@ -307,6 +307,7 @@ export function SortableTree({
               collapsed,
               depth,
               pinnedOrder,
+              tmdbPosterPath,
               driveFileId,
             }) => (
               <SortableTreeItem
@@ -338,6 +339,7 @@ export function SortableTree({
                     : undefined
                 }
                 onAddChildComplete={onAddChildComplete}
+                tmdbPosterPath={tmdbPosterPath}
                 driveFileId={driveFileId}
                 showDescription={false}
                 hasDriveConnection={hasDriveConnection}

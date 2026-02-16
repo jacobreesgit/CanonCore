@@ -10,6 +10,7 @@ import React, { forwardRef, useCallback, HTMLAttributes } from "react";
 import Link from "next/link";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
+import { slugify } from "@/lib/slugify";
 import { GripVertical, User, Check } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useImageLoaded } from "@/hooks/use-image-loaded";
@@ -17,6 +18,7 @@ import { useLazyImage } from "@/hooks/use-lazy-image";
 import { SyncIcon } from "@/components/items/sync-badge";
 import { UserThumbnail } from "@/components/search/user-thumbnail";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { getTmdbPosterUrl } from "@/lib/tmdb-image-utils";
 import type { SyncStatus } from "@/lib/types";
 import type { ItemMenuActions } from "@/components/items/item-context-menu";
 import { ItemMoreButton } from "@/components/items/item-more-button";
@@ -33,6 +35,8 @@ export interface GridItemProps extends Omit<
   isOverlay?: boolean;
   handleProps?: Record<string, unknown>;
   onClick?(): void;
+  /** TMDB poster path for CDN display (takes precedence over artworkId). */
+  tmdbPosterPath?: string | null;
   /** Artwork file ID for thumbnail display. */
   artworkId?: string | null;
   /** Whether to show artwork thumbnail. Defaults to true. */
@@ -83,6 +87,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       onClick,
       className,
       style,
+      tmdbPosterPath,
       artworkId,
       showArtwork = true,
       showDescription = true,
@@ -105,7 +110,11 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
     },
     ref
   ) {
-    const artworkSrc = artworkId ? `/api/artwork/${artworkId}` : undefined;
+    const artworkSrc = tmdbPosterPath
+      ? (getTmdbPosterUrl(tmdbPosterPath) ?? undefined)
+      : artworkId
+        ? `/api/artwork/${artworkId}`
+        : undefined;
     const shouldShowCheckbox = handleProps && onSelectChange;
 
     // Lazy loading - priority items load immediately, others wait for viewport
@@ -134,7 +143,8 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       onLoad,
       onError,
     } = useImageLoaded(artworkSrc);
-    const shouldShowArtwork = showArtwork && artworkId && !imageError;
+    const shouldShowArtwork =
+      showArtwork && (tmdbPosterPath || artworkId) && !imageError;
     const shouldShowDescription =
       showDescription && description && !handleProps;
     const shouldShowWatched =
@@ -178,6 +188,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       <div
         ref={combinedRef}
         data-id={String(id)}
+        data-testid={`item-card-${slugify(name)}`}
         onClick={handleClick}
         {...a11yProps}
         className={cn(
@@ -217,6 +228,8 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
             ref={imgRef}
             src={artworkSrc}
             alt=""
+            width={200}
+            height={300}
             loading={priority ? "eager" : "lazy"}
             className={cn(
               "absolute inset-0 z-0 h-full w-full object-cover",
@@ -305,7 +318,6 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
               "bg-black/50 backdrop-blur-sm",
               "text-[10px] font-medium text-white/70"
             )}
-            data-testid="ownership-badge"
             aria-label={isOwn ? "Your item" : "In your library"}
           >
             {isOwn ? (
@@ -338,7 +350,6 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
           <div className="absolute inset-x-0 bottom-0 p-2 md:p-3">
             <div className="flex items-center gap-1.5">
               <h3
-                data-testid="grid-item-title"
                 className={cn(
                   "min-w-0 truncate text-xs font-semibold tracking-tight",
                   "text-white drop-shadow-lg",
@@ -414,7 +425,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
 
             {/* Progress bar */}
             {showProgress && (
-              <div className="mt-2" data-testid="grid-item-progress-bar">
+              <div className="mt-2">
                 <ProgressBar progress={progressPercentage ?? 0} compact />
                 {/* Watched count label */}
                 {shouldShowWatched && (

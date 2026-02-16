@@ -1,58 +1,57 @@
 /**
- * E2E tests for site header auto-hide on scroll.
- * Header hides when scrolling down past threshold, reappears on scroll up.
- * Desktop only — header uses lg:flex (hidden on mobile).
+ * E2E tests for the site header auto-hide behavior.
+ * Verifies the header hides on scroll down and reappears on scroll up.
+ *
+ * Note: The header uses -translate-y-full + opacity-0 to hide, not
+ * display:none or visibility:hidden. Playwright's toBeVisible() doesn't
+ * detect opacity-based hiding, so we assert on the CSS opacity value.
  */
+import { test, expect } from "../../fixtures";
+import { testId } from "../../config/test-data";
+import { Timeouts } from "../../config/timeouts";
 
-import { test, expect, prisma } from "../../fixtures";
-
-test.describe("Site Header Auto-Hide", () => {
-  test("hides header on scroll down and shows on scroll up", async ({
+test.describe("Site Header Autohide", () => {
+  test("should hide header on scroll down and show on scroll up", async ({
     page,
-    testUser,
+    itemsCrud,
     isMobile,
   }) => {
-    test.skip(isMobile, "Site header hidden on mobile (lg:flex only)");
+    test.skip(isMobile, "Site header is desktop only (hidden lg:flex)");
 
-    // Create items via DB for speed (avoids slow UI creation)
-    for (let i = 0; i < 8; i++) {
-      await prisma.item.create({
-        data: {
-          name: `Scroll Item ${i}`,
-          userId: testUser.id,
-          order: i,
-          depth: 0,
-        },
-      });
+    // Create enough items to make the page scrollable past the hero
+    const items = Array.from({ length: 12 }, () => testId("scroll"));
+    for (const name of items) {
+      await itemsCrud.createItem(name);
     }
 
-    await page.goto(`/u/${testUser.username}`);
-    await page.waitForLoadState("networkidle");
+    // The header element uses translate + opacity to auto-hide
+    const header = page.getByTestId("nav-header");
 
-    const header = page.locator("header");
-    await expect(header).toBeVisible();
+    // Verify header is fully opaque before scrolling
+    await expect(header).toHaveCSS("opacity", "1", {
+      timeout: Timeouts.animation,
+    });
 
-    // Scroll down past threshold (64px)
+    // Scroll down well past the 64px threshold to trigger auto-hide
     await page.evaluate(() => {
       const main = document.getElementById("main-content");
-      (main ?? window).scrollTo({ top: 400, behavior: "instant" });
+      if (main) main.scrollBy(0, 800);
     });
-    // Allow scroll handler's rAF to fire
-    await page.waitForTimeout(200);
 
-    // Header should be hidden (translated up via -translate-y-full)
-    await expect(header).toHaveClass(/-translate-y-full/, { timeout: 3000 });
+    // Header should fade out (opacity transitions to 0)
+    await expect(header).toHaveCSS("opacity", "0", {
+      timeout: Timeouts.api,
+    });
 
-    // Scroll back up
+    // Scroll back up to reveal header
     await page.evaluate(() => {
       const main = document.getElementById("main-content");
-      (main ?? window).scrollTo({ top: 0, behavior: "instant" });
+      if (main) main.scrollTo(0, 0);
     });
-    await page.waitForTimeout(200);
 
-    // Header should be visible again
-    await expect(header).not.toHaveClass(/-translate-y-full/, {
-      timeout: 3000,
+    // Header should fade back in
+    await expect(header).toHaveCSS("opacity", "1", {
+      timeout: Timeouts.api,
     });
   });
 });

@@ -23,7 +23,7 @@ export function WikiAccordion({
   className,
 }: WikiAccordionProps) {
   return (
-    <section className={className} data-testid="about-wiki-section">
+    <section className={className}>
       <h2
         className={cn(
           "mb-4 text-xs font-medium tracking-[0.2em] uppercase",
@@ -47,7 +47,7 @@ export function WikiAccordion({
             className={cn(
               "flex items-center justify-between",
               "px-4 py-3",
-              "cursor-not-allowed opacity-60",
+              "cursor-not-allowed",
               index < sections.length - 1 && "border-b border-white/[0.06]"
             )}
           >

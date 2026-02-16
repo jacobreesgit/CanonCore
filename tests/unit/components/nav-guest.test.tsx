@@ -16,10 +16,10 @@ vi.mock("next/navigation", () => ({
 // Mock sidebar components
 vi.mock("@/components/ui/sidebar", () => ({
   SidebarMenu: ({ children }: { children: React.ReactNode }) => (
-    <ul data-testid="sidebar-menu">{children}</ul>
+    <ul role="list">{children}</ul>
   ),
   SidebarMenuItem: ({ children }: { children: React.ReactNode }) => (
-    <li data-testid="sidebar-menu-item">{children}</li>
+    <li>{children}</li>
   ),
   SidebarMenuButton: ({
     children,
@@ -29,7 +29,7 @@ vi.mock("@/components/ui/sidebar", () => ({
     isActive?: boolean;
     asChild?: boolean;
   }) => (
-    <button data-testid="sidebar-menu-button" data-active={isActive}>
+    <button role="button" data-active={isActive}>
       {children}
     </button>
   ),
@@ -44,53 +44,53 @@ describe("AuthButtons", () => {
     mockPathname.mockReturnValue("/docs");
     render(<AuthButtons />);
 
-    const buttons = screen.getAllByTestId("sidebar-menu-button");
-    const getHelpButton = buttons[0];
-    expect(getHelpButton.getAttribute("data-active")).toBe("true");
+    const getHelpButton = screen.getByRole("button", { name: /get help/i });
+    expect(getHelpButton).toHaveAttribute("data-active", "true");
   });
 
   it("renders Get Help as active on /docs/getting-started", () => {
     mockPathname.mockReturnValue("/docs/getting-started");
     render(<AuthButtons />);
 
-    const buttons = screen.getAllByTestId("sidebar-menu-button");
-    const getHelpButton = buttons[0];
-    expect(getHelpButton.getAttribute("data-active")).toBe("true");
+    const getHelpButton = screen.getByRole("button", { name: /get help/i });
+    expect(getHelpButton).toHaveAttribute("data-active", "true");
   });
 
   it("renders Get Help as inactive on /", () => {
     mockPathname.mockReturnValue("/");
     render(<AuthButtons />);
 
-    const buttons = screen.getAllByTestId("sidebar-menu-button");
-    const getHelpButton = buttons[0];
-    expect(getHelpButton.getAttribute("data-active")).toBe("false");
+    const getHelpButton = screen.getByRole("button", { name: /get help/i });
+    expect(getHelpButton).toHaveAttribute("data-active", "false");
   });
 
   it("renders Get Started as active on /sign-in", () => {
     mockPathname.mockReturnValue("/sign-in");
     render(<AuthButtons />);
 
-    const buttons = screen.getAllByTestId("sidebar-menu-button");
-    const getStartedButton = buttons[1];
-    expect(getStartedButton.getAttribute("data-active")).toBe("true");
+    const getStartedButton = screen.getByRole("button", {
+      name: /get started/i,
+    });
+    expect(getStartedButton).toHaveAttribute("data-active", "true");
   });
 
   it("renders Get Started as inactive on /", () => {
     mockPathname.mockReturnValue("/");
     render(<AuthButtons />);
 
-    const buttons = screen.getAllByTestId("sidebar-menu-button");
-    const getStartedButton = buttons[1];
-    expect(getStartedButton.getAttribute("data-active")).toBe("false");
+    const getStartedButton = screen.getByRole("button", {
+      name: /get started/i,
+    });
+    expect(getStartedButton).toHaveAttribute("data-active", "false");
   });
 
   it("renders Get Started as inactive on /sign-up", () => {
     mockPathname.mockReturnValue("/sign-up");
     render(<AuthButtons />);
 
-    const buttons = screen.getAllByTestId("sidebar-menu-button");
-    const getStartedButton = buttons[1];
-    expect(getStartedButton.getAttribute("data-active")).toBe("false");
+    const getStartedButton = screen.getByRole("button", {
+      name: /get started/i,
+    });
+    expect(getStartedButton).toHaveAttribute("data-active", "false");
   });
 });

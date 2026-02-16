@@ -7,7 +7,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs";
 import { HeroAvatar } from "./hero-avatar";
 
 const meta = {
-  title: "Layout/HeroAvatar",
+  title: "Hero/HeroAvatar",
   component: HeroAvatar,
   tags: ["autodocs"],
   parameters: {

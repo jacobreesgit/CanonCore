@@ -62,8 +62,6 @@ export type DropzoneProps = Omit<DropzoneOptions, "onDrop"> & {
   ) => void;
   /** Custom content to render inside dropzone */
   children?: ReactNode;
-  /** Test ID for E2E testing */
-  "data-testid"?: string;
 };
 
 /**
@@ -90,7 +88,6 @@ export const Dropzone = ({
   src,
   className,
   children,
-  "data-testid": dataTestId,
   ...props
 }: DropzoneProps) => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -134,7 +131,6 @@ export const Dropzone = ({
         disabled={disabled}
         type="button"
         variant="outline"
-        data-testid={dataTestId}
         {...getRootProps()}
       >
         <input

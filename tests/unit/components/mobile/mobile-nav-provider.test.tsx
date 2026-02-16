@@ -30,16 +30,37 @@ vi.mock("next-themes", () => ({
 // Mock useReducedMotion hook
 vi.mock("@/hooks/use-reduced-motion", () => ({
   useReducedMotion: () => false,
+  usePrefersReducedMotion: () => false,
 }));
 
 // Mock SpotlightSearch (imported by MobileSearchSheet)
 vi.mock("@/components/search", () => ({
-  SpotlightSearch: () => <div data-testid="spotlight-search">Search</div>,
+  SpotlightSearch: () => <div>Search</div>,
 }));
 
 // Mock next-auth/react
 vi.mock("next-auth/react", () => ({
   signOut: vi.fn(),
+}));
+
+// Mock MobileSettingsSheet (complex tabbed component with many dependencies)
+vi.mock("@/components/profile/mobile-settings-sheet", () => ({
+  MobileSettingsSheet: ({
+    open,
+    user,
+    googleDriveConnection,
+  }: {
+    open: boolean;
+    user: { name: string | null; email: string } | null;
+    googleDriveConnection: unknown;
+  }) =>
+    open ? (
+      <div role="dialog" aria-label="Settings">
+        {user?.name && <div>{user.name}</div>}
+        <div>{user?.email}</div>
+        {googleDriveConnection ? <div>Google Drive</div> : null}
+      </div>
+    ) : null,
 }));
 
 // Mock useRouter
@@ -67,11 +88,11 @@ describe("MobileNavProvider", () => {
     it("renders children", () => {
       render(
         <MobileNavProvider user={null}>
-          <main data-testid="main-content">App Content</main>
+          <main>App Content</main>
         </MobileNavProvider>
       );
 
-      expect(screen.getByTestId("main-content")).toBeInTheDocument();
+      expect(screen.getByRole("main")).toBeInTheDocument();
       expect(screen.getByText("App Content")).toBeInTheDocument();
     });
 

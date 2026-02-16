@@ -85,6 +85,7 @@ describe("SpotlightSearch", () => {
           parentId: null,
           depth: 0,
           description: null,
+          tmdbPosterPath: null,
           artworkId: null,
           breadcrumb: null,
           ownerUsername: "testuser",
@@ -132,6 +133,7 @@ describe("SpotlightSearch", () => {
           parentId: null,
           depth: 0,
           description: null,
+          tmdbPosterPath: null,
           artworkId: null,
           breadcrumb: null,
           ownerUsername: "testuser",
@@ -142,6 +144,7 @@ describe("SpotlightSearch", () => {
           parentId: null,
           depth: 0,
           description: null,
+          tmdbPosterPath: null,
           artworkId: null,
           breadcrumb: null,
           ownerUsername: "testuser",
@@ -172,6 +175,7 @@ describe("SpotlightSearch", () => {
           parentId: null,
           depth: 0,
           description: null,
+          tmdbPosterPath: null,
           artworkId: null,
           breadcrumb: null,
           ownerUsername: "testuser",
@@ -217,6 +221,7 @@ describe("SpotlightSearch", () => {
           parentId: null,
           depth: 0,
           description: "A great description",
+          tmdbPosterPath: null,
           artworkId: null,
           breadcrumb: null,
           ownerUsername: "testuser",
@@ -263,6 +268,7 @@ describe("SpotlightSearch", () => {
           parentId: null,
           depth: 0,
           description: null,
+          tmdbPosterPath: null,
           artworkId: "artwork-123",
           breadcrumb: null,
           ownerUsername: "testuser",
@@ -296,6 +302,7 @@ describe("SpotlightSearch", () => {
           parentId: "parent-1",
           depth: 2,
           description: null,
+          tmdbPosterPath: null,
           artworkId: null,
           breadcrumb: "Movies / Star Wars",
           ownerUsername: "testuser",
@@ -324,6 +331,7 @@ describe("SpotlightSearch", () => {
           parentId: "parent-1",
           depth: 2,
           description: "Extra footage",
+          tmdbPosterPath: null,
           artworkId: null,
           breadcrumb: "Movies / Star Wars",
           ownerUsername: "testuser",
@@ -354,6 +362,7 @@ describe("SpotlightSearch", () => {
           parentId: null,
           depth: 0,
           description: null,
+          tmdbPosterPath: null,
           artworkId: null,
           breadcrumb: null,
           ownerUsername: "testuser",
@@ -512,6 +521,7 @@ describe("SpotlightSearch - Public Item Search", () => {
           id: "item-1",
           name: "Star Wars Collection",
           description: "Original trilogy",
+          tmdbPosterPath: null,
           artworkId: null,
           ownerUsername: "johndoe",
           ownerName: "John Doe",
@@ -541,6 +551,7 @@ describe("SpotlightSearch - Public Item Search", () => {
           id: "item-1",
           name: "Star Wars Collection",
           description: null,
+          tmdbPosterPath: null,
           artworkId: null,
           ownerUsername: "johndoe",
           ownerName: "John Doe",
@@ -663,6 +674,7 @@ describe("SpotlightSearch - Unified Loading States", () => {
           id: "1",
           name: "My Item",
           description: null,
+          tmdbPosterPath: null,
           artworkId: null,
           breadcrumb: null,
           parentId: null,
@@ -707,6 +719,7 @@ describe("SpotlightSearch - Unified Loading States", () => {
         id: string;
         name: string;
         description: null;
+        tmdbPosterPath: null;
         artworkId: null;
         breadcrumb: null;
         parentId: null;
@@ -721,6 +734,7 @@ describe("SpotlightSearch - Unified Loading States", () => {
         id: string;
         name: string;
         description: null;
+        tmdbPosterPath: null;
         artworkId: null;
         breadcrumb: null;
         parentId: null;
@@ -756,6 +770,7 @@ describe("SpotlightSearch - Unified Loading States", () => {
           id: "1",
           name: "Item",
           description: null,
+          tmdbPosterPath: null,
           artworkId: null,
           breadcrumb: null,
           parentId: null,

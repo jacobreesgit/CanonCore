@@ -632,6 +632,11 @@ export async function listFiles(
   files: drive_v3.Schema$File[];
   nextPageToken?: string;
 }> {
+  // Validate folderId format to prevent query injection (alphanumeric, hyphens, underscores)
+  if (!/^[\w-]+$/.test(folderId)) {
+    throw new Error("Invalid folder ID format");
+  }
+
   const response = await withRateLimit(() =>
     drive.files.list({
       q: `'${folderId}' in parents and trashed = false`,

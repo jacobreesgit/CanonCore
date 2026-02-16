@@ -2,7 +2,6 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "ignore": [
     "components/ui/**",
-    "e2e/**",
     "source.config.ts",
     ".source/**",
     "scripts/**",
@@ -11,14 +10,11 @@
     "components/items/visibility-toggle.tsx",
     "mdx-components.tsx",
     ".storybook/**",
-    ".github/**"
+    ".github/**",
+    "e2e/**"
   ],
-  "ignoreBinaries": ["pkill", "lsof"],
-  "ignoreDependencies": [
-    "pino-pretty",
-    "baseline-browser-mapping",
-    "@types/mdx"
-  ],
+  "ignoreBinaries": [],
+  "ignoreDependencies": ["pino-pretty", "baseline-browser-mapping"],
   "ignoreExportsUsedInFile": {
     "interface": true,
     "type": true

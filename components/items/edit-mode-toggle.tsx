@@ -68,6 +68,7 @@ export function EditModeToggle({
       onFocus={handlePreload}
       disabled={disabled}
       aria-label={isEditing ? "Exit edit mode" : "Enter edit mode"}
+      data-testid="items-edit-mode-toggle"
       className="gap-1.5"
     >
       {isEditing ? (

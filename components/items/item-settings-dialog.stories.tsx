@@ -27,9 +27,7 @@ function DialogWithTrigger(
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} data-testid="dialog-trigger">
-        {buttonLabel}
-      </Button>
+      <Button onClick={() => setOpen(true)}>{buttonLabel}</Button>
       <ItemSettingsDialog {...dialogProps} open={open} onOpenChange={setOpen} />
     </>
   );
@@ -183,7 +181,7 @@ export const Default: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
     // Dialog renders in portal, search in document.body
     const body = within(document.body);
@@ -209,7 +207,7 @@ export const WithDriveConnection: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
     const body = within(document.body);
     await body.findByLabelText(/name/i);
@@ -238,7 +236,7 @@ export const PublicItem: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
     const body = within(document.body);
     await body.findByLabelText(/name/i);
@@ -272,7 +270,7 @@ export const WithTmdbTab: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
     const body = within(document.body);
     const tmdbTab = await body.findByRole("tab", { name: /tmdb/i });
@@ -302,7 +300,7 @@ export const LongDescription: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
     const body = within(document.body);
     await body.findByLabelText(/name/i);

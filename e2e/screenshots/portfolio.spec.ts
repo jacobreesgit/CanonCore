@@ -1,182 +1,221 @@
 /**
  * Portfolio screenshot automation.
- * Captures screenshots for active portfolio images only.
+ * Captures 8 scenarios × 2 viewports (desktop + mobile) = 16 output PNGs.
+ * Output: public/portfolio/{name}-{desktop|mobile}.png
  *
- * Run with: npx playwright test --config=e2e/screenshots/playwright.config.ts
+ * Run: npx playwright test --config=e2e/screenshots/playwright.config.ts
  */
-
-import { test } from "@playwright/test";
-import * as fs from "fs";
-import * as path from "path";
+import { test, expect } from "@playwright/test";
+import fs from "fs";
+import path from "path";
 import {
-  USERS,
-  setupForScreenshot,
-  switchToTreeView,
-  waitForHero,
-  openSpotlight,
-  openSettings,
-  clickItem,
+  signIn,
   captureScreenshot,
-  SCREENSHOT_DIR,
+  waitForHero,
+  goToCarouselSlide,
+  openSettings,
+  openSpotlight,
+  switchToTreeView,
 } from "./utils";
+import { SEED_USERS } from "../config/test-data";
+import { Timeouts } from "../config/timeouts";
+import { slugify } from "../../lib/slugify";
 
-// Run tests serially to maintain login state between related screenshots
-test.describe.configure({ mode: "serial" });
+const OUTPUT_DIR = path.resolve("public/portfolio");
 
-test.describe("Portfolio Screenshots", () => {
-  // Delete all existing screenshots before running full suite
-  // Only runs when CLEAN_SCREENSHOTS=true environment variable is set
-  test.beforeAll(() => {
-    if (process.env.CLEAN_SCREENSHOTS === "true") {
-      if (fs.existsSync(SCREENSHOT_DIR)) {
-        const files = fs.readdirSync(SCREENSHOT_DIR);
-        let deletedCount = 0;
-        for (const file of files) {
-          if (file.endsWith(".png")) {
-            fs.unlinkSync(path.join(SCREENSHOT_DIR, file));
-            deletedCount++;
-          }
-        }
-        console.log(`🗑️  Deleted ${deletedCount} screenshots`);
+test.beforeAll(async () => {
+  // Clean output directory when CLEAN_SCREENSHOTS=true
+  if (process.env.CLEAN_SCREENSHOTS === "true" && fs.existsSync(OUTPUT_DIR)) {
+    const files = fs.readdirSync(OUTPUT_DIR);
+    for (const file of files) {
+      if (file.endsWith(".png")) {
+        fs.unlinkSync(path.join(OUTPUT_DIR, file));
       }
     }
+  }
+  // Ensure output directory exists
+  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+});
+
+test.beforeEach(async ({ page }) => {
+  // Dismiss any leftover dialogs from previous tests
+  await page.keyboard.press("Escape");
+});
+
+test.describe("Portfolio Screenshots", () => {
+  // ── 01: Library Grid ───────────────────────────────────────
+
+  test("01 — Library grid view", async ({ page }) => {
+    await signIn(page, "demo");
+    await waitForHero(page);
+    await captureScreenshot(page, "01-library-grid");
   });
 
-  // Clear any open dialogs before each test for resilience
-  test.beforeEach(async ({ page }) => {
-    await page.keyboard.press("Escape").catch(() => {});
-  });
+  // ── 02: Tree View ──────────────────────────────────────────
 
-  // =========================================================================
-  // Dark Mode Screenshots
-  // =========================================================================
+  test("02 — Tree view with expanded season", async ({ page }) => {
+    await signIn(page, "demo");
+    const isMobile = page.viewportSize()!.width < 1024;
 
-  test.describe("Dark Mode", () => {
-    test("01 - Library Grid", async ({ page }) => {
-      await setupForScreenshot(page, USERS.demo);
-      await waitForHero(page);
-      await captureScreenshot(page, "01-library-grid");
-    });
+    // Navigate to Breaking Bad detail page
+    const bbCard = page
+      .getByTestId(`item-card-${slugify("Breaking Bad (2008)")}`)
+      .or(page.getByTestId(`item-tree-${slugify("Breaking Bad (2008)")}`));
+    await bbCard.waitFor({ state: "visible", timeout: Timeouts.heavy });
+    await bbCard.click();
+    await page.waitForURL(/\/u\/demo\/[a-z0-9]+/, { timeout: Timeouts.heavy });
 
-    test("02 - Tree View", async ({ page }) => {
-      await setupForScreenshot(page, USERS.demo);
-      await clickItem(page, "Breaking Bad (2008)");
-      await switchToTreeView(page);
-      await page.waitForTimeout(500);
+    // Force tree view via URL param
+    const detailUrl = page.url();
+    await page.goto(`${detailUrl}?view=tree`);
+    await page.waitForLoadState("domcontentloaded");
 
-      // Collapse Seasons 1, 2, 3
-      for (const seasonNum of [1, 2, 3]) {
-        const item = page
-          .getByRole("listitem")
-          .filter({ hasText: `Season ${seasonNum}` });
-        const collapseButton = item.getByRole("button", {
-          name: /collapse item/i,
-        });
-        if (await collapseButton.isVisible()) {
-          await collapseButton.click();
-          await page.waitForTimeout(200);
-        }
-      }
-
-      // Expand Season 4
-      const season4Item = page
-        .getByRole("listitem")
-        .filter({ hasText: "Season 4" });
-      const expandButton = season4Item.getByRole("button", {
-        name: /expand item/i,
-      });
-      if (await expandButton.isVisible()) {
-        await expandButton.click();
-        await page.waitForTimeout(300);
-      }
-      await captureScreenshot(page, "02-tree-view");
-    });
-
-    test("04 - TMDB Wizard", async ({ page }) => {
-      await setupForScreenshot(page, USERS.demo);
-      const addButton = page.getByRole("button", { name: /add/i });
-      await addButton.click();
-      await page.waitForSelector('[role="dialog"]', { timeout: 5000 });
-      const searchInput = page.getByPlaceholder(/search/i);
-      await searchInput.fill("Dune");
-      await page.waitForTimeout(1000);
-      const result = page.getByRole("option").first();
-      if (await result.isVisible()) {
-        await result.click();
-        await page.waitForTimeout(500);
-        const nextButton = page.getByRole("button", {
-          name: "Next",
-          exact: true,
-        });
-        if (await nextButton.isVisible()) {
-          await nextButton.click();
-          await page.waitForTimeout(1000);
-        }
-      }
-      await captureScreenshot(page, "04-tmdb-wizard");
-    });
-
-    test("05 - Progress Tracking", async ({ page }) => {
-      await setupForScreenshot(page, USERS.demo);
-      await clickItem(page, "Breaking Bad (2008)");
-      await page.waitForLoadState("networkidle");
-      const settingsButton = page.getByRole("button", { name: /settings/i });
-      await settingsButton.click();
-      await page.waitForTimeout(500);
-      await captureScreenshot(page, "05-progress-tracking");
-    });
-
-    test("06 - Google Drive Sync", async ({ page }) => {
-      await setupForScreenshot(page, USERS.demo);
-      await openSettings(page);
-      const activityTab = page.getByRole("tab", { name: /activity/i });
-      if (await activityTab.isVisible()) {
-        await activityTab.click();
-        await page.waitForTimeout(500);
-      }
-      await captureScreenshot(page, "06-google-drive-sync");
-    });
-
-    test("07 - Explore Page", async ({ page }) => {
-      await setupForScreenshot(page, USERS.filmfan);
-      await page.goto("/explore");
-      await waitForHero(page);
-      await page.waitForTimeout(1000);
-      const dots = page.locator('button[aria-label^="Go to slide"]');
-      await dots.nth(1).click();
-      await page.waitForTimeout(1500);
-      await captureScreenshot(page, "07-explore-page");
-    });
-
-    test("08 - Spotlight Search", async ({ page }) => {
-      await setupForScreenshot(page, USERS.demo);
-      await openSpotlight(page);
-      await captureScreenshot(page, "08-spotlight-search");
-    });
-
-    test("32 - Fork Dialog", async ({ page }) => {
-      await setupForScreenshot(page, USERS.demo);
-      await page.goto("/explore");
-      await page.waitForLoadState("networkidle");
+    if (isMobile) {
+      // Just wait for content to render
       await page.waitForTimeout(2000);
-      await page.evaluate(() => window.scrollBy(0, 400));
-      await page.waitForTimeout(500);
-      const forkButton = page.getByRole("button", { name: /fork/i }).first();
-      await forkButton.waitFor({ state: "visible", timeout: 10000 });
-      await forkButton.click();
-      await page.waitForSelector('[role="dialog"]', {
-        state: "visible",
-        timeout: 5000,
+    } else {
+      // Wait for tree items to render
+      const collapseButtons = page.locator(
+        'button[aria-label="Collapse item"]'
+      );
+      await expect(collapseButtons.first()).toBeVisible({
+        timeout: Timeouts.heavy,
       });
-      await page.waitForTimeout(1500);
-      await captureScreenshot(page, "32-fork-dialog");
+
+      // Collapse all seasons, then expand only Season 2
+      let count = await collapseButtons.count();
+      while (count > 0) {
+        await collapseButtons.first().click();
+        await page.waitForTimeout(150);
+        count = await collapseButtons.count();
+      }
+
+      // Expand Season 2
+      const season2Item = page
+        .getByRole("listitem")
+        .filter({ hasText: "Season 2" });
+      await season2Item.locator('button[aria-label="Expand item"]').click();
+      await page.waitForTimeout(300);
+    }
+
+    await captureScreenshot(page, "02-tree-view");
+  });
+
+  // ── 04: TMDB Wizard ────────────────────────────────────────
+
+  test("04 — TMDB metadata wizard", async ({ page }) => {
+    await signIn(page, "demo");
+
+    // Click the Add button to open the add item dialog/sheet
+    await page.getByTestId("items-add-button").click();
+
+    // Wait for the name input to be visible (dialog/sheet is open)
+    const nameInput = page.getByRole("combobox", { name: /item name/i });
+    await nameInput.waitFor({ state: "visible", timeout: Timeouts.heavy });
+
+    // Search for "Dune" in the TMDB search combobox
+    const searchInput = page.getByPlaceholder("Search movies & TV shows\u2026");
+    await searchInput.waitFor({ state: "visible", timeout: Timeouts.api });
+    await searchInput.fill("Dune");
+
+    // Wait for search results and click a Dune result
+    const duneResult = page
+      .getByRole("listbox")
+      .getByRole("option")
+      .filter({ hasText: "Dune" });
+    await duneResult.nth(0).waitFor({
+      state: "visible",
+      timeout: Timeouts.api,
+    });
+    await duneResult.nth(0).click();
+
+    // Advance past text step to poster step
+    await page.getByRole("button", { name: "Next" }).click();
+    await expect(page.getByRole("heading", { name: /poster/i })).toBeVisible({
+      timeout: Timeouts.heavy,
     });
 
-    test("36 - Docs", async ({ page }) => {
-      await page.goto("/docs");
-      await page.waitForLoadState("networkidle");
-      await page.waitForTimeout(1000);
-      await captureScreenshot(page, "36-docs");
+    await captureScreenshot(page, "04-tmdb-wizard");
+  });
+
+  // ── 06: Google Drive Sync (Activity Tab) ───────────────────
+
+  test("06 — Google Drive sync settings", async ({ page }) => {
+    await signIn(page, "demo");
+
+    const settings = await openSettings(page);
+    await settings.switchToTab("activity");
+
+    // Wait for activity tab content to render
+    const isMobile = page.viewportSize()!.width < 1024;
+    const tabIndicator = isMobile
+      ? page.getByTestId("settings-tab-select")
+      : page.getByTestId("settings-tab-activity");
+    await expect(tabIndicator).toBeVisible({ timeout: Timeouts.api });
+
+    await captureScreenshot(page, "06-google-drive-sync");
+  });
+
+  // ── 07: Explore Page ───────────────────────────────────────
+
+  test("07 — Explore page with hero carousel", async ({ page }) => {
+    await signIn(page, "filmfan");
+    await page.goto("/explore?autoplay=false");
+    await page.waitForLoadState("domcontentloaded");
+    await waitForHero(page);
+
+    // Navigate to the Squid Game slide so both viewports show the same hero
+    await goToCarouselSlide(page, /squid game/i);
+
+    await captureScreenshot(page, "07-explore-page");
+  });
+
+  // ── 08: Spotlight Search ───────────────────────────────────
+
+  test("08 — Spotlight search dialog", async ({ page }) => {
+    await signIn(page, "demo");
+
+    await openSpotlight(page);
+
+    await captureScreenshot(page, "08-spotlight-search");
+  });
+
+  // ── 32: Fork Dialog ────────────────────────────────────────
+
+  test("32 — Fork destination dialog", async ({ page }) => {
+    await signIn(page, "demo");
+    await page.goto("/explore?autoplay=false");
+    await page.waitForLoadState("domcontentloaded");
+    await waitForHero(page);
+
+    // Navigate to the Squid Game slide so both viewports show the same hero
+    await goToCarouselSlide(page, /squid game/i);
+
+    // Click the hero Fork button
+    const isMobile = page.viewportSize()!.width < 1024;
+    const forkButton = page.getByTestId("hero-fork-button");
+    await forkButton.waitFor({ state: "visible", timeout: Timeouts.heavy });
+    await forkButton.click();
+
+    // Wait for the fork destination dialog/sheet to appear
+    const forkDialog = isMobile
+      ? page.getByTestId("sheet-fork-destination")
+      : page.getByTestId("dialog-fork-destination");
+    await expect(forkDialog).toBeVisible({ timeout: Timeouts.api });
+
+    await captureScreenshot(page, "32-fork-dialog");
+  });
+
+  // ── 36: Docs Page ──────────────────────────────────────────
+
+  test("36 — Documentation page", async ({ page }) => {
+    await page.goto("/docs");
+    await page.waitForLoadState("domcontentloaded");
+
+    await expect(page.locator("#main-content")).toBeVisible({
+      timeout: Timeouts.navigation,
     });
+
+    await captureScreenshot(page, "36-docs");
   });
 });

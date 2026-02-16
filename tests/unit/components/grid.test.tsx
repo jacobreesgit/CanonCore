@@ -49,6 +49,8 @@ const mockItems: ItemWithArtwork[] = [
     syncStatus: "SYNCED",
     syncError: null,
     driveConnectionId: null,
+    tmdbPosterPath: null,
+    tmdbBackdropPath: null,
     artworkId: "artwork-1",
     fileCounts: { media: 2, artwork: 1, subtitles: 0 },
     childCount: 3,
@@ -85,6 +87,8 @@ const mockItems: ItemWithArtwork[] = [
     syncStatus: "SYNCED",
     syncError: null,
     driveConnectionId: "drive-conn-1",
+    tmdbPosterPath: null,
+    tmdbBackdropPath: null,
     artworkId: null,
     fileCounts: { media: 0, artwork: 0, subtitles: 1 },
     childCount: 0,
@@ -130,17 +134,18 @@ describe("Grid", () => {
   });
 
   it("should render empty grid when no items provided", () => {
-    render(<Grid items={[]} />);
+    const { container } = render(<Grid items={[]} />);
 
-    const grid = screen.getByTestId("items-grid-view");
+    const grid = container.firstElementChild as HTMLElement;
     expect(grid).toBeInTheDocument();
     expect(grid.children).toHaveLength(0);
   });
 
   it("should render grid layout with correct CSS classes", () => {
-    render(<Grid items={mockItems} />);
+    const { container } = render(<Grid items={mockItems} />);
 
-    const grid = screen.getByTestId("items-grid-view");
+    const grid = container.firstElementChild as HTMLElement;
+    expect(grid).toBeInTheDocument();
     expect(grid).toHaveClass("grid");
     expect(grid).toHaveClass("grid-cols-1");
   });

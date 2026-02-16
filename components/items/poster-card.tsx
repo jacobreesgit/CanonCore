@@ -6,6 +6,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { slugify } from "@/lib/slugify";
 import { ProgressBar } from "@/components/ui/progress-bar";
 
 interface PosterCardProps {
@@ -21,6 +22,10 @@ interface PosterCardProps {
   progress?: number;
   /** Link destination. */
   href?: string;
+  /** Optional click handler. When provided without href, renders as button instead of Link. */
+  onClick?: () => void;
+  /** Accessible label for the interactive element (overrides title-derived name). */
+  "aria-label"?: string;
   /** Additional CSS classes. */
   className?: string;
 }
@@ -28,6 +33,7 @@ interface PosterCardProps {
 /**
  * Movie/TV poster card with hover state for desktop.
  * Title always visible for accessibility, full overlay on hover/focus.
+ * Renders as Link by default, or as button when onClick is provided.
  */
 export function PosterCard({
   posterUrl,
@@ -36,28 +42,27 @@ export function PosterCard({
   owner,
   progress,
   href = "#",
+  onClick,
+  "aria-label": ariaLabel,
   className,
 }: PosterCardProps) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "group relative block overflow-hidden rounded-lg",
-        "aspect-[2/3]",
-        "bg-card",
-        "transition-all duration-300 ease-out",
-        "hover:z-10 hover:scale-105",
-        "hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]",
-        "focus-visible:z-10 focus-visible:scale-105",
-        "focus-visible:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]",
-        "focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none",
-        "active:scale-[0.98] active:transition-transform active:duration-100",
-        className
-      )}
-    >
-      {/* ═══════════════════════════════════════════════════════════
-          Poster Image
-          ═══════════════════════════════════════════════════════════ */}
+  const sharedClassName = cn(
+    "group relative block overflow-hidden rounded-lg",
+    "aspect-[2/3]",
+    "bg-card",
+    "transition-[color,background-color,border-color,opacity,transform,box-shadow] duration-300 ease-out",
+    "hover:z-10 hover:scale-105",
+    "hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]",
+    "focus-visible:z-10 focus-visible:scale-105",
+    "focus-visible:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]",
+    "focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none",
+    "active:scale-[0.98] active:transition-transform active:duration-100",
+    className
+  );
+
+  const content = (
+    <>
+      {/* Poster Image */}
       {posterUrl ? (
         <Image
           src={posterUrl}
@@ -75,9 +80,7 @@ export function PosterCard({
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════
-          Default Gradient (always visible)
-          ═══════════════════════════════════════════════════════════ */}
+      {/* Default Gradient (always visible) */}
       <div
         className="absolute inset-x-0 bottom-0 h-1/2"
         style={{
@@ -87,9 +90,7 @@ export function PosterCard({
         aria-hidden="true"
       />
 
-      {/* ═══════════════════════════════════════════════════════════
-          Title (always visible for a11y)
-          ═══════════════════════════════════════════════════════════ */}
+      {/* Title (always visible for a11y) */}
       <div className="absolute inset-x-0 bottom-0 p-3">
         <h3
           className={cn(
@@ -102,9 +103,7 @@ export function PosterCard({
         </h3>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════
-          Hover/Focus Overlay
-          ═══════════════════════════════════════════════════════════ */}
+      {/* Hover/Focus Overlay */}
       <div
         className={cn(
           "absolute inset-0 flex flex-col justify-end p-3",
@@ -144,6 +143,32 @@ export function PosterCard({
           </div>
         )}
       </div>
+    </>
+  );
+
+  // Render as button when onClick is provided (avoids nested interactive elements)
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={ariaLabel}
+        data-testid={`item-card-${slugify(title)}`}
+        className={sharedClassName}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      aria-label={ariaLabel}
+      data-testid={`item-card-${slugify(title)}`}
+      className={sharedClassName}
+    >
+      {content}
     </Link>
   );
 }

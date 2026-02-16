@@ -35,8 +35,12 @@ jobs:
       - name: Build Storybook
         run: pnpm build-storybook
 
-      - name: Install Playwright
-        run: npx playwright install --with-deps chromium
+      - name: Install Playwright browsers
+        run: |
+          npx playwright install --with-deps chromium
+          for pw in node_modules/.pnpm/playwright-core@*/node_modules/playwright-core; do
+            node "$pw/cli.js" install chromium
+          done
 
       - name: Run Storybook tests
         run: |

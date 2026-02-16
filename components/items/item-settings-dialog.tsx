@@ -35,7 +35,7 @@ import { FileTypeCombobox } from "@/components/items/file-type-combobox";
 import { MediaSearchCombobox } from "@/components/items/media-search-combobox";
 import { ItemDialogTabs } from "@/components/items/item-dialog-tabs";
 import { TMDBWizard } from "./wizards/tmdb-wizard";
-import { WizardStepIndicator } from "@/components/wizards/wizard-step-indicator";
+
 import { TVPicker } from "./wizards/tv-picker";
 import { TmdbDisplayOptionsEditor } from "@/components/items/tmdb-display-options";
 import { cn } from "@/lib/utils";
@@ -248,26 +248,10 @@ export function ItemSettingsDialog({
 
   // TMDB tab content (only when item has TMDB metadata)
   const tmdbContent = item.tmdbId ? (
-    <div className="space-y-4">
-      <TmdbDisplayOptionsEditor
-        displayOptions={form.displayOptions}
-        onChange={form.handleDisplayOptionsChange}
-      />
-      <p
-        className={cn(
-          "text-muted-foreground flex items-center gap-2 text-xs transition-opacity",
-          form.isSavingDisplay ? "opacity-100" : "opacity-0"
-        )}
-        aria-live="polite"
-      >
-        {form.isSavingDisplay && (
-          <>
-            <Loader2 className="size-3 animate-spin" aria-hidden="true" />
-            Saving...
-          </>
-        )}
-      </p>
-    </div>
+    <TmdbDisplayOptionsEditor
+      displayOptions={form.displayOptions}
+      onChange={form.handleDisplayOptionsChange}
+    />
   ) : undefined;
 
   /**
@@ -328,18 +312,15 @@ export function ItemSettingsDialog({
             </div>
           </DialogHeader>
         );
-      case "tmdb-wizard":
+      case "tmdb-wizard": {
+        const wizardCurrentIndex = form.wizardHeaderProps
+          ? form.wizardHeaderProps.steps.indexOf(
+              form.wizardHeaderProps.currentStep
+            )
+          : 0;
+        const wizardTotalSteps = form.wizardHeaderProps?.steps.length ?? 0;
         return (
           <DialogHeader>
-            {form.wizardHeaderProps && (
-              <div className="pb-4">
-                <WizardStepIndicator
-                  steps={form.wizardHeaderProps.steps}
-                  currentStep={form.wizardHeaderProps.currentStep}
-                  stepLabels={form.wizardHeaderProps.stepLabels}
-                />
-              </div>
-            )}
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -354,23 +335,55 @@ export function ItemSettingsDialog({
               <div
                 className={cn(
                   "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                  "bg-amber-500/10 ring-1 ring-amber-500/20"
+                  "bg-brand/10 ring-brand/20 ring-1"
                 )}
               >
-                <Sparkles
-                  aria-hidden="true"
-                  className="size-5 text-amber-500"
-                />
+                <Sparkles aria-hidden="true" className="text-brand size-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
                 <DialogDescription className="text-sm">
                   {form.tmdbPreview?.name || "Select metadata to apply"}
+                  {form.wizardHeaderProps && (
+                    <span className="text-[var(--tertiary-foreground)]">
+                      {" "}
+                      · Step {wizardCurrentIndex + 1} of {wizardTotalSteps}
+                    </span>
+                  )}
                 </DialogDescription>
               </div>
             </div>
+            {form.wizardHeaderProps && (
+              <>
+                <div
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                  className="sr-only"
+                >
+                  Step {wizardCurrentIndex + 1} of {wizardTotalSteps}:{" "}
+                  {
+                    form.wizardHeaderProps.stepLabels[
+                      form.wizardHeaderProps.currentStep
+                    ]
+                  }
+                </div>
+                <div className="mt-3 flex gap-1.5" aria-hidden="true">
+                  {form.wizardHeaderProps.steps.map((step, i) => (
+                    <div
+                      key={step}
+                      className={cn(
+                        "h-1 flex-1 rounded-full transition-colors duration-300",
+                        i <= wizardCurrentIndex ? "bg-brand" : "bg-white/10"
+                      )}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </DialogHeader>
         );
+      }
       default:
         return null;
     }
@@ -525,6 +538,7 @@ export function ItemSettingsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <AnimatedDialogContent
+        data-testid="dialog-item-settings"
         stepKey={form.currentStep}
         className="max-h-[90vh] sm:max-w-2xl"
         header={getStepHeader()}

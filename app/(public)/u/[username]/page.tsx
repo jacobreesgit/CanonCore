@@ -69,8 +69,11 @@ export async function generateMetadata({
 export default async function ProfilePage({ params }: PageProps) {
   const { username } = await params;
 
-  // Rate limit first
-  const rateLimitResult = await checkRateLimit("publicProfile");
+  // Parallelize rate limit + auth check
+  const [rateLimitResult, session] = await Promise.all([
+    checkRateLimit("publicProfile"),
+    auth(),
+  ]);
 
   if (rateLimitResult) {
     return (
@@ -81,9 +84,6 @@ export default async function ProfilePage({ params }: PageProps) {
       </div>
     );
   }
-
-  // Get session to check if viewer might be the owner
-  const session = await auth();
   const sessionUsername = session?.user?.username;
 
   // Check if this is the owner viewing their own profile (case-insensitive)
@@ -108,6 +108,7 @@ export default async function ProfilePage({ params }: PageProps) {
 
   // For owners, also fetch Drive connection and library progress
   let hasDriveConnection = false;
+  let driveNeedsReauth = false;
   let libraryProgress = null;
 
   if (isOwner) {
@@ -117,6 +118,7 @@ export default async function ProfilePage({ params }: PageProps) {
     ]);
     hasDriveConnection =
       driveConnection !== null && !driveConnection.needsReauth;
+    driveNeedsReauth = driveConnection?.needsReauth ?? false;
     libraryProgress = progress;
   }
 
@@ -136,6 +138,7 @@ export default async function ProfilePage({ params }: PageProps) {
       <SiteHeader
         title={isOwner ? "My Items" : `@${profile.username}`}
         titleHref={`/u/${profile.username}`}
+        driveNeedsReauth={driveNeedsReauth}
       />
       <div className="bg-background text-foreground flex flex-1 flex-col">
         <ProfilePageContent

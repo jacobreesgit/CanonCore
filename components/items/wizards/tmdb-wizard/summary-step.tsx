@@ -92,7 +92,9 @@ export function TMDBSummaryStep({
     <div className="space-y-6">
       {/* Step header */}
       <div>
-        <h3 className="text-lg font-semibold">Review Changes</h3>
+        <h3 className="text-foreground text-lg font-semibold">
+          Review Changes
+        </h3>
         <p className="text-muted-foreground text-sm">
           Review your selections before applying.
         </p>

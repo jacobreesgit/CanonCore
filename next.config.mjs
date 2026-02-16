@@ -77,7 +77,7 @@ const nextConfig = {
   transpilePackages: ["fumadocs-core", "fumadocs-mdx", "fumadocs-ui"],
   experimental: {
     // Tree-shake barrel imports for these packages to reduce bundle size
-    optimizePackageImports: ["lucide-react", "date-fns"],
+    optimizePackageImports: ["lucide-react", "date-fns", "motion"],
   },
   /**
    * Bot handling: Aggressive bots are blocked at proxy level, beneficial bots

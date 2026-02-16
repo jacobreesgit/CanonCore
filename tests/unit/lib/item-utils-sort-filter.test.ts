@@ -6,10 +6,11 @@ import { describe, it, expect } from "vitest";
 import {
   sortItems,
   filterItems,
+  toggleContentFilter,
   SORT_OPTIONS,
   FILTER_OPTIONS,
 } from "@/lib/item-utils";
-import type { ItemWithArtwork } from "@/lib/types";
+import type { ItemWithArtwork, ContentFilter } from "@/lib/types";
 
 const mockItems: ItemWithArtwork[] = [
   {
@@ -31,6 +32,8 @@ const mockItems: ItemWithArtwork[] = [
     syncStatus: "SYNCED",
     syncError: null,
     driveConnectionId: null,
+    tmdbPosterPath: null,
+    tmdbBackdropPath: null,
     artworkId: null,
     fileCounts: { media: 1, artwork: 0, subtitles: 0 },
     childCount: 0,
@@ -66,6 +69,8 @@ const mockItems: ItemWithArtwork[] = [
     syncStatus: "PENDING",
     syncError: null,
     driveConnectionId: null,
+    tmdbPosterPath: null,
+    tmdbBackdropPath: null,
     artworkId: null,
     fileCounts: { media: 0, artwork: 0, subtitles: 0 },
     childCount: 0,
@@ -101,6 +106,8 @@ const mockItems: ItemWithArtwork[] = [
     syncStatus: "ERROR",
     syncError: null,
     driveConnectionId: null,
+    tmdbPosterPath: null,
+    tmdbBackdropPath: null,
     artworkId: null,
     fileCounts: { media: 2, artwork: 1, subtitles: 0 },
     childCount: 0,
@@ -136,6 +143,8 @@ const mockItems: ItemWithArtwork[] = [
     syncStatus: "SYNCED",
     syncError: null,
     driveConnectionId: null,
+    tmdbPosterPath: null,
+    tmdbBackdropPath: null,
     artworkId: null,
     fileCounts: { media: 0, artwork: 1, subtitles: 0 },
     childCount: 0,
@@ -313,5 +322,138 @@ describe("filterItems", () => {
     const original = [...mockItems];
     filterItems(mockItems, "has-files");
     expect(mockItems).toEqual(original);
+  });
+});
+
+describe("filterItems (multi-select)", () => {
+  // Mock data reference:
+  // id:1 "Zebra"  - SYNCED,  files: media=1, artwork=0
+  // id:2 "Apple"  - PENDING, files: media=0, artwork=0 (no files)
+  // id:3 "Mango"  - ERROR,   files: media=2, artwork=1
+  // id:4 "Banana" - SYNCED,  files: media=0, artwork=1
+
+  it("returns all items for empty filters array", () => {
+    const result = filterItems(mockItems, []);
+    expect(result).toHaveLength(4);
+  });
+
+  it("returns empty array for empty input", () => {
+    const result = filterItems([], ["has-files"]);
+    expect(result).toEqual([]);
+  });
+
+  it("filters by single file filter (has-files)", () => {
+    const result = filterItems(mockItems, ["has-files"]);
+    expect(result.map((i) => i.id)).toEqual(["1", "3", "4"]);
+  });
+
+  it("filters by single file filter (no-files)", () => {
+    const result = filterItems(mockItems, ["no-files"]);
+    expect(result.map((i) => i.id)).toEqual(["2"]);
+  });
+
+  it("filters by single sync filter (synced)", () => {
+    const result = filterItems(mockItems, ["synced"]);
+    expect(result.map((i) => i.id)).toEqual(["1", "4"]);
+  });
+
+  it("filters by single sync filter (pending)", () => {
+    const result = filterItems(mockItems, ["pending"]);
+    expect(result.map((i) => i.id)).toEqual(["2"]);
+  });
+
+  it("filters by single sync filter (error)", () => {
+    const result = filterItems(mockItems, ["error"]);
+    expect(result.map((i) => i.id)).toEqual(["3"]);
+  });
+
+  it("applies OR within sync group (synced + pending)", () => {
+    const result = filterItems(mockItems, ["synced", "pending"]);
+    // Items 1,4 are synced, item 2 is pending
+    expect(result.map((i) => i.id)).toEqual(["1", "2", "4"]);
+  });
+
+  it("applies OR within sync group (all three statuses)", () => {
+    const result = filterItems(mockItems, ["synced", "pending", "error"]);
+    expect(result).toHaveLength(4);
+  });
+
+  it("applies AND across groups (has-files + synced)", () => {
+    const result = filterItems(mockItems, ["has-files", "synced"]);
+    // Must have files AND be synced: items 1 and 4
+    expect(result.map((i) => i.id)).toEqual(["1", "4"]);
+  });
+
+  it("applies AND across groups (has-files + error)", () => {
+    const result = filterItems(mockItems, ["has-files", "error"]);
+    // Must have files AND be error: only item 3
+    expect(result.map((i) => i.id)).toEqual(["3"]);
+  });
+
+  it("applies AND across groups (no-files + pending)", () => {
+    const result = filterItems(mockItems, ["no-files", "pending"]);
+    // Must have no files AND be pending: only item 2
+    expect(result.map((i) => i.id)).toEqual(["2"]);
+  });
+
+  it("returns empty when AND across groups has no intersection", () => {
+    const result = filterItems(mockItems, ["no-files", "synced"]);
+    // No files: item 2, Synced: items 1,4 — no overlap
+    expect(result).toHaveLength(0);
+  });
+
+  it("applies AND across groups with OR within sync group", () => {
+    const result = filterItems(mockItems, ["has-files", "synced", "error"]);
+    // Must have files AND (synced OR error): items 1,4 (synced+files) + item 3 (error+files)
+    expect(result.map((i) => i.id)).toEqual(["1", "3", "4"]);
+  });
+
+  it("does not mutate original array", () => {
+    const original = [...mockItems];
+    filterItems(mockItems, ["has-files", "synced"]);
+    expect(mockItems).toEqual(original);
+  });
+});
+
+describe("toggleContentFilter", () => {
+  it("adds a filter to empty array", () => {
+    expect(toggleContentFilter([], "has-files")).toEqual(["has-files"]);
+  });
+
+  it("removes an active filter", () => {
+    expect(toggleContentFilter(["has-files"], "has-files")).toEqual([]);
+  });
+
+  it("adds a second filter", () => {
+    expect(toggleContentFilter(["has-files"], "synced")).toEqual([
+      "has-files",
+      "synced",
+    ]);
+  });
+
+  it("removes one filter while keeping others", () => {
+    expect(toggleContentFilter(["has-files", "synced"], "synced")).toEqual([
+      "has-files",
+    ]);
+  });
+
+  it("mutual exclusion: adding has-files removes no-files", () => {
+    expect(toggleContentFilter(["no-files", "synced"], "has-files")).toEqual([
+      "synced",
+      "has-files",
+    ]);
+  });
+
+  it("mutual exclusion: adding no-files removes has-files", () => {
+    expect(toggleContentFilter(["has-files", "synced"], "no-files")).toEqual([
+      "synced",
+      "no-files",
+    ]);
+  });
+
+  it("does not mutate input array", () => {
+    const input: ContentFilter[] = ["has-files"];
+    toggleContentFilter(input, "synced");
+    expect(input).toEqual(["has-files"]);
   });
 });

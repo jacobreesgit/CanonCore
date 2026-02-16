@@ -20,7 +20,7 @@ vi.mock("motion/react", () => ({
 
 // Mock child components
 vi.mock("@/components/google-drive", () => ({
-  GoogleDriveSettingsSection: () => <div data-testid="google-drive-section" />,
+  GoogleDriveSettingsSection: () => <div>Google Drive Settings</div>,
 }));
 
 vi.mock("@/lib/user-actions", () => ({
@@ -104,7 +104,7 @@ describe("SettingsDialog", () => {
       // Navigate to Connections tab
       await user.click(screen.getByRole("tab", { name: /connections/i }));
 
-      expect(screen.getByTestId("google-drive-section")).toBeInTheDocument();
+      expect(screen.getByText("Google Drive Settings")).toBeInTheDocument();
     });
   });
 

@@ -16,12 +16,20 @@
 import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import useEmblaCarousel from "embla-carousel-react";
 
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shader1 } from "@/components/shader-background";
 import { MetadataLine } from "@/components/items/metadata-line";
+
+const Shader1 = dynamic(
+  () =>
+    import("@/components/shader-background").then((mod) => ({
+      default: mod.Shader1,
+    })),
+  { ssr: false }
+);
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { HeroAvatar } from "./hero-avatar";
 import type { CinematicHeroProps } from "./types";
@@ -111,7 +119,6 @@ export function CinematicHero({
 
   return (
     <section
-      data-testid="hero-carousel"
       className={cn(
         "relative h-[55vh] w-full overflow-hidden md:h-[65vh]",
         className
@@ -120,6 +127,7 @@ export function CinematicHero({
       onMouseLeave={() => setIsPaused(false)}
       role="region"
       aria-label="Featured content carousel"
+      data-testid="hero-carousel"
     >
       {/* Screen reader announcement for slide changes */}
       {!isSingleSlide && (
@@ -154,7 +162,7 @@ export function CinematicHero({
                 {hasBackground ? (
                   <Image
                     src={backgroundSrc}
-                    alt=""
+                    alt={isSingleSlide ? slide.name : ""}
                     fill
                     priority={index === 0}
                     sizes="100vw"
@@ -165,30 +173,18 @@ export function CinematicHero({
                     )}
                     onLoad={() => handleImageLoad(slide.id)}
                     onError={() => handleImageLoad(slide.id)}
-                    data-testid="hero-carousel-artwork"
                     unoptimized={backgroundSrc.startsWith("/api/")}
                   />
                 ) : disableShader ? (
-                  <div
-                    data-testid="hero-fallback"
-                    className="h-full w-full bg-gradient-to-br from-blue-900 via-purple-900 to-slate-900"
-                  />
+                  <div className="h-full w-full bg-gradient-to-br from-blue-900 via-purple-900 to-slate-900" />
                 ) : (
-                  <Shader1
-                    data-testid="hero-fallback"
-                    className="h-full w-full"
-                  />
+                  <Shader1 className="h-full w-full" />
                 )}
 
-                {/* Gradient overlays */}
+                {/* Cinematic diagonal overlay — strongest at bottom-left content area */}
                 <div
-                  className="absolute inset-x-0 top-0 h-[30%]"
-                  style={{ background: "var(--gradient-top)" }}
-                  aria-hidden="true"
-                />
-                <div
-                  className="absolute inset-x-0 bottom-0 h-[70%]"
-                  style={{ background: "var(--gradient-hero)" }}
+                  className="absolute inset-0"
+                  style={{ background: "var(--gradient-hero-overlay)" }}
                   aria-hidden="true"
                 />
               </div>
@@ -237,10 +233,7 @@ export function CinematicHero({
                 </p>
                 {typeof activeSlide.progress === "number" &&
                   activeSlide.progress > 0 && (
-                    <div
-                      className="mt-5 flex max-w-xs flex-col gap-2"
-                      data-testid="hero-progress-bar"
-                    >
+                    <div className="mt-5 flex max-w-xs flex-col gap-2">
                       <div className="relative h-1 w-full max-w-[400px] overflow-hidden rounded-full bg-white/10 backdrop-blur-sm">
                         <div
                           className="bg-primary absolute inset-y-0 left-0 rounded-full transition-[width] duration-300 ease-out"
@@ -253,10 +246,7 @@ export function CinematicHero({
                         />
                       </div>
                       {activeSlide.progressLabel && (
-                        <span
-                          className="text-sm tracking-wide text-white/50 tabular-nums"
-                          data-testid="hero-progress-label"
-                        >
+                        <span className="text-sm tracking-wide text-white/50 tabular-nums">
                           {activeSlide.progressLabel}
                         </span>
                       )}
@@ -269,10 +259,7 @@ export function CinematicHero({
             <>
               {/* Attribution */}
               {activeSlide.attribution && (
-                <p
-                  className="mb-2 text-sm text-white/50"
-                  data-testid="hero-attribution"
-                >
+                <p className="mb-2 text-sm text-white/50">
                   {activeSlide.attributionHref ? (
                     <Link
                       href={activeSlide.attributionHref}
@@ -299,10 +286,7 @@ export function CinematicHero({
 
               {/* Tagline */}
               {activeSlide.tagline && (
-                <p
-                  className="mt-2 text-lg text-white/70 italic md:text-xl"
-                  data-testid="hero-tagline"
-                >
+                <p className="mt-2 text-lg text-white/70 italic md:text-xl">
                   &ldquo;{activeSlide.tagline}&rdquo;
                 </p>
               )}
@@ -310,7 +294,7 @@ export function CinematicHero({
               {/* Metadata line (includes genres inline) */}
               {(activeSlide.metadata ||
                 (activeSlide.genres && activeSlide.genres.length > 0)) && (
-                <div className="mt-4" data-testid="hero-metadata-line">
+                <div className="mt-4">
                   <MetadataLine
                     year={activeSlide.metadata?.year}
                     runtime={activeSlide.metadata?.runtime}
@@ -330,7 +314,7 @@ export function CinematicHero({
 
               {/* Progress bar */}
               {typeof activeSlide.progress === "number" && (
-                <div className="mt-5" data-testid="hero-progress-bar">
+                <div className="mt-5">
                   <ProgressBar
                     progress={activeSlide.progress}
                     label={activeSlide.progressLabel}
@@ -362,10 +346,10 @@ export function CinematicHero({
           {slides.map((slide, index) => (
             <button
               key={slide.id}
-              data-testid={`hero-dot-${index}`}
               role="tab"
               aria-selected={index === activeIndex}
               aria-label={`Go to slide ${index + 1}: ${slide.name}`}
+              data-testid={`hero-dot-${index + 1}`}
               onClick={() => goToSlide(index)}
               className={cn(
                 "h-2 cursor-pointer rounded-full transition-all duration-200",

@@ -20,6 +20,8 @@ Two views: **Grid** is Netflix-style with poster cards and progress bars. **Tree
 
 Edit mode enables drag-and-drop, bulk selection, and full keyboard navigation with screen reader announcements. Pinned items (max 10) appear in the sidebar for quick access. dnd-kit only loads in edit mode to keep browsing fast.
 
+On mobile, bottom sheets replace desktop dialogs for sort, filter, view switching, and item creation. A bottom navigation bar provides access to My Items, Explore, Search, Help, and Account.
+
 ### Public Sharing
 
 Make items public to share them. Your profile page shows your public items. The explore page shows public items from everyone with a featured banner carousel.
@@ -36,7 +38,7 @@ Vidstack-powered player streams media directly from Google Drive via HTTP range 
 
 ### One-Click Metadata
 
-You can enrich movies and TV shows with TMDB metadata. A three-step wizard lets you search for a title, select from multiple poster options, and choose a backdrop image for hero banners.
+You can enrich movies and TV shows with TMDB metadata. A four-step wizard lets you search for a title, review the description, select from multiple poster options, choose a backdrop image, and review everything before applying. For TV shows, an episode picker lets you navigate into seasons and episodes. Per-item display toggles control what metadata appears: tagline, cast, genres, providers, videos, and recommendations.
 
 ### Progress Tracking
 
@@ -48,11 +50,31 @@ The "Go to next" action performs a depth-first traversal of the tree to locate y
 
 All your media files stay in your Drive. I use Google's Changes API for incremental syncs, fetching only changed items since the last update. If incremental sync returns no results, a verification step triggers a full sync.
 
-Conflict detection compares timestamps bidirectionally: if Drive's modifiedTime is newer than our stored value, local changes are rejected with a notification. Errors are isolated per file, so individual failures don't interrupt the overall process.
+Conflict detection compares timestamps bidirectionally: if Drive's modifiedTime is newer than our stored value, local changes are rejected with a notification. Errors are isolated per file, so individual failures don't interrupt the overall process. If your Drive connection expires, a persistent banner appears across the app prompting you to reconnect.
 
 ### Spotlight Search
 
 Press `/` to open Spotlight Search anywhere in the app. Results load in parallel across three sections: Your Items, Public Collections, and People. A module-level cache with a 60-second TTL gives you instant responses on repeat searches. Breadcrumb paths reveal each item's full hierarchy.
+
+### Cinematic Hero
+
+The explore page features a cinematic hero carousel that auto-advances through featured collections with rich TMDB metadata — tagline, release year, runtime, genres, and content rating. Item detail pages show a single hero banner with the item's backdrop artwork.
+
+### URL State
+
+Sort, filter, view mode, and tab selections persist in URL parameters via nuqs. Bookmarkable, shareable views with localStorage backup for direct navigation.
+
+### Multi-Select Filters
+
+Two filter groups — File Status (Has Files, No Files) and Sync Status (Synced, Pending Sync, Sync Error) — with AND logic across groups and OR within. Active filter count shown in toolbar badge.
+
+### Bot Protection
+
+Multi-layer defence against aggressive AI crawlers: robots.txt for polite bots, edge-level blocking for non-compliant scrapers, and rate limiting (120 req/min) for beneficial search engines. Blocks 35+ AI scrapers while allowing Google, Bing, Apple, and others.
+
+### Audit Logging
+
+Every database mutation is automatically logged via a Prisma extension. Context includes user, action, model, and record ID. Sensitive fields are redacted. 90-day retention in production.
 
 ---
 
@@ -62,7 +84,7 @@ Press `/` to open Spotlight Search anywhere in the app. Results load in parallel
 
 **Google Drive migration:** I originally built this on SFTP, but path-based matching meant every rename or move created duplicates. No stable IDs, no change detection API, read-only from the web. Google Drive solved all of it: permanent file IDs survive renames and moves, Changes API for incremental sync, full read/write access so users can create folders directly from CanonCore. Should have started here.
 
-**Stack Auth → NextAuth.js v5:** I started with managed auth, then migrated to self-hosted JWT sessions after hitting rate limits. I added 15+ rate limiters via Upstash Redis with different thresholds per action (strict for auth, generous for browsing).
+**Stack Auth → NextAuth.js v5:** I started with managed auth, then migrated to self-hosted JWT sessions after hitting rate limits. I added 20+ rate limiters via Upstash Redis with different thresholds per action (strict for auth, generous for browsing).
 
 ### Security & Resilience
 
@@ -98,13 +120,13 @@ WCAG 2.1 AA compliant throughout. Reduced motion support via a custom hook that 
 
 ### Testing
 
-Over 2,300 unit tests with Vitest cover auth, items, Google Drive sync, and crypto operations. Integration tests run against real PostgreSQL. E2E tests with Playwright use the Page Object Model pattern and test against a real Google Drive account, not mocked. Tests automatically create missing fixtures for self-healing reliability.
+Over 2,400 unit tests with Vitest cover auth, items, Google Drive sync, and crypto operations. Integration tests run against real PostgreSQL. 31 E2E spec files across desktop and mobile Chrome with Playwright use 15 focused Page Object Models, composable fixtures with per-test user creation, and curated `data-testid` attributes for targeted selectors. Unit tests use role-based and text-based selectors following Testing Library best practices.
 
 ---
 
 ## Tech Stack
 
-**Front End:** Next.js 16, React 19, TypeScript, Tailwind CSS 4, shadcn/ui, Vidstack, dnd-kit, cmdk
+**Front End:** Next.js 16, React 19, TypeScript, Tailwind CSS 4, shadcn/ui, Vidstack, dnd-kit, cmdk, nuqs, Embla Carousel
 
 **Back End:** Prisma 7, NextAuth.js v5, Server Actions
 
@@ -133,8 +155,9 @@ pnpm run check        # Run all checks (format, lint, type-check, knip, build)
 npx prisma migrate dev      # Create and apply migrations
 npx prisma generate         # Generate Prisma Client
 npx prisma studio           # Open Prisma Studio
-pnpm run seed:quick         # Incremental seed (~5-30s)
-pnpm run seed:full          # Full clean slate seed (~2-3min)
+pnpm run seed               # Seed development (default)
+pnpm run seed:production    # Seed production branch
+pnpm run seed:e2e           # Seed E2E branch
 ```
 
 #### Code Quality
@@ -194,13 +217,27 @@ app/
 └── globals.css
 
 components/
-├── items/               # Items feature (30+ components)
+├── hero/                # Cinematic hero system (carousel, avatar)
+├── items/               # Items feature (60+ components, wizards, detail sections)
+├── wizards/             # Reusable wizard infrastructure (state machine, indicators)
 ├── google-drive/        # Drive integration UI
 ├── sortable-grid/       # Grid drag-and-drop (dnd-kit)
 ├── sortable-tree/       # Tree drag-and-drop (dnd-kit)
+├── media/               # Media player (Vidstack)
+├── mobile/              # Mobile navigation, bottom sheets, swipeable tabs
 ├── search/              # Spotlight search
-├── profile/             # User profile components
-└── ui/                  # shadcn/ui primitives
+├── profile/             # User profile and settings
+├── providers/           # App-level providers (theme, error boundary, nuqs)
+├── diceui/              # File upload with drag-drop and previews
+└── ui/                  # shadcn/ui primitives + shared UI
+
+hooks/
+├── search-params.ts     # Shared nuqs URL state parsers
+├── use-items-url-state.ts  # URL-backed sort/filter/view/tab state
+├── use-explore-url-state.ts # URL-backed explore page state
+├── use-add-item-form.ts    # Add item form state (shared desktop/mobile)
+├── use-settings-form.ts    # Profile settings form state
+└── use-reduced-motion.ts   # Reduced motion preference detection
 
 lib/
 ├── *-actions.ts         # Server actions
@@ -218,9 +255,10 @@ prisma/
 
 tests/unit/              # Vitest unit tests (mocked)
 tests/integration/       # Vitest integration tests (real DB)
-e2e/journeys/            # Playwright E2E tests by feature
-e2e/pages/               # Page Object Models
-e2e/fixtures/            # Reusable test fixtures
+e2e/journeys/            # Playwright E2E tests by feature (31 spec files)
+e2e/pages/               # 15 focused Page Object Models
+e2e/fixtures/            # Composable test fixtures (authenticated, public, drive)
+e2e/config/              # Centralised timeouts and test data utilities
 ```
 
 ## Environment Variables
@@ -247,11 +285,16 @@ TMDB (optional):
 Seed (required for seeding):
 
 - `GOOGLE_SEED_REFRESH_TOKEN` - Seed Drive account token
-- `GOOGLE_SEED_ROOT_FOLDER_ID` - Folder ID where seed creates content
+- `GOOGLE_SEED_ROOT_FOLDER_ID` - Development Drive root folder
 - `GOOGLE_SEED_EMAIL` - Email of seed account (optional)
+- `SEED_TARGET` - Target branch: development (default), production, e2e
+- `SEED_PRODUCTION_DATABASE_URL` - Production Neon connection string
+- `SEED_PRODUCTION_ROOT_FOLDER_ID` - Production Drive root folder
+- `SEED_E2E_ROOT_FOLDER_ID` - E2E Drive root folder
 
 E2E Testing (optional):
 
+- `E2E_DATABASE_URL` - Neon connection string for E2E branch
 - `GOOGLE_E2E_REFRESH_TOKEN` - E2E test Drive account token
 - `GOOGLE_E2E_ROOT_FOLDER_ID` - Folder ID for E2E tests
 - `GOOGLE_E2E_EMAIL` - Email of E2E test account (optional)
@@ -261,7 +304,6 @@ Optional:
 - `BYPASS_RATE_LIMIT` - Set to `"true"` to skip rate limiting (E2E tests only)
 - `NEXT_PUBLIC_APP_URL` - Base URL for email links (default: `http://localhost:3000`)
 - `LOG_LEVEL` - Pino log level: debug, info, warn, error (default: info)
-- `SEED_INCREMENTAL` - Set to `false` to force full rebuild (default: true)
 
 ## Branching Strategy
 
@@ -291,7 +333,7 @@ Vercel production uses environment variables for Neon `production` branch.
 
 **Component Organization:**
 
-- Items feature: 30+ components in `components/items/`
+- Items feature: 60+ components in `components/items/`
 - Google Drive UI: `components/google-drive/`
 - Drag-and-drop: `sortable-grid/` and `sortable-tree/` (dnd-kit)
 - shadcn/ui: `components/ui/` (don't document these)
@@ -305,9 +347,9 @@ Vercel production uses environment variables for Neon `production` branch.
 
 **Testing:**
 
-- Unit tests: `tests/unit/` with mocked Prisma, email, rate-limit
+- Unit tests: `tests/unit/` with mocked Prisma, email, rate-limit (role-based selectors)
 - Integration tests: `tests/integration/` with real database
-- E2E tests: `e2e/journeys/` with Page Object Model pattern
+- E2E tests: `e2e/journeys/` with 15 focused Page Object Models and composable fixtures
 - Coverage configured for `lib/**` only
 
 ## Documentation

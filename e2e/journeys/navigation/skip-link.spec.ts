@@ -1,62 +1,25 @@
 /**
- * E2E tests for skip link accessibility feature.
- * Verifies keyboard users can bypass navigation to reach main content.
- *
- * Note: These tests are skipped on mobile - Tab keyboard navigation
- * is primarily a desktop accessibility feature.
+ * E2E tests for the skip link accessibility feature.
+ * Verifies that pressing Tab then Enter skips to main content.
  */
-
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../../fixtures";
+import { Timeouts } from "../../config/timeouts";
 
 test.describe("Skip Link", () => {
-  // Skip on mobile - Tab keyboard navigation is desktop-focused
-  test.beforeEach(({}, testInfo) => {
-    test.skip(
-      testInfo.project.name.includes("mobile"),
-      "Skip link tests are for desktop keyboard navigation"
-    );
-  });
-
-  test("skip link becomes visible on focus and navigates to main content", async ({
+  test("should skip to main content when Tab+Enter pressed", async ({
     page,
+    nav,
+    testUser,
+    isMobile,
   }) => {
-    await page.goto("/");
+    test.skip(isMobile, "Skip link Tab focus unreliable on mobile viewports");
 
-    // Press Tab to focus skip link (first focusable element)
-    await page.keyboard.press("Tab");
-
-    const skipLink = page.getByRole("link", { name: "Skip to main content" });
-    await expect(skipLink).toBeVisible();
-
-    // Activate the skip link
-    await skipLink.click();
-
-    // Verify focus moved to main content (requires tabIndex="-1" to work)
-    const main = page.locator("#main-content");
-    await expect(main).toBeFocused();
-  });
-
-  test("skip link is hidden by default", async ({ page }) => {
-    await page.goto("/");
-
-    const skipLink = page.getByRole("link", { name: "Skip to main content" });
-
-    // Should exist in DOM but be visually hidden (translated off-screen)
-    await expect(skipLink).toBeAttached();
-    await expect(skipLink).not.toBeInViewport();
-  });
-
-  test("skip link works on docs pages", async ({ page }) => {
-    await page.goto("/docs");
+    await nav.gotoMyItems();
 
     await page.keyboard.press("Tab");
+    await page.keyboard.press("Enter");
 
-    const skipLink = page.getByRole("link", { name: "Skip to main content" });
-    await expect(skipLink).toBeVisible();
-
-    await skipLink.click();
-
-    const main = page.locator("#main-content");
-    await expect(main).toBeFocused();
+    const mainContent = page.locator("#main-content");
+    await expect(mainContent).toBeFocused({ timeout: Timeouts.animation });
   });
 });

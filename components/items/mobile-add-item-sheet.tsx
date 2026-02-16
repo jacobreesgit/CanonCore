@@ -44,8 +44,9 @@ import { MediaSearchCombobox } from "@/components/items/media-search-combobox";
 import { PosterSelectionStep } from "./wizards/tmdb-wizard/poster-selection-step";
 import { HeroSelectionStep } from "./wizards/tmdb-wizard/hero-selection-step";
 import { TMDBWizard } from "./wizards/tmdb-wizard";
-import { WizardStepIndicator } from "@/components/wizards/wizard-step-indicator";
+
 import { TVPicker } from "./wizards/tv-picker";
+import { WizardProgressBar } from "@/components/wizards/wizard-progress-bar";
 import { useAddItemForm } from "@/hooks/use-add-item-form";
 import { getPosterUrl, getBackdropUrl } from "@/lib/tmdb-client";
 import { cn } from "@/lib/utils";
@@ -151,7 +152,7 @@ export function MobileAddItemSheet({
         </div>
         {form.selectedTmdbOptions && (
           <p className="text-muted-foreground flex items-center gap-1 text-xs">
-            <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-xs font-medium text-amber-400">
+            <span className="bg-brand/20 text-brand rounded px-1.5 py-0.5 text-xs font-medium">
               TMDB
             </span>
             Metadata will be applied on create
@@ -531,15 +532,6 @@ export function MobileAddItemSheet({
           )}
         >
           <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
-            {form.wizardHeaderProps && (
-              <div className="pb-4">
-                <WizardStepIndicator
-                  steps={form.wizardHeaderProps.steps}
-                  currentStep={form.wizardHeaderProps.currentStep}
-                  stepLabels={form.wizardHeaderProps.stepLabels}
-                />
-              </div>
-            )}
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -553,21 +545,38 @@ export function MobileAddItemSheet({
               <div
                 className={cn(
                   "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                  "bg-amber-500/10 ring-1 ring-amber-500/20"
+                  "bg-brand/10 ring-brand/20 ring-1"
                 )}
               >
-                <Sparkles
-                  aria-hidden="true"
-                  className="size-5 text-amber-500"
-                />
+                <Sparkles aria-hidden="true" className="text-brand size-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <MobileBottomSheetTitle>Apply Metadata</MobileBottomSheetTitle>
                 <p className="text-muted-foreground text-sm">
                   {form.tmdbPreview.name || "Select metadata to apply"}
+                  {form.wizardHeaderProps &&
+                    (() => {
+                      const idx = form.wizardHeaderProps.steps.indexOf(
+                        form.wizardHeaderProps.currentStep
+                      );
+                      return (
+                        <span className="text-[var(--tertiary-foreground)]">
+                          {" "}
+                          · Step {idx + 1} of{" "}
+                          {form.wizardHeaderProps.steps.length}
+                        </span>
+                      );
+                    })()}
                 </p>
               </div>
             </div>
+            {form.wizardHeaderProps && (
+              <WizardProgressBar
+                steps={form.wizardHeaderProps.steps}
+                currentStep={form.wizardHeaderProps.currentStep}
+                stepLabels={form.wizardHeaderProps.stepLabels}
+              />
+            )}
           </MobileBottomSheetHeader>
           <MobileBottomSheetContent>
             <TMDBWizard
@@ -611,6 +620,7 @@ export function MobileAddItemSheet({
                       variant="ghost"
                       onClick={form.wizardFooterProps.onSkipAll}
                       disabled={form.wizardFooterProps.isDisabled}
+                      data-testid="tmdb-wizard-skip-all"
                     >
                       Skip All
                     </Button>
@@ -619,6 +629,7 @@ export function MobileAddItemSheet({
                     type="button"
                     onClick={form.wizardFooterProps.onNext}
                     disabled={form.wizardFooterProps.isDisabled}
+                    data-testid="tmdb-wizard-next"
                   >
                     {form.wizardFooterProps.isLastStep ? "Apply" : "Next"}
                     {!form.wizardFooterProps.isLastStep && (
@@ -670,13 +681,10 @@ export function MobileAddItemSheet({
               <div
                 className={cn(
                   "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                  "bg-amber-500/10 ring-1 ring-amber-500/20"
+                  "bg-brand/10 ring-brand/20 ring-1"
                 )}
               >
-                <Sparkles
-                  aria-hidden="true"
-                  className="size-5 text-amber-500"
-                />
+                <Sparkles aria-hidden="true" className="text-brand size-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <MobileBottomSheetTitle>Review & Create</MobileBottomSheetTitle>
@@ -687,7 +695,7 @@ export function MobileAddItemSheet({
             </div>
           </MobileBottomSheetHeader>
 
-          <MobileBottomSheetContent>
+          <MobileBottomSheetContent className="flex flex-col overflow-hidden pb-0">
             {hasDriveConnection ? (
               <SwipeableTabs
                 tabs={summaryTabs}
@@ -717,6 +725,7 @@ export function MobileAddItemSheet({
                   !form.name.trim() || form.isLoading || form.isUploading
                 }
                 className="flex-1"
+                data-testid="wizard-summary-create"
               >
                 {form.isLoading ? (
                   <>
@@ -944,7 +953,7 @@ export function MobileAddItemSheet({
           </div>
         </MobileBottomSheetHeader>
 
-        <MobileBottomSheetContent>
+        <MobileBottomSheetContent className="flex flex-col overflow-hidden pb-0">
           {hasDriveConnection ? (
             <SwipeableTabs
               tabs={mainTabs}

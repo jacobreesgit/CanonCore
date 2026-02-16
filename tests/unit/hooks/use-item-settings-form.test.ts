@@ -3,7 +3,7 @@
  */
 
 import { renderHook, act } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useItemSettingsForm } from "@/hooks/use-item-settings-form";
 import type {
   ItemSettingsFormItem,
@@ -289,14 +289,6 @@ describe("useItemSettingsForm", () => {
   });
 
   describe("TMDB display options", () => {
-    beforeEach(() => {
-      vi.useFakeTimers();
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-    });
-
     it("initializes from item props", () => {
       const { result } = renderHook(() =>
         useItemSettingsForm(mockItem, mockFiles)
@@ -311,7 +303,45 @@ describe("useItemSettingsForm", () => {
       expect(result.current.displayOptions.showRecommendations).toBe(true);
     });
 
-    it("calls updateTmdbDisplayOptions after debounce", async () => {
+    it("is dirty when display options change", () => {
+      const { result } = renderHook(() =>
+        useItemSettingsForm(mockItem, mockFiles)
+      );
+
+      expect(result.current.isDirty).toBe(false);
+
+      act(() => {
+        result.current.handleDisplayOptionsChange({
+          ...result.current.displayOptions,
+          showCast: false,
+        });
+      });
+
+      expect(result.current.isDirty).toBe(true);
+    });
+
+    it("cancel reverts display options", () => {
+      const { result } = renderHook(() =>
+        useItemSettingsForm(mockItem, mockFiles)
+      );
+
+      act(() => {
+        result.current.handleDisplayOptionsChange({
+          ...result.current.displayOptions,
+          showCast: false,
+        });
+      });
+
+      expect(result.current.displayOptions.showCast).toBe(false);
+
+      act(() => {
+        result.current.cancel();
+      });
+
+      expect(result.current.displayOptions.showCast).toBe(true);
+    });
+
+    it("calls updateTmdbDisplayOptions on save when options changed", async () => {
       const { result } = renderHook(() =>
         useItemSettingsForm(mockItem, mockFiles)
       );
@@ -330,16 +360,34 @@ describe("useItemSettingsForm", () => {
         result.current.handleDisplayOptionsChange(newOptions);
       });
 
+      // Not called yet — requires explicit save
       expect(updateTmdbDisplayOptions).not.toHaveBeenCalled();
 
       await act(async () => {
-        vi.advanceTimersByTime(300);
+        await result.current.save();
       });
 
       expect(updateTmdbDisplayOptions).toHaveBeenCalledWith(
         "item-1",
         newOptions
       );
+    });
+
+    it("does not call updateTmdbDisplayOptions when options unchanged", async () => {
+      const { result } = renderHook(() =>
+        useItemSettingsForm(mockItem, mockFiles)
+      );
+
+      // Change name to make form dirty (so save proceeds)
+      act(() => {
+        result.current.setName("New Name");
+      });
+
+      await act(async () => {
+        await result.current.save();
+      });
+
+      expect(updateTmdbDisplayOptions).not.toHaveBeenCalled();
     });
   });
 

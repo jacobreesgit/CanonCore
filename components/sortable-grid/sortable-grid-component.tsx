@@ -134,10 +134,7 @@ export function SortableGrid({
         items={items.map((i) => i.id)}
         strategy={rectSortingStrategy}
       >
-        <div
-          data-testid="items-grid-view"
-          className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5"
-        >
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
           {items.map((item) => (
             <SortableGridItem
               key={item.id}
@@ -149,6 +146,7 @@ export function SortableGrid({
                 onOpenSettings ? () => onOpenSettings(item.id) : undefined
               }
               onDelete={onDeleteItem ? () => onDeleteItem(item.id) : undefined}
+              tmdbPosterPath={item.tmdbPosterPath}
               artworkId={item.artworkId}
               driveFileId={item.driveFileId}
               showDescription={false}
@@ -173,6 +171,7 @@ export function SortableGrid({
               <GridItem
                 id={activeId}
                 name={activeItem.name}
+                tmdbPosterPath={activeItem.tmdbPosterPath}
                 artworkId={activeItem.artworkId}
                 isOverlay
               />

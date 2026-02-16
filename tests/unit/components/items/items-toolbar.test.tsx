@@ -6,12 +6,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ContentToolbar } from "@/components/ui/content-toolbar";
+import type { ContentFilter } from "@/lib/types";
 
 // Mock MobileOptionsSheet to simplify tests
 vi.mock("@/components/items/mobile-options-sheet", () => ({
-  MobileOptionsSheet: () => (
-    <div data-testid="mobile-options-sheet">Mobile Sheet</div>
-  ),
+  MobileOptionsSheet: () => <div>Mobile Sheet</div>,
 }));
 
 describe("ContentToolbar", () => {
@@ -30,30 +29,29 @@ describe("ContentToolbar", () => {
         <ContentToolbar
           sortBy="custom"
           onSortChange={() => {}}
-          filterBy="all"
-          onFilterChange={() => {}}
+          filters={[] as ContentFilter[]}
+          toggleFilter={() => {}}
+          clearFilters={() => {}}
         />
       );
 
       expect(screen.getByText("Custom Order")).toBeInTheDocument();
-      expect(screen.getByText("All Items")).toBeInTheDocument();
+      expect(screen.getByText("Filter")).toBeInTheDocument();
     });
 
     it("should not render sort/filter when props omitted", () => {
       render(<ContentToolbar />);
 
       expect(screen.queryByText("Custom Order")).not.toBeInTheDocument();
-      expect(screen.queryByText("All Items")).not.toBeInTheDocument();
+      expect(screen.queryByText("Filter")).not.toBeInTheDocument();
     });
 
     it("should render actions slot content", () => {
-      render(
-        <ContentToolbar
-          actions={<button data-testid="custom-action">Custom</button>}
-        />
-      );
+      render(<ContentToolbar actions={<button>Custom</button>} />);
 
-      expect(screen.getByTestId("custom-action")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Custom" })
+      ).toBeInTheDocument();
     });
   });
 
@@ -120,8 +118,9 @@ describe("ContentToolbar", () => {
         <ContentToolbar
           sortBy="custom"
           onSortChange={() => {}}
-          filterBy="all"
-          onFilterChange={() => {}}
+          filters={[] as ContentFilter[]}
+          toggleFilter={() => {}}
+          clearFilters={() => {}}
           disabled
         />
       );

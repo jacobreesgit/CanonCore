@@ -49,7 +49,6 @@ export function UnderlineTabs({
             <button
               key={tab.id}
               id={`tab-${tab.id}`}
-              data-testid={`tab-${tab.id}`}
               role="tab"
               tabIndex={activeTab === tab.id ? 0 : -1}
               aria-selected={activeTab === tab.id}
@@ -73,7 +72,7 @@ export function UnderlineTabs({
                 activeTab === tab.id
                   ? "text-foreground"
                   : "hover:text-muted-foreground text-[var(--tertiary-foreground)]",
-                "focus-visible:outline-none"
+                "focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:outline-none"
               )}
             >
               {tab.label}
@@ -96,7 +95,6 @@ export function UnderlineTabs({
       {/* Tab panel */}
       <div
         id={`tabpanel-${activeTab}`}
-        data-testid={`tabpanel-${activeTab}`}
         role="tabpanel"
         aria-labelledby={`tab-${activeTab}`}
       >

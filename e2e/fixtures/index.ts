@@ -1,113 +1,152 @@
 /**
- * Playwright test fixtures for E2E tests.
- * Composes all fixtures and provides page objects.
+ * Composed test fixtures for E2E tests.
+ * Provides POMs as fixture properties — tests destructure what they need.
  */
-
-import { test as base, expect } from "@playwright/test";
+import { expect } from "@playwright/test";
 import {
-  googleDriveFixture,
-  type GoogleDriveFixture,
-} from "./google-drive.fixture";
-import type { TestUserWithId } from "./test-user.fixture";
-import { LandingPage } from "../pages/landing.page";
-import { SignInPage } from "../pages/sign-in.page";
-import { SignUpPage } from "../pages/sign-up.page";
-import { ForgotPasswordPage } from "../pages/forgot-password.page";
-import { ResetPasswordPage } from "../pages/reset-password.page";
-import { MyItemsPage } from "../pages/my-items.page";
-import { ItemsPage } from "../pages/items.page";
-import { DocsPage } from "../pages/docs.page";
-import { MediaPage } from "../pages/media.page";
-import { SettingsPage } from "../pages/settings.page";
+  authenticatedFixture,
+  createPublicUser,
+  deletePublicUser,
+  type PublicUserInfo,
+} from "./authenticated.fixture";
+import { publicFixture } from "./public.fixture";
+import { driveFixture } from "./drive.fixture";
+
+// Import all POMs
+import { ItemsCrudPage } from "../pages/items-crud.page";
+import { ItemsSortFilterPage } from "../pages/items-sort-filter.page";
+import { ItemsSettingsPage } from "../pages/items-settings.page";
+import { ItemsPinnedPage } from "../pages/items-pinned.page";
+import { ItemsDragPage } from "../pages/items-drag.page";
+import { ItemsHierarchyPage } from "../pages/items-hierarchy.page";
+import { ItemDetailPage } from "../pages/item-detail.page";
+import { ExplorePage } from "../pages/explore.page";
 import { PublicProfilePage } from "../pages/public-profile.page";
-import { AboutTabPage } from "../pages/about-tab.page";
+import { AuthPage } from "../pages/auth.page";
+import { SettingsPage } from "../pages/settings.page";
+import { SpotlightPage } from "../pages/spotlight.page";
+import { MediaPage } from "../pages/media.page";
+import { NavPage } from "../pages/nav.page";
+import { TmdbWizardPage } from "../pages/tmdb-wizard.page";
 
-/**
- * Page object fixtures available in all tests.
- */
-type PageObjectFixtures = {
-  landingPage: LandingPage;
-  signInPage: SignInPage;
-  signUpPage: SignUpPage;
-  forgotPasswordPage: ForgotPasswordPage;
-  resetPasswordPage: ResetPasswordPage;
-  myItemsPage: MyItemsPage;
-  itemsPage: ItemsPage;
-  docsPage: DocsPage;
-  mediaPage: MediaPage;
-  settingsPage: SettingsPage;
-  publicProfilePage: PublicProfilePage;
-  aboutTabPage: AboutTabPage;
-};
-
-/**
- * All fixtures available in tests.
- */
-type AllFixtures = PageObjectFixtures &
-  GoogleDriveFixture & {
-    testUser: TestUserWithId;
-  };
-
-// Compose Google Drive fixture (includes testUser) with page objects
-const composedTest = googleDriveFixture.extend<PageObjectFixtures>({
-  // Hide Next.js dev error overlay that intercepts pointer events on mobile
+// Authenticated test with all POMs
+export const test = authenticatedFixture.extend<{
+  publicUser: PublicUserInfo;
+  itemsCrud: ItemsCrudPage;
+  itemsSortFilter: ItemsSortFilterPage;
+  itemsSettings: ItemsSettingsPage;
+  itemsPinned: ItemsPinnedPage;
+  itemsDrag: ItemsDragPage;
+  itemsHierarchy: ItemsHierarchyPage;
+  itemDetail: ItemDetailPage;
+  explore: ExplorePage;
+  publicProfile: PublicProfilePage;
+  auth: AuthPage;
+  settings: SettingsPage;
+  spotlight: SpotlightPage;
+  media: MediaPage;
+  nav: NavPage;
+  tmdbWizard: TmdbWizardPage;
+}>({
+  publicUser: async ({}, use) => {
+    const user = await createPublicUser();
+    await use(user);
+    await deletePublicUser(user.id);
+  },
+  // Suppress Next.js dev error overlay
   page: async ({ page }, use) => {
-    await page
-      .addStyleTag({
-        content:
-          "nextjs-portal { display: none !important; pointer-events: none !important; }",
-      })
-      .catch(() => {});
-    page.on("load", async () => {
+    const hideOverlay = async () => {
       await page
         .addStyleTag({
           content:
             "nextjs-portal { display: none !important; pointer-events: none !important; }",
         })
         .catch(() => {});
-    });
+    };
+    await hideOverlay();
+    page.on("load", hideOverlay);
     await use(page);
   },
-  landingPage: async ({ page }, use) => {
-    await use(new LandingPage(page));
+  itemsCrud: async ({ page, testUser, isMobile }, use) => {
+    await use(new ItemsCrudPage(page, testUser.username, isMobile));
   },
-  signInPage: async ({ page }, use) => {
-    await use(new SignInPage(page));
+  itemsSortFilter: async ({ page, testUser, isMobile }, use) => {
+    await use(new ItemsSortFilterPage(page, testUser.username, isMobile));
   },
-  signUpPage: async ({ page }, use) => {
-    await use(new SignUpPage(page));
+  itemsSettings: async ({ page, testUser, isMobile }, use) => {
+    await use(new ItemsSettingsPage(page, testUser.username, isMobile));
   },
-  forgotPasswordPage: async ({ page }, use) => {
-    await use(new ForgotPasswordPage(page));
+  itemsPinned: async ({ page, testUser, isMobile }, use) => {
+    await use(new ItemsPinnedPage(page, testUser.username, isMobile));
   },
-  resetPasswordPage: async ({ page }, use) => {
-    await use(new ResetPasswordPage(page));
+  itemsDrag: async ({ page, testUser, isMobile }, use) => {
+    await use(new ItemsDragPage(page, testUser.username, isMobile));
   },
-  myItemsPage: async ({ page, testUser }, use) => {
-    await use(new MyItemsPage(page, testUser.username));
+  itemsHierarchy: async ({ page, testUser, isMobile }, use) => {
+    await use(new ItemsHierarchyPage(page, testUser.username, isMobile));
   },
-  itemsPage: async ({ page, testUser }, use) => {
-    await use(new ItemsPage(page, testUser.username));
+  itemDetail: async ({ page, testUser, isMobile }, use) => {
+    await use(new ItemDetailPage(page, testUser.username, isMobile));
   },
-  docsPage: async ({ page }, use) => {
-    await use(new DocsPage(page));
+  explore: async ({ page, isMobile }, use) => {
+    await use(new ExplorePage(page, isMobile));
   },
-  mediaPage: async ({ page, testUser }, use) => {
-    await use(new MediaPage(page, testUser.username));
+  publicProfile: async ({ page, isMobile }, use) => {
+    await use(new PublicProfilePage(page, isMobile));
   },
-  settingsPage: async ({ page }, use) => {
-    await use(new SettingsPage(page));
+  auth: async ({ page }, use) => {
+    await use(new AuthPage(page));
   },
-  publicProfilePage: async ({ page }, use) => {
-    await use(new PublicProfilePage(page));
+  settings: async ({ page, isMobile }, use) => {
+    await use(new SettingsPage(page, isMobile));
   },
-  aboutTabPage: async ({ page }, use) => {
-    await use(new AboutTabPage(page));
+  spotlight: async ({ page, isMobile }, use) => {
+    await use(new SpotlightPage(page, isMobile));
+  },
+  media: async ({ page, testUser, isMobile }, use) => {
+    await use(new MediaPage(page, testUser.username, isMobile));
+  },
+  nav: async ({ page, testUser, isMobile }, use) => {
+    await use(new NavPage(page, testUser.username, isMobile));
+  },
+  tmdbWizard: async ({ page, testUser, isMobile }, use) => {
+    await use(new TmdbWizardPage(page, testUser.username, isMobile));
   },
 });
 
-export const test = composedTest;
-export { expect };
+// Public test (no auth) with relevant POMs
+export const publicTest = publicFixture.extend<{
+  publicUser: PublicUserInfo;
+  explore: ExplorePage;
+  publicProfile: PublicProfilePage;
+  auth: AuthPage;
+  nav: NavPage;
+  spotlight: SpotlightPage;
+}>({
+  publicUser: async ({}, use) => {
+    const user = await createPublicUser();
+    await use(user);
+    await deletePublicUser(user.id);
+  },
+  explore: async ({ page, isMobile }, use) => {
+    await use(new ExplorePage(page, isMobile));
+  },
+  publicProfile: async ({ page, isMobile }, use) => {
+    await use(new PublicProfilePage(page, isMobile));
+  },
+  auth: async ({ page }, use) => {
+    await use(new AuthPage(page));
+  },
+  nav: async ({ page, isMobile }, use) => {
+    await use(new NavPage(page, "", isMobile));
+  },
+  spotlight: async ({ page, isMobile }, use) => {
+    await use(new SpotlightPage(page, isMobile));
+  },
+});
 
-// Re-export prisma for tests that need direct DB access
-export { testPrisma as prisma } from "./test-user.fixture";
+// Drive test with Drive-specific fixtures + POMs
+export const driveTest = driveFixture;
+
+export { expect };
+export { prisma } from "./authenticated.fixture";

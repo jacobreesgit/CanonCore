@@ -11,6 +11,12 @@ export { SyncStatus } from "@prisma/client";
 export type { ItemProgress } from "./progress-utils";
 
 /**
+ * Lightweight item identifier type for public pages that don't need dnd-kit.
+ * Equivalent to UniqueIdentifier from @dnd-kit/core.
+ */
+export type ItemId = string | number;
+
+/**
  * Database Item type (from Prisma).
  * Represents a container in the item hierarchy.
  * Items can have children (sub-items) and attached files (ItemFile).
@@ -33,6 +39,9 @@ export interface Item {
   // TMDB metadata
   tmdbId: number | null;
   tmdbType: string | null;
+  // TMDB image paths (served directly from TMDB CDN)
+  tmdbPosterPath: string | null;
+  tmdbBackdropPath: string | null;
   // TMDB display preferences
   tmdbShowTagline: boolean;
   tmdbShowMetadata: boolean;
@@ -65,7 +74,9 @@ export interface TreeItem {
   collapsed?: boolean;
   // Pinned to sidebar (null = not pinned, 0+ = pinned with order)
   pinnedOrder?: number | null;
-  // Artwork thumbnail
+  // TMDB poster path for CDN thumbnail (takes precedence over artworkId)
+  tmdbPosterPath?: string | null;
+  // Artwork thumbnail (fallback when no TMDB path)
   artworkId?: string | null;
   // Google Drive folder ID (if synced)
   driveFileId?: string | null;
@@ -207,7 +218,11 @@ export interface FileCounts {
  * Used by grid and tree views to display item thumbnails.
  */
 export interface ItemWithArtwork extends Item {
-  /** First artwork file ID for thumbnail display */
+  /** TMDB poster path for CDN display (takes precedence over artworkId) */
+  tmdbPosterPath: string | null;
+  /** TMDB backdrop path for CDN display (takes precedence over hero artworkId) */
+  tmdbBackdropPath: string | null;
+  /** First artwork file ID for thumbnail display (fallback when no TMDB path) */
   artworkId: string | null;
   /** Counts of attached files by type (media, artwork, subtitles) */
   fileCounts: FileCounts;
@@ -253,7 +268,9 @@ export interface SearchableItem {
   parentId: string | null;
   depth: number;
   description: string | null;
-  /** First artwork file ID for thumbnail display */
+  /** TMDB poster path for CDN thumbnail (takes precedence over artworkId) */
+  tmdbPosterPath: string | null;
+  /** First artwork file ID for thumbnail display (fallback) */
   artworkId: string | null;
   /** Breadcrumb path like "Movies / Star Wars" for nested items */
   breadcrumb: string | null;
@@ -288,7 +305,9 @@ export interface SearchablePublicItem {
   name: string;
   /** Item description */
   description: string | null;
-  /** First artwork file ID for thumbnail */
+  /** TMDB poster path for CDN thumbnail (takes precedence over artworkId) */
+  tmdbPosterPath: string | null;
+  /** First artwork file ID for thumbnail (fallback) */
   artworkId: string | null;
   /** Owner's username for attribution and navigation */
   ownerUsername: string;
@@ -427,7 +446,7 @@ export type SortOption =
   | "created-asc"
   | "updated-desc";
 
-/** Filter option for items list. */
+/** Filter option for items list (legacy single-select, kept for Explore page). */
 export type FilterOption =
   | "all"
   | "has-files"
@@ -437,18 +456,50 @@ export type FilterOption =
   | "error"
   | "exclude-yours";
 
-/** Valid view modes for validation. */
-export const VALID_VIEW_MODES: ViewMode[] = ["grid", "tree"];
+/** Content filter for multi-select filter UI. */
+export type ContentFilter =
+  | "has-files"
+  | "no-files"
+  | "synced"
+  | "pending"
+  | "error";
 
-/** Valid sort options for validation. */
-export const VALID_SORT_OPTIONS: SortOption[] = [
+/** All valid content filter values for runtime validation. */
+export const CONTENT_FILTERS = [
+  "has-files",
+  "no-files",
+  "synced",
+  "pending",
+  "error",
+] as const;
+
+/** All valid view mode values as readonly tuple (for nuqs parsers). */
+export const VIEW_MODES = ["grid", "tree"] as const;
+
+/** Valid view modes for validation. */
+export const VALID_VIEW_MODES: ViewMode[] = [...VIEW_MODES];
+
+/** All valid sort option values as readonly tuple (for nuqs parsers). */
+export const SORT_OPTIONS_TUPLE = [
   "custom",
   "name-asc",
   "name-desc",
   "created-desc",
   "created-asc",
   "updated-desc",
-];
+] as const;
+
+/** Explore sort options (no "custom" since explore has no user ordering). */
+export const EXPLORE_SORT_OPTIONS_TUPLE = [
+  "name-asc",
+  "name-desc",
+  "created-desc",
+  "created-asc",
+  "updated-desc",
+] as const;
+
+/** Valid sort options for validation. */
+export const VALID_SORT_OPTIONS: SortOption[] = [...SORT_OPTIONS_TUPLE];
 
 /** Valid filter options for validation. */
 export const VALID_FILTER_OPTIONS: FilterOption[] = [
@@ -587,8 +638,4 @@ export interface UserProfileSettings {
   name: string | null;
   /** Email address (read-only display) */
   email: string;
-  /** Default view mode preference */
-  defaultViewMode: ViewMode | null;
-  /** Default sort preference */
-  defaultSortBy: SortOption | null;
 }

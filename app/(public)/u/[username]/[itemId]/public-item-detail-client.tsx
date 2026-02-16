@@ -6,33 +6,43 @@
  * Includes fork functionality in hero actions slot.
  */
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { CinematicHero } from "@/components/hero";
 import { HeroButton } from "@/components/items/hero-button";
 import { PlaylistButton } from "@/components/items/playlist-button";
 import { AboutTabContent } from "@/components/items/about-tab-content";
-import { GridItem } from "@/components/sortable-grid";
+import { GridItem } from "@/components/sortable-grid/grid-item";
 import { Tree } from "@/components/sortable-tree";
-import { useStoredViewMode } from "@/hooks/use-stored-view-mode";
+import { useItemsUrlState } from "@/hooks/use-items-url-state";
 import { EmptyState } from "@/components/items/empty-state";
 import { UnderlineTabs } from "@/components/ui/underline-tabs";
 import { Section } from "@/components/ui/section";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+// Lazy-load swipeable tabs (mobile-only, keeps Embla out of desktop bundle)
+const SwipeableUnderlineTabs = dynamic(
+  () =>
+    import("@/components/ui/swipeable-underline-tabs").then((mod) => ({
+      default: mod.SwipeableUnderlineTabs,
+    })),
+  { ssr: false }
+);
 import { HeroContentLayout } from "@/components/ui/hero-content-layout";
 import { ContentToolbar } from "@/components/ui/content-toolbar";
-import { useItemsSortFilter } from "@/hooks/use-items-sort-filter";
 import { sortItems, filterItems, publicItemsToTree } from "@/lib/item-utils";
 import { Copy, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import type { PublicProfile, PublicItem } from "@/lib/public-auth";
+import { getTmdbBackdropUrl } from "@/lib/tmdb-image-utils";
+import type { PublicItem } from "@/lib/public-auth";
 import type { ForkInfo, ForkStatus } from "@/lib/fork-actions";
 import type { TmdbItemMetadata, TmdbItemDetails } from "@/lib/tmdb-client";
-import type { TmdbDisplayOptions } from "@/lib/types";
-import type { UniqueIdentifier } from "@dnd-kit/core";
+import type { TmdbDisplayOptions, ItemId } from "@/lib/types";
 
 interface PublicItemClientProps {
-  profile: PublicProfile;
+  profile: { id: string; name: string | null; username: string };
   item: PublicItem;
   childItems: (PublicItem & {
     progressPercentage?: number | null;
@@ -97,13 +107,25 @@ export function PublicItemClient({
   tmdbDisplayOptions,
 }: PublicItemClientProps) {
   const router = useRouter();
+  const isMobile = useIsMobile();
+
+  // Delay tab component rendering until after mount so isMobile is accurate.
+  // Prevents UnderlineTabs → SwipeableUnderlineTabs swap that causes focus loss.
+  const [tabsMounted, setTabsMounted] = useState(false);
+  useEffect(() => setTabsMounted(true), []);
+
   const [isForking, setIsForking] = useState(false);
 
-  // Sort/filter state (same as private item pages)
-  const { sortBy, setSortBy, filterBy, setFilterBy } = useItemsSortFilter();
-
-  // View mode state (persisted to localStorage)
-  const [viewMode, setViewMode] = useStoredViewMode();
+  // Sort/filter/view state (URL + localStorage backup)
+  const {
+    sortBy,
+    setSortBy,
+    filters,
+    toggleFilter,
+    clearFilters,
+    viewMode,
+    setViewMode,
+  } = useItemsUrlState();
 
   // Filter to get only direct children of this item, then apply sort and filter
   type ChildItem = (typeof childItems)[number];
@@ -117,9 +139,9 @@ export function PublicItemClient({
     ) as unknown as ChildItem[];
     return filterItems(
       sortedChildren as unknown as Parameters<typeof filterItems>[0],
-      filterBy
+      filters
     ) as unknown as ChildItem[];
-  }, [childItems, item.id, sortBy, filterBy]);
+  }, [childItems, item.id, sortBy, filters]);
 
   // Convert to tree structure for Tree component (includes all descendants)
   // Only include progress data for own items
@@ -145,7 +167,7 @@ export function PublicItemClient({
   );
 
   const handleItemClick = useCallback(
-    (id: UniqueIdentifier) => {
+    (id: ItemId) => {
       router.push(`/u/${profile.username}/${id}`);
     },
     [router, profile.username]
@@ -192,7 +214,7 @@ export function PublicItemClient({
         <HeroButton
           onClick={handleFork}
           disabled={isForking}
-          data-testid="hero-fork-button"
+          data-testid="profile-fork-button"
         >
           {isForking ? (
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -205,7 +227,6 @@ export function PublicItemClient({
       {!isOwnItem && forkStatus?.hasForked && (
         <HeroButton
           variant="secondary"
-          data-testid="hero-fork-button"
           onClick={() => {
             if (currentUserUsername && forkStatus.forkedItemId) {
               router.push(
@@ -219,10 +240,7 @@ export function PublicItemClient({
         </HeroButton>
       )}
       {!isOwnItem && !isAuthenticated && (
-        <HeroButton
-          onClick={() => router.push("/sign-in")}
-          data-testid="hero-fork-button"
-        >
+        <HeroButton onClick={() => router.push("/sign-in")}>
           <Copy className="size-4" aria-hidden="true" />
           Sign in to Fork
         </HeroButton>
@@ -257,8 +275,9 @@ export function PublicItemClient({
       <ContentToolbar
         sortBy={sortBy}
         onSortChange={setSortBy}
-        filterBy={filterBy}
-        onFilterChange={setFilterBy}
+        filters={filters}
+        toggleFilter={toggleFilter}
+        clearFilters={clearFilters}
         viewMode={viewMode}
         onViewChange={setViewMode}
         disabled={!hasChildren}
@@ -296,16 +315,14 @@ export function PublicItemClient({
       {hasChildren ? (
         viewMode === "grid" ? (
           <Section className="py-8" aria-label="Contents">
-            <div
-              data-testid="items-grid-view"
-              className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6"
-            >
+            <div className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6">
               {directChildren.map((child, index) => (
                 <GridItem
                   key={child.id}
                   id={child.id}
                   name={child.name}
                   description={child.description}
+                  tmdbPosterPath={child.tmdbPosterPath}
                   artworkId={child.artworkId}
                   onClick={() => handleItemClick(child.id)}
                   onMouseEnter={() => handleMouseEnter(child.id)}
@@ -344,6 +361,20 @@ export function PublicItemClient({
   // Determine whether to show tabs
   const showTabs = hasChildren || hasTmdb;
 
+  // Active tab for mobile swipeable tabs (controlled)
+  const defaultTabId = hasChildren ? "contents" : "about";
+  const [activeTab, setActiveTab] = useState(defaultTabId);
+
+  // Sync activeTab when defaultTabId changes (e.g. children added/removed)
+  useEffect(() => {
+    setActiveTab(defaultTabId);
+  }, [defaultTabId]);
+
+  // Resolve hero background URL: TMDB backdrop takes precedence over artwork
+  const heroBackgroundUrl = item.tmdbBackdropPath
+    ? getTmdbBackdropUrl(item.tmdbBackdropPath)
+    : undefined;
+
   // Hero element
   const hero = (
     <CinematicHero
@@ -351,6 +382,7 @@ export function PublicItemClient({
         {
           id: item.id,
           name: item.name,
+          backgroundUrl: heroBackgroundUrl,
           artworkId: item.artworkId,
           tagline:
             tmdbDisplayOptions?.showTagline !== false
@@ -382,18 +414,36 @@ export function PublicItemClient({
   return (
     <HeroContentLayout hero={hero}>
       {/* Tabbed content or simple content */}
-      {showTabs ? (
-        <UnderlineTabs
-          defaultTab={hasChildren ? "contents" : "about"}
-          tabs={[
-            {
-              id: "contents",
-              label: "Contents",
-              content: contentsContent,
-            },
-            { id: "about", label: "About", content: aboutContent },
-          ]}
-        />
+      {showTabs && tabsMounted ? (
+        isMobile ? (
+          <SwipeableUnderlineTabs
+            tabs={[
+              {
+                id: "contents",
+                label: "Contents",
+                content: contentsContent,
+              },
+              { id: "about", label: "About", content: aboutContent },
+            ]}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+          />
+        ) : (
+          <UnderlineTabs
+            defaultTab={defaultTabId}
+            tabs={[
+              {
+                id: "contents",
+                label: "Contents",
+                content: contentsContent,
+              },
+              { id: "about", label: "About", content: aboutContent },
+            ]}
+          />
+        )
+      ) : showTabs ? (
+        // During SSR/initial render, show content directly (tabs appear after mount)
+        contentsContent
       ) : (
         // No tabs needed — just show fork info and empty state
         <div className="flex flex-1 flex-col">

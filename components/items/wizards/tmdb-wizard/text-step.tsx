@@ -58,7 +58,9 @@ export function TMDBTextStep({
     <div className="space-y-6">
       {/* Step header */}
       <div>
-        <h3 className="text-lg font-semibold">Title & Description</h3>
+        <h3 className="text-foreground text-lg font-semibold">
+          Title & Description
+        </h3>
         <p className="text-muted-foreground text-sm">
           Choose which fields to update from TMDB.
         </p>

@@ -1,86 +1,31 @@
 /**
- * E2E tests for "Add Child Item" via context menu.
- * This option only appears in tree view (grid view disables it).
- * Desktop only — mobile uses sheets instead of context menus.
+ * E2E tests for creating nested items via the more options menu.
+ * Verifies the "Add Child Item" action produces correct hierarchy.
  */
-
 import { test, expect } from "../../fixtures";
+import { testId } from "../../config/test-data";
 
-test.describe("Context Menu Add Child Item", () => {
-  test.beforeEach(async ({ page, testUser, itemsPage }) => {
-    await expect(page).toHaveURL(`/u/${testUser.username}`, {
-      timeout: 10000,
-    });
-    await itemsPage.createItem("Parent Folder");
-  });
-
-  test("can add child item via context menu in tree view", async ({
-    page,
-    itemsPage,
-    isMobile,
+test.describe("Add Child Item", () => {
+  test("should create nested items via more menu", async ({
+    itemsCrud,
+    itemsHierarchy,
+    itemDetail,
   }) => {
-    test.skip(isMobile, "Context menu is desktop-only (mobile uses sheets)");
+    const parentName = testId("folder");
+    const childName = testId("movie");
 
-    // Navigate into parent and create a child
-    await itemsPage.clickItem("Parent Folder");
-    await itemsPage.createItem("First Child");
+    await itemsCrud.goto();
+    await itemsCrud.createItem(parentName);
 
-    // Switch to tree view (Add Child Item only available in tree view)
-    await itemsPage.switchToTreeView();
+    // Add child via the more options menu on the grid card
+    await itemsHierarchy.addChildItem(parentName, childName);
 
-    // Open context menu on the child item in tree view
-    await itemsPage.openContextMenu("First Child");
+    // Navigate fresh to ensure stable DOM after mutation
+    await itemsCrud.goto();
+    await itemsHierarchy.clickItem(parentName);
+    await itemDetail.expectDetailVisible();
 
-    // "Add Child Item" should be visible in tree view context menu
-    await expect(
-      page.getByRole("menuitem", { name: /add child item/i })
-    ).toBeVisible();
-
-    // Click "Add Child Item"
-    await page.getByRole("menuitem", { name: /add child item/i }).click();
-
-    // Add item dialog should open
-    await expect(
-      page.getByRole("dialog", { name: /create item/i })
-    ).toBeVisible({ timeout: 5000 });
-
-    // Fill in the child name and create
-    await page.getByLabel(/item name/i).fill("Grandchild Item");
-
-    // Wait for TMDB popover to appear (if it does), then dismiss
-    const tmdbPopover = page.getByTestId("tmdb-search-popover");
-    await tmdbPopover
-      .waitFor({ state: "visible", timeout: 1500 })
-      .then(async () => {
-        await page.keyboard.press("Escape");
-        await expect(tmdbPopover).not.toBeVisible({ timeout: 3000 });
-      })
-      .catch(() => {});
-
-    const createButton = page.getByRole("button", { name: /^create$/i });
-    await expect(createButton).toBeEnabled({ timeout: 5000 });
-    await createButton.dispatchEvent("click");
-    await expect(
-      page.getByRole("dialog", { name: /create item/i })
-    ).not.toBeVisible({ timeout: 15000 });
-
-    // Grandchild should be visible in tree view (nested under First Child)
-    await itemsPage.expectItemVisible("Grandchild Item");
-  });
-
-  test("Add Child Item not shown in grid view context menu", async ({
-    page,
-    itemsPage,
-    isMobile,
-  }) => {
-    test.skip(isMobile, "Context menu is desktop-only (mobile uses sheets)");
-
-    // On root page (grid view), open context menu
-    await itemsPage.openContextMenu("Parent Folder");
-
-    // "Add Child Item" should NOT be visible in grid view
-    await expect(
-      page.getByRole("menuitem", { name: /add child item/i })
-    ).not.toBeVisible();
+    // Child should be visible in the Contents tab
+    await itemsHierarchy.expectItemVisible(childName);
   });
 });

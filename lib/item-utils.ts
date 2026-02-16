@@ -9,6 +9,7 @@ import type {
   TreeItem,
   SortOption,
   FilterOption,
+  ContentFilter,
 } from "./types";
 
 /**
@@ -312,7 +313,7 @@ export const SORT_OPTIONS: SortOptionConfig[] = [
   { value: "updated-desc", label: "Recently Updated" },
 ];
 
-/** Filter options with display labels. */
+/** Filter options with display labels (legacy single-select). */
 export const FILTER_OPTIONS: FilterOptionConfig[] = [
   { value: "all", label: "All Items" },
   { value: "has-files", label: "Has Files" },
@@ -321,6 +322,47 @@ export const FILTER_OPTIONS: FilterOptionConfig[] = [
   { value: "pending", label: "Pending Sync" },
   { value: "error", label: "Sync Error" },
 ];
+
+/** Configuration for a content filter option with value, label, and group. */
+export interface ContentFilterOptionConfig {
+  value: ContentFilter;
+  label: string;
+  group: "file" | "sync";
+}
+
+/** Grouped content filter options for multi-select UI. */
+export const CONTENT_FILTER_OPTIONS: ContentFilterOptionConfig[] = [
+  { value: "has-files", label: "Has Files", group: "file" },
+  { value: "no-files", label: "No Files", group: "file" },
+  { value: "synced", label: "Synced", group: "sync" },
+  { value: "pending", label: "Pending Sync", group: "sync" },
+  { value: "error", label: "Sync Error", group: "sync" },
+];
+
+/**
+ * Toggles a content filter with mutual exclusion for has-files/no-files.
+ * Reusable across URL-state hooks and local-state components.
+ *
+ * @param current - Currently active filters
+ * @param filter - Filter to toggle on/off
+ * @returns New filters array
+ */
+export function toggleContentFilter(
+  current: ContentFilter[],
+  filter: ContentFilter
+): ContentFilter[] {
+  if (current.includes(filter)) {
+    return current.filter((f) => f !== filter);
+  }
+  // Mutual exclusion: has-files <-> no-files
+  if (filter === "has-files") {
+    return [...current.filter((f) => f !== "no-files"), filter];
+  }
+  if (filter === "no-files") {
+    return [...current.filter((f) => f !== "has-files"), filter];
+  }
+  return [...current, filter];
+}
 
 /** Sort options for explore page (no custom ordering, no created-* since PublicItem lacks createdAt). */
 export const EXPLORE_SORT_OPTIONS: SortOptionConfig[] = [
@@ -382,27 +424,63 @@ export function sortItems(
 }
 
 /**
- * Filters items by the specified filter option.
+ * Filters items by a single filter option (legacy single-select).
+ * Used by Explore page and viewer mode which keep single-select filters.
  * Returns a new array without mutating the original.
  *
  * @param items - Array of items to filter
- * @param filterBy - Filter option to apply
+ * @param filterBy - Single filter option to apply
  * @returns Filtered array of items
- *
- * @example
- * const withFiles = filterItems(items, "has-files");
- * // Returns only items that have at least one file attached
- *
- * @example
- * const synced = filterItems(items, "synced");
- * // Returns only items with SYNCED status
  */
 export function filterItems(
   items: ItemWithArtwork[],
   filterBy: FilterOption
+): ItemWithArtwork[];
+/**
+ * Filters items by multiple content filters with AND/OR logic.
+ * AND across groups (file status, sync status), OR within groups.
+ * Returns a new array without mutating the original.
+ *
+ * @param items - Array of items to filter
+ * @param filters - Array of active content filters (empty = all items)
+ * @returns Filtered array of items
+ *
+ * @example
+ * const result = filterItems(items, ["has-files", "synced", "pending"]);
+ * // Items with files that are synced OR pending
+ */
+export function filterItems(
+  items: ItemWithArtwork[],
+  filters: ContentFilter[]
+): ItemWithArtwork[];
+export function filterItems(
+  items: ItemWithArtwork[],
+  filterBy: FilterOption | ContentFilter[]
 ): ItemWithArtwork[] {
   if (items.length === 0) return [];
 
+  // Multi-select path
+  if (Array.isArray(filterBy)) {
+    if (filterBy.length === 0) return [...items];
+
+    const fileFilters: ContentFilter[] = [];
+    const syncFilters: ContentFilter[] = [];
+    for (const f of filterBy) {
+      if (f === "has-files" || f === "no-files") fileFilters.push(f);
+      else syncFilters.push(f);
+    }
+
+    return items.filter((item) => {
+      // AND: must pass all active groups
+      if (fileFilters.length > 0 && !matchesFileGroup(item, fileFilters))
+        return false;
+      if (syncFilters.length > 0 && !matchesSyncGroup(item, syncFilters))
+        return false;
+      return true;
+    });
+  }
+
+  // Single-select path (legacy)
   switch (filterBy) {
     case "all":
       return [...items];
@@ -431,6 +509,43 @@ export function filterItems(
     default:
       return [...items];
   }
+}
+
+/**
+ * Checks if an item matches any filter in the file status group.
+ * OR logic within the group: item matches if it satisfies any one filter.
+ */
+function matchesFileGroup(
+  item: ItemWithArtwork,
+  filters: ContentFilter[]
+): boolean {
+  const totalFiles =
+    item.fileCounts.media + item.fileCounts.artwork + item.fileCounts.subtitles;
+  return filters.some((f) =>
+    f === "has-files" ? totalFiles > 0 : totalFiles === 0
+  );
+}
+
+/**
+ * Checks if an item matches any filter in the sync status group.
+ * OR logic within the group: item matches if it satisfies any one filter.
+ */
+function matchesSyncGroup(
+  item: ItemWithArtwork,
+  filters: ContentFilter[]
+): boolean {
+  return filters.some((f) => {
+    switch (f) {
+      case "synced":
+        return item.syncStatus === "SYNCED";
+      case "pending":
+        return item.syncStatus === "PENDING";
+      case "error":
+        return item.syncStatus === "ERROR";
+      default:
+        return false;
+    }
+  });
 }
 
 /**

@@ -26,9 +26,7 @@ function DialogWithTrigger(
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} data-testid="dialog-trigger">
-        {buttonLabel}
-      </Button>
+      <Button onClick={() => setOpen(true)}>{buttonLabel}</Button>
       <ForkDestinationDialog
         {...dialogProps}
         open={open}
@@ -77,7 +75,7 @@ export const Default: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
     const body = within(document.body);
     await body.findByText(/choose where to add/i);
@@ -101,7 +99,7 @@ export const RootOnly: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByTestId("dialog-trigger");
+    const trigger = canvas.getByRole("button");
     await userEvent.click(trigger);
     const body = within(document.body);
     await body.findByText(/choose where to add/i);

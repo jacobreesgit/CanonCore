@@ -1,53 +1,62 @@
 /**
- * E2E tests for edit mode toggle functionality.
+ * E2E tests for edit mode and bulk actions.
+ * Covers entering/exiting edit mode, bulk toolbar visibility, and bulk deletion.
  */
-
 import { test, expect } from "../../fixtures";
+import { testId } from "../../config/test-data";
 
 test.describe("Edit Mode", () => {
-  test.beforeEach(async ({ page, testUser, itemsPage }) => {
-    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
-    await itemsPage.createItem("Test Folder 1");
-    await itemsPage.createItem("Test Folder 2");
+  test("should enter and exit edit mode", async ({ itemsCrud, itemsDrag }) => {
+    const nameA = testId("movie");
+    const nameB = testId("movie");
+
+    await itemsCrud.goto();
+    await itemsCrud.createItem(nameA);
+    await itemsCrud.createItem(nameB);
+
+    await itemsDrag.enterEditMode();
+    await itemsDrag.expectEditMode(true);
+
+    await itemsDrag.exitEditMode();
+    await itemsDrag.expectEditMode(false);
   });
 
-  test("should toggle between view and edit mode", async ({ itemsPage }) => {
-    // Start in view mode
-    await expect(
-      itemsPage.page.getByRole("button", { name: "Enter edit mode" })
-    ).toBeVisible();
-
-    // Enter edit mode
-    await itemsPage.enterEditMode();
-
-    // Should show Done button
-    await expect(
-      itemsPage.page.getByRole("button", { name: "Exit edit mode" })
-    ).toBeVisible();
-
-    // Exit edit mode
-    await itemsPage.exitEditMode();
-
-    // Should show Edit button again
-    await expect(
-      itemsPage.page.getByRole("button", { name: "Enter edit mode" })
-    ).toBeVisible();
-  });
-
-  // "should exit edit mode when switching view modes" moved to heavy-serial.spec.ts
-});
-
-test.describe("Edit Mode Empty State", () => {
-  test("should disable edit toggle when no items", async ({
-    page,
-    testUser,
+  test("should show bulk actions toolbar when items selected", async ({
+    itemsCrud,
+    itemsDrag,
   }) => {
-    // Fresh user starts with no items - verify we're on profile page
-    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
+    const name = testId("movie");
 
-    // Edit button should be disabled when no items exist
-    await expect(
-      page.getByRole("button", { name: "Enter edit mode" })
-    ).toBeDisabled();
+    await itemsCrud.goto();
+    await itemsCrud.createItem(name);
+
+    await itemsDrag.enterEditMode();
+    await itemsDrag.selectItem(name);
+    await itemsDrag.expectBulkToolbarVisible();
+  });
+
+  test("should bulk delete selected items", async ({
+    page,
+    itemsCrud,
+    itemsDrag,
+  }) => {
+    const nameA = testId("movie");
+    const nameB = testId("movie");
+    const nameC = testId("movie");
+
+    await itemsCrud.goto();
+    await itemsCrud.createItem(nameA);
+    await itemsCrud.createItem(nameB);
+    await itemsCrud.createItem(nameC);
+
+    await itemsDrag.enterEditMode();
+    await itemsDrag.selectAll();
+    await itemsDrag.deleteSelected();
+
+    // Confirm bulk deletion in the alert dialog
+    const confirmButton = page.getByRole("button", { name: /^delete$/i });
+    await confirmButton.click();
+
+    await itemsCrud.expectEmptyState();
   });
 });

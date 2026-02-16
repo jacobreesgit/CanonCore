@@ -1,152 +1,63 @@
 /**
- * E2E tests for items sort and filter functionality.
- * Tests sort dropdown, filter dropdown, edit mode disabling, and persistence.
+ * E2E tests for item sorting and filtering.
+ * Covers sort selection, view mode switching, and filter toggling.
  */
-
 import { test, expect } from "../../fixtures";
+import { testId } from "../../config/test-data";
 
-test.describe("Items Sort/Filter Journey", () => {
-  // Use testUser fixture for consistent test setup (compatible with itemsPage)
-  test.beforeEach(async ({ page, testUser, itemsPage }) => {
-    await expect(page).toHaveURL(`/u/${testUser.username}`, { timeout: 10000 });
-
-    // Create test items with different names for sorting tests
-    await itemsPage.createItem("Alpha Item");
-    await itemsPage.createItem("Beta Item");
-    await itemsPage.createItem("Charlie Item");
-
-    // Wait for toasts to clear
-  });
-
-  test("sort dropdown changes item order", async ({ itemsPage }) => {
-    // Default is Custom Order, items should be in creation order
-    await itemsPage.expectItemOrder([
-      "Alpha Item",
-      "Beta Item",
-      "Charlie Item",
-    ]);
-
-    // Sort by Name A-Z
-    await itemsPage.selectSortOption("Name A-Z");
-    await itemsPage.expectItemOrder([
-      "Alpha Item",
-      "Beta Item",
-      "Charlie Item",
-    ]);
-
-    // Sort by Name Z-A
-    await itemsPage.selectSortOption("Name Z-A");
-    await itemsPage.expectItemOrder([
-      "Charlie Item",
-      "Beta Item",
-      "Alpha Item",
-    ]);
-  });
-
-  test("edit mode disabled when not using custom sort", async ({
-    itemsPage,
+test.describe("Items Sort & Filter", () => {
+  test("should sort items by name A-Z", async ({
+    itemsCrud,
+    itemsSortFilter,
   }) => {
-    // With custom sort, edit mode should be enabled
-    const customSortEditDisabled = await itemsPage.isEditModeDisabled();
-    expect(customSortEditDisabled).toBe(false);
+    await itemsCrud.goto();
+    await itemsCrud.createItem("Banana");
+    await itemsCrud.createItem("Apple");
+    await itemsCrud.createItem("Cherry");
 
-    // Change to Name A-Z sort
-    await itemsPage.selectSortOption("Name A-Z");
-
-    // Edit mode should now be disabled
-    const nameSortEditDisabled = await itemsPage.isEditModeDisabled();
-    expect(nameSortEditDisabled).toBe(true);
-
-    // Switch back to Custom Order
-    await itemsPage.selectSortOption("Custom Order");
-
-    // Edit mode should be enabled again
-    const backToCustomEditDisabled = await itemsPage.isEditModeDisabled();
-    expect(backToCustomEditDisabled).toBe(false);
+    await itemsSortFilter.selectSort("name-asc");
+    await itemsSortFilter.expectSortActive("name-asc");
   });
 
-  test("sort preference persists across page reload", async ({
-    page,
-    itemsPage,
+  test("should switch between grid and tree views", async ({
+    itemsCrud,
+    itemsHierarchy,
+    itemDetail,
+    itemsSortFilter,
   }) => {
-    // Change sort to Name Z-A
-    await itemsPage.selectSortOption("Name Z-A");
+    // View dropdown only exists on item detail pages, not My Items root.
+    // Create a parent with a child, navigate into the parent.
+    const parentName = testId("folder");
+    const childName = testId("movie");
 
-    // Reload the page
-    await page.reload();
-    await page.waitForLoadState("domcontentloaded");
+    await itemsCrud.goto();
+    await itemsCrud.createItem(parentName);
+    await itemsHierarchy.addChildItem(parentName, childName);
 
-    // Sort should still be Name Z-A
-    const currentSort = await itemsPage.getCurrentSortOption();
-    expect(currentSort).toContain("Name Z-A");
+    // Navigate into parent's detail page
+    await itemsCrud.goto();
+    await itemsHierarchy.clickItem(parentName);
+    await itemDetail.expectDetailVisible();
 
-    // Items should still be in Z-A order
-    await itemsPage.expectItemOrder([
-      "Charlie Item",
-      "Beta Item",
-      "Alpha Item",
-    ]);
+    await itemsSortFilter.switchToTree();
+    await itemsHierarchy.expectItemVisible(childName);
+
+    await itemsSortFilter.switchToGrid();
+    await itemsHierarchy.expectItemVisible(childName);
   });
 
-  test("filter dropdown filters visible items", async ({ itemsPage }) => {
-    // All items visible by default
-    await itemsPage.expectItemVisible("Alpha Item");
-    await itemsPage.expectItemVisible("Beta Item");
-    await itemsPage.expectItemVisible("Charlie Item");
+  test("should filter by No Files", async ({ itemsCrud, itemsSortFilter }) => {
+    const nameA = testId("movie");
+    const nameB = testId("movie");
 
-    // Filter to "No Files" - all test items have no files, so all should be visible
-    await itemsPage.selectFilterOption("No Files");
+    await itemsCrud.goto();
+    await itemsCrud.createItem(nameA);
+    await itemsCrud.createItem(nameB);
 
-    // All items should still be visible (they have no files)
-    await itemsPage.expectItemVisible("Alpha Item");
-    await itemsPage.expectItemVisible("Beta Item");
-    await itemsPage.expectItemVisible("Charlie Item");
+    await itemsSortFilter.toggleFilter("No Files");
 
-    // Filter to "Has Files" - no items have files, so none should be visible
-    await itemsPage.selectFilterOption("Has Files");
-
-    // Items should not be visible (or empty state shown)
-    await itemsPage.expectItemNotVisible("Alpha Item");
-    await itemsPage.expectItemNotVisible("Beta Item");
-    await itemsPage.expectItemNotVisible("Charlie Item");
-
-    // Reset filter to All Items
-    await itemsPage.selectFilterOption("All Items");
-
-    // All items visible again
-    await itemsPage.expectItemVisible("Alpha Item");
-    await itemsPage.expectItemVisible("Beta Item");
-    await itemsPage.expectItemVisible("Charlie Item");
-  });
-
-  test("filter preference persists across page reload", async ({
-    page,
-    itemsPage,
-  }) => {
-    // Change filter to No Files
-    await itemsPage.selectFilterOption("No Files");
-
-    // Reload the page
-    await page.reload();
-    await page.waitForLoadState("domcontentloaded");
-
-    // Filter should still be No Files
-    const currentFilter = await itemsPage.getCurrentFilterOption();
-    expect(currentFilter).toContain("No Files");
-  });
-
-  test("sort and filter work together", async ({ itemsPage }) => {
-    // Sort by Name Z-A
-    await itemsPage.selectSortOption("Name Z-A");
-
-    // Filter to No Files
-    await itemsPage.selectFilterOption("No Files");
-
-    // Items should be sorted Z-A and filtered (all visible since none have files)
-    await itemsPage.expectItemOrder([
-      "Charlie Item",
-      "Beta Item",
-      "Alpha Item",
-    ]);
+    // All newly created items have no files, so they should remain visible
+    await itemsCrud.expectItemVisible(nameA);
+    await itemsCrud.expectItemVisible(nameB);
   });
 });

@@ -5,7 +5,6 @@
 
 "use client";
 
-import React from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { isValidImagePath } from "@/lib/tmdb-client";
@@ -23,7 +22,7 @@ interface RecommendationsProps {
   posterBaseUrl?: string;
 }
 
-const TMDB_POSTER_BASE = "https://image.tmdb.org/t/p/w342";
+const TMDB_POSTER_BASE = "https://image.tmdb.org/t/p/w780";
 
 /**
  * Displays recommendation poster cards.
@@ -44,7 +43,7 @@ export function Recommendations({
   };
 
   return (
-    <section className={className} data-testid="about-recommendations-section">
+    <section className={className}>
       <h2
         className={cn(
           "mb-4 text-xs font-medium tracking-[0.2em] uppercase",
@@ -66,22 +65,13 @@ export function Recommendations({
               ? `${posterBaseUrl}${rec.posterPath}`
               : null;
           return (
-            <div
+            <PosterCard
               key={rec.id}
-              role="button"
-              tabIndex={0}
+              posterUrl={posterUrl}
+              title={rec.title}
               aria-label={`Add "${rec.title}" to library`}
               onClick={() => handleAddClick(rec)}
-              onKeyDown={(e: React.KeyboardEvent) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  handleAddClick(rec);
-                }
-              }}
-              className="cursor-pointer"
-            >
-              <PosterCard posterUrl={posterUrl} title={rec.title} />
-            </div>
+            />
           );
         })}
       </div>

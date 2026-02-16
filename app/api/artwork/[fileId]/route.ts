@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { getDriveClient, withRateLimit } from "@/lib/google-drive-client";
 import { logger } from "@/lib/logger";
 import { isItemFullyPublic } from "@/lib/public-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 /** Cache artwork for 1 hour (immutable content) */
 const CACHE_MAX_AGE = 3600;
@@ -66,6 +67,12 @@ export async function GET(
   { params }: { params: Promise<{ fileId: string }> }
 ) {
   try {
+    // Rate limit API access
+    const rateLimitResult = await checkRateLimit("apiRoute");
+    if (rateLimitResult) {
+      return new NextResponse("Too many requests", { status: 429 });
+    }
+
     // Start auth early but await late to prevent waterfall (async-api-routes pattern)
     const sessionPromise = auth();
     const { fileId } = await params;

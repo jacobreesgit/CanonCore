@@ -23,8 +23,7 @@ import {
   type RefObject,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Folder, Globe } from "lucide-react";
-import { useImageLoaded } from "@/hooks/use-image-loaded";
+import { Search, Globe } from "lucide-react";
 import { toast } from "sonner";
 import {
   CommandDialog,
@@ -38,7 +37,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { useSpotlight } from "@/contexts/spotlight-context";
 import { getSearchableItems } from "@/lib/item-actions";
 import { searchPublicUsers, searchPublicItems } from "@/lib/public-auth";
-import { cn } from "@/lib/utils";
+import { ItemThumbnail } from "./item-thumbnail";
 import { UserThumbnail } from "./user-thumbnail";
 import type {
   SearchableItem,
@@ -64,44 +63,6 @@ function useScrollReset(
       listRef.current.scrollTop = 0;
     }
   }, [listRef, searchValue]);
-}
-
-/**
- * Artwork thumbnail with load state tracking.
- * Shows folder icon until image loads, then fades in.
- *
- * @param props - Component props
- * @param props.artworkId - ID of the artwork file to display
- */
-function ArtworkThumbnail({ artworkId }: { artworkId: string }) {
-  const artworkSrc = `/api/artwork/${artworkId}`;
-  const { ref, loaded, onLoad, onError } = useImageLoaded(artworkSrc);
-
-  return (
-    <div className="bg-muted relative size-8 shrink-0 overflow-hidden rounded-md">
-      {!loaded && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Folder
-            aria-hidden="true"
-            className="text-muted-foreground/50 size-4"
-          />
-        </div>
-      )}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        ref={ref}
-        src={artworkSrc}
-        alt=""
-        loading="lazy"
-        className={cn(
-          "absolute inset-0 h-full w-full object-cover transition-opacity duration-150",
-          loaded ? "opacity-100" : "opacity-0"
-        )}
-        onLoad={onLoad}
-        onError={onError}
-      />
-    </div>
-  );
 }
 
 /**
@@ -356,12 +317,17 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
   ]);
 
   return (
-    <CommandDialog open={open} onOpenChange={handleOpenChange}>
+    <CommandDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      data-testid="spotlight-dialog"
+    >
       <CommandInput
         placeholder="Search items and people…"
         className="border-none focus:ring-0"
         value={searchValue}
         onValueChange={setSearchValue}
+        data-testid="spotlight-input"
       />
       <CommandList
         ref={listRef}
@@ -401,13 +367,11 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
                   onSelect={() => handleSelectItem(item.id, item.ownerUsername)}
                   className="group h-[52px] cursor-pointer gap-3 px-3"
                 >
-                  {item.artworkId ? (
-                    <ArtworkThumbnail artworkId={item.artworkId} />
-                  ) : (
-                    <div className="bg-muted/50 text-muted-foreground group-aria-selected:bg-primary/10 group-aria-selected:text-primary flex size-8 shrink-0 items-center justify-center rounded-md transition-colors">
-                      <Folder aria-hidden="true" className="size-4" />
-                    </div>
-                  )}
+                  <ItemThumbnail
+                    tmdbPosterPath={item.tmdbPosterPath}
+                    artworkId={item.artworkId}
+                    fallbackClassName="group-aria-selected:bg-primary/10 group-aria-selected:text-primary transition-colors"
+                  />
                   <div className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate font-medium">{item.name}</span>
                     {item.breadcrumb && (
@@ -445,13 +409,12 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
                   }
                   className="group h-[52px] cursor-pointer gap-3 px-3"
                 >
-                  {item.artworkId ? (
-                    <ArtworkThumbnail artworkId={item.artworkId} />
-                  ) : (
-                    <div className="bg-muted/50 text-muted-foreground group-aria-selected:bg-primary/10 group-aria-selected:text-primary flex size-8 shrink-0 items-center justify-center rounded-md transition-colors">
-                      <Globe aria-hidden="true" className="size-4" />
-                    </div>
-                  )}
+                  <ItemThumbnail
+                    tmdbPosterPath={item.tmdbPosterPath}
+                    artworkId={item.artworkId}
+                    fallbackIcon={Globe}
+                    fallbackClassName="group-aria-selected:bg-primary/10 group-aria-selected:text-primary transition-colors"
+                  />
                   <div className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate font-medium">{item.name}</span>
                     <span className="text-muted-foreground truncate text-xs">

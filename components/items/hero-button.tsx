@@ -1,8 +1,9 @@
 /**
  * Hero action buttons with pill shape and glassmorphism.
- * Primary (solid white) and secondary (ghost) variants.
+ * Primary (solid white) and secondary (glass) variants.
  */
 
+import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
 
 interface HeroButtonProps {
@@ -10,6 +11,8 @@ interface HeroButtonProps {
   children: React.ReactNode;
   /** Button variant. */
   variant?: "primary" | "secondary";
+  /** Render as child element (e.g. wrapping a Link). */
+  asChild?: boolean;
   /** Click handler. */
   onClick?: () => void;
   /** Disabled state. */
@@ -18,7 +21,7 @@ interface HeroButtonProps {
   className?: string;
   /** Accessible label for icon-only buttons. */
   "aria-label"?: string;
-  /** Test identifier for E2E tests. */
+  /** Test ID for E2E testing. */
   "data-testid"?: string;
 }
 
@@ -28,18 +31,21 @@ interface HeroButtonProps {
 export function HeroButton({
   children,
   variant = "secondary",
+  asChild = false,
   onClick,
   disabled,
   className,
   "aria-label": ariaLabel,
-  "data-testid": testId,
+  "data-testid": dataTestId,
 }: HeroButtonProps) {
+  const Comp = asChild ? Slot : "button";
+
   return (
-    <button
+    <Comp
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel}
-      data-testid={testId}
+      data-testid={dataTestId}
       className={cn(
         "inline-flex items-center gap-2",
         "h-10 rounded-full px-5",
@@ -59,6 +65,6 @@ export function HeroButton({
       )}
     >
       {children}
-    </button>
+    </Comp>
   );
 }

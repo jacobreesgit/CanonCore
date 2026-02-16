@@ -25,10 +25,11 @@ describe("SiteHeader", () => {
   it("renders title with default values", () => {
     render(<SiteHeader />);
 
-    const link = screen.getByTestId("site-header-breadcrumb-root");
-    expect(link).toBeDefined();
-    expect(link.textContent).toBe("My Items");
-    expect(link.getAttribute("href")).toBe("/");
+    const nav = screen.getByRole("navigation", { name: "Breadcrumb" });
+    const rootLink = nav.querySelector("a");
+    expect(rootLink).toBeDefined();
+    expect(rootLink!.textContent).toBe("My Items");
+    expect(rootLink!.getAttribute("href")).toBe("/");
   });
 
   it("renders custom title and href", () => {
@@ -36,23 +37,25 @@ describe("SiteHeader", () => {
       <SiteHeader title="Connections" titleHref="/u/testuser/connections" />
     );
 
-    const link = screen.getByTestId("site-header-breadcrumb-root");
-    expect(link.textContent).toBe("Connections");
-    expect(link.getAttribute("href")).toBe("/u/testuser/connections");
+    const nav = screen.getByRole("navigation", { name: "Breadcrumb" });
+    const rootLink = nav.querySelector("a");
+    expect(rootLink!.textContent).toBe("Connections");
+    expect(rootLink!.getAttribute("href")).toBe("/u/testuser/connections");
   });
 
   it("renders title only when no breadcrumbs provided", () => {
     render(<SiteHeader title="My Items" />);
 
-    const root = screen.getByTestId("site-header-breadcrumb-root");
-    expect(root).toBeDefined();
+    const nav = screen.getByRole("navigation", { name: "Breadcrumb" });
+    const rootLink = nav.querySelector("a");
+    expect(rootLink).toBeDefined();
 
     // Should have font-medium class (current location styling)
-    expect(root.className).toContain("font-medium");
+    expect(rootLink!.className).toContain("font-medium");
 
-    // No breadcrumb items should exist
-    const items = screen.queryAllByTestId("site-header-breadcrumb-item");
-    expect(items.length).toBe(0);
+    // Only the root link should exist (no breadcrumb items)
+    const allLinks = nav.querySelectorAll("a");
+    expect(allLinks.length).toBe(1);
   });
 
   it("renders breadcrumb items when provided", () => {
@@ -63,14 +66,17 @@ describe("SiteHeader", () => {
 
     render(<SiteHeader title="My Items" breadcrumbs={breadcrumbs} />);
 
-    const items = screen.getAllByTestId("site-header-breadcrumb-item");
-    expect(items.length).toBe(2);
+    const nav = screen.getByRole("navigation", { name: "Breadcrumb" });
+    // All links: root + 2 breadcrumb items
+    const allLinks = nav.querySelectorAll("a");
+    expect(allLinks.length).toBe(3);
 
-    expect(items[0].textContent).toBe("Movies");
-    expect(items[0].getAttribute("href")).toBe("/u/testuser/1");
+    // Breadcrumb links (skip root at index 0)
+    expect(allLinks[1].textContent).toBe("Movies");
+    expect(allLinks[1].getAttribute("href")).toBe("/u/testuser/1");
 
-    expect(items[1].textContent).toBe("Action");
-    expect(items[1].getAttribute("href")).toBe("/u/testuser/2");
+    expect(allLinks[2].textContent).toBe("Action");
+    expect(allLinks[2].getAttribute("href")).toBe("/u/testuser/2");
   });
 
   it("applies muted styling to root when breadcrumbs exist", () => {
@@ -78,9 +84,10 @@ describe("SiteHeader", () => {
 
     render(<SiteHeader title="My Items" breadcrumbs={breadcrumbs} />);
 
-    const root = screen.getByTestId("site-header-breadcrumb-root");
+    const nav = screen.getByRole("navigation", { name: "Breadcrumb" });
+    const rootLink = nav.querySelector("a");
     // Root should have muted styling when not the current page
-    expect(root.className).toContain("text-muted-foreground");
+    expect(rootLink!.className).toContain("text-muted-foreground");
   });
 
   it("applies current page styling to last breadcrumb", () => {
@@ -91,8 +98,9 @@ describe("SiteHeader", () => {
 
     render(<SiteHeader title="My Items" breadcrumbs={breadcrumbs} />);
 
-    const items = screen.getAllByTestId("site-header-breadcrumb-item");
-    const lastItem = items[items.length - 1];
+    const nav = screen.getByRole("navigation", { name: "Breadcrumb" });
+    const allLinks = nav.querySelectorAll("a");
+    const lastItem = allLinks[allLinks.length - 1];
 
     // Last item should have font-medium and aria-current
     expect(lastItem.className).toContain("font-medium");

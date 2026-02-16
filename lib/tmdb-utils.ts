@@ -1,11 +1,17 @@
 /**
  * TMDB resolution utilities for mapping season/episode items to their parent show.
  * Used by server pages to resolve TMDB IDs before fetching extended details.
+ *
+ * Re-exports client-safe image URL helpers from tmdb-image-utils.ts so that
+ * server code can import everything from a single module.
  */
 
 import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import type { TmdbDisplayOptions } from "@/lib/types";
+
+// Re-export client-safe image URL utilities
+export { getTmdbPosterUrl, getTmdbBackdropUrl } from "@/lib/tmdb-image-utils";
 
 /** Fields required by extractTmdbDisplayOptions. */
 interface TmdbDisplayFields {
@@ -54,23 +60,25 @@ export interface ResolvedTmdb {
  *
  * Cached per-request via React.cache().
  *
- * @param item - Item with TMDB fields
+ * @param itemId - Item ID (used for ancestor walk on season/episode types)
+ * @param tmdbId - Item's TMDB ID (nullable)
+ * @param tmdbType - Item's TMDB type (nullable)
  * @returns Resolved TMDB reference or null if no TMDB data
  */
 export const resolveTmdbForItem = cache(
-  async (item: {
-    id: string;
-    tmdbId: number | null;
-    tmdbType: string | null;
-  }): Promise<ResolvedTmdb | null> => {
-    if (!item.tmdbId || !item.tmdbType) return null;
+  async (
+    itemId: string,
+    tmdbId: number | null,
+    tmdbType: string | null
+  ): Promise<ResolvedTmdb | null> => {
+    if (!tmdbId || !tmdbType) return null;
 
-    if (item.tmdbType === "movie") {
-      return { tmdbId: item.tmdbId, tmdbType: "movie" };
+    if (tmdbType === "movie") {
+      return { tmdbId, tmdbType: "movie" };
     }
 
-    if (item.tmdbType === "tv") {
-      return { tmdbId: item.tmdbId, tmdbType: "tv" };
+    if (tmdbType === "tv") {
+      return { tmdbId, tmdbType: "tv" };
     }
 
     // Season/episode: walk up ancestors to find parent show with tmdbType "tv"
@@ -80,7 +88,7 @@ export const resolveTmdbForItem = cache(
     >`
       WITH RECURSIVE anc AS (
         SELECT "parentId", "tmdbId", "tmdbType", 0 AS depth
-        FROM "Item" WHERE id = ${item.id}
+        FROM "Item" WHERE id = ${itemId}
         UNION ALL
         SELECT i."parentId", i."tmdbId", i."tmdbType", a.depth + 1
         FROM "Item" i INNER JOIN anc a ON i.id = a."parentId"

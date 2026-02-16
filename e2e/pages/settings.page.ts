@@ -1,431 +1,149 @@
 /**
- * Page Object Model for the Settings dialog.
- * Handles Google Drive connection, profile settings, and preferences.
+ * Page object for profile settings interactions.
+ * Covers opening the settings dialog/sheet, tab navigation,
+ * form filling, saving, and closing on both desktop and mobile.
  */
-
 import type { Page } from "@playwright/test";
-import {
-  isMobileViewport,
-  openSettingsViaMobile,
-} from "../helpers/mobile-nav-helpers";
+import { expect } from "@playwright/test";
+import { Timeouts } from "../config/timeouts";
 
 export class SettingsPage {
-  constructor(private page: Page) {}
+  constructor(
+    private page: Page,
+    private isMobile: boolean
+  ) {}
+
+  // ── Open ──────────────────────────────────────────────
 
   /**
-   * Opens Settings dialog from the nav user menu.
-   * Handles both desktop (sidebar) and mobile (footer sheet) navigation.
+   * Open settings via the desktop sidebar user menu.
+   * Clicks the user menu trigger, then the settings button,
+   * and waits for the settings dialog to become visible.
    */
-  async openFromNavUser(): Promise<void> {
-    const isMobile = await isMobileViewport(this.page);
-
-    if (isMobile) {
-      // Mobile: Open account sheet via footer, then settings
-      await openSettingsViaMobile(this.page);
-    } else {
-      // Desktop: Open sidebar if collapsed, then user menu
-      const userMenu = this.page.getByTestId("my-items-user-menu");
-      const sidebarTrigger = this.page.getByTestId("sidebar-trigger");
-
-      const isUserMenuVisible = await userMenu.isVisible();
-      if (!isUserMenuVisible) {
-        await sidebarTrigger.click();
-        await userMenu.waitFor({ state: "visible", timeout: 5000 });
-      }
-
-      await userMenu.click();
-      await this.page.getByTestId("my-items-settings-button").click();
+  async openDesktop() {
+    // Ensure sidebar is visible (it may be collapsed)
+    const sidebar = this.page.getByTestId("nav-sidebar");
+    if (!(await sidebar.isVisible())) {
+      await this.page.getByTestId("sidebar-trigger").click();
+      await expect(sidebar).toBeVisible({ timeout: Timeouts.animation });
     }
-
-    // Wait for settings dialog to be visible
-    await this.page.getByRole("dialog").waitFor({ state: "visible" });
-
-    // Wait for AnimatedDialogContent animation to complete (250ms fade-in)
-    // The Profile tab is the default tab
-    await this.page.getByRole("tab", { name: "Profile" }).waitFor({
-      state: "visible",
-      timeout: 1000,
+    await this.page.getByTestId("my-items-user-menu").click();
+    await this.page.getByTestId("my-items-settings-button").click();
+    await expect(this.page.getByTestId("dialog-settings")).toBeVisible({
+      timeout: Timeouts.api,
     });
   }
 
   /**
-   * Closes the Settings dialog.
-   * Uses specific selector to avoid matching mobile sidebar which also has role="dialog".
+   * Open settings via the mobile footer account button.
+   * Taps the account icon in the mobile footer nav and waits
+   * for the settings sheet to become visible.
    */
-  async close(): Promise<void> {
-    const isMobile = await isMobileViewport(this.page);
+  async openMobile() {
+    await this.page.getByTestId("nav-mobile-account").click();
+    await expect(this.page.getByTestId("sheet-settings")).toBeVisible({
+      timeout: Timeouts.animation,
+    });
+  }
 
-    if (isMobile) {
-      // Mobile: click Cancel button in the sheet footer
-      await this.page.getByRole("button", { name: "Cancel" }).click();
-      // Wait for sheet to close
-      await this.page
-        .getByRole("dialog", { name: /settings/i })
-        .waitFor({ state: "hidden", timeout: 5000 });
+  /**
+   * Open settings using the appropriate method for the current viewport.
+   * Dispatches to openDesktop or openMobile based on the isMobile flag.
+   */
+  async open() {
+    if (this.isMobile) {
+      await this.openMobile();
     } else {
-      await this.page.getByRole("button", { name: "Close" }).click();
-      // Wait for the settings dialog specifically (not the mobile sidebar)
-      // The settings dialog has data-slot="dialog-content"
-      await this.page
-        .locator('[role="dialog"][data-slot="dialog-content"]')
-        .waitFor({ state: "hidden" });
+      await this.openDesktop();
     }
   }
 
-  /**
-   * Clicks the Connect Google Drive button.
-   */
-  async clickConnectGoogleDrive(): Promise<void> {
-    await this.page
-      .getByRole("button", { name: /connect google drive/i })
-      .click();
-  }
+  // ── Assertions ────────────────────────────────────────
 
   /**
-   * Clicks the Disconnect button (trash icon).
+   * Assert that the settings dialog (desktop) or sheet (mobile) is visible.
    */
-  async clickDisconnect(): Promise<void> {
-    // The disconnect button has sr-only text "Disconnect"
-    await this.page
-      .getByRole("button", { name: /disconnect/i })
-      .first()
-      .click();
-  }
-
-  /**
-   * Confirms disconnect in the confirmation dialog.
-   */
-  async confirmDisconnect(): Promise<void> {
-    await this.page.getByRole("button", { name: /^disconnect$/i }).click();
-  }
-
-  /**
-   * Checks if the Google Drive connection section shows as connected.
-   */
-  async isConnected(): Promise<boolean> {
-    const connectedBadge = this.page.getByText("Connected");
-    return connectedBadge.isVisible();
-  }
-
-  /**
-   * Checks if the reconnect badge is visible.
-   */
-  async needsReconnect(): Promise<boolean> {
-    const badge = this.page
-      .locator('[data-slot="badge"]')
-      .filter({ hasText: /reconnect/i });
-    return badge.isVisible();
-  }
-
-  // ==================== Tab Navigation ====================
-
-  /**
-   * Switches to the Profile tab.
-   */
-  async goToProfileTab(): Promise<void> {
-    await this.page.getByRole("tab", { name: "Profile" }).click();
-    // Wait for Profile tab content to be visible (Display Name is always in Profile tab)
-    await this.page.getByLabel("Display Name").waitFor({
-      state: "visible",
-      timeout: 5000,
+  async expectOpen() {
+    const testId = this.isMobile ? "sheet-settings" : "dialog-settings";
+    await expect(this.page.getByTestId(testId)).toBeVisible({
+      timeout: Timeouts.api,
     });
   }
 
   /**
-   * Switches to the Account tab.
-   * Desktop: "Change Username" button, Mobile: "Username" section with "Change" button.
+   * Assert that a success toast appears after saving.
+   * Sonner toasts appear as list items — look for text directly.
+   * .first() is needed because Sonner can render duplicate toasts,
+   * and getByText strict mode fails with multiple matches.
    */
-  async goToAccountTab(): Promise<void> {
-    await this.page.getByRole("tab", { name: "Account" }).click();
-    const isMobile = await isMobileViewport(this.page);
-    if (isMobile) {
-      // Mobile: Wait for "Change Password" button (unique to Account tab content)
-      await this.page
-        .getByRole("button", { name: /change password/i })
-        .waitFor({
-          state: "visible",
-          timeout: 5000,
-        });
-    } else {
-      // Desktop: Wait for "Change Username" button
-      await this.page
-        .getByRole("button", { name: /change username/i })
-        .waitFor({
-          state: "visible",
-          timeout: 5000,
-        });
-    }
-  }
-
-  /**
-   * Switches to the Connections tab.
-   * Desktop uses "Connections" label, mobile uses "Cloud" label.
-   */
-  async goToConnectionsTab(): Promise<void> {
-    const isMobile = await isMobileViewport(this.page);
-    const tabName = isMobile ? "Cloud" : "Connections";
-    await this.page.getByRole("tab", { name: tabName }).click();
-    // Wait for Google Drive section to be visible (using label which contains the text)
-    await this.page.getByTestId("google-drive-section").waitFor({
-      state: "visible",
-      timeout: 3000,
+  async expectSaveSuccess() {
+    await expect(this.page.getByText(/settings saved/i).first()).toBeVisible({
+      timeout: Timeouts.api,
     });
   }
 
-  /**
-   * Switches to the Preferences tab.
-   * Desktop uses "Preferences" label, mobile uses "Prefs" label.
-   */
-  async goToPreferencesTab(): Promise<void> {
-    const isMobile = await isMobileViewport(this.page);
-    const tabName = isMobile ? "Prefs" : "Preferences";
-    await this.page.getByRole("tab", { name: tabName }).click();
-    // Wait for the Preferences tab content to render (radio buttons)
-    await this.page.getByRole("radio", { name: "Grid" }).waitFor({
-      state: "visible",
-      timeout: 5000,
-    });
-  }
+  // ── Tab Navigation ────────────────────────────────────
 
   /**
-   * Switches to the Activity tab.
-   */
-  async goToActivityTab(): Promise<void> {
-    await this.page.getByRole("tab", { name: "Activity" }).click();
-  }
-
-  // ==================== Preferences Tab Methods ====================
-
-  /**
-   * Selects a view mode (grid or tree) in preferences.
+   * Switch to a specific settings tab.
+   * Desktop: clicks the tab trigger directly.
+   * Mobile: opens the select dropdown and picks the tab option.
    *
-   * @param mode - The view mode to select
+   * @param tab - The tab to switch to
    */
-  async selectViewMode(mode: "grid" | "tree"): Promise<void> {
-    // Radio buttons are labeled "Grid" and "Tree" in the UI
-    const label = mode === "grid" ? "Grid" : "Tree";
-    await this.page.getByRole("radio", { name: label }).click();
-    // Wait for auto-save toast to confirm save completed
-    await this.expectPreferencesSavedToast();
-  }
-
-  /**
-   * Gets the currently selected view mode.
-   */
-  async getSelectedViewMode(): Promise<"grid" | "tree"> {
-    const gridRadio = this.page.getByRole("radio", { name: "Grid" });
-    const isGridChecked = await gridRadio.isChecked();
-    return isGridChecked ? "grid" : "tree";
-  }
-
-  /**
-   * Selects a default sort option in preferences.
-   *
-   * @param option - The sort option label to select
-   */
-  async selectDefaultSort(option: string): Promise<void> {
-    // Click the select trigger (shadcn Select uses combobox role)
-    // The trigger is the only combobox in preferences tab
-    await this.page.getByRole("combobox").click();
-    // Select the option
-    await this.page.getByRole("option", { name: option }).click();
-    // Wait for auto-save toast to confirm save completed
-    await this.expectPreferencesSavedToast();
-  }
-
-  /**
-   * Gets the currently selected default sort option.
-   */
-  async getSelectedDefaultSort(): Promise<string> {
-    const combobox = this.page.getByRole("combobox");
-    return (await combobox.textContent()) ?? "";
-  }
-
-  /**
-   * Expects a success toast for preferences saved.
-   */
-  async expectPreferencesSavedToast(): Promise<void> {
-    const toast = this.page
-      .locator("[data-sonner-toast]")
-      .filter({ hasText: /preferences saved/i });
-    await toast.waitFor({ state: "visible", timeout: 5000 });
-  }
-
-  // ==================== Profile Tab Methods ====================
-
-  /**
-   * Opens the Change Username step from the Account tab.
-   */
-  async openChangeUsername(): Promise<void> {
-    const isMobile = await isMobileViewport(this.page);
-    if (isMobile) {
-      // Mobile: button says "Change" next to the Username section
-      await this.page
-        .getByRole("button", { name: "Change", exact: true })
-        .click();
+  async switchToTab(tab: "profile" | "account" | "connections" | "activity") {
+    if (this.isMobile) {
+      await this.page.getByTestId("settings-tab-select").click();
+      await this.page.getByTestId(`settings-tab-option-${tab}`).click();
     } else {
-      await this.page.getByRole("button", { name: /change username/i }).click();
+      await this.page.getByTestId(`settings-tab-${tab}`).click();
     }
-    // Wait for step to open (heading is same on both)
-    await this.page.getByRole("heading", { name: /change username/i }).waitFor({
-      state: "visible",
-      timeout: 5000,
-    });
   }
 
+  // ── Form Interactions ─────────────────────────────────
+
   /**
-   * Sets the username in the username change step.
+   * Fill in the display name field on the profile tab.
    *
-   * @param username - The username to set
-   * @param password - The current password for verification
+   * @param name - The display name to enter
    */
-  async setUsername(username: string, password?: string): Promise<void> {
-    // Fill new username
-    const usernameInput = this.page.getByLabel("New Username");
-    await usernameInput.fill(username);
-
-    // Fill password if provided
-    if (password) {
-      const passwordInput = this.page.getByLabel("Current Password");
-      await passwordInput.fill(password);
-    }
+  async fillDisplayName(name: string) {
+    const input = this.page.getByLabel(/display name/i);
+    await input.waitFor({ state: "visible", timeout: Timeouts.api });
+    await input.clear();
+    await input.fill(name);
   }
 
   /**
-   * Submits the username change form.
+   * Fill in the username field on the profile tab.
+   *
+   * @param username - The username to enter
    */
-  async submitUsernameChange(): Promise<void> {
-    const isMobile = await isMobileViewport(this.page);
-    if (isMobile) {
-      // Mobile: submit button is in MobileBottomSheetFooter
-      await this.page.getByRole("button", { name: /change username/i }).click();
-    } else {
-      // Desktop: submit button is in dialog footer
-      await this.page
-        .locator('[data-slot="dialog-footer"]')
-        .getByRole("button", { name: /change username/i })
-        .click();
-    }
+  async fillUsername(username: string) {
+    const input = this.page.getByLabel(/username/i);
+    await input.waitFor({ state: "visible", timeout: Timeouts.api });
+    await input.clear();
+    await input.fill(username);
+  }
 
-    // Wait for success toast
-    await this.page.getByText(/username saved/i).waitFor({
-      state: "visible",
-      timeout: 5000,
+  /**
+   * Click the Save button to submit profile changes.
+   */
+  async saveProfile() {
+    await this.page.getByRole("button", { name: "Save" }).click();
+  }
+
+  // ── Close ─────────────────────────────────────────────
+
+  /**
+   * Close the settings dialog or sheet.
+   * Uses the Escape key which works for both desktop dialogs and mobile sheets.
+   */
+  async close() {
+    await this.page.keyboard.press("Escape");
+    const testId = this.isMobile ? "sheet-settings" : "dialog-settings";
+    await expect(this.page.getByTestId(testId)).not.toBeVisible({
+      timeout: Timeouts.animation,
     });
-
-    // Wait for username step to close and return to main settings
-    await this.page.getByRole("heading", { name: /change username/i }).waitFor({
-      state: "hidden",
-      timeout: 5000,
-    });
-
-    // Wait for main settings to be stable (tabs should be visible)
-    await this.page.getByRole("tab", { name: "Profile" }).waitFor({
-      state: "visible",
-      timeout: 5000,
-    });
-  }
-
-  /**
-   * Waits for username validation to complete.
-   * Uses condition-based polling instead of arbitrary timeout.
-   */
-  async waitForUsernameValidation(): Promise<void> {
-    // Wait for validation result to appear (covers 500ms debounce + API call)
-    const resultText = this.page.getByText(
-      /username is (available|already taken)/i
-    );
-    await resultText
-      .waitFor({ state: "visible", timeout: 5000 })
-      .catch(() => {});
-  }
-
-  /**
-   * Checks if username shows as available.
-   */
-  async isUsernameAvailable(): Promise<boolean> {
-    const successText = this.page.getByText(/username is available/i);
-    // Wait up to 3 seconds for the text to appear
-    try {
-      await successText.waitFor({ state: "visible", timeout: 3000 });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Checks if username shows as taken.
-   */
-  async isUsernameTaken(): Promise<boolean> {
-    const errorText = this.page.getByText(/username is already taken/i);
-    // Wait up to 3 seconds for the text to appear
-    try {
-      await errorText.waitFor({ state: "visible", timeout: 3000 });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Toggles the public profile switch.
-   */
-  async togglePublicProfile(): Promise<void> {
-    const switchEl = this.page.getByTestId("settings-public-toggle");
-    // Wait for the switch to be visible before clicking
-    // Playwright's click() automatically waits for actionable state
-    await switchEl.waitFor({ state: "visible", timeout: 5000 });
-    await switchEl.click();
-  }
-
-  /**
-   * Checks if public profile is enabled.
-   */
-  async isPublicProfileEnabled(): Promise<boolean> {
-    const switchEl = this.page.getByTestId("settings-public-toggle");
-    const checked = await switchEl.getAttribute("data-state");
-    return checked === "checked";
-  }
-
-  /**
-   * Confirms making profile public in the confirmation dialog.
-   */
-  async confirmMakePublic(): Promise<void> {
-    await this.page.getByRole("button", { name: "Make Public" }).click();
-  }
-
-  /**
-   * Cancels making profile public in the confirmation dialog.
-   */
-  async cancelMakePublic(): Promise<void> {
-    await this.page.getByRole("button", { name: "Keep Private" }).click();
-  }
-
-  /**
-   * Clicks the Save Changes button and waits for confirmation.
-   */
-  async saveChanges(): Promise<void> {
-    await this.page.getByRole("button", { name: "Save Changes" }).click();
-    // Wait for the save to complete by checking for the success toast
-    await this.expectSettingsSavedToast();
-  }
-
-  /**
-   * Expects a success toast for settings updated.
-   */
-  async expectSettingsSavedToast(): Promise<void> {
-    const toast = this.page
-      .locator("[data-sonner-toast]")
-      .filter({ hasText: /settings saved/i });
-    await toast.waitFor({ state: "visible", timeout: 5000 });
-  }
-
-  /**
-   * Gets the public profile URL preview text.
-   */
-  async getPublicUrlPreview(): Promise<string> {
-    const preview = this.page.getByText(/canoncore.com\/u\//);
-    return (await preview.textContent()) ?? "";
   }
 }

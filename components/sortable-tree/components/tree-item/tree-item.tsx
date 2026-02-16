@@ -10,10 +10,12 @@
 import { forwardRef, HTMLAttributes } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
+import { slugify } from "@/lib/slugify";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { ChevronRight, GripVertical, Folder } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SyncIcon } from "@/components/items/sync-badge";
+import { getTmdbPosterUrl } from "@/lib/tmdb-image-utils";
 import type { FileCounts, SyncStatus } from "@/lib/types";
 import type { ItemMenuActions } from "@/components/items/item-context-menu";
 import { ItemMoreButton } from "@/components/items/item-more-button";
@@ -63,6 +65,8 @@ export interface TreeItemProps extends Omit<
   isSelected?: boolean;
   /** Callback when selection state changes. */
   onSelectChange?: (selected: boolean) => void;
+  /** TMDB poster path for CDN thumbnail (takes precedence over artworkId). */
+  tmdbPosterPath?: string | null;
   /** Artwork file ID for optional poster thumbnail display. */
   artworkId?: string | null;
   /** Whether to show thumbnail. Defaults to false for backward compatibility. */
@@ -99,6 +103,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       totalItems,
       isSelected,
       onSelectChange,
+      tmdbPosterPath,
       artworkId,
       showThumbnail = false,
       // Destructure to prevent passing to DOM element via ...props
@@ -129,6 +134,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       <li
         ref={wrapperRef}
         data-id={String(id)}
+        data-testid={`item-tree-${slugify(value)}`}
         className={cn(
           "list-none",
           clone && "pointer-events-none inline-block pt-1",
@@ -146,12 +152,24 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
         <div
           ref={ref}
           onClick={handleClick}
+          role={handleClick && !ghost ? "button" : undefined}
+          tabIndex={handleClick && !ghost ? 0 : undefined}
+          onKeyDown={
+            handleClick && !ghost
+              ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleClick();
+                  }
+                }
+              : undefined
+          }
           className={cn(
             // Glassmorphism base styling
             "group relative flex items-center gap-2 rounded-lg px-3 py-2",
             "bg-white/[0.03] backdrop-blur-sm",
             "border border-white/[0.04]",
-            "transition-all duration-200 ease-out",
+            "transition-[color,background-color,border-color,opacity] duration-200 ease-out",
             "hover:border-white/[0.08] hover:bg-white/[0.06]",
             "focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none",
             clone && [
@@ -233,32 +251,41 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
           )}
 
           {/* Optional Thumbnail */}
-          {!ghost && showThumbnail && (
-            <div
-              className={cn(
-                "relative flex-shrink-0 overflow-hidden rounded-md",
-                "h-12 w-8 md:h-14 md:w-10",
-                "bg-white/[0.05]"
-              )}
-            >
-              {artworkId ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={`/api/artwork/${artworkId}`}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center">
-                  <Folder
-                    className="size-4 text-[var(--tertiary-foreground)]"
-                    aria-hidden="true"
-                  />
+          {!ghost &&
+            showThumbnail &&
+            (() => {
+              const thumbnailSrc = tmdbPosterPath
+                ? getTmdbPosterUrl(tmdbPosterPath, "w92")
+                : artworkId
+                  ? `/api/artwork/${artworkId}`
+                  : null;
+              return (
+                <div
+                  className={cn(
+                    "relative flex-shrink-0 overflow-hidden rounded-md",
+                    "h-12 w-8 md:h-14 md:w-10",
+                    "bg-white/[0.05]"
+                  )}
+                >
+                  {thumbnailSrc ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={thumbnailSrc}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <Folder
+                        className="size-4 text-[var(--tertiary-foreground)]"
+                        aria-hidden="true"
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
+              );
+            })()}
 
           {/* Item Name and Progress */}
           {!ghost && (
@@ -304,7 +331,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
               )}
               {/* Progress bar - only in view mode */}
               {!showDragHandle && progressPercentage !== null && (
-                <div className="mt-2" data-testid="tree-item-progress-bar">
+                <div className="mt-2">
                   <ProgressBar progress={progressPercentage ?? 0} compact />
                 </div>
               )}

@@ -31,7 +31,7 @@ vi.mock("next/image", () => ({
     [key: string]: unknown;
   }) => (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} onError={onError} data-testid="image" {...props} />
+    <img src={src} alt={alt} onError={onError} {...props} />
   ),
 }));
 
@@ -274,7 +274,7 @@ describe("ImageSelectionGrid", () => {
       // Check icon should be visible for the selected image
       const selectedButton = screen
         .getAllByRole("button")
-        .find((b) => b.className.includes("ring-amber-500"));
+        .find((b) => b.className.includes("ring-brand"));
       expect(selectedButton).toBeInTheDocument();
     });
   });
@@ -487,9 +487,9 @@ describe("ImageSelectionGrid", () => {
 
       await user.click(screen.getByRole("tab", { name: /my uploads/i }));
 
-      const images = screen.getAllByTestId("image");
-      const existingImage = images.find((img) =>
-        (img as HTMLImageElement).src.includes("/api/artwork/")
+      const images = document.querySelectorAll("img");
+      const existingImage = Array.from(images).find((img) =>
+        img.src.includes("/api/artwork/")
       );
       expect(existingImage).toBeInTheDocument();
     });
