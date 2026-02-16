@@ -811,7 +811,7 @@ interface TMDBVideosResponse {
 }
 
 /** TMDB recommendations API response shape. */
-interface TMDBRecommendationsResponse {
+interface _TMDBRecommendationsResponse {
   results?: {
     id: number;
     title?: string;
@@ -841,17 +841,13 @@ export const getItemTmdbDetails = cache(
     const prefix = tmdbType === "movie" ? "movie" : "tv";
 
     try {
-      const [credits, watchProviders, videos, recommendations] =
-        await Promise.all([
-          tmdbFetch<TMDBCreditsResponse>(`/${prefix}/${tmdbId}/credits`),
-          tmdbFetch<TMDBWatchProvidersResponse>(
-            `/${prefix}/${tmdbId}/watch/providers`
-          ),
-          tmdbFetch<TMDBVideosResponse>(`/${prefix}/${tmdbId}/videos`),
-          tmdbFetch<TMDBRecommendationsResponse>(
-            `/${prefix}/${tmdbId}/recommendations`
-          ),
-        ]);
+      const [credits, watchProviders, videos] = await Promise.all([
+        tmdbFetch<TMDBCreditsResponse>(`/${prefix}/${tmdbId}/credits`),
+        tmdbFetch<TMDBWatchProvidersResponse>(
+          `/${prefix}/${tmdbId}/watch/providers`
+        ),
+        tmdbFetch<TMDBVideosResponse>(`/${prefix}/${tmdbId}/videos`),
+      ]);
 
       return {
         cast: (credits?.cast ?? [])
@@ -878,16 +874,7 @@ export const getItemTmdbDetails = cache(
             type: v.type,
             site: v.site,
           })),
-        recommendations: (recommendations?.results ?? [])
-          .filter((r) => r.media_type === "movie" || r.media_type === "tv")
-          .slice(0, 6)
-          .map((r) => ({
-            id: r.id,
-            title: r.title || r.name || "Unknown",
-            posterPath: r.poster_path,
-            backdropPath: r.backdrop_path,
-            mediaType: r.media_type as "movie" | "tv",
-          })),
+        recommendations: [], // Disabled — see 2026-02-15 design doc
       };
     } catch {
       return null;

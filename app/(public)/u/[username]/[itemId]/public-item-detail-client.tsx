@@ -205,7 +205,6 @@ export function PublicItemClient({
 
   const hasChildren = childItems.length > 0;
   const hasTmdb = !!item.tmdbId;
-  const isTV = item.tmdbType === "tv";
 
   // Fork actions for hero slot
   const forkActions = (
@@ -265,7 +264,6 @@ export function PublicItemClient({
       description={item.description}
       tmdbDetails={tmdbDetails}
       tmdbDisplayOptions={tmdbDisplayOptions}
-      isTV={isTV}
     />
   );
 

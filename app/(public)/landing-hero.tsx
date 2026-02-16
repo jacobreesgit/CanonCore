@@ -90,9 +90,8 @@ const ease = [0.25, 0.46, 0.45, 0.94] as const;
  * Cinematic landing hero with centered typography and feature grid.
  */
 export function HeroContent() {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const username = session?.user?.username as string | undefined;
-  const sessionReady = status !== "loading";
   return (
     <section className="bg-background relative overflow-hidden">
       {/* Atmospheric background — layered gradient orbs */}
@@ -168,11 +167,7 @@ export function HeroContent() {
           >
             <HeroButton variant="primary" asChild>
               <Link href={username ? `/u/${username}` : "/sign-up"}>
-                {!sessionReady
-                  ? "\u00A0" /* nbsp placeholder while loading */
-                  : username
-                    ? "My Items"
-                    : "Get Started"}
+                Get Started
               </Link>
             </HeroButton>
             <HeroButton asChild className="group">

@@ -70,7 +70,7 @@ pnpm run test-storybook:ci   # CI mode with limited workers
 - `components/items/` - Items feature (40+ components for dialogs, toolbars, views, detail sections)
   - `wizards/tv-picker/` - TV show navigation for selecting shows, seasons, or episodes
   - `wizards/tmdb-wizard/` - 4-step metadata wizard (text, poster, hero, summary) plus artwork/image selection steps
-  - Detail components: `about-tab-content`, `recommendations`, `wiki-accordion`, `cast-row`, `video-row`, `watch-providers`, `metadata-line`, `expandable-description`
+  - Detail components: `about-tab-content`, `recommendations` (soft-disabled), `wiki-accordion` (soft-disabled), `cast-row`, `video-row`, `watch-providers`, `metadata-line`, `expandable-description`
   - `tmdb-display-options` - Shared TMDB display option toggles (used in wizard summary + settings dialog TMDB tab)
   - Action components: `hero-button`, `item-more-button`, `poster-card`, `playlist-button`
   - `grid-view-content` - Extracted grid view rendering from items-view
@@ -228,7 +228,7 @@ pnpm run seed:e2e          # Seeds E2E Neon branch
 - Sort: Custom Order, Name A-Z/Z-A, Newest/Oldest, Recently Updated
 - Filter: Multi-select grouped checkboxes (File Status: Has Files, No Files; Sync Status: Synced, Pending, Error). AND across groups, OR within groups. Explore page has "Exclude Mine" toggle button instead.
 - URL state: Sort/filter/view/tab persisted to URL via `nuqs` (`NuqsAdapter` in root layout), with localStorage backup for direct navigation
-- TMDB display options: Per-item toggles for tagline, metadata, genres, cast, providers, videos, recommendations
+- TMDB display options: Per-item toggles for tagline, metadata, genres, cast, providers, videos (recommendations toggle hidden — feature soft-disabled)
 - Pinned items: Max 10, shown in sidebar with folder icons
 - Progress tracking: 90% threshold for "watched", DFS traversal for first incomplete
 - Bulk operations: Edit mode shows checkboxes, select-all in toolbar
@@ -309,7 +309,7 @@ pnpm run seed:e2e          # Seeds E2E Neon branch
 
 - Exported types: `CastMember`, `WatchProvider`, `Video`, `Recommendation`, `TmdbItemMetadata`, `TmdbItemDetails`
 - `getItemTmdbMetadata()` - Cached normalised metadata (tagline, runtime, genres, content rating) via `React.cache()`
-- `getItemTmdbDetails()` - Cached extended details (cast, providers, videos, recommendations) via `React.cache()`
+- `getItemTmdbDetails()` - Cached extended details (cast, providers, videos) via `React.cache()` — recommendations API call disabled, returns empty array
 - `formatRuntime()` - Format minutes to "2h 46m" display
 - `getBestTextlessBackdrop()` - Select optimal textless backdrop from image collection
 - `TMDBMovie`/`TMDBTVShow` include `tagline`, `runtime`, `genres`, `vote_average`

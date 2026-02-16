@@ -253,7 +253,6 @@ export function ItemDetailClient({
   const hasChildren = childItems.length > 0;
   const hasMedia = files && files.media.length > 0;
   const hasTmdb = !!item.tmdbId;
-  const isTV = item.tmdbType === "tv";
 
   // Check if any media has progress
   const hasProgress =
@@ -443,7 +442,6 @@ export function ItemDetailClient({
       description={item.description}
       tmdbDetails={tmdbDetails}
       tmdbDisplayOptions={tmdbDisplayOptions}
-      isTV={isTV}
       actions={contentsActions}
     />
   );

@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: February 2026 (v7.8.0)
+Last updated: February 2026 (v7.9.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -547,7 +547,7 @@ Multi-layer defence against aggressive AI crawlers:
 
 **TMDB Display Options:**
 
-- Per-item toggles: tagline, metadata, genres, cast, providers, videos, recommendations
+- Per-item toggles: tagline, metadata, genres, cast, providers, videos (recommendations toggle soft-disabled)
 - All default to true, configurable in item settings dialog
 - Debounced save via `updateTmdbDisplayOptions` server action
 

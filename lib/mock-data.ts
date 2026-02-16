@@ -33,6 +33,4 @@ export const ABOUT_SECTION_FILTER_OPTIONS: { value: string; label: string }[] =
     { value: "about", label: "About" },
     { value: "providers", label: "Where to Watch" },
     { value: "videos", label: "Videos" },
-    { value: "wiki", label: "Learn More" },
-    { value: "recommendations", label: "More Like This" },
   ];

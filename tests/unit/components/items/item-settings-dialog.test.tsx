@@ -1014,7 +1014,6 @@ describe("ItemSettingsDialog", () => {
       expect(screen.getByText("Cast")).toBeInTheDocument();
       expect(screen.getByText("Where to Watch")).toBeInTheDocument();
       expect(screen.getByText("Videos")).toBeInTheDocument();
-      expect(screen.getByText("More Like This")).toBeInTheDocument();
       expect(screen.getByText("Genres")).toBeInTheDocument();
       expect(screen.getByText(/Metadata/)).toBeInTheDocument();
     });
