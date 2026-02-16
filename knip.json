@@ -14,11 +14,7 @@
     "e2e/**"
   ],
   "ignoreBinaries": [],
-  "ignoreDependencies": [
-    "pino-pretty",
-    "baseline-browser-mapping",
-    "@types/mdx"
-  ],
+  "ignoreDependencies": ["pino-pretty", "baseline-browser-mapping"],
   "ignoreExportsUsedInFile": {
     "interface": true,
     "type": true

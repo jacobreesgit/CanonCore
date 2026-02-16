@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs";
-import { fn, userEvent, within, expect } from "storybook/test";
+import { fn, userEvent, within, expect, waitFor } from "storybook/test";
 import {
   Settings2,
   Film,
@@ -205,9 +205,15 @@ export const TabClick: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    // Click active tab first to ensure Embla carousel is initialized
+    const detailsTab = canvas.getByRole("tab", { name: /details/i });
+    await userEvent.click(detailsTab);
+    // Now click the target tab
     const filesTab = canvas.getByRole("tab", { name: /files/i });
     await userEvent.click(filesTab);
-    await expect(filesTab).toHaveAttribute("aria-selected", "true");
+    await waitFor(() => {
+      expect(filesTab).toHaveAttribute("aria-selected", "true");
+    });
   },
   parameters: {
     docs: {

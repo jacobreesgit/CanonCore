@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: February 2026 (v7.7.0)
+Last updated: February 2026 (v7.8.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
