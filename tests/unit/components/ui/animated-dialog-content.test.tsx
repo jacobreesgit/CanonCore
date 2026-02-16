@@ -35,9 +35,7 @@ describe("AnimatedDialogContent", () => {
   it("applies consistent width class", () => {
     render(
       <Dialog open>
-        <AnimatedDialogContent stepKey="step1">
-          Content
-        </AnimatedDialogContent>
+        <AnimatedDialogContent stepKey="step1">Content</AnimatedDialogContent>
       </Dialog>
     );
     const dialog = screen.getByRole("dialog");
@@ -91,10 +89,7 @@ describe("AnimatedDialogContent slot-based API", () => {
   it("renders header outside animated area", () => {
     render(
       <Dialog open>
-        <AnimatedDialogContent
-          stepKey="step1"
-          header={<div>Header</div>}
-        >
+        <AnimatedDialogContent stepKey="step1" header={<div>Header</div>}>
           Body content
         </AnimatedDialogContent>
       </Dialog>
@@ -110,10 +105,7 @@ describe("AnimatedDialogContent slot-based API", () => {
   it("renders footer outside animated area", () => {
     render(
       <Dialog open>
-        <AnimatedDialogContent
-          stepKey="step1"
-          footer={<div>Footer</div>}
-        >
+        <AnimatedDialogContent stepKey="step1" footer={<div>Footer</div>}>
           Body content
         </AnimatedDialogContent>
       </Dialog>

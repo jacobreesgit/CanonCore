@@ -620,6 +620,7 @@ export function MobileAddItemSheet({
                       variant="ghost"
                       onClick={form.wizardFooterProps.onSkipAll}
                       disabled={form.wizardFooterProps.isDisabled}
+                      data-testid="tmdb-wizard-skip-all"
                     >
                       Skip All
                     </Button>
@@ -628,6 +629,7 @@ export function MobileAddItemSheet({
                     type="button"
                     onClick={form.wizardFooterProps.onNext}
                     disabled={form.wizardFooterProps.isDisabled}
+                    data-testid="tmdb-wizard-next"
                   >
                     {form.wizardFooterProps.isLastStep ? "Apply" : "Next"}
                     {!form.wizardFooterProps.isLastStep && (
@@ -723,6 +725,7 @@ export function MobileAddItemSheet({
                   !form.name.trim() || form.isLoading || form.isUploading
                 }
                 className="flex-1"
+                data-testid="wizard-summary-create"
               >
                 {form.isLoading ? (
                   <>

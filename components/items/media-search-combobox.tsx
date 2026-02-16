@@ -217,6 +217,7 @@ export function MediaSearchCombobox({
             onClick={(e) => e.stopPropagation()}
             autoComplete="off"
             className="pl-10"
+            data-testid="media-search-input"
           />
         </div>
       </PopoverAnchor>
@@ -242,7 +243,10 @@ export function MediaSearchCombobox({
 
         {/* Loading State */}
         {isLoading && (
-          <div className="flex items-center justify-center gap-2 py-8">
+          <div
+            className="flex items-center justify-center gap-2 py-8"
+            data-testid="media-search-loading"
+          >
             <Loader2
               className="text-muted-foreground size-4 animate-spin"
               aria-hidden="true"
@@ -272,6 +276,7 @@ export function MediaSearchCombobox({
             (isLoading || results.length === 0) && "hidden"
           )}
           role="listbox"
+          data-testid="media-search-results"
           onWheel={(e) => {
             e.stopPropagation();
             e.currentTarget.scrollTop += e.deltaY;

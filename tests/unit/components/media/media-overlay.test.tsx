@@ -193,7 +193,9 @@ describe("MediaOverlay", () => {
 
     // Simulate time update by clicking the player mock
     await act(async () => {
-      fireEvent.click(screen.getByRole("application", { name: "Video player" }));
+      fireEvent.click(
+        screen.getByRole("application", { name: "Video player" })
+      );
     });
 
     // Close the overlay
@@ -219,12 +221,16 @@ describe("MediaOverlay", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole("application", { name: "Video player" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("application", { name: "Video player" })
+      ).toBeInTheDocument();
     });
 
     // Simulate ended event by double-clicking the player mock
     await act(async () => {
-      fireEvent.doubleClick(screen.getByRole("application", { name: "Video player" }));
+      fireEvent.doubleClick(
+        screen.getByRole("application", { name: "Video player" })
+      );
     });
 
     expect(onPositionUpdate).toHaveBeenCalledWith("file-123", 0, null);
@@ -247,7 +253,9 @@ describe("MediaOverlay", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole("application", { name: "Video player" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("application", { name: "Video player" })
+      ).toBeInTheDocument();
     });
   });
 });

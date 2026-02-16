@@ -28,6 +28,8 @@ interface SortDropdownProps {
   options?: SortOptionConfig[];
   /** Additional CSS classes for trigger. */
   className?: string;
+  /** Test ID for E2E testing. Defaults to "items-sort-dropdown". */
+  "data-testid"?: string;
 }
 
 /**
@@ -40,6 +42,7 @@ export function SortDropdown({
   disabled,
   options = SORT_OPTIONS,
   className,
+  "data-testid": dataTestId = "items-sort-dropdown",
 }: SortDropdownProps) {
   const currentLabel =
     options.find((opt) => opt.value === value)?.label ?? "Sort";
@@ -48,6 +51,7 @@ export function SortDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger
         disabled={disabled}
+        data-testid={dataTestId}
         className={cn(
           "inline-flex items-center gap-2 rounded-md px-3 py-1.5",
           "text-sm",
@@ -80,6 +84,7 @@ export function SortDropdown({
             <DropdownMenuRadioItem
               key={option.value}
               value={option.value}
+              data-testid={`sort-option-${option.value}`}
               className="focus:bg-white/10"
             >
               {option.label}

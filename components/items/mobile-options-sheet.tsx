@@ -169,6 +169,7 @@ export function MobileOptionsSheet({
         snapPoints={["auto"]}
         title="View Options"
         description="Sort and filter your items"
+        data-testid="sheet-mobile-options"
         className={cn(
           "bg-[#1a1a1a]/95 backdrop-blur-xl",
           "border-t border-white/[0.08]",

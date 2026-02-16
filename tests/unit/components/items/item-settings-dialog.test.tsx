@@ -584,7 +584,9 @@ describe("ItemSettingsDialog", () => {
       await user.click(combobox);
 
       // Click delete on non-selected file to open confirmation dialog
-      const deleteBtn = await screen.findByRole("button", { name: "Delete movie-hd.mkv" });
+      const deleteBtn = await screen.findByRole("button", {
+        name: "Delete movie-hd.mkv",
+      });
       await user.click(deleteBtn);
 
       // Confirm deletion in the dialog

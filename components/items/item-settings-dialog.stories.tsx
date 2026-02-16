@@ -27,9 +27,7 @@ function DialogWithTrigger(
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>
-        {buttonLabel}
-      </Button>
+      <Button onClick={() => setOpen(true)}>{buttonLabel}</Button>
       <ItemSettingsDialog {...dialogProps} open={open} onOpenChange={setOpen} />
     </>
   );

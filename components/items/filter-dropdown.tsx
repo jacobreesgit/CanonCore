@@ -19,7 +19,6 @@ import { CONTENT_FILTER_OPTIONS } from "@/lib/item-utils";
 import type { ContentFilter } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-
 interface FilterDropdownProps {
   /** Currently active content filters. */
   filters: ContentFilter[];
@@ -60,6 +59,7 @@ export function FilterDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger
         disabled={disabled}
+        data-testid="items-filter-dropdown"
         aria-label={hasActive ? `Filter, ${activeCount} active` : "Filter"}
         className={cn(
           "inline-flex items-center gap-2 rounded-md px-3 py-1.5",
@@ -135,6 +135,7 @@ export function FilterDropdown({
               type="button"
               onClick={clearFilters}
               aria-label="Clear all filters"
+              data-testid="items-filter-clear"
               className={cn(
                 "flex w-full items-center gap-2 px-2 py-1.5",
                 "text-muted-foreground text-sm",

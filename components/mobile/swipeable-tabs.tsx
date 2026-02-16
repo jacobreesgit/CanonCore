@@ -55,6 +55,8 @@ interface SwipeableTabsProps {
   lazy?: boolean;
   /** Additional className for the container. */
   className?: string;
+  /** Optional prefix for data-testid attributes on tab triggers and options. */
+  testIdPrefix?: string;
 }
 
 /** Maximum number of tabs before switching to Select dropdown mode. */
@@ -82,6 +84,7 @@ export function SwipeableTabs({
   ariaLabel = "Tabs",
   lazy = false,
   className,
+  testIdPrefix,
 }: SwipeableTabsProps) {
   const instanceId = useId();
   const prefersReducedMotion = usePrefersReducedMotion();
@@ -237,6 +240,7 @@ export function SwipeableTabs({
             <SelectTrigger
               aria-label={ariaLabel}
               className="w-full"
+              data-testid={testIdPrefix ? `${testIdPrefix}-select` : undefined}
             >
               <SelectValue>
                 {ActiveIcon && (
@@ -252,6 +256,11 @@ export function SwipeableTabs({
                   <SelectItem
                     key={tab.id}
                     value={tab.id}
+                    data-testid={
+                      testIdPrefix
+                        ? `${testIdPrefix}-option-${tab.id}`
+                        : undefined
+                    }
                   >
                     {Icon && (
                       <Icon aria-hidden="true" className="size-4 shrink-0" />
@@ -324,6 +333,9 @@ export function SwipeableTabs({
               aria-controls={getPanelId(tab.id)}
               tabIndex={isActive ? 0 : -1}
               data-tab-index={index}
+              data-testid={
+                testIdPrefix ? `${testIdPrefix}-tab-${tab.id}` : undefined
+              }
               onClick={() => navigateToIndex(index)}
               onKeyDown={handleTabKeyDown}
               className={cn(

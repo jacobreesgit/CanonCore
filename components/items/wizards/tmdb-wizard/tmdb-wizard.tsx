@@ -536,6 +536,7 @@ export function TMDBWizard({
           animate={{ opacity: 1, x: 0 }}
           exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: -10 }}
           transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
+          data-testid={`tmdb-wizard-step-${wizard.currentStep}`}
         >
           {renderStep()}
         </motion.div>

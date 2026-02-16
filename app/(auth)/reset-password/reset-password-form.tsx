@@ -114,7 +114,10 @@ function ResetPasswordFormInner() {
                 </div>
               </div>
 
-              <div className="flex flex-col space-y-1 text-center">
+              <div
+                className="flex flex-col space-y-1 text-center"
+                data-testid="reset-password-success-message"
+              >
                 <h1 className="text-2xl font-bold tracking-wide">
                   Password reset successful
                 </h1>
@@ -124,11 +127,7 @@ function ResetPasswordFormInner() {
                 </p>
               </div>
 
-              <Button
-                asChild
-                className="w-full"
-                size="lg"
-              >
+              <Button asChild className="w-full" size="lg">
                 <Link href="/sign-in">Sign in</Link>
               </Button>
             </>
@@ -145,6 +144,7 @@ function ResetPasswordFormInner() {
 
               <div
                 id="reset-password-error"
+                data-testid="reset-password-error-message"
                 className={
                   error
                     ? "bg-destructive/10 text-destructive w-full rounded-md px-4 py-3 text-center text-sm"
@@ -161,6 +161,7 @@ function ResetPasswordFormInner() {
                   <Label htmlFor="password">New password</Label>
                   <PasswordInput
                     id="password"
+                    data-testid="reset-password-password-input"
                     name="new-password"
                     autoComplete="new-password"
                     placeholder="New password"
@@ -179,6 +180,7 @@ function ResetPasswordFormInner() {
                   <Label htmlFor="confirmPassword">Confirm new password</Label>
                   <PasswordInput
                     id="confirmPassword"
+                    data-testid="reset-password-confirm-password-input"
                     name="confirm-password"
                     autoComplete="new-password"
                     placeholder="Confirm new password"
@@ -194,6 +196,7 @@ function ResetPasswordFormInner() {
 
                 <Button
                   type="submit"
+                  data-testid="reset-password-submit-button"
                   className="w-full"
                   size="lg"
                   disabled={loading}

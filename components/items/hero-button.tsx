@@ -21,6 +21,8 @@ interface HeroButtonProps {
   className?: string;
   /** Accessible label for icon-only buttons. */
   "aria-label"?: string;
+  /** Test ID for E2E testing. */
+  "data-testid"?: string;
 }
 
 /**
@@ -34,6 +36,7 @@ export function HeroButton({
   disabled,
   className,
   "aria-label": ariaLabel,
+  "data-testid": dataTestId,
 }: HeroButtonProps) {
   const Comp = asChild ? Slot : "button";
 
@@ -42,6 +45,7 @@ export function HeroButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel}
+      data-testid={dataTestId}
       className={cn(
         "inline-flex items-center gap-2",
         "h-10 rounded-full px-5",

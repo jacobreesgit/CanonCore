@@ -95,21 +95,17 @@ export function ForgotPasswordForm() {
                 </div>
               </div>
 
-              <div className="flex flex-col space-y-1 text-center">
+              <div
+                className="flex flex-col space-y-1 text-center"
+                data-testid="forgot-password-success-message"
+              >
                 <h1 className="text-2xl font-bold tracking-wide">
                   Check your email
                 </h1>
-                <p className="text-muted-foreground text-base">
-                  {message}
-                </p>
+                <p className="text-muted-foreground text-base">{message}</p>
               </div>
 
-              <Button
-                asChild
-                variant="outline"
-                className="w-full"
-                size="lg"
-              >
+              <Button asChild variant="outline" className="w-full" size="lg">
                 <Link href="/sign-in">Back to sign in</Link>
               </Button>
             </>
@@ -126,6 +122,7 @@ export function ForgotPasswordForm() {
 
               <div
                 id="forgot-password-error"
+                data-testid="forgot-password-error-message"
                 className={
                   error
                     ? "bg-destructive/10 text-destructive w-full rounded-md px-4 py-3 text-center text-sm"
@@ -142,6 +139,7 @@ export function ForgotPasswordForm() {
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
+                    data-testid="forgot-password-email-input"
                     name="email"
                     type="email"
                     autoComplete="email"
@@ -159,6 +157,7 @@ export function ForgotPasswordForm() {
 
                 <Button
                   type="submit"
+                  data-testid="forgot-password-submit-button"
                   className="w-full"
                   size="lg"
                   disabled={loading}
@@ -166,11 +165,7 @@ export function ForgotPasswordForm() {
                   {loading ? "Sending..." : "Send reset link"}
                 </Button>
 
-                <Button
-                  asChild
-                  variant="ghost"
-                  className="w-full"
-                >
+                <Button asChild variant="ghost" className="w-full">
                   <Link href="/sign-in">Back to sign in</Link>
                 </Button>
               </form>

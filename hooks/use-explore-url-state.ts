@@ -42,5 +42,7 @@ export function useExploreUrlState() {
     excludeMine: state.excludeMine,
     /** Toggle the exclude-mine filter. */
     setExcludeMine,
+    /** Whether the hero carousel should auto-advance. */
+    autoplay: state.autoplay,
   };
 }

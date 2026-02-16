@@ -225,7 +225,9 @@ describe("ItemDetailClient", () => {
       );
       await waitForLoading();
 
-      expect(document.querySelector(".items-view")).toHaveTextContent("1 items");
+      expect(document.querySelector(".items-view")).toHaveTextContent(
+        "1 items"
+      );
     });
 
     it("should disable toolbar when no children", async () => {

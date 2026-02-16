@@ -10,6 +10,7 @@
 import { forwardRef, HTMLAttributes } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
+import { slugify } from "@/lib/slugify";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { ChevronRight, GripVertical, Folder } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -133,6 +134,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       <li
         ref={wrapperRef}
         data-id={String(id)}
+        data-testid={`item-tree-${slugify(value)}`}
         className={cn(
           "list-none",
           clone && "pointer-events-none inline-block pt-1",

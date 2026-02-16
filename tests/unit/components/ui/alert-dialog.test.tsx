@@ -26,7 +26,9 @@ describe("AlertDialogFooter", () => {
 
     // Footer is the parent of the Cancel button
     const cancelButton = screen.getByRole("button", { name: "Cancel" });
-    const footer = cancelButton.closest("[data-slot='alert-dialog-footer']") || cancelButton.parentElement!;
+    const footer =
+      cancelButton.closest("[data-slot='alert-dialog-footer']") ||
+      cancelButton.parentElement!;
     expect(footer.className).toContain("shrink-0");
   });
 
@@ -42,7 +44,9 @@ describe("AlertDialogFooter", () => {
     );
 
     const cancelButton = screen.getByRole("button", { name: "Cancel" });
-    const footer = cancelButton.closest("[data-slot='alert-dialog-footer']") || cancelButton.parentElement!;
+    const footer =
+      cancelButton.closest("[data-slot='alert-dialog-footer']") ||
+      cancelButton.parentElement!;
     expect(footer.className).toContain("gap-2");
   });
 });

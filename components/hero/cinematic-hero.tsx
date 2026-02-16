@@ -127,6 +127,7 @@ export function CinematicHero({
       onMouseLeave={() => setIsPaused(false)}
       role="region"
       aria-label="Featured content carousel"
+      data-testid="hero-carousel"
     >
       {/* Screen reader announcement for slide changes */}
       {!isSingleSlide && (
@@ -348,6 +349,7 @@ export function CinematicHero({
               role="tab"
               aria-selected={index === activeIndex}
               aria-label={`Go to slide ${index + 1}: ${slide.name}`}
+              data-testid={`hero-dot-${index + 1}`}
               onClick={() => goToSlide(index)}
               className={cn(
                 "h-2 cursor-pointer rounded-full transition-all duration-200",

@@ -10,6 +10,7 @@ import React, { forwardRef, useCallback, HTMLAttributes } from "react";
 import Link from "next/link";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
+import { slugify } from "@/lib/slugify";
 import { GripVertical, User, Check } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useImageLoaded } from "@/hooks/use-image-loaded";
@@ -187,6 +188,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       <div
         ref={combinedRef}
         data-id={String(id)}
+        data-testid={`item-card-${slugify(name)}`}
         onClick={handleClick}
         {...a11yProps}
         className={cn(

@@ -185,12 +185,8 @@ export function MobileSettingsSheet({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>
-              Keep Private
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={form.handlePublicConfirm}
-            >
+            <AlertDialogCancel>Keep Private</AlertDialogCancel>
+            <AlertDialogAction onClick={form.handlePublicConfirm}>
               Make Public
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -859,6 +855,7 @@ export function MobileSettingsSheet({
       {/* Sign Out */}
       <Button
         variant="outline"
+        data-testid="settings-sign-out-button"
         onClick={async () => {
           try {
             clearSearchCache();
@@ -945,6 +942,7 @@ export function MobileSettingsSheet({
         swipeable
         title="Settings"
         description="Manage your account and connections"
+        data-testid="sheet-settings"
         className={cn(
           "bg-[#1a1a1a]/95 backdrop-blur-xl",
           "border-t border-white/[0.08]",
@@ -976,6 +974,7 @@ export function MobileSettingsSheet({
             activeTab={activeTab}
             onTabChange={setActiveTab}
             ariaLabel="Settings tabs"
+            testIdPrefix="settings-tab"
           />
         </MobileBottomSheetContent>
 

@@ -188,6 +188,7 @@ function OwnerModeContent({
         onClick={() => setAddItemOpen(true)}
         className="gap-1.5"
         aria-label="Add"
+        data-testid="items-add-button"
       >
         <Plus className="size-4" strokeWidth={2} />
         <span className="hidden xl:inline">Add</span>
@@ -395,9 +396,7 @@ function ViewerModeContent({
               <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
                 Pinned
               </h2>
-              <div
-                className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6"
-              >
+              <div className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6">
                 {pinnedItems.map((item, index) => (
                   <GridItem
                     key={item.id}
@@ -423,18 +422,13 @@ function ViewerModeContent({
 
           {/* Library section (items not pinned) */}
           {sortableItems.length > 0 && (
-            <Section
-              className="py-8"
-              aria-label="Library"
-            >
+            <Section className="py-8" aria-label="Library">
               {pinnedItems.length > 0 && (
                 <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
                   Library
                 </h2>
               )}
-              <div
-                className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6"
-              >
+              <div className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6">
                 {sortableItems.map((item, index) => {
                   // O(1) lookup for original item data
                   const originalItem = itemsById.get(item.id);

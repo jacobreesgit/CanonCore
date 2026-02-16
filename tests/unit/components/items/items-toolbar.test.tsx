@@ -47,13 +47,11 @@ describe("ContentToolbar", () => {
     });
 
     it("should render actions slot content", () => {
-      render(
-        <ContentToolbar
-          actions={<button>Custom</button>}
-        />
-      );
+      render(<ContentToolbar actions={<button>Custom</button>} />);
 
-      expect(screen.getByRole("button", { name: "Custom" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Custom" })
+      ).toBeInTheDocument();
     });
   });
 

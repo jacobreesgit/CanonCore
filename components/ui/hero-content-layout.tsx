@@ -13,6 +13,8 @@ interface HeroContentLayoutProps {
   isPending?: boolean;
   /** Additional CSS classes. */
   className?: string;
+  /** Test ID for E2E testing. */
+  "data-testid"?: string;
   /** Page content (toolbar + grids/trees). */
   children: ReactNode;
 }
@@ -29,11 +31,12 @@ export function HeroContentLayout({
   hero,
   isPending,
   className,
+  "data-testid": dataTestId,
   children,
 }: HeroContentLayoutProps) {
   return (
     <div
-
+      data-testid={dataTestId}
       className={cn("flex flex-col", isPending && "opacity-70", className)}
     >
       {hero}

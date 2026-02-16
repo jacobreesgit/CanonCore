@@ -33,11 +33,7 @@ vi.mock("@vidstack/react", () => ({
     <img src={src} alt={alt} />
   )),
   Track: vi.fn(({ src, label, lang }) => (
-    <track
-      data-src={src}
-      data-label={label}
-      data-lang={lang}
-    />
+    <track data-src={src} data-label={label} data-lang={lang} />
   )),
 }));
 
@@ -110,7 +106,9 @@ describe("VideoPlayer", () => {
   it("renders with media player container", () => {
     render(<VideoPlayer file={createMockFile()} />);
 
-    expect(screen.getByRole("application", { name: "media player" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("application", { name: "media player" })
+    ).toBeInTheDocument();
   });
 
   it("applies custom className", () => {
@@ -159,7 +157,9 @@ describe("VideoPlayer", () => {
       }),
     ];
 
-    const { container } = render(<VideoPlayer file={createMockFile()} subtitles={subtitles} />);
+    const { container } = render(
+      <VideoPlayer file={createMockFile()} subtitles={subtitles} />
+    );
 
     const tracks = container.querySelectorAll("track");
     expect(tracks).toHaveLength(2);
@@ -188,13 +188,17 @@ describe("VideoPlayer", () => {
     );
 
     // Shader1 is loaded via next/dynamic — wait for the async import to resolve
-    expect(await screen.findByLabelText("shader background")).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText("shader background")
+    ).toBeInTheDocument();
   });
 
   it("does not show shader background for video files", () => {
     render(<VideoPlayer file={createMockFile({ mimeType: "video/mp4" })} />);
 
-    expect(screen.queryByLabelText("shader background")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("shader background")
+    ).not.toBeInTheDocument();
   });
 
   it("infers MIME type from filename when not in database", () => {
@@ -205,6 +209,8 @@ describe("VideoPlayer", () => {
     );
 
     // Should render without error, using inferred type
-    expect(screen.getByRole("application", { name: "media player" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("application", { name: "media player" })
+    ).toBeInTheDocument();
   });
 });

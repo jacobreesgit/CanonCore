@@ -327,28 +327,20 @@ export function ItemDetailClient({
   const ownerActions = (
     <>
       {hasMedia && (
-        <HeroButton
-          variant="primary"
-          onClick={handlePlay}
-        >
+        <HeroButton variant="primary" onClick={handlePlay}>
           <Play className="size-4" />
           {hasProgress ? `Resume ${primaryMedia?.filename ?? ""}` : "Play"}
         </HeroButton>
       )}
       {nextItem && (
-        <HeroButton
-          onClick={() => goToNext(nextItem)}
-        >
+        <HeroButton onClick={() => goToNext(nextItem)}>
           <SkipForward className="size-4" />
           Next Up: {nextItem.name}
         </HeroButton>
       )}
       {/* Playlist (placeholder feature) */}
       <PlaylistButton />
-      <HeroButton
-        onClick={handleOpenSettings}
-        aria-label="Settings"
-      >
+      <HeroButton onClick={handleOpenSettings} aria-label="Settings">
         <Settings2 className="size-4" />
         Settings
       </HeroButton>
@@ -388,6 +380,7 @@ export function ItemDetailClient({
         onClick={() => setAddItemOpen(true)}
         className="gap-1.5"
         aria-label="Add"
+        data-testid="items-add-button"
       >
         <Plus className="size-4" strokeWidth={2} />
         <span className="hidden xl:inline">Add</span>
@@ -505,7 +498,11 @@ export function ItemDetailClient({
   );
 
   return (
-    <HeroContentLayout hero={hero} isPending={isPending}>
+    <HeroContentLayout
+      hero={hero}
+      isPending={isPending}
+      data-testid="item-detail-container"
+    >
       {/* Tabbed content or direct toolbar */}
       {showTabs && tabsMounted ? (
         isMobile ? (

@@ -214,6 +214,7 @@ export function PublicItemClient({
         <HeroButton
           onClick={handleFork}
           disabled={isForking}
+          data-testid="profile-fork-button"
         >
           {isForking ? (
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -239,9 +240,7 @@ export function PublicItemClient({
         </HeroButton>
       )}
       {!isOwnItem && !isAuthenticated && (
-        <HeroButton
-          onClick={() => router.push("/sign-in")}
-        >
+        <HeroButton onClick={() => router.push("/sign-in")}>
           <Copy className="size-4" aria-hidden="true" />
           Sign in to Fork
         </HeroButton>
@@ -316,9 +315,7 @@ export function PublicItemClient({
       {hasChildren ? (
         viewMode === "grid" ? (
           <Section className="py-8" aria-label="Contents">
-            <div
-              className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6"
-            >
+            <div className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6">
               {directChildren.map((child, index) => (
                 <GridItem
                   key={child.id}
