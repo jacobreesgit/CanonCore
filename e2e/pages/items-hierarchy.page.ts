@@ -104,7 +104,31 @@ export class ItemsHierarchyPage {
         .getByRole("dialog", { name: /view options/i })
         .waitFor({ state: "hidden", timeout: Timeouts.animation });
     } else {
-      await this.page.getByTestId("items-view-dropdown").click();
+      // After selecting a Radix DropdownMenu item, the close animation and
+      // React re-render can leave Radix internal state desynchronised.
+      // Retry with Escape resets to handle stale state.
+      const trigger = this.page.getByTestId("items-view-dropdown");
+      const menuItem = this.page.getByRole("menuitemradio").first();
+
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await trigger.click();
+        try {
+          await menuItem.waitFor({ state: "visible", timeout: 2000 });
+          break;
+        } catch {
+          await this.page.keyboard.press("Escape");
+          await this.page.waitForTimeout(200);
+          if (attempt === 2) {
+            // Final attempt — let it fail with a clear error
+            await trigger.click();
+            await menuItem.waitFor({
+              state: "visible",
+              timeout: Timeouts.api,
+            });
+          }
+        }
+      }
+
       await this.page.getByRole("menuitemradio", { name: /tree/i }).click();
     }
   }

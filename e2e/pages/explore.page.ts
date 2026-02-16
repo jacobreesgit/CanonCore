@@ -58,9 +58,17 @@ export class ExplorePage {
 
   // ── Exclude Mine ────────────────────────────────────────
 
-  /** Toggle the "Exclude Mine" button (rendered in both mobile and desktop toolbars). */
+  /**
+   * Toggle the "Exclude Mine" button.
+   * Uses getByRole instead of getByTestId because the ContentToolbar renders
+   * leftActions in both mobile (lg:hidden) and desktop (hidden lg:flex) containers,
+   * producing two DOM nodes with the same testid. getByRole uses the accessibility
+   * tree which excludes display:none elements, resolving to the single visible button.
+   */
   async toggleExcludeMine() {
-    await this.page.getByTestId("explore-exclude-mine").click();
+    await this.page
+      .getByRole("button", { name: "Exclude my items" })
+      .click();
   }
 
   // ── Item Assertions ─────────────────────────────────────

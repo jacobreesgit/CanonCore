@@ -132,7 +132,7 @@ export class ItemsSortFilterPage {
       await this.openMobileOptionsSheet();
       await this.page.getByRole("option", { name: /grid/i }).click();
     } else {
-      await this.page.getByTestId("items-view-dropdown").click();
+      await this.openViewDropdown();
       await this.page.getByRole("menuitemradio", { name: /grid/i }).click();
     }
   }
@@ -147,9 +147,40 @@ export class ItemsSortFilterPage {
       await this.openMobileOptionsSheet();
       await this.page.getByRole("option", { name: /tree/i }).click();
     } else {
-      await this.page.getByTestId("items-view-dropdown").click();
+      await this.openViewDropdown();
       await this.page.getByRole("menuitemradio", { name: /tree/i }).click();
     }
+  }
+
+  /**
+   * Open the view mode dropdown deterministically.
+   * After selecting a Radix DropdownMenu item, the close animation and
+   * React re-render (from URL state update) can leave the Radix internal
+   * state desynchronised. We use a polling approach: click the trigger,
+   * then verify menuitemradio elements actually appeared. If not,
+   * Escape to reset and retry.
+   */
+  private async openViewDropdown() {
+    const trigger = this.page.getByTestId("items-view-dropdown");
+    const menuItem = this.page.getByRole("menuitemradio").first();
+
+    // Retry up to 3 times — handles stale Radix state after re-renders
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await trigger.click();
+      try {
+        await menuItem.waitFor({ state: "visible", timeout: 2000 });
+        return; // Success — dropdown is open
+      } catch {
+        // Dropdown didn't open — press Escape to reset any partial state
+        await this.page.keyboard.press("Escape");
+        // Brief pause for Radix to fully settle
+        await this.page.waitForTimeout(200);
+      }
+    }
+
+    // Final attempt without catch — let it fail with a clear error
+    await trigger.click();
+    await menuItem.waitFor({ state: "visible", timeout: Timeouts.api });
   }
 
   // ── Mobile Sheet Helpers ───────────────────────────────
