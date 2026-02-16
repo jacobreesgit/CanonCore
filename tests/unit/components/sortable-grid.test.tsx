@@ -34,7 +34,7 @@ vi.mock("@/components/sortable-grid/sortable-grid-item", () => ({
     name: string;
     onClick?: () => void;
   }) => (
-    <div className="sortable-item" data-item-id={id} onClick={onClick}>
+    <div role="listitem" data-item-id={id} onClick={onClick}>
       {name}
     </div>
   ),
@@ -101,8 +101,9 @@ describe("SortableGrid", () => {
   });
 
   it("renders grid container", () => {
-    const { container } = render(<SortableGrid items={mockItems} />);
-    expect(container.querySelector(".grid")).toBeInTheDocument();
+    render(<SortableGrid items={mockItems} />);
+    // Grid contains listitem children from the mock
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
   });
 
   it("renders all items", () => {
@@ -113,28 +114,29 @@ describe("SortableGrid", () => {
   });
 
   it("renders correct number of items", () => {
-    const { container } = render(<SortableGrid items={mockItems} />);
-    expect(container.querySelectorAll(".sortable-item")).toHaveLength(3);
+    render(<SortableGrid items={mockItems} />);
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
   });
 
   it("syncs with external items on prop change", () => {
-    const { rerender, container } = render(<SortableGrid items={mockItems} />);
-    expect(container.querySelectorAll(".sortable-item")).toHaveLength(3);
+    const { rerender } = render(<SortableGrid items={mockItems} />);
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
 
     const newItems = [...mockItems, createMockItem("item-4", "Item 4", 3)];
     rerender(<SortableGrid items={newItems} />);
-    expect(container.querySelectorAll(".sortable-item")).toHaveLength(4);
+    expect(screen.getAllByRole("listitem")).toHaveLength(4);
   });
 
   it("renders empty grid when no items", () => {
-    const { container } = render(<SortableGrid items={[]} />);
-    expect(container.querySelector(".grid")).toBeInTheDocument();
-    expect(container.querySelectorAll(".sortable-item")).toHaveLength(0);
+    render(<SortableGrid items={[]} />);
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
   });
 
   it("applies grid layout classes", () => {
-    const { container } = render(<SortableGrid items={mockItems} />);
-    const grid = container.querySelector(".grid");
+    render(<SortableGrid items={mockItems} />);
+    // The grid container is the parent of the listitem elements
+    const firstItem = screen.getAllByRole("listitem")[0];
+    const grid = firstItem.parentElement!;
     expect(grid).toHaveClass("grid");
     expect(grid).toHaveClass("grid-cols-2");
   });

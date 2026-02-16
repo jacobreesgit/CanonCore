@@ -24,12 +24,14 @@ describe("AlertDialogFooter", () => {
       </AlertDialog>
     );
 
-    // Footer is the parent of the Cancel button
+    // Find footer via data-slot attribute (shadcn/ui convention).
+    // Falls back to parentElement for compatibility if data-slot changes.
     const cancelButton = screen.getByRole("button", { name: "Cancel" });
     const footer =
-      cancelButton.closest("[data-slot='alert-dialog-footer']") ||
-      cancelButton.parentElement!;
-    expect(footer.className).toContain("shrink-0");
+      cancelButton.closest("[data-slot='alert-dialog-footer']") ??
+      cancelButton.parentElement;
+    expect(footer).not.toBeNull();
+    expect(footer!.className).toContain("shrink-0");
   });
 
   it("renders with gap-2 for button spacing", () => {
@@ -43,11 +45,14 @@ describe("AlertDialogFooter", () => {
       </AlertDialog>
     );
 
+    // Find footer via data-slot attribute (shadcn/ui convention).
+    // Falls back to parentElement for compatibility if data-slot changes.
     const cancelButton = screen.getByRole("button", { name: "Cancel" });
     const footer =
-      cancelButton.closest("[data-slot='alert-dialog-footer']") ||
-      cancelButton.parentElement!;
-    expect(footer.className).toContain("gap-2");
+      cancelButton.closest("[data-slot='alert-dialog-footer']") ??
+      cancelButton.parentElement;
+    expect(footer).not.toBeNull();
+    expect(footer!.className).toContain("gap-2");
   });
 });
 

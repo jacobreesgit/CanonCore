@@ -152,16 +152,22 @@ export class ItemsCrudPage {
    * @param count - The expected number of visible items
    */
   async expectItemCount(count: number) {
-    // Use a broad selector that matches both item-card-* and item-tree-* testids
-    const cards = this.page.locator("[data-testid^='item-card-']");
-    const trees = this.page.locator("[data-testid^='item-tree-']");
-
-    // One view mode is active at a time; check which has elements
-    const cardCount = await cards.count();
-    const treeCount = await trees.count();
-    const totalCount = cardCount > 0 ? cardCount : treeCount;
-
-    expect(totalCount).toBe(count);
+    // CSS prefix selectors are needed here because item testids include dynamic
+    // slugs (e.g., item-card-my-movie) and we need to count all of them.
+    await expect
+      .poll(
+        async () => {
+          const cardCount = await this.page
+            .locator("[data-testid^='item-card-']")
+            .count();
+          const treeCount = await this.page
+            .locator("[data-testid^='item-tree-']")
+            .count();
+          return cardCount > 0 ? cardCount : treeCount;
+        },
+        { timeout: Timeouts.api }
+      )
+      .toBe(count);
   }
 
   // ── Helpers ────────────────────────────────────────────

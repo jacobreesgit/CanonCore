@@ -61,8 +61,8 @@ vi.mock("@/components/ui/sidebar", () => ({
   SidebarMenuButton: ({
     children,
     isActive,
-    tooltip,
-    className,
+    tooltip: _tooltip,
+    className: _className,
     onClick,
     asChild: _asChild,
   }: {
@@ -74,9 +74,8 @@ vi.mock("@/components/ui/sidebar", () => ({
     onClick?: () => void;
   }) => (
     <button
-      className={`sidebar-menu-button ${className || ""}`}
+      role="button"
       data-active={isActive}
-      data-tooltip={tooltip}
       onClick={onClick}
       aria-current={isActive ? "page" : undefined}
     >
@@ -84,7 +83,7 @@ vi.mock("@/components/ui/sidebar", () => ({
     </button>
   ),
   SidebarMenuSub: ({ children }: { children: React.ReactNode }) => (
-    <ul className="sidebar-menu-sub">{children}</ul>
+    <ul aria-label="pinned items">{children}</ul>
   ),
   SidebarMenuSubItem: ({ children }: { children: React.ReactNode }) => (
     <li>{children}</li>
@@ -99,7 +98,7 @@ vi.mock("@/components/ui/sidebar", () => ({
     asChild?: boolean;
   }) => (
     <button
-      className="sidebar-menu-sub-button"
+      role="button"
       data-active={isActive}
       aria-current={isActive ? "page" : undefined}
     >
@@ -125,40 +124,40 @@ describe("NavMain", () => {
     mockPathname.mockReturnValue("/u/testuser");
     render(<NavMain items={testItems} username={testUsername} />);
 
-    const button = document.querySelector(".sidebar-menu-button")!;
-    expect(button.getAttribute("data-active")).toBe("true");
+    const button = screen.getByRole("button", { name: /my items/i });
+    expect(button).toHaveAttribute("data-active", "true");
   });
 
   it("renders My Items button as active on nested path /u/username/abc123", () => {
     mockPathname.mockReturnValue("/u/testuser/abc123");
     render(<NavMain items={testItems} username={testUsername} />);
 
-    const button = document.querySelector(".sidebar-menu-button")!;
-    expect(button.getAttribute("data-active")).toBe("true");
+    const button = screen.getByRole("button", { name: /my items/i });
+    expect(button).toHaveAttribute("data-active", "true");
   });
 
   it("renders My Items button as active on /u/username/connections", () => {
     mockPathname.mockReturnValue("/u/testuser/connections");
     render(<NavMain items={testItems} username={testUsername} />);
 
-    const button = document.querySelector(".sidebar-menu-button")!;
-    expect(button.getAttribute("data-active")).toBe("true");
+    const button = screen.getByRole("button", { name: /my items/i });
+    expect(button).toHaveAttribute("data-active", "true");
   });
 
   it("renders My Items button as inactive on /docs", () => {
     mockPathname.mockReturnValue("/docs");
     render(<NavMain items={testItems} username={testUsername} />);
 
-    const button = document.querySelector(".sidebar-menu-button")!;
-    expect(button.getAttribute("data-active")).toBe("false");
+    const button = screen.getByRole("button", { name: /my items/i });
+    expect(button).toHaveAttribute("data-active", "false");
   });
 
   it("renders My Items button as inactive on /", () => {
     mockPathname.mockReturnValue("/");
     render(<NavMain items={testItems} username={testUsername} />);
 
-    const button = document.querySelector(".sidebar-menu-button")!;
-    expect(button.getAttribute("data-active")).toBe("false");
+    const button = screen.getByRole("button", { name: /my items/i });
+    expect(button).toHaveAttribute("data-active", "false");
   });
 
   it("renders My Items button as inactive on /u/otherusername (different user)", () => {
@@ -166,16 +165,16 @@ describe("NavMain", () => {
     mockPathname.mockReturnValue("/u/otherusername");
     render(<NavMain items={testItems} username={testUsername} />);
 
-    const button = document.querySelector(".sidebar-menu-button")!;
-    expect(button.getAttribute("data-active")).toBe("false");
+    const button = screen.getByRole("button", { name: /my items/i });
+    expect(button).toHaveAttribute("data-active", "false");
   });
 
   it("renders My Items button as active on deeply nested path /u/username/abc/def/ghi", () => {
     mockPathname.mockReturnValue("/u/testuser/abc/def/ghi");
     render(<NavMain items={testItems} username={testUsername} />);
 
-    const button = document.querySelector(".sidebar-menu-button")!;
-    expect(button.getAttribute("data-active")).toBe("true");
+    const button = screen.getByRole("button", { name: /my items/i });
+    expect(button).toHaveAttribute("data-active", "true");
   });
 
   describe("Spotlight search button", () => {
@@ -189,13 +188,9 @@ describe("NavMain", () => {
 
       render(<NavMain items={testItems} username={testUsername} />);
 
-      // Should have search button with "/" shortcut
-      const buttons = document.querySelectorAll(".sidebar-menu-button");
-      const searchButton = Array.from(buttons).find((btn) =>
-        btn.textContent?.includes("Search")
-      );
-      expect(searchButton).toBeDefined();
-      expect(searchButton?.textContent).toContain("/");
+      const searchButton = screen.getByRole("button", { name: /search/i });
+      expect(searchButton).toBeInTheDocument();
+      expect(searchButton).toHaveTextContent("/");
     });
 
     it("does not render search button when outside spotlight context", () => {
@@ -204,11 +199,9 @@ describe("NavMain", () => {
 
       render(<NavMain items={testItems} username={testUsername} />);
 
-      const buttons = document.querySelectorAll(".sidebar-menu-button");
-      const searchButton = Array.from(buttons).find((btn) =>
-        btn.textContent?.includes("Search")
-      );
-      expect(searchButton).toBeUndefined();
+      expect(
+        screen.queryByRole("button", { name: /search/i })
+      ).not.toBeInTheDocument();
     });
 
     it("calls openSpotlight when search button clicked", async () => {
@@ -222,12 +215,8 @@ describe("NavMain", () => {
 
       render(<NavMain items={testItems} username={testUsername} />);
 
-      const buttons = document.querySelectorAll(".sidebar-menu-button");
-      const searchButton = Array.from(buttons).find((btn) =>
-        btn.textContent?.includes("Search")
-      );
-
-      await user.click(searchButton!);
+      const searchButton = screen.getByRole("button", { name: /search/i });
+      await user.click(searchButton);
 
       expect(mockOpenSpotlight).toHaveBeenCalledTimes(1);
     });
@@ -242,9 +231,14 @@ describe("NavMain", () => {
 
       render(<NavMain items={testItems} username={testUsername} />);
 
-      const buttons = document.querySelectorAll(".sidebar-menu-button");
-      expect(buttons[0].textContent).toContain("Search");
-      expect(buttons[1].textContent).toContain("My Items");
+      const allButtons = screen.getAllByRole("button");
+      const searchIdx = allButtons.findIndex((btn) =>
+        btn.textContent?.includes("Search")
+      );
+      const myItemsIdx = allButtons.findIndex((btn) =>
+        btn.textContent?.includes("My Items")
+      );
+      expect(searchIdx).toBeLessThan(myItemsIdx);
     });
   });
 
@@ -253,16 +247,16 @@ describe("NavMain", () => {
       mockPathname.mockReturnValue("/u/testuser");
       render(<NavMain items={testItems} username={testUsername} />);
 
-      const button = document.querySelector(".sidebar-menu-button")!;
-      expect(button.getAttribute("aria-current")).toBe("page");
+      const button = screen.getByRole("button", { name: /my items/i });
+      expect(button).toHaveAttribute("aria-current", "page");
     });
 
     it("does not set aria-current when inactive", () => {
       mockPathname.mockReturnValue("/docs");
       render(<NavMain items={testItems} username={testUsername} />);
 
-      const button = document.querySelector(".sidebar-menu-button")!;
-      expect(button.getAttribute("aria-current")).toBeNull();
+      const button = screen.getByRole("button", { name: /my items/i });
+      expect(button).not.toHaveAttribute("aria-current");
     });
   });
 
@@ -273,8 +267,8 @@ describe("NavMain", () => {
       mockPathname.mockReturnValue("/explore");
       render(<NavMain items={exploreItems} />);
 
-      const button = document.querySelector(".sidebar-menu-button")!;
-      expect(button.getAttribute("data-active")).toBe("true");
+      const button = screen.getByRole("button", { name: /explore/i });
+      expect(button).toHaveAttribute("data-active", "true");
     });
 
     it("renders Explore button as active on /u/username when viewing others", () => {
@@ -282,24 +276,24 @@ describe("NavMain", () => {
       mockPathname.mockReturnValue("/u/john_doe");
       render(<NavMain items={exploreItems} />);
 
-      const button = document.querySelector(".sidebar-menu-button")!;
-      expect(button.getAttribute("data-active")).toBe("true");
+      const button = screen.getByRole("button", { name: /explore/i });
+      expect(button).toHaveAttribute("data-active", "true");
     });
 
     it("renders Explore button as active on /u/username/itemId when viewing others", () => {
       mockPathname.mockReturnValue("/u/john_doe/abc123");
       render(<NavMain items={exploreItems} />);
 
-      const button = document.querySelector(".sidebar-menu-button")!;
-      expect(button.getAttribute("data-active")).toBe("true");
+      const button = screen.getByRole("button", { name: /explore/i });
+      expect(button).toHaveAttribute("data-active", "true");
     });
 
     it("renders Explore button as active on deeply nested /u/username/item/child/grandchild when viewing others", () => {
       mockPathname.mockReturnValue("/u/john_doe/abc123/def456/ghi789");
       render(<NavMain items={exploreItems} />);
 
-      const button = document.querySelector(".sidebar-menu-button")!;
-      expect(button.getAttribute("data-active")).toBe("true");
+      const button = screen.getByRole("button", { name: /explore/i });
+      expect(button).toHaveAttribute("data-active", "true");
     });
 
     it("renders Explore button as inactive on own profile /u/username", () => {
@@ -307,8 +301,8 @@ describe("NavMain", () => {
       mockPathname.mockReturnValue("/u/testuser");
       render(<NavMain items={exploreItems} username={testUsername} />);
 
-      const button = document.querySelector(".sidebar-menu-button")!;
-      expect(button.getAttribute("data-active")).toBe("false");
+      const button = screen.getByRole("button", { name: /explore/i });
+      expect(button).toHaveAttribute("data-active", "false");
     });
   });
 
@@ -390,7 +384,7 @@ describe("NavMain", () => {
       );
 
       // Sub-menu should be visible (expanded)
-      expect(document.querySelector(".sidebar-menu-sub")).toBeInTheDocument();
+      expect(screen.getByLabelText("pinned items")).toBeInTheDocument();
     });
 
     it("expands by default when a pinned item is active", () => {
@@ -404,7 +398,7 @@ describe("NavMain", () => {
       );
 
       // Sub-menu should be visible (expanded)
-      expect(document.querySelector(".sidebar-menu-sub")).toBeInTheDocument();
+      expect(screen.getByLabelText("pinned items")).toBeInTheDocument();
     });
 
     it("highlights active pinned item", () => {
@@ -417,12 +411,9 @@ describe("NavMain", () => {
         />
       );
 
-      // Find the sub-button for Movies
-      const subButtons = document.querySelectorAll(".sidebar-menu-sub-button");
-      const moviesButton = Array.from(subButtons).find((btn) =>
-        btn.textContent?.includes("Movies")
-      );
-      expect(moviesButton?.getAttribute("data-active")).toBe("true");
+      // The Movies link wraps the button text, find the button containing "Movies"
+      const moviesButton = screen.getByRole("button", { name: /movies/i });
+      expect(moviesButton).toHaveAttribute("data-active", "true");
     });
 
     it("does not highlight inactive pinned items", () => {
@@ -435,12 +426,9 @@ describe("NavMain", () => {
         />
       );
 
-      // Find the sub-button for TV Shows
-      const subButtons = document.querySelectorAll(".sidebar-menu-sub-button");
-      const tvButton = Array.from(subButtons).find((btn) =>
-        btn.textContent?.includes("TV Shows")
-      );
-      expect(tvButton?.getAttribute("data-active")).toBe("false");
+      // The TV Shows button should not be active
+      const tvButton = screen.getByRole("button", { name: /tv shows/i });
+      expect(tvButton).toHaveAttribute("data-active", "false");
     });
 
     it("toggles expand/collapse when chevron clicked", async () => {
@@ -455,7 +443,7 @@ describe("NavMain", () => {
       );
 
       // Initially expanded (on My Items path)
-      expect(document.querySelector(".sidebar-menu-sub")).toBeInTheDocument();
+      expect(screen.getByLabelText("pinned items")).toBeInTheDocument();
 
       // Click to collapse
       const toggleButton = screen.getByRole("button", {
@@ -473,8 +461,8 @@ describe("NavMain", () => {
 
       // Without username, initial state is collapsed, but the useEffect
       // auto-expands when hasPinnedItems is true (regardless of username)
-      const subButtons = document.querySelectorAll(".sidebar-menu-sub-button");
-      expect(subButtons.length).toBe(2);
+      expect(screen.getByText("Movies")).toBeInTheDocument();
+      expect(screen.getByText("TV Shows")).toBeInTheDocument();
     });
   });
 });

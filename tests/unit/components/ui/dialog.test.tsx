@@ -19,12 +19,14 @@ describe("DialogFooter", () => {
       </Dialog>
     );
 
-    // Footer is the parent of the Save button
+    // Find footer via data-slot attribute (shadcn/ui convention).
+    // Falls back to parentElement for compatibility if data-slot changes.
     const saveButton = screen.getByRole("button", { name: "Save" });
     const footer =
-      saveButton.closest("[data-slot='dialog-footer']") ||
-      saveButton.parentElement!;
-    expect(footer.className).toContain("shrink-0");
+      saveButton.closest("[data-slot='dialog-footer']") ??
+      saveButton.parentElement;
+    expect(footer).not.toBeNull();
+    expect(footer!.className).toContain("shrink-0");
   });
 
   it("renders with gap-2 for button spacing", () => {
@@ -38,11 +40,14 @@ describe("DialogFooter", () => {
       </Dialog>
     );
 
+    // Find footer via data-slot attribute (shadcn/ui convention).
+    // Falls back to parentElement for compatibility if data-slot changes.
     const saveButton = screen.getByRole("button", { name: "Save" });
     const footer =
-      saveButton.closest("[data-slot='dialog-footer']") ||
-      saveButton.parentElement!;
-    expect(footer.className).toContain("gap-2");
+      saveButton.closest("[data-slot='dialog-footer']") ??
+      saveButton.parentElement;
+    expect(footer).not.toBeNull();
+    expect(footer!.className).toContain("gap-2");
   });
 });
 

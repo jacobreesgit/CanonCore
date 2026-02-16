@@ -104,10 +104,7 @@ export class ItemsHierarchyPage {
         .getByRole("dialog", { name: /view options/i })
         .waitFor({ state: "hidden", timeout: Timeouts.animation });
     } else {
-      await this.page
-        .getByRole("button", { name: /view mode: (grid|tree)/i })
-        .first()
-        .click();
+      await this.page.getByTestId("items-view-dropdown").click();
       await this.page.getByRole("menuitemradio", { name: /tree/i }).click();
     }
   }

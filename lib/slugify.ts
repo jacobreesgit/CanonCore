@@ -1,12 +1,15 @@
 /**
- * Converts a string to a URL-safe slug for use in data-testid attributes.
- * Used by components to generate predictable, unique test IDs.
+ * Converts a string to a URL-safe kebab-case slug.
+ * Used by components to generate predictable data-testid attributes
+ * and by E2E page objects to locate elements by slugified names.
  *
- * @param text - The text to slugify
- * @returns Lowercase kebab-case string (e.g., "Star Wars" -> "star-wars")
+ * @param text - The input string to slugify
+ * @returns A lowercase kebab-case slug
  */
 export function slugify(text: string): string {
   return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim()
     .replace(/[^\w\s-]/g, "")

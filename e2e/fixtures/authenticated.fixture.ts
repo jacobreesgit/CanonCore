@@ -128,7 +128,10 @@ export const authenticatedFixture = base.extend<{
 
     await use(testUserInfo);
 
-    // Cleanup
+    // Cleanup: delete items first, then user
+    await prisma.item
+      .deleteMany({ where: { userId: user.id } })
+      .catch(() => {});
     await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
   },
 });

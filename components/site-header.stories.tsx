@@ -197,8 +197,8 @@ export const DriveReconnectBanner: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const banner = canvas.getByTestId("drive-reconnect-banner");
-    await expect(banner).toHaveAttribute("role", "alert");
+    const banner = canvas.getByRole("alert");
+    await expect(banner).toBeInTheDocument();
     await expect(
       canvas.getByRole("button", { name: /reconnect/i })
     ).toBeInTheDocument();
@@ -226,9 +226,7 @@ export const NoDriveReconnectBanner: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(
-      canvas.queryByTestId("drive-reconnect-banner")
-    ).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
   },
   parameters: {
     docs: {

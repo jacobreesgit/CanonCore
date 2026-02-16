@@ -35,8 +35,8 @@ vi.mock("@/components/ui/content-toolbar", () => ({
     disabled?: boolean;
     actions?: React.ReactNode;
   }) => (
-    <div className="content-toolbar" data-disabled={disabled}>
-      {actions && <div className="toolbar-actions">{actions}</div>}
+    <div aria-label="content toolbar" data-disabled={disabled}>
+      {actions && <div aria-label="toolbar actions">{actions}</div>}
     </div>
   ),
   ToolbarDivider: () => <div />,
@@ -53,7 +53,7 @@ vi.mock("@/components/items/items-view", () => ({
     isEditing: boolean;
   }) => (
     <div
-      className="items-view"
+      aria-label="items view"
       data-parent-id={parentId}
       data-editing={isEditing}
     >
@@ -72,16 +72,16 @@ vi.mock("@/components/hero", () => ({
   }) => {
     const slide = slides[0];
     return (
-      <div className="hero-carousel" data-name={slide?.name}>
+      <div aria-label="hero carousel" data-name={slide?.name}>
         {slide?.name} hero
-        {actions && <div className="hero-actions">{actions}</div>}
+        {actions && <div aria-label="hero actions">{actions}</div>}
       </div>
     );
   },
 }));
 
 vi.mock("@/components/media/media-overlay", () => ({
-  MediaOverlay: () => <div className="media-overlay">Media overlay</div>,
+  MediaOverlay: () => <div aria-label="media overlay">Media overlay</div>,
 }));
 
 // Mock useItemsUrlState (uses nuqs which requires adapter in tests)
@@ -199,21 +199,21 @@ describe("ItemDetailClient", () => {
       render(<ItemDetailClient item={defaultItem} childItems={[]} />);
       await waitForLoading();
 
-      expect(document.querySelector(".hero-carousel")).toBeInTheDocument();
-      expect(document.querySelector(".content-toolbar")).toBeInTheDocument();
-      expect(document.querySelector(".items-view")).toBeInTheDocument();
+      expect(screen.getByLabelText("hero carousel")).toBeInTheDocument();
+      expect(screen.getByLabelText("content toolbar")).toBeInTheDocument();
+      expect(screen.getByLabelText("items view")).toBeInTheDocument();
     });
 
     it("should always render hero regardless of files/children", async () => {
       render(<ItemDetailClient item={defaultItem} childItems={[]} />);
       await waitForLoading();
-      expect(document.querySelector(".hero-carousel")).toBeInTheDocument();
+      expect(screen.getByLabelText("hero carousel")).toBeInTheDocument();
     });
 
     it("should pass item name to hero", async () => {
       render(<ItemDetailClient item={defaultItem} childItems={[]} />);
       await waitForLoading();
-      expect(document.querySelector(".hero-carousel")).toHaveAttribute(
+      expect(screen.getByLabelText("hero carousel")).toHaveAttribute(
         "data-name",
         "Movies"
       );
@@ -225,16 +225,14 @@ describe("ItemDetailClient", () => {
       );
       await waitForLoading();
 
-      expect(document.querySelector(".items-view")).toHaveTextContent(
-        "1 items"
-      );
+      expect(screen.getByLabelText("items view")).toHaveTextContent("1 items");
     });
 
     it("should disable toolbar when no children", async () => {
       render(<ItemDetailClient item={defaultItem} childItems={[]} />);
       await waitForLoading();
 
-      expect(document.querySelector(".content-toolbar")).toHaveAttribute(
+      expect(screen.getByLabelText("content toolbar")).toHaveAttribute(
         "data-disabled",
         "true"
       );
@@ -276,7 +274,7 @@ describe("ItemDetailClient", () => {
       );
       await waitForLoading();
 
-      expect(document.querySelector(".hero-actions")).toBeInTheDocument();
+      expect(screen.getByLabelText("hero actions")).toBeInTheDocument();
       expect(screen.getByText("Play")).toBeInTheDocument();
     });
 
@@ -290,9 +288,9 @@ describe("ItemDetailClient", () => {
       );
       await waitForLoading();
 
-      expect(document.querySelector(".hero-carousel")).toBeInTheDocument();
+      expect(screen.getByLabelText("hero carousel")).toBeInTheDocument();
       // No file cards - MediaOverlay only appears when playing
-      expect(document.querySelector(".media-overlay")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("media overlay")).not.toBeInTheDocument();
     });
 
     it("should show Contents/About tabs when children exist", async () => {
@@ -322,7 +320,7 @@ describe("ItemDetailClient", () => {
       await waitForLoading();
 
       // Component should render without error
-      expect(document.querySelector(".content-toolbar")).toBeInTheDocument();
+      expect(screen.getByLabelText("content toolbar")).toBeInTheDocument();
     });
   });
 
@@ -331,8 +329,8 @@ describe("ItemDetailClient", () => {
       render(<ItemDetailClient item={defaultItem} childItems={[]} />);
       await waitForLoading();
 
-      const toolbar = document.querySelector(".content-toolbar")!;
-      const hero = document.querySelector(".hero-carousel")!;
+      const toolbar = screen.getByLabelText("content toolbar");
+      const hero = screen.getByLabelText("hero carousel");
 
       // Toolbar should come after hero in DOM order
       expect(toolbar.compareDocumentPosition(hero)).toBe(

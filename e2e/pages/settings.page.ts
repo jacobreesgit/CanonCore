@@ -73,6 +73,8 @@ export class SettingsPage {
   /**
    * Assert that a success toast appears after saving.
    * Sonner toasts appear as list items — look for text directly.
+   * .first() is needed because Sonner can render duplicate toasts,
+   * and getByText strict mode fails with multiple matches.
    */
   async expectSaveSuccess() {
     await expect(this.page.getByText(/settings saved/i).first()).toBeVisible({

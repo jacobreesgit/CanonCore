@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { AuthButtons } from "@/components/nav-guest";
 
 // Mock next/navigation
@@ -29,7 +29,7 @@ vi.mock("@/components/ui/sidebar", () => ({
     isActive?: boolean;
     asChild?: boolean;
   }) => (
-    <button className="sidebar-menu-button" data-active={isActive}>
+    <button role="button" data-active={isActive}>
       {children}
     </button>
   ),
@@ -42,55 +42,55 @@ describe("AuthButtons", () => {
 
   it("renders Get Help as active on /docs", () => {
     mockPathname.mockReturnValue("/docs");
-    const { container } = render(<AuthButtons />);
+    render(<AuthButtons />);
 
-    const buttons = container.querySelectorAll(".sidebar-menu-button");
-    const getHelpButton = buttons[0];
-    expect(getHelpButton.getAttribute("data-active")).toBe("true");
+    const getHelpButton = screen.getByRole("button", { name: /get help/i });
+    expect(getHelpButton).toHaveAttribute("data-active", "true");
   });
 
   it("renders Get Help as active on /docs/getting-started", () => {
     mockPathname.mockReturnValue("/docs/getting-started");
-    const { container } = render(<AuthButtons />);
+    render(<AuthButtons />);
 
-    const buttons = container.querySelectorAll(".sidebar-menu-button");
-    const getHelpButton = buttons[0];
-    expect(getHelpButton.getAttribute("data-active")).toBe("true");
+    const getHelpButton = screen.getByRole("button", { name: /get help/i });
+    expect(getHelpButton).toHaveAttribute("data-active", "true");
   });
 
   it("renders Get Help as inactive on /", () => {
     mockPathname.mockReturnValue("/");
-    const { container } = render(<AuthButtons />);
+    render(<AuthButtons />);
 
-    const buttons = container.querySelectorAll(".sidebar-menu-button");
-    const getHelpButton = buttons[0];
-    expect(getHelpButton.getAttribute("data-active")).toBe("false");
+    const getHelpButton = screen.getByRole("button", { name: /get help/i });
+    expect(getHelpButton).toHaveAttribute("data-active", "false");
   });
 
   it("renders Get Started as active on /sign-in", () => {
     mockPathname.mockReturnValue("/sign-in");
-    const { container } = render(<AuthButtons />);
+    render(<AuthButtons />);
 
-    const buttons = container.querySelectorAll(".sidebar-menu-button");
-    const getStartedButton = buttons[1];
-    expect(getStartedButton.getAttribute("data-active")).toBe("true");
+    const getStartedButton = screen.getByRole("button", {
+      name: /get started/i,
+    });
+    expect(getStartedButton).toHaveAttribute("data-active", "true");
   });
 
   it("renders Get Started as inactive on /", () => {
     mockPathname.mockReturnValue("/");
-    const { container } = render(<AuthButtons />);
+    render(<AuthButtons />);
 
-    const buttons = container.querySelectorAll(".sidebar-menu-button");
-    const getStartedButton = buttons[1];
-    expect(getStartedButton.getAttribute("data-active")).toBe("false");
+    const getStartedButton = screen.getByRole("button", {
+      name: /get started/i,
+    });
+    expect(getStartedButton).toHaveAttribute("data-active", "false");
   });
 
   it("renders Get Started as inactive on /sign-up", () => {
     mockPathname.mockReturnValue("/sign-up");
-    const { container } = render(<AuthButtons />);
+    render(<AuthButtons />);
 
-    const buttons = container.querySelectorAll(".sidebar-menu-button");
-    const getStartedButton = buttons[1];
-    expect(getStartedButton.getAttribute("data-active")).toBe("false");
+    const getStartedButton = screen.getByRole("button", {
+      name: /get started/i,
+    });
+    expect(getStartedButton).toHaveAttribute("data-active", "false");
   });
 });
