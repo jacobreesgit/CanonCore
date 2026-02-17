@@ -1,5 +1,5 @@
 /**
- * Deferred Vercel Analytics loader.
+ * Deferred Vercel Analytics and Speed Insights loader.
  * Loads analytics after hydration to avoid blocking initial render.
  */
 
@@ -12,10 +12,20 @@ const Analytics = dynamic(
   { ssr: false }
 );
 
+const SpeedInsights = dynamic(
+  () => import("@vercel/speed-insights/next").then((mod) => mod.SpeedInsights),
+  { ssr: false }
+);
+
 /**
- * Wrapper that loads Vercel Analytics after hydration.
- * Keeps analytics out of the critical rendering path.
+ * Wrapper that loads Vercel Analytics and Speed Insights after hydration.
+ * Keeps performance tracking out of the critical rendering path.
  */
 export function DeferredAnalytics() {
-  return <Analytics />;
+  return (
+    <>
+      <Analytics />
+      <SpeedInsights />
+    </>
+  );
 }

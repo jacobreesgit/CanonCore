@@ -68,9 +68,17 @@ Sort, filter, view mode, and tab selections persist in URL parameters via nuqs. 
 
 Two filter groups — File Status (Has Files, No Files) and Sync Status (Synced, Pending Sync, Sync Error) — with AND logic across groups and OR within. Active filter count shown in toolbar badge.
 
+### SEO & Social Sharing
+
+Dynamic OpenGraph images generated server-side for every public profile and item page. When someone shares a link on Twitter, Discord, or Slack, the preview card shows the item's TMDB backdrop, name, and description. Profile links show a branded card with the user's display name and item count. JSON-LD structured data (Movie, TVSeries, Person, WebApplication schemas) helps search engines understand the content. A dynamic sitemap keeps all public profiles and items indexed.
+
 ### Bot Protection
 
 Multi-layer defence against aggressive AI crawlers: robots.txt for polite bots, edge-level blocking for non-compliant scrapers, and rate limiting (120 req/min) for beneficial search engines. Blocks 35+ AI scrapers while allowing Google, Bing, Apple, and others.
+
+### Error Handling
+
+Route-level error boundaries catch failures gracefully with styled recovery pages and a retry option. Custom 404 pages guide users back to relevant content. A global error boundary catches root layout failures as a last resort. Every error is reported to Sentry for monitoring.
 
 ### Audit Logging
 
@@ -90,6 +98,10 @@ Every database mutation is automatically logged via a Prisma extension. Context 
 
 AES-256-GCM encryption for OAuth tokens with random IVs, HMAC-SHA256 signed upload tokens with timing-safe comparison, and OWASP-compliant security headers (HSTS with preload, CSP, X-Frame-Options: DENY). TMDB and Google Drive calls wrapped in a custom circuit breaker that opens after consecutive failures and tests recovery in half-open state. Multi-layer bot protection blocks 35+ AI scrapers at the edge while rate-limiting beneficial search engines.
 
+### Observability & Monitoring
+
+Sentry error tracking across client, server, and edge runtimes with source maps for readable stack traces. OpenTelemetry distributed tracing via Vercel's OTel integration. Vercel Speed Insights tracks Core Web Vitals in production. A health check endpoint at `/api/health` verifies database connectivity for uptime monitors.
+
 ### Performance
 
 Google Drive operations batched up to 100 per request, reducing sync time for large folders from ~45s to ~3s. Edit mode separation extracts a view-only Grid from SortableGrid to avoid dnd-kit overhead in browse mode (~40KB saved). TMDB resolution and metadata fetches chained as a single promise running concurrently with other server-side fetches, eliminating sequential await waterfalls. Offline queue persists actions to IndexedDB when offline, replaying on reconnect with exponential backoff and jitter.
@@ -97,6 +109,10 @@ Google Drive operations batched up to 100 per request, reducing sync time for la
 ### Accessibility
 
 WCAG 2.1 AA compliant throughout, enforced by automated testing. Every component has a Storybook story tested against axe-core — any a11y violation fails the build. Semantic roles for tabs, drag-and-drop, and carousel navigation. Live regions announce slide changes and drag operations to screen readers. Skip link, scrollable region focus management, and reduced motion support that disables autoplay and animations.
+
+### CI/CD
+
+GitHub Actions pipeline enforces quality on every push and pull request. A quality gate runs format check, lint, type check, and unused code detection. Tests and production build run in parallel after the gate passes. Conventional commits enforced by commitlint with pre-commit hooks running ESLint and Prettier on staged files.
 
 ### Testing
 
@@ -116,7 +132,7 @@ All custom components are documented in Storybook with stories, accessibility ch
 
 **APIs:** Google Drive (OAuth 2.0, Changes API), TMDB
 
-**Infrastructure:** Vercel, Neon PostgreSQL (serverless branching), Upstash Redis
+**Infrastructure:** Vercel, Neon PostgreSQL (serverless branching), Upstash Redis, Sentry, GitHub Actions CI/CD
 
 ---
 

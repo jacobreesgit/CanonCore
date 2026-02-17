@@ -11,7 +11,13 @@
     "mdx-components.tsx",
     ".storybook/**",
     ".github/**",
-    "e2e/**"
+    "e2e/**",
+    "commitlint.config.mjs",
+    "sentry.client.config.ts",
+    "sentry.server.config.ts",
+    "sentry.edge.config.ts",
+    "instrumentation-client.ts",
+    "instrumentation.ts"
   ],
   "ignoreBinaries": [],
   "ignoreDependencies": ["pino-pretty", "baseline-browser-mapping"],

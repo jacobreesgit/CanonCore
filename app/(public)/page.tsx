@@ -13,7 +13,7 @@ import { HeroContent } from "./landing-hero";
 export const metadata: Metadata = {
   title: "CanonCore - Media Library Management",
   description:
-    "Your all-in-one platform for managing and streaming your media library. Organize movies, TV shows, and music with powerful item hierarchies and Google Drive integration.",
+    "Your all-in-one platform for managing and streaming your media library. Organise movies, TV shows, and music with powerful item hierarchies and Google Drive integration.",
 };
 
 /**
@@ -28,6 +28,20 @@ export default async function LandingPage() {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebApplication",
+            name: "CanonCore",
+            url: process.env.NEXT_PUBLIC_APP_URL || "https://canoncore.com",
+            description: "Organise, track, and share your media library.",
+            applicationCategory: "Entertainment",
+            operatingSystem: "Web",
+          }).replace(/</g, "\\u003c"),
+        }}
+      />
       <SiteHeader
         title="Home"
         titleHref="/"

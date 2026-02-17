@@ -130,6 +130,17 @@ export default async function ProfilePage({ params }: PageProps) {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Person",
+            name: profile.name ?? profile.username,
+            url: `${process.env.NEXT_PUBLIC_APP_URL || "https://canoncore.com"}/u/${profile.username}`,
+          }).replace(/</g, "\\u003c"),
+        }}
+      />
       {isOwner && (
         <Suspense fallback={null}>
           <OAuthToast />
