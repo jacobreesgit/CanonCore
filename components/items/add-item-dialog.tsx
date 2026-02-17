@@ -876,7 +876,7 @@ export function AddItemDialog({
   const descriptionId = "item-dialog-description";
   const dialogHint = parentName
     ? `Create a new item inside "${parentName}".`
-    : "Create a new item to organize your content.";
+    : "Create a new item to organise your content.";
 
   const currentValues: CurrentTextValues = useMemo(
     () => ({

@@ -106,6 +106,7 @@ describe("TMDB apply metadata integration", () => {
       tagline: "",
       runtime: null,
       vote_average: 0,
+      vote_count: 0,
       genres: [],
     });
 
@@ -142,6 +143,7 @@ describe("TMDB apply metadata integration", () => {
       number_of_seasons: 5,
       tagline: "",
       vote_average: 0,
+      vote_count: 0,
       genres: [],
     });
 
@@ -222,6 +224,7 @@ describe("TMDB apply metadata integration", () => {
       tagline: "",
       runtime: null,
       vote_average: 0,
+      vote_count: 0,
       genres: [],
     });
 
@@ -263,6 +266,7 @@ describe("TMDB apply metadata integration", () => {
       tagline: "",
       runtime: null,
       vote_average: 0,
+      vote_count: 0,
       genres: [],
     });
 
@@ -297,6 +301,7 @@ describe("TMDB apply metadata integration", () => {
       tagline: "",
       runtime: null,
       vote_average: 0,
+      vote_count: 0,
       genres: [],
     });
 
@@ -334,6 +339,7 @@ describe("TMDB apply metadata integration", () => {
       tagline: "",
       runtime: null,
       vote_average: 0,
+      vote_count: 0,
       genres: [],
     });
 

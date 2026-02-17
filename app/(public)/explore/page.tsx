@@ -22,6 +22,12 @@ export const metadata: Metadata = {
       "Discover public items from the CanonCore community. Browse and fork curated media libraries.",
     type: "website",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Explore | CanonCore",
+    description:
+      "Discover public items from the CanonCore community. Browse and fork curated media libraries.",
+  },
 };
 
 /**

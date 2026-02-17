@@ -2,7 +2,11 @@
  * Next.js configuration with security headers and MDX support.
  */
 
+/* global process */
+
+import bundleAnalyzer from "@next/bundle-analyzer";
 import { createMDX } from "fumadocs-mdx/next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 /**
  * Content Security Policy directives.
@@ -28,6 +32,7 @@ const cspHeader = `
   img-src 'self' blob: data: https:;
   font-src 'self' data:;
   connect-src 'self' https:;
+  worker-src 'self' blob:;
   media-src 'self' blob: https:;
   object-src 'none';
   base-uri 'self';
@@ -116,5 +121,21 @@ const nextConfig = {
 };
 
 const withMDX = createMDX();
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+});
 
-export default withMDX(nextConfig);
+const config = withBundleAnalyzer(withMDX(nextConfig));
+
+export default withSentryConfig(config, {
+  // Upload source maps for readable stack traces (maps not served to browsers)
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
+  // Route Sentry requests through the server to bypass ad-blockers
+  tunnelRoute: "/monitoring",
+  // Suppress Sentry CLI logs during build
+  silent: !process.env.CI,
+  // Disable Sentry telemetry
+  telemetry: false,
+});

@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: February 2026 (v7.9.0)
+Last updated: February 2026 (v7.10.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -12,10 +12,12 @@ This doc covers architecture, implementation patterns, and design decisions for 
 4. [Authentication & Security](#authentication--security)
 5. [Feature Implementation](#feature-implementation)
 6. [Performance](#performance)
-7. [Testing Strategy](#testing-strategy)
-8. [Documentation Standards](#documentation-standards)
-9. [Deployment](#deployment)
-10. [Design Decisions](#design-decisions)
+7. [Observability & Error Handling](#observability--error-handling)
+8. [SEO & Social Sharing](#seo--social-sharing)
+9. [CI/CD Pipeline](#cicd-pipeline)
+10. [Testing Strategy](#testing-strategy)
+11. [Infrastructure](#infrastructure)
+12. [Design Decisions](#design-decisions)
 
 ---
 
@@ -43,6 +45,8 @@ This doc covers architecture, implementation patterns, and design decisions for 
 - Prisma 7 ORM
 - PostgreSQL (Neon serverless)
 - Upstash Redis (rate limiting)
+- Sentry (error monitoring across client/server/edge)
+- OpenTelemetry via @vercel/otel (distributed tracing)
 
 **External APIs:**
 
@@ -83,6 +87,10 @@ This doc covers architecture, implementation patterns, and design decisions for 
 │  ┌──────────┐  ┌───────────────┐       │
 │  │PostgreSQL│  │ Google Drive  │       │
 │  │  (Neon)  │  │  TMDB / Redis │       │
+│  └──────────┘  └───────────────┘       │
+│  ┌──────────┐  ┌───────────────┐       │
+│  │  Sentry  │  │  OpenTelemetry│       │
+│  │(errors)  │  │  (tracing)    │       │
 │  └──────────┘  └───────────────┘       │
 └─────────────────────────────────────────┘
 ```
@@ -293,6 +301,12 @@ Server Actions can't stream responses, so these use API Routes:
 
 - User profile/hero image endpoints
 - Serves blobs from database
+
+**`/api/health/route.ts`:**
+
+- Database connectivity check for uptime monitors
+- Returns 200 (healthy) or 503 (database unreachable)
+- Excluded from rate limiting, no-cache headers
 
 ### Route Groups
 
@@ -771,6 +785,153 @@ export const BulkActionsToolbar = memo(function BulkActionsToolbar({ ... }) {
 
 ---
 
+## Observability & Error Handling
+
+### Error Monitoring — Sentry
+
+Full-stack error tracking with three separate Sentry configurations for different runtimes:
+
+**Client** (`sentry.client.config.ts`):
+
+- Browser error tracking with session replay on errors
+- 10% trace sampling in production, 100% in development
+- Ignores expected errors: `NEXT_NOT_FOUND`, `NEXT_REDIRECT`, 429 rate limit responses
+
+**Server** (`sentry.server.config.ts`):
+
+- Node.js server component and API route error tracking
+- Same trace sampling strategy as client
+
+**Edge** (`sentry.edge.config.ts`):
+
+- Edge middleware and edge API route error tracking
+
+**Integration:**
+
+- `instrumentation.ts` registers Sentry alongside OpenTelemetry, conditionally loading server or edge config based on `NEXT_RUNTIME`
+- `onRequestError` hook captures unhandled request errors
+- Source maps uploaded during build and deleted afterward (readable stack traces without serving maps to browsers)
+- Sentry requests tunnelled through `/monitoring` to bypass ad-blockers
+- Gracefully disabled when `NEXT_PUBLIC_SENTRY_DSN` is not set
+
+### Error Boundaries
+
+Layered error boundary hierarchy catches failures at appropriate scope:
+
+```
+app/global-error.tsx          ← Root layout failures (standalone HTML)
+├── app/(auth)/error.tsx      ← Auth route failures (retry + sign-in link)
+├── app/(public)/error.tsx    ← Public route failures (retry + explore link)
+├── app/not-found.tsx         ← Application-wide 404 (home + explore links)
+└── app/(public)/not-found.tsx ← Public route 404 (profile/item not found)
+```
+
+Every error boundary reports to Sentry via `useEffect`. The global error boundary renders standalone HTML (no layout dependency) with inline styles for the dark theme.
+
+### Distributed Tracing — OpenTelemetry
+
+`@vercel/otel` registered in the Next.js instrumentation hook provides distributed tracing across server components, API routes, and middleware. Service name: `canoncore`.
+
+### Performance Monitoring — Speed Insights
+
+Vercel Speed Insights tracks Core Web Vitals (LCP, FID, CLS, TTFB) in production. Loaded via `next/dynamic` alongside Vercel Analytics in the deferred analytics component, keeping performance tracking out of the critical rendering path.
+
+### Health Check
+
+`/api/health` endpoint for uptime monitors:
+
+- `GET` returns `200` with `{ status: "ok", database: "connected" }` when healthy
+- Returns `503` with `{ status: "error", database: "disconnected" }` when database unreachable
+- No-cache headers prevent stale monitoring responses
+- Excluded from rate limiting
+
+---
+
+## SEO & Social Sharing
+
+### Dynamic Sitemap
+
+`app/sitemap.ts` generates a comprehensive sitemap with three categories:
+
+- **Static pages** — landing, explore, docs (with priority and change frequency)
+- **Public profiles** — all users with `isPublic: true` and a username, with `lastModified` dates
+- **Public items** — explicitly public items (not inheriting) from public users, with `lastModified` dates
+
+Profile and item queries run in parallel for performance.
+
+### Dynamic OpenGraph Images
+
+Server-side generated OG images using Next.js `ImageResponse` (Satori):
+
+**Default** (`app/opengraph-image.tsx`):
+
+- Edge runtime for fast generation
+- CanonCore branding with cinematic gradient background
+- 1200x630px PNG
+
+**Profile** (`app/(public)/u/[username]/opengraph-image.tsx`):
+
+- Node.js runtime (requires Prisma)
+- Shows avatar initial, display name, public item count
+- Falls back gracefully for non-existent users
+
+**Item** (`app/(public)/u/[username]/[itemId]/opengraph-image.tsx`):
+
+- Node.js runtime (requires Prisma)
+- Shows item name, truncated description, owner name
+- TMDB backdrop overlay at 30% opacity when available
+
+### JSON-LD Structured Data
+
+Schema.org markup on three page types:
+
+- **Landing page** — `WebApplication` schema with name, URL, category
+- **Profile pages** — `Person` schema with name and profile URL
+- **Item detail pages** — `Movie` or `TVSeries` schema (based on `tmdbType`) with genre, poster image, and `AggregateRating` from TMDB vote data
+
+All JSON-LD output sanitised with `replace(/</g, "\\u003c")` to prevent XSS via script injection.
+
+### Twitter Cards
+
+`summary_large_image` card type set in root layout metadata and explore page metadata. Combined with the dynamic OG images, shared links display rich preview cards across Twitter, Discord, Slack, and other platforms.
+
+---
+
+## CI/CD Pipeline
+
+### GitHub Actions
+
+Three-job pipeline in `.github/workflows/ci.yml`:
+
+```
+┌──────────────┐
+│ Quality Gate │  Format check, lint, type check, knip
+└──────┬───────┘
+       │ depends on
+  ┌────┴────┐
+  ▼         ▼
+┌──────┐ ┌───────┐
+│Tests │ │ Build │  Run in parallel
+└──────┘ └───────┘
+```
+
+**Quality Gate** — runs format:check, lint, type-check, and knip (unused code detection). Uses a dummy `DATABASE_URL` since no database access needed.
+
+**Tests** — unit tests and integration tests against real PostgreSQL via `E2E_DATABASE_URL` secret. Depends on quality gate passing.
+
+**Build** — production build verification. Depends on quality gate passing. Runs in parallel with tests.
+
+**Triggers:** Push to `development`/`production` branches and all PRs targeting those branches. Concurrency groups cancel in-progress runs for the same ref (except production pushes, which always complete).
+
+### Pre-commit Hooks
+
+Husky manages Git hooks:
+
+- **pre-commit** — lint-staged runs ESLint (`--fix`) and Prettier (`--write`) on staged `.ts`/`.tsx` files, and Prettier on staged `.json`/`.md`/`.css` files
+- **commit-msg** — commitlint enforces [Conventional Commits](https://www.conventionalcommits.org/) format (feat:, fix:, chore:, etc.)
+
+---
+
 ## Testing Strategy
 
 ### Test Pyramid
@@ -919,6 +1080,14 @@ Portfolio screenshots for marketing/documentation using POM patterns and fixture
 **Redis:** Upstash — rate limiting, serverless, pay-per-request
 
 **Email:** Resend — transactional emails (password reset)
+
+**Error Monitoring:** Sentry — client, server, and edge error tracking with session replay
+
+**Tracing:** OpenTelemetry via @vercel/otel — distributed tracing across all runtimes
+
+**Performance:** Vercel Speed Insights — Core Web Vitals monitoring (LCP, FID, CLS, TTFB)
+
+**CI/CD:** GitHub Actions — quality gate, tests, and build verification on every push and PR
 
 ---
 

@@ -71,6 +71,7 @@ export interface TMDBMovie {
   tagline: string;
   runtime: number | null;
   vote_average: number;
+  vote_count: number;
   genres: { id: number; name: string }[];
 }
 
@@ -85,6 +86,7 @@ export interface TMDBTVShow {
   number_of_seasons: number;
   tagline: string;
   vote_average: number;
+  vote_count: number;
   genres: { id: number; name: string }[];
 }
 
@@ -661,6 +663,8 @@ export interface TmdbItemMetadata {
   runtime?: number;
   /** Community vote average (0-10). */
   voteAverage?: number;
+  /** Number of votes contributing to the average. */
+  voteCount?: number;
   /** Content rating (e.g., "PG-13", "TV-MA"). */
   contentRating?: string;
   /** Genre names. */
@@ -706,6 +710,7 @@ export const getItemTmdbMetadata = cache(
           year: movie.release_date?.slice(0, 4) || undefined,
           runtime: movie.runtime ?? undefined,
           voteAverage: movie.vote_average || undefined,
+          voteCount: movie.vote_count || undefined,
           contentRating: cert || undefined,
           genres: movie.genres?.map((g) => g.name) ?? [],
         };
@@ -724,6 +729,7 @@ export const getItemTmdbMetadata = cache(
           tagline: show.tagline || undefined,
           year: show.first_air_date?.slice(0, 4) || undefined,
           voteAverage: show.vote_average || undefined,
+          voteCount: show.vote_count || undefined,
           contentRating: usRating?.rating || undefined,
           genres: show.genres?.map((g) => g.name) ?? [],
         };
