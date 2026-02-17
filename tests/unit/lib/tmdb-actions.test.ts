@@ -204,6 +204,7 @@ describe("tmdb-actions", () => {
         tagline: "",
         runtime: null,
         vote_average: 0,
+        vote_count: 0,
         genres: [],
       });
     });
@@ -282,6 +283,7 @@ describe("tmdb-actions", () => {
         number_of_seasons: 5,
         tagline: "",
         vote_average: 0,
+        vote_count: 0,
         genres: [],
       });
 
@@ -697,6 +699,7 @@ describe("tmdb-actions", () => {
         tagline: "",
         runtime: null,
         vote_average: 0,
+        vote_count: 0,
         genres: [],
       });
 
@@ -721,6 +724,7 @@ describe("tmdb-actions", () => {
         number_of_seasons: 5,
         tagline: "",
         vote_average: 0,
+        vote_count: 0,
         genres: [],
       });
 

@@ -312,6 +312,34 @@ export default async function ItemDetailPage({
 
     return (
       <>
+        {tmdbMetadata && (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": item.tmdbType === "tv" ? "TVSeries" : "Movie",
+                name: item.name,
+                description: item.description,
+                ...(item.tmdbPosterPath && {
+                  image: `https://image.tmdb.org/t/p/w500${item.tmdbPosterPath}`,
+                }),
+                ...(tmdbMetadata.genres && {
+                  genre: tmdbMetadata.genres,
+                }),
+                ...(tmdbMetadata.voteAverage &&
+                  tmdbMetadata.voteCount && {
+                    aggregateRating: {
+                      "@type": "AggregateRating",
+                      ratingValue: tmdbMetadata.voteAverage,
+                      bestRating: 10,
+                      ratingCount: tmdbMetadata.voteCount,
+                    },
+                  }),
+              }).replace(/</g, "\\u003c"),
+            }}
+          />
+        )}
         <SiteHeader
           title={`@${profile.username}`}
           titleHref={`/u/${profile.username}`}

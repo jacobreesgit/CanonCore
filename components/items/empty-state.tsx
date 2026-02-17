@@ -37,7 +37,7 @@ const EMPTY_STATE_CONFIG: Record<EmptyStateVariant, EmptyStateConfig> = {
   "no-children": {
     icon: FolderOpen,
     title: "No child items",
-    description: "Add child items to organize content within this folder.",
+    description: "Add child items to organise content within this folder.",
     actionLabel: "Add Child",
     actionIcon: Plus,
   },

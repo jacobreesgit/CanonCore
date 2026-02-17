@@ -24,6 +24,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "CanonCore",
   description: "CanonCore - Media Library Manager",
+  twitter: {
+    card: "summary_large_image",
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", media: "(prefers-color-scheme: light)" },
