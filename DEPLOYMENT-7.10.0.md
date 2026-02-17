@@ -78,28 +78,28 @@ Runs on push to `development`/`production` and all PRs targeting those branches.
 
 ## New dependencies
 
-| Package | Type | Purpose |
-| --- | --- | --- |
-| `@sentry/nextjs` | prod | Error monitoring |
-| `@vercel/otel` | prod | OpenTelemetry instrumentation |
-| `@vercel/speed-insights` | prod | Core Web Vitals tracking |
-| `@commitlint/cli` | dev | Commit message linting |
-| `@commitlint/config-conventional` | dev | Conventional commits config |
-| `@next/bundle-analyzer` | dev | Bundle size inspection |
-| `husky` | dev | Git hooks |
-| `lint-staged` | dev | Run linters on staged files |
-| `changelogen` | dev | Changelog generation |
+| Package                           | Type | Purpose                       |
+| --------------------------------- | ---- | ----------------------------- |
+| `@sentry/nextjs`                  | prod | Error monitoring              |
+| `@vercel/otel`                    | prod | OpenTelemetry instrumentation |
+| `@vercel/speed-insights`          | prod | Core Web Vitals tracking      |
+| `@commitlint/cli`                 | dev  | Commit message linting        |
+| `@commitlint/config-conventional` | dev  | Conventional commits config   |
+| `@next/bundle-analyzer`           | dev  | Bundle size inspection        |
+| `husky`                           | dev  | Git hooks                     |
+| `lint-staged`                     | dev  | Run linters on staged files   |
+| `changelogen`                     | dev  | Changelog generation          |
 
 ---
 
 ## Environment variables
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `NEXT_PUBLIC_SENTRY_DSN` | No | Sentry project DSN (Sentry disabled when absent) |
-| `SENTRY_AUTH_TOKEN` | No | Source map upload during build |
-| `SENTRY_ORG` | No | Sentry organisation slug |
-| `SENTRY_PROJECT` | No | Sentry project slug |
+| Variable                 | Required | Purpose                                          |
+| ------------------------ | -------- | ------------------------------------------------ |
+| `NEXT_PUBLIC_SENTRY_DSN` | No       | Sentry project DSN (Sentry disabled when absent) |
+| `SENTRY_AUTH_TOKEN`      | No       | Source map upload during build                   |
+| `SENTRY_ORG`             | No       | Sentry organisation slug                         |
+| `SENTRY_PROJECT`         | No       | Sentry project slug                              |
 
 ---
 
