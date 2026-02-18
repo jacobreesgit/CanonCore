@@ -1,5 +1,5 @@
 /**
- * Zod validation schemas for authentication and items.
+ * Zod validation schemas for authentication, items, and playlists.
  * Shared between server actions for consistent validation.
  */
 
@@ -68,6 +68,33 @@ export const itemNameSchema = z
  * Allows any printable characters for flexibility.
  */
 export const itemDescriptionSchema = z
+  .string()
+  .transform((val) => val.trim())
+  .pipe(z.string().max(1000, "Description must be 1000 characters or less"));
+
+// =============================================================================
+// Playlist Validation
+// =============================================================================
+
+/**
+ * Playlist name: 1-255 characters, trimmed.
+ * More permissive than item names — allows any printable characters.
+ */
+export const playlistNameSchema = z
+  .string()
+  .transform((val) => val.trim())
+  .pipe(
+    z
+      .string()
+      .min(1, "Playlist name is required")
+      .max(255, "Playlist name must be 255 characters or less")
+  );
+
+/**
+ * Playlist description: max 1000 characters, trimmed.
+ * Matches item description schema (same DB column limit).
+ */
+export const playlistDescriptionSchema = z
   .string()
   .transform((val) => val.trim())
   .pipe(z.string().max(1000, "Description must be 1000 characters or less"));

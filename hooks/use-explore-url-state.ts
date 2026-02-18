@@ -8,6 +8,7 @@
 
 import { useCallback } from "react";
 import { useQueryStates } from "nuqs";
+import type { inferParserType } from "nuqs/server";
 
 import { exploreParsers } from "./search-params";
 
@@ -33,6 +34,11 @@ export function useExploreUrlState() {
     [setState]
   );
 
+  const setTab = useCallback(
+    (tab: inferParserType<typeof exploreParsers.tab>) => setState({ tab }),
+    [setState]
+  );
+
   return {
     /** Current sort option. */
     sortBy: state.sort,
@@ -44,5 +50,9 @@ export function useExploreUrlState() {
     setExcludeMine,
     /** Whether the hero carousel should auto-advance. */
     autoplay: state.autoplay,
+    /** Current active tab (items/playlists), null if not set. */
+    tab: state.tab,
+    /** Update active tab. */
+    setTab,
   };
 }

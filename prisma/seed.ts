@@ -903,7 +903,27 @@ function validateEnvironment(): void {
 async function cleanupSeedUsers(): Promise<void> {
   const seedEmails = SEED_USERS.map((u) => u.email);
 
-  // Delete ItemFiles first
+  // Delete PlaylistItems first (FK to both Playlist and Item)
+  await prisma.playlistItem.deleteMany({
+    where: {
+      playlist: {
+        user: {
+          email: { in: seedEmails },
+        },
+      },
+    },
+  });
+
+  // Delete Playlists
+  await prisma.playlist.deleteMany({
+    where: {
+      user: {
+        email: { in: seedEmails },
+      },
+    },
+  });
+
+  // Delete ItemFiles
   await prisma.itemFile.deleteMany({
     where: {
       item: {
@@ -1748,7 +1768,17 @@ async function cleanupOnFailure(userId: string): Promise<void> {
   console.log("\n🧹 Cleaning up partial seed data...");
 
   try {
-    // Delete ItemFiles first (foreign key constraint)
+    // Delete PlaylistItems first (FK to both Playlist and Item)
+    await prisma.playlistItem.deleteMany({
+      where: { playlist: { userId } },
+    });
+
+    // Delete Playlists
+    await prisma.playlist.deleteMany({
+      where: { userId },
+    });
+
+    // Delete ItemFiles (foreign key constraint)
     const deletedFiles = await prisma.itemFile.deleteMany({
       where: { item: { userId } },
     });
@@ -1952,6 +1982,117 @@ async function generateSyncActivityLogs(userId: string): Promise<void> {
   log(`   📊 Created ${syncLogs.length} sync activity log entries`);
 }
 
+/** Playlist seed definitions per user. */
+const PLAYLIST_DEFINITIONS: Record<
+  string,
+  Array<{
+    name: string;
+    description: string;
+    isPublic: boolean;
+    itemCount: { min: number; max: number };
+  }>
+> = {
+  "demo@canoncore.com": [
+    {
+      name: "Weekend Watchlist",
+      description: "Movies and shows to binge on the weekend.",
+      isPublic: true,
+      itemCount: { min: 4, max: 6 },
+    },
+    {
+      name: "All-Time Favourites",
+      description: "The best of the best — timeless classics.",
+      isPublic: true,
+      itemCount: { min: 3, max: 5 },
+    },
+    {
+      name: "Watch Later",
+      description: "Saved for later viewing.",
+      isPublic: false,
+      itemCount: { min: 2, max: 3 },
+    },
+  ],
+  "filmfan@canoncore.com": [
+    {
+      name: "Weekend Watchlist",
+      description: "International cinema for a relaxing weekend.",
+      isPublic: true,
+      itemCount: { min: 4, max: 6 },
+    },
+    {
+      name: "All-Time Favourites",
+      description: "Films that changed my perspective.",
+      isPublic: true,
+      itemCount: { min: 3, max: 5 },
+    },
+    {
+      name: "Watch Later",
+      description: "On the radar.",
+      isPublic: false,
+      itemCount: { min: 2, max: 3 },
+    },
+  ],
+};
+
+/**
+ * Seeds playlists for a user using their existing root-level items.
+ * Picks random items from the user's library for each playlist.
+ *
+ * @param userId - User's database ID
+ * @param email - User's email for config lookup
+ */
+async function seedPlaylistsForUser(
+  userId: string,
+  email: string
+): Promise<void> {
+  const definitions = PLAYLIST_DEFINITIONS[email];
+  if (!definitions || definitions.length === 0) return;
+
+  // Get all root-level items for this user
+  const rootItems = await prisma.item.findMany({
+    where: { userId, parentId: null },
+    select: { id: true },
+  });
+
+  if (rootItems.length === 0) return;
+
+  for (let i = 0; i < definitions.length; i++) {
+    const def = definitions[i];
+    const itemCount = getRandomCount(def.itemCount.min, def.itemCount.max);
+
+    // Shuffle and pick items
+    const shuffled = [...rootItems].sort(() => Math.random() - 0.5);
+    const selectedItems = shuffled.slice(
+      0,
+      Math.min(itemCount, shuffled.length)
+    );
+
+    const playlist = await prisma.playlist.create({
+      data: {
+        name: def.name,
+        description: def.description,
+        order: i,
+        isPublic: def.isPublic,
+        userId,
+      },
+    });
+
+    // Add items to playlist
+    await prisma.playlistItem.createMany({
+      data: selectedItems.map((item, idx) => ({
+        playlistId: playlist.id,
+        itemId: item.id,
+        order: idx,
+      })),
+    });
+
+    const publicLabel = def.isPublic ? " (public)" : " (private)";
+    log(
+      `   🎵 Created playlist "${def.name}"${publicLabel} with ${selectedItems.length} items`
+    );
+  }
+}
+
 /**
  * Main seed function.
  * Google Drive is REQUIRED - validates setup before proceeding.
@@ -2042,6 +2183,9 @@ async function main(): Promise<void> {
 
         // Pin specific items
         await pinItemsForUser(userId, config.email);
+
+        // Seed playlists
+        await seedPlaylistsForUser(userId, config.email);
 
         const totalTime = Math.round((Date.now() - progress.startTime) / 1000);
         log(

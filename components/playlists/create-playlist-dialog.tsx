@@ -1,0 +1,195 @@
+/**
+ * Dialog for creating a new playlist.
+ * Simple form with name input, loading state, and inline validation error.
+ * Follows existing dialog patterns (AddItemDialog, ItemSettingsDialog).
+ */
+
+"use client";
+
+import { useState, useCallback } from "react";
+import { Loader2, ListMusic } from "lucide-react";
+import { Dialog } from "@/components/ui/dialog";
+import { AnimatedDialogContent } from "@/components/ui/animated-dialog-content";
+import {
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+import { createPlaylist } from "@/lib/playlist-actions";
+import { toast } from "sonner";
+
+interface CreatePlaylistDialogProps {
+  /** Whether the dialog is open. */
+  open: boolean;
+  /** Callback when dialog open state changes. */
+  onOpenChange: (open: boolean) => void;
+  /** Callback after successful playlist creation. */
+  onCreated?: (playlist: { id: string; name: string }) => void;
+}
+
+/**
+ * Modal dialog for creating a new playlist.
+ * Validates name client-side, calls server action, shows loading/error states.
+ *
+ * @param open - Whether the dialog is open
+ * @param onOpenChange - Callback when dialog open state changes
+ * @param onCreated - Callback after successful playlist creation
+ */
+export function CreatePlaylistDialog({
+  open,
+  onOpenChange,
+  onCreated,
+}: CreatePlaylistDialogProps) {
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const resetForm = useCallback(() => {
+    setName("");
+    setError(null);
+    setIsSubmitting(false);
+  }, []);
+
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) {
+        resetForm();
+      }
+      onOpenChange(nextOpen);
+    },
+    [onOpenChange, resetForm]
+  );
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+
+      const trimmed = name.trim();
+      if (!trimmed) {
+        setError("Name is required");
+        return;
+      }
+
+      setError(null);
+      setIsSubmitting(true);
+
+      try {
+        const result = await createPlaylist(trimmed);
+
+        if (result.error) {
+          setError(result.error);
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (result.success && result.data) {
+          toast.success("Playlist created");
+          onCreated?.(result.data);
+          handleOpenChange(false);
+        }
+      } catch {
+        setError("Something went wrong");
+        setIsSubmitting(false);
+      }
+    },
+    [name, onCreated, handleOpenChange]
+  );
+
+  const header = (
+    <DialogHeader>
+      <div className="flex items-center gap-3">
+        <div
+          className={cn(
+            "flex size-10 shrink-0 items-center justify-center rounded-xl",
+            "bg-primary/10 ring-primary/20 ring-1"
+          )}
+        >
+          <ListMusic aria-hidden="true" className="text-primary size-5" />
+        </div>
+        <div className="min-w-0">
+          <DialogTitle className="text-lg">Create Playlist</DialogTitle>
+          <DialogDescription className="text-sm">
+            Give your playlist a name to get started.
+          </DialogDescription>
+        </div>
+      </div>
+    </DialogHeader>
+  );
+
+  const footer = (
+    <DialogFooter>
+      <Button
+        variant="outline"
+        onClick={() => handleOpenChange(false)}
+        disabled={isSubmitting}
+        data-testid="create-playlist-cancel"
+      >
+        Cancel
+      </Button>
+      <Button
+        type="submit"
+        form="create-playlist-form"
+        disabled={isSubmitting || !name.trim()}
+        data-testid="create-playlist-submit"
+      >
+        {isSubmitting ? (
+          <>
+            <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
+            Creating...
+          </>
+        ) : (
+          "Create"
+        )}
+      </Button>
+    </DialogFooter>
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <AnimatedDialogContent
+        data-testid="dialog-create-playlist"
+        stepKey="create"
+        className="sm:max-w-md"
+        header={header}
+        footer={footer}
+      >
+        <form
+          id="create-playlist-form"
+          onSubmit={handleSubmit}
+          className="py-2"
+        >
+          <div className="space-y-2">
+            <Label htmlFor="playlist-name">Name</Label>
+            <Input
+              id="playlist-name"
+              data-testid="create-playlist-name-input"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (error) setError(null);
+              }}
+              placeholder="My Playlist"
+              maxLength={255}
+              autoComplete="off"
+              disabled={isSubmitting}
+            />
+            {error && (
+              <p
+                className="text-destructive text-sm"
+                data-testid="create-playlist-error"
+                role="alert"
+              >
+                {error}
+              </p>
+            )}
+          </div>
+        </form>
+      </AnimatedDialogContent>
+    </Dialog>
+  );
+}

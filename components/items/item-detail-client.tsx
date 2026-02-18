@@ -337,8 +337,7 @@ export function ItemDetailClient({
           Next Up: {nextItem.name}
         </HeroButton>
       )}
-      {/* Playlist (placeholder feature) */}
-      <PlaylistButton />
+      <PlaylistButton itemId={item.id} />
       <HeroButton onClick={handleOpenSettings} aria-label="Settings">
         <Settings2 className="size-4" />
         Settings

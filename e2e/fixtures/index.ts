@@ -28,6 +28,7 @@ import { SpotlightPage } from "../pages/spotlight.page";
 import { MediaPage } from "../pages/media.page";
 import { NavPage } from "../pages/nav.page";
 import { TmdbWizardPage } from "../pages/tmdb-wizard.page";
+import { PlaylistPage } from "../pages/playlist.page";
 
 // Authenticated test with all POMs
 export const test = authenticatedFixture.extend<{
@@ -47,6 +48,7 @@ export const test = authenticatedFixture.extend<{
   media: MediaPage;
   nav: NavPage;
   tmdbWizard: TmdbWizardPage;
+  playlist: PlaylistPage;
 }>({
   publicUser: async ({}, use) => {
     const user = await createPublicUser();
@@ -111,6 +113,9 @@ export const test = authenticatedFixture.extend<{
   },
   tmdbWizard: async ({ page, testUser, isMobile }, use) => {
     await use(new TmdbWizardPage(page, testUser.username, isMobile));
+  },
+  playlist: async ({ page, testUser, isMobile }, use) => {
+    await use(new PlaylistPage(page, testUser.username, isMobile));
   },
 });
 

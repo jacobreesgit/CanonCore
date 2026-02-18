@@ -12,8 +12,10 @@ import {
   getPublicProfile,
   getProfileByIdOrUsername,
   getPublicLibraryProgress,
+  getPublicPlaylistsForUser,
 } from "@/lib/public-auth";
 import { getItemsForProfile, getLibraryProgress } from "@/lib/item-actions";
+import { getUserPlaylists } from "@/lib/playlist-actions";
 import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { SiteHeader } from "@/components/site-header";
@@ -111,21 +113,31 @@ export default async function ProfilePage({ params }: PageProps) {
   let driveNeedsReauth = false;
   let libraryProgress = null;
 
+  let ownerPlaylists: Awaited<ReturnType<typeof getUserPlaylists>> | null =
+    null;
+
   if (isOwner) {
-    const [driveConnection, progress] = await Promise.all([
+    const [driveConnection, progress, playlistsResult] = await Promise.all([
       getGoogleDriveConnection(),
       getLibraryProgress(),
+      getUserPlaylists(),
     ]);
     hasDriveConnection =
       driveConnection !== null && !driveConnection.needsReauth;
     driveNeedsReauth = driveConnection?.needsReauth ?? false;
     libraryProgress = progress;
+    ownerPlaylists = playlistsResult;
   }
 
-  // For viewers, fetch public library progress
+  // For viewers, fetch public library progress and playlists
   let viewerProgress = null;
+  let publicPlaylists: Awaited<ReturnType<typeof getPublicPlaylistsForUser>> =
+    [];
   if (!isOwner) {
-    viewerProgress = await getPublicLibraryProgress(profile.id);
+    [viewerProgress, publicPlaylists] = await Promise.all([
+      getPublicLibraryProgress(profile.id),
+      getPublicPlaylistsForUser(profile.id),
+    ]);
   }
 
   return (
@@ -165,6 +177,10 @@ export default async function ProfilePage({ params }: PageProps) {
           hasDriveConnection={hasDriveConnection}
           libraryProgress={libraryProgress}
           viewerProgress={viewerProgress}
+          publicPlaylists={publicPlaylists}
+          ownerPlaylists={
+            ownerPlaylists?.success ? ownerPlaylists.data : undefined
+          }
         />
       </div>
     </>

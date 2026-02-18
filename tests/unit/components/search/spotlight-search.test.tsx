@@ -27,10 +27,15 @@ vi.mock("@/lib/item-actions", () => ({
 vi.mock("@/lib/public-auth", () => ({
   searchPublicUsers: vi.fn(),
   searchPublicItems: vi.fn(),
+  searchPublicPlaylists: vi.fn(),
 }));
 
 import { getSearchableItems } from "@/lib/item-actions";
-import { searchPublicUsers, searchPublicItems } from "@/lib/public-auth";
+import {
+  searchPublicUsers,
+  searchPublicItems,
+  searchPublicPlaylists,
+} from "@/lib/public-auth";
 
 describe("SpotlightSearch", () => {
   beforeEach(() => {
@@ -48,6 +53,10 @@ describe("SpotlightSearch", () => {
       success: true,
       data: [],
     });
+    vi.mocked(searchPublicPlaylists).mockResolvedValue({
+      success: true,
+      data: [],
+    });
   });
 
   it("renders when open", async () => {
@@ -61,7 +70,7 @@ describe("SpotlightSearch", () => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
     });
     expect(
-      screen.getByPlaceholderText(/search items and people/i)
+      screen.getByPlaceholderText(/search items, playlists, and people/i)
     ).toBeInTheDocument();
   });
 
@@ -398,6 +407,10 @@ describe("SpotlightSearch - Public User Search", () => {
     });
     vi.mocked(searchPublicUsers).mockResolvedValue({ success: true, data: [] });
     vi.mocked(searchPublicItems).mockResolvedValue({ success: true, data: [] });
+    vi.mocked(searchPublicPlaylists).mockResolvedValue({
+      success: true,
+      data: [],
+    });
   });
 
   it("fetches public users when dialog opens", async () => {
@@ -499,6 +512,10 @@ describe("SpotlightSearch - Public Item Search", () => {
     });
     vi.mocked(searchPublicUsers).mockResolvedValue({ success: true, data: [] });
     vi.mocked(searchPublicItems).mockResolvedValue({ success: true, data: [] });
+    vi.mocked(searchPublicPlaylists).mockResolvedValue({
+      success: true,
+      data: [],
+    });
   });
 
   it("fetches public items when dialog opens", async () => {
@@ -585,6 +602,10 @@ describe("SpotlightSearch - Cache", () => {
     });
     vi.mocked(searchPublicUsers).mockResolvedValue({ success: true, data: [] });
     vi.mocked(searchPublicItems).mockResolvedValue({ success: true, data: [] });
+    vi.mocked(searchPublicPlaylists).mockResolvedValue({
+      success: true,
+      data: [],
+    });
   });
 
   it("uses cached data on subsequent opens within TTL", async () => {
@@ -685,6 +706,10 @@ describe("SpotlightSearch - Unified Loading States", () => {
     });
     vi.mocked(searchPublicUsers).mockReturnValue(usersPromise);
     vi.mocked(searchPublicItems).mockReturnValue(publicItemsPromise);
+    vi.mocked(searchPublicPlaylists).mockResolvedValue({
+      success: true,
+      data: [],
+    });
 
     render(
       <SpotlightProvider>
@@ -748,6 +773,10 @@ describe("SpotlightSearch - Unified Loading States", () => {
     vi.mocked(getSearchableItems).mockReturnValue(itemsPromise);
     vi.mocked(searchPublicUsers).mockResolvedValue({ success: true, data: [] });
     vi.mocked(searchPublicItems).mockResolvedValue({ success: true, data: [] });
+    vi.mocked(searchPublicPlaylists).mockResolvedValue({
+      success: true,
+      data: [],
+    });
 
     render(
       <SpotlightProvider>

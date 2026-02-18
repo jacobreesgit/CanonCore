@@ -5,7 +5,7 @@
 
 "use client";
 
-import { Folder, FolderOpen, FilterX, Plus, X } from "lucide-react";
+import { Folder, FolderOpen, FilterX, ListMusic, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +15,8 @@ export type EmptyStateVariant =
   | "filter-empty"
   | "public-profile-empty"
   | "public-item-empty"
-  | "explore-empty";
+  | "explore-empty"
+  | "playlist-empty";
 
 interface EmptyStateConfig {
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
@@ -71,6 +72,13 @@ const EMPTY_STATE_CONFIG: Record<EmptyStateVariant, EmptyStateConfig> = {
       "Be the first to share your items! Make your profile public to have your items featured here.",
     actionLabel: "",
     actionIcon: Folder,
+  },
+  "playlist-empty": {
+    icon: ListMusic,
+    title: "No items in this playlist",
+    description: "Add items to this playlist from your library.",
+    actionLabel: "Add Items",
+    actionIcon: Plus,
   },
 };
 

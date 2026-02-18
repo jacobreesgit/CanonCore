@@ -7,7 +7,7 @@ import type { Root as PageTreeRoot } from "fumadocs-core/page-tree";
 import { AppSidebar } from "./app-sidebar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { SpotlightProvider } from "@/contexts/spotlight-context";
-import type { GoogleDriveConnection, PinnedItem } from "@/lib/types";
+import type { GoogleDriveConnection } from "@/lib/types";
 
 /**
  * Main application sidebar with context-aware navigation.
@@ -15,13 +15,12 @@ import type { GoogleDriveConnection, PinnedItem } from "@/lib/types";
  * ## Features
  * - Logo and branding in header
  * - Context-based content (my-items, docs, home)
- * - Pinned items support for my-items context
  * - User menu with settings and logout
  * - Guest buttons for unauthenticated users
  * - Collapsible on mobile (offcanvas mode)
  *
  * ## Contexts
- * - **my-items**: Main nav with My Items, Explore, pinned items
+ * - **my-items**: Main nav with My Items, Explore
  * - **docs**: Documentation tree navigation
  * - **home**: Guest navigation without auth-specific items
  */
@@ -34,20 +33,13 @@ const meta = {
     docs: {
       description: {
         component:
-          "Main application sidebar with context-aware navigation. Supports my-items, docs, and home contexts with user menu and pinned items.",
+          "Main application sidebar with context-aware navigation. Supports my-items, docs, and home contexts with user menu.",
       },
     },
     nextjs: {
       appDirectory: true,
       navigation: {
         pathname: "/u/johndoe",
-      },
-    },
-    // Disable list rule - shadcn Collapsible wraps li elements in divs,
-    // which is invalid HTML list structure but required for collapsible behavior
-    a11y: {
-      config: {
-        rules: [{ id: "list", enabled: false }],
       },
     },
   },
@@ -63,9 +55,6 @@ const meta = {
     driveConnection: {
       control: false, // Contains BigInt values that cannot be serialized
       description: "Google Drive connection (null if not connected)",
-    },
-    pinnedItems: {
-      description: "Pinned items for my-items context",
     },
     docsTree: {
       description: "Fumadocs page tree for docs context",
@@ -111,25 +100,6 @@ const mockDriveConnection: GoogleDriveConnection = {
   quotaBytesTotal: BigInt(15_000_000_000),
 };
 
-const mockPinnedItems: PinnedItem[] = [
-  { id: "pin-1", name: "Favourites", pinnedOrder: 0 },
-  { id: "pin-2", name: "Watch Later", pinnedOrder: 1 },
-  { id: "pin-3", name: "Action Movies", pinnedOrder: 2 },
-];
-
-const mockMaxPinnedItems: PinnedItem[] = [
-  { id: "pin-1", name: "Movies", pinnedOrder: 0 },
-  { id: "pin-2", name: "TV Shows", pinnedOrder: 1 },
-  { id: "pin-3", name: "Anime", pinnedOrder: 2 },
-  { id: "pin-4", name: "Documentaries", pinnedOrder: 3 },
-  { id: "pin-5", name: "Music Videos", pinnedOrder: 4 },
-  { id: "pin-6", name: "Podcasts", pinnedOrder: 5 },
-  { id: "pin-7", name: "Courses", pinnedOrder: 6 },
-  { id: "pin-8", name: "Favourites", pinnedOrder: 7 },
-  { id: "pin-9", name: "Watch Later", pinnedOrder: 8 },
-  { id: "pin-10", name: "Archives", pinnedOrder: 9 },
-];
-
 const mockDocsTree: PageTreeRoot = {
   name: "Documentation",
   children: [
@@ -169,14 +139,13 @@ const mockDocsTree: PageTreeRoot = {
 
 /**
  * Authenticated user in my-items context.
- * Full navigation with pinned items and user menu.
+ * Full navigation with user menu.
  */
 export const AuthenticatedMyItems: Story = {
   args: {
     user: mockUser,
     context: "my-items",
     driveConnection: mockDriveConnection,
-    pinnedItems: mockPinnedItems,
   },
 };
 
@@ -189,20 +158,6 @@ export const AuthenticatedNoDrive: Story = {
     user: mockUser,
     context: "my-items",
     driveConnection: null,
-    pinnedItems: mockPinnedItems,
-  },
-};
-
-/**
- * Authenticated without pinned items.
- * My Items has no expandable children.
- */
-export const AuthenticatedNoPins: Story = {
-  args: {
-    user: mockUser,
-    context: "my-items",
-    driveConnection: mockDriveConnection,
-    pinnedItems: [],
   },
 };
 
@@ -215,7 +170,6 @@ export const GuestHome: Story = {
     user: null,
     context: "home",
     driveConnection: null,
-    pinnedItems: undefined,
   },
   parameters: {
     nextjs: {
@@ -263,38 +217,5 @@ export const GuestDocs: Story = {
         pathname: "/docs",
       },
     },
-  },
-};
-
-/**
- * Pinned item active.
- * Shows pinned item highlighted in My Items.
- */
-export const PinnedItemActive: Story = {
-  args: {
-    user: mockUser,
-    context: "my-items",
-    driveConnection: mockDriveConnection,
-    pinnedItems: mockPinnedItems,
-  },
-  parameters: {
-    nextjs: {
-      navigation: {
-        pathname: "/u/johndoe/pin-1",
-      },
-    },
-  },
-};
-
-/**
- * Maximum pinned items (10).
- * Shows all 10 pinned items in the sidebar.
- */
-export const MaxPinnedItems: Story = {
-  args: {
-    user: mockUser,
-    context: "my-items",
-    driveConnection: mockDriveConnection,
-    pinnedItems: mockMaxPinnedItems,
   },
 };
