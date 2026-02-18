@@ -13,7 +13,6 @@ import {
   useCallback,
   useEffect,
   useId,
-  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -70,55 +69,9 @@ export function SwipeableUnderlineTabs({
   const tablistRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const pendingFocusRef = useRef<number | null>(null);
-  const scrollContainerRef = useRef<HTMLElement | null>(null);
-  const scrollPositions = useRef(new Map<string, number>());
   const [announcement, setAnnouncement] = useState("");
 
   const activeIndex = tabs.findIndex((t) => t.id === activeTab);
-
-  /** Lazily resolves and caches the nearest scrollable ancestor. */
-  const getScroller = useCallback(() => {
-    if (!scrollContainerRef.current) {
-      let node = rootRef.current?.parentElement;
-      while (node && node !== document.documentElement) {
-        const { overflowY } = getComputedStyle(node);
-        if (
-          (overflowY === "auto" || overflowY === "scroll") &&
-          node.scrollHeight > node.clientHeight
-        ) {
-          scrollContainerRef.current = node;
-          return node;
-        }
-        node = node.parentElement;
-      }
-      scrollContainerRef.current = document.documentElement;
-    }
-    return scrollContainerRef.current;
-  }, []);
-
-  /**
-   * Wraps onTabChange to save scroll position before the parent re-renders.
-   * Scroll is restored in useLayoutEffect after the activeTab prop updates.
-   */
-  const changeTabWithScroll = useCallback(
-    (newId: string) => {
-      if (newId !== activeTab) {
-        const scroller = getScroller();
-        scrollPositions.current.set(activeTab, scroller.scrollTop);
-      }
-      onTabChange(newId);
-    },
-    [activeTab, onTabChange, getScroller]
-  );
-
-  // Restore saved scroll position after tab change, before paint.
-  useLayoutEffect(() => {
-    const saved = scrollPositions.current.get(activeTab);
-    if (saved !== undefined) {
-      const scroller = getScroller();
-      scroller.scrollTop = saved;
-    }
-  }, [activeTab, getScroller]);
 
   // Capture initial index once to avoid Embla reinit on every tab change
   const [initialIndex] = useState(() =>
@@ -149,7 +102,7 @@ export function SwipeableUnderlineTabs({
       const newIndex = emblaApi.selectedScrollSnap();
       const tab = tabs[newIndex];
       if (tab && tab.id !== activeTab) {
-        changeTabWithScroll(tab.id);
+        onTabChange(tab.id);
         setAnnouncement(`${tab.label} tab selected`);
       }
     };
@@ -165,7 +118,7 @@ export function SwipeableUnderlineTabs({
       emblaApi.off("select", onSelect);
       emblaApi.off("settle", onSettle);
     };
-  }, [emblaApi, tabs, activeTab, changeTabWithScroll]);
+  }, [emblaApi, tabs, activeTab, onTabChange]);
 
   // Sync external activeTab prop → carousel position
   useEffect(() => {
@@ -197,14 +150,14 @@ export function SwipeableUnderlineTabs({
     (index: number) => {
       const tab = tabs[index];
       if (tab) {
-        changeTabWithScroll(tab.id);
+        onTabChange(tab.id);
         setAnnouncement(`${tab.label} tab selected`);
         emblaApi?.scrollTo(index);
         // Defer focus to the post-render effect to ensure DOM is updated
         pendingFocusRef.current = index;
       }
     },
-    [tabs, emblaApi, changeTabWithScroll]
+    [tabs, emblaApi, onTabChange]
   );
 
   /**
