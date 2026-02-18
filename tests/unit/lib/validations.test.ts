@@ -10,6 +10,8 @@ import {
   signUpSchema,
   itemNameSchema,
   itemDescriptionSchema,
+  playlistNameSchema,
+  playlistDescriptionSchema,
   usernameSchema,
   validateUsername,
   isUsernameReserved,
@@ -173,6 +175,65 @@ describe("itemDescriptionSchema", () => {
       "  " + "a".repeat(1001) + "  "
     );
     expect(result.success).toBe(false);
+  });
+});
+
+describe("playlistNameSchema", () => {
+  it("accepts valid playlist names", () => {
+    expect(playlistNameSchema.safeParse("Weekend Watchlist").success).toBe(
+      true
+    );
+    expect(playlistNameSchema.safeParse("My Top 10").success).toBe(true);
+    expect(playlistNameSchema.safeParse("a").success).toBe(true);
+  });
+
+  it("accepts names with special characters", () => {
+    expect(playlistNameSchema.safeParse("Best of 2025!").success).toBe(true);
+    expect(playlistNameSchema.safeParse("Sci-Fi: The Classics").success).toBe(
+      true
+    );
+  });
+
+  it("rejects empty name", () => {
+    expect(playlistNameSchema.safeParse("").success).toBe(false);
+  });
+
+  it("rejects whitespace-only name", () => {
+    expect(playlistNameSchema.safeParse("   ").success).toBe(false);
+  });
+
+  it("rejects name over 255 chars", () => {
+    expect(playlistNameSchema.safeParse("a".repeat(256)).success).toBe(false);
+  });
+
+  it("trims whitespace", () => {
+    const result = playlistNameSchema.safeParse("  My Playlist  ");
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toBe("My Playlist");
+  });
+});
+
+describe("playlistDescriptionSchema", () => {
+  it("accepts valid descriptions", () => {
+    expect(
+      playlistDescriptionSchema.safeParse("A great playlist").success
+    ).toBe(true);
+  });
+
+  it("accepts empty string", () => {
+    expect(playlistDescriptionSchema.safeParse("").success).toBe(true);
+  });
+
+  it("rejects description over 1000 chars", () => {
+    expect(playlistDescriptionSchema.safeParse("a".repeat(1001)).success).toBe(
+      false
+    );
+  });
+
+  it("trims whitespace before validating", () => {
+    const result = playlistDescriptionSchema.safeParse("  trimmed  ");
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toBe("trimmed");
   });
 });
 

@@ -5,7 +5,11 @@
 
 import { Metadata } from "next";
 import { auth } from "@/lib/auth";
-import { getExploreItems, getFeaturedItems } from "@/lib/public-auth";
+import {
+  getExploreItems,
+  getExplorePlaylists,
+  getFeaturedItems,
+} from "@/lib/public-auth";
 import { getProfile } from "@/lib/user-actions";
 import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
 import { getItemTmdbMetadata } from "@/lib/tmdb-client";
@@ -62,13 +66,19 @@ export default async function ExplorePage() {
   const currentUserId = session?.user?.id ?? null;
 
   // Fetch items with correct userId (avoids double-fetch), plus finish parallel work
-  const [profileResult, enrichedFeaturedItems, items, driveConnection] =
-    await Promise.all([
-      profilePromise,
-      enrichedFeaturedPromise,
-      getExploreItems(50, 0, currentUserId),
-      currentUserId ? getGoogleDriveConnection() : Promise.resolve(null),
-    ]);
+  const [
+    profileResult,
+    enrichedFeaturedItems,
+    items,
+    playlists,
+    driveConnection,
+  ] = await Promise.all([
+    profilePromise,
+    enrichedFeaturedPromise,
+    getExploreItems(50, 0, currentUserId),
+    getExplorePlaylists(12, 0),
+    currentUserId ? getGoogleDriveConnection() : Promise.resolve(null),
+  ]);
   const driveNeedsReauth = driveConnection?.needsReauth ?? false;
 
   const profile = profileResult.success ? profileResult.data : null;
@@ -91,6 +101,7 @@ export default async function ExplorePage() {
         <ExploreClient
           items={items}
           featuredItems={enrichedFeaturedItems}
+          playlists={playlists}
           currentUser={currentUser}
         />
       </div>

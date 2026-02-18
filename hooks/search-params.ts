@@ -19,7 +19,7 @@ import {
 
 // --- Items page parsers ---
 
-const TAB_OPTIONS = ["contents", "about"] as const;
+const TAB_OPTIONS = ["contents", "about", "items", "playlists"] as const;
 
 /** Type-safe URL query parsers for items pages (library, item detail). */
 export const itemsParsers = {
@@ -38,4 +38,5 @@ export const exploreParsers = {
   ),
   excludeMine: parseAsBoolean.withDefault(false),
   autoplay: parseAsBoolean.withDefault(true),
+  tab: parseAsStringLiteral(TAB_OPTIONS),
 };

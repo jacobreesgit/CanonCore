@@ -244,8 +244,7 @@ export function PublicItemClient({
           Sign in to Fork
         </HeroButton>
       )}
-      {/* Playlist (placeholder feature) */}
-      <PlaylistButton />
+      <PlaylistButton itemId={item.id} />
     </>
   );
 
