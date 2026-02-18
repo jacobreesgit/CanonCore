@@ -2,9 +2,11 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:writing-plans to create the implementation plan from this design.
 
-**Goal:** Upgrade playlists from basic CRUD to feature-complete with artwork upload, unlisted sharing, improved metadata, and full parity with item UX patterns.
+**Goal:** Upgrade playlists from basic CRUD to full feature parity with items — artwork upload, unlisted sharing, improved metadata, tabs, tree view, edit mode, mobile sheets, toolbar parity, and comprehensive test coverage.
 
-**Architecture:** Three new features (artwork bytes-in-DB, share token for unlisted access, enhanced JSON-LD/OG), plus comprehensive parity fixes across all playlist components, plus complete test coverage backfill.
+**Architecture:** Three new features (artwork bytes-in-DB, share token for unlisted access, enhanced JSON-LD/OG), plus exhaustive parity fixes across all playlist surfaces (detail page, cards, profile, explore, sidebar, search, mobile), plus complete test coverage backfill.
+
+**Guiding principle:** Playlists should be exactly like items in every way, except they are freeform (any item from anywhere) and have no forking.
 
 ---
 
@@ -15,9 +17,11 @@
    - [1.2 Unlisted Sharing](#12-unlisted-sharing)
    - [1.3 JSON-LD / OpenGraph Improvements](#13-json-ld--opengraph-improvements)
 2. [Parity Fixes](#2-parity-fixes)
-   - [2.1 Tier 1 — High Impact](#21-tier-1--high-impact)
-   - [2.2 Tier 2 — Polish](#22-tier-2--polish)
-   - [2.3 Tier 3 — Nice to Have](#23-tier-3--nice-to-have)
+   - [2.1 Tier 1 — Structural Parity (Detail Page)](#21-tier-1--structural-parity-detail-page)
+   - [2.2 Tier 2 — Card & Grid Parity](#22-tier-2--card--grid-parity)
+   - [2.3 Tier 3 — Surface Parity (Sidebar, Search, Explore, Profile)](#23-tier-3--surface-parity-sidebar-search-explore-profile)
+   - [2.4 Tier 4 — Mobile Parity](#24-tier-4--mobile-parity)
+   - [2.5 Tier 5 — Polish](#25-tier-5--polish)
 3. [Test Coverage Plan](#3-test-coverage-plan)
    - [3.1 Component RTL Tests](#31-component-rtl-tests-unit)
    - [3.2 Hook Tests](#32-hook-tests-unit)
@@ -184,77 +188,232 @@ Additions: `author` (Person with name + URL), `dateCreated`, `dateModified`, `im
 
 ## 2. Parity Fixes
 
-Inconsistencies between playlist and item UX patterns, organised by impact.
+Exhaustive inconsistencies between playlist and item UX patterns, organised by category. The goal: playlists should feel identical to items except they hold any item from anywhere and have no forking.
 
-### 2.1 Tier 1 — High Impact
+### Reference: ItemDetailClient features (579 lines)
 
-**1. Wire context menus on playlist cards (`PlaylistSection`)**
-- Wrap `PlaylistCard` in `PlaylistContextMenu` for owner mode
-- Actions: Rename, Toggle Visibility, Delete (with confirmation)
-- Optimistic UI updates after each action (update local state, revalidate on error)
-- The `PlaylistContextMenu` component already exists — it's just never wired to cards
+| Feature | Items | Playlists | Gap |
+|---|---|---|---|
+| Tabs (Contents/About) | UnderlineTabs + SwipeableUnderlineTabs | None | **Missing** |
+| Tree view (descendants) | SortableTree for children | Flat grid only | **Missing** |
+| Edit mode toggle | EditModeToggle + SortableGrid | None | **Missing** |
+| Drag-to-reorder | dnd-kit SortableGrid | None (action exists, no UI) | **Missing** |
+| "Add" button in toolbar | Plus button opens AddItemDialog | None | **Missing** |
+| View mode (grid/list/tree) | viewMode URL param + ItemsView | Grid only | **Missing** |
+| Filter chips | FilterDropdown (TMDB types) | None | **Missing** |
+| Mobile bottom sheet | MobileItemSheet (935 lines) | None | **Missing** |
+| Settings dialog | ItemSettingsDialog (desktop) | EditPlaylistDialog (basic) | **Partial** |
+| Content toolbar actions | Add + EditMode + Sync | Sort only | **Missing** |
+| isPending loading state | useTransition + opacity overlay | None | **Missing** |
+| URL state management | 4 params (sort, filter, view, tab) | 1 param (sort) | **Missing** |
+| "More options" button on items | ItemMoreButton on GridItem hover | None | **Missing** |
+| Confirmation for remove | N/A (items use delete) | No confirmation for remove | **Missing** |
+| Hero progress bar | ProgressBar in hero | None | N/A (playlists don't track progress) |
+| Hero TMDB metadata | Tagline, year, runtime, rating, genres | None | N/A (playlists don't have TMDB) |
+| Sync button | Drive sync handler | None | N/A (playlists aren't synced) |
+| Media playback | MediaOverlay for files | None | N/A (playlists don't play media) |
 
-**2. Add "more options" hover button on playlist detail items**
-- Pass `moreMenuProps` to `GridItem` instances in `PlaylistDetailClient`
-- Use `PlaylistItemContextMenu` actions (Go to Item, Open in New Tab, Remove)
-- Matches item detail pattern where GridItem shows a "..." button on hover
+### Reference: GridItem vs PlaylistCard
 
-**3. Edit mode / drag-to-reorder for playlist items**
-- Add `EditModeToggle` to playlist detail toolbar (owner only)
-- When active: `SortableGrid` wraps the items grid with drag handles
+| Feature | GridItem (459 lines, 26+ props) | PlaylistCard (103 lines, 3 props) | Gap |
+|---|---|---|---|
+| Glassmorphism hover overlay | Full overlay with description, backdrop-blur | Scale-up only (no overlay) | **Missing** |
+| Lazy image loading | useLazyImage + useImageLoaded | Direct `<Image>` | **Missing** |
+| Context menu integration | Via parent wrapper | Never wired | **Missing** |
+| Drag handle | GripVertical icon, handleProps | None | **Missing** |
+| Selection checkbox | Checkbox with isSelected/onSelectionChange | None | N/A |
+| Progress bar | ProgressBar overlay | None | N/A |
+| Sync status badge | SyncIcon overlay | None | N/A |
+| Owner attribution | UserThumbnail for forked items | None | N/A |
+| Visibility badge | None (item-level) | None | **Needed for playlists** |
+| Description preview | Via hover overlay | None | **Missing** |
+| `forwardRef` | Yes, for parent composition | No | **Missing** |
+| "More options" button | ItemMoreButton on hover | None | **Missing** |
+
+### 2.1 Tier 1 — Structural Parity (Detail Page)
+
+These make `PlaylistDetailClient` structurally match `ItemDetailClient`.
+
+**1. Contents/About tabs**
+- Add `UnderlineTabs` (desktop) and `SwipeableUnderlineTabs` (mobile, lazy-loaded) to `PlaylistDetailClient`
+- Contents tab: content toolbar + items grid (current content moves here)
+- About tab: playlist description, metadata (creator, dates, item count), and item type breakdown
+- Uses `usePlaylistUrlState` expanded to include `tab` param (matching `useItemsUrlState`)
+- Desktop: `UnderlineTabs` with `defaultTab="contents"`
+- Mobile: `SwipeableUnderlineTabs` with `activeTab` controlled, `swipeEnabled` disabled during edit mode
+- Requires `useIsMobile` + `useSyncExternalStore` mount guard (same pattern as ItemDetailClient)
+
+**2. Tree view for playlist items with children**
+- When a playlist contains items that have children, those children should appear in a tree view
+- **Data fetching:** New server action `getPlaylistItemDescendants(playlistId)` — runs a batched recursive CTE query to fetch all descendants of all items in the playlist
+- **CTE approach:** Single query that takes all item IDs from the playlist, recursively finds all descendants via `parentId`, returns flat list with depth + parentId for tree construction
+- **Tree rendering:** Use existing `Tree` component (from `components/sortable-tree/`) to render the combined flat list
+- **View mode "tree":** When selected, playlist items display in `Tree` format showing parent→child relationships
+- **Items without children:** Appear as top-level leaf nodes in the tree
+- **Performance:** CTE query is batched (one query per render, not N+1), cached per playlist with `revalidatePath`
+
+**3. Edit mode / drag-to-reorder**
+- Add `EditModeToggle` to Contents tab toolbar actions (owner only)
+- When active: `SortableGrid` wraps the items grid with drag handles on each `GridItem`
 - On drop: call `reorderPlaylistItems` server action (already exists)
-- Only available when sort is "Custom Order"
-- Matches the item detail edit mode pattern exactly
+- Only available when sort is "Custom Order" (matching item pattern)
+- Disable swipe gestures when editing (pass `swipeEnabled={!isEditing}` to `SwipeableUnderlineTabs`)
 
-**4. "Add Items" button in playlist detail toolbar**
-- New button in toolbar actions slot (owner only): "Add" with Plus icon
+**4. "Add Items" button in toolbar**
+- New button in Contents tab toolbar actions (owner only): "Add" with Plus icon
 - Opens a search/browse dialog that lets owners search their library items
 - Items already in the playlist shown as checked/disabled
 - On select: call `addItemToPlaylists` to add the item
 - This is the reverse of `AddToPlaylistDialog` — instead of "which playlists for this item", it's "which items for this playlist"
 
-**5. Confirmation dialog for "Remove from Playlist"**
+**5. View mode switching (grid/list/tree)**
+- Add `viewMode` to `usePlaylistUrlState` (matching `useItemsUrlState` pattern)
+- Grid mode: current behaviour (default)
+- List mode: single-column list with thumbnails (matches ItemsView list mode)
+- Tree mode: hierarchical view showing parent→child relationships (uses data from parity fix #2)
+- Wire `ContentToolbar` viewMode/onViewChange props
+
+**6. Filter chips**
+- Add TMDB type filter to Contents tab toolbar (Movie, TV, etc.)
+- Uses existing `FilterDropdown` component pattern from item detail
+- Filters based on items' `tmdbType` field
+- Only show filter dropdown when playlist has items with TMDB metadata
+- Add `filters`, `toggleFilter`, `clearFilters` to `usePlaylistUrlState`
+
+**7. Content toolbar full parity**
+- Currently: sort dropdown only
+- Add: filters, view mode toggle, actions slot (Add + EditMode)
+- Wire all `ContentToolbar` props matching `ItemDetailClient` usage
+- `disabled` prop tied to `sortedItems.length === 0`
+
+**8. isPending loading overlay**
+- Add `useTransition` for async operations (remove item, reorder)
+- Pass `isPending` to `HeroContentLayout` for opacity overlay during mutations
+- Matches `ItemDetailClient` pattern exactly
+
+**9. Confirmation dialog for "Remove from Playlist"**
 - `PlaylistItemContextMenu` "Remove from Playlist" currently has no confirmation
-- Add `AlertDialog` matching the item delete pattern
+- Add `AlertDialog` matching the item delete confirmation pattern
 - Message: "Remove {itemName} from this playlist? The item itself will not be deleted."
 
-### 2.2 Tier 2 — Polish
+**10. "More options" hover button on playlist detail items**
+- Pass `moreMenuProps` to `GridItem` instances in `PlaylistDetailClient`
+- Create `PlaylistItemMoreButton` (or reuse context menu trigger pattern)
+- Actions: Go to Item, Open in New Tab, Remove from Playlist
+- Matches item detail pattern where `GridItem` shows `ItemMoreButton` on hover
 
-**6. Fix grid columns**
+### 2.2 Tier 2 — Card & Grid Parity
+
+These upgrade `PlaylistCard` and `PlaylistSection` to match `GridItem` quality.
+
+**11. PlaylistCard glassmorphism hover overlay**
+- Add hover state matching `GridItem` pattern:
+  - Default: artwork collage + name + count
+  - Hover: semi-transparent backdrop-blur overlay with description (2-line clamp) + item count badge
+- Use CSS transition for smooth reveal (`opacity`, `backdrop-filter`)
+- Matches the demo-interactive-poster-card.tsx aesthetic
+
+**12. PlaylistCard lazy image loading**
+- Replace direct `<Image>` with `useLazyImage` + `useImageLoaded` hooks (same as `GridItem`)
+- Adds IntersectionObserver-based lazy loading for below-the-fold cards
+- Loading skeleton shown while image loads (same shimmer pattern)
+
+**13. Wire context menus on playlist cards (`PlaylistSection`)**
+- Wrap `PlaylistCard` in `PlaylistContextMenu` for owner mode
+- Actions: Rename, Toggle Visibility, Delete (with confirmation)
+- Optimistic UI updates after each action (update local state, revalidate on error)
+- The `PlaylistContextMenu` component already exists — it's just never wired to cards
+
+**14. Visibility badge on playlist cards**
+- Owner mode only: small icon badge on card (Eye for public, Lock for private, Link for unlisted)
+- Positioned at top-right of the artwork collage
+- Matches how items show status indicators on grid items
+
+**15. PlaylistCard description preview**
+- Show first line of description below the playlist name (truncated, muted text)
+- Only when description exists
+- Controlled by available space (hidden on very small cards)
+
+**16. PlaylistCard forwardRef**
+- Add `forwardRef` to `PlaylistCard` for parent composition (context menus, sortable containers)
+- Matches `GridItem` which uses `forwardRef` for dnd-kit integration
+
+**17. Fix grid columns**
 - Owner and viewer modes in `PlaylistDetailClient` should use the same grid: `grid-cols-3 md:grid-cols-4 lg:grid-cols-6`
 - Currently owner uses `grid-cols-2`, viewer uses `grid-cols-3`
+- `PlaylistSection` grids: standardise to match item grids
 
-**7. Enhance CreatePlaylistDialog**
+**18. Loading skeleton in PlaylistSection**
+- Owner mode currently shows nothing while fetching (returns `null`)
+- Add skeleton cards (2x2 shimmer grid matching PlaylistCard dimensions)
+- Use existing `skeleton-shimmer` utility class
+
+### 2.3 Tier 3 — Surface Parity (Sidebar, Search, Explore, Profile)
+
+These make playlists first-class across all app surfaces.
+
+**19. Sidebar playlist section**
+- Add "Playlists" section to `AppSidebar` (below existing nav items)
+- Show user's playlists as collapsible list items
+- Each entry links to `/u/{username}/playlists/{id}`
+- "New Playlist" button at section bottom
+- Matches sidebar item navigation pattern
+
+**20. Spotlight search visual parity**
+- Currently: items get `ItemThumbnail` with TMDB/artwork fallback chain, `h-[52px]`, `cursor-pointer`, group hover effects
+- Playlists get: static `ListMusic` icon, no height class, no cursor-pointer, different search value format
+- Fix: Create `PlaylistThumbnail` component (2x2 mini collage or custom artwork), match height/cursor/hover styling
+- Match the `CommandItem` structure exactly between items and playlists
+
+**21. Explore page parity**
+- Currently: item tab has trending section, recently added section, filter capabilities
+- Playlist tab: bare grid only
+- Add: "Popular Playlists" featured section, "Recently Updated" section
+- Match the section heading + grid pattern from the items tab
+- Add pagination/infinite scroll matching items tab
+
+**22. Profile page treatment**
+- Currently: items get the main profile treatment with full `ItemsView`
+- Playlists get a simpler `PlaylistSection` at the bottom
+- Improve: Give playlists equal visual weight on profile pages
+- Both owner and viewer modes should treat playlists and items as peer sections
+
+**23. Enhance CreatePlaylistDialog**
 - Add optional description textarea (max 1000 chars)
 - Add public/private toggle (default private)
 - `createPlaylist` server action expanded to accept `description` and `isPublic`
 
-**8. Loading skeleton in PlaylistSection**
-- Owner mode currently shows nothing while fetching (returns `null`)
-- Add skeleton cards (2x2 shimmer grid matching PlaylistCard dimensions)
+### 2.4 Tier 4 — Mobile Parity
 
-**9. PlaylistCard hover overlay**
-- Add hover state matching GridItem pattern:
-  - Default: artwork collage + name + count
-  - Hover: semi-transparent overlay with description (2-line clamp) + item count badge
-- Use CSS transition for smooth reveal
+**24. Mobile bottom sheet for playlists**
+- Create `MobilePlaylistSheet` matching `MobileItemSheet` (935 lines) pattern
+- Sections: Sort options, Filter options, View mode toggle, Playlist settings (name, description, visibility, sharing)
+- Lazy-loaded via `next/dynamic` (keeps Framer Motion out of desktop bundle)
+- Opens from a settings/options button in playlist detail toolbar on mobile
+- Uses Vaul drawer with snap points (matching existing sheet pattern)
 
-**10. Visibility badge on playlist cards**
-- Owner mode only: small icon badge on card (eye for public, lock for private)
-- Positioned at top-right of the artwork collage
-- Matches how items show status indicators
+**25. Swipeable tabs on mobile**
+- Already covered by Tier 1 fix #1 (Contents/About tabs)
+- `SwipeableUnderlineTabs` lazy-loaded, `swipeEnabled={!isEditing}`
+- Uses `useIsMobile` + `useSyncExternalStore` mount guard
 
-### 2.3 Tier 3 — Nice to Have
+### 2.5 Tier 5 — Polish
 
-**11. Filter chips in playlist detail toolbar**
-- Filter by media type of items (if items have TMDB types: Movie, TV, etc.)
-- Uses existing `FilterDropdown` component pattern from item detail
-- Only show when playlist has items with TMDB metadata
+**26. URL state full parity**
+- Expand `usePlaylistUrlState` to manage 4 params: `sort`, `filter`, `view`, `tab`
+- Add localStorage backup (matching `useItemsUrlState` pattern with nuqs)
+- `playlist-search-params.ts` updated with all param definitions
+- Defaults: sort=custom, filter=none, view=grid, tab=contents
 
-**12. PlaylistCard description preview**
-- Show first line of description below the playlist name (truncated, muted text)
-- Only when description exists
-- Controlled by available space (hidden on very small cards)
+**27. Optimistic UI everywhere**
+- Remove from playlist: optimistic removal from list, revert on error
+- Reorder: optimistic position update, revert on error
+- Context menu actions (rename, toggle visibility, delete): optimistic state updates
+- Use `startTransition` + local state patterns from `ItemDetailClient`
+
+**28. Empty state CTA matching**
+- Playlist detail empty state: "Add items to get started" with action button (owner)
+- Match the item detail empty state visual pattern exactly
 
 ---
 
@@ -266,20 +425,22 @@ New test files under `tests/unit/components/playlists/`:
 
 | File | Key Test Cases |
 |---|---|
-| `playlist-card.test.tsx` | Renders name/count/link; shows custom artwork when hasArtwork; shows 2x2 collage fallback; shows empty icon for 0 items; visibility badge for owners |
-| `playlist-section.test.tsx` | Owner: fetches and displays cards; shows empty state with CTA; creates playlist; loading skeleton. Viewer: displays cards; returns null when empty |
+| `playlist-card.test.tsx` | Renders name/count/link; shows custom artwork when hasArtwork; shows 2x2 collage fallback; shows empty icon for 0 items; hover overlay with description; visibility badge for owners; lazy loading hooks; forwardRef |
+| `playlist-section.test.tsx` | Owner: fetches and displays cards; shows empty state with CTA; creates playlist; loading skeleton; context menu wiring. Viewer: displays cards; returns null when empty |
 | `add-to-playlist-dialog.test.tsx` | Search filtering; toggle membership (optimistic); create inline; empty state |
 | `create-playlist-dialog.test.tsx` | Validates empty name; submits with name + description + visibility; calls onCreated callback |
 | `edit-playlist-dialog.test.tsx` | Populates form from props; artwork upload preview; artwork removal; share token section (enable/disable/copy/regenerate); saves changes |
 | `playlist-context-menu.test.tsx` | Rename action; visibility toggle; delete with confirmation; remove from playlist with confirmation |
-| `playlist-detail-client.test.tsx` | Sort options; edit mode toggle; drag-reorder; "Add Items" button; share button (public vs unlisted); toolbar actions; empty state |
+| `playlist-detail-client.test.tsx` | Sort options; tabs (Contents/About); edit mode toggle; drag-reorder; "Add Items" button; share button (public vs unlisted); view mode switching; filter chips; tree view mode; toolbar actions; empty state; isPending overlay; mobile sheet trigger |
+| `mobile-playlist-sheet.test.tsx` | Opens/closes; sort options; filter options; view mode toggle; settings section |
+| `playlist-thumbnail.test.tsx` | Renders 2x2 collage; renders custom artwork; empty state with icon |
 
 ### 3.2 Hook Tests (unit)
 
 | File | Key Test Cases |
 |---|---|
-| `use-playlist-url-state.test.ts` | Reads sort/tab from URL; writes sort/tab to URL; defaults when no params |
-| `playlist-search-params.test.ts` | Parses sort param; parses tab param; serialises params; handles invalid values |
+| `use-playlist-url-state.test.ts` | Reads sort/filter/view/tab from URL; writes all 4 params to URL; defaults when no params; localStorage backup |
+| `playlist-search-params.test.ts` | Parses sort param; parses filter param; parses view param; parses tab param; serialises params; handles invalid values |
 
 ### 3.3 Integration Tests (new)
 
@@ -290,6 +451,7 @@ New test files under `tests/unit/components/playlists/`:
 | `playlist-auth-extended.test.ts` | Auth boundaries for `removeItemFromPlaylist`, `reorderPlaylists`, `reorderPlaylistItems`, `getPlaylistsForItem` |
 | `playlist-artwork.test.ts` | Upload artwork via `updatePlaylist`; remove artwork; serve via API route; public access; owner access |
 | `playlist-sharing.test.ts` | Generate share token; access unlisted playlist with valid token; reject invalid token; revoke token; regenerate token; public playlist ignores token |
+| `playlist-descendants.test.ts` | `getPlaylistItemDescendants` returns correct tree; handles items without children; handles deep nesting; batched CTE performance |
 
 ### 3.4 E2E Tests (new)
 
@@ -302,20 +464,23 @@ New test files under `tests/unit/components/playlists/`:
 | `playlist-reorder.spec.ts` | Enter edit mode; drag-reorder items; verify new order persisted |
 | `playlist-context-menu.spec.ts` | Right-click card: rename, toggle visibility, delete; right-click item: remove with confirmation |
 | `playlist-add-items.spec.ts` | "Add Items" button in toolbar; search and add items from playlist detail |
+| `playlist-tabs.spec.ts` | Switch between Contents/About tabs; verify content changes; mobile swipe |
+| `playlist-view-modes.spec.ts` | Switch between grid/list/tree view modes; verify layout changes |
+| `playlist-filters.spec.ts` | Apply TMDB type filter; verify items filtered; clear filter |
 
 ### 3.5 Existing Tests to Modify
 
 | File | Changes |
 |---|---|
-| `tests/unit/lib/playlist-actions.test.ts` | Add tests for: artwork upload/removal, share token enable/disable/regenerate, createPlaylist with description/isPublic, updatePlaylist FormData handling |
+| `tests/unit/lib/playlist-actions.test.ts` | Add tests for: artwork upload/removal, share token enable/disable/regenerate, createPlaylist with description/isPublic, updatePlaylist FormData handling, getPlaylistItemDescendants |
 | `tests/unit/lib/validations.test.ts` | Add tests for artwork file validation (if new schema added) |
 | `tests/integration/playlists/playlist-crud.test.ts` | Add artwork CRUD, share token CRUD, createPlaylist with description/isPublic |
 | `tests/integration/playlists/playlist-visibility.test.ts` | Add unlisted sharing scenarios (valid token, invalid token, revoked token, public ignores token) |
-| Storybook stories | Update all 6 playlist stories for new features (artwork display, share token UI, edit mode, context menu actions) |
+| `tests/unit/components/nav-main.test.tsx` | Update for sidebar playlist section |
+| `tests/unit/components/search/spotlight-search.test.tsx` | Update for PlaylistThumbnail visual parity |
+| Storybook stories | Update all playlist stories for new features (artwork display, share token UI, edit mode, context menu actions, tabs, view modes) |
 
 **Tests to remove:** None — all existing tests remain valid.
-
-**Knip note:** The `playlist-button.tsx` "unused file" warning should resolve naturally as it becomes more actively imported.
 
 ---
 
@@ -363,3 +528,7 @@ Migration steps:
 - **Collaborative playlists** — multiple users editing the same playlist. YAGNI.
 - **Expiring share links** — share tokens don't expire. Owner can revoke manually. YAGNI.
 - **Multiple share links per playlist** — one token per playlist is sufficient.
+- **Progress tracking for playlists** — playlists are curated lists, not progress-tracked collections. Items track their own progress.
+- **Media playback from playlist** — playlists don't play media directly. Users navigate to individual items for playback.
+- **Drive sync for playlists** — playlists are app-native, not synced from external sources.
+- **Selection checkboxes on playlist items** — no bulk operations beyond reorder needed currently.
