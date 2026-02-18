@@ -2,12 +2,12 @@
  * Minimal underline-style tabs for content section switcher.
  * Underline tab design with full ARIA support.
  * All panels stay mounted (inactive panels use `hidden`) to preserve React
- * state and scroll position across tab switches.
+ * state across tab switches.
  */
 
 "use client";
 
-import { useState, useRef, useCallback, useLayoutEffect } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Section } from "@/components/ui/section";
 
@@ -30,30 +30,10 @@ interface UnderlineTabsProps {
 }
 
 /**
- * Finds the nearest scrollable ancestor of an element.
- * Falls back to documentElement if no overflow container is found.
- */
-function getScrollContainer(el: HTMLElement | null): HTMLElement {
-  let node = el?.parentElement;
-  while (node && node !== document.documentElement) {
-    const { overflowY } = getComputedStyle(node);
-    if (
-      (overflowY === "auto" || overflowY === "scroll") &&
-      node.scrollHeight > node.clientHeight
-    ) {
-      return node;
-    }
-    node = node.parentElement;
-  }
-  return document.documentElement;
-}
-
-/**
  * Minimal underline tabs for switching between content sections.
- * Supports keyboard navigation with arrow keys.
+ * Supports keyboard navigation with arrow keys, Home, and End.
  * All panels remain in the DOM (inactive panels use `hidden`) so React state
- * and scroll position are preserved across tab switches. Per-tab scroll
- * positions are saved and restored via the nearest scrollable ancestor.
+ * is preserved across tab switches.
  */
 export function UnderlineTabs({
   tabs,
@@ -61,43 +41,13 @@ export function UnderlineTabs({
   className,
 }: UnderlineTabsProps) {
   const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLElement | null>(null);
-  const scrollPositions = useRef(new Map<string, number>());
 
-  /** Lazily resolves and caches the scroll container. */
-  const getScroller = useCallback(() => {
-    if (!scrollContainerRef.current) {
-      scrollContainerRef.current = getScrollContainer(containerRef.current);
-    }
-    return scrollContainerRef.current;
-  }, []);
-
-  /**
-   * Saves current scroll position and switches to a new tab.
-   * Scroll is restored in useLayoutEffect before the browser paints.
-   */
-  const switchTab = useCallback(
-    (newId: string) => {
-      if (newId === activeTab) return;
-      const scroller = getScroller();
-      scrollPositions.current.set(activeTab, scroller.scrollTop);
-      setActiveTab(newId);
-    },
-    [activeTab, getScroller]
-  );
-
-  // Restore saved scroll position after tab content renders, before paint.
-  useLayoutEffect(() => {
-    const saved = scrollPositions.current.get(activeTab);
-    if (saved !== undefined) {
-      const scroller = getScroller();
-      scroller.scrollTop = saved;
-    }
-  }, [activeTab, getScroller]);
+  const switchTab = (newId: string) => {
+    if (newId !== activeTab) setActiveTab(newId);
+  };
 
   return (
-    <div ref={containerRef} className={className}>
+    <div className={className}>
       {/* Tab list — Section provides consistent horizontal padding */}
       <Section>
         <div className="flex gap-8" role="tablist">
@@ -119,6 +69,16 @@ export function UnderlineTabs({
                   const prev = tabs[(index - 1 + tabs.length) % tabs.length];
                   switchTab(prev.id);
                   document.getElementById(`tab-${prev.id}`)?.focus();
+                } else if (e.key === "Home") {
+                  e.preventDefault();
+                  const first = tabs[0];
+                  switchTab(first.id);
+                  document.getElementById(`tab-${first.id}`)?.focus();
+                } else if (e.key === "End") {
+                  e.preventDefault();
+                  const last = tabs[tabs.length - 1];
+                  switchTab(last.id);
+                  document.getElementById(`tab-${last.id}`)?.focus();
                 }
               }}
               className={cn(
