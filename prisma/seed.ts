@@ -1989,6 +1989,8 @@ const PLAYLIST_DEFINITIONS: Record<
     name: string;
     description: string;
     isPublic: boolean;
+    /** Optional share token for unlisted sharing (private playlists only). */
+    shareToken?: string;
     itemCount: { min: number; max: number };
   }>
 > = {
@@ -2009,6 +2011,7 @@ const PLAYLIST_DEFINITIONS: Record<
       name: "Watch Later",
       description: "Saved for later viewing.",
       isPublic: false,
+      shareToken: "demo-watch-later-token1",
       itemCount: { min: 2, max: 3 },
     },
   ],
@@ -2029,6 +2032,7 @@ const PLAYLIST_DEFINITIONS: Record<
       name: "Watch Later",
       description: "On the radar.",
       isPublic: false,
+      shareToken: "film-watch-later-token1",
       itemCount: { min: 2, max: 3 },
     },
   ],
@@ -2073,6 +2077,7 @@ async function seedPlaylistsForUser(
         description: def.description,
         order: i,
         isPublic: def.isPublic,
+        shareToken: def.shareToken ?? null,
         userId,
       },
     });
@@ -2086,9 +2091,13 @@ async function seedPlaylistsForUser(
       })),
     });
 
-    const publicLabel = def.isPublic ? " (public)" : " (private)";
+    const visLabel = def.isPublic
+      ? " (public)"
+      : def.shareToken
+        ? " (unlisted)"
+        : " (private)";
     log(
-      `   🎵 Created playlist "${def.name}"${publicLabel} with ${selectedItems.length} items`
+      `   🎵 Created playlist "${def.name}"${visLabel} with ${selectedItems.length} items`
     );
   }
 }
