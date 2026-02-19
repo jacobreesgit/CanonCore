@@ -92,6 +92,17 @@ const nextConfig = {
    * - Avoiding htmlLimitedBots maintains streaming benefits for all users
    */
   images: {
+    localPatterns: [
+      {
+        pathname: "/api/playlist/artwork",
+      },
+      {
+        pathname: "/api/user/avatar",
+      },
+      {
+        pathname: "/api/user/hero",
+      },
+    ],
     remotePatterns: [
       {
         protocol: "https",

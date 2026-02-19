@@ -1,5 +1,5 @@
 /**
- * Zod validation schemas for authentication and items.
+ * Zod validation schemas for authentication, items, and playlists.
  * Shared between server actions for consistent validation.
  */
 
@@ -71,6 +71,47 @@ export const itemDescriptionSchema = z
   .string()
   .transform((val) => val.trim())
   .pipe(z.string().max(1000, "Description must be 1000 characters or less"));
+
+// =============================================================================
+// Playlist Validation
+// =============================================================================
+
+/**
+ * Playlist name: 1-255 characters, trimmed.
+ * More permissive than item names — allows any printable characters.
+ */
+export const playlistNameSchema = z
+  .string()
+  .transform((val) => val.trim())
+  .pipe(
+    z
+      .string()
+      .min(1, "Playlist name is required")
+      .max(255, "Playlist name must be 255 characters or less")
+  );
+
+/**
+ * Playlist description: max 1000 characters, trimmed.
+ * Matches item description schema (same DB column limit).
+ */
+export const playlistDescriptionSchema = z
+  .string()
+  .transform((val) => val.trim())
+  .pipe(z.string().max(1000, "Description must be 1000 characters or less"));
+
+/** Allowed MIME types for playlist artwork. */
+const ALLOWED_ARTWORK_MIMES = ["image/jpeg", "image/png", "image/webp"];
+
+/** Max file size for playlist artwork (2MB). */
+const MAX_ARTWORK_SIZE = 2 * 1024 * 1024;
+
+/** Validation schema for playlist artwork file. */
+export const playlistArtworkSchema = z.object({
+  size: z.number().max(MAX_ARTWORK_SIZE, "Image must be under 2MB"),
+  type: z.string().refine((t) => ALLOWED_ARTWORK_MIMES.includes(t), {
+    message: "Only JPEG, PNG, and WebP images are allowed",
+  }),
+});
 
 // =============================================================================
 // Public Profile Validation

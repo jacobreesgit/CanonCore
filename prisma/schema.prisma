@@ -41,6 +41,9 @@ model User {
 
   // Fork records (items this user has forked)
   forks                 Fork[]
+
+  // Playlists
+  playlists             Playlist[]
 }
 
 model PasswordReset {
@@ -187,6 +190,9 @@ model Item {
   sourceForks   Fork[]   @relation("ForkSource")
   targetForks   Fork[]   @relation("ForkTarget")
 
+  // Playlist membership
+  playlistItems PlaylistItem[]
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -293,6 +299,48 @@ model Fork {
   @@unique([sourceItemId, userId])
   @@index([sourceItemId])
   @@index([userId])
+}
+
+/// Cross-cutting playlist — a many-to-many reference list of items.
+/// Items stay in their tree position and can appear in multiple playlists.
+model Playlist {
+  id            String         @id @default(cuid())
+  name          String
+  description   String?        @db.VarChar(1000)
+  order         Int            @default(0)
+  isPublic      Boolean        @default(false)
+  artworkImage  Bytes?
+  artworkMime   String?
+  shareToken    String?        @unique
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  playlistItems PlaylistItem[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([userId, order])
+  @@index([isPublic, updatedAt(sort: Desc)])
+  @@index([shareToken])
+}
+
+/// Join table for many-to-many relationship between Playlist and Item.
+/// Each entry represents one item's membership in one playlist with ordering.
+model PlaylistItem {
+  id          String   @id @default(cuid())
+  order       Int      @default(0)
+
+  playlistId  String
+  playlist    Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  itemId      String
+  item        Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  addedAt     DateTime @default(now())
+
+  @@unique([playlistId, itemId])
+  @@index([playlistId, order])
+  @@index([itemId])
 }
 
 /// Audit log for tracking all database mutations.

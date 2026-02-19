@@ -11,7 +11,7 @@ import { usePathname } from "next/navigation";
 import { Compass, Folder, HelpCircle } from "lucide-react";
 import type { Root as PageTreeRoot } from "fumadocs-core/page-tree";
 import type { SidebarUser } from "@/lib/auth";
-import type { GoogleDriveConnection, PinnedItem } from "@/lib/types";
+import type { GoogleDriveConnection } from "@/lib/types";
 
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
@@ -44,8 +44,6 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   docsTree?: PageTreeRoot;
   /** Google Drive connection (null if not connected) */
   driveConnection?: GoogleDriveConnection | null;
-  /** Pinned items for sidebar (only for my-items context) */
-  pinnedItems?: PinnedItem[];
 }
 
 /**
@@ -87,14 +85,12 @@ const guestNavItems = [
  * @param context - Determines which navigation items to display
  * @param docsTree - Fumadocs page tree for docs context
  * @param driveConnection - Google Drive connection or null
- * @param pinnedItems - Pinned items for sidebar navigation
  */
 export function AppSidebar({
   user,
   context,
   docsTree,
   driveConnection,
-  pinnedItems,
   ...props
 }: AppSidebarProps) {
   const pathname = usePathname();
@@ -142,10 +138,9 @@ export function AppSidebar({
             />
           )
         ) : (
-          /* Other contexts: Show main nav items with pinned items under My Items */
+          /* Other contexts: Show main nav items */
           <NavMain
             items={user ? getAuthNavItems(user.username) : guestNavItems}
-            pinnedItems={user ? pinnedItems : undefined}
             username={user?.username}
           />
         )}

@@ -10,12 +10,15 @@ import {
   signUpSchema,
   itemNameSchema,
   itemDescriptionSchema,
+  playlistNameSchema,
+  playlistDescriptionSchema,
   usernameSchema,
   validateUsername,
   isUsernameReserved,
   RESERVED_USERNAMES,
   resetPasswordSchema,
   forgotPasswordSchema,
+  playlistArtworkSchema,
 } from "@/lib/validations";
 
 describe("emailSchema", () => {
@@ -173,6 +176,65 @@ describe("itemDescriptionSchema", () => {
       "  " + "a".repeat(1001) + "  "
     );
     expect(result.success).toBe(false);
+  });
+});
+
+describe("playlistNameSchema", () => {
+  it("accepts valid playlist names", () => {
+    expect(playlistNameSchema.safeParse("Weekend Watchlist").success).toBe(
+      true
+    );
+    expect(playlistNameSchema.safeParse("My Top 10").success).toBe(true);
+    expect(playlistNameSchema.safeParse("a").success).toBe(true);
+  });
+
+  it("accepts names with special characters", () => {
+    expect(playlistNameSchema.safeParse("Best of 2025!").success).toBe(true);
+    expect(playlistNameSchema.safeParse("Sci-Fi: The Classics").success).toBe(
+      true
+    );
+  });
+
+  it("rejects empty name", () => {
+    expect(playlistNameSchema.safeParse("").success).toBe(false);
+  });
+
+  it("rejects whitespace-only name", () => {
+    expect(playlistNameSchema.safeParse("   ").success).toBe(false);
+  });
+
+  it("rejects name over 255 chars", () => {
+    expect(playlistNameSchema.safeParse("a".repeat(256)).success).toBe(false);
+  });
+
+  it("trims whitespace", () => {
+    const result = playlistNameSchema.safeParse("  My Playlist  ");
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toBe("My Playlist");
+  });
+});
+
+describe("playlistDescriptionSchema", () => {
+  it("accepts valid descriptions", () => {
+    expect(
+      playlistDescriptionSchema.safeParse("A great playlist").success
+    ).toBe(true);
+  });
+
+  it("accepts empty string", () => {
+    expect(playlistDescriptionSchema.safeParse("").success).toBe(true);
+  });
+
+  it("rejects description over 1000 chars", () => {
+    expect(playlistDescriptionSchema.safeParse("a".repeat(1001)).success).toBe(
+      false
+    );
+  });
+
+  it("trims whitespace before validating", () => {
+    const result = playlistDescriptionSchema.safeParse("  trimmed  ");
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toBe("trimmed");
   });
 });
 
@@ -464,5 +526,49 @@ describe("forgotPasswordSchema", () => {
       email: "",
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("playlistArtworkSchema", () => {
+  it("accepts valid JPEG", () => {
+    const result = playlistArtworkSchema.safeParse({
+      size: 500_000,
+      type: "image/jpeg",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid PNG", () => {
+    const result = playlistArtworkSchema.safeParse({
+      size: 1_000_000,
+      type: "image/png",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid WebP", () => {
+    const result = playlistArtworkSchema.safeParse({
+      size: 100_000,
+      type: "image/webp",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects file exceeding 2MB", () => {
+    const result = playlistArtworkSchema.safeParse({
+      size: 3 * 1024 * 1024,
+      type: "image/jpeg",
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toContain("2MB");
+  });
+
+  it("rejects invalid MIME type", () => {
+    const result = playlistArtworkSchema.safeParse({
+      size: 100_000,
+      type: "image/gif",
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toContain("JPEG");
   });
 });

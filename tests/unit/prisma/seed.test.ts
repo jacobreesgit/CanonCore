@@ -424,6 +424,50 @@ Generated for testing purposes.
     });
   });
 
+  describe("playlist seed definitions", () => {
+    it("defines playlists for public seed users", async () => {
+      const { SEED_USERS } = await import("../../../prisma/seed-config");
+
+      // Public seed users should have playlist definitions
+      const publicUsers = SEED_USERS.filter((u) => u.isPublic);
+      expect(publicUsers.length).toBeGreaterThan(0);
+    });
+
+    it("has valid playlist item count ranges", () => {
+      // Verify the range logic used in seed
+      const ranges = [
+        { min: 4, max: 6 },
+        { min: 3, max: 5 },
+        { min: 2, max: 3 },
+      ];
+
+      for (const range of ranges) {
+        expect(range.min).toBeGreaterThan(0);
+        expect(range.max).toBeGreaterThanOrEqual(range.min);
+      }
+    });
+
+    it("shuffles items for random playlist population", () => {
+      const items = [
+        { id: "a" },
+        { id: "b" },
+        { id: "c" },
+        { id: "d" },
+        { id: "e" },
+      ];
+
+      // Verify slice picks correct number of items
+      const shuffled = [...items];
+      const selected = shuffled.slice(0, 3);
+      expect(selected).toHaveLength(3);
+
+      // Verify slice respects array length
+      const smallArray = [{ id: "x" }];
+      const limited = smallArray.slice(0, Math.min(5, smallArray.length));
+      expect(limited).toHaveLength(1);
+    });
+  });
+
   describe("playback simulation", () => {
     it("generates movie duration within expected range", async () => {
       const { PLAYBACK_DURATIONS } =

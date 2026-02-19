@@ -65,10 +65,23 @@ export function SwipeableUnderlineTabs({
 }: SwipeableUnderlineTabsProps) {
   const instanceId = useId();
   const prefersReducedMotion = usePrefersReducedMotion();
+  const rootRef = useRef<HTMLDivElement>(null);
   const tablistRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const pendingFocusRef = useRef<number | null>(null);
   const [announcement, setAnnouncement] = useState("");
+
+  const scrollPositionsRef = useRef<Record<string, number>>({});
+  const prevTabRef = useRef(activeTab);
+
+  // Save/restore per-tab scroll position on tab change
+  useEffect(() => {
+    if (prevTabRef.current !== activeTab) {
+      scrollPositionsRef.current[prevTabRef.current] = window.scrollY;
+      window.scrollTo(0, scrollPositionsRef.current[activeTab] ?? 0);
+      prevTabRef.current = activeTab;
+    }
+  }, [activeTab]);
 
   const activeIndex = tabs.findIndex((t) => t.id === activeTab);
 
@@ -202,7 +215,7 @@ export function SwipeableUnderlineTabs({
   const getPanelId = (tabId: string) => `${instanceId}-panel-${tabId}`;
 
   return (
-    <div className={className}>
+    <div ref={rootRef} className={className}>
       {/* Tab list — Section provides consistent horizontal padding */}
       <Section>
         <div ref={tablistRef} className="relative flex" role="tablist">
@@ -264,7 +277,7 @@ export function SwipeableUnderlineTabs({
                 tabIndex={isActive ? 0 : undefined}
                 inert={!isActive ? true : undefined}
                 aria-hidden={!isActive ? true : undefined}
-                className="min-w-0 flex-[0_0_100%]"
+                className="min-h-[50vh] min-w-0 flex-[0_0_100%]"
               >
                 {tab.content}
               </div>

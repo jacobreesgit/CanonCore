@@ -315,6 +315,24 @@ export interface SearchablePublicItem {
   ownerName: string | null;
 }
 
+/** Searchable public playlist for spotlight search. */
+export interface SearchablePlaylist {
+  /** Playlist ID */
+  id: string;
+  /** Playlist name */
+  name: string;
+  /** Playlist description */
+  description: string | null;
+  /** Number of items in the playlist */
+  itemCount: number;
+  /** Owner's username for attribution and navigation */
+  ownerUsername: string;
+  /** Owner's display name */
+  ownerName: string | null;
+  /** Whether the playlist has custom artwork */
+  hasArtwork?: boolean;
+}
+
 /**
  * Pinned item for sidebar navigation display.
  * Minimal data needed for rendering pinned items in the sidebar.
@@ -598,6 +616,116 @@ export interface PublicItemCard {
   /** Owner's username for attribution */
   ownerUsername: string;
   /** When item was last updated */
+  updatedAt: Date;
+}
+
+// =============================================================================
+// Playlist Types
+// =============================================================================
+
+/**
+ * Playlist with item count and preview artwork.
+ * Used for playlist lists and cards (sidebar, profile section).
+ */
+export interface PlaylistWithCount {
+  /** Playlist ID */
+  id: string;
+  /** Playlist name */
+  name: string;
+  /** Optional description */
+  description: string | null;
+  /** Display order within user's playlists */
+  order: number;
+  /** Whether visible to viewers */
+  isPublic: boolean;
+  /** Whether playlist has custom artwork uploaded */
+  hasArtwork: boolean;
+  /** Total number of items in playlist */
+  itemCount: number;
+  /** First 4 items' poster data for collage rendering. */
+  previewPosters: { tmdbPosterPath: string | null; artworkId: string | null }[];
+  /** When playlist was created */
+  createdAt: Date;
+  /** When playlist was last updated */
+  updatedAt: Date;
+}
+
+/**
+ * Playlist with full item list.
+ * Used for the playlist detail page.
+ */
+export interface PlaylistWithItems {
+  /** Playlist ID */
+  id: string;
+  /** Playlist name */
+  name: string;
+  /** Optional description */
+  description: string | null;
+  /** Display order within user's playlists */
+  order: number;
+  /** Whether visible to viewers */
+  isPublic: boolean;
+  /** Whether playlist has custom artwork uploaded */
+  hasArtwork: boolean;
+  /** Unique token for sharing private playlists (null = not shared) */
+  shareToken: string | null;
+
+  /** Owner user ID */
+  userId: string;
+  /** Ordered list of items in this playlist */
+  items: PlaylistItemEntry[];
+  /** When playlist was created */
+  createdAt: Date;
+  /** When playlist was last updated */
+  updatedAt: Date;
+}
+
+/**
+ * Single item within a playlist.
+ * Wraps ItemWithArtwork with playlist-specific ordering metadata.
+ */
+export interface PlaylistItemEntry {
+  /** PlaylistItem join record ID (for reorder/remove operations) */
+  playlistItemId: string;
+  /** Display order within the playlist */
+  order: number;
+  /** When this item was added to the playlist */
+  addedAt: Date;
+  /** The referenced item with artwork resolution */
+  item: ItemWithArtwork;
+}
+
+/**
+ * Playlist membership info for the "Add to Playlist" dialog.
+ * Shows which playlists exist and whether they contain a given item.
+ */
+export interface PlaylistMembership {
+  /** Playlist ID */
+  id: string;
+  /** Playlist name */
+  name: string;
+  /** Whether the target item is already in this playlist */
+  isMember: boolean;
+}
+
+/**
+ * Public playlist card for viewer profile.
+ * Subset of PlaylistWithCount without owner-only fields.
+ */
+export interface PublicPlaylistCard {
+  /** Playlist ID */
+  id: string;
+  /** Playlist name */
+  name: string;
+  /** Optional description */
+  description: string | null;
+  /** Number of public items visible to viewer */
+  itemCount: number;
+  /** First 4 items' poster data for collage rendering. */
+  previewPosters: { tmdbPosterPath: string | null; artworkId: string | null }[];
+  /** Whether playlist has custom artwork uploaded */
+  hasArtwork: boolean;
+  /** When playlist was last updated */
   updatedAt: Date;
 }
 

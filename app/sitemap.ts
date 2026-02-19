@@ -33,8 +33,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // Fetch profiles and items in parallel — independent queries
-  const [publicUsers, publicItems] = await Promise.all([
+  // Fetch profiles, items, and playlists in parallel — independent queries
+  const [publicUsers, publicItems, publicPlaylists] = await Promise.all([
     prisma.user.findMany({
       where: { isPublic: true, username: { not: null } },
       select: { username: true, updatedAt: true },
@@ -44,6 +44,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         isPublic: true,
         inheritVisibility: false,
         user: { isPublic: true, username: { not: null } },
+      },
+      select: {
+        id: true,
+        updatedAt: true,
+        user: { select: { username: true } },
+      },
+    }),
+    prisma.playlist.findMany({
+      where: {
+        isPublic: true,
+        user: { isPublic: true, username: { not: null } },
+        playlistItems: { some: { item: { isPublic: true } } },
       },
       select: {
         id: true,
@@ -67,5 +79,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  return [...staticPages, ...profilePages, ...itemPages];
+  const playlistPages: MetadataRoute.Sitemap = publicPlaylists.map(
+    (playlist) => ({
+      url: `${BASE_URL}/u/${playlist.user.username}/playlists/${playlist.id}`,
+      lastModified: playlist.updatedAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.5,
+    })
+  );
+
+  return [...staticPages, ...profilePages, ...itemPages, ...playlistPages];
 }

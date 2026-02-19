@@ -138,6 +138,7 @@ import {
   USER_PINNED_ITEMS,
   AVATAR_SIZE,
   HERO_SIZE,
+  PLAYLIST_ARTWORK_SIZE,
   buildPicsumUrl,
   validateContentDistribution,
   getMovieIdsForUser,
@@ -903,7 +904,27 @@ function validateEnvironment(): void {
 async function cleanupSeedUsers(): Promise<void> {
   const seedEmails = SEED_USERS.map((u) => u.email);
 
-  // Delete ItemFiles first
+  // Delete PlaylistItems first (FK to both Playlist and Item)
+  await prisma.playlistItem.deleteMany({
+    where: {
+      playlist: {
+        user: {
+          email: { in: seedEmails },
+        },
+      },
+    },
+  });
+
+  // Delete Playlists
+  await prisma.playlist.deleteMany({
+    where: {
+      user: {
+        email: { in: seedEmails },
+      },
+    },
+  });
+
+  // Delete ItemFiles
   await prisma.itemFile.deleteMany({
     where: {
       item: {
@@ -1748,7 +1769,17 @@ async function cleanupOnFailure(userId: string): Promise<void> {
   console.log("\n🧹 Cleaning up partial seed data...");
 
   try {
-    // Delete ItemFiles first (foreign key constraint)
+    // Delete PlaylistItems first (FK to both Playlist and Item)
+    await prisma.playlistItem.deleteMany({
+      where: { playlist: { userId } },
+    });
+
+    // Delete Playlists
+    await prisma.playlist.deleteMany({
+      where: { userId },
+    });
+
+    // Delete ItemFiles (foreign key constraint)
     const deletedFiles = await prisma.itemFile.deleteMany({
       where: { item: { userId } },
     });
@@ -1952,6 +1983,144 @@ async function generateSyncActivityLogs(userId: string): Promise<void> {
   log(`   📊 Created ${syncLogs.length} sync activity log entries`);
 }
 
+/** Playlist seed definitions per user. */
+const PLAYLIST_DEFINITIONS: Record<
+  string,
+  Array<{
+    name: string;
+    description: string;
+    isPublic: boolean;
+    /** Optional share token for unlisted sharing (private playlists only). */
+    shareToken?: string;
+    /** Optional Picsum seed for reproducible artwork. */
+    artworkSeed?: string;
+    itemCount: { min: number; max: number };
+  }>
+> = {
+  "demo@canoncore.com": [
+    {
+      name: "Weekend Watchlist",
+      description: "Movies and shows to binge on the weekend.",
+      isPublic: true,
+      itemCount: { min: 4, max: 6 },
+    },
+    {
+      name: "All-Time Favourites",
+      description: "The best of the best — timeless classics.",
+      isPublic: true,
+      artworkSeed: "demo-favourites",
+      itemCount: { min: 3, max: 5 },
+    },
+    {
+      name: "Watch Later",
+      description: "Saved for later viewing.",
+      isPublic: false,
+      shareToken: "demo-watch-later-token1",
+      itemCount: { min: 2, max: 3 },
+    },
+  ],
+  "filmfan@canoncore.com": [
+    {
+      name: "Weekend Watchlist",
+      description: "International cinema for a relaxing weekend.",
+      isPublic: true,
+      itemCount: { min: 4, max: 6 },
+    },
+    {
+      name: "All-Time Favourites",
+      description: "Films that changed my perspective.",
+      isPublic: true,
+      artworkSeed: "filmfan-favourites",
+      itemCount: { min: 3, max: 5 },
+    },
+    {
+      name: "Watch Later",
+      description: "On the radar.",
+      isPublic: false,
+      shareToken: "film-watch-later-token1",
+      itemCount: { min: 2, max: 3 },
+    },
+  ],
+};
+
+/**
+ * Seeds playlists for a user using their existing root-level items.
+ * Picks random items from the user's library for each playlist.
+ *
+ * @param userId - User's database ID
+ * @param email - User's email for config lookup
+ */
+async function seedPlaylistsForUser(
+  userId: string,
+  email: string
+): Promise<void> {
+  const definitions = PLAYLIST_DEFINITIONS[email];
+  if (!definitions || definitions.length === 0) return;
+
+  // Get all root-level items for this user
+  const rootItems = await prisma.item.findMany({
+    where: { userId, parentId: null },
+    select: { id: true },
+  });
+
+  if (rootItems.length === 0) return;
+
+  for (let i = 0; i < definitions.length; i++) {
+    const def = definitions[i];
+    const itemCount = getRandomCount(def.itemCount.min, def.itemCount.max);
+
+    // Shuffle and pick items
+    const shuffled = [...rootItems].sort(() => Math.random() - 0.5);
+    const selectedItems = shuffled.slice(
+      0,
+      Math.min(itemCount, shuffled.length)
+    );
+
+    // Download artwork from Picsum if seed is defined
+    let artworkData: ImageData | null = null;
+    if (def.artworkSeed) {
+      const artworkUrl = buildPicsumUrl(
+        def.artworkSeed,
+        PLAYLIST_ARTWORK_SIZE.width,
+        PLAYLIST_ARTWORK_SIZE.height
+      );
+      artworkData = await downloadProfileImage(artworkUrl);
+    }
+
+    const playlist = await prisma.playlist.create({
+      data: {
+        name: def.name,
+        description: def.description,
+        order: i,
+        isPublic: def.isPublic,
+        shareToken: def.shareToken ?? null,
+        artworkImage: artworkData?.data ?? null,
+        artworkMime: artworkData?.mime ?? null,
+        userId,
+      },
+    });
+
+    // Add items to playlist
+    await prisma.playlistItem.createMany({
+      data: selectedItems.map((item, idx) => ({
+        playlistId: playlist.id,
+        itemId: item.id,
+        order: idx,
+      })),
+    });
+
+    const artLabel = artworkData ? " 🖼️" : "";
+    const visLabel = def.isPublic
+      ? " (public)"
+      : def.shareToken
+        ? " (unlisted)"
+        : " (private)";
+    log(
+      `   🎵 Created playlist "${def.name}"${visLabel}${artLabel} with ${selectedItems.length} items`
+    );
+  }
+}
+
 /**
  * Main seed function.
  * Google Drive is REQUIRED - validates setup before proceeding.
@@ -2042,6 +2211,9 @@ async function main(): Promise<void> {
 
         // Pin specific items
         await pinItemsForUser(userId, config.email);
+
+        // Seed playlists
+        await seedPlaylistsForUser(userId, config.email);
 
         const totalTime = Math.round((Date.now() - progress.startTime) / 1000);
         log(

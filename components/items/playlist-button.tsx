@@ -1,33 +1,69 @@
 /**
- * Playlist button placeholder showing "Coming Soon" on click.
+ * Add to Playlist button that opens the playlist management dialog.
+ * Preloads dialog on hover/focus for reduced perceived latency.
  */
 
 "use client";
 
+import { useState, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { Plus } from "lucide-react";
-import { toast } from "sonner";
 import { HeroButton } from "./hero-button";
 
+const AddToPlaylistDialog = dynamic(
+  () =>
+    import("@/components/playlists/add-to-playlist-dialog").then((mod) => ({
+      default: mod.AddToPlaylistDialog,
+    })),
+  { ssr: false }
+);
+
 interface PlaylistButtonProps {
+  /** The item ID to manage playlist membership for. */
+  itemId: string;
   /** Additional CSS classes. */
   className?: string;
 }
 
+/** Preload the dialog module on intent. */
+function preloadDialog() {
+  void import("@/components/playlists/add-to-playlist-dialog");
+}
+
 /**
- * Add to Playlist button that shows coming soon toast.
+ * Pill-shaped hero button that opens the Add to Playlist dialog.
+ * Lazy-loads the dialog and preloads on hover/focus for snappy UX.
+ *
+ * @param itemId - The item to manage playlist membership for
+ * @param className - Additional CSS classes
  */
-export function PlaylistButton({ className }: PlaylistButtonProps) {
-  const handleClick = () => {
-    toast.info("Playlists coming soon", {
-      description:
-        "Create custom playlists that pull items from anywhere in your library.",
-    });
-  };
+export function PlaylistButton({ itemId, className }: PlaylistButtonProps) {
+  const [open, setOpen] = useState(false);
+
+  const handleClick = useCallback(() => {
+    setOpen(true);
+  }, []);
 
   return (
-    <HeroButton onClick={handleClick} className={className}>
-      <Plus className="size-4" aria-hidden="true" />
-      <span>Add to Playlist</span>
-    </HeroButton>
+    <>
+      <span onMouseEnter={preloadDialog} onFocus={preloadDialog}>
+        <HeroButton
+          onClick={handleClick}
+          className={className}
+          data-testid="playlist-button"
+        >
+          <Plus className="size-4" aria-hidden="true" />
+          <span>Add to Playlist</span>
+        </HeroButton>
+      </span>
+
+      {open && (
+        <AddToPlaylistDialog
+          open={open}
+          onOpenChange={setOpen}
+          itemId={itemId}
+        />
+      )}
+    </>
   );
 }

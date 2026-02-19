@@ -77,6 +77,13 @@ export const rateLimiters = {
     prefix: "ratelimit:item:search",
   }),
 
+  // Playlist rate limiters (generous - normal user operations)
+  playlist: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(30, "1 m"),
+    prefix: "ratelimit:playlist",
+  }),
+
   // TMDB rate limiters
   tmdbSearch: new Ratelimit({
     redis,

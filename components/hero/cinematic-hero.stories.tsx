@@ -4,6 +4,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/nextjs";
+import Image from "next/image";
 import { CinematicHero } from "./cinematic-hero";
 import { HeroButton } from "@/components/items/hero-button";
 import { Play, Copy, Check } from "lucide-react";
@@ -208,5 +209,42 @@ export const NoBackground: Story = {
       },
     ],
     headingLevel: "h1",
+  },
+};
+
+/** Playlist hero with mosaic background element using real TMDB backdrops. */
+export const Mosaic: Story = {
+  args: {
+    slides: [
+      {
+        id: "playlist-mosaic",
+        name: "My Film Collection",
+        description: "A curated selection of favourite films",
+      },
+    ],
+    backgroundElement: (
+      <div className="absolute inset-0 grid grid-cols-3 grid-rows-2">
+        {[
+          "https://image.tmdb.org/t/p/w780/tsRy63Mu5cu8etL1X7ZLyf7UP1M.jpg",
+          "https://image.tmdb.org/t/p/w780/tmU7GeKVybMWFButWEGl2M4GeiP.jpg",
+          "https://image.tmdb.org/t/p/w780/8ZTVqvKDQ8emSGUEMjsS4yHAwrp.jpg",
+          "https://image.tmdb.org/t/p/w780/suopoADq0k8YZr4dQXcU6pToj6s.jpg",
+          "https://image.tmdb.org/t/p/w780/ByDf0zjLSumz1MP1cDEo2JWVtU.jpg",
+          "https://image.tmdb.org/t/p/w780/hZkgoQYus5dXo3H8T7Uef6DNknx.jpg",
+        ].map((url, i) => (
+          <div key={i} className="relative overflow-hidden">
+            <Image
+              src={url}
+              alt=""
+              fill
+              sizes="33vw"
+              className="object-cover"
+              loading="lazy"
+            />
+          </div>
+        ))}
+      </div>
+    ),
+    disableShader: true,
   },
 };

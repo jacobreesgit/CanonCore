@@ -59,6 +59,9 @@ const config: StorybookConfig = {
           "./mocks/google-drive-actions.mock.ts"
         ),
         "@/lib/item-actions$": resolveMock("./mocks/item-actions.mock.ts"),
+        "@/lib/playlist-actions$": resolveMock(
+          "./mocks/playlist-actions.mock.ts"
+        ),
         "@/lib/user-actions$": resolveMock("./mocks/user-actions.mock.ts"),
         "@/lib/auth$": resolveMock("./mocks/auth.mock.ts"),
         "@/lib/prisma$": resolveMock("./mocks/prisma.mock.ts"),
@@ -128,6 +131,7 @@ const config: StorybookConfig = {
       ["google-drive-actions", "./mocks/google-drive-actions.mock.ts"],
       // Server action modules (import prisma, sharp, or chain to googleapis)
       ["item-actions", "./mocks/item-actions.mock.ts"],
+      ["playlist-actions", "./mocks/playlist-actions.mock.ts"],
       ["user-actions", "./mocks/user-actions.mock.ts"],
       ["tmdb-actions", "./mocks/tmdb-actions.mock.ts"],
       // Core server modules

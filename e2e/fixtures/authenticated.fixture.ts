@@ -81,6 +81,10 @@ export async function createPublicUser(): Promise<PublicUserInfo> {
  * Deletes a public user and their items from the DB.
  */
 export async function deletePublicUser(userId: string): Promise<void> {
+  await prisma.playlistItem
+    .deleteMany({ where: { playlist: { userId } } })
+    .catch(() => {});
+  await prisma.playlist.deleteMany({ where: { userId } }).catch(() => {});
   await prisma.item.deleteMany({ where: { userId } }).catch(() => {});
   await prisma.user.delete({ where: { id: userId } }).catch(() => {});
 }
@@ -128,7 +132,13 @@ export const authenticatedFixture = base.extend<{
 
     await use(testUserInfo);
 
-    // Cleanup: delete items first, then user
+    // Cleanup: delete in FK order
+    await prisma.playlistItem
+      .deleteMany({ where: { playlist: { userId: user.id } } })
+      .catch(() => {});
+    await prisma.playlist
+      .deleteMany({ where: { userId: user.id } })
+      .catch(() => {});
     await prisma.item
       .deleteMany({ where: { userId: user.id } })
       .catch(() => {});

@@ -6,8 +6,15 @@
 
 "use client";
 
-import { useMemo, useCallback, useState, useTransition } from "react";
+import {
+  useMemo,
+  useCallback,
+  useState,
+  useTransition,
+  useSyncExternalStore,
+} from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Plus } from "lucide-react";
 import { getItems } from "@/lib/item-actions";
 import { ItemsView } from "@/components/items";
@@ -17,23 +24,35 @@ import { GridItem } from "@/components/sortable-grid/grid-item";
 import { EmptyState } from "@/components/items/empty-state";
 import { Section } from "@/components/ui/section";
 import { HeroContentLayout } from "@/components/ui/hero-content-layout";
+import { UnderlineTabs } from "@/components/ui/underline-tabs";
 import { ContentToolbar } from "@/components/ui/content-toolbar";
 import { Button } from "@/components/ui/button";
 import { useItemsUrlState } from "@/hooks/use-items-url-state";
-import { useExploreUrlState } from "@/hooks/use-explore-url-state";
+import { useViewerUrlState } from "@/hooks/use-viewer-url-state";
 import { useSyncHandler } from "@/hooks/use-sync-handler";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+// Lazy-load swipeable tabs (mobile-only, keeps Embla out of desktop bundle)
+const SwipeableUnderlineTabs = dynamic(
+  () =>
+    import("@/components/ui/swipeable-underline-tabs").then((mod) => ({
+      default: mod.SwipeableUnderlineTabs,
+    })),
+  { ssr: false }
+);
 import {
   EXPLORE_SORT_OPTIONS,
   sortPublicItems,
   filterItems,
-  toggleContentFilter,
 } from "@/lib/item-utils";
 import { formatProgressLabel } from "@/lib/progress-utils";
+import { PlaylistSection } from "@/components/playlists/playlist-section";
 import type {
   ItemWithArtwork,
   ItemProgress,
-  ContentFilter,
   SortOption,
+  PublicPlaylistCard,
+  PlaylistWithCount,
 } from "@/lib/types";
 
 /**
@@ -66,6 +85,10 @@ interface ProfilePageProps {
   libraryProgress?: ItemProgress | null;
   /** Public library progress for viewers (non-owner mode) */
   viewerProgress?: { percentage: number } | null;
+  /** Public playlists for viewer mode */
+  publicPlaylists?: PublicPlaylistCard[];
+  /** Server-fetched owner playlists (avoids client-side flash) */
+  ownerPlaylists?: PlaylistWithCount[];
 }
 
 /**
@@ -98,6 +121,8 @@ export function ProfilePage({
   hasDriveConnection = false,
   libraryProgress,
   viewerProgress,
+  publicPlaylists,
+  ownerPlaylists,
 }: ProfilePageProps) {
   if (isOwner) {
     return (
@@ -106,6 +131,7 @@ export function ProfilePage({
         items={items}
         hasDriveConnection={hasDriveConnection}
         libraryProgress={libraryProgress}
+        ownerPlaylists={ownerPlaylists}
       />
     );
   }
@@ -115,13 +141,18 @@ export function ProfilePage({
       profile={profile}
       items={items}
       viewerProgress={viewerProgress}
+      publicPlaylists={publicPlaylists ?? []}
     />
   );
 }
 
+/** No-op subscribe for useSyncExternalStore (value never changes). */
+const emptySubscribe = () => () => {};
+
 /**
  * Owner mode content component.
  * Full ItemsView with editing, sync, and add item controls.
+ * Uses Items/Playlists tabs matching the item detail page pattern.
  * State is lifted out of ItemsView so ContentToolbar can control it.
  */
 function OwnerModeContent({
@@ -129,14 +160,27 @@ function OwnerModeContent({
   items: initialItems,
   hasDriveConnection,
   libraryProgress,
+  ownerPlaylists,
 }: {
   profile: ProfileData;
   items: ItemWithArtwork[];
   hasDriveConnection: boolean;
   libraryProgress?: ItemProgress | null;
+  ownerPlaylists?: PlaylistWithCount[];
 }) {
   const [isPending, startTransition] = useTransition();
   const [items, setItems] = useState(initialItems);
+
+  // Viewport detection for responsive tab rendering
+  const isMobile = useIsMobile();
+
+  // Delay tab rendering until after mount so isMobile is accurate.
+  // Prevents UnderlineTabs → SwipeableUnderlineTabs swap that causes focus loss.
+  const tabsMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   // Sort/filter state (URL + localStorage backup)
   const {
@@ -146,7 +190,12 @@ function OwnerModeContent({
     toggleFilter,
     clearFilters,
     isCustomSort,
+    tab,
+    setTab,
   } = useItemsUrlState();
+
+  // Active tab — URL-backed, defaults to "items"
+  const activeTab = tab ?? "items";
 
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -211,6 +260,7 @@ function OwnerModeContent({
   // Hero element
   const hero = (
     <CinematicHero
+      headingLevel="h1"
       slides={[
         {
           id: "hero",
@@ -231,8 +281,9 @@ function OwnerModeContent({
     />
   );
 
-  return (
-    <HeroContentLayout hero={hero} isPending={isPending}>
+  // Items tab content (toolbar + items grid)
+  const itemsContent = (
+    <>
       <ContentToolbar
         sortBy={sortBy}
         onSortChange={setSortBy}
@@ -262,6 +313,43 @@ function OwnerModeContent({
         disableTreeView
         onItemsChange={setItems}
       />
+    </>
+  );
+
+  // Playlists tab content
+  const playlistsContent = (
+    <PlaylistSection
+      mode="owner"
+      username={profile.username}
+      initialPlaylists={ownerPlaylists}
+    />
+  );
+
+  const tabs = [
+    { id: "items", label: "Items", content: itemsContent },
+    { id: "playlists", label: "Playlists", content: playlistsContent },
+  ];
+
+  return (
+    <HeroContentLayout hero={hero} isPending={isPending}>
+      {tabsMounted ? (
+        isMobile ? (
+          <SwipeableUnderlineTabs
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={(id) => setTab(id as "items" | "playlists")}
+            swipeEnabled={!isEditing}
+          />
+        ) : (
+          <UnderlineTabs
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={(id) => setTab(id as "items" | "playlists")}
+          />
+        )
+      ) : (
+        itemsContent
+      )}
     </HeroContentLayout>
   );
 }
@@ -274,20 +362,32 @@ function ViewerModeContent({
   profile,
   items,
   viewerProgress,
+  publicPlaylists,
 }: {
   profile: ProfileData;
   items: ItemWithArtwork[];
   viewerProgress?: { percentage: number } | null;
+  publicPlaylists: PublicPlaylistCard[];
 }) {
   const router = useRouter();
-  const { sortBy, setSortBy } = useExploreUrlState();
-  const [filters, setFilters] = useState<ContentFilter[]>([]);
+  const {
+    sortBy,
+    setSortBy,
+    filters,
+    toggleFilter,
+    clearFilters,
+    tab,
+    setTab,
+  } = useViewerUrlState();
 
-  const toggleFilter = useCallback((filter: ContentFilter) => {
-    setFilters((prev) => toggleContentFilter(prev, filter));
-  }, []);
+  const isMobile = useIsMobile();
+  const tabsMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
-  const clearFilters = useCallback(() => setFilters([]), []);
+  const activeTab = tab ?? "items";
 
   // Create O(1) lookup map for original items (avoids O(n²) find in render loop)
   const itemsById = useMemo(
@@ -374,8 +474,9 @@ function ViewerModeContent({
     />
   );
 
-  return (
-    <HeroContentLayout hero={hero} className={!hasItems ? "flex-1" : undefined}>
+  // Items tab content
+  const itemsContent = (
+    <>
       <ContentToolbar
         sortBy={sortBy}
         onSortChange={setSortBy as (value: SortOption) => void}
@@ -387,7 +488,6 @@ function ViewerModeContent({
         defaultSort="updated-desc"
       />
 
-      {/* Items grid or empty state */}
       {hasItems ? (
         <>
           {/* Pinned items section */}
@@ -420,7 +520,7 @@ function ViewerModeContent({
             </Section>
           )}
 
-          {/* Library section (items not pinned) */}
+          {/* Library section */}
           {sortableItems.length > 0 && (
             <Section className="py-8" aria-label="Library">
               {pinnedItems.length > 0 && (
@@ -430,7 +530,6 @@ function ViewerModeContent({
               )}
               <div className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6">
                 {sortableItems.map((item, index) => {
-                  // O(1) lookup for original item data
                   const originalItem = itemsById.get(item.id);
                   return (
                     <GridItem
@@ -460,6 +559,55 @@ function ViewerModeContent({
         <Section className="flex flex-1 flex-col">
           <EmptyState variant="public-profile-empty" />
         </Section>
+      )}
+    </>
+  );
+
+  // Playlists tab content
+  // NOTE: Cannot delegate to <PlaylistSection mode="viewer"> alone because
+  // ViewerPlaylistSection returns null when playlists are empty (line 68 of
+  // playlist-section.tsx), which would leave the tab completely blank.
+  const playlistsContent =
+    publicPlaylists.length > 0 ? (
+      <PlaylistSection
+        mode="viewer"
+        username={profile.username}
+        playlists={publicPlaylists}
+      />
+    ) : (
+      <Section className="flex flex-1 flex-col items-center justify-center py-16">
+        <p className="text-muted-foreground text-sm">No public playlists yet</p>
+      </Section>
+    );
+
+  const tabs = [
+    { id: "items", label: "Items", content: itemsContent },
+    { id: "playlists", label: "Playlists", content: playlistsContent },
+  ];
+
+  return (
+    <HeroContentLayout
+      hero={hero}
+      className={
+        !hasItems && publicPlaylists.length === 0 ? "flex-1" : undefined
+      }
+    >
+      {tabsMounted ? (
+        isMobile ? (
+          <SwipeableUnderlineTabs
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={(id) => setTab(id as "items" | "playlists")}
+          />
+        ) : (
+          <UnderlineTabs
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={(id) => setTab(id as "items" | "playlists")}
+          />
+        )
+      ) : (
+        itemsContent
       )}
     </HeroContentLayout>
   );

@@ -23,7 +23,7 @@ import {
   type RefObject,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Globe } from "lucide-react";
+import { Search, Globe, ListMusic } from "lucide-react";
 import { toast } from "sonner";
 import {
   CommandDialog,
@@ -36,13 +36,18 @@ import {
 import { Kbd } from "@/components/ui/kbd";
 import { useSpotlight } from "@/contexts/spotlight-context";
 import { getSearchableItems } from "@/lib/item-actions";
-import { searchPublicUsers, searchPublicItems } from "@/lib/public-auth";
+import {
+  searchPublicUsers,
+  searchPublicItems,
+  searchPublicPlaylists,
+} from "@/lib/public-auth";
 import { ItemThumbnail } from "./item-thumbnail";
 import { UserThumbnail } from "./user-thumbnail";
 import type {
   SearchableItem,
   SearchableUser,
   SearchablePublicItem,
+  SearchablePlaylist,
 } from "@/lib/types";
 
 /** Cache TTL in milliseconds (60 seconds) */
@@ -96,6 +101,7 @@ interface CacheEntry<T> {
 let itemsCache: CacheEntry<SearchableItem[]> | null = null;
 let usersCache: CacheEntry<SearchableUser[]> | null = null;
 let publicItemsCache: CacheEntry<SearchablePublicItem[]> | null = null;
+let playlistsCache: CacheEntry<SearchablePlaylist[]> | null = null;
 
 /**
  * Checks if a cache entry is still valid based on TTL.
@@ -114,6 +120,7 @@ export function clearSearchCache() {
   itemsCache = null;
   usersCache = null;
   publicItemsCache = null;
+  playlistsCache = null;
 }
 
 /**
@@ -138,6 +145,9 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
 
   const [publicItems, setPublicItems] = useState<SearchablePublicItem[]>([]);
   const [isLoadingPublicItems, setIsLoadingPublicItems] = useState(false);
+
+  const [playlists, setPlaylists] = useState<SearchablePlaylist[]>([]);
+  const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
 
   const [searchValue, setSearchValue] = useState("");
   // Track whether initial fetch has completed (prevents flash of "No results")
@@ -238,8 +248,34 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
       }
     };
 
+    // Fetch public playlists
+    const fetchPlaylists = async () => {
+      if (isCacheValid(playlistsCache)) {
+        setPlaylists(playlistsCache.data);
+        return;
+      }
+
+      setIsLoadingPlaylists(true);
+      const result = await searchPublicPlaylists();
+      if (!cancelled) {
+        if (result.success) {
+          const data = result.data ?? [];
+          playlistsCache = { data, timestamp: Date.now() };
+          setPlaylists(data);
+        } else {
+          setPlaylists([]);
+        }
+        setIsLoadingPlaylists(false);
+      }
+    };
+
     // Fetch all in parallel
-    void Promise.all([fetchItems(), fetchUsers(), fetchPublicItems()]);
+    void Promise.all([
+      fetchItems(),
+      fetchUsers(),
+      fetchPublicItems(),
+      fetchPlaylists(),
+    ]);
 
     return () => {
       cancelled = true;
@@ -284,11 +320,19 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
 
   // Memoize hasResults to avoid recalculation on every render
   const hasResults = useMemo(
-    () => items.length > 0 || users.length > 0 || publicItems.length > 0,
-    [items.length, users.length, publicItems.length]
+    () =>
+      items.length > 0 ||
+      users.length > 0 ||
+      publicItems.length > 0 ||
+      playlists.length > 0,
+    [items.length, users.length, publicItems.length, playlists.length]
   );
 
-  const isAnyLoading = isLoadingItems || isLoadingUsers || isLoadingPublicItems;
+  const isAnyLoading =
+    isLoadingItems ||
+    isLoadingUsers ||
+    isLoadingPublicItems ||
+    isLoadingPlaylists;
 
   // Aria announcement that updates when search value or results change
   const announcement = useMemo(() => {
@@ -305,6 +349,7 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
     if (items.length > 0) parts.push(`${items.length} of your items`);
     if (publicItems.length > 0)
       parts.push(`${publicItems.length} public items`);
+    if (playlists.length > 0) parts.push(`${playlists.length} playlists`);
     if (users.length > 0) parts.push(`${users.length} people`);
     return parts.join(", ") + " available";
   }, [
@@ -313,6 +358,7 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
     searchValue,
     items.length,
     publicItems.length,
+    playlists.length,
     users.length,
   ]);
 
@@ -323,7 +369,7 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
       data-testid="spotlight-dialog"
     >
       <CommandInput
-        placeholder="Search items and people…"
+        placeholder="Search items, playlists, and people…"
         className="border-none focus:ring-0"
         value={searchValue}
         onValueChange={setSearchValue}
@@ -421,6 +467,58 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
                       by @{item.ownerUsername}
                     </span>
                   </div>
+                </CommandItem>
+              ))
+            )}
+          </CommandGroup>
+        )}
+
+        {/* Playlists - with distinct icon style (list music) */}
+        {(playlists.length > 0 || isAnyLoading || !hasInitialized) && (
+          <CommandGroup heading="Playlists">
+            {isAnyLoading || !hasInitialized ? (
+              <>
+                <ItemSkeleton />
+                <ItemSkeleton />
+              </>
+            ) : (
+              playlists.map((playlist) => (
+                <CommandItem
+                  key={`playlist-${playlist.id}`}
+                  value={`playlist-${playlist.name}-${playlist.ownerUsername}`}
+                  onSelect={() =>
+                    handleSelectItem(
+                      `playlists/${playlist.id}`,
+                      playlist.ownerUsername
+                    )
+                  }
+                  className="group h-[52px] cursor-pointer gap-3 px-3"
+                >
+                  {playlist.hasArtwork ? (
+                    <div className="bg-muted relative size-9 shrink-0 overflow-hidden rounded">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`/api/playlist/artwork?playlistId=${playlist.id}`}
+                        alt=""
+                        className="size-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="bg-muted group-aria-selected:bg-primary/10 flex size-9 shrink-0 items-center justify-center rounded transition-colors">
+                      <ListMusic className="text-muted-foreground group-aria-selected:text-primary size-4 transition-colors" />
+                    </div>
+                  )}
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate font-medium">
+                      {playlist.name}
+                    </span>
+                    <span className="text-muted-foreground truncate text-xs">
+                      {playlist.itemCount}{" "}
+                      {playlist.itemCount === 1 ? "item" : "items"} · @
+                      {playlist.ownerUsername}
+                    </span>
+                  </div>
+                  <Globe className="text-muted-foreground/50 size-3.5 shrink-0" />
                 </CommandItem>
               ))
             )}

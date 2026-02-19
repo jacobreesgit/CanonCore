@@ -337,8 +337,7 @@ export function ItemDetailClient({
           Next Up: {nextItem.name}
         </HeroButton>
       )}
-      {/* Playlist (placeholder feature) */}
-      <PlaylistButton />
+      <PlaylistButton itemId={item.id} />
       <HeroButton onClick={handleOpenSettings} aria-label="Settings">
         <Settings2 className="size-4" />
         Settings
@@ -519,7 +518,6 @@ export function ItemDetailClient({
           />
         ) : (
           <UnderlineTabs
-            defaultTab={defaultTabId}
             tabs={[
               {
                 id: "contents",
@@ -528,6 +526,8 @@ export function ItemDetailClient({
               },
               { id: "about", label: "About", content: aboutContent },
             ]}
+            activeTab={activeTab}
+            onTabChange={(id) => setTab(id as "contents" | "about")}
           />
         )
       ) : (

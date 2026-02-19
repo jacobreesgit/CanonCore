@@ -39,6 +39,12 @@ const TEST_EMAIL = "seed-integration-test@test.example.com";
 describe("seed database operations", () => {
   beforeAll(async () => {
     // Clean up any existing test users
+    await prisma.playlistItem.deleteMany({
+      where: { playlist: { user: { email: TEST_EMAIL } } },
+    });
+    await prisma.playlist.deleteMany({
+      where: { user: { email: TEST_EMAIL } },
+    });
     await prisma.itemFile.deleteMany({
       where: { item: { user: { email: TEST_EMAIL } } },
     });
@@ -55,6 +61,12 @@ describe("seed database operations", () => {
 
   afterAll(async () => {
     // Final cleanup
+    await prisma.playlistItem.deleteMany({
+      where: { playlist: { user: { email: TEST_EMAIL } } },
+    });
+    await prisma.playlist.deleteMany({
+      where: { user: { email: TEST_EMAIL } },
+    });
     await prisma.itemFile.deleteMany({
       where: { item: { user: { email: TEST_EMAIL } } },
     });
@@ -528,6 +540,104 @@ describe("seed database operations", () => {
     });
   });
 
+  describe("playlist operations", () => {
+    it("creates a playlist for a user", async () => {
+      const user = await prisma.user.findUnique({
+        where: { email: TEST_EMAIL },
+      });
+
+      const playlist = await prisma.playlist.create({
+        data: {
+          name: "Weekend Watchlist",
+          description: "Movies for the weekend.",
+          order: 0,
+          isPublic: true,
+          userId: user!.id,
+        },
+      });
+
+      expect(playlist.id).toBeDefined();
+      expect(playlist.name).toBe("Weekend Watchlist");
+      expect(playlist.isPublic).toBe(true);
+      expect(playlist.userId).toBe(user!.id);
+    });
+
+    it("adds items to a playlist via PlaylistItem", async () => {
+      const user = await prisma.user.findUnique({
+        where: { email: TEST_EMAIL },
+      });
+      const playlist = await prisma.playlist.findFirst({
+        where: { userId: user!.id, name: "Weekend Watchlist" },
+      });
+      const items = await prisma.item.findMany({
+        where: { userId: user!.id, parentId: null },
+        take: 3,
+      });
+
+      expect(items.length).toBeGreaterThan(0);
+
+      await prisma.playlistItem.createMany({
+        data: items.map((item, idx) => ({
+          playlistId: playlist!.id,
+          itemId: item.id,
+          order: idx,
+        })),
+      });
+
+      const playlistItems = await prisma.playlistItem.findMany({
+        where: { playlistId: playlist!.id },
+        orderBy: { order: "asc" },
+      });
+
+      expect(playlistItems.length).toBe(items.length);
+      for (let i = 0; i < playlistItems.length; i++) {
+        expect(playlistItems[i].order).toBe(i);
+      }
+    });
+
+    it("enforces unique constraint on playlist-item pairs", async () => {
+      const user = await prisma.user.findUnique({
+        where: { email: TEST_EMAIL },
+      });
+      const playlist = await prisma.playlist.findFirst({
+        where: { userId: user!.id, name: "Weekend Watchlist" },
+      });
+      const existingItem = await prisma.playlistItem.findFirst({
+        where: { playlistId: playlist!.id },
+      });
+
+      // Attempting to add the same item again should fail
+      await expect(
+        prisma.playlistItem.create({
+          data: {
+            playlistId: playlist!.id,
+            itemId: existingItem!.itemId,
+            order: 99,
+          },
+        })
+      ).rejects.toThrow();
+    });
+
+    it("retrieves playlist with items via include", async () => {
+      const user = await prisma.user.findUnique({
+        where: { email: TEST_EMAIL },
+      });
+      const playlist = await prisma.playlist.findFirst({
+        where: { userId: user!.id, name: "Weekend Watchlist" },
+        include: {
+          playlistItems: {
+            orderBy: { order: "asc" },
+            include: { item: { select: { name: true } } },
+          },
+        },
+      });
+
+      expect(playlist).not.toBeNull();
+      expect(playlist!.playlistItems.length).toBeGreaterThan(0);
+      expect(playlist!.playlistItems[0].item.name).toBeDefined();
+    });
+  });
+
   describe("cleanup operations", () => {
     it("cascades deletion through relationships", async () => {
       const user = await prisma.user.findUnique({
@@ -543,6 +653,12 @@ describe("seed database operations", () => {
       expect(user!.googleDriveConnection).not.toBeNull();
 
       // Delete in correct order
+      await prisma.playlistItem.deleteMany({
+        where: { playlist: { userId: user!.id } },
+      });
+      await prisma.playlist.deleteMany({
+        where: { userId: user!.id },
+      });
       await prisma.itemFile.deleteMany({
         where: { item: { userId: user!.id } },
       });
@@ -558,6 +674,11 @@ describe("seed database operations", () => {
         where: { userId: user!.id },
       });
       expect(remainingItems).toBe(0);
+
+      const remainingPlaylists = await prisma.playlist.count({
+        where: { userId: user!.id },
+      });
+      expect(remainingPlaylists).toBe(0);
 
       const remainingConnections = await prisma.googleDriveConnection.count({
         where: { userId: user!.id },

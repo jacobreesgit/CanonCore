@@ -244,8 +244,7 @@ export function PublicItemClient({
           Sign in to Fork
         </HeroButton>
       )}
-      {/* Playlist (placeholder feature) */}
-      <PlaylistButton />
+      <PlaylistButton itemId={item.id} />
     </>
   );
 
@@ -428,7 +427,6 @@ export function PublicItemClient({
           />
         ) : (
           <UnderlineTabs
-            defaultTab={defaultTabId}
             tabs={[
               {
                 id: "contents",
@@ -437,6 +435,8 @@ export function PublicItemClient({
               },
               { id: "about", label: "About", content: aboutContent },
             ]}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
           />
         )
       ) : showTabs ? (

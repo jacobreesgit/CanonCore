@@ -45,6 +45,7 @@ export function CinematicHero({
   autoAdvanceInterval = 5000,
   enableKenBurns = true,
   disableShader = false,
+  backgroundElement,
   className,
 }: CinematicHeroProps) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
@@ -154,12 +155,18 @@ export function CinematicHero({
                 className="relative h-full w-full flex-[0_0_100%] overflow-hidden"
               >
                 {/* Loading skeleton */}
-                {hasBackground && !imageLoaded[slide.id] && (
-                  <Skeleton className="absolute inset-0" />
-                )}
+                {!backgroundElement &&
+                  hasBackground &&
+                  !imageLoaded[slide.id] && (
+                    <Skeleton className="absolute inset-0" />
+                  )}
 
-                {/* Backdrop image or fallback */}
-                {hasBackground ? (
+                {/* Backdrop: custom element > image > shader > gradient */}
+                {backgroundElement ? (
+                  <div className="absolute inset-0 overflow-hidden">
+                    {backgroundElement}
+                  </div>
+                ) : hasBackground ? (
                   <Image
                     src={backgroundSrc}
                     alt={isSingleSlide ? slide.name : ""}

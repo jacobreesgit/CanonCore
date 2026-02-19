@@ -5,34 +5,72 @@
  * Features HeroCarousel for featured items and grid for all public items.
  */
 
-import { useMemo, useCallback, useState } from "react";
+import {
+  useMemo,
+  useCallback,
+  useState,
+  useEffect,
+  useRef,
+  useSyncExternalStore,
+} from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { Copy, UserX } from "lucide-react";
 import { CinematicHero, type HeroSlide } from "@/components/hero";
 import { HeroButton } from "@/components/items/hero-button";
 import { PlaylistButton } from "@/components/items/playlist-button";
+import { PlaylistGridItem } from "@/components/playlists/playlist-grid-item";
+import { PlaylistContextMenu } from "@/components/playlists/playlist-context-menu";
 import { GridItem } from "@/components/sortable-grid/grid-item";
 import { ItemContextMenu } from "@/components/items/item-context-menu";
 import { EmptyState } from "@/components/items/empty-state";
 import { ForkDestinationDialog } from "@/components/items/fork-destination-dialog";
 import { Section } from "@/components/ui/section";
 import { HeroContentLayout } from "@/components/ui/hero-content-layout";
+import { UnderlineTabs } from "@/components/ui/underline-tabs";
 import { ContentToolbar } from "@/components/ui/content-toolbar";
 import { cn } from "@/lib/utils";
 import { useExploreUrlState } from "@/hooks/use-explore-url-state";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { EXPLORE_SORT_OPTIONS, sortPublicItems } from "@/lib/item-utils";
+
+// Lazy-load swipeable tabs (mobile-only, keeps Embla out of desktop bundle)
+const SwipeableUnderlineTabs = dynamic(
+  () =>
+    import("@/components/ui/swipeable-underline-tabs").then((mod) => ({
+      default: mod.SwipeableUnderlineTabs,
+    })),
+  { ssr: false }
+);
+
 import { deleteItem, pinItem, unpinItem } from "@/lib/item-actions";
+import { updatePlaylist, deletePlaylist } from "@/lib/playlist-actions";
 import { forkItem } from "@/lib/fork-actions";
 import { getTmdbBackdropUrl } from "@/lib/tmdb-image-utils";
 import type { PublicItem, FeaturedItem } from "@/lib/public-auth";
 import type { TmdbItemMetadata } from "@/lib/tmdb-client";
 import type { SortOption } from "@/lib/types";
 
+/** No-op subscribe for useSyncExternalStore (value never changes). */
+const emptySubscribe = () => () => {};
+
 interface CurrentUser {
   id: string;
   username: string | null;
   name: string | null;
+}
+
+interface ExplorePlaylist {
+  id: string;
+  name: string;
+  description: string | null;
+  hasArtwork?: boolean;
+  itemCount: number;
+  previewPosters: { tmdbPosterPath: string | null; artworkId: string | null }[];
+  updatedAt: Date;
+  ownerUsername: string;
+  ownerName: string | null;
 }
 
 interface ExploreClientProps {
@@ -47,6 +85,7 @@ interface ExploreClientProps {
     isForkedByCurrentUser?: boolean;
   })[];
   featuredItems: (FeaturedItem & { tmdbMetadata?: TmdbItemMetadata | null })[];
+  playlists?: ExplorePlaylist[];
   currentUser: CurrentUser | null;
 }
 
@@ -58,12 +97,43 @@ interface ExploreClientProps {
 export function ExploreClient({
   items,
   featuredItems,
+  playlists,
   currentUser,
 }: ExploreClientProps) {
   const router = useRouter();
-  const { sortBy, setSortBy, excludeMine, setExcludeMine, autoplay } =
-    useExploreUrlState();
+  const {
+    sortBy,
+    setSortBy,
+    excludeMine,
+    setExcludeMine,
+    autoplay,
+    tab,
+    setTab,
+  } = useExploreUrlState();
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  const [localPlaylists, setLocalPlaylists] = useState(playlists);
+
+  // Sync local playlist state when server prop changes (e.g. revalidation)
+  useEffect(() => {
+    setLocalPlaylists(playlists);
+  }, [playlists]);
+
+  // Ref for snapshot-based optimistic revert (avoids stale closure)
+  const playlistsRef = useRef(localPlaylists);
+  playlistsRef.current = localPlaylists;
+
+  // Viewport detection for responsive tab rendering
+  const isMobile = useIsMobile();
+
+  // Delay tab rendering until after mount so isMobile is accurate.
+  const tabsMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+
+  // Active tab — URL-backed, defaults to "items"
+  const activeTab = tab ?? "items";
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(
     () => new Set(items.filter((i) => i.pinnedOrder != null).map((i) => i.id))
   );
@@ -120,6 +190,35 @@ export function ExploreClient({
     },
     [currentUser, router]
   );
+
+  // Handle making own playlist private (removes from explore)
+  const handlePlaylistToggleVisibility = useCallback(
+    async (playlistId: string) => {
+      const snapshot = playlistsRef.current;
+      setLocalPlaylists((prev) => prev?.filter((p) => p.id !== playlistId));
+      const result = await updatePlaylist(playlistId, { isPublic: false });
+      if (result.error) {
+        setLocalPlaylists(snapshot);
+        toast.error(result.error);
+      } else {
+        toast.success("Playlist set to private");
+      }
+    },
+    []
+  );
+
+  // Handle deleting own playlist
+  const handlePlaylistDelete = useCallback(async (playlistId: string) => {
+    const snapshot = playlistsRef.current;
+    setLocalPlaylists((prev) => prev?.filter((p) => p.id !== playlistId));
+    const result = await deletePlaylist(playlistId);
+    if (result.error) {
+      setLocalPlaylists(snapshot);
+      toast.error(result.error);
+    } else {
+      toast.success("Playlist deleted");
+    }
+  }, []);
 
   // Open fork dialog from carousel
   const handleForkClick = useCallback(
@@ -286,16 +385,16 @@ export function ExploreClient({
               </>
             )}
 
-            {/* Playlist (placeholder feature) */}
-            <PlaylistButton />
+            <PlaylistButton itemId={item.id} />
           </>
         );
       }}
     />
   ) : undefined;
 
-  return (
-    <HeroContentLayout hero={hero} className={!hasItems ? "flex-1" : undefined}>
+  // Items tab content (toolbar + grid)
+  const itemsContent = (
+    <>
       <ContentToolbar
         sortBy={sortBy}
         onSortChange={setSortBy as (value: SortOption) => void}
@@ -477,6 +576,89 @@ export function ExploreClient({
         <Section className="flex flex-1 flex-col">
           <EmptyState variant="explore-empty" />
         </Section>
+      )}
+    </>
+  );
+
+  // Playlists tab content
+  const playlistsContent =
+    localPlaylists && localPlaylists.length > 0 ? (
+      <Section className="py-8" aria-label="Playlists">
+        <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
+          Public Playlists
+        </h2>
+        <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
+          {localPlaylists.map((playlist) => {
+            const isOwn = currentUser?.username === playlist.ownerUsername;
+
+            const card = (
+              <PlaylistGridItem
+                playlist={playlist}
+                username={playlist.ownerUsername}
+                isOwner={isOwn}
+              />
+            );
+
+            if (isOwn) {
+              return (
+                <PlaylistContextMenu
+                  key={playlist.id}
+                  playlistName={playlist.name}
+                  isPublic={true}
+                  onRename={() =>
+                    router.push(
+                      `/u/${playlist.ownerUsername}/playlists/${playlist.id}`
+                    )
+                  }
+                  onToggleVisibility={() =>
+                    handlePlaylistToggleVisibility(playlist.id)
+                  }
+                  onDelete={() => handlePlaylistDelete(playlist.id)}
+                >
+                  {card}
+                </PlaylistContextMenu>
+              );
+            }
+
+            return (
+              <PlaylistGridItem
+                key={playlist.id}
+                playlist={playlist}
+                username={playlist.ownerUsername}
+              />
+            );
+          })}
+        </div>
+      </Section>
+    ) : (
+      <Section className="flex flex-1 flex-col">
+        <EmptyState variant="explore-empty" />
+      </Section>
+    );
+
+  const tabs = [
+    { id: "items", label: "Items", content: itemsContent },
+    { id: "playlists", label: "Playlists", content: playlistsContent },
+  ];
+
+  return (
+    <HeroContentLayout hero={hero} className={!hasItems ? "flex-1" : undefined}>
+      {tabsMounted ? (
+        isMobile ? (
+          <SwipeableUnderlineTabs
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={(id) => setTab(id as "items" | "playlists")}
+          />
+        ) : (
+          <UnderlineTabs
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={(id) => setTab(id as "items" | "playlists")}
+          />
+        )
+      ) : (
+        itemsContent
       )}
 
       {/* Fork destination dialog */}

@@ -18,6 +18,8 @@ import type {
   ItemResult,
   SearchableUser,
   SearchablePublicItem,
+  SearchablePlaylist,
+  PublicPlaylistCard,
 } from "@/lib/types";
 
 /**
@@ -743,9 +745,7 @@ export const getPublicDescendants = cache(
         userId: item.userId,
         tmdbPosterPath: item.tmdbPosterPath ?? null,
         tmdbBackdropPath: item.tmdbBackdropPath ?? null,
-        artworkId: item.tmdbPosterPath
-          ? null
-          : (item.files.find((f) => f.fileType === "ARTWORK")?.id ?? null),
+        artworkId: resolveArtworkId(item),
         tmdbId: item.tmdbId,
         tmdbType: item.tmdbType,
         tmdbShowTagline: item.tmdbShowTagline,
@@ -937,9 +937,7 @@ export async function getExploreItems(
         userId: item.userId,
         tmdbPosterPath: item.tmdbPosterPath ?? null,
         tmdbBackdropPath: item.tmdbBackdropPath ?? null,
-        artworkId: item.tmdbPosterPath
-          ? null
-          : (item.files.find((f) => f.fileType === "ARTWORK")?.id ?? null),
+        artworkId: resolveArtworkId(item),
         tmdbId: item.tmdbId,
         tmdbType: item.tmdbType,
         tmdbShowTagline: item.tmdbShowTagline,
@@ -1209,6 +1207,76 @@ export const searchPublicItems = cache(
 );
 
 /**
+ * Searches for public playlists for spotlight search.
+ * Returns playlists where both the playlist and owner are public.
+ * Excludes the current user's playlists.
+ * Wrapped with React.cache() for per-request deduplication.
+ *
+ * @returns Array of searchable public playlists with owner info
+ */
+export const searchPublicPlaylists = cache(
+  async (): Promise<ItemResult<SearchablePlaylist[]>> => {
+    const [session, rateLimitResult] = await Promise.all([
+      auth(),
+      checkRateLimit("publicItemSearch"),
+    ]);
+
+    if (rateLimitResult) {
+      return rateLimitResult;
+    }
+
+    try {
+      const playlists = await prisma.playlist.findMany({
+        where: {
+          isPublic: true,
+          // Exclude current user's playlists (only if logged in)
+          ...(session?.user?.id && { userId: { not: session.user.id } }),
+          // Owner must be public with username
+          user: {
+            isPublic: true,
+            username: { not: null },
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          artworkMime: true,
+          userId: true,
+          user: {
+            select: {
+              username: true,
+              name: true,
+            },
+          },
+          _count: {
+            select: { playlistItems: true },
+          },
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 50, // Playlists: 50 limit (similar to users)
+      });
+
+      const searchablePlaylists: SearchablePlaylist[] = playlists
+        .filter((p) => p.user && p.user.username != null)
+        .map((playlist) => ({
+          id: playlist.id,
+          name: playlist.name,
+          description: playlist.description,
+          itemCount: playlist._count.playlistItems,
+          ownerUsername: playlist.user.username!,
+          ownerName: playlist.user.name,
+          hasArtwork: !!playlist.artworkMime,
+        }));
+
+      return { success: true, data: searchablePlaylists };
+    } catch {
+      return { error: "Failed to search public playlists" };
+    }
+  }
+);
+
+/**
  * Featured item with artwork for carousel display.
  */
 export interface FeaturedItem {
@@ -1316,5 +1384,271 @@ export const getFeaturedItems = cache(
       logger.error({ error, limit }, "Failed to fetch featured items");
       return [];
     }
+  }
+);
+
+/**
+ * Get public playlists for a user's profile.
+ * Only returns playlists that are public AND contain at least one public item.
+ * Cached per-request to deduplicate calls from generateMetadata and page.
+ *
+ * @param userId - User ID whose public playlists to fetch
+ * @returns Array of public playlist cards with preview artwork
+ */
+export const getPublicPlaylistsForUser = cache(
+  async (userId: string): Promise<PublicPlaylistCard[]> => {
+    const playlists = await prisma.playlist.findMany({
+      where: {
+        userId,
+        isPublic: true,
+        playlistItems: {
+          some: {
+            item: { isPublic: true },
+          },
+        },
+      },
+      orderBy: { order: "asc" },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        artworkMime: true,
+        updatedAt: true,
+        playlistItems: {
+          where: { item: { isPublic: true } },
+          orderBy: { order: "asc" },
+          take: 4,
+          include: {
+            item: {
+              select: {
+                id: true,
+                tmdbPosterPath: true,
+                files: {
+                  where: { fileType: "ARTWORK" },
+                  select: { id: true, fileType: true, isPrimary: true },
+                },
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            playlistItems: {
+              where: { item: { isPublic: true } },
+            },
+          },
+        },
+      },
+    });
+
+    return playlists.map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      hasArtwork: !!p.artworkMime,
+      itemCount: p._count.playlistItems,
+      previewPosters: p.playlistItems.map((pi) => ({
+        tmdbPosterPath: pi.item.tmdbPosterPath ?? null,
+        artworkId: resolveArtworkId(pi.item),
+      })),
+      updatedAt: p.updatedAt,
+    }));
+  }
+);
+
+/**
+ * Fetches public playlists across all users for the Explore page.
+ * Returns playlists that are public, from public users with usernames,
+ * and contain at least one public playlist item.
+ * Cached per-request to deduplicate calls from generateMetadata and page.
+ *
+ * @param limit - Maximum playlists to return (default 12)
+ * @param offset - Pagination offset (default 0)
+ * @returns Array of public playlist cards with owner info and preview artwork
+ */
+export const getExplorePlaylists = cache(
+  async (
+    limit = 12,
+    offset = 0
+  ): Promise<
+    (PublicPlaylistCard & {
+      ownerUsername: string;
+      ownerName: string | null;
+    })[]
+  > => {
+    const playlists = await prisma.playlist.findMany({
+      where: {
+        isPublic: true,
+        user: {
+          isPublic: true,
+          username: { not: null },
+        },
+        playlistItems: {
+          some: {
+            item: { isPublic: true },
+          },
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: limit,
+      skip: offset,
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        artworkMime: true,
+        updatedAt: true,
+        user: {
+          select: {
+            username: true,
+            name: true,
+          },
+        },
+        playlistItems: {
+          where: { item: { isPublic: true } },
+          orderBy: { order: "asc" },
+          take: 4,
+          include: {
+            item: {
+              select: {
+                id: true,
+                tmdbPosterPath: true,
+                files: {
+                  where: { fileType: "ARTWORK" },
+                  select: { id: true, fileType: true, isPrimary: true },
+                },
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            playlistItems: {
+              where: { item: { isPublic: true } },
+            },
+          },
+        },
+      },
+    });
+
+    return playlists
+      .filter((p) => p.user.username != null)
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        hasArtwork: !!p.artworkMime,
+        itemCount: p._count.playlistItems,
+        previewPosters: p.playlistItems.map((pi) => ({
+          tmdbPosterPath: pi.item.tmdbPosterPath ?? null,
+          artworkId: resolveArtworkId(pi.item),
+        })),
+        updatedAt: p.updatedAt,
+        ownerUsername: p.user.username as string,
+        ownerName: p.user.name,
+      }));
+  }
+);
+
+/**
+ * Get a public or unlisted playlist with only its public items.
+ * Returns null if playlist is not accessible, owner profile is not public,
+ * or no public items exist (unlisted playlists may show empty).
+ * Cached per-request to deduplicate calls from generateMetadata and page.
+ *
+ * @param playlistId - Playlist ID to fetch
+ * @param token - Optional share token for unlisted access
+ * @returns Playlist with public items, or null
+ */
+export const getPublicPlaylist = cache(
+  async (
+    playlistId: string,
+    token?: string | null
+  ): Promise<{
+    playlist: PublicPlaylistCard & { userId: string; createdAt: Date };
+    items: Array<{
+      id: string;
+      name: string;
+      description: string | null;
+      artworkId: string | null;
+      tmdbPosterPath: string | null;
+      tmdbId: number | null;
+      tmdbType: string | null;
+    }>;
+  } | null> => {
+    const playlist = await prisma.playlist.findFirst({
+      where: {
+        id: playlistId,
+        user: { isPublic: true, username: { not: null } },
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        isPublic: true,
+        artworkMime: true,
+        shareToken: true,
+        userId: true,
+        createdAt: true,
+        updatedAt: true,
+        playlistItems: {
+          where: { item: { isPublic: true } },
+          orderBy: { order: "asc" },
+          include: {
+            item: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                tmdbId: true,
+                tmdbType: true,
+                tmdbPosterPath: true,
+                files: {
+                  where: { fileType: "ARTWORK" },
+                  select: { id: true, fileType: true, isPrimary: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!playlist) return null;
+
+    // Access check: public OR valid share token
+    const isAccessible =
+      playlist.isPublic || (token && playlist.shareToken === token);
+    if (!isAccessible) return null;
+
+    // For public playlists, hide if no public items
+    // For unlisted playlists, allow empty (owner shared intentionally)
+    if (playlist.isPublic && playlist.playlistItems.length === 0) return null;
+
+    return {
+      playlist: {
+        id: playlist.id,
+        name: playlist.name,
+        description: playlist.description,
+        hasArtwork: !!playlist.artworkMime,
+        createdAt: playlist.createdAt,
+        userId: playlist.userId,
+        itemCount: playlist.playlistItems.length,
+        previewPosters: playlist.playlistItems.slice(0, 4).map((pi) => ({
+          tmdbPosterPath: pi.item.tmdbPosterPath ?? null,
+          artworkId: resolveArtworkId(pi.item),
+        })),
+        updatedAt: playlist.updatedAt,
+      },
+      items: playlist.playlistItems.map((pi) => ({
+        id: pi.item.id,
+        name: pi.item.name,
+        description: pi.item.description,
+        artworkId: resolveArtworkId(pi.item),
+        tmdbPosterPath: pi.item.tmdbPosterPath,
+        tmdbId: pi.item.tmdbId,
+        tmdbType: pi.item.tmdbType,
+      })),
+    };
   }
 );
