@@ -20,7 +20,7 @@ import { Copy, UserX } from "lucide-react";
 import { CinematicHero, type HeroSlide } from "@/components/hero";
 import { HeroButton } from "@/components/items/hero-button";
 import { PlaylistButton } from "@/components/items/playlist-button";
-import { PlaylistCard } from "@/components/playlists/playlist-card";
+import { PlaylistGridItem } from "@/components/playlists/playlist-grid-item";
 import { PlaylistContextMenu } from "@/components/playlists/playlist-context-menu";
 import { GridItem } from "@/components/sortable-grid/grid-item";
 import { ItemContextMenu } from "@/components/items/item-context-menu";
@@ -586,12 +586,12 @@ export function ExploreClient({
         <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
           Public Playlists
         </h2>
-        <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+        <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
           {localPlaylists.map((playlist) => {
             const isOwn = currentUser?.username === playlist.ownerUsername;
 
             const card = (
-              <PlaylistCard
+              <PlaylistGridItem
                 playlist={playlist}
                 username={playlist.ownerUsername}
                 isOwner={isOwn}
@@ -620,7 +620,7 @@ export function ExploreClient({
             }
 
             return (
-              <PlaylistCard
+              <PlaylistGridItem
                 key={playlist.id}
                 playlist={playlist}
                 username={playlist.ownerUsername}
