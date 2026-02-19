@@ -49,7 +49,12 @@ export const Default: Story = {
       id: "playlist-1",
       name: "Favourites",
       itemCount: 12,
-      previewArtworkIds: ["art-1", "art-2", "art-3", "art-4"],
+      previewPosters: [
+        { tmdbPosterPath: null, artworkId: "art-1" },
+        { tmdbPosterPath: null, artworkId: "art-2" },
+        { tmdbPosterPath: null, artworkId: "art-3" },
+        { tmdbPosterPath: null, artworkId: "art-4" },
+      ],
     },
   },
   parameters: {
@@ -68,7 +73,7 @@ export const SingleArtwork: Story = {
       id: "playlist-2",
       name: "Watch Later",
       itemCount: 1,
-      previewArtworkIds: ["art-1"],
+      previewPosters: [{ tmdbPosterPath: null, artworkId: "art-1" }],
     },
   },
   parameters: {
@@ -87,7 +92,12 @@ export const PartialArtworks: Story = {
       id: "playlist-3",
       name: "Best of 2024",
       itemCount: 2,
-      previewArtworkIds: ["art-1", "art-2", null, null],
+      previewPosters: [
+        { tmdbPosterPath: null, artworkId: "art-1" },
+        { tmdbPosterPath: null, artworkId: "art-2" },
+        { tmdbPosterPath: null, artworkId: null },
+        { tmdbPosterPath: null, artworkId: null },
+      ],
     },
   },
   parameters: {
@@ -106,7 +116,7 @@ export const NoArtwork: Story = {
       id: "playlist-4",
       name: "Empty Playlist",
       itemCount: 0,
-      previewArtworkIds: [],
+      previewPosters: [],
     },
   },
   parameters: {
@@ -125,7 +135,12 @@ export const LongName: Story = {
       id: "playlist-5",
       name: "My Very Long Playlist Name That Should Truncate Gracefully",
       itemCount: 42,
-      previewArtworkIds: ["art-1", "art-2", "art-3", "art-4"],
+      previewPosters: [
+        { tmdbPosterPath: null, artworkId: "art-1" },
+        { tmdbPosterPath: null, artworkId: "art-2" },
+        { tmdbPosterPath: null, artworkId: "art-3" },
+        { tmdbPosterPath: null, artworkId: "art-4" },
+      ],
     },
   },
   parameters: {
@@ -144,7 +159,7 @@ export const SingleItem: Story = {
       id: "playlist-6",
       name: "Solo",
       itemCount: 1,
-      previewArtworkIds: ["art-1"],
+      previewPosters: [{ tmdbPosterPath: null, artworkId: "art-1" }],
     },
   },
   parameters: {
@@ -163,7 +178,12 @@ export const OwnerPublic: Story = {
       id: "playlist-7",
       name: "Public Playlist",
       itemCount: 5,
-      previewArtworkIds: ["art-1", "art-2", "art-3", "art-4"],
+      previewPosters: [
+        { tmdbPosterPath: null, artworkId: "art-1" },
+        { tmdbPosterPath: null, artworkId: "art-2" },
+        { tmdbPosterPath: null, artworkId: "art-3" },
+        { tmdbPosterPath: null, artworkId: "art-4" },
+      ],
       isPublic: true,
     },
     isOwner: true,
@@ -185,7 +205,12 @@ export const OwnerPrivate: Story = {
       id: "playlist-8",
       name: "Private Playlist",
       itemCount: 3,
-      previewArtworkIds: ["art-1", null, null, null],
+      previewPosters: [
+        { tmdbPosterPath: null, artworkId: "art-1" },
+        { tmdbPosterPath: null, artworkId: null },
+        { tmdbPosterPath: null, artworkId: null },
+        { tmdbPosterPath: null, artworkId: null },
+      ],
       isPublic: false,
     },
     isOwner: true,
@@ -206,7 +231,7 @@ export const CustomArtwork: Story = {
       id: "playlist-9",
       name: "Custom Cover",
       itemCount: 10,
-      previewArtworkIds: [],
+      previewPosters: [],
       hasArtwork: true,
     },
   },
@@ -229,7 +254,12 @@ export const WithDescription: Story = {
       description:
         "A curated selection of must-watch films from around the world.",
       itemCount: 15,
-      previewArtworkIds: ["art-1", "art-2", "art-3", "art-4"],
+      previewPosters: [
+        { tmdbPosterPath: null, artworkId: "art-1" },
+        { tmdbPosterPath: null, artworkId: "art-2" },
+        { tmdbPosterPath: null, artworkId: "art-3" },
+        { tmdbPosterPath: null, artworkId: "art-4" },
+      ],
     },
   },
   parameters: {

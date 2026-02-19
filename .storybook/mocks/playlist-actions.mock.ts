@@ -15,9 +15,9 @@ interface PlaylistWithCount {
   description: string | null;
   order: number;
   isPublic: boolean;
-  artworkUrl: string | null;
+  hasArtwork: boolean;
   itemCount: number;
-  previewArtworkIds: (string | null)[];
+  previewPosters: { tmdbPosterPath: string | null; artworkId: string | null }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -66,9 +66,14 @@ export const getUserPlaylists = fn(
         description: "My favourite films",
         order: 0,
         isPublic: true,
-        artworkUrl: null,
+        hasArtwork: false,
         itemCount: 12,
-        previewArtworkIds: ["art-1", "art-2", "art-3", "art-4"],
+        previewPosters: [
+          { tmdbPosterPath: "/abc123.jpg", artworkId: null },
+          { tmdbPosterPath: "/def456.jpg", artworkId: null },
+          { tmdbPosterPath: null, artworkId: "art-3" },
+          { tmdbPosterPath: null, artworkId: "art-4" },
+        ],
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -78,9 +83,14 @@ export const getUserPlaylists = fn(
         description: null,
         order: 1,
         isPublic: false,
-        artworkUrl: null,
+        hasArtwork: false,
         itemCount: 5,
-        previewArtworkIds: ["art-5", null, null, null],
+        previewPosters: [
+          { tmdbPosterPath: "/ghi789.jpg", artworkId: null },
+          { tmdbPosterPath: null, artworkId: null },
+          { tmdbPosterPath: null, artworkId: null },
+          { tmdbPosterPath: null, artworkId: null },
+        ],
         createdAt: new Date(),
         updatedAt: new Date(),
       },

@@ -226,7 +226,10 @@ export async function getUserPlaylists(): Promise<
       isPublic: p.isPublic,
       hasArtwork: !!p.artworkMime,
       itemCount: p._count.playlistItems,
-      previewArtworkIds: p.playlistItems.map((pi) => resolveArtworkId(pi.item)),
+      previewPosters: p.playlistItems.map((pi) => ({
+        tmdbPosterPath: pi.item.tmdbPosterPath ?? null,
+        artworkId: resolveArtworkId(pi.item),
+      })),
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
     }));

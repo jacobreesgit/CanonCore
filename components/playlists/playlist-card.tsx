@@ -11,6 +11,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ListMusic, Eye, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getTmdbPosterUrl } from "@/lib/tmdb-image-utils";
 
 interface PlaylistCardProps {
   /** Playlist data. */
@@ -19,7 +20,10 @@ interface PlaylistCardProps {
     name: string;
     description?: string | null;
     itemCount: number;
-    previewArtworkIds: (string | null)[];
+    previewPosters: {
+      tmdbPosterPath: string | null;
+      artworkId: string | null;
+    }[];
     isPublic?: boolean;
     hasArtwork?: boolean;
   };
@@ -40,7 +44,15 @@ export const PlaylistCard = forwardRef<HTMLAnchorElement, PlaylistCardProps>(
     { playlist, username, priority = false, isOwner = false },
     ref
   ) {
-    const artworks = playlist.previewArtworkIds.filter(Boolean) as string[];
+    const artworks = playlist.previewPosters
+      .map((p) =>
+        p.tmdbPosterPath
+          ? getTmdbPosterUrl(p.tmdbPosterPath, "w342")
+          : p.artworkId
+            ? `/api/artwork/${p.artworkId}`
+            : null
+      )
+      .filter(Boolean) as string[];
     const href = `/u/${username}/playlists/${playlist.id}`;
 
     return (
@@ -85,12 +97,13 @@ export const PlaylistCard = forwardRef<HTMLAnchorElement, PlaylistCardProps>(
             </div>
           ) : artworks.length === 1 ? (
             <Image
-              src={`/api/artwork/${artworks[0]}`}
+              src={artworks[0]}
               alt=""
               fill
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className="object-cover"
               priority={priority}
+              unoptimized={artworks[0]?.startsWith("/api/")}
             />
           ) : (
             <div className="grid size-full grid-cols-2 grid-rows-2 gap-[1px]">
@@ -98,12 +111,13 @@ export const PlaylistCard = forwardRef<HTMLAnchorElement, PlaylistCardProps>(
                 artworks[i] ? (
                   <div key={i} className="relative overflow-hidden">
                     <Image
-                      src={`/api/artwork/${artworks[i]}`}
+                      src={artworks[i]}
                       alt=""
                       fill
                       sizes="(max-width: 640px) 25vw, (max-width: 1024px) 17vw, 12vw"
                       className="object-cover"
                       priority={priority && i === 0}
+                      unoptimized={artworks[i]?.startsWith("/api/")}
                     />
                   </div>
                 ) : (

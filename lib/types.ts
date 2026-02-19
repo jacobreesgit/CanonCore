@@ -642,8 +642,8 @@ export interface PlaylistWithCount {
   hasArtwork: boolean;
   /** Total number of items in playlist */
   itemCount: number;
-  /** First 4 item artwork IDs for thumbnail collage */
-  previewArtworkIds: (string | null)[];
+  /** First 4 items' poster data for collage rendering. */
+  previewPosters: { tmdbPosterPath: string | null; artworkId: string | null }[];
   /** When playlist was created */
   createdAt: Date;
   /** When playlist was last updated */
@@ -721,8 +721,8 @@ export interface PublicPlaylistCard {
   description: string | null;
   /** Number of public items visible to viewer */
   itemCount: number;
-  /** First 4 public item artwork IDs for thumbnail collage */
-  previewArtworkIds: (string | null)[];
+  /** First 4 items' poster data for collage rendering. */
+  previewPosters: { tmdbPosterPath: string | null; artworkId: string | null }[];
   /** Whether playlist has custom artwork uploaded */
   hasArtwork: boolean;
   /** When playlist was last updated */
