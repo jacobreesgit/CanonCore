@@ -13,6 +13,7 @@ import { MobileNavProvider } from "@/components/mobile";
 import { auth, getExtendedSidebarUser } from "@/lib/auth";
 import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
 import { MyItemsProviders } from "@/components/items/my-items-providers";
+import { ErrorBoundary } from "@/components/providers/error-boundary";
 import type { ReactNode } from "react";
 
 /**
@@ -73,7 +74,7 @@ export default async function DocsLayout({
             titleHref="/docs"
             driveNeedsReauth={driveNeedsReauth}
           />
-          {children}
+          <ErrorBoundary>{children}</ErrorBoundary>
         </main>
       </SidebarInset>
 
