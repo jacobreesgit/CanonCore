@@ -636,8 +636,8 @@ export interface PlaylistWithCount {
   order: number;
   /** Whether visible to viewers */
   isPublic: boolean;
-  /** Custom artwork URL (null = auto-generate from items) */
-  artworkUrl: string | null;
+  /** Whether playlist has custom artwork uploaded */
+  hasArtwork: boolean;
   /** Total number of items in playlist */
   itemCount: number;
   /** First 4 item artwork IDs for thumbnail collage */
@@ -663,8 +663,11 @@ export interface PlaylistWithItems {
   order: number;
   /** Whether visible to viewers */
   isPublic: boolean;
-  /** Custom artwork URL (null = auto-generate from items) */
-  artworkUrl: string | null;
+  /** Whether playlist has custom artwork uploaded */
+  hasArtwork: boolean;
+  /** Unique token for sharing private playlists (null = not shared) */
+  shareToken: string | null;
+
   /** Owner user ID */
   userId: string;
   /** Ordered list of items in this playlist */
@@ -718,9 +721,23 @@ export interface PublicPlaylistCard {
   itemCount: number;
   /** First 4 public item artwork IDs for thumbnail collage */
   previewArtworkIds: (string | null)[];
+  /** Whether playlist has custom artwork uploaded */
+  hasArtwork: boolean;
   /** When playlist was last updated */
   updatedAt: Date;
 }
+
+/** View mode for playlist detail display. */
+export type PlaylistViewMode = "grid" | "tree";
+
+/** Content filter for playlist items (by TMDB type). */
+export type PlaylistContentFilter = "movie" | "tv";
+
+/** All valid playlist view modes. */
+export const PLAYLIST_VIEW_MODES = ["grid", "tree"] as const;
+
+/** All valid playlist content filters. */
+export const PLAYLIST_CONTENT_FILTERS = ["movie", "tv"] as const;
 
 /**
  * Fork relationship info for display in item details.
