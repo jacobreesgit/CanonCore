@@ -82,11 +82,14 @@ export interface ProgressRange {
   max: number;
 }
 
-/** Avatar image dimensions. */
-export const AVATAR_SIZE = { width: 400, height: 400 };
+/** Avatar image dimensions (square). */
+export const AVATAR_SIZE = { width: 800, height: 800 };
 
 /** Hero banner dimensions. */
 export const HERO_SIZE = { width: 1920, height: 400 };
+
+/** Playlist artwork dimensions (square, same as avatar). */
+export const PLAYLIST_ARTWORK_SIZE = { width: 800, height: 800 };
 
 /**
  * Builds Lorem Picsum URL for reproducible images.
