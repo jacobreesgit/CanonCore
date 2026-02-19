@@ -210,3 +210,35 @@ export const NoBackground: Story = {
     headingLevel: "h1",
   },
 };
+
+/** Playlist hero with blurred mosaic background element. */
+export const BlurredMosaic: Story = {
+  args: {
+    slides: [
+      {
+        id: "playlist-mosaic",
+        name: "My Film Collection",
+        description: "A curated selection of favourite films",
+      },
+    ],
+    backgroundElement: (
+      <div
+        className="absolute inset-0 grid grid-cols-3 grid-rows-2"
+        style={{
+          filter: "blur(20px)",
+          transform: "scale(1.1)",
+          willChange: "transform",
+        }}
+      >
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div
+            key={i}
+            className="bg-gradient-to-br from-indigo-800 to-purple-900"
+            style={{ opacity: 0.7 + (i % 3) * 0.1 }}
+          />
+        ))}
+      </div>
+    ),
+    disableShader: true,
+  },
+};
