@@ -1982,6 +1982,9 @@ async function generateSyncActivityLogs(userId: string): Promise<void> {
   log(`   📊 Created ${syncLogs.length} sync activity log entries`);
 }
 
+/** Playlist artwork dimensions (square, matching item poster aspect). */
+const PLAYLIST_ARTWORK_SIZE = { width: 500, height: 500 };
+
 /** Playlist seed definitions per user. */
 const PLAYLIST_DEFINITIONS: Record<
   string,
@@ -1991,6 +1994,8 @@ const PLAYLIST_DEFINITIONS: Record<
     isPublic: boolean;
     /** Optional share token for unlisted sharing (private playlists only). */
     shareToken?: string;
+    /** Optional Picsum seed for reproducible artwork. */
+    artworkSeed?: string;
     itemCount: { min: number; max: number };
   }>
 > = {
@@ -2005,6 +2010,7 @@ const PLAYLIST_DEFINITIONS: Record<
       name: "All-Time Favourites",
       description: "The best of the best — timeless classics.",
       isPublic: true,
+      artworkSeed: "demo-favourites",
       itemCount: { min: 3, max: 5 },
     },
     {
@@ -2026,6 +2032,7 @@ const PLAYLIST_DEFINITIONS: Record<
       name: "All-Time Favourites",
       description: "Films that changed my perspective.",
       isPublic: true,
+      artworkSeed: "filmfan-favourites",
       itemCount: { min: 3, max: 5 },
     },
     {
@@ -2071,6 +2078,17 @@ async function seedPlaylistsForUser(
       Math.min(itemCount, shuffled.length)
     );
 
+    // Download artwork from Picsum if seed is defined
+    let artworkData: ImageData | null = null;
+    if (def.artworkSeed) {
+      const artworkUrl = buildPicsumUrl(
+        def.artworkSeed,
+        PLAYLIST_ARTWORK_SIZE.width,
+        PLAYLIST_ARTWORK_SIZE.height
+      );
+      artworkData = await downloadProfileImage(artworkUrl);
+    }
+
     const playlist = await prisma.playlist.create({
       data: {
         name: def.name,
@@ -2078,6 +2096,8 @@ async function seedPlaylistsForUser(
         order: i,
         isPublic: def.isPublic,
         shareToken: def.shareToken ?? null,
+        artworkImage: artworkData?.data ?? null,
+        artworkMime: artworkData?.mime ?? null,
         userId,
       },
     });
@@ -2091,13 +2111,14 @@ async function seedPlaylistsForUser(
       })),
     });
 
+    const artLabel = artworkData ? " 🖼️" : "";
     const visLabel = def.isPublic
       ? " (public)"
       : def.shareToken
         ? " (unlisted)"
         : " (private)";
     log(
-      `   🎵 Created playlist "${def.name}"${visLabel} with ${selectedItems.length} items`
+      `   🎵 Created playlist "${def.name}"${visLabel}${artLabel} with ${selectedItems.length} items`
     );
   }
 }
