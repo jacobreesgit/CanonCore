@@ -182,7 +182,7 @@ export function AddToPlaylistDialog({
               <Input
                 aria-label="Search playlists"
                 data-testid="playlist-search-input"
-                placeholder="Search playlists..."
+                placeholder="Search playlists\u2026"
                 value={search}
                 onChange={(e) =>
                   startTransition(() => setSearch(e.target.value))

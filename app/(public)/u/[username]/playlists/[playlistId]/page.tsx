@@ -222,6 +222,7 @@ export default async function PlaylistPage({
                 id: item.id,
                 name: item.name,
                 description: item.description,
+                tmdbPosterPath: item.tmdbPosterPath,
                 artworkId: item.artworkId,
               },
             })),

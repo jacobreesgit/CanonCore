@@ -55,6 +55,7 @@ interface ExplorePlaylist {
   id: string;
   name: string;
   description: string | null;
+  hasArtwork?: boolean;
   itemCount: number;
   previewArtworkIds: (string | null)[];
   updatedAt: Date;

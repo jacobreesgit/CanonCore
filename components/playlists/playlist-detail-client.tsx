@@ -198,9 +198,10 @@ export function PlaylistDetailClient({
   // Handle share
   const handleShare = useCallback(() => {
     const url = `${window.location.origin}/u/${username}/playlists/${playlist.id}`;
-    navigator.clipboard.writeText(url).then(() => {
-      toast.success("Link copied to clipboard");
-    });
+    navigator.clipboard.writeText(url).then(
+      () => toast.success("Link copied to clipboard"),
+      () => toast.error("Failed to copy link")
+    );
   }, [username, playlist.id]);
 
   // Build hero slide

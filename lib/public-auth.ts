@@ -745,9 +745,7 @@ export const getPublicDescendants = cache(
         userId: item.userId,
         tmdbPosterPath: item.tmdbPosterPath ?? null,
         tmdbBackdropPath: item.tmdbBackdropPath ?? null,
-        artworkId: item.tmdbPosterPath
-          ? null
-          : (item.files.find((f) => f.fileType === "ARTWORK")?.id ?? null),
+        artworkId: resolveArtworkId(item),
         tmdbId: item.tmdbId,
         tmdbType: item.tmdbType,
         tmdbShowTagline: item.tmdbShowTagline,
@@ -939,9 +937,7 @@ export async function getExploreItems(
         userId: item.userId,
         tmdbPosterPath: item.tmdbPosterPath ?? null,
         tmdbBackdropPath: item.tmdbBackdropPath ?? null,
-        artworkId: item.tmdbPosterPath
-          ? null
-          : (item.files.find((f) => f.fileType === "ARTWORK")?.id ?? null),
+        artworkId: resolveArtworkId(item),
         tmdbId: item.tmdbId,
         tmdbType: item.tmdbType,
         tmdbShowTagline: item.tmdbShowTagline,
@@ -1245,7 +1241,7 @@ export const searchPublicPlaylists = cache(
           id: true,
           name: true,
           description: true,
-          artworkImage: true,
+          artworkMime: true,
           userId: true,
           user: {
             select: {
@@ -1270,7 +1266,7 @@ export const searchPublicPlaylists = cache(
           itemCount: playlist._count.playlistItems,
           ownerUsername: playlist.user.username!,
           ownerName: playlist.user.name,
-          hasArtwork: !!playlist.artworkImage,
+          hasArtwork: !!playlist.artworkMime,
         }));
 
       return { success: true, data: searchablePlaylists };
@@ -1412,7 +1408,12 @@ export const getPublicPlaylistsForUser = cache(
         },
       },
       orderBy: { order: "asc" },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        artworkMime: true,
+        updatedAt: true,
         playlistItems: {
           where: { item: { isPublic: true } },
           orderBy: { order: "asc" },
@@ -1444,7 +1445,7 @@ export const getPublicPlaylistsForUser = cache(
       id: p.id,
       name: p.name,
       description: p.description,
-      hasArtwork: !!p.artworkImage,
+      hasArtwork: !!p.artworkMime,
       itemCount: p._count.playlistItems,
       previewArtworkIds: p.playlistItems.map((pi) => resolveArtworkId(pi.item)),
       updatedAt: p.updatedAt,
@@ -1488,7 +1489,12 @@ export const getExplorePlaylists = cache(
       orderBy: { updatedAt: "desc" },
       take: limit,
       skip: offset,
-      include: {
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        artworkMime: true,
+        updatedAt: true,
         user: {
           select: {
             username: true,
@@ -1528,7 +1534,7 @@ export const getExplorePlaylists = cache(
         id: p.id,
         name: p.name,
         description: p.description,
-        hasArtwork: !!p.artworkImage,
+        hasArtwork: !!p.artworkMime,
         itemCount: p._count.playlistItems,
         previewArtworkIds: p.playlistItems.map((pi) =>
           resolveArtworkId(pi.item)
@@ -1561,6 +1567,7 @@ export const getPublicPlaylist = cache(
       name: string;
       description: string | null;
       artworkId: string | null;
+      tmdbPosterPath: string | null;
       tmdbId: number | null;
       tmdbType: string | null;
     }>;
@@ -1570,7 +1577,16 @@ export const getPublicPlaylist = cache(
         id: playlistId,
         user: { isPublic: true, username: { not: null } },
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        isPublic: true,
+        artworkMime: true,
+        shareToken: true,
+        userId: true,
+        createdAt: true,
+        updatedAt: true,
         playlistItems: {
           where: { item: { isPublic: true } },
           orderBy: { order: "asc" },
@@ -1610,7 +1626,7 @@ export const getPublicPlaylist = cache(
         id: playlist.id,
         name: playlist.name,
         description: playlist.description,
-        hasArtwork: !!playlist.artworkImage,
+        hasArtwork: !!playlist.artworkMime,
         createdAt: playlist.createdAt,
         userId: playlist.userId,
         itemCount: playlist.playlistItems.length,
@@ -1624,6 +1640,7 @@ export const getPublicPlaylist = cache(
         name: pi.item.name,
         description: pi.item.description,
         artworkId: resolveArtworkId(pi.item),
+        tmdbPosterPath: pi.item.tmdbPosterPath,
         tmdbId: pi.item.tmdbId,
         tmdbType: pi.item.tmdbType,
       })),

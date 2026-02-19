@@ -149,7 +149,7 @@ export function CreatePlaylistDialog({
         {isSubmitting ? (
           <>
             <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
-            Creating...
+            Creating…
           </>
         ) : (
           "Create"
