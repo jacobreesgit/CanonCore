@@ -1539,19 +1539,21 @@ export const getExplorePlaylists = cache(
 );
 
 /**
- * Get a public playlist with only its public items.
- * Returns null if playlist is not public, owner profile is not public,
- * or no public items exist in the playlist.
+ * Get a public or unlisted playlist with only its public items.
+ * Returns null if playlist is not accessible, owner profile is not public,
+ * or no public items exist (unlisted playlists may show empty).
  * Cached per-request to deduplicate calls from generateMetadata and page.
  *
  * @param playlistId - Playlist ID to fetch
+ * @param token - Optional share token for unlisted access
  * @returns Playlist with public items, or null
  */
 export const getPublicPlaylist = cache(
   async (
-    playlistId: string
+    playlistId: string,
+    token?: string | null
   ): Promise<{
-    playlist: PublicPlaylistCard & { userId: string };
+    playlist: PublicPlaylistCard & { userId: string; createdAt: Date };
     items: Array<{
       id: string;
       name: string;
@@ -1564,7 +1566,6 @@ export const getPublicPlaylist = cache(
     const playlist = await prisma.playlist.findFirst({
       where: {
         id: playlistId,
-        isPublic: true,
         user: { isPublic: true, username: { not: null } },
       },
       include: {
@@ -1593,8 +1594,14 @@ export const getPublicPlaylist = cache(
 
     if (!playlist) return null;
 
-    // If no public items, treat as not found
-    if (playlist.playlistItems.length === 0) return null;
+    // Access check: public OR valid share token
+    const isAccessible =
+      playlist.isPublic || (token && playlist.shareToken === token);
+    if (!isAccessible) return null;
+
+    // For public playlists, hide if no public items
+    // For unlisted playlists, allow empty (owner shared intentionally)
+    if (playlist.isPublic && playlist.playlistItems.length === 0) return null;
 
     return {
       playlist: {
@@ -1602,6 +1609,7 @@ export const getPublicPlaylist = cache(
         name: playlist.name,
         description: playlist.description,
         hasArtwork: !!playlist.artworkImage,
+        createdAt: playlist.createdAt,
         userId: playlist.userId,
         itemCount: playlist.playlistItems.length,
         previewArtworkIds: playlist.playlistItems
