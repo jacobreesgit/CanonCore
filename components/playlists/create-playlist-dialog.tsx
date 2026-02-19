@@ -19,6 +19,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { createPlaylist } from "@/lib/playlist-actions";
 import { toast } from "sonner";
@@ -46,11 +48,15 @@ export function CreatePlaylistDialog({
   onCreated,
 }: CreatePlaylistDialogProps) {
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const resetForm = useCallback(() => {
     setName("");
+    setDescription("");
+    setIsPublic(false);
     setError(null);
     setIsSubmitting(false);
   }, []);
@@ -79,7 +85,10 @@ export function CreatePlaylistDialog({
       setIsSubmitting(true);
 
       try {
-        const result = await createPlaylist(trimmed);
+        const result = await createPlaylist(trimmed, {
+          description: description.trim() || undefined,
+          isPublic,
+        });
 
         if (result.error) {
           setError(result.error);
@@ -97,7 +106,7 @@ export function CreatePlaylistDialog({
         setIsSubmitting(false);
       }
     },
-    [name, onCreated, handleOpenChange]
+    [name, description, isPublic, onCreated, handleOpenChange]
   );
 
   const header = (
@@ -161,7 +170,7 @@ export function CreatePlaylistDialog({
         <form
           id="create-playlist-form"
           onSubmit={handleSubmit}
-          className="py-2"
+          className="space-y-4 py-2"
         >
           <div className="space-y-2">
             <Label htmlFor="playlist-name">Name</Label>
@@ -178,16 +187,45 @@ export function CreatePlaylistDialog({
               autoComplete="off"
               disabled={isSubmitting}
             />
-            {error && (
-              <p
-                className="text-destructive text-sm"
-                data-testid="create-playlist-error"
-                role="alert"
-              >
-                {error}
-              </p>
-            )}
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="playlist-description">Description</Label>
+            <Textarea
+              id="playlist-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Add a description (optional)"
+              maxLength={1000}
+              rows={3}
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <Label htmlFor="create-playlist-public">Public</Label>
+              <p className="text-muted-foreground text-xs">
+                Visible on your public profile
+              </p>
+            </div>
+            <Switch
+              id="create-playlist-public"
+              checked={isPublic}
+              onCheckedChange={setIsPublic}
+              disabled={isSubmitting}
+            />
+          </div>
+
+          {error && (
+            <p
+              className="text-destructive text-sm"
+              data-testid="create-playlist-error"
+              role="alert"
+            >
+              {error}
+            </p>
+          )}
         </form>
       </AnimatedDialogContent>
     </Dialog>
