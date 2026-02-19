@@ -580,7 +580,9 @@ describe("playlist-actions", () => {
         expect(result.data).toHaveLength(1);
         expect(result.data![0].name).toBe("Watchlist");
         expect(result.data![0].itemCount).toBe(3);
-        expect(result.data![0].previewArtworkIds).toEqual(["artwork-1"]);
+        expect(result.data![0].previewPosters).toEqual([
+          { tmdbPosterPath: "/poster.jpg", artworkId: "artwork-1" },
+        ]);
       }
     });
   });

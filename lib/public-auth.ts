@@ -1447,7 +1447,10 @@ export const getPublicPlaylistsForUser = cache(
       description: p.description,
       hasArtwork: !!p.artworkMime,
       itemCount: p._count.playlistItems,
-      previewArtworkIds: p.playlistItems.map((pi) => resolveArtworkId(pi.item)),
+      previewPosters: p.playlistItems.map((pi) => ({
+        tmdbPosterPath: pi.item.tmdbPosterPath ?? null,
+        artworkId: resolveArtworkId(pi.item),
+      })),
       updatedAt: p.updatedAt,
     }));
   }
@@ -1536,9 +1539,10 @@ export const getExplorePlaylists = cache(
         description: p.description,
         hasArtwork: !!p.artworkMime,
         itemCount: p._count.playlistItems,
-        previewArtworkIds: p.playlistItems.map((pi) =>
-          resolveArtworkId(pi.item)
-        ),
+        previewPosters: p.playlistItems.map((pi) => ({
+          tmdbPosterPath: pi.item.tmdbPosterPath ?? null,
+          artworkId: resolveArtworkId(pi.item),
+        })),
         updatedAt: p.updatedAt,
         ownerUsername: p.user.username as string,
         ownerName: p.user.name,
@@ -1630,9 +1634,10 @@ export const getPublicPlaylist = cache(
         createdAt: playlist.createdAt,
         userId: playlist.userId,
         itemCount: playlist.playlistItems.length,
-        previewArtworkIds: playlist.playlistItems
-          .slice(0, 4)
-          .map((pi) => resolveArtworkId(pi.item)),
+        previewPosters: playlist.playlistItems.slice(0, 4).map((pi) => ({
+          tmdbPosterPath: pi.item.tmdbPosterPath ?? null,
+          artworkId: resolveArtworkId(pi.item),
+        })),
         updatedAt: playlist.updatedAt,
       },
       items: playlist.playlistItems.map((pi) => ({

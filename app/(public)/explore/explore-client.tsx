@@ -66,7 +66,7 @@ interface ExplorePlaylist {
   description: string | null;
   hasArtwork?: boolean;
   itemCount: number;
-  previewArtworkIds: (string | null)[];
+  previewPosters: { tmdbPosterPath: string | null; artworkId: string | null }[];
   updatedAt: Date;
   ownerUsername: string;
   ownerName: string | null;
