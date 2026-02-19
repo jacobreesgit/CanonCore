@@ -7,11 +7,18 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Section } from "@/components/ui/section";
 import { PlaylistCard } from "./playlist-card";
+import { PlaylistContextMenu } from "./playlist-context-menu";
 import { EmptyState } from "@/components/items/empty-state";
-import { getUserPlaylists } from "@/lib/playlist-actions";
+import {
+  getUserPlaylists,
+  updatePlaylist,
+  deletePlaylist,
+} from "@/lib/playlist-actions";
 import { CreatePlaylistDialog } from "./create-playlist-dialog";
 import type { PlaylistWithCount, PublicPlaylistCard } from "@/lib/types";
 
@@ -86,6 +93,7 @@ function OwnerPlaylistSection({
   username,
   initialPlaylists,
 }: PlaylistSectionOwnerProps) {
+  const router = useRouter();
   const hasInitialData = initialPlaylists !== undefined;
   const [playlists, setPlaylists] = useState<PlaylistWithCount[]>(
     initialPlaylists ?? []
@@ -110,12 +118,40 @@ function OwnerPlaylistSection({
   }, [hasInitialData]);
 
   /** Re-fetch playlists after creating a new one. */
-  const refreshPlaylists = async () => {
+  const refreshPlaylists = useCallback(async () => {
     const result = await getUserPlaylists();
     if (result.success && result.data) {
       setPlaylists(result.data);
     }
-  };
+  }, []);
+
+  const handleToggleVisibility = useCallback(
+    async (playlistId: string, currentIsPublic: boolean) => {
+      const result = await updatePlaylist(playlistId, {
+        isPublic: !currentIsPublic,
+      });
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        setPlaylists((prev) =>
+          prev.map((p) =>
+            p.id === playlistId ? { ...p, isPublic: !currentIsPublic } : p
+          )
+        );
+      }
+    },
+    []
+  );
+
+  const handleDelete = useCallback(async (playlistId: string) => {
+    const result = await deletePlaylist(playlistId);
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      setPlaylists((prev) => prev.filter((p) => p.id !== playlistId));
+      toast.success("Playlist deleted");
+    }
+  }, []);
 
   if (!isLoaded) return null;
 
@@ -137,11 +173,20 @@ function OwnerPlaylistSection({
         ) : (
           <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
             {playlists.map((playlist) => (
-              <PlaylistCard
+              <PlaylistContextMenu
                 key={playlist.id}
-                playlist={playlist}
-                username={username}
-              />
+                playlistName={playlist.name}
+                isPublic={playlist.isPublic}
+                onRename={() =>
+                  router.push(`/u/${username}/playlists/${playlist.id}`)
+                }
+                onToggleVisibility={() =>
+                  handleToggleVisibility(playlist.id, playlist.isPublic)
+                }
+                onDelete={() => handleDelete(playlist.id)}
+              >
+                <PlaylistCard playlist={playlist} username={username} isOwner />
+              </PlaylistContextMenu>
             ))}
           </div>
         )}

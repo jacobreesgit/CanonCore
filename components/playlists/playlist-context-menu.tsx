@@ -274,29 +274,91 @@ interface PlaylistItemContextMenuProps extends PlaylistItemMenuActions {
 /**
  * Context menu wrapper for items within a playlist detail grid.
  * Provides right-click menu with go to item, open in new tab, and remove options.
+ * Remove triggers a confirmation dialog before executing.
  */
 export function PlaylistItemContextMenu({
   children,
   ...actions
 }: PlaylistItemContextMenuProps) {
+  const { itemName, onRemove } = actions;
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleRemove = useCallback(async () => {
+    if (!onRemove) return;
+    setIsLoading(true);
+    try {
+      await onRemove();
+      setRemoveOpen(false);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [onRemove]);
+
   return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
-      <ContextMenuContent
-        className={cn(
-          "w-52",
-          "bg-[#1a1a1a]/90 backdrop-blur-xl",
-          "border border-white/[0.08]",
-          "rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
-          "text-foreground"
-        )}
-      >
-        {renderPlaylistItemMenuItems({
-          actions,
-          MenuItem: ContextMenuItem,
-          MenuSeparator: ContextMenuSeparator,
-        })}
-      </ContextMenuContent>
-    </ContextMenu>
+    <>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+        <ContextMenuContent
+          className={cn(
+            "w-52",
+            "bg-[#1a1a1a]/90 backdrop-blur-xl",
+            "border border-white/[0.08]",
+            "rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
+            "text-foreground"
+          )}
+        >
+          {renderPlaylistItemMenuItems({
+            actions: { ...actions, onRemove: async () => setRemoveOpen(true) },
+            MenuItem: ContextMenuItem,
+            MenuSeparator: ContextMenuSeparator,
+          })}
+        </ContextMenuContent>
+      </ContextMenu>
+
+      <AlertDialog open={removeOpen} onOpenChange={setRemoveOpen}>
+        <AlertDialogContent
+          className={cn(
+            "bg-[#1a1a1a]/95 backdrop-blur-xl",
+            "border border-white/[0.08]",
+            "shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
+            "text-foreground"
+          )}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove from Playlist</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
+              Remove &ldquo;{itemName}&rdquo; from this playlist? The item
+              itself will not be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={isLoading}
+              className={cn(
+                "text-foreground border-white/20 bg-white/10",
+                "hover:bg-white/20"
+              )}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemove}
+              disabled={isLoading}
+              className="bg-red-500 text-white hover:bg-red-600"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Removing...
+                </>
+              ) : (
+                "Remove"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
