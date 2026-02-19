@@ -24,8 +24,9 @@ test.describe("Playlist CRUD", () => {
     await playlist.createPlaylistFromDialog(playlistName);
     await playlist.closeAddToPlaylistDialog();
 
-    // Navigate to profile and verify playlist appears in section
+    // Navigate to profile, switch to Playlists tab, verify playlist appears
     await playlist.gotoProfile();
+    await playlist.switchToPlaylistsTab();
     await playlist.expectPlaylistSectionVisible();
     await playlist.expectPlaylistCardVisible(playlistName);
   });
@@ -45,8 +46,9 @@ test.describe("Playlist CRUD", () => {
     await playlist.createPlaylistFromDialog(playlistName);
     await playlist.closeAddToPlaylistDialog();
 
-    // Navigate to profile, click into playlist detail
+    // Navigate to profile, switch to Playlists tab, click into detail
     await playlist.gotoProfile();
+    await playlist.switchToPlaylistsTab();
     await playlist.expectPlaylistSectionVisible();
     await playlist.clickPlaylistCard(playlistName);
 
@@ -72,6 +74,7 @@ test.describe("Playlist CRUD", () => {
 
     // Navigate to playlist detail
     await playlist.gotoProfile();
+    await playlist.switchToPlaylistsTab();
     await playlist.clickPlaylistCard(playlistName);
 
     // Delete the playlist

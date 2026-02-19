@@ -27,8 +27,9 @@ test.describe("Playlist Items", () => {
     // Close and verify by navigating to the playlist
     await playlist.closeAddToPlaylistDialog();
 
-    // Go to profile, click into the playlist
+    // Go to profile, switch to Playlists tab, click into the playlist
     await playlist.gotoProfile();
+    await playlist.switchToPlaylistsTab();
     await playlist.clickPlaylistCard(playlistName);
 
     // Verify item is visible in the playlist grid
@@ -55,6 +56,7 @@ test.describe("Playlist Items", () => {
 
     // Navigate to playlist — item should not be there
     await playlist.gotoProfile();
+    await playlist.switchToPlaylistsTab();
     await playlist.clickPlaylistCard(playlistName);
     await playlist.expectDetailHeroVisible();
 
@@ -83,6 +85,7 @@ test.describe("Playlist Items", () => {
 
     // Both playlists should exist on profile
     await playlist.gotoProfile();
+    await playlist.switchToPlaylistsTab();
     await playlist.expectPlaylistCardVisible(playlistA);
     await playlist.expectPlaylistCardVisible(playlistB);
   });

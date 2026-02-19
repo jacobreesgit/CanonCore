@@ -76,6 +76,11 @@ publicTest.describe("Playlist Visibility", () => {
       await page.goto(`/u/${username}`);
       await page.waitForLoadState("domcontentloaded");
 
+      // Switch to Playlists tab (viewer profiles now use tabs)
+      await page
+        .getByRole("tab", { name: "Playlists" })
+        .click({ timeout: Timeouts.api });
+
       // Public playlist should be visible
       const playlistSection = page.getByTestId("playlist-section");
       await expect(playlistSection).toBeVisible({
@@ -94,6 +99,11 @@ publicTest.describe("Playlist Visibility", () => {
     async ({ page }) => {
       await page.goto(`/u/${username}`);
       await page.waitForLoadState("domcontentloaded");
+
+      // Switch to Playlists tab (viewer profiles now use tabs)
+      await page
+        .getByRole("tab", { name: "Playlists" })
+        .click({ timeout: Timeouts.api });
 
       // Private playlist should NOT be visible
       await expect(page.getByText("Private Watch Later")).not.toBeVisible({

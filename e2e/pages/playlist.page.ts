@@ -22,6 +22,13 @@ export class PlaylistPage {
     await this.page.waitForLoadState("domcontentloaded");
   }
 
+  /** Switch to the Playlists tab on the profile page. */
+  async switchToPlaylistsTab() {
+    await this.page
+      .getByRole("tab", { name: "Playlists" })
+      .click({ timeout: Timeouts.api });
+  }
+
   /**
    * Navigate to a playlist detail page by URL.
    *
