@@ -138,6 +138,7 @@ import {
   USER_PINNED_ITEMS,
   AVATAR_SIZE,
   HERO_SIZE,
+  PLAYLIST_ARTWORK_SIZE,
   buildPicsumUrl,
   validateContentDistribution,
   getMovieIdsForUser,
@@ -1981,9 +1982,6 @@ async function generateSyncActivityLogs(userId: string): Promise<void> {
 
   log(`   📊 Created ${syncLogs.length} sync activity log entries`);
 }
-
-/** Playlist artwork dimensions (square, matching item poster aspect). */
-const PLAYLIST_ARTWORK_SIZE = { width: 500, height: 500 };
 
 /** Playlist seed definitions per user. */
 const PLAYLIST_DEFINITIONS: Record<
