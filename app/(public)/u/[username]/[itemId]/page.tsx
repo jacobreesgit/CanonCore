@@ -21,6 +21,7 @@ import {
   resolveTmdbForItem,
   extractTmdbDisplayOptions,
 } from "@/lib/tmdb-utils";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SiteHeader } from "@/components/site-header";
@@ -239,6 +240,18 @@ export default async function ItemDetailPage({
       </>
     );
   } else {
+    // Rate limit public item views
+    const rateLimitResult = await checkRateLimit("publicProfile");
+    if (rateLimitResult) {
+      return (
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <p className="text-muted-foreground">
+            Too many requests. Please try again later.
+          </p>
+        </div>
+      );
+    }
+
     // Viewer mode: Read-only view with fork option
     const item = await getPublicItem(itemId);
 
