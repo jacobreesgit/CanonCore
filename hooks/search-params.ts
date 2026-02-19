@@ -40,3 +40,14 @@ export const exploreParsers = {
   autoplay: parseAsBoolean.withDefault(true),
   tab: parseAsStringLiteral(TAB_OPTIONS),
 };
+
+// --- Viewer profile parsers (sort + filter + tabs, no excludeMine/autoplay) ---
+
+/** Type-safe URL query parsers for viewer profile pages. */
+export const viewerParsers = {
+  sort: parseAsStringLiteral(EXPLORE_SORT_OPTIONS_TUPLE).withDefault(
+    "updated-desc"
+  ),
+  filter: parseAsArrayOf(parseAsStringLiteral(CONTENT_FILTERS)).withDefault([]),
+  tab: parseAsStringLiteral(TAB_OPTIONS),
+};

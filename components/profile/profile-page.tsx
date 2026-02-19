@@ -28,7 +28,7 @@ import { UnderlineTabs } from "@/components/ui/underline-tabs";
 import { ContentToolbar } from "@/components/ui/content-toolbar";
 import { Button } from "@/components/ui/button";
 import { useItemsUrlState } from "@/hooks/use-items-url-state";
-import { useExploreUrlState } from "@/hooks/use-explore-url-state";
+import { useViewerUrlState } from "@/hooks/use-viewer-url-state";
 import { useSyncHandler } from "@/hooks/use-sync-handler";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -44,14 +44,12 @@ import {
   EXPLORE_SORT_OPTIONS,
   sortPublicItems,
   filterItems,
-  toggleContentFilter,
 } from "@/lib/item-utils";
 import { formatProgressLabel } from "@/lib/progress-utils";
 import { PlaylistSection } from "@/components/playlists/playlist-section";
 import type {
   ItemWithArtwork,
   ItemProgress,
-  ContentFilter,
   SortOption,
   PublicPlaylistCard,
   PlaylistWithCount,
@@ -368,14 +366,24 @@ function ViewerModeContent({
   publicPlaylists: PublicPlaylistCard[];
 }) {
   const router = useRouter();
-  const { sortBy, setSortBy } = useExploreUrlState();
-  const [filters, setFilters] = useState<ContentFilter[]>([]);
+  const {
+    sortBy,
+    setSortBy,
+    filters,
+    toggleFilter,
+    clearFilters,
+    tab,
+    setTab,
+  } = useViewerUrlState();
 
-  const toggleFilter = useCallback((filter: ContentFilter) => {
-    setFilters((prev) => toggleContentFilter(prev, filter));
-  }, []);
+  const isMobile = useIsMobile();
+  const tabsMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
-  const clearFilters = useCallback(() => setFilters([]), []);
+  const activeTab = tab ?? "items";
 
   // Create O(1) lookup map for original items (avoids O(n²) find in render loop)
   const itemsById = useMemo(
@@ -462,8 +470,9 @@ function ViewerModeContent({
     />
   );
 
-  return (
-    <HeroContentLayout hero={hero} className={!hasItems ? "flex-1" : undefined}>
+  // Items tab content
+  const itemsContent = (
+    <>
       <ContentToolbar
         sortBy={sortBy}
         onSortChange={setSortBy as (value: SortOption) => void}
@@ -475,7 +484,6 @@ function ViewerModeContent({
         defaultSort="updated-desc"
       />
 
-      {/* Items grid or empty state */}
       {hasItems ? (
         <>
           {/* Pinned items section */}
@@ -508,7 +516,7 @@ function ViewerModeContent({
             </Section>
           )}
 
-          {/* Library section (items not pinned) */}
+          {/* Library section */}
           {sortableItems.length > 0 && (
             <Section className="py-8" aria-label="Library">
               {pinnedItems.length > 0 && (
@@ -518,7 +526,6 @@ function ViewerModeContent({
               )}
               <div className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6">
                 {sortableItems.map((item, index) => {
-                  // O(1) lookup for original item data
                   const originalItem = itemsById.get(item.id);
                   return (
                     <GridItem
@@ -543,27 +550,56 @@ function ViewerModeContent({
               </div>
             </Section>
           )}
-
-          {/* Playlists section */}
-          <PlaylistSection
-            mode="viewer"
-            username={profile.username}
-            playlists={publicPlaylists}
-          />
         </>
       ) : (
-        <>
-          <PlaylistSection
-            mode="viewer"
-            username={profile.username}
-            playlists={publicPlaylists}
+        <Section className="flex flex-1 flex-col">
+          <EmptyState variant="public-profile-empty" />
+        </Section>
+      )}
+    </>
+  );
+
+  // Playlists tab content
+  // NOTE: Cannot delegate to <PlaylistSection mode="viewer"> alone because
+  // ViewerPlaylistSection returns null when playlists are empty (line 68 of
+  // playlist-section.tsx), which would leave the tab completely blank.
+  const playlistsContent =
+    publicPlaylists.length > 0 ? (
+      <PlaylistSection
+        mode="viewer"
+        username={profile.username}
+        playlists={publicPlaylists}
+      />
+    ) : (
+      <Section className="flex flex-1 flex-col items-center justify-center py-16">
+        <p className="text-muted-foreground text-sm">No public playlists yet</p>
+      </Section>
+    );
+
+  const tabs = [
+    { id: "items", label: "Items", content: itemsContent },
+    { id: "playlists", label: "Playlists", content: playlistsContent },
+  ];
+
+  return (
+    <HeroContentLayout
+      hero={hero}
+      className={
+        !hasItems && publicPlaylists.length === 0 ? "flex-1" : undefined
+      }
+    >
+      {tabsMounted ? (
+        isMobile ? (
+          <SwipeableUnderlineTabs
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={(id) => setTab(id as "items" | "playlists")}
           />
-          {publicPlaylists.length === 0 && (
-            <Section className="flex flex-1 flex-col">
-              <EmptyState variant="public-profile-empty" />
-            </Section>
-          )}
-        </>
+        ) : (
+          <UnderlineTabs defaultTab="items" tabs={tabs} />
+        )
+      ) : (
+        itemsContent
       )}
     </HeroContentLayout>
   );
