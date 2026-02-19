@@ -60,6 +60,14 @@ const SwipeableUnderlineTabs = dynamic(
   { ssr: false }
 );
 
+const PlaylistSortableGrid = dynamic(
+  () =>
+    import("@/components/playlists/playlist-sortable-grid").then((mod) => ({
+      default: mod.PlaylistSortableGrid,
+    })),
+  { ssr: false }
+);
+
 const emptySubscribe = () => () => {};
 
 /** Minimal playlist item shape needed by the detail client. */
@@ -155,25 +163,17 @@ export function PlaylistDetailClient({
   );
 
   // Handle reorder items (optimistic + server call)
-  const _handleReorder = useCallback(
-    (updates: { id: string; order: number }[]) => {
+  const handleReorder = useCallback(
+    (reorderedItems: PlaylistDetailItem[]) => {
       startTransition(async () => {
         // Optimistic update
-        setPlaylist((prev) => {
-          const newItems = [...prev.items];
-          for (const update of updates) {
-            const item = newItems.find(
-              (i) => i.playlistItemId === String(update.id)
-            );
-            if (item) item.order = update.order;
-          }
-          return { ...prev, items: newItems };
-        });
+        setPlaylist((prev) => ({ ...prev, items: reorderedItems }));
 
-        const result = await reorderPlaylistItems(
-          playlist.id,
-          updates.map((u) => ({ id: String(u.id), order: u.order }))
-        );
+        const updates = reorderedItems.map((i) => ({
+          id: i.playlistItemId,
+          order: i.order,
+        }));
+        const result = await reorderPlaylistItems(playlist.id, updates);
         if (result.error) {
           toast.error(result.error);
         }
@@ -305,44 +305,51 @@ export function PlaylistDetailClient({
         </Section>
       ) : (
         <Section>
-          <div className={gridClasses} data-testid="playlist-item-grid">
-            {sortedItems.map((entry, index) => {
-              const itemHref = `/u/${username}/${entry.item.id}`;
+          {isEditing && isCustomSort ? (
+            <PlaylistSortableGrid
+              items={sortedItems}
+              username={username}
+              onReorder={handleReorder}
+              onRemoveItem={handleRemoveItem}
+              gridClassName={gridClasses}
+            />
+          ) : (
+            <div className={gridClasses} data-testid="playlist-item-grid">
+              {sortedItems.map((entry, index) => {
+                const itemHref = `/u/${username}/${entry.item.id}`;
 
-              const gridItem = (
-                <GridItem
-                  key={entry.playlistItemId}
-                  id={entry.item.id}
-                  name={entry.item.name}
-                  description={entry.item.description}
-                  tmdbPosterPath={entry.item.tmdbPosterPath}
-                  artworkId={entry.item.artworkId}
-                  onClick={isEditing ? undefined : () => router.push(itemHref)}
-                  onMouseEnter={
-                    isEditing ? undefined : () => router.prefetch(itemHref)
-                  }
-                  showArtwork
-                  showDescription={!isEditing}
-                  priority={index < 6}
-                />
-              );
-
-              if (isOwner) {
-                return (
-                  <PlaylistItemContextMenu
+                const gridItem = (
+                  <GridItem
                     key={entry.playlistItemId}
-                    itemName={entry.item.name}
-                    itemHref={itemHref}
-                    onRemove={() => handleRemoveItem(entry.item.id)}
-                  >
-                    {gridItem}
-                  </PlaylistItemContextMenu>
+                    id={entry.item.id}
+                    name={entry.item.name}
+                    description={entry.item.description}
+                    tmdbPosterPath={entry.item.tmdbPosterPath}
+                    artworkId={entry.item.artworkId}
+                    onClick={() => router.push(itemHref)}
+                    onMouseEnter={() => router.prefetch(itemHref)}
+                    showArtwork
+                    priority={index < 6}
+                  />
                 );
-              }
 
-              return gridItem;
-            })}
-          </div>
+                if (isOwner) {
+                  return (
+                    <PlaylistItemContextMenu
+                      key={entry.playlistItemId}
+                      itemName={entry.item.name}
+                      itemHref={itemHref}
+                      onRemove={() => handleRemoveItem(entry.item.id)}
+                    >
+                      {gridItem}
+                    </PlaylistItemContextMenu>
+                  );
+                }
+
+                return gridItem;
+              })}
+            </div>
+          )}
         </Section>
       )}
     </>
