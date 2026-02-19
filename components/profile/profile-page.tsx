@@ -15,11 +15,13 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Plus } from "lucide-react";
+import { Plus, Share2 } from "lucide-react";
+import { toast } from "sonner";
 import { getItems } from "@/lib/item-actions";
 import { ItemsView } from "@/components/items";
 import { EditModeToggle } from "@/components/items/edit-mode-toggle";
 import { CinematicHero, type HeroSlide } from "@/components/hero";
+import { HeroButton } from "@/components/items/hero-button";
 import { GridItem } from "@/components/sortable-grid/grid-item";
 import { EmptyState } from "@/components/items/empty-state";
 import { Section } from "@/components/ui/section";
@@ -168,6 +170,14 @@ function OwnerModeContent({
   libraryProgress?: ItemProgress | null;
   ownerPlaylists?: PlaylistWithCount[];
 }) {
+  const handleShare = useCallback(() => {
+    const url = `${window.location.origin}/u/${profile.username}`;
+    navigator.clipboard.writeText(url).then(
+      () => toast.success("Profile link copied to clipboard"),
+      () => toast.error("Failed to copy link")
+    );
+  }, [profile.username]);
+
   const [isPending, startTransition] = useTransition();
   const [items, setItems] = useState(initialItems);
 
@@ -278,6 +288,12 @@ function OwnerModeContent({
           },
         } satisfies HeroSlide,
       ]}
+      renderActions={() => (
+        <HeroButton onClick={handleShare}>
+          <Share2 className="size-4" />
+          Share
+        </HeroButton>
+      )}
     />
   );
 
@@ -383,6 +399,14 @@ function ViewerModeContent({
     () => false
   );
 
+  const handleShare = useCallback(() => {
+    const url = `${window.location.origin}/u/${profile.username}`;
+    navigator.clipboard.writeText(url).then(
+      () => toast.success("Profile link copied to clipboard"),
+      () => toast.error("Failed to copy link")
+    );
+  }, [profile.username]);
+
   const activeTab = tab ?? "items";
 
   // Create O(1) lookup map for original items (avoids O(n²) find in render loop)
@@ -467,6 +491,12 @@ function ViewerModeContent({
           },
         } satisfies HeroSlide,
       ]}
+      renderActions={() => (
+        <HeroButton onClick={handleShare}>
+          <Share2 className="size-4" />
+          Share
+        </HeroButton>
+      )}
     />
   );
 
