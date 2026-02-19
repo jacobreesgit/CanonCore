@@ -17,6 +17,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import dynamic from "next/dynamic";
 import { Pencil, Trash2, Share2, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -204,19 +205,89 @@ export function PlaylistDetailClient({
     );
   }, [username, playlist.id]);
 
-  // Build hero slide
-  const firstItem = sortedItems[0]?.item;
-  const backdropUrl = firstItem?.tmdbBackdropPath
-    ? getTmdbBackdropUrl(firstItem.tmdbBackdropPath)
-    : firstItem?.artworkId
-      ? `/api/artwork/${firstItem.artworkId}`
-      : undefined;
+  // Build hero background element (blurred mosaic from item backdrops)
+  const heroBackground = useMemo(() => {
+    // Custom uploaded artwork — single full-bleed image
+    if (playlist.hasArtwork) {
+      return (
+        <Image
+          src={`/api/playlist/artwork?playlistId=${playlist.id}`}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
+          unoptimized
+        />
+      );
+    }
+
+    // Collect backdrop URLs from items (up to 6)
+    const backdropUrls = sortedItems
+      .map((si) =>
+        si.item.tmdbBackdropPath
+          ? getTmdbBackdropUrl(si.item.tmdbBackdropPath, "w780")
+          : null
+      )
+      .filter(Boolean) as string[];
+
+    if (backdropUrls.length === 0) return undefined;
+
+    // 1-3 backdrops: single blurred full-bleed image
+    if (backdropUrls.length < 4) {
+      return (
+        <div
+          className="absolute inset-0"
+          style={{
+            filter: "blur(20px)",
+            transform: "scale(1.1)",
+            willChange: "transform",
+          }}
+        >
+          <Image
+            src={backdropUrls[0]}
+            alt=""
+            fill
+            sizes="100vw"
+            className="object-cover"
+            quality={30}
+          />
+        </div>
+      );
+    }
+
+    // 4+ backdrops: CSS grid mosaic with blur
+    const tiles = backdropUrls.slice(0, 6);
+    return (
+      <div
+        className="absolute inset-0 grid grid-cols-3 grid-rows-2"
+        style={{
+          filter: "blur(20px)",
+          transform: "scale(1.1)",
+          willChange: "transform",
+        }}
+      >
+        {tiles.map((url, i) => (
+          <div key={i} className="relative overflow-hidden">
+            <Image
+              src={url}
+              alt=""
+              fill
+              sizes="33vw"
+              className="object-cover"
+              loading="lazy"
+              quality={30}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }, [playlist.hasArtwork, playlist.id, sortedItems]);
 
   const heroSlide: HeroSlide = {
     id: playlist.id,
     name: playlist.name,
     description: playlist.description ?? undefined,
-    backgroundUrl: backdropUrl,
   };
 
   // Hero actions
@@ -252,6 +323,7 @@ export function PlaylistDetailClient({
       slides={[heroSlide]}
       headingLevel="h1"
       renderActions={() => heroActions}
+      backgroundElement={heroBackground}
     />
   );
 
