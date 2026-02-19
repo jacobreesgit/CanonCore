@@ -35,7 +35,7 @@ export const CardShell = forwardRef<HTMLDivElement, CardShellProps>(
         ref={ref}
         className={cn(
           // Base styles — poster aspect ratio
-          "group/card relative w-full overflow-hidden rounded-lg",
+          "group/card relative isolate w-full overflow-hidden rounded-lg",
           "aspect-[2/3]",
           // Background colour (shown until image loads)
           "bg-card",
@@ -54,7 +54,7 @@ export const CardShell = forwardRef<HTMLDivElement, CardShellProps>(
         {defaultContent && (
           <div
             className={cn(
-              "absolute inset-x-0 bottom-0 z-10",
+              "absolute inset-x-0 bottom-0 z-10 overflow-hidden rounded-b-lg",
               "transition-opacity duration-200",
               "group-hover/card:opacity-0"
             )}

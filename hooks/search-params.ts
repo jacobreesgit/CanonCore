@@ -19,14 +19,18 @@ import {
 
 // --- Items page parsers ---
 
-const TAB_OPTIONS = ["contents", "about", "items", "playlists"] as const;
+/** Item detail (contents, about) and profile owner (items, playlists) tabs. */
+const ITEM_TAB_OPTIONS = ["contents", "about", "items", "playlists"] as const;
+
+/** Explore and viewer profile tabs. */
+const EXPLORE_TAB_OPTIONS = ["items", "playlists"] as const;
 
 /** Type-safe URL query parsers for items pages (library, item detail). */
 export const itemsParsers = {
   sort: parseAsStringLiteral(SORT_OPTIONS_TUPLE).withDefault("custom"),
   filter: parseAsArrayOf(parseAsStringLiteral(CONTENT_FILTERS)).withDefault([]),
   view: parseAsStringLiteral(VIEW_MODES).withDefault("grid"),
-  tab: parseAsStringLiteral(TAB_OPTIONS),
+  tab: parseAsStringLiteral(ITEM_TAB_OPTIONS),
 };
 
 // --- Explore page parsers (different defaults, no "custom" sort) ---
@@ -38,7 +42,7 @@ export const exploreParsers = {
   ),
   excludeMine: parseAsBoolean.withDefault(false),
   autoplay: parseAsBoolean.withDefault(true),
-  tab: parseAsStringLiteral(TAB_OPTIONS),
+  tab: parseAsStringLiteral(EXPLORE_TAB_OPTIONS),
 };
 
 // --- Viewer profile parsers (sort + filter + tabs, no excludeMine/autoplay) ---
@@ -49,5 +53,5 @@ export const viewerParsers = {
     "updated-desc"
   ),
   filter: parseAsArrayOf(parseAsStringLiteral(CONTENT_FILTERS)).withDefault([]),
-  tab: parseAsStringLiteral(TAB_OPTIONS),
+  tab: parseAsStringLiteral(EXPLORE_TAB_OPTIONS),
 };

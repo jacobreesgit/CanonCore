@@ -53,28 +53,3 @@ export const WithAllSlots: Story = {
     ),
   },
 };
-
-/** Shell with artwork only — no title or overlay. */
-export const ArtworkOnly: Story = {
-  args: {
-    children: (
-      <div className="absolute inset-0 bg-gradient-to-br from-emerald-800 to-teal-900" />
-    ),
-  },
-};
-
-/** Shell with fallback (no artwork). */
-export const Fallback: Story = {
-  args: {
-    children: (
-      <div className="from-card to-background flex size-full items-center justify-center bg-gradient-to-br">
-        <span className="text-4xl font-bold text-white/20">F</span>
-      </div>
-    ),
-    defaultContent: (
-      <h3 className="truncate text-xs font-semibold text-white drop-shadow-lg md:text-sm">
-        Fallback Item
-      </h3>
-    ),
-  },
-};

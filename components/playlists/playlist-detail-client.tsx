@@ -19,8 +19,9 @@ import {
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { Pencil, Trash2, Share2, Plus } from "lucide-react";
+import { Pencil, Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { CinematicHero, type HeroSlide } from "@/components/hero";
 import { HeroButton } from "@/components/items/hero-button";
 import { HeroContentLayout } from "@/components/ui/hero-content-layout";
@@ -131,19 +132,20 @@ export function PlaylistDetailClient({
   const { sortBy, setSortBy, tab, setTab, isCustomSort } =
     usePlaylistUrlState();
 
-  // Sort items based on current sort option
+  // Sort items based on current sort option (toSorted for immutability)
   const sortedItems = useMemo(() => {
-    const items = [...playlist.items];
     switch (sortBy) {
       case "name-asc":
-        return items.sort((a, b) => a.item.name.localeCompare(b.item.name));
+        return playlist.items.toSorted((a, b) =>
+          a.item.name.localeCompare(b.item.name)
+        );
       case "updated-desc":
-        return items.sort(
+        return playlist.items.toSorted(
           (a, b) =>
             new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()
         );
       default:
-        return items.sort((a, b) => a.order - b.order);
+        return playlist.items.toSorted((a, b) => a.order - b.order);
     }
   }, [playlist.items, sortBy]);
 
@@ -165,10 +167,12 @@ export function PlaylistDetailClient({
     [playlist.id]
   );
 
-  // Handle reorder items (optimistic + server call)
+  // Handle reorder items (optimistic + server call with rollback)
   const handleReorder = useCallback(
     (reorderedItems: PlaylistDetailItem[]) => {
       startTransition(async () => {
+        // Save previous state for rollback
+        const prevItems = playlist.items;
         // Optimistic update
         setPlaylist((prev) => ({ ...prev, items: reorderedItems }));
 
@@ -178,34 +182,29 @@ export function PlaylistDetailClient({
         }));
         const result = await reorderPlaylistItems(playlist.id, updates);
         if (result.error) {
+          // Rollback optimistic update
+          setPlaylist((prev) => ({ ...prev, items: prevItems }));
           toast.error(result.error);
         }
       });
     },
-    [playlist.id]
+    [playlist.id, playlist.items]
   );
 
   // Handle delete playlist
-  const handleDelete = useCallback(async () => {
-    const result = await deletePlaylist(playlist.id);
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("Playlist deleted");
-      router.push(`/u/${username}`);
-    }
+  const handleDelete = useCallback(() => {
+    startTransition(async () => {
+      const result = await deletePlaylist(playlist.id);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Playlist deleted");
+        router.push(`/u/${username}`);
+      }
+    });
   }, [playlist.id, username, router]);
 
-  // Handle share
-  const handleShare = useCallback(() => {
-    const url = `${window.location.origin}/u/${username}/playlists/${playlist.id}`;
-    navigator.clipboard.writeText(url).then(
-      () => toast.success("Link copied to clipboard"),
-      () => toast.error("Failed to copy link")
-    );
-  }, [username, playlist.id]);
-
-  // Build hero background element (blurred mosaic from item backdrops)
+  // Build hero background element — layout adapts to backdrop count
   const heroBackground = useMemo(() => {
     // Custom uploaded artwork — single full-bleed image
     if (playlist.hasArtwork) {
@@ -231,55 +230,86 @@ export function PlaylistDetailClient({
       )
       .filter(Boolean) as string[];
 
-    if (backdropUrls.length === 0) return undefined;
+    const count = backdropUrls.length;
+    if (count === 0) return undefined;
 
-    // 1-3 backdrops: single blurred full-bleed image
-    if (backdropUrls.length < 4) {
+    // Helper to render a single mosaic tile
+    const tile = (
+      url: string,
+      i: number,
+      sizes: string,
+      className?: string
+    ) => (
+      <div key={i} className={cn("relative overflow-hidden", className)}>
+        <Image
+          src={url}
+          alt=""
+          fill
+          sizes={sizes}
+          className="object-cover"
+          loading={i === 0 ? undefined : "lazy"}
+        />
+      </div>
+    );
+
+    // 1 backdrop: single full-bleed
+    if (count === 1) {
       return (
-        <div
-          className="absolute inset-0"
-          style={{
-            filter: "blur(20px)",
-            transform: "scale(1.1)",
-            willChange: "transform",
-          }}
-        >
-          <Image
-            src={backdropUrls[0]}
-            alt=""
-            fill
-            sizes="100vw"
-            className="object-cover"
-            quality={30}
-          />
+        <Image
+          src={backdropUrls[0]}
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover"
+        />
+      );
+    }
+
+    // 2 backdrops: side by side
+    if (count === 2) {
+      return (
+        <div className="absolute inset-0 grid grid-cols-2">
+          {backdropUrls.map((url, i) => tile(url, i, "50vw"))}
         </div>
       );
     }
 
-    // 4+ backdrops: CSS grid mosaic with blur
-    const tiles = backdropUrls.slice(0, 6);
+    // 3 backdrops: three columns
+    if (count === 3) {
+      return (
+        <div className="absolute inset-0 grid grid-cols-3">
+          {backdropUrls.map((url, i) => tile(url, i, "33vw"))}
+        </div>
+      );
+    }
+
+    // 4 backdrops: 2×2 grid
+    if (count === 4) {
+      return (
+        <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
+          {backdropUrls.map((url, i) => tile(url, i, "50vw"))}
+        </div>
+      );
+    }
+
+    // 5 backdrops: 3 top + 2 wider bottom (6-col grid)
+    if (count === 5) {
+      return (
+        <div className="absolute inset-0 grid grid-cols-6 grid-rows-2">
+          {backdropUrls
+            .slice(0, 3)
+            .map((url, i) => tile(url, i, "33vw", "col-span-2"))}
+          {backdropUrls
+            .slice(3, 5)
+            .map((url, i) => tile(url, i + 3, "50vw", "col-span-3"))}
+        </div>
+      );
+    }
+
+    // 6+ backdrops: 3×2 grid
     return (
-      <div
-        className="absolute inset-0 grid grid-cols-3 grid-rows-2"
-        style={{
-          filter: "blur(20px)",
-          transform: "scale(1.1)",
-          willChange: "transform",
-        }}
-      >
-        {tiles.map((url, i) => (
-          <div key={i} className="relative overflow-hidden">
-            <Image
-              src={url}
-              alt=""
-              fill
-              sizes="33vw"
-              className="object-cover"
-              loading="lazy"
-              quality={30}
-            />
-          </div>
-        ))}
+      <div className="absolute inset-0 grid grid-cols-3 grid-rows-2">
+        {backdropUrls.slice(0, 6).map((url, i) => tile(url, i, "33vw"))}
       </div>
     );
   }, [playlist.hasArtwork, playlist.id, sortedItems]);
@@ -302,10 +332,6 @@ export function PlaylistDetailClient({
           Edit
         </HeroButton>
       )}
-      <HeroButton onClick={handleShare} data-testid="playlist-share-button">
-        <Share2 className="size-4" />
-        Share
-      </HeroButton>
       {isOwner && (
         <HeroButton
           onClick={() => setShowDeleteConfirm(true)}
@@ -475,7 +501,11 @@ export function PlaylistDetailClient({
               swipeEnabled={!isEditing}
             />
           ) : (
-            <UnderlineTabs defaultTab="contents" tabs={tabs} />
+            <UnderlineTabs
+              tabs={tabs}
+              activeTab={activeTab}
+              onTabChange={(id) => setTab(id as "contents" | "about")}
+            />
           )
         ) : (
           contentsContent

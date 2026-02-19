@@ -6,6 +6,7 @@
 
 "use server";
 
+import { cache } from "react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -85,11 +86,12 @@ export async function createPlaylist(
 /**
  * Get a playlist with its items. Owner sees all items.
  * Use getPublicPlaylist (in public-auth.ts) for viewers.
+ * Wrapped with React.cache for per-request deduplication (metadata + page).
  *
  * @param playlistId - Playlist ID to fetch
  * @returns Playlist with items, or error
  */
-export async function getPlaylist(
+export const getPlaylist = cache(async function getPlaylist(
   playlistId: string
 ): Promise<ItemResult<PlaylistWithItems>> {
   try {
@@ -169,7 +171,7 @@ export async function getPlaylist(
     const prismaError = handlePrismaError(error);
     return prismaError ?? { error: "Failed to get playlist" };
   }
-}
+});
 
 /**
  * Get all playlists for the current user with item counts and preview artwork.
@@ -395,15 +397,28 @@ export async function updatePlaylistArtwork(
 
     const buffer = new Uint8Array(await file.arrayBuffer());
 
-    // Strip EXIF metadata (same pattern as user-actions.ts)
+    // Strip EXIF metadata and detect actual MIME via sharp (don't trust client)
     const sharp = (await import("sharp")).default;
-    const processed = await sharp(buffer).rotate().toBuffer();
+    const image = sharp(buffer);
+    const metadata = await image.metadata();
+    const formatToMime: Record<string, string> = {
+      jpeg: "image/jpeg",
+      png: "image/png",
+      webp: "image/webp",
+    };
+    const detectedMime = metadata.format
+      ? formatToMime[metadata.format]
+      : undefined;
+    if (!detectedMime) {
+      return { error: "Only JPEG, PNG, and WebP images are allowed" };
+    }
+    const processed = await image.rotate().toBuffer();
 
     await prisma.playlist.update({
       where: { id: playlistId, userId: session.user.id },
       data: {
         artworkImage: new Uint8Array(processed),
-        artworkMime: file.type,
+        artworkMime: detectedMime,
       },
     });
 
@@ -505,9 +520,15 @@ export async function reorderPlaylists(
   updates: { id: string; order: number }[]
 ): Promise<ItemResult> {
   try {
-    const session = await auth();
+    const [session, rateLimitResult] = await Promise.all([
+      auth(),
+      checkRateLimit("playlist"),
+    ]);
     if (!session?.user?.id) {
       return { error: "Not authenticated" };
+    }
+    if (rateLimitResult) {
+      return { error: rateLimitResult.error };
     }
 
     if (updates.length === 0) {
@@ -714,9 +735,15 @@ export async function reorderPlaylistItems(
   updates: { id: string; order: number }[]
 ): Promise<ItemResult> {
   try {
-    const session = await auth();
+    const [session, rateLimitResult] = await Promise.all([
+      auth(),
+      checkRateLimit("playlist"),
+    ]);
     if (!session?.user?.id) {
       return { error: "Not authenticated" };
+    }
+    if (rateLimitResult) {
+      return { error: rateLimitResult.error };
     }
 
     const playlist = await prisma.playlist.findFirst({

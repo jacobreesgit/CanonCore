@@ -90,6 +90,7 @@ vi.mock("next/cache", () => ({
 // Mock sharp (dynamic import)
 vi.mock("sharp", () => ({
   default: vi.fn().mockReturnValue({
+    metadata: vi.fn().mockResolvedValue({ format: "jpeg" }),
     rotate: vi.fn().mockReturnValue({
       toBuffer: vi.fn().mockResolvedValue(Buffer.from("processed")),
     }),

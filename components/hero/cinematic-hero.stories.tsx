@@ -4,6 +4,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/nextjs";
+import Image from "next/image";
 import { CinematicHero } from "./cinematic-hero";
 import { HeroButton } from "@/components/items/hero-button";
 import { Play, Copy, Check } from "lucide-react";
@@ -211,8 +212,8 @@ export const NoBackground: Story = {
   },
 };
 
-/** Playlist hero with blurred mosaic background element. */
-export const BlurredMosaic: Story = {
+/** Playlist hero with mosaic background element using real TMDB backdrops. */
+export const Mosaic: Story = {
   args: {
     slides: [
       {
@@ -222,20 +223,25 @@ export const BlurredMosaic: Story = {
       },
     ],
     backgroundElement: (
-      <div
-        className="absolute inset-0 grid grid-cols-3 grid-rows-2"
-        style={{
-          filter: "blur(20px)",
-          transform: "scale(1.1)",
-          willChange: "transform",
-        }}
-      >
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div
-            key={i}
-            className="bg-gradient-to-br from-indigo-800 to-purple-900"
-            style={{ opacity: 0.7 + (i % 3) * 0.1 }}
-          />
+      <div className="absolute inset-0 grid grid-cols-3 grid-rows-2">
+        {[
+          "https://image.tmdb.org/t/p/w780/tsRy63Mu5cu8etL1X7ZLyf7UP1M.jpg",
+          "https://image.tmdb.org/t/p/w780/tmU7GeKVybMWFButWEGl2M4GeiP.jpg",
+          "https://image.tmdb.org/t/p/w780/8ZTVqvKDQ8emSGUEMjsS4yHAwrp.jpg",
+          "https://image.tmdb.org/t/p/w780/suopoADq0k8YZr4dQXcU6pToj6s.jpg",
+          "https://image.tmdb.org/t/p/w780/ByDf0zjLSumz1MP1cDEo2JWVtU.jpg",
+          "https://image.tmdb.org/t/p/w780/hZkgoQYus5dXo3H8T7Uef6DNknx.jpg",
+        ].map((url, i) => (
+          <div key={i} className="relative overflow-hidden">
+            <Image
+              src={url}
+              alt=""
+              fill
+              sizes="33vw"
+              className="object-cover"
+              loading="lazy"
+            />
+          </div>
         ))}
       </div>
     ),

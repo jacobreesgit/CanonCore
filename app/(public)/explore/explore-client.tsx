@@ -44,8 +44,6 @@ const SwipeableUnderlineTabs = dynamic(
   { ssr: false }
 );
 
-/** No-op subscribe for useSyncExternalStore (value never changes). */
-const emptySubscribe = () => () => {};
 import { deleteItem, pinItem, unpinItem } from "@/lib/item-actions";
 import { updatePlaylist, deletePlaylist } from "@/lib/playlist-actions";
 import { forkItem } from "@/lib/fork-actions";
@@ -53,6 +51,9 @@ import { getTmdbBackdropUrl } from "@/lib/tmdb-image-utils";
 import type { PublicItem, FeaturedItem } from "@/lib/public-auth";
 import type { TmdbItemMetadata } from "@/lib/tmdb-client";
 import type { SortOption } from "@/lib/types";
+
+/** No-op subscribe for useSyncExternalStore (value never changes). */
+const emptySubscribe = () => () => {};
 
 interface CurrentUser {
   id: string;
@@ -650,7 +651,11 @@ export function ExploreClient({
             onTabChange={(id) => setTab(id as "items" | "playlists")}
           />
         ) : (
-          <UnderlineTabs defaultTab="items" tabs={tabs} />
+          <UnderlineTabs
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={(id) => setTab(id as "items" | "playlists")}
+          />
         )
       ) : (
         itemsContent

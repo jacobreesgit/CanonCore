@@ -518,7 +518,6 @@ export function ItemDetailClient({
           />
         ) : (
           <UnderlineTabs
-            defaultTab={defaultTabId}
             tabs={[
               {
                 id: "contents",
@@ -527,6 +526,8 @@ export function ItemDetailClient({
               },
               { id: "about", label: "About", content: aboutContent },
             ]}
+            activeTab={activeTab}
+            onTabChange={(id) => setTab(id as "contents" | "about")}
           />
         )
       ) : (
