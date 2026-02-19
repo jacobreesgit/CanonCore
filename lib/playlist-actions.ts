@@ -100,7 +100,17 @@ export async function getPlaylist(
 
     const playlist = await prisma.playlist.findFirst({
       where: { id: playlistId, userId: session.user.id },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        order: true,
+        isPublic: true,
+        artworkMime: true,
+        shareToken: true,
+        userId: true,
+        createdAt: true,
+        updatedAt: true,
         playlistItems: {
           orderBy: { order: "asc" },
           include: {
@@ -146,7 +156,7 @@ export async function getPlaylist(
         description: playlist.description,
         order: playlist.order,
         isPublic: playlist.isPublic,
-        hasArtwork: !!playlist.artworkImage,
+        hasArtwork: !!playlist.artworkMime,
         shareToken: playlist.shareToken ?? null,
         userId: playlist.userId,
         items,
@@ -179,7 +189,15 @@ export async function getUserPlaylists(): Promise<
     const playlists = await prisma.playlist.findMany({
       where: { userId: session.user.id },
       orderBy: { order: "asc" },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        order: true,
+        isPublic: true,
+        artworkMime: true,
+        createdAt: true,
+        updatedAt: true,
         playlistItems: {
           orderBy: { order: "asc" },
           take: 4,
@@ -206,7 +224,7 @@ export async function getUserPlaylists(): Promise<
       description: p.description,
       order: p.order,
       isPublic: p.isPublic,
-      hasArtwork: !!p.artworkImage,
+      hasArtwork: !!p.artworkMime,
       itemCount: p._count.playlistItems,
       previewArtworkIds: p.playlistItems.map((pi) => resolveArtworkId(pi.item)),
       createdAt: p.createdAt,

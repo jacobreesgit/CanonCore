@@ -38,7 +38,6 @@ test.describe("Playlist Items", () => {
   test("should remove item from playlist via checkbox toggle", async ({
     itemsCrud,
     playlist,
-    page,
   }) => {
     const itemName = testId("movie");
     const playlistName = testId("playlist");

@@ -141,20 +141,25 @@ export function EditPlaylistDialog({
 
   const handleShareToggle = useCallback(
     async (enabled: boolean) => {
-      const result = await updatePlaylist(playlist.id, {
-        enableSharing: enabled,
-      });
-      if (result.error) {
-        toast.error(result.error);
-      } else if (enabled) {
-        // Re-fetch to get the new token
+      if (enabled) {
+        // Single call: generates token and returns it (no partial failure)
         setShareToken("pending");
-        const regen = await regenerateShareToken(playlist.id);
-        if (regen.success && regen.data) {
-          setShareToken(regen.data.shareToken);
+        const result = await regenerateShareToken(playlist.id);
+        if (result.success && result.data) {
+          setShareToken(result.data.shareToken);
+        } else {
+          setShareToken(null);
+          toast.error(result.error ?? "Failed to enable sharing");
         }
       } else {
-        setShareToken(null);
+        const result = await updatePlaylist(playlist.id, {
+          enableSharing: false,
+        });
+        if (result.error) {
+          toast.error(result.error);
+        } else {
+          setShareToken(null);
+        }
       }
     },
     [playlist.id]
@@ -175,9 +180,10 @@ export function EditPlaylistDialog({
   const handleCopyShareLink = useCallback(() => {
     if (!shareToken || shareToken === "pending" || !username) return;
     const url = `${window.location.origin}/u/${username}/playlists/${playlist.id}?token=${shareToken}`;
-    navigator.clipboard.writeText(url).then(() => {
-      toast.success("Link copied to clipboard");
-    });
+    navigator.clipboard.writeText(url).then(
+      () => toast.success("Link copied to clipboard"),
+      () => toast.error("Failed to copy link")
+    );
   }, [shareToken, username, playlist.id]);
 
   const handleSubmit = useCallback(
@@ -301,7 +307,7 @@ export function EditPlaylistDialog({
         {isSubmitting ? (
           <>
             <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
-            Saving...
+            Saving…
           </>
         ) : (
           "Save"
@@ -347,6 +353,8 @@ export function EditPlaylistDialog({
                   <img
                     src={artworkSrc}
                     alt=""
+                    width={128}
+                    height={128}
                     className="size-full object-cover"
                   />
                 ) : (
@@ -409,7 +417,7 @@ export function EditPlaylistDialog({
               data-testid="edit-playlist-description-input"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add a description..."
+              placeholder="Add a description\u2026"
               maxLength={1000}
               rows={3}
               disabled={isSubmitting}
