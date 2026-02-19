@@ -535,6 +535,9 @@ export function ExploreClient({
   const playlistsContent =
     playlists && playlists.length > 0 ? (
       <Section className="py-8" aria-label="Playlists">
+        <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
+          Public Playlists
+        </h2>
         <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
           {playlists.map((playlist) => (
             <PlaylistCard
