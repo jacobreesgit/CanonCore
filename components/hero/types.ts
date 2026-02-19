@@ -65,7 +65,7 @@ export interface CinematicHeroProps {
   enableKenBurns?: boolean;
   /** Disable WebGL shader fallback (uses simple gradient instead). */
   disableShader?: boolean;
-  /** Custom background element (e.g., blurred mosaic). Renders instead of Image/shader when provided. */
+  /** Custom background element (e.g., mosaic). Renders instead of Image/shader when provided. */
   backgroundElement?: React.ReactNode;
   /** Additional CSS classes. */
   className?: string;

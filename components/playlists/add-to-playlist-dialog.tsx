@@ -132,13 +132,19 @@ export function AddToPlaylistDialog({
   const handleCreated = useCallback(
     (playlist: { id: string; name: string }) => {
       setShowCreate(false);
-      // Add new playlist as a member and re-add to list
+      // Add new playlist optimistically as a member
       setPlaylists((prev) => [
         ...prev,
         { id: playlist.id, name: playlist.name, isMember: true },
       ]);
       // Also add the item to the newly created playlist
       addItemToPlaylists(itemId, [playlist.id]).catch(() => {
+        // Revert optimistic isMember on failure
+        setPlaylists((prev) =>
+          prev.map((p) =>
+            p.id === playlist.id ? { ...p, isMember: false } : p
+          )
+        );
         toast.error("Failed to add item to new playlist");
       });
     },
@@ -193,7 +199,7 @@ export function AddToPlaylistDialog({
 
             {/* Playlist list */}
             <div
-              className="max-h-[300px] min-h-[120px] overflow-y-auto"
+              className="max-h-[300px] min-h-[120px] overflow-y-auto overscroll-y-contain"
               data-testid="playlist-list"
             >
               {isLoading ? (

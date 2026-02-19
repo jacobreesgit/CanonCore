@@ -1,12 +1,12 @@
 /**
  * Playlist card using the shared CardShell visual system.
- * Renders a 2×2 poster collage from TMDB thumbnails, with hover overlay.
+ * Poster layout adapts to count: 1=full-bleed, 2=side-by-side, 3=1-top+2-bottom, 4=2×2 grid.
  * Wraps CardShell in a <Link> for navigation to playlist detail.
  */
 
 "use client";
 
-import { forwardRef } from "react";
+import { forwardRef, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ListMusic, Eye, Lock } from "lucide-react";
@@ -45,57 +45,126 @@ export const PlaylistGridItem = forwardRef<
 ) {
   const href = `/u/${username}/playlists/${playlist.id}`;
 
-  // Resolve poster URLs from preview data
-  const posterUrls = playlist.previewPosters.map((p) =>
-    p.tmdbPosterPath
-      ? getTmdbPosterUrl(p.tmdbPosterPath, "w342")
-      : p.artworkId
-        ? `/api/artwork/${p.artworkId}`
-        : null
+  // Resolve poster URLs from preview data (filter to valid only)
+  const validPosters = playlist.previewPosters
+    .map((p) =>
+      p.tmdbPosterPath
+        ? getTmdbPosterUrl(p.tmdbPosterPath, "w342")
+        : p.artworkId
+          ? `/api/artwork/${p.artworkId}`
+          : null
+    )
+    .filter(Boolean) as string[];
+
+  const posterCount = validPosters.length;
+
+  // Render a single poster tile
+  const renderTile = (
+    url: string,
+    i: number,
+    sizes: string,
+    className?: string
+  ) => (
+    <div key={i} className={cn("relative overflow-hidden", className)}>
+      <Image
+        src={url}
+        alt=""
+        fill
+        sizes={sizes}
+        className="object-cover"
+        priority={priority && i === 0}
+        unoptimized={url.startsWith("/api/")}
+      />
+    </div>
   );
 
-  const hasPosters = posterUrls.some(Boolean);
+  // Artwork area — layout adapts to number of available posters
+  let artwork: ReactNode;
 
-  // Artwork area
-  const artwork = playlist.hasArtwork ? (
+  if (playlist.hasArtwork) {
     // Custom uploaded artwork — single full-bleed image
-    <Image
-      src={`/api/playlist/artwork?playlistId=${playlist.id}`}
-      alt=""
-      fill
-      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-      className="object-cover"
-      priority={priority}
-      unoptimized
-    />
-  ) : hasPosters ? (
-    // 2×2 poster collage
-    <div className="grid size-full grid-cols-2 grid-rows-2 gap-[1px]">
-      {[0, 1, 2, 3].map((i) => {
-        const url = posterUrls[i];
-        return url ? (
-          <div key={i} className="relative overflow-hidden">
-            <Image
-              src={url}
-              alt=""
-              fill
-              sizes="(max-width: 640px) 25vw, (max-width: 1024px) 17vw, 12vw"
-              className="object-cover"
-              priority={priority && i === 0}
-              unoptimized={url.startsWith("/api/")}
-            />
-          </div>
-        ) : (
-          <div key={i} className="bg-muted" />
-        );
-      })}
-    </div>
-  ) : (
-    // Fallback — icon on muted gradient
-    <div className="from-card to-background flex size-full items-center justify-center bg-gradient-to-br">
-      <ListMusic className="text-muted-foreground/40 size-10" />
-    </div>
-  );
+    artwork = (
+      <Image
+        src={`/api/playlist/artwork?playlistId=${playlist.id}`}
+        alt=""
+        fill
+        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+        className="object-cover"
+        priority={priority}
+        unoptimized
+      />
+    );
+  } else if (posterCount >= 4) {
+    // 4+ posters: 2×2 grid
+    artwork = (
+      <div className="grid size-full grid-cols-2 grid-rows-2 gap-[1px]">
+        {validPosters
+          .slice(0, 4)
+          .map((url, i) =>
+            renderTile(
+              url,
+              i,
+              "(max-width: 640px) 25vw, (max-width: 1024px) 17vw, 12vw"
+            )
+          )}
+      </div>
+    );
+  } else if (posterCount === 3) {
+    // 3 posters: 1 spanning top + 2 bottom
+    artwork = (
+      <div className="grid size-full grid-cols-2 grid-rows-2 gap-[1px]">
+        {renderTile(
+          validPosters[0],
+          0,
+          "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw",
+          "col-span-2"
+        )}
+        {renderTile(
+          validPosters[1],
+          1,
+          "(max-width: 640px) 25vw, (max-width: 1024px) 17vw, 12vw"
+        )}
+        {renderTile(
+          validPosters[2],
+          2,
+          "(max-width: 640px) 25vw, (max-width: 1024px) 17vw, 12vw"
+        )}
+      </div>
+    );
+  } else if (posterCount === 2) {
+    // 2 posters: side by side
+    artwork = (
+      <div className="grid size-full grid-cols-2 gap-[1px]">
+        {validPosters.map((url, i) =>
+          renderTile(
+            url,
+            i,
+            "(max-width: 640px) 25vw, (max-width: 1024px) 17vw, 12vw"
+          )
+        )}
+      </div>
+    );
+  } else if (posterCount === 1) {
+    // 1 poster: single full-bleed
+    artwork = (
+      <Image
+        src={validPosters[0]}
+        alt=""
+        fill
+        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+        className="object-cover"
+        priority={priority}
+        unoptimized={validPosters[0].startsWith("/api/")}
+      />
+    );
+  } else {
+    // 0 posters: icon fallback
+    artwork = (
+      <div className="from-card to-background flex size-full items-center justify-center bg-gradient-to-br">
+        <ListMusic className="text-muted-foreground/40 size-10" />
+      </div>
+    );
+  }
 
   // Default view — playlist name (always visible)
   const defaultContent = (

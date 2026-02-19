@@ -427,7 +427,6 @@ export function PublicItemClient({
           />
         ) : (
           <UnderlineTabs
-            defaultTab={defaultTabId}
             tabs={[
               {
                 id: "contents",
@@ -436,6 +435,8 @@ export function PublicItemClient({
               },
               { id: "about", label: "About", content: aboutContent },
             ]}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
           />
         )
       ) : showTabs ? (

@@ -1,6 +1,6 @@
 /**
  * Stories for PlaylistGridItem component.
- * Card with 2×2 poster collage using CardShell visual system.
+ * Poster layout adapts to count: 1=full-bleed, 2=side-by-side, 3=1-top+2-bottom, 4=2×2 grid.
  */
 
 import type { Meta, StoryObj } from "@storybook/nextjs";
@@ -42,8 +42,8 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Default card with 4 TMDB poster thumbnails in a 2×2 grid. */
-export const Default: Story = {
+/** 4 posters: 2×2 grid. */
+export const FourPosters: Story = {
   args: {
     playlist: {
       id: "playlist-1",
@@ -59,25 +59,8 @@ export const Default: Story = {
   },
 };
 
-/** Card with a single poster (other slots show muted background). */
-export const SinglePoster: Story = {
-  args: {
-    playlist: {
-      id: "playlist-2",
-      name: "Watch Later",
-      itemCount: 1,
-      previewPosters: [
-        { tmdbPosterPath: "/abc123.jpg", artworkId: null },
-        { tmdbPosterPath: null, artworkId: null },
-        { tmdbPosterPath: null, artworkId: null },
-        { tmdbPosterPath: null, artworkId: null },
-      ],
-    },
-  },
-};
-
-/** Card with mixed poster sources: TMDB posters, artwork IDs, and empty slots. */
-export const PartialPosters: Story = {
+/** 3 posters: 1 spanning top row + 2 on bottom. */
+export const ThreePosters: Story = {
   args: {
     playlist: {
       id: "playlist-3",
@@ -87,8 +70,34 @@ export const PartialPosters: Story = {
         { tmdbPosterPath: "/abc123.jpg", artworkId: null },
         { tmdbPosterPath: "/def456.jpg", artworkId: null },
         { tmdbPosterPath: null, artworkId: "art-1" },
-        { tmdbPosterPath: null, artworkId: null },
       ],
+    },
+  },
+};
+
+/** 2 posters: side by side. */
+export const TwoPosters: Story = {
+  args: {
+    playlist: {
+      id: "playlist-2b",
+      name: "Double Feature",
+      itemCount: 2,
+      previewPosters: [
+        { tmdbPosterPath: "/abc123.jpg", artworkId: null },
+        { tmdbPosterPath: "/def456.jpg", artworkId: null },
+      ],
+    },
+  },
+};
+
+/** 1 poster: single full-bleed image. */
+export const OnePoster: Story = {
+  args: {
+    playlist: {
+      id: "playlist-2",
+      name: "Watch Later",
+      itemCount: 1,
+      previewPosters: [{ tmdbPosterPath: "/abc123.jpg", artworkId: null }],
     },
   },
 };
@@ -122,7 +131,7 @@ export const LongName: Story = {
   },
 };
 
-/** Singular item count label — "1 item" instead of "items". */
+/** Singular item count label — "1 item" (also demonstrates single full-bleed poster). */
 export const SingleItem: Story = {
   args: {
     playlist: {
@@ -160,12 +169,7 @@ export const OwnerPrivate: Story = {
       id: "playlist-8",
       name: "Private Playlist",
       itemCount: 3,
-      previewPosters: [
-        { tmdbPosterPath: "/abc123.jpg", artworkId: null },
-        { tmdbPosterPath: null, artworkId: null },
-        { tmdbPosterPath: null, artworkId: null },
-        { tmdbPosterPath: null, artworkId: null },
-      ],
+      previewPosters: [{ tmdbPosterPath: "/abc123.jpg", artworkId: null }],
       isPublic: false,
     },
     isOwner: true,

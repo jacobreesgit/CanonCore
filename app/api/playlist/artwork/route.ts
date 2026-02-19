@@ -18,23 +18,25 @@ export async function GET(request: NextRequest) {
     return new Response("Missing playlistId", { status: 400 });
   }
 
-  const rateLimitResult = await checkRateLimit("apiRoute");
+  // Parallelize rate limit, auth, and DB query
+  const [rateLimitResult, session, playlist] = await Promise.all([
+    checkRateLimit("apiRoute"),
+    auth(),
+    prisma.playlist.findUnique({
+      where: { id: playlistId },
+      select: {
+        artworkImage: true,
+        artworkMime: true,
+        isPublic: true,
+        shareToken: true,
+        userId: true,
+      },
+    }),
+  ]);
+
   if (rateLimitResult) {
     return new Response("Too many requests", { status: 429 });
   }
-
-  const session = await auth();
-
-  const playlist = await prisma.playlist.findUnique({
-    where: { id: playlistId },
-    select: {
-      artworkImage: true,
-      artworkMime: true,
-      isPublic: true,
-      shareToken: true,
-      userId: true,
-    },
-  });
 
   if (!playlist?.artworkImage || !playlist.artworkMime) {
     return new Response(null, { status: 404 });
@@ -50,7 +52,12 @@ export async function GET(request: NextRequest) {
   }
 
   const imageBytes = new Uint8Array(playlist.artworkImage);
-  const etag = createHash("md5").update(imageBytes).digest("hex");
+  const etag = `"${createHash("md5").update(imageBytes).digest("hex")}"`;
+
+  // Return 304 if client has current version
+  if (request.headers.get("If-None-Match") === etag) {
+    return new Response(null, { status: 304 });
+  }
 
   return new Response(imageBytes, {
     status: 200,
@@ -59,7 +66,7 @@ export async function GET(request: NextRequest) {
       "Cache-Control": isPublic
         ? "public, max-age=3600"
         : "private, max-age=3600",
-      ETag: `"${etag}"`,
+      ETag: etag,
     },
   });
 }
