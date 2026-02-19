@@ -729,18 +729,6 @@ export interface PublicPlaylistCard {
   updatedAt: Date;
 }
 
-/** View mode for playlist detail display. */
-export type PlaylistViewMode = "grid" | "tree";
-
-/** Content filter for playlist items (by TMDB type). */
-export type PlaylistContentFilter = "movie" | "tv";
-
-/** All valid playlist view modes. */
-export const PLAYLIST_VIEW_MODES = ["grid", "tree"] as const;
-
-/** All valid playlist content filters. */
-export const PLAYLIST_CONTENT_FILTERS = ["movie", "tv"] as const;
-
 /**
  * Fork relationship info for display in item details.
  */
