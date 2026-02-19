@@ -73,7 +73,10 @@ export const Default: Story = {
       name: "Favourites",
       description: "My favourite films of all time.",
       isPublic: true,
+      hasArtwork: false,
+      shareToken: null,
     },
+    username: "filmfan",
     onUpdated: fn(),
     buttonLabel: "Edit Playlist",
   },
@@ -102,7 +105,10 @@ export const PrivateNoDescription: Story = {
       name: "Watch Later",
       description: null,
       isPublic: false,
+      hasArtwork: false,
+      shareToken: null,
     },
+    username: "filmfan",
     onUpdated: fn(),
     buttonLabel: "Edit Private Playlist",
   },
@@ -131,7 +137,10 @@ export const FormValidation: Story = {
       name: "Favourites",
       description: null,
       isPublic: true,
+      hasArtwork: false,
+      shareToken: null,
     },
+    username: "filmfan",
     onUpdated: fn(),
     buttonLabel: "Test Validation",
   },
@@ -164,7 +173,10 @@ export const LongDescription: Story = {
       description:
         "A curated collection of the finest films ever made, spanning genres from noir to new wave, featuring directors like Kubrick, Kurosawa, Bergman, and Tarkovsky. Each film represents a pinnacle of the art form and deserves repeated viewings to fully appreciate the craft involved.",
       isPublic: true,
+      hasArtwork: false,
+      shareToken: null,
     },
+    username: "filmfan",
     onUpdated: fn(),
     buttonLabel: "Edit (Long Description)",
   },
@@ -179,6 +191,70 @@ export const LongDescription: Story = {
     docs: {
       description: {
         story: "Playlist with a long description near the character limit.",
+      },
+    },
+  },
+};
+
+/** Playlist with existing artwork — shows artwork preview and remove option. */
+export const WithArtwork: Story = {
+  args: {
+    playlist: {
+      id: "playlist-4",
+      name: "Film Noir Classics",
+      description: "The best of the genre.",
+      isPublic: true,
+      hasArtwork: true,
+      shareToken: null,
+    },
+    username: "filmfan",
+    onUpdated: fn(),
+    buttonLabel: "Edit (With Artwork)",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const trigger = canvas.getByRole("button");
+    await userEvent.click(trigger);
+    const body = within(document.body);
+    await body.findByTestId("edit-playlist-name-input");
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Playlist with existing uploaded artwork. Shows artwork preview and remove button in the artwork section.",
+      },
+    },
+  },
+};
+
+/** Playlist with shareable link active — shows share URL and copy/regenerate buttons. */
+export const WithShareLink: Story = {
+  args: {
+    playlist: {
+      id: "playlist-5",
+      name: "Shared Collection",
+      description: "A collection shared via link.",
+      isPublic: false,
+      hasArtwork: false,
+      shareToken: "abc123def456ghi789jkl",
+    },
+    username: "filmfan",
+    onUpdated: fn(),
+    buttonLabel: "Edit (With Share Link)",
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const trigger = canvas.getByRole("button");
+    await userEvent.click(trigger);
+    const body = within(document.body);
+    await body.findByTestId("edit-playlist-name-input");
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Private playlist with an active share link. Shows the shareable URL with copy and regenerate buttons.",
       },
     },
   },

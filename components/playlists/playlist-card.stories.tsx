@@ -155,3 +155,89 @@ export const SingleItem: Story = {
     },
   },
 };
+
+/** Owner mode with visibility badge — public playlist shows Eye icon. */
+export const OwnerPublic: Story = {
+  args: {
+    playlist: {
+      id: "playlist-7",
+      name: "Public Playlist",
+      itemCount: 5,
+      previewArtworkIds: ["art-1", "art-2", "art-3", "art-4"],
+      isPublic: true,
+    },
+    isOwner: true,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Owner mode shows a visibility badge. Public playlists show an Eye icon.",
+      },
+    },
+  },
+};
+
+/** Owner mode with visibility badge — private playlist shows Lock icon. */
+export const OwnerPrivate: Story = {
+  args: {
+    playlist: {
+      id: "playlist-8",
+      name: "Private Playlist",
+      itemCount: 3,
+      previewArtworkIds: ["art-1", null, null, null],
+      isPublic: false,
+    },
+    isOwner: true,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: "Private playlist shows a Lock icon badge in owner mode.",
+      },
+    },
+  },
+};
+
+/** Card with custom artwork (hasArtwork shows uploaded image instead of collage). */
+export const CustomArtwork: Story = {
+  args: {
+    playlist: {
+      id: "playlist-9",
+      name: "Custom Cover",
+      itemCount: 10,
+      previewArtworkIds: [],
+      hasArtwork: true,
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Playlist with custom uploaded artwork. Shows full-bleed image from the artwork API.",
+      },
+    },
+  },
+};
+
+/** Card with description shown on hover overlay. */
+export const WithDescription: Story = {
+  args: {
+    playlist: {
+      id: "playlist-10",
+      name: "Cinematic Gems",
+      description:
+        "A curated selection of must-watch films from around the world.",
+      itemCount: 15,
+      previewArtworkIds: ["art-1", "art-2", "art-3", "art-4"],
+    },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Hover over the card to see the description overlay with glassmorphism effect.",
+      },
+    },
+  },
+};
