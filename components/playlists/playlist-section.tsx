@@ -11,7 +11,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Section } from "@/components/ui/section";
-import { PlaylistCard } from "./playlist-card";
+import { PlaylistGridItem } from "./playlist-grid-item";
 import { PlaylistContextMenu } from "./playlist-context-menu";
 import { EmptyState } from "@/components/items/empty-state";
 import {
@@ -76,9 +76,9 @@ function ViewerPlaylistSection({
       <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
         Playlists
       </h2>
-      <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+      <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
         {playlists.map((playlist) => (
-          <PlaylistCard
+          <PlaylistGridItem
             key={playlist.id}
             playlist={playlist}
             username={username}
@@ -171,7 +171,7 @@ function OwnerPlaylistSection({
             onAction={() => setShowCreate(true)}
           />
         ) : (
-          <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+          <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
             {playlists.map((playlist) => (
               <PlaylistContextMenu
                 key={playlist.id}
@@ -185,7 +185,11 @@ function OwnerPlaylistSection({
                 }
                 onDelete={() => handleDelete(playlist.id)}
               >
-                <PlaylistCard playlist={playlist} username={username} isOwner />
+                <PlaylistGridItem
+                  playlist={playlist}
+                  username={username}
+                  isOwner
+                />
               </PlaylistContextMenu>
             ))}
           </div>
