@@ -91,6 +91,8 @@ interface PlaylistDetailData {
   name: string;
   description: string | null;
   isPublic?: boolean;
+  hasArtwork?: boolean;
+  shareToken?: string | null;
   items: PlaylistDetailItem[];
 }
 
@@ -412,12 +414,15 @@ export function PlaylistDetailClient({
           open={showEdit}
           onOpenChange={setShowEdit}
           playlist={playlist}
+          username={username}
           onUpdated={(data) => {
             setPlaylist((prev) => ({
               ...prev,
               name: data.name,
               description: data.description,
               isPublic: data.isPublic,
+              hasArtwork: data.hasArtwork,
+              shareToken: data.shareToken,
             }));
           }}
         />
