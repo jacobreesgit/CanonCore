@@ -181,6 +181,80 @@ describe("playlist visibility integration", () => {
     await prisma.user.delete({ where: { id: privateUser.id } });
   });
 
+  it("allows access to unlisted playlist with valid share token", async () => {
+    const playlist = await prisma.playlist.create({
+      data: {
+        name: "Unlisted Shared",
+        userId: testUserId,
+        isPublic: false,
+        shareToken: `test-token-${Date.now()}`,
+        order: 10,
+      },
+    });
+    await prisma.playlistItem.create({
+      data: { playlistId: playlist.id, itemId: publicItemId, order: 0 },
+    });
+
+    const detail = await getPublicPlaylist(playlist.id, playlist.shareToken);
+    expect(detail).not.toBeNull();
+    expect(detail!.items).toHaveLength(1);
+  });
+
+  it("rejects access to unlisted playlist with invalid token", async () => {
+    const playlist = await prisma.playlist.create({
+      data: {
+        name: "Unlisted Bad Token",
+        userId: testUserId,
+        isPublic: false,
+        shareToken: `valid-token-${Date.now()}`,
+        order: 11,
+      },
+    });
+    await prisma.playlistItem.create({
+      data: { playlistId: playlist.id, itemId: publicItemId, order: 0 },
+    });
+
+    const detail = await getPublicPlaylist(playlist.id, "wrong-token");
+    expect(detail).toBeNull();
+  });
+
+  it("rejects access to unlisted playlist without token", async () => {
+    const playlist = await prisma.playlist.create({
+      data: {
+        name: "Unlisted No Token",
+        userId: testUserId,
+        isPublic: false,
+        shareToken: `no-token-${Date.now()}`,
+        order: 12,
+      },
+    });
+    await prisma.playlistItem.create({
+      data: { playlistId: playlist.id, itemId: publicItemId, order: 0 },
+    });
+
+    const detail = await getPublicPlaylist(playlist.id);
+    expect(detail).toBeNull();
+  });
+
+  it("ignores token for public playlists", async () => {
+    const playlist = await prisma.playlist.create({
+      data: {
+        name: "Public With Token",
+        userId: testUserId,
+        isPublic: true,
+        shareToken: `public-token-${Date.now()}`,
+        order: 13,
+      },
+    });
+    await prisma.playlistItem.create({
+      data: { playlistId: playlist.id, itemId: publicItemId, order: 0 },
+    });
+
+    // Accessible without token (it's public)
+    const detail = await getPublicPlaylist(playlist.id);
+    expect(detail).not.toBeNull();
+  });
+
   it("reflects item visibility changes at read time", async () => {
     const playlist = await prisma.playlist.create({
       data: {
