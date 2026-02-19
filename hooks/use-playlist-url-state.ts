@@ -1,6 +1,6 @@
 /**
  * URL-based state hook for playlist detail pages.
- * Manages sort state via nuqs URL search params.
+ * Manages sort, view mode, filter, and tab state via nuqs URL search params.
  */
 
 "use client";
@@ -8,12 +8,17 @@
 import { useQueryStates } from "nuqs";
 import { useCallback } from "react";
 import { playlistParsers } from "./playlist-search-params";
-import type { SortOption } from "@/lib/types";
+import type {
+  SortOption,
+  PlaylistViewMode,
+  PlaylistContentFilter,
+} from "@/lib/types";
 
 /**
- * Manages sort state for playlist detail pages via URL search params.
+ * Manages URL state for playlist detail pages.
+ * Provides sort, view mode, filter, and tab controls.
  *
- * @returns Sort state value and setter
+ * @returns URL state values and setters
  */
 export function usePlaylistUrlState() {
   const [state, setState] = useQueryStates(playlistParsers, {
@@ -26,12 +31,40 @@ export function usePlaylistUrlState() {
     [setState] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
+  const setViewMode = useCallback(
+    (view: PlaylistViewMode) => setState({ view }),
+    [setState]
+  );
+
+  const toggleFilter = useCallback(
+    (filter: PlaylistContentFilter) => {
+      const current = state.filter ?? [];
+      const next = current.includes(filter)
+        ? current.filter((f) => f !== filter)
+        : [...current, filter];
+      setState({ filter: next });
+    },
+    [state.filter, setState]
+  );
+
+  const clearFilters = useCallback(() => setState({ filter: [] }), [setState]);
+
+  const setTab = useCallback(
+    (tab: "contents" | "about") => setState({ tab }),
+    [setState]
+  );
+
   return {
-    /** Current sort option (cast to SortOption for ContentToolbar compatibility). */
     sortBy: state.sort as SortOption,
-    /** Update sort option. */
     setSortBy,
-    /** Whether current sort allows drag-drop reordering. */
+    viewMode: (state.view ?? "grid") as PlaylistViewMode,
+    setViewMode,
+    filters: (state.filter ?? []) as PlaylistContentFilter[],
+    toggleFilter,
+    clearFilters,
+    hasActiveFilters: (state.filter ?? []).length > 0,
+    tab: state.tab as "contents" | "about" | null,
+    setTab,
     isCustomSort: state.sort === "custom",
   };
 }
