@@ -52,23 +52,23 @@ export class ItemsPinnedPage {
 
   // ── Assertions ─────────────────────────────────────────
 
-  /** Expect the item's more menu to show "Unpin from Sidebar" (i.e. it's pinned). */
+  /** Expect the item to appear in the "Pinned items" region. */
   async expectPinned(name: string) {
-    await this.openMoreMenu(name);
-    await expect(
-      this.page.getByRole("menuitem", { name: "Unpin from Sidebar" })
-    ).toBeVisible({ timeout: Timeouts.api });
-    // Close menu by pressing Escape
-    await this.page.keyboard.press("Escape");
+    const pinnedRegion = this.page.getByRole("region", {
+      name: "Pinned items",
+    });
+    await expect(pinnedRegion.getByRole("heading", { name })).toBeVisible({
+      timeout: Timeouts.api,
+    });
   }
 
-  /** Expect the item's more menu to show "Pin to Sidebar" (i.e. it's not pinned). */
+  /** Expect the item NOT to appear in the "Pinned items" region (or region absent). */
   async expectNotPinned(name: string) {
-    await this.openMoreMenu(name);
-    await expect(
-      this.page.getByRole("menuitem", { name: "Pin to Sidebar" })
-    ).toBeVisible({ timeout: Timeouts.api });
-    // Close menu by pressing Escape
-    await this.page.keyboard.press("Escape");
+    const pinnedRegion = this.page.getByRole("region", {
+      name: "Pinned items",
+    });
+    await expect(pinnedRegion.getByRole("heading", { name })).not.toBeVisible({
+      timeout: Timeouts.api,
+    });
   }
 }
