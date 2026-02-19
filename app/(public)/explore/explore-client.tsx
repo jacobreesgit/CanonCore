@@ -5,7 +5,14 @@
  * Features HeroCarousel for featured items and grid for all public items.
  */
 
-import { useMemo, useCallback, useState, useSyncExternalStore } from "react";
+import {
+  useMemo,
+  useCallback,
+  useState,
+  useEffect,
+  useRef,
+  useSyncExternalStore,
+} from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
@@ -14,6 +21,7 @@ import { CinematicHero, type HeroSlide } from "@/components/hero";
 import { HeroButton } from "@/components/items/hero-button";
 import { PlaylistButton } from "@/components/items/playlist-button";
 import { PlaylistCard } from "@/components/playlists/playlist-card";
+import { PlaylistContextMenu } from "@/components/playlists/playlist-context-menu";
 import { GridItem } from "@/components/sortable-grid/grid-item";
 import { ItemContextMenu } from "@/components/items/item-context-menu";
 import { EmptyState } from "@/components/items/empty-state";
@@ -39,6 +47,7 @@ const SwipeableUnderlineTabs = dynamic(
 /** No-op subscribe for useSyncExternalStore (value never changes). */
 const emptySubscribe = () => () => {};
 import { deleteItem, pinItem, unpinItem } from "@/lib/item-actions";
+import { updatePlaylist, deletePlaylist } from "@/lib/playlist-actions";
 import { forkItem } from "@/lib/fork-actions";
 import { getTmdbBackdropUrl } from "@/lib/tmdb-image-utils";
 import type { PublicItem, FeaturedItem } from "@/lib/public-auth";
@@ -101,6 +110,16 @@ export function ExploreClient({
     setTab,
   } = useExploreUrlState();
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  const [localPlaylists, setLocalPlaylists] = useState(playlists);
+
+  // Sync local playlist state when server prop changes (e.g. revalidation)
+  useEffect(() => {
+    setLocalPlaylists(playlists);
+  }, [playlists]);
+
+  // Ref for snapshot-based optimistic revert (avoids stale closure)
+  const playlistsRef = useRef(localPlaylists);
+  playlistsRef.current = localPlaylists;
 
   // Viewport detection for responsive tab rendering
   const isMobile = useIsMobile();
@@ -170,6 +189,35 @@ export function ExploreClient({
     },
     [currentUser, router]
   );
+
+  // Handle making own playlist private (removes from explore)
+  const handlePlaylistToggleVisibility = useCallback(
+    async (playlistId: string) => {
+      const snapshot = playlistsRef.current;
+      setLocalPlaylists((prev) => prev?.filter((p) => p.id !== playlistId));
+      const result = await updatePlaylist(playlistId, { isPublic: false });
+      if (result.error) {
+        setLocalPlaylists(snapshot);
+        toast.error(result.error);
+      } else {
+        toast.success("Playlist set to private");
+      }
+    },
+    []
+  );
+
+  // Handle deleting own playlist
+  const handlePlaylistDelete = useCallback(async (playlistId: string) => {
+    const snapshot = playlistsRef.current;
+    setLocalPlaylists((prev) => prev?.filter((p) => p.id !== playlistId));
+    const result = await deletePlaylist(playlistId);
+    if (result.error) {
+      setLocalPlaylists(snapshot);
+      toast.error(result.error);
+    } else {
+      toast.success("Playlist deleted");
+    }
+  }, []);
 
   // Open fork dialog from carousel
   const handleForkClick = useCallback(
@@ -533,19 +581,52 @@ export function ExploreClient({
 
   // Playlists tab content
   const playlistsContent =
-    playlists && playlists.length > 0 ? (
+    localPlaylists && localPlaylists.length > 0 ? (
       <Section className="py-8" aria-label="Playlists">
         <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
           Public Playlists
         </h2>
         <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-          {playlists.map((playlist) => (
-            <PlaylistCard
-              key={playlist.id}
-              playlist={playlist}
-              username={playlist.ownerUsername}
-            />
-          ))}
+          {localPlaylists.map((playlist) => {
+            const isOwn = currentUser?.username === playlist.ownerUsername;
+
+            const card = (
+              <PlaylistCard
+                playlist={playlist}
+                username={playlist.ownerUsername}
+                isOwner={isOwn}
+              />
+            );
+
+            if (isOwn) {
+              return (
+                <PlaylistContextMenu
+                  key={playlist.id}
+                  playlistName={playlist.name}
+                  isPublic={true}
+                  onRename={() =>
+                    router.push(
+                      `/u/${playlist.ownerUsername}/playlists/${playlist.id}`
+                    )
+                  }
+                  onToggleVisibility={() =>
+                    handlePlaylistToggleVisibility(playlist.id)
+                  }
+                  onDelete={() => handlePlaylistDelete(playlist.id)}
+                >
+                  {card}
+                </PlaylistContextMenu>
+              );
+            }
+
+            return (
+              <PlaylistCard
+                key={playlist.id}
+                playlist={playlist}
+                username={playlist.ownerUsername}
+              />
+            );
+          })}
         </div>
       </Section>
     ) : (
