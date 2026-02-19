@@ -329,6 +329,8 @@ export interface SearchablePlaylist {
   ownerUsername: string;
   /** Owner's display name */
   ownerName: string | null;
+  /** Whether the playlist has custom artwork */
+  hasArtwork?: boolean;
 }
 
 /**

@@ -1245,6 +1245,7 @@ export const searchPublicPlaylists = cache(
           id: true,
           name: true,
           description: true,
+          artworkImage: true,
           userId: true,
           user: {
             select: {
@@ -1269,6 +1270,7 @@ export const searchPublicPlaylists = cache(
           itemCount: playlist._count.playlistItems,
           ownerUsername: playlist.user.username!,
           ownerName: playlist.user.name,
+          hasArtwork: !!playlist.artworkImage,
         }));
 
       return { success: true, data: searchablePlaylists };

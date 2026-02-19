@@ -492,13 +492,24 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
                       playlist.ownerUsername
                     )
                   }
-                  className="flex items-center gap-3 px-3 py-2"
+                  className="group h-[52px] cursor-pointer gap-3 px-3"
                 >
-                  <div className="bg-muted flex size-8 shrink-0 items-center justify-center rounded">
-                    <ListMusic className="text-muted-foreground size-4" />
-                  </div>
+                  {playlist.hasArtwork ? (
+                    <div className="bg-muted relative size-9 shrink-0 overflow-hidden rounded">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`/api/playlist/artwork?playlistId=${playlist.id}`}
+                        alt=""
+                        className="size-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="bg-muted group-aria-selected:bg-primary/10 flex size-9 shrink-0 items-center justify-center rounded transition-colors">
+                      <ListMusic className="text-muted-foreground group-aria-selected:text-primary size-4 transition-colors" />
+                    </div>
+                  )}
                   <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-sm font-medium">
+                    <span className="truncate font-medium">
                       {playlist.name}
                     </span>
                     <span className="text-muted-foreground truncate text-xs">
