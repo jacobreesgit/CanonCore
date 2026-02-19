@@ -61,7 +61,7 @@ export async function generateMetadata({
         title: `${result.data.name} | CanonCore`,
         description:
           result.data.description ?? `Playlist by @${username} on CanonCore.`,
-        type: "website",
+        type: "article",
       },
     };
   }
