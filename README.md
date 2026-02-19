@@ -22,11 +22,17 @@ Edit mode enables drag-and-drop, bulk selection, and full keyboard navigation wi
 
 On mobile, bottom sheets replace desktop dialogs for sort, filter, view switching, and item creation. A bottom navigation bar provides access to My Items, Explore, Search, Help, and Account.
 
+### Playlists
+
+Cross-cutting collections that reference items from anywhere in your library without moving or duplicating them. Create themed lists — "Best Horror Films", "Weekend Watchlist" — and each item can belong to multiple playlists while staying in its original tree position.
+
+Three visibility levels: private (default), public (discoverable on the Explore page), or unlisted (accessible only via a share link). Unlisted share tokens are generated with nanoid. Playlist cards show a poster collage mosaic of up to four item artworks, or a custom uploaded artwork image. Drag-to-reorder lets you arrange items within a playlist. Right-click context menus provide quick actions: edit, delete, toggle visibility, copy share link.
+
 ### Public Sharing
 
-Make items public to share them. Your profile page shows your public items. The explore page shows public items from everyone with a featured banner carousel.
+Make items and playlists public to share them. Your profile page shows your public items and playlists. The explore page has two tabs — **Collections** and **Playlists** — showing public content from everyone with a featured banner carousel.
 
-Visibility inherits through the hierarchy. Items can be public, private, or inherit from a parent. A public item with a private ancestor stays inaccessible. Moving a public item into a private folder triggers a confirmation dialogue.
+Visibility inherits through the item hierarchy. Items can be public, private, or inherit from a parent. A public item with a private ancestor stays inaccessible. Moving a public item into a private folder triggers a confirmation dialogue. Playlists have their own independent visibility (private, public, or unlisted via share link).
 
 ### Forking
 
@@ -54,15 +60,15 @@ Conflict detection compares timestamps bidirectionally: if Drive's modifiedTime 
 
 ### Spotlight Search
 
-Press `/` to open Spotlight Search anywhere in the app. Results load in parallel across three sections: Your Items, Public Collections, and People. A module-level cache with a 60-second TTL gives you instant responses on repeat searches. Breadcrumb paths reveal each item's full hierarchy.
+Press `/` to open Spotlight Search anywhere in the app. Results load in parallel across four sections: Your Items, Playlists, Public Collections, and People. A module-level cache with a 60-second TTL gives you instant responses on repeat searches. Breadcrumb paths reveal each item's full hierarchy.
 
 ### Cinematic Hero
 
-The explore page features a cinematic hero carousel that auto-advances through featured collections with rich TMDB metadata — tagline, release year, runtime, genres, and content rating. Item detail pages show a single hero banner with the item's backdrop artwork.
+The explore page features a cinematic hero carousel that auto-advances through featured collections with rich TMDB metadata — tagline, release year, runtime, genres, and content rating. Item detail pages show a single hero banner with the item's backdrop artwork. Playlist detail pages use a mosaic backdrop composited from the playlist's item artwork.
 
 ### URL State
 
-Sort, filter, view mode, and tab selections persist in URL parameters via nuqs. Bookmarkable, shareable views with localStorage backup for direct navigation.
+Sort, filter, view mode, and tab selections persist in URL parameters via nuqs across items, playlists, explore, and profile views. Bookmarkable, shareable views with localStorage backup for direct navigation.
 
 ### Multi-Select Filters
 
@@ -70,7 +76,7 @@ Two filter groups — File Status (Has Files, No Files) and Sync Status (Synced,
 
 ### SEO & Social Sharing
 
-Dynamic OpenGraph images generated server-side for every public profile and item page. When someone shares a link on Twitter, Discord, or Slack, the preview card shows the item's TMDB backdrop, name, and description. Profile links show a branded card with the user's display name and item count. JSON-LD structured data (Movie, TVSeries, Person, WebApplication schemas) helps search engines understand the content. A dynamic sitemap keeps all public profiles and items indexed.
+Dynamic OpenGraph images generated server-side for every public profile, item, and playlist page. When someone shares a link on Twitter, Discord, or Slack, the preview card shows the item's TMDB backdrop, name, and description. Profile links show a branded card with the user's display name and item count. Playlist links show the playlist artwork and item count. JSON-LD structured data (Movie, TVSeries, Person, WebApplication schemas) helps search engines understand the content. A dynamic sitemap keeps all public profiles, items, and playlists indexed.
 
 ### Bot Protection
 
@@ -116,7 +122,7 @@ GitHub Actions pipeline enforces quality on every push and pull request. A quali
 
 ### Testing
 
-2,400+ tests across unit, integration, Storybook component, and E2E layers. Unit tests (Vitest) cover auth, items, Drive sync, and crypto operations. ~200 integration tests run against real PostgreSQL. 58 Storybook stories with 312 component tests enforce accessibility via axe-core and verify interaction correctness. 31 E2E spec files across desktop and mobile Chrome with Playwright use 15 focused Page Object Models and composable fixtures with per-test user creation.
+2,800+ tests across unit, integration, Storybook component, and E2E layers. Unit tests (Vitest) cover auth, items, playlists, Drive sync, and crypto operations. ~200 integration tests run against real PostgreSQL. 66 Storybook stories with component tests enforce accessibility via axe-core and verify interaction correctness. 34 E2E spec files across desktop and mobile Chrome with Playwright use 16 focused Page Object Models and composable fixtures with per-test user creation.
 
 ### Component Documentation
 

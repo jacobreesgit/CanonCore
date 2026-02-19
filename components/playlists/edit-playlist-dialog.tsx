@@ -464,6 +464,7 @@ export function EditPlaylistDialog({
                     <Link2 className="text-muted-foreground absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
                     <Input
                       readOnly
+                      aria-label="Shareable link"
                       value={`${typeof window !== "undefined" ? window.location.origin : ""}/u/${username}/playlists/${playlist.id}?token=${shareToken}`}
                       className="h-8 truncate pl-8 text-xs"
                     />
