@@ -99,6 +99,20 @@ export const playlistDescriptionSchema = z
   .transform((val) => val.trim())
   .pipe(z.string().max(1000, "Description must be 1000 characters or less"));
 
+/** Allowed MIME types for playlist artwork. */
+const ALLOWED_ARTWORK_MIMES = ["image/jpeg", "image/png", "image/webp"];
+
+/** Max file size for playlist artwork (2MB). */
+const MAX_ARTWORK_SIZE = 2 * 1024 * 1024;
+
+/** Validation schema for playlist artwork file. */
+export const playlistArtworkSchema = z.object({
+  size: z.number().max(MAX_ARTWORK_SIZE, "Image must be under 2MB"),
+  type: z.string().refine((t) => ALLOWED_ARTWORK_MIMES.includes(t), {
+    message: "Only JPEG, PNG, and WebP images are allowed",
+  }),
+});
+
 // =============================================================================
 // Public Profile Validation
 // =============================================================================

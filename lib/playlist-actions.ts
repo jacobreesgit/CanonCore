@@ -11,7 +11,9 @@ import { prisma } from "@/lib/prisma";
 import {
   playlistNameSchema,
   playlistDescriptionSchema,
+  playlistArtworkSchema,
 } from "@/lib/validations";
+import { revalidatePath } from "next/cache";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 import { handlePrismaError } from "@/lib/errors";
@@ -32,7 +34,8 @@ import { resolveArtworkId } from "@/lib/tmdb-image-utils";
  * @returns Created playlist ID and name, or error
  */
 export async function createPlaylist(
-  name: string
+  name: string,
+  options?: { description?: string; isPublic?: boolean }
 ): Promise<ItemResult<{ id: string; name: string }>> {
   try {
     const [session, rateLimitResult] = await Promise.all([
@@ -65,6 +68,8 @@ export async function createPlaylist(
         name: parsed.data,
         order: nextOrder,
         userId,
+        description: options?.description ?? null,
+        isPublic: options?.isPublic ?? false,
       },
     });
 
@@ -141,7 +146,8 @@ export async function getPlaylist(
         description: playlist.description,
         order: playlist.order,
         isPublic: playlist.isPublic,
-        artworkUrl: playlist.artworkUrl,
+        hasArtwork: !!playlist.artworkImage,
+        shareToken: playlist.shareToken ?? null,
         userId: playlist.userId,
         items,
         createdAt: playlist.createdAt,
@@ -200,7 +206,7 @@ export async function getUserPlaylists(): Promise<
       description: p.description,
       order: p.order,
       isPublic: p.isPublic,
-      artworkUrl: p.artworkUrl,
+      hasArtwork: !!p.artworkImage,
       itemCount: p._count.playlistItems,
       previewArtworkIds: p.playlistItems.map((pi) => resolveArtworkId(pi.item)),
       createdAt: p.createdAt,
@@ -217,10 +223,9 @@ export async function getUserPlaylists(): Promise<
 
 /**
  * Update a playlist's properties.
- * artworkUrl deferred to v2 — schema field ready but not exposed yet.
  *
  * @param playlistId - Playlist ID to update
- * @param data - Fields to update (name, description, isPublic)
+ * @param data - Fields to update (name, description, isPublic, enableSharing)
  * @returns Success or error
  */
 export async function updatePlaylist(
@@ -229,6 +234,7 @@ export async function updatePlaylist(
     name?: string;
     description?: string;
     isPublic?: boolean;
+    enableSharing?: boolean;
   }
 ): Promise<ItemResult> {
   try {
@@ -272,6 +278,13 @@ export async function updatePlaylist(
 
     if (data.isPublic !== undefined) {
       updateData.isPublic = data.isPublic;
+    }
+
+    if (data.enableSharing === true) {
+      const { nanoid } = await import("nanoid");
+      updateData.shareToken = nanoid(21);
+    } else if (data.enableSharing === false) {
+      updateData.shareToken = null;
     }
 
     await prisma.playlist.update({
@@ -323,6 +336,140 @@ export async function deletePlaylist(playlistId: string): Promise<ItemResult> {
     logger.error({ error, playlistId }, "Failed to delete playlist");
     const prismaError = handlePrismaError(error);
     return prismaError ?? { error: "Failed to delete playlist" };
+  }
+}
+
+/**
+ * Upload or replace playlist artwork.
+ * Accepts FormData with an "artwork" file field.
+ * Validates type (JPEG/PNG/WebP) and size (2MB max).
+ * Strips EXIF metadata using sharp.
+ *
+ * @param playlistId - Playlist to update
+ * @param formData - FormData with "artwork" file
+ * @returns Success or error
+ */
+export async function updatePlaylistArtwork(
+  playlistId: string,
+  formData: FormData
+): Promise<ItemResult> {
+  try {
+    const [session, rateLimitResult] = await Promise.all([
+      auth(),
+      checkRateLimit("playlist"),
+    ]);
+    if (!session?.user?.id) return { error: "Not authenticated" };
+    if (rateLimitResult) return { error: rateLimitResult.error };
+
+    const file = formData.get("artwork") as File | null;
+    if (!file) return { error: "No file provided" };
+
+    const validation = playlistArtworkSchema.safeParse({
+      size: file.size,
+      type: file.type,
+    });
+    if (!validation.success) {
+      return { error: validation.error.issues[0].message };
+    }
+
+    const buffer = new Uint8Array(await file.arrayBuffer());
+
+    // Strip EXIF metadata (same pattern as user-actions.ts)
+    const sharp = (await import("sharp")).default;
+    const processed = await sharp(buffer).rotate().toBuffer();
+
+    await prisma.playlist.update({
+      where: { id: playlistId, userId: session.user.id },
+      data: {
+        artworkImage: new Uint8Array(processed),
+        artworkMime: file.type,
+      },
+    });
+
+    revalidatePath("/");
+    logger.info(
+      { playlistId, userId: session.user.id },
+      "Playlist artwork updated"
+    );
+    return { success: true };
+  } catch (error) {
+    logger.error({ error, playlistId }, "Failed to upload artwork");
+    const prismaError = handlePrismaError(error);
+    return prismaError ?? { error: "Failed to upload artwork" };
+  }
+}
+
+/**
+ * Remove playlist artwork.
+ *
+ * @param playlistId - Playlist to update
+ * @returns Success or error
+ */
+export async function removePlaylistArtwork(
+  playlistId: string
+): Promise<ItemResult> {
+  try {
+    const [session, rateLimitResult] = await Promise.all([
+      auth(),
+      checkRateLimit("playlist"),
+    ]);
+    if (!session?.user?.id) return { error: "Not authenticated" };
+    if (rateLimitResult) return { error: rateLimitResult.error };
+
+    await prisma.playlist.update({
+      where: { id: playlistId, userId: session.user.id },
+      data: { artworkImage: null, artworkMime: null },
+    });
+
+    revalidatePath("/");
+    logger.info(
+      { playlistId, userId: session.user.id },
+      "Playlist artwork removed"
+    );
+    return { success: true };
+  } catch (error) {
+    logger.error({ error, playlistId }, "Failed to remove artwork");
+    const prismaError = handlePrismaError(error);
+    return prismaError ?? { error: "Failed to remove artwork" };
+  }
+}
+
+/**
+ * Regenerate the share token for a playlist.
+ * Replaces any existing token with a new one.
+ *
+ * @param playlistId - Playlist to update
+ * @returns New share token, or error
+ */
+export async function regenerateShareToken(
+  playlistId: string
+): Promise<ItemResult<{ shareToken: string }>> {
+  try {
+    const [session, rateLimitResult] = await Promise.all([
+      auth(),
+      checkRateLimit("playlist"),
+    ]);
+    if (!session?.user?.id) return { error: "Not authenticated" };
+    if (rateLimitResult) return { error: rateLimitResult.error };
+
+    const { nanoid } = await import("nanoid");
+    const token = nanoid(21);
+
+    await prisma.playlist.update({
+      where: { id: playlistId, userId: session.user.id },
+      data: { shareToken: token },
+    });
+
+    revalidatePath("/");
+    logger.info(
+      { playlistId, userId: session.user.id },
+      "Share token regenerated"
+    );
+    return { success: true, data: { shareToken: token } };
+  } catch (error) {
+    logger.error({ error, playlistId }, "Failed to regenerate token");
+    const prismaError = handlePrismaError(error);
+    return prismaError ?? { error: "Failed to regenerate token" };
   }
 }
 
