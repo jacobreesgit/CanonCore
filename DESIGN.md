@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: February 2026 (v7.10.0)
+Last updated: February 2026 (v8.0.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -29,7 +29,7 @@ This doc covers architecture, implementation patterns, and design decisions for 
 
 - Next.js 16 (App Router with Turbopack)
 - React 19 (Server Components, Server Actions)
-- TypeScript 5.7
+- TypeScript 5.9
 - Tailwind CSS 4
 - shadcn/ui (radix-ui primitives)
 - dnd-kit for drag-and-drop
@@ -37,6 +37,7 @@ This doc covers architecture, implementation patterns, and design decisions for 
 - nuqs for URL state management
 - Embla Carousel for swipeable tabs
 - cmdk for spotlight search
+- nanoid for share token generation
 
 **Backend:**
 
@@ -158,6 +159,20 @@ Built on PostgreSQL with Prisma ORM. Key tables:
 - Tracks item copies: sourceItemId, targetItemId, userId
 - Unique constraint: user can only fork an item once
 
+**Playlist:**
+
+- Cross-cutting reference list: name, description, order, isPublic
+- Artwork: artworkImage (binary blob), artworkMime
+- Sharing: shareToken (unique, nanoid-generated) for unlisted access
+- Indexed: userId, userId+order, isPublic+updatedAt desc, shareToken
+
+**PlaylistItem (join table):**
+
+- Many-to-many between Playlist and Item with ordering
+- Fields: order (for drag-to-reorder), addedAt
+- Unique constraint: playlistId+itemId (no duplicates)
+- Indexed: playlistId+order, itemId
+
 **SyncLog:**
 
 - Operation history: action (CREATE/RENAME/DELETE/MOVE/UPLOAD/etc)
@@ -218,6 +233,26 @@ Built on PostgreSQL with Prisma ORM. Key tables:
     │ userId     │
     │ changes    │
     └────────────┘
+
+┌──────────────┐
+│     User     │──┐ 1:N
+└──────────────┘  │
+            ┌─────▼──────┐
+            │  Playlist  │
+            ├────────────┤
+            │ name       │
+            │ description│
+            │ isPublic   │
+            │ shareToken │
+            │ artwork    │
+            └─────┬──────┘
+                  │ 1:N
+            ┌─────▼────────┐
+            │PlaylistItem  │
+            ├──────────────┤     N:1
+            │ order        │────────── Item
+            │ addedAt      │
+            └──────────────┘
 ```
 
 ### Key Schema Decisions
@@ -256,6 +291,7 @@ Built on PostgreSQL with Prisma ORM. Key tables:
 All mutations go through server actions in `lib/*-actions.ts`:
 
 - `lib/item-actions.ts` - CRUD, reordering, pinning, progress
+- `lib/playlist-actions.ts` - Playlist CRUD, artwork, share tokens, item membership, reordering
 - `lib/google-drive-actions.ts` - OAuth, sync, connection management
 - `lib/tmdb-actions.ts` - Metadata search, image fetching
 - `lib/auth-actions.ts` - Sign up, forgot password, reset password
@@ -302,6 +338,12 @@ Server Actions can't stream responses, so these use API Routes:
 - User profile/hero image endpoints
 - Serves blobs from database
 
+**`/api/playlist/artwork/route.ts`:**
+
+- Playlist artwork upload (POST with multipart form data)
+- Validates file type and size, stores as binary blob on Playlist model
+- Rate limited, requires authentication
+
 **`/api/health/route.ts`:**
 
 - Database connectivity check for uptime monitors
@@ -317,8 +359,9 @@ Server Actions can't stream responses, so these use API Routes:
 
 **`app/(public)/`:**
 
-- Landing page, explore, user profiles (`/u/[username]`)
+- Landing page, explore (tabbed: Collections/Playlists), user profiles (`/u/[username]`)
 - Item detail pages (`/u/[username]/[itemId]`)
+- Playlist detail pages (`/u/[username]/playlists/[playlistId]`) with share token support
 
 **`app/(docs)/`:**
 
@@ -359,6 +402,7 @@ Upstash Redis with different thresholds per action:
 - Sign-up: 3 requests/minute
 - Forgot/reset password: 2 requests/minute
 - Item mutations: 30 requests/minute
+- Playlist mutations: 30 requests/minute
 - Search: 30-60 requests/minute per section
 - API routes (artwork/stream/avatar/hero): 60 requests/minute
 - Bot crawlers: 120 requests/minute
@@ -497,7 +541,8 @@ Multi-layer defence against aggressive AI crawlers:
 
 **CinematicHero Component:**
 
-- Multi-mode: carousel (explore page), single-slide (item detail), profile avatar mode
+- Multi-mode: carousel (explore page), single-slide (item detail), profile avatar mode, custom backdrop (playlist detail)
+- `backgroundElement` prop accepts custom React node rendered behind gradient overlay (used for mosaic tile backdrops)
 - Auto-advance every 5 seconds with pause on hover
 - Respects `prefers-reduced-motion` (disables autoplay, ken-burns effect)
 - TMDB metadata display: tagline, year, runtime, genres, content rating, vote average
@@ -584,11 +629,12 @@ Multi-layer defence against aggressive AI crawlers:
 - Press "/" to open from any page
 - Escape to close, arrow keys to navigate
 
-**Three Sections:**
+**Four Sections:**
 
 1. Your Items (fuzzy search with breadcrumb paths)
-2. Public Collections (all users' public items)
-3. People (search users by username)
+2. Playlists (user's playlists with artwork and item counts)
+3. Public Collections (all users' public items)
+4. People (search users by username)
 
 **Performance:**
 
@@ -622,6 +668,59 @@ Multi-layer defence against aggressive AI crawlers:
 - Copies structure, metadata, artwork (not media files)
 - Cannot fork own items, cannot fork same item twice
 - Forked items start private with `inheritVisibility: false`
+
+### Playlists
+
+**Cross-Cutting Collections:**
+
+- Many-to-many reference lists — items stay in their tree position and can appear in multiple playlists
+- 14 server actions in `lib/playlist-actions.ts` following the same auth + rate limit + validation pattern
+- Zod schemas for playlist name (1-255 chars), description (max 1000 chars), and artwork (max 5MB, image MIME types)
+
+**Visibility Model:**
+
+- Private (default) — only visible to the owner
+- Public — discoverable on the Explore page's Playlists tab
+- Unlisted — accessible only via share token URL (`?token=[nanoid]`)
+- Share tokens generated with `nanoid` (21 chars), stored as unique index on `Playlist.shareToken`
+- Regenerating a share token invalidates the previous link
+
+**Artwork:**
+
+- Binary blob storage on Playlist model (artworkImage + artworkMime)
+- Upload via `/api/playlist/artwork` route (multipart form data)
+- PlaylistGridItem shows a 4-poster collage mosaic when no custom artwork is set
+- CardShell component provides shared visual base (glass background, border, hover glow)
+
+**Drag-to-Reorder:**
+
+- `PlaylistSortableGrid` uses dnd-kit for drag-to-reorder within playlists
+- `reorderPlaylistItems` server action does batch order updates
+- Same pattern as item reordering in SortableGrid
+
+**Components:**
+
+- `PlaylistGridItem` — poster collage card with up to 4 item artworks
+- `PlaylistDetailClient` — full detail page with Contents/About tabs, edit mode toolbar
+- `PlaylistSection` — reusable grid section with responsive columns
+- `PlaylistSortableGrid` — dnd-kit drag-to-reorder for playlist items
+- `PlaylistContextMenu` — right-click actions (edit, delete, visibility, share link)
+- `CreatePlaylistDialog` / `EditPlaylistDialog` / `AddToPlaylistDialog` — CRUD dialogs
+
+**URL State:**
+
+- `use-playlist-url-state` — view, sort, filter, tab state for playlist detail pages
+- `use-viewer-url-state` — tab and filter state for profile viewer mode
+- `playlist-search-params` — nuqs parser definitions
+- Pattern: `?view=grid&sort=custom&tab=contents`
+
+**Integration Points:**
+
+- Explore page: Collections/Playlists tabs with URL-backed tab state
+- Profile page (viewer): Items/Playlists tabs
+- Spotlight search: Playlists section with artwork thumbnails
+- Sidebar: Playlists section with artwork and item counts
+- CinematicHero: `backgroundElement` prop for mosaic backdrop on playlist detail pages
 
 ### Mobile Experience
 
@@ -856,6 +955,7 @@ Vercel Speed Insights tracks Core Web Vitals (LCP, FID, CLS, TTFB) in production
 - **Static pages** — landing, explore, docs (with priority and change frequency)
 - **Public profiles** — all users with `isPublic: true` and a username, with `lastModified` dates
 - **Public items** — explicitly public items (not inheriting) from public users, with `lastModified` dates
+- **Public playlists** — public playlists from public users, with `lastModified` dates
 
 Profile and item queries run in parallel for performance.
 
@@ -881,6 +981,12 @@ Server-side generated OG images using Next.js `ImageResponse` (Satori):
 - Shows item name, truncated description, owner name
 - TMDB backdrop overlay at 30% opacity when available
 
+**Playlist** (`app/(public)/u/[username]/playlists/[playlistId]/opengraph-image.tsx`):
+
+- Node.js runtime (requires Prisma)
+- Shows playlist name, description, item count, owner name
+- Playlist artwork as background when available
+
 ### JSON-LD Structured Data
 
 Schema.org markup on three page types:
@@ -888,6 +994,7 @@ Schema.org markup on three page types:
 - **Landing page** — `WebApplication` schema with name, URL, category
 - **Profile pages** — `Person` schema with name and profile URL
 - **Item detail pages** — `Movie` or `TVSeries` schema (based on `tmdbType`) with genre, poster image, and `AggregateRating` from TMDB vote data
+- **Playlist detail pages** — `CollectionPage` schema with playlist name, description, and item count
 
 All JSON-LD output sanitised with `replace(/</g, "\\u003c")` to prevent XSS via script injection.
 
@@ -938,11 +1045,12 @@ Husky manages Git hooks:
 
 ```
           ┌─────────┐
-          │   E2E   │  31 spec files (Playwright)
+          ┌─────────┐
+          │   E2E   │  34 spec files (Playwright)
           │  Tests  │  Real browser, real APIs
           └─────────┘
         ┌─────────────┐
-        │  Storybook  │  58 stories, 312 tests
+        │  Storybook  │  66 stories
         │  Component  │  axe a11y + interactions
         └─────────────┘
       ┌─────────────────┐
@@ -950,7 +1058,7 @@ Husky manages Git hooks:
       │     Tests       │  Real database
       └─────────────────┘
     ┌─────────────────────┐
-    │     Unit Tests      │  ~2400 tests (Vitest)
+    │     Unit Tests      │  ~2800 tests (Vitest)
     │    (Mocked deps)    │  Fast, isolated
     └─────────────────────┘
 ```
@@ -991,7 +1099,7 @@ Husky manages Git hooks:
 
 ### Storybook Component Tests
 
-**Location:** Co-located `*.stories.tsx` files (58 stories)
+**Location:** Co-located `*.stories.tsx` files (66 stories)
 
 **What's tested:**
 
@@ -1008,7 +1116,7 @@ Husky manages Git hooks:
 
 ### E2E Tests (Playwright)
 
-**Location:** `e2e/journeys/` (31 spec files)
+**Location:** `e2e/journeys/` (34 spec files)
 
 **Pattern:** Page Object Model with composable fixtures
 
@@ -1031,7 +1139,7 @@ Husky manages Git hooks:
 - `e2e/fixtures/drive.fixture.ts` - Drive-specific test fixture
 - `e2e/fixtures/index.ts` - Composed fixture wiring all POMs as fixture properties
 
-**Page Objects (15 focused POMs):**
+**Page Objects (16 focused POMs):**
 
 - `auth.page.ts` - Sign-in, sign-up, forgot/reset password
 - `explore.page.ts` - Explore carousel, grid, filtering
@@ -1048,6 +1156,7 @@ Husky manages Git hooks:
 - `settings.page.ts` - Profile settings tabs
 - `spotlight.page.ts` - Spotlight search dialog
 - `tmdb-wizard.page.ts` - TMDB metadata wizard
+- `playlist.page.ts` - Playlist CRUD, items, visibility
 
 **Config:**
 
@@ -1199,12 +1308,27 @@ Portfolio screenshots for marketing/documentation using POM patterns and fixture
 - Stale data for up to 60 seconds
 - Acceptable for search (not critical data)
 
+### Why Cross-Cutting Playlists over Nested Playlists?
+
+**Chose Many-to-Many Reference Lists because:**
+
+- Items stay in their tree position — no moving or duplicating required
+- One item can appear in multiple playlists (e.g. "Weekend Watchlist" + "Best Horror")
+- Playlists have independent visibility from the item hierarchy (private/public/unlisted)
+- Share tokens enable unlisted sharing without making the playlist fully public
+
+**Tradeoff:**
+
+- Join table (PlaylistItem) adds complexity vs simple parent-child
+- Need separate reordering logic for playlist item order vs tree order
+- Artwork resolution falls back through: custom upload → 4-poster collage → empty state
+
 ### Why Page Object Model for E2E Tests?
 
 **Chose POM because:**
 
 - Centralised selectors (change once, updates all tests)
-- 15 focused POMs replace monolithic page objects (single-responsibility per feature area)
+- 16 focused POMs replace monolithic page objects (single-responsibility per feature area)
 - Reusable methods (`itemsCrud.createItem()` used across multiple tests)
 - Composable fixtures wire POMs as properties — tests destructure only what they need
 - Easier to maintain than inline selectors
