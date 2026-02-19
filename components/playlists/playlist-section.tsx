@@ -76,7 +76,7 @@ function ViewerPlaylistSection({
       <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
         Playlists
       </h2>
-      <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+      <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         {playlists.map((playlist) => (
           <PlaylistCard
             key={playlist.id}
@@ -171,7 +171,7 @@ function OwnerPlaylistSection({
             onAction={() => setShowCreate(true)}
           />
         ) : (
-          <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+          <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
             {playlists.map((playlist) => (
               <PlaylistContextMenu
                 key={playlist.id}
