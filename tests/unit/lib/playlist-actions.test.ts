@@ -82,6 +82,20 @@ vi.mock("@/lib/errors", () => ({
   handlePrismaError: vi.fn().mockReturnValue(null),
 }));
 
+// Mock next/cache
+vi.mock("next/cache", () => ({
+  revalidatePath: vi.fn(),
+}));
+
+// Mock sharp (dynamic import)
+vi.mock("sharp", () => ({
+  default: vi.fn().mockReturnValue({
+    rotate: vi.fn().mockReturnValue({
+      toBuffer: vi.fn().mockResolvedValue(Buffer.from("processed")),
+    }),
+  }),
+}));
+
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -98,6 +112,9 @@ import {
   getUserPlaylists,
   getPlaylist,
   getPlaylistsForItem,
+  regenerateShareToken,
+  updatePlaylistArtwork,
+  removePlaylistArtwork,
 } from "@/lib/playlist-actions";
 
 const mockAuth = auth as unknown as ReturnType<typeof vi.fn>;
@@ -644,6 +661,194 @@ describe("playlist-actions", () => {
           { id: "pl2", name: "Favourites", isMember: false },
         ]);
       }
+    });
+  });
+
+  describe("createPlaylist with options", () => {
+    it("creates playlist with description and isPublic", async () => {
+      mockAuth.mockResolvedValue(mockSession("user1"));
+      vi.mocked(prisma.playlist.aggregate).mockResolvedValue({
+        _max: { order: 0 },
+      } as never);
+      vi.mocked(prisma.playlist.create).mockResolvedValue({
+        id: "pl1",
+        name: "My Playlist",
+        order: 1,
+        userId: "user1",
+      } as never);
+
+      const result = await createPlaylist("My Playlist", {
+        description: "A test playlist",
+        isPublic: true,
+      });
+      expect(result.success).toBe(true);
+      expect(prisma.playlist.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            name: "My Playlist",
+            description: "A test playlist",
+            isPublic: true,
+          }),
+        })
+      );
+    });
+  });
+
+  describe("updatePlaylist with sharing", () => {
+    it("generates share token when enableSharing=true", async () => {
+      mockAuth.mockResolvedValue(mockSession("user1"));
+      vi.mocked(prisma.playlist.update).mockResolvedValue({
+        id: "pl1",
+      } as never);
+
+      const result = await updatePlaylist("pl1", { enableSharing: true });
+      expect(result.success).toBe(true);
+      expect(prisma.playlist.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            shareToken: expect.any(String),
+          }),
+        })
+      );
+    });
+
+    it("revokes share token when enableSharing=false", async () => {
+      mockAuth.mockResolvedValue(mockSession("user1"));
+      vi.mocked(prisma.playlist.update).mockResolvedValue({
+        id: "pl1",
+      } as never);
+
+      const result = await updatePlaylist("pl1", { enableSharing: false });
+      expect(result.success).toBe(true);
+      expect(prisma.playlist.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            shareToken: null,
+          }),
+        })
+      );
+    });
+  });
+
+  describe("regenerateShareToken", () => {
+    it("rejects unauthenticated", async () => {
+      mockAuth.mockResolvedValue(null);
+      const result = await regenerateShareToken("pl1");
+      expect(result.error).toBe("Not authenticated");
+    });
+
+    it("generates new share token", async () => {
+      mockAuth.mockResolvedValue(mockSession("user1"));
+      vi.mocked(prisma.playlist.update).mockResolvedValue({
+        id: "pl1",
+        shareToken: "new-token-123",
+      } as never);
+
+      const result = await regenerateShareToken("pl1");
+      expect(result.success).toBe(true);
+      expect(prisma.playlist.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            shareToken: expect.any(String),
+          }),
+        })
+      );
+    });
+  });
+
+  describe("updatePlaylistArtwork", () => {
+    it("rejects unauthenticated", async () => {
+      mockAuth.mockResolvedValue(null);
+      const formData = new FormData();
+      const result = await updatePlaylistArtwork("pl1", formData);
+      expect(result.error).toBe("Not authenticated");
+    });
+
+    it("rejects when no file provided", async () => {
+      mockAuth.mockResolvedValue(mockSession("user1"));
+      const formData = new FormData();
+      const result = await updatePlaylistArtwork("pl1", formData);
+      expect(result.error).toBe("No file provided");
+    });
+
+    it("rejects file that is too large", async () => {
+      mockAuth.mockResolvedValue(mockSession("user1"));
+      const formData = new FormData();
+      const largeFile = new File(
+        [new ArrayBuffer(3 * 1024 * 1024)],
+        "large.jpg",
+        { type: "image/jpeg" }
+      );
+      formData.append("artwork", largeFile);
+
+      const result = await updatePlaylistArtwork("pl1", formData);
+      expect(result.error).toBeDefined();
+    });
+
+    it("rejects invalid MIME type", async () => {
+      mockAuth.mockResolvedValue(mockSession("user1"));
+      const formData = new FormData();
+      const file = new File(["data"], "test.gif", { type: "image/gif" });
+      formData.append("artwork", file);
+
+      const result = await updatePlaylistArtwork("pl1", formData);
+      expect(result.error).toBeDefined();
+    });
+
+    it("uploads valid artwork", async () => {
+      mockAuth.mockResolvedValue(mockSession("user1"));
+      vi.mocked(prisma.playlist.update).mockResolvedValue({
+        id: "pl1",
+      } as never);
+
+      const imageBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
+      const formData = new FormData();
+      const file = new File([imageBytes], "cover.jpg", {
+        type: "image/jpeg",
+      });
+      // Polyfill arrayBuffer for jsdom File
+      if (!file.arrayBuffer) {
+        file.arrayBuffer = () =>
+          Promise.resolve(imageBytes.buffer as ArrayBuffer);
+      }
+      formData.append("artwork", file);
+
+      const result = await updatePlaylistArtwork("pl1", formData);
+      expect(result.success).toBe(true);
+      expect(prisma.playlist.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            artworkImage: expect.any(Uint8Array),
+            artworkMime: "image/jpeg",
+          }),
+        })
+      );
+    });
+  });
+
+  describe("removePlaylistArtwork", () => {
+    it("rejects unauthenticated", async () => {
+      mockAuth.mockResolvedValue(null);
+      const result = await removePlaylistArtwork("pl1");
+      expect(result.error).toBe("Not authenticated");
+    });
+
+    it("removes artwork successfully", async () => {
+      mockAuth.mockResolvedValue(mockSession("user1"));
+      vi.mocked(prisma.playlist.update).mockResolvedValue({
+        id: "pl1",
+      } as never);
+
+      const result = await removePlaylistArtwork("pl1");
+      expect(result.success).toBe(true);
+      expect(prisma.playlist.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            artworkImage: null,
+            artworkMime: null,
+          }),
+        })
+      );
     });
   });
 });
