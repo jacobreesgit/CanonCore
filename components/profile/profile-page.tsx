@@ -262,6 +262,7 @@ function OwnerModeContent({
   // Hero element
   const hero = (
     <CinematicHero
+      headingLevel="h1"
       slides={[
         {
           id: "hero",
