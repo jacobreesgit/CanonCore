@@ -10,18 +10,20 @@ export const alt = "CanonCore Playlist";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default async function PlaylistOGImage({
-  params,
-}: {
+export default async function PlaylistOGImage(props: {
   params: Promise<{ username: string; playlistId: string }>;
+  searchParams?: Promise<{ token?: string }>;
 }) {
-  const { playlistId } = await params;
+  const { playlistId } = await props.params;
+  const token = (await props.searchParams)?.token;
 
   const playlist = await prisma.playlist.findFirst({
-    where: { id: playlistId, isPublic: true },
+    where: { id: playlistId },
     select: {
       name: true,
       description: true,
+      isPublic: true,
+      shareToken: true,
       user: { select: { username: true, name: true } },
       playlistItems: {
         where: { item: { isPublic: true } },
@@ -34,6 +36,32 @@ export default async function PlaylistOGImage({
       _count: { select: { playlistItems: true } },
     },
   });
+
+  // Access check: public OR valid share token
+  if (
+    playlist &&
+    !playlist.isPublic &&
+    !(token && playlist.shareToken === token)
+  ) {
+    return new ImageResponse(
+      <div
+        style={{
+          background: "#0a0a0a",
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "white",
+          fontSize: 32,
+          fontFamily: "sans-serif",
+        }}
+      >
+        CanonCore
+      </div>,
+      { ...size }
+    );
+  }
 
   const name = playlist?.name ?? "Playlist";
   const description = playlist?.description?.slice(0, 120) ?? "";

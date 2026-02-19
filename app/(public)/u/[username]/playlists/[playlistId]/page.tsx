@@ -19,6 +19,7 @@ import { PlaylistDetailClient } from "@/components/playlists/playlist-detail-cli
 
 interface PageProps {
   params: Promise<{ username: string; playlistId: string }>;
+  searchParams: Promise<{ token?: string }>;
 }
 
 /**
@@ -26,8 +27,10 @@ interface PageProps {
  */
 export async function generateMetadata({
   params,
+  searchParams,
 }: PageProps): Promise<Metadata> {
   const { username, playlistId } = await params;
+  const { token } = await searchParams;
 
   const session = await auth();
   const sessionUsername = session?.user?.username;
@@ -63,23 +66,24 @@ export async function generateMetadata({
     };
   }
 
-  const publicData = await getPublicPlaylist(playlistId);
+  const publicData = await getPublicPlaylist(playlistId, token);
   if (!publicData) {
     return { title: "Playlist Not Found" };
   }
 
   const displayName = profile.name ?? `@${username}`;
+  const itemCount = publicData.items.length;
   return {
     title: `${publicData.playlist.name} by ${displayName} | CanonCore`,
-    description:
-      publicData.playlist.description ??
-      `Playlist by @${username} on CanonCore.`,
+    description: publicData.playlist.description
+      ? `"${publicData.playlist.description}" — ${itemCount} items curated by @${username}`
+      : `Playlist by @${username} on CanonCore.`,
     openGraph: {
       title: `${publicData.playlist.name} | CanonCore`,
-      description:
-        publicData.playlist.description ??
-        `Playlist by @${username} on CanonCore.`,
-      type: "website",
+      description: publicData.playlist.description
+        ? `"${publicData.playlist.description}" — ${itemCount} items curated by @${username}`
+        : `Playlist by @${username} on CanonCore.`,
+      type: "article",
     },
   };
 }
@@ -88,8 +92,12 @@ export async function generateMetadata({
  * Playlist detail page server component.
  * Fetches playlist data based on owner/viewer mode.
  */
-export default async function PlaylistPage({ params }: PageProps) {
+export default async function PlaylistPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { username, playlistId } = await params;
+  const { token } = await searchParams;
 
   const [rateLimitResult, session] = await Promise.all([
     checkRateLimit("publicProfile"),
@@ -151,22 +159,33 @@ export default async function PlaylistPage({ params }: PageProps) {
   }
 
   // Viewer mode
-  const publicData = await getPublicPlaylist(playlistId);
+  const publicData = await getPublicPlaylist(playlistId, token);
   if (!publicData) {
     notFound();
   }
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: publicData.playlist.name,
     description: publicData.playlist.description ?? undefined,
+    author: {
+      "@type": "Person",
+      name: profile.name ?? profile.username,
+      url: `${appUrl}/u/${username}`,
+    },
     numberOfItems: publicData.items.length,
+    dateCreated: publicData.playlist.createdAt,
+    dateModified: publicData.playlist.updatedAt,
+    image: publicData.playlist.hasArtwork
+      ? `${appUrl}/api/playlist/artwork?playlistId=${playlistId}`
+      : undefined,
     itemListElement: publicData.items.map((item, index) => ({
       "@type": "ListItem",
       position: index + 1,
       name: item.name,
-      url: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/u/${username}/${item.id}`,
+      url: `${appUrl}/u/${username}/${item.id}`,
     })),
   };
 
