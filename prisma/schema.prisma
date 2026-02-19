@@ -304,28 +304,24 @@ model Fork {
 /// Cross-cutting playlist — a many-to-many reference list of items.
 /// Items stay in their tree position and can appear in multiple playlists.
 model Playlist {
-  id          String   @id @default(cuid())
-  name        String
-  description String?  @db.VarChar(1000)
-  order       Int      @default(0)
-  isPublic    Boolean  @default(false)
-
-  // Custom artwork (optional override — auto-generate from items by default)
-  artworkUrl  String?
-
-  // Ownership
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Items in this playlist
+  id            String         @id @default(cuid())
+  name          String
+  description   String?        @db.VarChar(1000)
+  order         Int            @default(0)
+  isPublic      Boolean        @default(false)
+  artworkImage  Bytes?
+  artworkMime   String?
+  shareToken    String?        @unique
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   playlistItems PlaylistItem[]
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@index([userId])
   @@index([userId, order])
   @@index([isPublic, updatedAt(sort: Desc)])
+  @@index([shareToken])
 }
 
 /// Join table for many-to-many relationship between Playlist and Item.
