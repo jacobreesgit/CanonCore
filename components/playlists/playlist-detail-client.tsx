@@ -3,13 +3,22 @@
  * Renders hero, toolbar, and item grid with sort/edit/bulk-remove support.
  * Owner mode: editable with drag-to-reorder and bulk actions.
  * Viewer mode: read-only grid of public items.
+ *
+ * Matches ItemDetailClient structure: tabs, useTransition, mobile swipe tabs.
  */
 
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import {
+  useState,
+  useMemo,
+  useCallback,
+  useTransition,
+  useSyncExternalStore,
+} from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2, Share2 } from "lucide-react";
+import dynamic from "next/dynamic";
+import { Pencil, Trash2, Share2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { CinematicHero, type HeroSlide } from "@/components/hero";
 import { HeroButton } from "@/components/items/hero-button";
@@ -18,6 +27,9 @@ import { ContentToolbar } from "@/components/ui/content-toolbar";
 import { GridItem } from "@/components/sortable-grid/grid-item";
 import { EmptyState } from "@/components/items/empty-state";
 import { Section } from "@/components/ui/section";
+import { UnderlineTabs } from "@/components/ui/underline-tabs";
+import { EditModeToggle } from "@/components/items/edit-mode-toggle";
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,8 +44,23 @@ import { PlaylistItemContextMenu } from "@/components/playlists/playlist-context
 import { EditPlaylistDialog } from "@/components/playlists/edit-playlist-dialog";
 import { usePlaylistUrlState } from "@/hooks/use-playlist-url-state";
 import { PLAYLIST_SORT_OPTIONS } from "@/hooks/playlist-search-params";
-import { deletePlaylist, removeItemFromPlaylist } from "@/lib/playlist-actions";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  deletePlaylist,
+  removeItemFromPlaylist,
+  reorderPlaylistItems,
+} from "@/lib/playlist-actions";
 import { getTmdbBackdropUrl } from "@/lib/tmdb-image-utils";
+
+const SwipeableUnderlineTabs = dynamic(
+  () =>
+    import("@/components/ui/swipeable-underline-tabs").then((mod) => ({
+      default: mod.SwipeableUnderlineTabs,
+    })),
+  { ssr: false }
+);
+
+const emptySubscribe = () => () => {};
 
 /** Minimal playlist item shape needed by the detail client. */
 interface PlaylistDetailItem {
@@ -69,11 +96,8 @@ interface PlaylistDetailClientProps {
 }
 
 /**
- * Client-side playlist detail page with hero, toolbar, and item grid.
- *
- * @param playlist - Playlist data with items
- * @param username - Profile username for URL construction
- * @param isOwner - Whether the current user is the playlist owner
+ * Client-side playlist detail page with hero, tabs, toolbar, and item grid.
+ * Matches ItemDetailClient structure for feature parity.
  */
 export function PlaylistDetailClient({
   playlist: initialPlaylist,
@@ -84,7 +108,17 @@ export function PlaylistDetailClient({
   const [playlist, setPlaylist] = useState(initialPlaylist);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
-  const { sortBy, setSortBy } = usePlaylistUrlState();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const isMobile = useIsMobile();
+  const tabsMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+
+  const { sortBy, setSortBy, tab, setTab, isCustomSort } =
+    usePlaylistUrlState();
 
   // Sort items based on current sort option
   const sortedItems = useMemo(() => {
@@ -105,15 +139,45 @@ export function PlaylistDetailClient({
   // Handle remove item from playlist
   const handleRemoveItem = useCallback(
     async (itemId: string) => {
-      const result = await removeItemFromPlaylist(playlist.id, itemId);
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        setPlaylist((prev) => ({
-          ...prev,
-          items: prev.items.filter((i) => i.item.id !== itemId),
-        }));
-      }
+      startTransition(async () => {
+        const result = await removeItemFromPlaylist(playlist.id, itemId);
+        if (result.error) {
+          toast.error(result.error);
+        } else {
+          setPlaylist((prev) => ({
+            ...prev,
+            items: prev.items.filter((i) => i.item.id !== itemId),
+          }));
+        }
+      });
+    },
+    [playlist.id]
+  );
+
+  // Handle reorder items (optimistic + server call)
+  const _handleReorder = useCallback(
+    (updates: { id: string; order: number }[]) => {
+      startTransition(async () => {
+        // Optimistic update
+        setPlaylist((prev) => {
+          const newItems = [...prev.items];
+          for (const update of updates) {
+            const item = newItems.find(
+              (i) => i.playlistItemId === String(update.id)
+            );
+            if (item) item.order = update.order;
+          }
+          return { ...prev, items: newItems };
+        });
+
+        const result = await reorderPlaylistItems(
+          playlist.id,
+          updates.map((u) => ({ id: String(u.id), order: u.order }))
+        );
+        if (result.error) {
+          toast.error(result.error);
+        }
+      });
     },
     [playlist.id]
   );
@@ -152,7 +216,7 @@ export function PlaylistDetailClient({
     backgroundUrl: backdropUrl,
   };
 
-  // Hero actions (edit/share for owner, share for viewer, delete for owner)
+  // Hero actions
   const heroActions = (
     <>
       {isOwner && (
@@ -180,9 +244,6 @@ export function PlaylistDetailClient({
     </>
   );
 
-  // Toolbar actions placeholder (edit mode deferred to v2)
-
-  // Hero element
   const hero = (
     <CinematicHero
       slides={[heroSlide]}
@@ -191,70 +252,151 @@ export function PlaylistDetailClient({
     />
   );
 
-  // Grid columns
-  const gridClasses = isOwner
-    ? "stagger-grid grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6"
-    : "stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6";
+  // Grid columns — unified with items
+  const gridClasses =
+    "stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6";
+
+  // Toolbar actions (right side) — Add + Edit mode toggle for owner
+  const contentsActions = isOwner ? (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => router.push(`/u/${username}`)}
+        className="gap-1.5"
+        aria-label="Add items"
+      >
+        <Plus className="size-4" strokeWidth={2} />
+        <span className="hidden xl:inline">Add</span>
+      </Button>
+      <EditModeToggle
+        isEditing={isEditing}
+        onToggle={() => setIsEditing((prev) => !prev)}
+        disabled={!sortedItems.length || !isCustomSort}
+        disabledReason={
+          !sortedItems.length
+            ? "No items to edit"
+            : !isCustomSort
+              ? "Set sort to Custom Order to reorder"
+              : undefined
+        }
+      />
+    </>
+  ) : null;
+
+  // Contents tab content
+  const contentsContent = (
+    <>
+      <ContentToolbar
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+        sortOptions={PLAYLIST_SORT_OPTIONS}
+        defaultSort="custom"
+        disabled={sortedItems.length === 0}
+        actions={contentsActions}
+      />
+
+      {sortedItems.length === 0 ? (
+        <Section className="flex flex-1 flex-col">
+          <EmptyState
+            variant="playlist-empty"
+            onAction={isOwner ? () => router.push(`/u/${username}`) : undefined}
+          />
+        </Section>
+      ) : (
+        <Section>
+          <div className={gridClasses} data-testid="playlist-item-grid">
+            {sortedItems.map((entry, index) => {
+              const itemHref = `/u/${username}/${entry.item.id}`;
+
+              const gridItem = (
+                <GridItem
+                  key={entry.playlistItemId}
+                  id={entry.item.id}
+                  name={entry.item.name}
+                  description={entry.item.description}
+                  tmdbPosterPath={entry.item.tmdbPosterPath}
+                  artworkId={entry.item.artworkId}
+                  onClick={isEditing ? undefined : () => router.push(itemHref)}
+                  onMouseEnter={
+                    isEditing ? undefined : () => router.prefetch(itemHref)
+                  }
+                  showArtwork
+                  showDescription={!isEditing}
+                  priority={index < 6}
+                />
+              );
+
+              if (isOwner) {
+                return (
+                  <PlaylistItemContextMenu
+                    key={entry.playlistItemId}
+                    itemName={entry.item.name}
+                    itemHref={itemHref}
+                    onRemove={() => handleRemoveItem(entry.item.id)}
+                  >
+                    {gridItem}
+                  </PlaylistItemContextMenu>
+                );
+              }
+
+              return gridItem;
+            })}
+          </div>
+        </Section>
+      )}
+    </>
+  );
+
+  // About tab content
+  const aboutContent = (
+    <Section className="py-8">
+      {playlist.description && (
+        <div className="mb-6">
+          <h3 className="mb-2 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
+            About
+          </h3>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            {playlist.description}
+          </p>
+        </div>
+      )}
+      <div className="text-muted-foreground space-y-1 text-sm">
+        <p>
+          {playlist.items.length}{" "}
+          {playlist.items.length === 1 ? "item" : "items"}
+        </p>
+      </div>
+    </Section>
+  );
+
+  const activeTab = tab ?? "contents";
+
+  const tabs = [
+    { id: "contents", label: "Contents", content: contentsContent },
+    { id: "about", label: "About", content: aboutContent },
+  ];
 
   return (
     <>
-      <HeroContentLayout hero={hero} data-testid="playlist-detail">
-        <ContentToolbar
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          sortOptions={PLAYLIST_SORT_OPTIONS}
-          defaultSort="custom"
-          disabled={sortedItems.length === 0}
-        />
-
-        {sortedItems.length === 0 ? (
-          <Section className="flex flex-1 flex-col">
-            <EmptyState
-              variant="playlist-empty"
-              onAction={
-                isOwner ? () => router.push(`/u/${username}`) : undefined
-              }
+      <HeroContentLayout
+        hero={hero}
+        isPending={isPending}
+        data-testid="playlist-detail"
+      >
+        {tabsMounted ? (
+          isMobile ? (
+            <SwipeableUnderlineTabs
+              tabs={tabs}
+              activeTab={activeTab}
+              onTabChange={(id) => setTab(id as "contents" | "about")}
+              swipeEnabled={!isEditing}
             />
-          </Section>
+          ) : (
+            <UnderlineTabs defaultTab="contents" tabs={tabs} />
+          )
         ) : (
-          <Section>
-            <div className={gridClasses} data-testid="playlist-item-grid">
-              {sortedItems.map((entry, index) => {
-                const itemHref = `/u/${username}/${entry.item.id}`;
-
-                const gridItem = (
-                  <GridItem
-                    key={entry.playlistItemId}
-                    id={entry.item.id}
-                    name={entry.item.name}
-                    description={entry.item.description}
-                    tmdbPosterPath={entry.item.tmdbPosterPath}
-                    artworkId={entry.item.artworkId}
-                    onClick={() => router.push(itemHref)}
-                    onMouseEnter={() => router.prefetch(itemHref)}
-                    showArtwork
-                    showDescription
-                    priority={index < 6}
-                  />
-                );
-
-                if (isOwner) {
-                  return (
-                    <PlaylistItemContextMenu
-                      key={entry.playlistItemId}
-                      itemName={entry.item.name}
-                      itemHref={itemHref}
-                      onRemove={() => handleRemoveItem(entry.item.id)}
-                    >
-                      {gridItem}
-                    </PlaylistItemContextMenu>
-                  );
-                }
-
-                return gridItem;
-              })}
-            </div>
-          </Section>
+          contentsContent
         )}
       </HeroContentLayout>
 
