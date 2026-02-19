@@ -18,6 +18,7 @@ import {
   RESERVED_USERNAMES,
   resetPasswordSchema,
   forgotPasswordSchema,
+  playlistArtworkSchema,
 } from "@/lib/validations";
 
 describe("emailSchema", () => {
@@ -525,5 +526,49 @@ describe("forgotPasswordSchema", () => {
       email: "",
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("playlistArtworkSchema", () => {
+  it("accepts valid JPEG", () => {
+    const result = playlistArtworkSchema.safeParse({
+      size: 500_000,
+      type: "image/jpeg",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid PNG", () => {
+    const result = playlistArtworkSchema.safeParse({
+      size: 1_000_000,
+      type: "image/png",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid WebP", () => {
+    const result = playlistArtworkSchema.safeParse({
+      size: 100_000,
+      type: "image/webp",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects file exceeding 2MB", () => {
+    const result = playlistArtworkSchema.safeParse({
+      size: 3 * 1024 * 1024,
+      type: "image/jpeg",
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toContain("2MB");
+  });
+
+  it("rejects invalid MIME type", () => {
+    const result = playlistArtworkSchema.safeParse({
+      size: 100_000,
+      type: "image/gif",
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toContain("JPEG");
   });
 });
