@@ -1442,6 +1442,7 @@ export const getPublicPlaylistsForUser = cache(
       id: p.id,
       name: p.name,
       description: p.description,
+      hasArtwork: !!p.artworkImage,
       itemCount: p._count.playlistItems,
       previewArtworkIds: p.playlistItems.map((pi) => resolveArtworkId(pi.item)),
       updatedAt: p.updatedAt,
@@ -1525,6 +1526,7 @@ export const getExplorePlaylists = cache(
         id: p.id,
         name: p.name,
         description: p.description,
+        hasArtwork: !!p.artworkImage,
         itemCount: p._count.playlistItems,
         previewArtworkIds: p.playlistItems.map((pi) =>
           resolveArtworkId(pi.item)
@@ -1599,6 +1601,7 @@ export const getPublicPlaylist = cache(
         id: playlist.id,
         name: playlist.name,
         description: playlist.description,
+        hasArtwork: !!playlist.artworkImage,
         userId: playlist.userId,
         itemCount: playlist.playlistItems.length,
         previewArtworkIds: playlist.playlistItems

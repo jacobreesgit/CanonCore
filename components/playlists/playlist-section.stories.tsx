@@ -16,6 +16,7 @@ const mockPlaylists: PublicPlaylistCard[] = [
     description: "My favourite films of all time",
     itemCount: 12,
     previewArtworkIds: ["art-1", "art-2", "art-3", "art-4"],
+    hasArtwork: false,
     updatedAt: new Date(),
   },
   {
@@ -24,6 +25,7 @@ const mockPlaylists: PublicPlaylistCard[] = [
     description: null,
     itemCount: 5,
     previewArtworkIds: ["art-5", null, null, null],
+    hasArtwork: false,
     updatedAt: new Date(),
   },
   {
@@ -32,6 +34,7 @@ const mockPlaylists: PublicPlaylistCard[] = [
     description: "Top picks from 2024",
     itemCount: 8,
     previewArtworkIds: ["art-6", "art-7", "art-8", "art-9"],
+    hasArtwork: false,
     updatedAt: new Date(),
   },
   {
@@ -40,6 +43,7 @@ const mockPlaylists: PublicPlaylistCard[] = [
     description: "Essential documentaries",
     itemCount: 3,
     previewArtworkIds: ["art-10", "art-11", null, null],
+    hasArtwork: false,
     updatedAt: new Date(),
   },
 ];
