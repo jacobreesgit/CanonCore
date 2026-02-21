@@ -17,6 +17,21 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@19.0.0)
+      '@fortawesome/fontawesome-svg-core':
+        specifier: ^7.2.0
+        version: 7.2.0
+      '@fortawesome/free-brands-svg-icons':
+        specifier: ^7.2.0
+        version: 7.2.0
+      '@fortawesome/free-solid-svg-icons':
+        specifier: ^7.2.0
+        version: 7.2.0
+      '@fortawesome/react-fontawesome':
+        specifier: 0.2.2
+        version: 0.2.2(@fortawesome/fontawesome-svg-core@7.2.0)(react@19.0.0)
+      '@mesh-gradient/react':
+        specifier: ^1.5.0
+        version: 1.5.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@prisma/adapter-pg':
         specifier: ^7.2.0
         version: 7.2.0
@@ -146,9 +161,6 @@ importers:
       idb:
         specifier: ^8.0.3
         version: 8.0.3
-      lucide-react:
-        specifier: ^0.454.0
-        version: 0.454.0(react@19.0.0)
       motion:
         specifier: ^12.23.12
         version: 12.25.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -179,9 +191,6 @@ importers:
       react-dropzone:
         specifier: ^14.3.8
         version: 14.3.8(react@19.0.0)
-      react-icons:
-        specifier: ^5.5.0
-        version: 5.5.0(react@19.0.0)
       resend:
         specifier: ^6.6.0
         version: 6.6.0
@@ -1484,6 +1493,29 @@ packages:
   '@formatjs/intl-localematcher@0.7.3':
     resolution: {integrity: sha512-NaeABectKdTCOnlH9VFGmMS3K0JuR7Soc2t5R2MCkBrM3H/hlKVYh0XSrcjjPkbjIdrF7L/Bzx9JtGuVaSfYlA==}
 
+  '@fortawesome/fontawesome-common-types@7.2.0':
+    resolution: {integrity: sha512-IpR0bER9FY25p+e7BmFH25MZKEwFHTfRAfhOyJubgiDnoJNsSvJ7nigLraHtp4VOG/cy8D7uiV0dLkHOne5Fhw==}
+    engines: {node: '>=6'}
+
+  '@fortawesome/fontawesome-svg-core@7.2.0':
+    resolution: {integrity: sha512-6639htZMjEkwskf3J+e6/iar+4cTNM9qhoWuRfj9F3eJD6r7iCzV1SWnQr2Mdv0QT0suuqU8BoJCZUyCtP9R4Q==}
+    engines: {node: '>=6'}
+
+  '@fortawesome/free-brands-svg-icons@7.2.0':
+    resolution: {integrity: sha512-VNG8xqOip1JuJcC3zsVsKRQ60oXG9+oYNDCosjoU/H9pgYmLTEwWw8pE0jhPz/JWdHeUuK6+NQ3qsM4gIbdbYQ==}
+    engines: {node: '>=6'}
+
+  '@fortawesome/free-solid-svg-icons@7.2.0':
+    resolution: {integrity: sha512-YTVITFGN0/24PxzXrwqCgnyd7njDuzp5ZvaCx5nq/jg55kUYd94Nj8UTchBdBofi/L0nwRfjGOg0E41d2u9T1w==}
+    engines: {node: '>=6'}
+
+  '@fortawesome/react-fontawesome@0.2.2':
+    resolution: {integrity: sha512-EnkrprPNqI6SXJl//m29hpaNzOp1bruISWaOiRtkMi/xSvHJlzc2j2JAYS7egxt/EbjSNV/k6Xy0AQI6vB2+1g==}
+    deprecated: v0.2.x is no longer supported. Unless you are still using FontAwesome 5, please update to v3.1.1 or greater.
+    peerDependencies:
+      '@fortawesome/fontawesome-svg-core': ~1 || ~6
+      react: '>=16.3'
+
   '@fumadocs/ui@16.4.1':
     resolution: {integrity: sha512-biv5/6+7BbAs8yuP3il1JzE+nUkndvC+qFrsX3a08ybqO7bZ0kXkVgr8n6bNmI4Yz8fTy61ZvwEyTqYmPa9Y1g==}
     peerDependencies:
@@ -1849,6 +1881,15 @@ packages:
     peerDependencies:
       '@types/react': '>=16'
       react: '>=16'
+
+  '@mesh-gradient/core@1.5.0':
+    resolution: {integrity: sha512-68kCPIoY24EZsexxVT/w3B9/jGnscB7ntgy/GSBt4UVIJxNxq0VB5YmLSadRdoSdYa5WTOm8BgAwiXUnzVzD6Q==}
+
+  '@mesh-gradient/react@1.5.0':
+    resolution: {integrity: sha512-zJ7JJzWzVU1Z/XHkYnRDKcbXhjlfqGEkZni5eT5xDBqi8/NQFJj3g6AO1n5FxAeCkjUbaFKwVNay8etbEy0lzQ==}
+    peerDependencies:
+      react: '>=18.0.0'
+      react-dom: '>=18.0.0'
 
   '@mrleebo/prisma-ast@0.12.1':
     resolution: {integrity: sha512-JwqeCQ1U3fvccttHZq7Tk0m/TMC6WcFAQZdukypW3AzlJYKYTGNVd1ANU2GuhKnv4UQuOFj3oAl0LLG/gxFN1w==}
@@ -7886,11 +7927,6 @@ packages:
     peerDependencies:
       react: '>= 16.8 || 18.0.0'
 
-  react-icons@5.5.0:
-    resolution: {integrity: sha512-MEFcXdkP3dLo8uumGI5xN3lDFNsRtrjbOEKDLD7yv76v4wpnEq2Lt2qeHaQOr34I/wPN3s3+N08WkQ+CW37Xiw==}
-    peerDependencies:
-      react: '*'
-
   react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
 
@@ -10674,6 +10710,26 @@ snapshots:
       '@formatjs/fast-memoize': 3.0.1
       tslib: 2.8.1
 
+  '@fortawesome/fontawesome-common-types@7.2.0': {}
+
+  '@fortawesome/fontawesome-svg-core@7.2.0':
+    dependencies:
+      '@fortawesome/fontawesome-common-types': 7.2.0
+
+  '@fortawesome/free-brands-svg-icons@7.2.0':
+    dependencies:
+      '@fortawesome/fontawesome-common-types': 7.2.0
+
+  '@fortawesome/free-solid-svg-icons@7.2.0':
+    dependencies:
+      '@fortawesome/fontawesome-common-types': 7.2.0
+
+  '@fortawesome/react-fontawesome@0.2.2(@fortawesome/fontawesome-svg-core@7.2.0)(react@19.0.0)':
+    dependencies:
+      '@fortawesome/fontawesome-svg-core': 7.2.0
+      prop-types: 15.8.1
+      react: 19.0.0
+
   '@fumadocs/ui@16.4.1(@types/react@19.0.0)(lucide-react@0.454.0(react@19.0.0))(next@16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(tailwindcss@4.1.9)(zod@4.2.1)':
     dependencies:
       fumadocs-core: 16.4.1(@types/react@19.0.0)(lucide-react@0.454.0(react@19.0.0))(next@16.1.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(zod@4.2.1)
@@ -11124,6 +11180,14 @@ snapshots:
       '@types/mdx': 2.0.13
       '@types/react': 19.0.0
       react: 19.0.0
+
+  '@mesh-gradient/core@1.5.0': {}
+
+  '@mesh-gradient/react@1.5.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+    dependencies:
+      '@mesh-gradient/core': 1.5.0
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
 
   '@mrleebo/prisma-ast@0.12.1':
     dependencies:
@@ -16822,6 +16886,7 @@ snapshots:
   lucide-react@0.454.0(react@19.0.0):
     dependencies:
       react: 19.0.0
+    optional: true
 
   lz-string@1.5.0: {}
 
@@ -18225,10 +18290,6 @@ snapshots:
       attr-accept: 2.2.5
       file-selector: 2.1.2
       prop-types: 15.8.1
-      react: 19.0.0
-
-  react-icons@5.5.0(react@19.0.0):
-    dependencies:
       react: 19.0.0
 
   react-is@16.13.1: {}

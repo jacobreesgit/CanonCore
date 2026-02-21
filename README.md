@@ -14,13 +14,17 @@ I use this daily for my own movie and TV library. Active development continues.
 
 ## Features
 
+### Homepage
+
+The landing page features a full-bleed animated mesh gradient background with a grid overlay and CRT scanline effect. Content scrolls over the sticky background. A two-column hero section combines a media stack (glass-morphism screenshot carousel) with a typed command-line pill and logo showcase. Below the hero, a feature accordion with image crossfade showcases core capabilities, followed by a closing manifesto CTA. All motion is async-loaded via LazyMotion (~15KB). Desktop Lighthouse: Performance 96, LCP 1.3s, TBT 0ms, total transfer 1,161 KiB.
+
 ### Browsing & Organisation
 
 Two views: **Grid** is Netflix-style with poster cards and progress bars. **Tree** is file explorer-style showing all descendants at once. Every item page has a hero banner. I wanted it to feel like browsing a streaming service, not a file manager.
 
 Edit mode enables drag-and-drop, bulk selection, and full keyboard navigation with screen reader announcements. Pinned items (max 10) appear in the sidebar for quick access. dnd-kit only loads in edit mode to keep browsing fast.
 
-On mobile, bottom sheets replace desktop dialogs for sort, filter, view switching, and item creation. A bottom navigation bar provides access to My Items, Explore, Search, Help, and Account.
+On mobile, bottom sheets replace desktop dialogues for sort, filter, view switching, and item creation. A bottom navigation bar provides access to My Items, Explore, Search, Help, and Account.
 
 ### Playlists
 
@@ -78,6 +82,10 @@ Two filter groups — File Status (Has Files, No Files) and Sync Status (Synced,
 
 Dynamic OpenGraph images generated server-side for every public profile, item, and playlist page. When someone shares a link on Twitter, Discord, or Slack, the preview card shows the item's TMDB backdrop, name, and description. Profile links show a branded card with the user's display name and item count. Playlist links show the playlist artwork and item count. JSON-LD structured data (Movie, TVSeries, Person, WebApplication schemas) helps search engines understand the content. A dynamic sitemap keeps all public profiles, items, and playlists indexed.
 
+### Legal Pages
+
+Privacy Policy, Terms of Service, and Cookie Policy rendered from MDX via Fumadocs, sharing the same layout and styling as the help documentation. Legal links appear in the site footer, sidebar, and sign-up form.
+
 ### Bot Protection
 
 Multi-layer defence against aggressive AI crawlers: robots.txt for polite bots, edge-level blocking for non-compliant scrapers, and rate limiting (120 req/min) for beneficial search engines. Blocks 35+ AI scrapers while allowing Google, Bing, Apple, and others.
@@ -100,6 +108,8 @@ Every database mutation is automatically logged via a Prisma extension. Context 
 
 **Stack Auth → NextAuth.js v5:** I started with managed auth, then migrated to self-hosted JWT sessions after hitting rate limits. I added 15+ rate limiters via Upstash Redis with different thresholds per action (strict for auth, generous for browsing).
 
+**Lucide → Font Awesome:** I migrated the entire icon system from lucide-react to Font Awesome 7 across 50+ components. Font Awesome's explicit icon imports give better control over bundle size, and the broader icon library covers every UI need without compromise. FOUC prevention handled via manual CSS import with `autoAddCss = false`.
+
 ### Security & Resilience
 
 AES-256-GCM encryption for OAuth tokens with random IVs, HMAC-SHA256 signed upload tokens with timing-safe comparison, and OWASP-compliant security headers (HSTS with preload, CSP, X-Frame-Options: DENY). TMDB and Google Drive calls wrapped in a custom circuit breaker that opens after consecutive failures and tests recovery in half-open state. Multi-layer bot protection blocks 35+ AI scrapers at the edge while rate-limiting beneficial search engines.
@@ -110,7 +120,7 @@ Sentry error tracking across client, server, and edge runtimes with source maps 
 
 ### Performance
 
-Google Drive operations batched up to 100 per request, reducing sync time for large folders from ~45s to ~3s. Edit mode separation extracts a view-only Grid from SortableGrid to avoid dnd-kit overhead in browse mode (~40KB saved). TMDB resolution and metadata fetches chained as a single promise running concurrently with other server-side fetches, eliminating sequential await waterfalls. Offline queue persists actions to IndexedDB when offline, replaying on reconnect with exponential backoff and jitter.
+Google Drive operations batched up to 100 per request, reducing sync time for large folders from ~45s to ~3s. Edit mode separation extracts a view-only Grid from SortableGrid to avoid dnd-kit overhead in browse mode (~40KB saved). TMDB resolution and metadata fetches chained as a single promise running concurrently with other server-side fetches, eliminating sequential await waterfalls. Offline queue persists actions to IndexedDB when offline, replaying on reconnect with exponential backoff and jitter. Homepage performance pass cut total transfer by 65% (3,344 KiB → 1,161 KiB): replaced a 328KB noise texture with a CSS-generated SVG feTurbulence data URI, migrated all images to next/image with CDN support, async-loaded motion features via LazyMotion, and deduplicated `auth()` with `React.cache()` to eliminate redundant JWT decodes per request.
 
 ### Accessibility
 
@@ -132,7 +142,7 @@ All custom components are documented in Storybook with stories, accessibility ch
 
 ## Tech Stack
 
-**Front End:** Next.js 16, React 19, TypeScript, Tailwind CSS 4, shadcn/ui, Vidstack, dnd-kit, cmdk, nuqs, Embla Carousel
+**Front End:** Next.js 16, React 19, TypeScript, Tailwind CSS 4, shadcn/ui, Font Awesome 7, Vidstack, dnd-kit, cmdk, nuqs, Embla Carousel
 
 **Back End:** Prisma 7, NextAuth.js v5, Server Actions
 

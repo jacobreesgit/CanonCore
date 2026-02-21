@@ -8,15 +8,16 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  SlidersHorizontal,
-  ArrowUpDown,
-  Filter,
-  Check,
-  X,
-  LayoutGrid,
-  List,
-} from "lucide-react";
+  faSliders,
+  faArrowsUpDown,
+  faFilter,
+  faCheck,
+  faXmark,
+  faTableCells,
+  faList,
+} from "@fortawesome/free-solid-svg-icons";
 import {
   MobileBottomSheet,
   MobileBottomSheetHeader,
@@ -152,7 +153,11 @@ export function MobileOptionsSheet({
           "disabled:cursor-not-allowed disabled:opacity-50"
         )}
       >
-        <SlidersHorizontal aria-hidden="true" className="size-4" />
+        <FontAwesomeIcon
+          icon={faSliders}
+          aria-hidden="true"
+          className="size-4"
+        />
         <span>Options</span>
         {/* Active indicator dot */}
         {hasActiveOptions && (
@@ -187,7 +192,11 @@ export function MobileOptionsSheet({
           {showView && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-xs font-medium tracking-wider text-[var(--tertiary-foreground)] uppercase">
-                <LayoutGrid aria-hidden="true" className="size-4" />
+                <FontAwesomeIcon
+                  icon={faTableCells}
+                  aria-hidden="true"
+                  className="size-4"
+                />
                 <span>View</span>
               </div>
               <div
@@ -212,11 +221,19 @@ export function MobileOptionsSheet({
                   )}
                 >
                   <span className="flex items-center gap-2">
-                    <LayoutGrid aria-hidden="true" className="size-4" />
+                    <FontAwesomeIcon
+                      icon={faTableCells}
+                      aria-hidden="true"
+                      className="size-4"
+                    />
                     Grid
                   </span>
                   {viewMode === "grid" && (
-                    <Check aria-hidden="true" className="size-4" />
+                    <FontAwesomeIcon
+                      icon={faCheck}
+                      aria-hidden="true"
+                      className="size-4"
+                    />
                   )}
                 </button>
                 <button
@@ -236,11 +253,19 @@ export function MobileOptionsSheet({
                   )}
                 >
                   <span className="flex items-center gap-2">
-                    <List aria-hidden="true" className="size-4" />
+                    <FontAwesomeIcon
+                      icon={faList}
+                      aria-hidden="true"
+                      className="size-4"
+                    />
                     Tree
                   </span>
                   {viewMode === "tree" && (
-                    <Check aria-hidden="true" className="size-4" />
+                    <FontAwesomeIcon
+                      icon={faCheck}
+                      aria-hidden="true"
+                      className="size-4"
+                    />
                   )}
                 </button>
               </div>
@@ -251,7 +276,11 @@ export function MobileOptionsSheet({
           {showSort && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-xs font-medium tracking-wider text-[var(--tertiary-foreground)] uppercase">
-                <ArrowUpDown aria-hidden="true" className="size-4" />
+                <FontAwesomeIcon
+                  icon={faArrowsUpDown}
+                  aria-hidden="true"
+                  className="size-4"
+                />
                 <span>Sort By</span>
               </div>
               <div
@@ -284,7 +313,11 @@ export function MobileOptionsSheet({
                   >
                     <span>{option.label}</span>
                     {sortBy === option.value && (
-                      <Check aria-hidden="true" className="size-4" />
+                      <FontAwesomeIcon
+                        icon={faCheck}
+                        aria-hidden="true"
+                        className="size-4"
+                      />
                     )}
                   </button>
                 ))}
@@ -297,7 +330,11 @@ export function MobileOptionsSheet({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-medium tracking-wider text-[var(--tertiary-foreground)] uppercase">
-                  <Filter aria-hidden="true" className="size-4" />
+                  <FontAwesomeIcon
+                    icon={faFilter}
+                    aria-hidden="true"
+                    className="size-4"
+                  />
                   <span>
                     Filter{hasActiveFilter ? ` (${filters!.length})` : ""}
                   </span>
@@ -313,7 +350,11 @@ export function MobileOptionsSheet({
                       "transition-colors"
                     )}
                   >
-                    <X aria-hidden="true" className="size-3" />
+                    <FontAwesomeIcon
+                      icon={faXmark}
+                      aria-hidden="true"
+                      className="size-3"
+                    />
                     Clear all
                   </button>
                 )}
@@ -348,7 +389,11 @@ export function MobileOptionsSheet({
                   >
                     <span>{option.label}</span>
                     {filters!.includes(option.value) && (
-                      <Check aria-hidden="true" className="size-4" />
+                      <FontAwesomeIcon
+                        icon={faCheck}
+                        aria-hidden="true"
+                        className="size-4"
+                      />
                     )}
                   </button>
                 ))}
@@ -383,7 +428,11 @@ export function MobileOptionsSheet({
                   >
                     <span>{option.label}</span>
                     {filters!.includes(option.value) && (
-                      <Check aria-hidden="true" className="size-4" />
+                      <FontAwesomeIcon
+                        icon={faCheck}
+                        aria-hidden="true"
+                        className="size-4"
+                      />
                     )}
                   </button>
                 ))}

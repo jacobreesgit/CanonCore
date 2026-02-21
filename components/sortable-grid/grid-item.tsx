@@ -11,7 +11,12 @@ import Link from "next/link";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { slugify } from "@/lib/slugify";
-import { GripVertical, User, Check } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faGripVertical,
+  faUser,
+  faCheck,
+} from "@fortawesome/free-solid-svg-icons";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useImageLoaded } from "@/hooks/use-image-loaded";
 import { useLazyImage } from "@/hooks/use-lazy-image";
@@ -71,6 +76,8 @@ export interface GridItemProps extends Omit<
   isOwn?: boolean;
   /** Whether the current user has forked this item. Shows badge in non-edit mode. */
   isForked?: boolean;
+  /** Google Drive folder ID — shows cloud icon when linked. */
+  driveFileId?: string | null;
   /** Props for the more options dropdown menu (view mode only). */
   moreMenuProps?: ItemMenuActions;
 }
@@ -105,6 +112,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       ownerName,
       isOwn,
       isForked,
+      driveFileId,
       moreMenuProps,
       ...props
     },
@@ -300,9 +308,9 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
             )}
             {...handleProps}
           >
-            <GripVertical
+            <FontAwesomeIcon
+              icon={faGripVertical}
               className="size-5"
-              strokeWidth={2.5}
               aria-hidden="true"
             />
           </button>
@@ -321,9 +329,17 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
             aria-label={isOwn ? "Your item" : "In your library"}
           >
             {isOwn ? (
-              <User className="size-2.5" aria-hidden="true" />
+              <FontAwesomeIcon
+                icon={faUser}
+                className="size-2.5"
+                aria-hidden="true"
+              />
             ) : (
-              <Check className="size-2.5 text-green-400" aria-hidden="true" />
+              <FontAwesomeIcon
+                icon={faCheck}
+                className="size-2.5 text-green-400"
+                aria-hidden="true"
+              />
             )}
             <span>{isOwn ? "Yours" : "In Library"}</span>
           </div>
@@ -358,9 +374,11 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
               >
                 {name}
               </h3>
-              {syncStatus && syncStatus !== "SYNCED" && (
-                <SyncIcon syncStatus={syncStatus} className="flex-shrink-0" />
-              )}
+              <SyncIcon
+                syncStatus={syncStatus}
+                driveFileId={driveFileId}
+                className="flex-shrink-0"
+              />
             </div>
           </div>
         </div>
@@ -411,9 +429,11 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
               >
                 {name}
               </h3>
-              {syncStatus && syncStatus !== "SYNCED" && (
-                <SyncIcon syncStatus={syncStatus} className="flex-shrink-0" />
-              )}
+              <SyncIcon
+                syncStatus={syncStatus}
+                driveFileId={driveFileId}
+                className="flex-shrink-0"
+              />
             </div>
 
             {/* Description */}
@@ -440,15 +460,9 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
           </div>
         )}
 
-        {/* More Options Button - view mode only, top right, above hover overlay */}
+        {/* More Options Button - visually hidden, kept in DOM for Playwright */}
         {!isEditMode && moreMenuProps && (
-          <div
-            className={cn(
-              "absolute top-2 right-2 z-30",
-              "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100",
-              "transition-opacity duration-150"
-            )}
-          >
+          <div className="absolute top-2 right-2 z-30 opacity-0">
             <ItemMoreButton {...moreMenuProps} />
           </div>
         )}

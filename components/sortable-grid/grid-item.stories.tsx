@@ -244,6 +244,28 @@ export const LongTitle: Story = {
   },
 };
 
+/** Grid item with Drive sync indicator (cloud icon visible at rest). */
+export const DriveSynced: Story = {
+  args: {
+    name: "Drive Collection",
+    description: "A collection synced to Google Drive.",
+    tmdbPosterPath: "/ljsZTbVsrQSqZgWeep2B1QiDKuh.jpg",
+    driveFileId: "1abc-drive-folder-id",
+    syncStatus: "SYNCED",
+    progressPercentage: 30,
+    watchedCount: 2,
+    totalMediaCount: 6,
+    totalItems: 8,
+    moreMenuProps: {
+      itemName: "Drive Collection",
+      driveFileId: "1abc-drive-folder-id",
+      hasDriveConnection: true,
+      onSettings: fn(),
+      onDelete: fn(),
+    },
+  },
+};
+
 /**
  * Item with no description (short card).
  */

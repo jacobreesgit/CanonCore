@@ -1,6 +1,13 @@
 "use client";
 
-import { Briefcase, Calendar, Home, Settings, Shield } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faBriefcase,
+  faCalendar,
+  faGear,
+  faHouse,
+  faShield,
+} from "@fortawesome/free-solid-svg-icons";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -22,12 +29,28 @@ export interface MenuDockProps {
   animated?: boolean;
 }
 
+const HomeIcon = ({ className }: { className?: string }) => (
+  <FontAwesomeIcon icon={faHouse} className={className ?? ""} />
+);
+const BriefcaseIcon = ({ className }: { className?: string }) => (
+  <FontAwesomeIcon icon={faBriefcase} className={className ?? ""} />
+);
+const CalendarIcon = ({ className }: { className?: string }) => (
+  <FontAwesomeIcon icon={faCalendar} className={className ?? ""} />
+);
+const ShieldIcon = ({ className }: { className?: string }) => (
+  <FontAwesomeIcon icon={faShield} className={className ?? ""} />
+);
+const GearIcon = ({ className }: { className?: string }) => (
+  <FontAwesomeIcon icon={faGear} className={className ?? ""} />
+);
+
 const defaultItems: MenuDockItem[] = [
-  { label: "home", icon: Home },
-  { label: "work", icon: Briefcase },
-  { label: "calendar", icon: Calendar },
-  { label: "security", icon: Shield },
-  { label: "settings", icon: Settings },
+  { label: "home", icon: HomeIcon },
+  { label: "work", icon: BriefcaseIcon },
+  { label: "calendar", icon: CalendarIcon },
+  { label: "security", icon: ShieldIcon },
+  { label: "settings", icon: GearIcon },
 ];
 
 export const MenuDock: React.FC<MenuDockProps> = ({

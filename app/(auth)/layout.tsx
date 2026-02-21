@@ -33,5 +33,5 @@ export default async function AuthLayout({ children }: AuthLayoutProps) {
     // If user doesn't exist in DB (stale session), let them continue to sign-in
   }
 
-  return children;
+  return <>{children}</>;
 }

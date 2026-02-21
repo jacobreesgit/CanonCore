@@ -19,7 +19,8 @@ import {
   type ReactNode,
 } from "react";
 import useEmblaCarousel from "embla-carousel-react";
-import type { LucideIcon } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/hooks/use-reduced-motion";
 import {
@@ -37,7 +38,7 @@ export interface SwipeableTab {
   /** Display label for the tab button. */
   label: string;
   /** Optional icon displayed before the label. */
-  icon?: LucideIcon;
+  icon?: IconDefinition;
   /** Content rendered in the tab panel. */
   content: ReactNode;
 }
@@ -231,7 +232,6 @@ export function SwipeableTabs({
 
   if (useSelectMode) {
     const activeTabData = tabs[activeIndex];
-    const ActiveIcon = activeTabData?.icon;
 
     return (
       <div className={cn("flex min-h-0 flex-1 flex-col gap-4", className)}>
@@ -243,32 +243,37 @@ export function SwipeableTabs({
               data-testid={testIdPrefix ? `${testIdPrefix}-select` : undefined}
             >
               <SelectValue>
-                {ActiveIcon && (
-                  <ActiveIcon aria-hidden="true" className="size-4 shrink-0" />
+                {activeTabData?.icon && (
+                  <FontAwesomeIcon
+                    icon={activeTabData.icon}
+                    aria-hidden="true"
+                    className="size-4 shrink-0"
+                  />
                 )}
                 {activeTabData?.label}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <SelectItem
-                    key={tab.id}
-                    value={tab.id}
-                    data-testid={
-                      testIdPrefix
-                        ? `${testIdPrefix}-option-${tab.id}`
-                        : undefined
-                    }
-                  >
-                    {Icon && (
-                      <Icon aria-hidden="true" className="size-4 shrink-0" />
-                    )}
-                    {tab.label}
-                  </SelectItem>
-                );
-              })}
+              {tabs.map((tab) => (
+                <SelectItem
+                  key={tab.id}
+                  value={tab.id}
+                  data-testid={
+                    testIdPrefix
+                      ? `${testIdPrefix}-option-${tab.id}`
+                      : undefined
+                  }
+                >
+                  {tab.icon && (
+                    <FontAwesomeIcon
+                      icon={tab.icon}
+                      aria-hidden="true"
+                      className="size-4 shrink-0"
+                    />
+                  )}
+                  {tab.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -323,7 +328,6 @@ export function SwipeableTabs({
       >
         {tabs.map((tab, index) => {
           const isActive = tab.id === activeTab;
-          const Icon = tab.icon;
           return (
             <button
               key={tab.id}
@@ -349,7 +353,13 @@ export function SwipeableTabs({
                   : "text-muted-foreground hover:text-foreground/80"
               )}
             >
-              {Icon && <Icon aria-hidden="true" className="size-4 shrink-0" />}
+              {tab.icon && (
+                <FontAwesomeIcon
+                  icon={tab.icon}
+                  aria-hidden="true"
+                  className="size-4 shrink-0"
+                />
+              )}
               <span>{tab.label}</span>
             </button>
           );

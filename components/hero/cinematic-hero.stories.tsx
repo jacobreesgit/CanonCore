@@ -7,7 +7,8 @@ import type { Meta, StoryObj } from "@storybook/nextjs";
 import Image from "next/image";
 import { CinematicHero } from "./cinematic-hero";
 import { HeroButton } from "@/components/items/hero-button";
-import { Play, Copy, Check } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPlay, faCopy, faCheck } from "@fortawesome/free-solid-svg-icons";
 import type { HeroSlide } from "./types";
 
 const meta: Meta<typeof CinematicHero> = {
@@ -112,7 +113,7 @@ export const ExploreCarousel: Story = {
       <>
         <HeroButton onClick={() => {}}>View Item</HeroButton>
         <HeroButton onClick={() => {}}>
-          <Copy className="size-4" />
+          <FontAwesomeIcon icon={faCopy} className="size-4" />
           Sign in to Fork
         </HeroButton>
       </>
@@ -128,7 +129,7 @@ export const ItemDetailOwner: Story = {
     actions: (
       <>
         <HeroButton variant="primary" onClick={() => {}}>
-          <Play className="size-4" />
+          <FontAwesomeIcon icon={faPlay} className="size-4" />
           Play
         </HeroButton>
         <HeroButton onClick={() => {}}>Next Up: Chapter 5</HeroButton>
@@ -150,7 +151,7 @@ export const ItemDetailViewer: Story = {
     actions: (
       <>
         <HeroButton onClick={() => {}}>
-          <Copy className="size-4" />
+          <FontAwesomeIcon icon={faCopy} className="size-4" />
           Fork to Library
         </HeroButton>
       </>
@@ -170,7 +171,7 @@ export const AlreadyForked: Story = {
     headingLevel: "h1",
     actions: (
       <HeroButton variant="secondary" onClick={() => {}}>
-        <Check className="size-4 text-green-400" />
+        <FontAwesomeIcon icon={faCheck} className="size-4 text-green-400" />
         In Your Library
       </HeroButton>
     ),
@@ -245,6 +246,5 @@ export const Mosaic: Story = {
         ))}
       </div>
     ),
-    disableShader: true,
   },
 };

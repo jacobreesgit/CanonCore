@@ -1,13 +1,14 @@
 /**
  * Guest navigation component.
- * Shows Get Help link and auth button for unauthenticated users.
+ * Shows auth button for unauthenticated users.
  */
 
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowRight, HelpCircle } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 
 import {
   SidebarMenu,
@@ -16,30 +17,23 @@ import {
 } from "@/components/ui/sidebar";
 
 /**
- * Renders help and auth buttons for the sidebar footer.
- * Shows Get Help and Get Started for guests.
+ * Renders auth button for the sidebar footer.
+ * Get Help is now in the main nav collapsible section.
  */
 export function AuthButtons() {
   const pathname = usePathname();
-
-  // Docs uses prefix matching (hierarchical), sign-in uses exact matching
-  const isDocsActive = pathname === "/docs" || pathname.startsWith("/docs/");
   const isSignInActive = pathname === "/sign-in";
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={isDocsActive}>
-          <Link href="/docs">
-            <HelpCircle aria-hidden="true" className="size-4" />
-            <span>Get Help</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-      <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isSignInActive}>
           <Link href="/sign-in">
-            <ArrowRight aria-hidden="true" className="size-4" />
+            <FontAwesomeIcon
+              icon={faArrowRight}
+              className="size-4"
+              aria-hidden="true"
+            />
             <span>Get Started</span>
           </Link>
         </SidebarMenuButton>

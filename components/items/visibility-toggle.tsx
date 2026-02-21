@@ -19,7 +19,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Globe, Lock, Loader2, AlertTriangle, Link2 } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faGlobe,
+  faLock,
+  faSpinner,
+  faTriangleExclamation,
+  faLink,
+} from "@fortawesome/free-solid-svg-icons";
 import {
   setItemVisibility,
   setInheritVisibility,
@@ -190,7 +197,8 @@ export function VisibilityToggle({
         {hasParent && (
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="flex items-center gap-3">
-              <Link2
+              <FontAwesomeIcon
+                icon={faLink}
                 aria-hidden="true"
                 className="text-muted-foreground size-5"
               />
@@ -208,9 +216,11 @@ export function VisibilityToggle({
             </div>
             <div className="flex items-center gap-2">
               {isUpdating && (
-                <Loader2
+                <FontAwesomeIcon
+                  icon={faSpinner}
                   aria-hidden="true"
-                  className="text-muted-foreground size-4 animate-spin"
+                  className="text-muted-foreground size-4"
+                  spin
                 />
               )}
               <Switch
@@ -233,9 +243,14 @@ export function VisibilityToggle({
         >
           <div className="flex items-center gap-3">
             {currentPublic && !currentInherit ? (
-              <Globe aria-hidden="true" className="size-5 text-green-500" />
+              <FontAwesomeIcon
+                icon={faGlobe}
+                aria-hidden="true"
+                className="size-5 text-green-500"
+              />
             ) : (
-              <Lock
+              <FontAwesomeIcon
+                icon={faLock}
                 aria-hidden="true"
                 className="text-muted-foreground size-5"
               />
@@ -265,9 +280,11 @@ export function VisibilityToggle({
           </div>
           <div className="flex items-center gap-2">
             {isUpdating && !currentInherit && (
-              <Loader2
+              <FontAwesomeIcon
+                icon={faSpinner}
                 aria-hidden="true"
-                className="text-muted-foreground size-4 animate-spin"
+                className="text-muted-foreground size-4"
+                spin
               />
             )}
             <Switch
@@ -296,7 +313,8 @@ export function VisibilityToggle({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle
+              <FontAwesomeIcon
+                icon={faTriangleExclamation}
                 aria-hidden="true"
                 className="size-5 text-amber-500"
               />

@@ -3,7 +3,8 @@
  * Uses tabular-nums for aligned numbers and subtle separator dots.
  */
 
-import { Star } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faStar } from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/lib/utils";
 import { formatRuntime } from "@/lib/tmdb-client";
 
@@ -60,7 +61,11 @@ export function MetadataLine({
   if (typeof voteAverage === "number" && voteAverage > 0) {
     items.push(
       <span key="vote" className="inline-flex items-center gap-1">
-        <Star className="size-3.5 fill-current" aria-hidden="true" />
+        <FontAwesomeIcon
+          icon={faStar}
+          className="size-3.5"
+          aria-hidden="true"
+        />
         <span>{voteAverage.toFixed(1)}</span>
       </span>
     );

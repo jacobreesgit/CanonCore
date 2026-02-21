@@ -36,6 +36,20 @@ export const MOVIE_IDS = [
   13, // Forrest Gump
   603, // The Matrix
 
+  // demo - MCU Marathon
+  1726, // Iron Man
+  24428, // The Avengers
+  100402, // Captain America: The Winter Soldier
+  118340, // Guardians of the Galaxy
+  271110, // Captain America: Civil War
+  284052, // Doctor Strange
+  315635, // Spider-Man: Homecoming
+  284054, // Black Panther
+  299536, // Avengers: Infinity War
+  299534, // Avengers: Endgame
+  566525, // Shang-Chi and the Legend of the Ten Rings
+  634649, // Spider-Man: No Way Home
+
   // filmfan - International Film
   129, // Spirited Away
   496243, // Parasite
@@ -145,8 +159,12 @@ export const DEMO_USER_EMAIL = SEED_USERS[0].email;
 export const USER_CONTENT_DISTRIBUTION: Record<string, UserContentConfig> = {
   "demo@canoncore.com": {
     // Classic Cinema Buff - award-winning American classics
-    movieIds: [278, 238, 240, 424, 389, 680, 13, 603],
-    // Shawshank, Godfather I/II, Schindler's, 12 Angry Men, Pulp Fiction, Forrest Gump, Matrix
+    movieIds: [
+      278, 238, 240, 424, 389, 680, 13, 603,
+      // MCU Marathon
+      1726, 24428, 100402, 118340, 271110, 284052, 315635, 284054, 299536,
+      299534, 566525, 634649,
+    ],
     showIds: [1396, 1398], // Breaking Bad, The Sopranos
   },
   "filmfan@canoncore.com": {

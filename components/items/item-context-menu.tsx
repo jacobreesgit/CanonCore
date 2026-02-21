@@ -26,15 +26,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { AddItemDialog, type CreateItemResult } from "./add-item-dialog";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  Plus,
-  Settings,
-  Trash2,
-  ExternalLink,
-  Pin,
-  PinOff,
-  Loader2,
-} from "lucide-react";
+  faPlus,
+  faGear,
+  faTrashCan,
+  faArrowUpRightFromSquare,
+  faThumbtack,
+  faThumbtackSlash,
+  faSpinner,
+} from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/lib/utils";
 
 /** Shared action props for item menus (context menu and dropdown menu). */
@@ -122,25 +123,41 @@ export function renderMenuItems({
     <>
       {showAddChild && onAddChild && (
         <MenuItem onClick={onAddChildClick} className={MENU_ITEM_CLASSES}>
-          <Plus aria-hidden="true" className="size-4" strokeWidth={2} />
+          <FontAwesomeIcon
+            icon={faPlus}
+            aria-hidden="true"
+            className="size-4"
+          />
           <span>Add Child Item</span>
         </MenuItem>
       )}
       {onSettings && (
         <MenuItem onClick={onSettings} className={MENU_ITEM_CLASSES}>
-          <Settings aria-hidden="true" className="size-4" strokeWidth={2} />
+          <FontAwesomeIcon
+            icon={faGear}
+            aria-hidden="true"
+            className="size-4"
+          />
           <span>Settings</span>
         </MenuItem>
       )}
       {isPinned && onUnpin && (
         <MenuItem onClick={onUnpin} className={MENU_ITEM_CLASSES}>
-          <PinOff aria-hidden="true" className="size-4" strokeWidth={2} />
+          <FontAwesomeIcon
+            icon={faThumbtackSlash}
+            aria-hidden="true"
+            className="size-4"
+          />
           <span>Unpin from Sidebar</span>
         </MenuItem>
       )}
       {!isPinned && onPin && (
         <MenuItem onClick={onPin} className={MENU_ITEM_CLASSES}>
-          <Pin aria-hidden="true" className="size-4" strokeWidth={2} />
+          <FontAwesomeIcon
+            icon={faThumbtack}
+            aria-hidden="true"
+            className="size-4"
+          />
           <span>Pin to Sidebar</span>
         </MenuItem>
       )}
@@ -151,10 +168,10 @@ export function renderMenuItems({
             target="_blank"
             rel="noopener noreferrer"
           >
-            <ExternalLink
+            <FontAwesomeIcon
+              icon={faArrowUpRightFromSquare}
               aria-hidden="true"
               className="size-4"
-              strokeWidth={2}
             />
             <span>Open in Drive</span>
           </a>
@@ -164,7 +181,11 @@ export function renderMenuItems({
         <>
           <MenuSeparator className="bg-white/[0.08]" />
           <MenuItem onClick={onDeleteClick} className={DELETE_ITEM_CLASSES}>
-            <Trash2 aria-hidden="true" className="size-4" strokeWidth={2} />
+            <FontAwesomeIcon
+              icon={faTrashCan}
+              aria-hidden="true"
+              className="size-4"
+            />
             <span>Delete</span>
           </MenuItem>
         </>
@@ -276,7 +297,11 @@ export function ItemContextMenu({
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  <FontAwesomeIcon
+                    icon={faSpinner}
+                    className="mr-2 size-4"
+                    spin
+                  />
                   Deleting…
                 </>
               ) : (

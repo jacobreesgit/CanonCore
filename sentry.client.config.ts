@@ -8,10 +8,13 @@ import * as Sentry from "@sentry/nextjs";
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
-  tracesSampleRate: process.env.NODE_ENV === "development" ? 1.0 : 0.1,
+  // Disable performance tracing in dev — the /monitoring tunnel route floods the
+  // dev server with requests, each taking 25-50s and competing with page compilations
+  tracesSampleRate: process.env.NODE_ENV === "development" ? 0 : 0.1,
   replaysSessionSampleRate: 0,
-  replaysOnErrorSampleRate: 1.0,
-  integrations: [Sentry.replayIntegration()],
+  replaysOnErrorSampleRate: process.env.NODE_ENV === "development" ? 0 : 1.0,
+  integrations:
+    process.env.NODE_ENV === "development" ? [] : [Sentry.replayIntegration()],
   ignoreErrors: [
     // Next.js navigation errors
     "NEXT_NOT_FOUND",

@@ -1,6 +1,6 @@
 /**
  * Unit tests for AppSidebar component.
- * Tests footer navigation item active state styling.
+ * Tests that navigation items are correctly passed to NavMain.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -13,17 +13,17 @@ vi.mock("next/navigation", () => ({
   usePathname: () => mockPathname(),
 }));
 
-// Mock child components
+// Capture NavMain props to verify items configuration
+const mockNavMain = vi.fn();
 vi.mock("@/components/nav-main", () => ({
-  NavMain: () => <div>NavMain</div>,
+  NavMain: (props: Record<string, unknown>) => {
+    mockNavMain(props);
+    return <div data-testid="nav-main">NavMain</div>;
+  },
 }));
 
 vi.mock("@/components/nav-user", () => ({
   NavUser: () => <div>NavUser</div>,
-}));
-
-vi.mock("@/components/nav-docs", () => ({
-  NavDocs: () => <div>NavDocs</div>,
 }));
 
 vi.mock("@/components/nav-guest", () => ({
@@ -78,44 +78,84 @@ const mockUser = {
   email: "test@example.com",
 };
 
-describe("AppSidebar footer active state", () => {
+describe("AppSidebar", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe("when authenticated on my-items context", () => {
-    it("renders Get Help as active on /docs", () => {
+  describe("navigation items", () => {
+    it("passes Get Help nav item with /docs URL to NavMain", () => {
       mockPathname.mockReturnValue("/docs");
-      render(<AppSidebar user={mockUser} context="my-items" />);
+      render(<AppSidebar user={mockUser} />);
 
-      const footer = screen.getByRole("contentinfo");
-      const buttons = footer.querySelectorAll(".sidebar-menu-button");
-
-      // Get Help is the only footer nav button
-      const getHelpButton = buttons[0];
-      expect(getHelpButton.getAttribute("data-active")).toBe("true");
+      expect(mockNavMain).toHaveBeenCalled();
+      const { items } = mockNavMain.mock.calls[0][0] as {
+        items: Array<{ title: string; url: string }>;
+      };
+      const getHelpItem = items.find(
+        (item: { title: string }) => item.title === "Get Help"
+      );
+      expect(getHelpItem).toBeDefined();
+      expect(getHelpItem!.url).toBe("/docs");
     });
 
-    it("renders Get Help as active on /docs/getting-started", () => {
-      mockPathname.mockReturnValue("/docs/getting-started");
-      render(<AppSidebar user={mockUser} context="my-items" />);
+    it("includes all expected nav items for authenticated users", () => {
+      mockPathname.mockReturnValue("/");
+      render(<AppSidebar user={{ ...mockUser, username: "testuser" }} />);
 
-      const footer = screen.getByRole("contentinfo");
-      const buttons = footer.querySelectorAll(".sidebar-menu-button");
-
-      const getHelpButton = buttons[0];
-      expect(getHelpButton.getAttribute("data-active")).toBe("true");
+      const { items } = mockNavMain.mock.calls[0][0] as {
+        items: Array<{ title: string; url: string }>;
+      };
+      const titles = items.map((item: { title: string }) => item.title);
+      expect(titles).toContain("Home");
+      expect(titles).toContain("My Items");
+      expect(titles).toContain("Explore");
+      expect(titles).toContain("Get Help");
     });
 
-    it("renders Get Help as inactive on /u/testuser", () => {
+    it("renders NavMain", () => {
       mockPathname.mockReturnValue("/u/testuser");
-      render(<AppSidebar user={mockUser} context="my-items" />);
+      render(<AppSidebar user={mockUser} />);
 
-      const footer = screen.getByRole("contentinfo");
-      const buttons = footer.querySelectorAll(".sidebar-menu-button");
+      expect(screen.getByTestId("nav-main")).toBeInTheDocument();
+    });
+  });
 
-      const getHelpButton = buttons[0];
-      expect(getHelpButton.getAttribute("data-active")).toBe("false");
+  describe("footer", () => {
+    it("always renders footer", () => {
+      mockPathname.mockReturnValue("/");
+      render(<AppSidebar user={mockUser} />);
+
+      expect(screen.getByRole("contentinfo")).toBeInTheDocument();
+    });
+  });
+
+  describe("pinned items", () => {
+    const pinnedItems = [
+      { id: "item-1", name: "Movies", pinnedOrder: 0 },
+      { id: "item-2", name: "TV Shows", pinnedOrder: 1 },
+    ];
+
+    it("passes pinnedItems to NavMain", () => {
+      mockPathname.mockReturnValue("/");
+      render(<AppSidebar user={mockUser} pinnedItems={pinnedItems} />);
+
+      expect(mockNavMain).toHaveBeenCalled();
+      const props = mockNavMain.mock.calls[0][0] as {
+        pinnedItems: typeof pinnedItems;
+      };
+      expect(props.pinnedItems).toEqual(pinnedItems);
+    });
+
+    it("passes undefined pinnedItems to NavMain when not provided", () => {
+      mockPathname.mockReturnValue("/");
+      render(<AppSidebar user={mockUser} />);
+
+      expect(mockNavMain).toHaveBeenCalled();
+      const props = mockNavMain.mock.calls[0][0] as {
+        pinnedItems?: typeof pinnedItems;
+      };
+      expect(props.pinnedItems).toBeUndefined();
     });
   });
 });

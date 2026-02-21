@@ -7,7 +7,8 @@
 
 import { useState, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { Plus } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { HeroButton } from "./hero-button";
 
 const AddToPlaylistDialog = dynamic(
@@ -52,7 +53,11 @@ export function PlaylistButton({ itemId, className }: PlaylistButtonProps) {
           className={className}
           data-testid="playlist-button"
         >
-          <Plus className="size-4" aria-hidden="true" />
+          <FontAwesomeIcon
+            icon={faPlus}
+            className="size-4"
+            aria-hidden="true"
+          />
           <span>Add to Playlist</span>
         </HeroButton>
       </span>

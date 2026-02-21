@@ -204,7 +204,7 @@ export default async function ItemDetailPage({
           breadcrumbs={breadcrumbs}
           driveNeedsReauth={driveNeedsReauth}
         />
-        <div className="bg-background text-foreground flex flex-1 flex-col">
+        <div className="bg-background text-foreground -mt-(--header-height) flex flex-1 flex-col">
           <ItemDetailClient
             item={{
               id: item.id,
@@ -359,7 +359,7 @@ export default async function ItemDetailPage({
           breadcrumbs={headerBreadcrumbs}
           driveNeedsReauth={viewerDriveConnection?.needsReauth ?? false}
         />
-        <div className="bg-background text-foreground flex flex-1 flex-col">
+        <div className="bg-background text-foreground -mt-(--header-height) flex flex-1 flex-col">
           <PublicItemClient
             profile={{
               id: profile.id,

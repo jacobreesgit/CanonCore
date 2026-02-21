@@ -63,9 +63,7 @@ export interface CinematicHeroProps {
   autoAdvanceInterval?: number;
   /** Enable Ken Burns animation on backdrop (default true). */
   enableKenBurns?: boolean;
-  /** Disable WebGL shader fallback (uses simple gradient instead). */
-  disableShader?: boolean;
-  /** Custom background element (e.g., mosaic). Renders instead of Image/shader when provided. */
+  /** Custom background element (e.g., mosaic). Renders instead of Image/video when provided. */
   backgroundElement?: React.ReactNode;
   /** Additional CSS classes. */
   className?: string;

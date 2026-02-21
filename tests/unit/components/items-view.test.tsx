@@ -161,9 +161,12 @@ describe("ItemsView", () => {
   });
 
   describe("rendering", () => {
-    it("renders tree view by default", () => {
+    it("renders tree view by default", async () => {
       render(<ItemsView items={mockItems} />);
-      expect(screen.getByLabelText("tree view")).toBeInTheDocument();
+      // SortableTree is always mounted (DnD disabled in view mode)
+      await waitFor(() => {
+        expect(screen.getByLabelText("Contents")).toBeInTheDocument();
+      });
     });
 
     it("renders empty state when no items", () => {

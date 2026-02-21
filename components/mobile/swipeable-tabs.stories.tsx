@@ -8,15 +8,15 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import { fn, userEvent, within, expect, waitFor } from "storybook/test";
 import {
-  Settings2,
-  Film,
-  Sparkles,
-  User,
-  Lock,
-  Cloud,
-  SlidersHorizontal,
-  List,
-} from "lucide-react";
+  faCloud,
+  faFilm,
+  faGears,
+  faList,
+  faLock,
+  faSliders,
+  faUser,
+  faWandMagicSparkles,
+} from "@fortawesome/free-solid-svg-icons";
 
 import { SwipeableTabs, type SwipeableTab } from "./swipeable-tabs";
 
@@ -53,7 +53,7 @@ const defaultTabs: SwipeableTab[] = [
   {
     id: "details",
     label: "Details",
-    icon: Settings2,
+    icon: faGears,
     content: (
       <div className="space-y-3 p-2">
         <h3 className="text-foreground text-sm font-medium">Item Details</h3>
@@ -66,7 +66,7 @@ const defaultTabs: SwipeableTab[] = [
   {
     id: "files",
     label: "Files",
-    icon: Film,
+    icon: faFilm,
     content: (
       <div className="space-y-3 p-2">
         <h3 className="text-foreground text-sm font-medium">File Management</h3>
@@ -79,7 +79,7 @@ const defaultTabs: SwipeableTab[] = [
   {
     id: "tmdb",
     label: "TMDB",
-    icon: Sparkles,
+    icon: faWandMagicSparkles,
     content: (
       <div className="space-y-3 p-2">
         <h3 className="text-foreground text-sm font-medium">TMDB Settings</h3>
@@ -112,7 +112,7 @@ Horizontal swipeable tab component using Embla Carousel.
 - **Select Fallback** - Automatically switches to a dropdown when >3 tabs
 - **Reduced Motion** - Respects \`prefers-reduced-motion\` preference (instant transitions, no drag)
 - **WCAG Accessible** - Proper tablist/tab/tabpanel roles, aria attributes, and inert on off-screen panels
-- **Icon Support** - Optional Lucide icons in tab buttons and Select items
+- **Icon Support** - Optional Font Awesome icons in tab buttons and Select items
 - **Sheet Compatible** - Uses \`data-vaul-no-drag\` to prevent Vaul sheet interference
 
         `,
@@ -254,7 +254,7 @@ const fiveTabsData: SwipeableTab[] = [
   {
     id: "profile",
     label: "Profile",
-    icon: User,
+    icon: faUser,
     content: (
       <div className="space-y-3 p-2">
         <h3 className="text-foreground text-sm font-medium">Profile</h3>
@@ -267,7 +267,7 @@ const fiveTabsData: SwipeableTab[] = [
   {
     id: "account",
     label: "Account",
-    icon: Lock,
+    icon: faLock,
     content: (
       <div className="space-y-3 p-2">
         <h3 className="text-foreground text-sm font-medium">Account</h3>
@@ -280,7 +280,7 @@ const fiveTabsData: SwipeableTab[] = [
   {
     id: "connections",
     label: "Connections",
-    icon: Cloud,
+    icon: faCloud,
     content: (
       <div className="space-y-3 p-2">
         <h3 className="text-foreground text-sm font-medium">Connections</h3>
@@ -293,7 +293,7 @@ const fiveTabsData: SwipeableTab[] = [
   {
     id: "preferences",
     label: "Preferences",
-    icon: SlidersHorizontal,
+    icon: faSliders,
     content: (
       <div className="space-y-3 p-2">
         <h3 className="text-foreground text-sm font-medium">Preferences</h3>
@@ -306,7 +306,7 @@ const fiveTabsData: SwipeableTab[] = [
   {
     id: "activity",
     label: "Activity",
-    icon: List,
+    icon: faList,
     content: (
       <div className="space-y-3 p-2">
         <h3 className="text-foreground text-sm font-medium">Activity</h3>

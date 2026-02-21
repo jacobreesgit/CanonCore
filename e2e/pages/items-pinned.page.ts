@@ -26,12 +26,13 @@ export class ItemsPinnedPage {
 
   /**
    * Open the more options dropdown for an item.
-   * The button is always in the DOM (opacity 0) so no hover needed.
+   * The button is visually hidden (opacity 0) — force-click to bypass visibility check.
    */
   private async openMoreMenu(name: string) {
     const slug = slugify(name);
     const moreButton = this.page.getByTestId(`item-more-${slug}`);
-    await moreButton.click();
+    await moreButton.waitFor({ state: "attached", timeout: Timeouts.api });
+    await moreButton.click({ force: true });
   }
 
   // ── Pin / Unpin ──────────────────────────────────────────

@@ -6,7 +6,8 @@
 "use client";
 
 import Image from "next/image";
-import { Play } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPlay } from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Video } from "@/lib/tmdb-client";
@@ -104,7 +105,10 @@ export function VideoRow({
                     "group-hover:scale-110"
                   )}
                 >
-                  <Play className="size-6 fill-white text-white" />
+                  <FontAwesomeIcon
+                    icon={faPlay}
+                    className="size-6 text-white"
+                  />
                 </div>
               </div>
             </div>

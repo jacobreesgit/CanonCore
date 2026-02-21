@@ -36,6 +36,22 @@ export default defineConfig({
       },
     },
     {
+      name: "laptop",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1152, height: 745 },
+        deviceScaleFactor: 3,
+      },
+    },
+    {
+      name: "laptop-lg",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1690, height: 960 },
+        deviceScaleFactor: 3,
+      },
+    },
+    {
       name: "mobile",
       use: {
         ...devices["Pixel 7"],
@@ -45,9 +61,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "pnpm run dev",
+    command: `lsof -ti:${new URL(baseURL).port} | xargs kill -9 2>/dev/null; pnpm run dev`,
     url: baseURL,
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     env: {
       DATABASE_URL: process.env.SCREENSHOT_DATABASE_URL ?? "",
       BYPASS_RATE_LIMIT: "true",

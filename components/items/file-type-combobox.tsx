@@ -9,19 +9,21 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  Check,
-  ChevronDown,
-  ExternalLink,
-  Upload,
-  X,
-  AlertCircle,
-  RefreshCw,
-  Trash2,
-  Loader2,
-  CloudOff,
-  ImageIcon,
-} from "lucide-react";
+  faCheck,
+  faChevronDown,
+  faArrowUpRightFromSquare,
+  faUpload,
+  faXmark,
+  faCircleExclamation,
+  faArrowsRotate,
+  faTrashCan,
+  faSpinner,
+  faCloudArrowDown,
+  faImage,
+} from "@fortawesome/free-solid-svg-icons";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { useImageLoaded } from "@/hooks/use-image-loaded";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +56,6 @@ import {
 } from "@/lib/upload-utils";
 import type { SerializedItemFile, QueuedFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import type { LucideIcon } from "lucide-react";
 import type { Accept } from "react-dropzone";
 
 /**
@@ -83,7 +84,8 @@ function ArtworkThumbnail({
       {/* Image icon placeholder while loading */}
       {!loaded && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <ImageIcon
+          <FontAwesomeIcon
+            icon={faImage}
             className={cn(iconSize, "text-muted-foreground/50")}
             aria-hidden="true"
           />
@@ -133,8 +135,8 @@ interface FileTypeComboboxBaseProps {
   label: string;
   /** Description text below the label */
   description: string;
-  /** Icon component to display */
-  icon: LucideIcon;
+  /** Icon to display */
+  icon: IconDefinition;
   /** File type category for filtering */
   fileType: "media" | "artwork" | "subtitle";
   /** Whether the component is disabled (no Drive connection) */
@@ -195,14 +197,14 @@ function generateFileId(): string {
  * - Upload-only mode: Dropzone for queueing files before item creation
  */
 export function FileTypeCombobox(props: FileTypeComboboxProps) {
-  const { label, description, icon: Icon, fileType, disabled = false } = props;
+  const { label, description, icon, fileType, disabled = false } = props;
   // Render upload-only mode if specified
   if (props.uploadOnly) {
     return (
       <FileTypeComboboxUploadMode
         label={label}
         description={description}
-        icon={Icon}
+        icon={icon}
         fileType={fileType}
         disabled={disabled}
         queuedFiles={props.queuedFiles}
@@ -216,7 +218,7 @@ export function FileTypeCombobox(props: FileTypeComboboxProps) {
     <FileTypeComboboxSelectMode
       label={label}
       description={description}
-      icon={Icon}
+      icon={icon}
       fileType={fileType}
       disabled={disabled}
       files={props.files}
@@ -236,7 +238,7 @@ export function FileTypeCombobox(props: FileTypeComboboxProps) {
 function FileTypeComboboxUploadMode({
   label,
   description,
-  icon: Icon,
+  icon,
   fileType,
   disabled,
   queuedFiles,
@@ -244,7 +246,7 @@ function FileTypeComboboxUploadMode({
 }: {
   label: string;
   description: string;
-  icon: LucideIcon;
+  icon: IconDefinition;
   fileType: "media" | "artwork" | "subtitle";
   disabled?: boolean;
   queuedFiles: QueuedFile[];
@@ -297,7 +299,11 @@ function FileTypeComboboxUploadMode({
             "bg-primary/10"
           )}
         >
-          <Icon className="text-primary size-3.5" aria-hidden="true" />
+          <FontAwesomeIcon
+            icon={icon}
+            className="text-primary size-3.5"
+            aria-hidden="true"
+          />
         </div>
         <label className="text-sm font-medium">{label}</label>
       </div>
@@ -306,7 +312,8 @@ function FileTypeComboboxUploadMode({
       {/* Disabled state - no Drive connection */}
       {disabled ? (
         <div className="bg-muted/50 rounded-lg border border-dashed p-4 text-center">
-          <CloudOff
+          <FontAwesomeIcon
+            icon={faCloudArrowDown}
             className="text-muted-foreground/50 mx-auto mb-2 size-8"
             aria-hidden="true"
           />
@@ -326,7 +333,8 @@ function FileTypeComboboxUploadMode({
           >
             <DropzoneEmptyState>
               <div className="flex flex-col items-center justify-center gap-1.5 py-2">
-                <Upload
+                <FontAwesomeIcon
+                  icon={faUpload}
                   className="text-muted-foreground size-5"
                   aria-hidden="true"
                 />
@@ -337,7 +345,11 @@ function FileTypeComboboxUploadMode({
             </DropzoneEmptyState>
             <DropzoneContent>
               <div className="flex flex-col items-center justify-center gap-1.5 py-2">
-                <Upload className="text-primary size-5" aria-hidden="true" />
+                <FontAwesomeIcon
+                  icon={faUpload}
+                  className="text-primary size-5"
+                  aria-hidden="true"
+                />
                 <p className="text-sm font-medium">Drop to add</p>
               </div>
             </DropzoneContent>
@@ -375,7 +387,8 @@ function FileTypeComboboxUploadMode({
                         "bg-muted/30"
                       )}
                     >
-                      <Icon
+                      <FontAwesomeIcon
+                        icon={icon}
                         className="text-muted-foreground size-3.5 shrink-0"
                         aria-hidden="true"
                       />
@@ -394,7 +407,11 @@ function FileTypeComboboxUploadMode({
                         )}
                         aria-label={`Remove ${qf.file.name}`}
                       >
-                        <X className="size-3.5" aria-hidden="true" />
+                        <FontAwesomeIcon
+                          icon={faXmark}
+                          className="size-3.5"
+                          aria-hidden="true"
+                        />
                       </button>
                     </motion.div>
                   ))}
@@ -415,7 +432,7 @@ function FileTypeComboboxUploadMode({
 function FileTypeComboboxSelectMode({
   label,
   description,
-  icon: Icon,
+  icon,
   fileType,
   disabled,
   files,
@@ -427,7 +444,7 @@ function FileTypeComboboxSelectMode({
 }: {
   label: string;
   description: string;
-  icon: LucideIcon;
+  icon: IconDefinition;
   fileType: "media" | "artwork" | "subtitle";
   disabled?: boolean;
   files: SerializedItemFile[];
@@ -705,7 +722,11 @@ function FileTypeComboboxSelectMode({
             "bg-primary/10"
           )}
         >
-          <Icon className="text-primary size-3.5" aria-hidden="true" />
+          <FontAwesomeIcon
+            icon={icon}
+            className="text-primary size-3.5"
+            aria-hidden="true"
+          />
         </div>
         <label className="text-sm font-medium">{label}</label>
       </div>
@@ -738,7 +759,8 @@ function FileTypeComboboxSelectMode({
             ) : (
               <span>Select {fileType} file...</span>
             )}
-            <ChevronDown
+            <FontAwesomeIcon
+              icon={faChevronDown}
               className={cn(
                 "text-muted-foreground size-4 shrink-0 transition-transform duration-200",
                 isOpen && "rotate-180"
@@ -816,7 +838,8 @@ function FileTypeComboboxSelectMode({
                     onClick={(e) => e.stopPropagation()}
                     title="Open in Google Drive"
                   >
-                    <ExternalLink
+                    <FontAwesomeIcon
+                      icon={faArrowUpRightFromSquare}
                       className="text-muted-foreground size-3.5"
                       aria-hidden="true"
                     />
@@ -825,7 +848,8 @@ function FileTypeComboboxSelectMode({
                 {/* Checkmark for selected, delete button for non-selected */}
                 {selectedId === file.id ? (
                   <div className="mr-1 rounded p-1">
-                    <Check
+                    <FontAwesomeIcon
+                      icon={faCheck}
                       className="text-primary size-3.5"
                       aria-hidden="true"
                     />
@@ -844,12 +868,18 @@ function FileTypeComboboxSelectMode({
                     aria-label={`Delete ${file.filename}`}
                   >
                     {deletingId === file.id ? (
-                      <Loader2
-                        className="size-3.5 animate-spin"
+                      <FontAwesomeIcon
+                        icon={faSpinner}
+                        className="size-3.5"
                         aria-hidden="true"
+                        spin
                       />
                     ) : (
-                      <Trash2 className="size-3.5" aria-hidden="true" />
+                      <FontAwesomeIcon
+                        icon={faTrashCan}
+                        className="size-3.5"
+                        aria-hidden="true"
+                      />
                     )}
                   </button>
                 )}
@@ -869,7 +899,11 @@ function FileTypeComboboxSelectMode({
                   "text-primary hover:bg-primary/5"
                 )}
               >
-                <Upload className="size-4" aria-hidden="true" />
+                <FontAwesomeIcon
+                  icon={faUpload}
+                  className="size-4"
+                  aria-hidden="true"
+                />
                 <span>Upload {fileType} files...</span>
               </button>
             </>
@@ -951,7 +985,8 @@ function FileTypeComboboxSelectMode({
                     animate={{ x: 0, opacity: 1 }}
                     className="flex items-center gap-2"
                   >
-                    <AlertCircle
+                    <FontAwesomeIcon
+                      icon={faCircleExclamation}
                       className="text-destructive size-4"
                       aria-hidden="true"
                     />
@@ -972,7 +1007,11 @@ function FileTypeComboboxSelectMode({
                     onClick={handleRetry}
                     className="h-7 gap-1 px-2 text-xs"
                   >
-                    <RefreshCw className="size-3" aria-hidden="true" />
+                    <FontAwesomeIcon
+                      icon={faArrowsRotate}
+                      className="size-3"
+                      aria-hidden="true"
+                    />
                     Retry
                   </Button>
                   <Button
@@ -982,7 +1021,11 @@ function FileTypeComboboxSelectMode({
                     onClick={handleDismiss}
                     className="text-muted-foreground hover:text-foreground size-7 p-0"
                   >
-                    <X className="size-4" aria-hidden="true" />
+                    <FontAwesomeIcon
+                      icon={faXmark}
+                      className="size-4"
+                      aria-hidden="true"
+                    />
                   </Button>
                 </div>
               )}

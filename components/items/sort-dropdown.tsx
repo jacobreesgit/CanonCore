@@ -5,7 +5,8 @@
 
 "use client";
 
-import { ArrowUpDown } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faArrowsUpDown } from "@fortawesome/free-solid-svg-icons";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,7 +66,11 @@ export function SortDropdown({
           className
         )}
       >
-        <ArrowUpDown aria-hidden="true" className="size-4" />
+        <FontAwesomeIcon
+          icon={faArrowsUpDown}
+          aria-hidden="true"
+          className="size-4"
+        />
         <span>{currentLabel}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent

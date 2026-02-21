@@ -6,15 +6,16 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  Loader2,
-  ListMusic,
-  Upload,
-  X,
-  Copy,
-  RefreshCw,
-  Link2,
-} from "lucide-react";
+  faSpinner,
+  faMusic,
+  faUpload,
+  faXmark,
+  faCopy,
+  faRotate,
+  faLink,
+} from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@/components/ui/dialog";
 import { AnimatedDialogContent } from "@/components/ui/animated-dialog-content";
 import {
@@ -277,7 +278,11 @@ export function EditPlaylistDialog({
             "bg-primary/10 ring-primary/20 ring-1"
           )}
         >
-          <ListMusic aria-hidden="true" className="text-primary size-5" />
+          <FontAwesomeIcon
+            icon={faMusic}
+            aria-hidden="true"
+            className="text-primary size-5"
+          />
         </div>
         <div className="min-w-0">
           <DialogTitle className="text-lg">Edit Playlist</DialogTitle>
@@ -306,7 +311,12 @@ export function EditPlaylistDialog({
       >
         {isSubmitting ? (
           <>
-            <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
+            <FontAwesomeIcon
+              icon={faSpinner}
+              spin
+              aria-hidden="true"
+              className="mr-2 size-4"
+            />
             Saving…
           </>
         ) : (
@@ -359,7 +369,10 @@ export function EditPlaylistDialog({
                   />
                 ) : (
                   <div className="flex size-full items-center justify-center">
-                    <ListMusic className="text-muted-foreground/40 size-8" />
+                    <FontAwesomeIcon
+                      icon={faMusic}
+                      className="text-muted-foreground/40 size-8"
+                    />
                   </div>
                 )}
                 <div className="absolute right-1 bottom-1 flex gap-1">
@@ -371,7 +384,7 @@ export function EditPlaylistDialog({
                       className="size-7 shadow-md"
                       aria-label="Upload artwork"
                     >
-                      <Upload className="size-3.5" />
+                      <FontAwesomeIcon icon={faUpload} className="size-3.5" />
                     </Button>
                   </FileUploadTrigger>
                   {(artworkSrc || artworkFile) && (
@@ -383,7 +396,7 @@ export function EditPlaylistDialog({
                       aria-label="Remove artwork"
                       onClick={handleRemoveArtwork}
                     >
-                      <X className="size-3.5" />
+                      <FontAwesomeIcon icon={faXmark} className="size-3.5" />
                     </Button>
                   )}
                 </div>
@@ -461,7 +474,10 @@ export function EditPlaylistDialog({
               {shareToken && shareToken !== "pending" && username && (
                 <div className="flex items-center gap-2">
                   <div className="relative flex-1">
-                    <Link2 className="text-muted-foreground absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
+                    <FontAwesomeIcon
+                      icon={faLink}
+                      className="text-muted-foreground absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2"
+                    />
                     <Input
                       readOnly
                       aria-label="Shareable link"
@@ -477,7 +493,7 @@ export function EditPlaylistDialog({
                     onClick={handleCopyShareLink}
                     aria-label="Copy link"
                   >
-                    <Copy className="size-3.5" />
+                    <FontAwesomeIcon icon={faCopy} className="size-3.5" />
                   </Button>
                   <Button
                     type="button"
@@ -488,11 +504,10 @@ export function EditPlaylistDialog({
                     disabled={isRegenerating}
                     aria-label="Regenerate link"
                   >
-                    <RefreshCw
-                      className={cn(
-                        "size-3.5",
-                        isRegenerating && "animate-spin"
-                      )}
+                    <FontAwesomeIcon
+                      icon={faRotate}
+                      spin={isRegenerating}
+                      className="size-3.5"
                     />
                   </Button>
                 </div>

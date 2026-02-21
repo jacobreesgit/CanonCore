@@ -3,3 +3,9 @@
 .next/
 node_modules/
 pnpm-lock.yaml
+
+# Legal MDX (Termly-generated, preserve original formatting)
+content/legal/
+
+# Reference repos
+_payload-ref/

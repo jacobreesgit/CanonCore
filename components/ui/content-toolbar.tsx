@@ -8,7 +8,14 @@
 
 import type { ReactNode } from "react";
 import dynamic from "next/dynamic";
-import { LayoutGrid, List, Loader2, RefreshCw } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faArrowsRotate,
+  faList,
+  faSpinner,
+  faTableCells,
+} from "@fortawesome/free-solid-svg-icons";
+import type { IconDefinition } from "@fortawesome/free-solid-svg-icons";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -94,10 +101,10 @@ export function ToolbarDivider() {
 const VIEW_OPTIONS: {
   value: ViewMode;
   label: string;
-  icon: typeof LayoutGrid;
+  icon: IconDefinition;
 }[] = [
-  { value: "grid", label: "Grid", icon: LayoutGrid },
-  { value: "tree", label: "Tree", icon: List },
+  { value: "grid", label: "Grid", icon: faTableCells },
+  { value: "tree", label: "Tree", icon: faList },
 ];
 
 /**
@@ -115,7 +122,6 @@ function ViewDropdown({
 }) {
   const current =
     VIEW_OPTIONS.find((opt) => opt.value === value) ?? VIEW_OPTIONS[0];
-  const Icon = current.icon;
 
   return (
     <DropdownMenu>
@@ -135,7 +141,11 @@ function ViewDropdown({
           "disabled:cursor-not-allowed disabled:opacity-50"
         )}
       >
-        <Icon aria-hidden="true" className="size-4" />
+        <FontAwesomeIcon
+          icon={current.icon}
+          aria-hidden="true"
+          className="size-4"
+        />
         <span>{current.label}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -396,9 +406,18 @@ export function ContentToolbar({
                 aria-label={isSyncing ? "Syncing" : "Sync"}
               >
                 {isSyncing ? (
-                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  <FontAwesomeIcon
+                    icon={faSpinner}
+                    spin
+                    className="size-4"
+                    aria-hidden="true"
+                  />
                 ) : (
-                  <RefreshCw className="size-4" aria-hidden="true" />
+                  <FontAwesomeIcon
+                    icon={faArrowsRotate}
+                    className="size-4"
+                    aria-hidden="true"
+                  />
                 )}
                 <span className="hidden xl:inline">
                   {isSyncing ? "Syncing\u2026" : "Sync"}

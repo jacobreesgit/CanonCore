@@ -6,7 +6,8 @@
 "use client";
 
 import { useCallback } from "react";
-import { ArrowRight } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -187,7 +188,10 @@ function TextFieldOption({
             </span>
           </div>
           <div className="flex items-start gap-2 text-sm">
-            <ArrowRight className="text-muted-foreground mt-0.5 size-3 shrink-0" />
+            <FontAwesomeIcon
+              icon={faArrowRight}
+              className="text-muted-foreground mt-0.5 size-3 shrink-0"
+            />
             <span className="text-foreground font-medium">{newValue}</span>
           </div>
         </div>

@@ -7,7 +7,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Loader2, ListMusic } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSpinner, faMusic } from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@/components/ui/dialog";
 import { AnimatedDialogContent } from "@/components/ui/animated-dialog-content";
 import {
@@ -118,7 +119,11 @@ export function CreatePlaylistDialog({
             "bg-primary/10 ring-primary/20 ring-1"
           )}
         >
-          <ListMusic aria-hidden="true" className="text-primary size-5" />
+          <FontAwesomeIcon
+            icon={faMusic}
+            aria-hidden="true"
+            className="text-primary size-5"
+          />
         </div>
         <div className="min-w-0">
           <DialogTitle className="text-lg">Create Playlist</DialogTitle>
@@ -148,7 +153,12 @@ export function CreatePlaylistDialog({
       >
         {isSubmitting ? (
           <>
-            <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />
+            <FontAwesomeIcon
+              icon={faSpinner}
+              spin
+              aria-hidden="true"
+              className="mr-2 size-4"
+            />
             Creating…
           </>
         ) : (

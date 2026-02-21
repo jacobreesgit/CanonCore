@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: February 2026 (v8.0.0)
+Last updated: February 2026 (v9.0.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -32,6 +32,7 @@ This doc covers architecture, implementation patterns, and design decisions for 
 - TypeScript 5.9
 - Tailwind CSS 4
 - shadcn/ui (radix-ui primitives)
+- Font Awesome 7 for icons (`@fortawesome/react-fontawesome`)
 - dnd-kit for drag-and-drop
 - Vidstack for media playback
 - nuqs for URL state management
@@ -362,10 +363,8 @@ Server Actions can't stream responses, so these use API Routes:
 - Landing page, explore (tabbed: Collections/Playlists), user profiles (`/u/[username]`)
 - Item detail pages (`/u/[username]/[itemId]`)
 - Playlist detail pages (`/u/[username]/playlists/[playlistId]`) with share token support
-
-**`app/(docs)/`:**
-
-- Fumadocs documentation at `/docs`
+- Fumadocs documentation at `/docs` (shared ContentLayout)
+- Legal pages at `/legal` (privacy policy, terms of service, cookie policy)
 
 ---
 
@@ -721,6 +720,54 @@ Multi-layer defence against aggressive AI crawlers:
 - Spotlight search: Playlists section with artwork thumbnails
 - Sidebar: Playlists section with artwork and item counts
 - CinematicHero: `backgroundElement` prop for mosaic backdrop on playlist detail pages
+
+### Homepage
+
+**Payload-Inspired Layout:**
+
+The landing page uses a full-bleed animated mesh gradient background (`@mesh-gradient/react`) with a grid overlay and CRT scanline effect. The background is sticky (`position: sticky; top: 0`) and content scrolls over it with a negative top margin.
+
+**Sections:**
+
+- `HeroSection` — Two-column grid with headline, media stack (glass-morphism screenshot carousel), command-line terminal pill, and logo showcase
+- `FeatureAccordion` — Expandable feature list with image crossfade using `AnimatePresence` and `m.div` opacity transitions
+- `ManifestoCta` — Closing manifesto with gradient text and dual CTAs
+
+**Performance:**
+
+- `LazyMotion` wraps all homepage content with `strict` mode. Child components use `m` from `motion/react-m` (not `motion` from `motion/react`). Feature bundle (~15KB `domAnimation`) loaded async from `lib/motion-features.ts`.
+- CSS-generated noise texture via inline SVG `feTurbulence` data URI replaces a 328KB PNG
+- All images use `next/image` with `sizes` props; Media stack IMAGE_1 has `priority` (LCP candidate)
+- `MeshGradient` must be imported statically — dynamic import causes a 616ms TBT regression
+- `auth()` deduplicated via `React.cache()` to prevent redundant JWT decode per request
+- Desktop Lighthouse: Performance 96, LCP 1.3s, SI 0.9s, TBT 0ms, total bytes 1,161 KiB (65% reduction)
+
+### Legal Pages
+
+**Content:**
+
+- Privacy Policy, Terms of Service, Cookie Policy as MDX in `content/legal/`
+- Rendered via a second Fumadocs collection (`legal` in `source.config.ts`, `legalSource` in `lib/source.ts`)
+- Route: `app/(public)/legal/[[...slug]]/page.tsx`
+- Shared `ContentLayout` component extracted from docs layout for consistent styling
+
+**Integration Points:**
+
+- Sidebar: Collapsible "Legal" section in `nav-main.tsx` with Privacy Policy, Terms of Service, Cookie Policy links
+- Auth pages: Terms and privacy links in sign-up form footer
+- Public layout: Legal links in site footer
+- Sitemap: Legal pages included in `app/sitemap.ts`
+
+### Sidebar Navigation
+
+**Collapsible Sections:**
+
+- `NavCollapsibleItem` component (`components/nav-collapsible-item.tsx`) supports link mode and toggle mode
+- Link mode (`href` provided): label navigates, separate chevron action toggles sub-items
+- Toggle mode (no `href`): clicking label toggles collapse
+- "Get Help" renders as link mode with doc section sub-items, collapsed by default
+- "Legal" renders as toggle mode with legal page sub-items, collapsed by default
+- "My Items" uses link mode with pinned items as sub-items when pinned items exist
 
 ### Mobile Experience
 
@@ -1322,6 +1369,26 @@ Portfolio screenshots for marketing/documentation using POM patterns and fixture
 - Join table (PlaylistItem) adds complexity vs simple parent-child
 - Need separate reordering logic for playlist item order vs tree order
 - Artwork resolution falls back through: custom upload → 4-poster collage → empty state
+
+### Why Font Awesome over Lucide?
+
+**Initially used lucide-react:**
+
+- Popular with shadcn/ui ecosystem
+- Simple named imports
+
+**Migrated to Font Awesome 7 because:**
+
+- Broader icon library (solid, brands, regular sets)
+- Explicit icon imports give full control over which icons are bundled
+- Font Awesome's SVG core handles icon sizing, alignment, and accessibility attributes consistently
+- Brand icons (GitHub, Google, social media) available in the same library
+
+**Implementation:**
+
+- `@fortawesome/fontawesome-svg-core` configured with `config.autoAddCss = false` in `app/layout.tsx` to prevent FOUC
+- Manual CSS import from `@fortawesome/fontawesome-svg-core/styles.css`
+- Migrated 50+ components in a single pass across items, playlists, mobile, search, media, google-drive, profile, UI, and wizard directories
 
 ### Why Page Object Model for E2E Tests?
 

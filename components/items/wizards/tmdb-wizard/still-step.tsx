@@ -5,7 +5,13 @@
 "use client";
 
 import { useCallback } from "react";
-import { AlertCircle, ArrowLeft, ArrowRight, ImageOff } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faCircleExclamation,
+  faArrowLeft,
+  faArrowRight,
+  faImagePortrait,
+} from "@fortawesome/free-solid-svg-icons";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -113,7 +119,11 @@ export function TMDBStillStep({
             "border-destructive/50 bg-destructive/10 text-destructive flex items-center gap-2 rounded-md border px-3 py-2 text-sm"
           )}
         >
-          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <FontAwesomeIcon
+            icon={faCircleExclamation}
+            className="h-4 w-4 shrink-0"
+            aria-hidden="true"
+          />
           <span>{error}</span>
         </div>
       )}
@@ -121,7 +131,10 @@ export function TMDBStillStep({
       {/* No stills available state */}
       {noStillsAvailable && (
         <div className="bg-muted/30 flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed py-12">
-          <ImageOff className="text-muted-foreground/50 size-10" />
+          <FontAwesomeIcon
+            icon={faImagePortrait}
+            className="text-muted-foreground/50 size-10"
+          />
           <div className="text-center">
             <p className="text-muted-foreground text-sm font-medium">
               No still images available
@@ -179,7 +192,11 @@ export function TMDBStillStep({
               onClick={onBack}
               disabled={isLoading}
             >
-              <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+              <FontAwesomeIcon
+                icon={faArrowLeft}
+                className="mr-2 h-4 w-4"
+                aria-hidden="true"
+              />
               Back
             </Button>
           ) : (
@@ -188,7 +205,11 @@ export function TMDBStillStep({
 
           <Button type="button" onClick={() => onNext()} disabled={isLoading}>
             Next
-            <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+            <FontAwesomeIcon
+              icon={faArrowRight}
+              className="ml-2 h-4 w-4"
+              aria-hidden="true"
+            />
           </Button>
         </div>
       )}

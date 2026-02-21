@@ -19,7 +19,12 @@ import {
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { Pencil, Trash2, Plus } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faPencil,
+  faTrashCan,
+  faPlus,
+} from "@fortawesome/free-solid-svg-icons";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { CinematicHero, type HeroSlide } from "@/components/hero";
@@ -328,7 +333,7 @@ export function PlaylistDetailClient({
           onClick={() => setShowEdit(true)}
           data-testid="playlist-edit-button"
         >
-          <Pencil className="size-4" />
+          <FontAwesomeIcon icon={faPencil} className="size-4" />
           Edit
         </HeroButton>
       )}
@@ -337,7 +342,7 @@ export function PlaylistDetailClient({
           onClick={() => setShowDeleteConfirm(true)}
           data-testid="playlist-delete-button"
         >
-          <Trash2 className="size-4" />
+          <FontAwesomeIcon icon={faTrashCan} className="size-4" />
           Delete
         </HeroButton>
       )}
@@ -367,7 +372,7 @@ export function PlaylistDetailClient({
         className="gap-1.5"
         aria-label="Add items"
       >
-        <Plus className="size-4" strokeWidth={2} />
+        <FontAwesomeIcon icon={faPlus} className="size-4" />
         <span className="hidden xl:inline">Add</span>
       </Button>
       <EditModeToggle

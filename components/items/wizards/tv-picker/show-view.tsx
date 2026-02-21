@@ -4,8 +4,14 @@
  */
 "use client";
 
-import { useCallback, useRef, useEffect } from "react";
-import { Tv } from "lucide-react";
+import { forwardRef, useCallback, useRef, useEffect } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faChevronRight,
+  faLayerGroup,
+  faTv,
+} from "@fortawesome/free-solid-svg-icons";
+import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getPosterUrl } from "@/lib/tmdb-client";
 import {
@@ -131,7 +137,11 @@ export function ShowView({
           </div>
         ) : (
           <div className="bg-muted flex h-24 w-16 shrink-0 items-center justify-center rounded-lg">
-            <Tv className="text-muted-foreground size-6" aria-hidden="true" />
+            <FontAwesomeIcon
+              icon={faTv}
+              className="text-muted-foreground size-6"
+              aria-hidden="true"
+            />
           </div>
         )}
 
@@ -233,9 +243,6 @@ interface SeasonItemButtonProps {
 /**
  * Wrapped SeasonItem with ref forwarding and keyboard props.
  */
-import { forwardRef } from "react";
-import { ChevronRight, Layers } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 const SeasonItemButton = forwardRef<HTMLButtonElement, SeasonItemButtonProps>(
   function SeasonItemButton(
@@ -279,7 +286,8 @@ const SeasonItemButton = forwardRef<HTMLButtonElement, SeasonItemButtonProps>(
           </div>
         ) : (
           <div className="bg-muted flex h-12 w-8 shrink-0 items-center justify-center rounded-lg">
-            <Layers
+            <FontAwesomeIcon
+              icon={faLayerGroup}
               className="text-muted-foreground size-4"
               aria-hidden="true"
             />
@@ -291,7 +299,8 @@ const SeasonItemButton = forwardRef<HTMLButtonElement, SeasonItemButtonProps>(
           <p className="text-muted-foreground text-xs">{episodeText}</p>
         </div>
 
-        <ChevronRight
+        <FontAwesomeIcon
+          icon={faChevronRight}
           className="text-muted-foreground size-4 shrink-0"
           aria-hidden="true"
         />

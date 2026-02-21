@@ -7,7 +7,12 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { FileIcon, Film, InfoIcon } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faFile,
+  faFilm,
+  faCircleInfo,
+} from "@fortawesome/free-solid-svg-icons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
@@ -108,7 +113,7 @@ export function ItemDialogTabs({
           value="details"
           className="data-[state=active]:bg-background gap-2"
         >
-          <InfoIcon className="size-4" />
+          <FontAwesomeIcon icon={faCircleInfo} className="size-4" />
           <span>Details</span>
         </TabsTrigger>
         {showFiles && (
@@ -116,7 +121,7 @@ export function ItemDialogTabs({
             value="files"
             className="data-[state=active]:bg-background gap-2"
           >
-            <FileIcon className="size-4" />
+            <FontAwesomeIcon icon={faFile} className="size-4" />
             <span>Files</span>
           </TabsTrigger>
         )}
@@ -125,7 +130,7 @@ export function ItemDialogTabs({
             value="tmdb"
             className="data-[state=active]:bg-background gap-2"
           >
-            <Film className="size-4" />
+            <FontAwesomeIcon icon={faFilm} className="size-4" />
             <span>TMDB</span>
           </TabsTrigger>
         )}

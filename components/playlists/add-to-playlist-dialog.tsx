@@ -13,7 +13,13 @@ import {
   useMemo,
   useTransition,
 } from "react";
-import { ListMusic, Plus, Search, Loader2 } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faMusic,
+  faPlus,
+  faMagnifyingGlass,
+  faSpinner,
+} from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@/components/ui/dialog";
 import { AnimatedDialogContent } from "@/components/ui/animated-dialog-content";
 import {
@@ -160,7 +166,11 @@ export function AddToPlaylistDialog({
             "bg-primary/10 ring-primary/20 ring-1"
           )}
         >
-          <ListMusic aria-hidden="true" className="text-primary size-5" />
+          <FontAwesomeIcon
+            icon={faMusic}
+            aria-hidden="true"
+            className="text-primary size-5"
+          />
         </div>
         <div className="min-w-0">
           <DialogTitle className="text-lg">Add to Playlist</DialogTitle>
@@ -184,7 +194,10 @@ export function AddToPlaylistDialog({
           <div className="space-y-3 py-2">
             {/* Search input */}
             <div className="relative">
-              <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+              <FontAwesomeIcon
+                icon={faMagnifyingGlass}
+                className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+              />
               <Input
                 aria-label="Search playlists"
                 data-testid="playlist-search-input"
@@ -204,11 +217,18 @@ export function AddToPlaylistDialog({
             >
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
-                  <Loader2 className="text-muted-foreground size-5 animate-spin" />
+                  <FontAwesomeIcon
+                    icon={faSpinner}
+                    spin
+                    className="text-muted-foreground size-5"
+                  />
                 </div>
               ) : playlists.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
-                  <ListMusic className="text-muted-foreground/50 size-8" />
+                  <FontAwesomeIcon
+                    icon={faMusic}
+                    className="text-muted-foreground/50 size-8"
+                  />
                   <p className="text-muted-foreground text-sm">
                     No playlists yet
                   </p>
@@ -218,7 +238,7 @@ export function AddToPlaylistDialog({
                     onClick={() => setShowCreate(true)}
                     data-testid="create-first-playlist"
                   >
-                    <Plus className="mr-1.5 size-4" />
+                    <FontAwesomeIcon icon={faPlus} className="mr-1.5 size-4" />
                     Create your first playlist
                   </Button>
                 </div>
@@ -266,7 +286,7 @@ export function AddToPlaylistDialog({
                 onClick={() => setShowCreate(true)}
                 data-testid="create-new-playlist"
               >
-                <Plus className="size-4" />
+                <FontAwesomeIcon icon={faPlus} className="size-4" />
                 Create new playlist
               </Button>
             )}

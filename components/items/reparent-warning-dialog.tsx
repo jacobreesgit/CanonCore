@@ -15,7 +15,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faTriangleExclamation,
+  faSpinner,
+} from "@fortawesome/free-solid-svg-icons";
 
 interface ReparentWarningDialogProps {
   /** Whether the dialog is open */
@@ -71,7 +75,8 @@ export function ReparentWarningDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            <AlertTriangle
+            <FontAwesomeIcon
+              icon={faTriangleExclamation}
               aria-hidden="true"
               className="h-5 w-5 text-amber-500"
             />
@@ -90,9 +95,11 @@ export function ReparentWarningDialog({
           <AlertDialogAction onClick={onConfirm} disabled={isLoading}>
             {isLoading ? (
               <>
-                <Loader2
+                <FontAwesomeIcon
+                  icon={faSpinner}
                   aria-hidden="true"
-                  className="mr-2 size-4 animate-spin"
+                  className="mr-2 size-4"
+                  spin
                 />
                 Moving…
               </>

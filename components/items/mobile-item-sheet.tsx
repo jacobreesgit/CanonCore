@@ -9,24 +9,25 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  SlidersHorizontal,
-  ArrowUpDown,
-  Filter,
-  Check,
-  X,
-  Settings2,
-  Loader2,
-  ImageIcon,
-  FileText,
-  Film,
-  Sparkles,
-  ChevronLeft,
-  ChevronRight,
-  Tv,
-  LayoutGrid,
-  List,
-} from "lucide-react";
+  faSliders,
+  faArrowsUpDown,
+  faFilter,
+  faCheck,
+  faXmark,
+  faSpinner,
+  faImage,
+  faFileLines,
+  faFilm,
+  faWandMagicSparkles,
+  faChevronLeft,
+  faChevronRight,
+  faTv,
+  faTableCells,
+  faList,
+  faGears,
+} from "@fortawesome/free-solid-svg-icons";
 import {
   MobileBottomSheet,
   MobileBottomSheetHeader,
@@ -279,9 +280,11 @@ export function MobileItemSheet({
           {(isLoadingPreview || isApplyingMetadata) && (
             <div className="bg-background/80 absolute inset-0 flex items-center justify-center rounded-md">
               <div className="flex items-center gap-2">
-                <Loader2
+                <FontAwesomeIcon
+                  icon={faSpinner}
                   aria-hidden="true"
-                  className="text-muted-foreground size-4 animate-spin"
+                  className="text-muted-foreground size-4"
+                  spin
                 />
                 <span className="text-muted-foreground text-sm">
                   {isLoadingPreview ? "Loading preview…" : "Applying…"}
@@ -360,7 +363,7 @@ export function MobileItemSheet({
       <FileTypeCombobox
         label="Primary Media"
         description="The file that plays when clicking on this item."
-        icon={Film}
+        icon={faFilm}
         files={files.media}
         selectedId={primaryMediaId}
         onSelect={setPrimaryMediaId}
@@ -374,7 +377,7 @@ export function MobileItemSheet({
       <FileTypeCombobox
         label="Primary Artwork"
         description="The image used as the thumbnail."
-        icon={ImageIcon}
+        icon={faImage}
         files={files.artwork}
         selectedId={primaryArtworkId}
         onSelect={setPrimaryArtworkId}
@@ -388,7 +391,7 @@ export function MobileItemSheet({
       <FileTypeCombobox
         label="Hero Image"
         description="The image used as the banner background."
-        icon={Sparkles}
+        icon={faWandMagicSparkles}
         files={files.artwork}
         selectedId={heroArtworkId}
         onSelect={setHeroArtworkId}
@@ -402,7 +405,7 @@ export function MobileItemSheet({
       <FileTypeCombobox
         label="Default Subtitle"
         description="The subtitle track that loads by default."
-        icon={FileText}
+        icon={faFileLines}
         files={files.subtitles}
         selectedId={primarySubtitleId}
         onSelect={setPrimarySubtitleId}
@@ -428,7 +431,7 @@ export function MobileItemSheet({
     {
       id: "details",
       label: "Details",
-      icon: Settings2,
+      icon: faGears,
       content: detailsContent,
     },
   ];
@@ -436,7 +439,7 @@ export function MobileItemSheet({
     settingsTabs.push({
       id: "files",
       label: "Files",
-      icon: Film,
+      icon: faFilm,
       content: filesContent,
     });
   }
@@ -444,7 +447,7 @@ export function MobileItemSheet({
     settingsTabs.push({
       id: "tmdb",
       label: "TMDB",
-      icon: Film,
+      icon: faFilm,
       content: tmdbContent,
     });
   }
@@ -474,7 +477,11 @@ export function MobileItemSheet({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Back"
               >
-                <ChevronLeft aria-hidden="true" className="size-5" />
+                <FontAwesomeIcon
+                  icon={faChevronLeft}
+                  aria-hidden="true"
+                  className="size-5"
+                />
               </Button>
               <div
                 className={cn(
@@ -482,7 +489,11 @@ export function MobileItemSheet({
                   "bg-blue-500/10 ring-1 ring-blue-500/20"
                 )}
               >
-                <Tv aria-hidden="true" className="size-5 text-blue-500" />
+                <FontAwesomeIcon
+                  icon={faTv}
+                  aria-hidden="true"
+                  className="size-5 text-blue-500"
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <MobileBottomSheetTitle>Select Season</MobileBottomSheetTitle>
@@ -551,7 +562,11 @@ export function MobileItemSheet({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Cancel"
               >
-                <ChevronLeft aria-hidden="true" className="size-5" />
+                <FontAwesomeIcon
+                  icon={faChevronLeft}
+                  aria-hidden="true"
+                  className="size-5"
+                />
               </Button>
               <div
                 className={cn(
@@ -559,7 +574,11 @@ export function MobileItemSheet({
                   "bg-brand/10 ring-brand/20 ring-1"
                 )}
               >
-                <Sparkles aria-hidden="true" className="text-brand size-5" />
+                <FontAwesomeIcon
+                  icon={faWandMagicSparkles}
+                  aria-hidden="true"
+                  className="text-brand size-5"
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <MobileBottomSheetTitle>Apply Metadata</MobileBottomSheetTitle>
@@ -614,7 +633,11 @@ export function MobileItemSheet({
                   onClick={wizardFooterProps.onBack}
                   disabled={wizardFooterProps.isDisabled}
                 >
-                  <ChevronLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+                  <FontAwesomeIcon
+                    icon={faChevronLeft}
+                    className="mr-2 h-4 w-4"
+                    aria-hidden="true"
+                  />
                   Back
                 </Button>
                 <div className="flex gap-2">
@@ -635,7 +658,8 @@ export function MobileItemSheet({
                   >
                     {wizardFooterProps.isLastStep ? "Apply" : "Next"}
                     {!wizardFooterProps.isLastStep && (
-                      <ChevronRight
+                      <FontAwesomeIcon
+                        icon={faChevronRight}
                         className="ml-2 h-4 w-4"
                         aria-hidden="true"
                       />
@@ -684,7 +708,11 @@ export function MobileItemSheet({
           {showView && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-xs font-medium tracking-wider text-[var(--tertiary-foreground)] uppercase">
-                <LayoutGrid aria-hidden="true" className="size-4" />
+                <FontAwesomeIcon
+                  icon={faTableCells}
+                  aria-hidden="true"
+                  className="size-4"
+                />
                 <span>View</span>
               </div>
               <div
@@ -709,11 +737,19 @@ export function MobileItemSheet({
                   )}
                 >
                   <span className="flex items-center gap-2">
-                    <LayoutGrid aria-hidden="true" className="size-4" />
+                    <FontAwesomeIcon
+                      icon={faTableCells}
+                      aria-hidden="true"
+                      className="size-4"
+                    />
                     Grid
                   </span>
                   {viewMode === "grid" && (
-                    <Check aria-hidden="true" className="size-4" />
+                    <FontAwesomeIcon
+                      icon={faCheck}
+                      aria-hidden="true"
+                      className="size-4"
+                    />
                   )}
                 </button>
                 <button
@@ -733,11 +769,19 @@ export function MobileItemSheet({
                   )}
                 >
                   <span className="flex items-center gap-2">
-                    <List aria-hidden="true" className="size-4" />
+                    <FontAwesomeIcon
+                      icon={faList}
+                      aria-hidden="true"
+                      className="size-4"
+                    />
                     Tree
                   </span>
                   {viewMode === "tree" && (
-                    <Check aria-hidden="true" className="size-4" />
+                    <FontAwesomeIcon
+                      icon={faCheck}
+                      aria-hidden="true"
+                      className="size-4"
+                    />
                   )}
                 </button>
               </div>
@@ -748,7 +792,11 @@ export function MobileItemSheet({
           {showSort && sortOptions && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-xs font-medium tracking-wider text-[var(--tertiary-foreground)] uppercase">
-                <ArrowUpDown aria-hidden="true" className="size-4" />
+                <FontAwesomeIcon
+                  icon={faArrowsUpDown}
+                  aria-hidden="true"
+                  className="size-4"
+                />
                 <span>Sort By</span>
               </div>
               <div
@@ -780,7 +828,11 @@ export function MobileItemSheet({
                   >
                     <span>{option.label}</span>
                     {sortBy === option.value && (
-                      <Check aria-hidden="true" className="size-4" />
+                      <FontAwesomeIcon
+                        icon={faCheck}
+                        aria-hidden="true"
+                        className="size-4"
+                      />
                     )}
                   </button>
                 ))}
@@ -793,7 +845,11 @@ export function MobileItemSheet({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-medium tracking-wider text-[var(--tertiary-foreground)] uppercase">
-                  <Filter aria-hidden="true" className="size-4" />
+                  <FontAwesomeIcon
+                    icon={faFilter}
+                    aria-hidden="true"
+                    className="size-4"
+                  />
                   <span>
                     Filter{hasActiveFilter ? ` (${filters!.length})` : ""}
                   </span>
@@ -809,7 +865,11 @@ export function MobileItemSheet({
                       "transition-colors"
                     )}
                   >
-                    <X aria-hidden="true" className="size-3" />
+                    <FontAwesomeIcon
+                      icon={faXmark}
+                      aria-hidden="true"
+                      className="size-3"
+                    />
                     Clear all
                   </button>
                 )}
@@ -844,7 +904,11 @@ export function MobileItemSheet({
                   >
                     <span>{option.label}</span>
                     {filters!.includes(option.value) && (
-                      <Check aria-hidden="true" className="size-4" />
+                      <FontAwesomeIcon
+                        icon={faCheck}
+                        aria-hidden="true"
+                        className="size-4"
+                      />
                     )}
                   </button>
                 ))}
@@ -879,7 +943,11 @@ export function MobileItemSheet({
                   >
                     <span>{option.label}</span>
                     {filters!.includes(option.value) && (
-                      <Check aria-hidden="true" className="size-4" />
+                      <FontAwesomeIcon
+                        icon={faCheck}
+                        aria-hidden="true"
+                        className="size-4"
+                      />
                     )}
                   </button>
                 ))}
@@ -915,7 +983,12 @@ export function MobileItemSheet({
             >
               {isSaving ? (
                 <>
-                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                  <FontAwesomeIcon
+                    icon={faSpinner}
+                    aria-hidden="true"
+                    className="size-4"
+                    spin
+                  />
                   Saving…
                 </>
               ) : (
@@ -961,7 +1034,7 @@ export function MobileItemSheetTrigger({
         "disabled:cursor-not-allowed disabled:opacity-50"
       )}
     >
-      <SlidersHorizontal aria-hidden="true" className="size-4" />
+      <FontAwesomeIcon icon={faSliders} aria-hidden="true" className="size-4" />
       <span>Options</span>
       {hasActiveOptions && (
         <span className="bg-primary absolute -top-1 -right-1 size-2 rounded-full">
