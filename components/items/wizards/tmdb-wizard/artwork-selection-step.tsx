@@ -11,7 +11,12 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Upload, CloudOff, SkipForward } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faUpload,
+  faCloudArrowDown,
+  faForwardStep,
+} from "@fortawesome/free-solid-svg-icons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -221,7 +226,10 @@ export function ArtworkSelectionStep({
           <TabsContent value="uploads" className="mt-4">
             {!hasDriveConnection ? (
               <div className="bg-muted/30 flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-12">
-                <CloudOff className="text-muted-foreground/50 size-8" />
+                <FontAwesomeIcon
+                  icon={faCloudArrowDown}
+                  className="text-muted-foreground/50 size-8"
+                />
                 <p className="text-muted-foreground text-sm">
                   Connect Google Drive in Settings to enable uploads
                 </p>
@@ -239,7 +247,10 @@ export function ArtworkSelectionStep({
                 >
                   <DropzoneEmptyState>
                     <div className="flex flex-col items-center justify-center gap-1.5 px-4 py-3 text-center">
-                      <Upload className="text-muted-foreground size-6" />
+                      <FontAwesomeIcon
+                        icon={faUpload}
+                        className="text-muted-foreground size-6"
+                      />
                       <p className="text-muted-foreground text-sm">
                         {queuedFiles.length === 0
                           ? config.emptyText
@@ -249,7 +260,10 @@ export function ArtworkSelectionStep({
                   </DropzoneEmptyState>
                   <DropzoneContent>
                     <div className="flex flex-col items-center justify-center gap-1.5 px-4 py-3 text-center">
-                      <Upload className="text-primary size-6" />
+                      <FontAwesomeIcon
+                        icon={faUpload}
+                        className="text-primary size-6"
+                      />
                       <p className="text-sm font-medium">Drop to add</p>
                     </div>
                   </DropzoneContent>
@@ -314,7 +328,7 @@ export function ArtworkSelectionStep({
               disabled && "cursor-not-allowed opacity-50"
             )}
           >
-            <SkipForward className="size-3.5" />
+            <FontAwesomeIcon icon={faForwardStep} className="size-3.5" />
             {config.skipLabel}
           </Label>
         </div>

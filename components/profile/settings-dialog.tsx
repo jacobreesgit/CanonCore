@@ -7,20 +7,21 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  Loader2,
-  Settings,
-  Mail,
-  Lock,
-  ChevronLeft,
-  Cloud,
-  Globe,
-  AtSign,
-  Check,
-  X,
-  Upload,
-  User,
-} from "lucide-react";
+  faAt,
+  faCheck,
+  faChevronLeft,
+  faCloud,
+  faEnvelope,
+  faGear,
+  faGlobe,
+  faLock,
+  faSpinner,
+  faUpload,
+  faUser,
+  faXmark,
+} from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@/components/ui/dialog";
 import { AnimatedDialogContent } from "@/components/ui/animated-dialog-content";
 import {
@@ -536,7 +537,11 @@ export function SettingsDialog({
                   "bg-primary/10 ring-primary/20 ring-1"
                 )}
               >
-                <Settings aria-hidden="true" className="text-primary size-5" />
+                <FontAwesomeIcon
+                  icon={faGear}
+                  aria-hidden="true"
+                  className="text-primary size-5"
+                />
               </div>
               <div className="min-w-0">
                 <DialogTitle className="text-lg">Settings</DialogTitle>
@@ -559,7 +564,11 @@ export function SettingsDialog({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Back"
               >
-                <ChevronLeft aria-hidden="true" className="size-5" />
+                <FontAwesomeIcon
+                  icon={faChevronLeft}
+                  aria-hidden="true"
+                  className="size-5"
+                />
               </Button>
               <div
                 className={cn(
@@ -567,7 +576,11 @@ export function SettingsDialog({
                   "bg-primary/10 ring-primary/20 ring-1"
                 )}
               >
-                <Lock aria-hidden="true" className="text-primary size-5" />
+                <FontAwesomeIcon
+                  icon={faLock}
+                  aria-hidden="true"
+                  className="text-primary size-5"
+                />
               </div>
               <div className="min-w-0">
                 <DialogTitle className="text-lg">Change Password</DialogTitle>
@@ -590,7 +603,11 @@ export function SettingsDialog({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Back"
               >
-                <ChevronLeft aria-hidden="true" className="size-5" />
+                <FontAwesomeIcon
+                  icon={faChevronLeft}
+                  aria-hidden="true"
+                  className="size-5"
+                />
               </Button>
               <div
                 className={cn(
@@ -598,7 +615,11 @@ export function SettingsDialog({
                   "bg-primary/10 ring-primary/20 ring-1"
                 )}
               >
-                <Mail aria-hidden="true" className="text-primary size-5" />
+                <FontAwesomeIcon
+                  icon={faEnvelope}
+                  aria-hidden="true"
+                  className="text-primary size-5"
+                />
               </div>
               <div className="min-w-0">
                 <DialogTitle className="text-lg">Change Email</DialogTitle>
@@ -621,7 +642,11 @@ export function SettingsDialog({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Back"
               >
-                <ChevronLeft aria-hidden="true" className="size-5" />
+                <FontAwesomeIcon
+                  icon={faChevronLeft}
+                  aria-hidden="true"
+                  className="size-5"
+                />
               </Button>
               <div
                 className={cn(
@@ -629,7 +654,11 @@ export function SettingsDialog({
                   "bg-primary/10 ring-primary/20 ring-1"
                 )}
               >
-                <AtSign aria-hidden="true" className="text-primary size-5" />
+                <FontAwesomeIcon
+                  icon={faAt}
+                  aria-hidden="true"
+                  className="text-primary size-5"
+                />
               </div>
               <div className="min-w-0">
                 <DialogTitle className="text-lg">Change Username</DialogTitle>
@@ -667,7 +696,12 @@ export function SettingsDialog({
             >
               {isMainSaving ? (
                 <>
-                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                  <FontAwesomeIcon
+                    icon={faSpinner}
+                    spin
+                    aria-hidden="true"
+                    className="size-4"
+                  />
                   Saving…
                 </>
               ) : (
@@ -689,7 +723,12 @@ export function SettingsDialog({
             <Button onClick={handlePasswordSubmit} disabled={isPasswordSaving}>
               {isPasswordSaving ? (
                 <>
-                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                  <FontAwesomeIcon
+                    icon={faSpinner}
+                    spin
+                    aria-hidden="true"
+                    className="size-4"
+                  />
                   Changing…
                 </>
               ) : (
@@ -711,7 +750,12 @@ export function SettingsDialog({
             <Button onClick={handleEmailSubmit} disabled={isEmailSaving}>
               {isEmailSaving ? (
                 <>
-                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                  <FontAwesomeIcon
+                    icon={faSpinner}
+                    spin
+                    aria-hidden="true"
+                    className="size-4"
+                  />
                   Changing…
                 </>
               ) : (
@@ -733,7 +777,12 @@ export function SettingsDialog({
             <Button onClick={handleUsernameSubmit} disabled={isUsernameSaving}>
               {isUsernameSaving ? (
                 <>
-                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                  <FontAwesomeIcon
+                    icon={faSpinner}
+                    spin
+                    aria-hidden="true"
+                    className="size-4"
+                  />
                   Changing…
                 </>
               ) : (
@@ -806,7 +855,10 @@ export function SettingsDialog({
                             variant="secondary"
                             className="shadow-md"
                           >
-                            <Upload className="mr-2 size-4" />
+                            <FontAwesomeIcon
+                              icon={faUpload}
+                              className="mr-2 size-4"
+                            />
                             Change Cover
                           </Button>
                         </FileUploadTrigger>
@@ -821,7 +873,10 @@ export function SettingsDialog({
                               setHeroImagePreview(null);
                             }}
                           >
-                            <X className="size-4" />
+                            <FontAwesomeIcon
+                              icon={faXmark}
+                              className="size-4"
+                            />
                           </Button>
                         )}
                       </div>
@@ -856,7 +911,8 @@ export function SettingsDialog({
                                 .join("")
                                 .toUpperCase()
                                 .slice(0, 2) || (
-                                <User
+                                <FontAwesomeIcon
+                                  icon={faUser}
                                   aria-hidden="true"
                                   className="text-muted-foreground size-10"
                                 />
@@ -870,7 +926,10 @@ export function SettingsDialog({
                               className="absolute -right-1 -bottom-1 size-8 rounded-full shadow-md"
                               aria-label="Upload avatar"
                             >
-                              <Upload className="size-4" />
+                              <FontAwesomeIcon
+                                icon={faUpload}
+                                className="size-4"
+                              />
                             </Button>
                           </FileUploadTrigger>
                         </div>
@@ -953,7 +1012,8 @@ export function SettingsDialog({
                           isPublic ? "bg-green-500/10" : "bg-muted"
                         )}
                       >
-                        <Globe
+                        <FontAwesomeIcon
+                          icon={faGlobe}
                           aria-hidden="true"
                           className={cn(
                             "size-4",
@@ -1059,7 +1119,11 @@ export function SettingsDialog({
                       onClick={() => setCurrentStep("password")}
                       className="w-full"
                     >
-                      <Lock aria-hidden="true" className="mr-2 size-4" />
+                      <FontAwesomeIcon
+                        icon={faLock}
+                        aria-hidden="true"
+                        className="mr-2 size-4"
+                      />
                       Change Password
                     </Button>
                   </CardContent>
@@ -1094,7 +1158,8 @@ export function SettingsDialog({
               ) : (
                 <div className="space-y-4 py-8 text-center">
                   <div className="bg-muted/50 mx-auto flex size-12 items-center justify-center rounded-full">
-                    <Cloud
+                    <FontAwesomeIcon
+                      icon={faCloud}
                       aria-hidden="true"
                       className="text-muted-foreground size-6"
                     />
@@ -1251,19 +1316,23 @@ export function SettingsDialog({
                 {newUsername && (
                   <div className="absolute top-1/2 right-3 -translate-y-1/2">
                     {usernameValidation.isValidating ? (
-                      <Loader2
+                      <FontAwesomeIcon
+                        icon={faSpinner}
+                        spin
                         aria-hidden="true"
-                        className="text-muted-foreground size-4 animate-spin"
+                        className="text-muted-foreground size-4"
                       />
                     ) : usernameValidation.isValidFormat &&
                       usernameValidation.isAvailable === true ? (
-                      <Check
+                      <FontAwesomeIcon
+                        icon={faCheck}
                         aria-hidden="true"
                         className="size-4 text-green-500"
                       />
                     ) : usernameValidation.error ||
                       usernameValidation.isAvailable === false ? (
-                      <X
+                      <FontAwesomeIcon
+                        icon={faXmark}
                         aria-hidden="true"
                         className="text-destructive size-4"
                       />
@@ -1337,7 +1406,11 @@ export function SettingsDialog({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <Globe aria-hidden="true" className="text-brand h-5 w-5" />
+              <FontAwesomeIcon
+                icon={faGlobe}
+                aria-hidden="true"
+                className="text-brand h-5 w-5"
+              />
               Make your profile public?
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">

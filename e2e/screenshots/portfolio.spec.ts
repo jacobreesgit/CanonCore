@@ -1,7 +1,7 @@
 /**
  * Portfolio screenshot automation.
- * Captures 8 scenarios × 2 viewports (desktop + mobile) = 16 output PNGs.
- * Output: public/portfolio/{name}-{desktop|mobile}.png
+ * Captures 9 scenarios × 3 viewports (desktop + laptop + mobile) = 27 output PNGs.
+ * Output: public/portfolio/{name}-{desktop|laptop|mobile}.png
  *
  * Run: npx playwright test --config=e2e/screenshots/playwright.config.ts
  */
@@ -13,11 +13,9 @@ import {
   captureScreenshot,
   waitForHero,
   goToCarouselSlide,
-  openSettings,
   openSpotlight,
-  switchToTreeView,
+  collapseSidebar,
 } from "./utils";
-import { SEED_USERS } from "../config/test-data";
 import { Timeouts } from "../config/timeouts";
 import { slugify } from "../../lib/slugify";
 
@@ -48,6 +46,7 @@ test.describe("Portfolio Screenshots", () => {
   test("01 — Library grid view", async ({ page }) => {
     await signIn(page, "demo");
     await waitForHero(page);
+    await collapseSidebar(page);
     await captureScreenshot(page, "01-library-grid");
   });
 
@@ -57,18 +56,19 @@ test.describe("Portfolio Screenshots", () => {
     await signIn(page, "demo");
     const isMobile = page.viewportSize()!.width < 1024;
 
-    // Navigate to Breaking Bad detail page
-    const bbCard = page
-      .getByTestId(`item-card-${slugify("Breaking Bad (2008)")}`)
-      .or(page.getByTestId(`item-tree-${slugify("Breaking Bad (2008)")}`));
+    // Navigate to The Sopranos detail page
+    const bbCard = page.getByTestId(
+      `item-card-${slugify("The Sopranos (1999)")}`
+    );
     await bbCard.waitFor({ state: "visible", timeout: Timeouts.heavy });
     await bbCard.click();
     await page.waitForURL(/\/u\/demo\/[a-z0-9]+/, { timeout: Timeouts.heavy });
 
     // Force tree view via URL param
     const detailUrl = page.url();
-    await page.goto(`${detailUrl}?view=tree`);
-    await page.waitForLoadState("domcontentloaded");
+    await page.goto(`${detailUrl}?view=tree`, {
+      waitUntil: "domcontentloaded",
+    });
 
     if (isMobile) {
       // Just wait for content to render
@@ -90,21 +90,44 @@ test.describe("Portfolio Screenshots", () => {
         count = await collapseButtons.count();
       }
 
-      // Expand Season 2
-      const season2Item = page
+      // Expand Season 1
+      const season1Item = page
         .getByRole("listitem")
-        .filter({ hasText: "Season 2" });
-      await season2Item.locator('button[aria-label="Expand item"]').click();
+        .filter({ hasText: "Season 1" });
+      await season1Item.locator('button[aria-label="Expand item"]').click();
       await page.waitForTimeout(300);
     }
 
+    await collapseSidebar(page);
+    await page.evaluate(() => window.scrollTo(0, 0));
     await captureScreenshot(page, "02-tree-view");
+  });
+
+  // ── 03: Item Detail ─────────────────────────────────────────
+
+  test("03 — Item detail page (The Sopranos)", async ({ page }) => {
+    await signIn(page, "demo");
+
+    // Click The Sopranos card to navigate to its detail page
+    const sopranosCard = page.getByTestId(
+      `item-card-${slugify("The Sopranos (1999)")}`
+    );
+    await sopranosCard.waitFor({ state: "visible", timeout: Timeouts.heavy });
+    await sopranosCard.click();
+    await page.waitForURL(/\/u\/demo\/[a-z0-9]+/, { timeout: Timeouts.heavy });
+
+    // Wait for item detail hero to load
+    await waitForHero(page);
+    await collapseSidebar(page);
+
+    await captureScreenshot(page, "03-item-detail");
   });
 
   // ── 04: TMDB Wizard ────────────────────────────────────────
 
   test("04 — TMDB metadata wizard", async ({ page }) => {
     await signIn(page, "demo");
+    await collapseSidebar(page);
 
     // Click the Add button to open the add item dialog/sheet
     await page.getByTestId("items-add-button").click();
@@ -138,21 +161,30 @@ test.describe("Portfolio Screenshots", () => {
     await captureScreenshot(page, "04-tmdb-wizard");
   });
 
-  // ── 06: Google Drive Sync (Activity Tab) ───────────────────
+  // ── 06: Google Drive Sync (Tree View) ────────────────────
 
-  test("06 — Google Drive sync settings", async ({ page }) => {
+  test("06 — Google Drive sync tree view", async ({ page }) => {
     await signIn(page, "demo");
 
-    const settings = await openSettings(page);
-    await settings.switchToTab("activity");
+    // Navigate to The Sopranos detail page
+    const sopranosCard = page.getByTestId(
+      `item-card-${slugify("The Sopranos (1999)")}`
+    );
+    await sopranosCard.waitFor({ state: "visible", timeout: Timeouts.heavy });
+    await sopranosCard.click();
+    await page.waitForURL(/\/u\/demo\/[a-z0-9]+/, { timeout: Timeouts.heavy });
 
-    // Wait for activity tab content to render
-    const isMobile = page.viewportSize()!.width < 1024;
-    const tabIndicator = isMobile
-      ? page.getByTestId("settings-tab-select")
-      : page.getByTestId("settings-tab-activity");
-    await expect(tabIndicator).toBeVisible({ timeout: Timeouts.api });
+    // Switch to tree view via URL param
+    const detailUrl = page.url();
+    await page.goto(`${detailUrl}?view=tree`);
+    await page.waitForLoadState("domcontentloaded");
 
+    // Wait for tree items to render
+    await expect(
+      page.locator('button[aria-label="Collapse item"]').first()
+    ).toBeVisible({ timeout: Timeouts.heavy });
+
+    await collapseSidebar(page);
     await captureScreenshot(page, "06-google-drive-sync");
   });
 
@@ -164,8 +196,9 @@ test.describe("Portfolio Screenshots", () => {
     await page.waitForLoadState("domcontentloaded");
     await waitForHero(page);
 
-    // Navigate to the Squid Game slide so both viewports show the same hero
+    // Navigate to the Squid Game slide so all viewports show the same hero
     await goToCarouselSlide(page, /squid game/i);
+    await collapseSidebar(page);
 
     await captureScreenshot(page, "07-explore-page");
   });
@@ -174,10 +207,35 @@ test.describe("Portfolio Screenshots", () => {
 
   test("08 — Spotlight search dialog", async ({ page }) => {
     await signIn(page, "demo");
+    await collapseSidebar(page);
 
     await openSpotlight(page);
 
     await captureScreenshot(page, "08-spotlight-search");
+  });
+
+  // ── 09: Playlist Detail ───────────────────────────────────
+
+  test("09 — Playlist detail (MCU Marathon)", async ({ page }) => {
+    await signIn(page, "demo");
+
+    // Navigate to playlists tab on profile
+    await page.goto("/u/demo?tab=playlists");
+    await page.waitForLoadState("domcontentloaded");
+
+    // Click the MCU Marathon playlist
+    const mcuPlaylist = page.getByRole("link", { name: /MCU Marathon/i });
+    await mcuPlaylist.waitFor({ state: "visible", timeout: Timeouts.heavy });
+    await mcuPlaylist.click();
+    await page.waitForURL(/\/u\/demo\/playlists\//, {
+      timeout: Timeouts.heavy,
+    });
+
+    // Wait for playlist content to load
+    await page.waitForLoadState("domcontentloaded");
+    await collapseSidebar(page);
+
+    await captureScreenshot(page, "09-playlist-detail");
   });
 
   // ── 32: Fork Dialog ────────────────────────────────────────
@@ -187,21 +245,25 @@ test.describe("Portfolio Screenshots", () => {
     await page.goto("/explore?autoplay=false");
     await page.waitForLoadState("domcontentloaded");
     await waitForHero(page);
+    await collapseSidebar(page);
 
-    // Navigate to the Squid Game slide so both viewports show the same hero
-    await goToCarouselSlide(page, /squid game/i);
+    // Cycle through carousel slides until we find one with a fork button
+    // (slides owned by other users show the fork button)
+    const dotCount = await page
+      .locator('[role="tab"][data-testid^="hero-dot"]')
+      .count();
+    for (let i = 0; i < dotCount; i++) {
+      await page.locator(`[data-testid="hero-dot-${i + 1}"]`).click();
+      await page.waitForTimeout(500);
+      const forkBtn = page.getByTestId("hero-fork-button");
+      if (await forkBtn.isVisible()) {
+        await forkBtn.click();
+        break;
+      }
+    }
 
-    // Click the hero Fork button
-    const isMobile = page.viewportSize()!.width < 1024;
-    const forkButton = page.getByTestId("hero-fork-button");
-    await forkButton.waitFor({ state: "visible", timeout: Timeouts.heavy });
-    await forkButton.click();
-
-    // Wait for the fork destination dialog/sheet to appear
-    const forkDialog = isMobile
-      ? page.getByTestId("sheet-fork-destination")
-      : page.getByTestId("dialog-fork-destination");
-    await expect(forkDialog).toBeVisible({ timeout: Timeouts.api });
+    // Wait for the fork destination dialog to open
+    await page.waitForSelector('[role="dialog"]', { timeout: Timeouts.api });
 
     await captureScreenshot(page, "32-fork-dialog");
   });

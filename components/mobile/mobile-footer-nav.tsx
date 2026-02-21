@@ -9,14 +9,15 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  Compass,
-  HelpCircle,
-  Library,
-  LogIn,
-  Search,
-  User,
-} from "lucide-react";
+  faBookOpen,
+  faCircleQuestion,
+  faCompass,
+  faMagnifyingGlass,
+  faRightToBracket,
+  faUser,
+} from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -27,7 +28,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 export interface MobileFooterNavItem {
   /** Display label for the item */
   label: string;
-  /** Lucide icon component or React element */
+  /** Icon element (FontAwesomeIcon or React element) */
   icon: React.ReactNode;
   /** Accessible label for screen readers */
   ariaLabel: string;
@@ -101,10 +102,8 @@ export function MobileFooterNav({
       className={cn(
         "fixed inset-x-0 bottom-0 z-40",
         "flex h-16 items-center justify-around",
-        "bg-background/95 border-t backdrop-blur-md",
+        "border-t border-white/[0.06] bg-white/[0.03] backdrop-blur-xl",
         "pb-[env(safe-area-inset-bottom)]",
-        // Dark mode: slightly higher opacity
-        "dark:bg-background/98",
         // Touch optimizations
         "touch-action-manipulation",
         // Landscape phones: reduced height
@@ -219,31 +218,57 @@ export function getAuthenticatedFooterItems(
   return [
     {
       label: "My Items",
-      icon: <Library className="h-5 w-5" aria-hidden="true" />,
+      icon: (
+        <FontAwesomeIcon
+          icon={faBookOpen}
+          className="h-5 w-5"
+          aria-hidden="true"
+        />
+      ),
       ariaLabel: "My Items",
       href: username ? `/u/${username}` : "/sign-in",
     },
     {
       label: "Explore",
-      icon: <Compass className="h-5 w-5" aria-hidden="true" />,
+      icon: (
+        <FontAwesomeIcon
+          icon={faCompass}
+          className="h-5 w-5"
+          aria-hidden="true"
+        />
+      ),
       ariaLabel: "Explore",
       href: "/explore",
     },
     {
       label: "Search",
-      icon: <Search className="h-5 w-5" aria-hidden="true" />,
+      icon: (
+        <FontAwesomeIcon
+          icon={faMagnifyingGlass}
+          className="h-5 w-5"
+          aria-hidden="true"
+        />
+      ),
       ariaLabel: "Search",
       sheet: "search",
     },
     {
       label: "Help",
-      icon: <HelpCircle className="h-5 w-5" aria-hidden="true" />,
+      icon: (
+        <FontAwesomeIcon
+          icon={faCircleQuestion}
+          className="h-5 w-5"
+          aria-hidden="true"
+        />
+      ),
       ariaLabel: "Help",
       sheet: "help",
     },
     {
       label: "Account",
-      icon: <User className="h-5 w-5" aria-hidden="true" />,
+      icon: (
+        <FontAwesomeIcon icon={faUser} className="h-5 w-5" aria-hidden="true" />
+      ),
       ariaLabel: "Account menu",
       sheet: "user",
     },
@@ -259,25 +284,49 @@ export function getGuestFooterItems(): MobileFooterNavItem[] {
   return [
     {
       label: "Explore",
-      icon: <Compass className="h-5 w-5" aria-hidden="true" />,
+      icon: (
+        <FontAwesomeIcon
+          icon={faCompass}
+          className="h-5 w-5"
+          aria-hidden="true"
+        />
+      ),
       ariaLabel: "Explore",
       href: "/explore",
     },
     {
       label: "Search",
-      icon: <Search className="h-5 w-5" aria-hidden="true" />,
+      icon: (
+        <FontAwesomeIcon
+          icon={faMagnifyingGlass}
+          className="h-5 w-5"
+          aria-hidden="true"
+        />
+      ),
       ariaLabel: "Search",
       sheet: "search",
     },
     {
       label: "Help",
-      icon: <HelpCircle className="h-5 w-5" aria-hidden="true" />,
+      icon: (
+        <FontAwesomeIcon
+          icon={faCircleQuestion}
+          className="h-5 w-5"
+          aria-hidden="true"
+        />
+      ),
       ariaLabel: "Help",
       sheet: "help",
     },
     {
       label: "Sign In",
-      icon: <LogIn className="h-5 w-5" aria-hidden="true" />,
+      icon: (
+        <FontAwesomeIcon
+          icon={faRightToBracket}
+          className="h-5 w-5"
+          aria-hidden="true"
+        />
+      ),
       ariaLabel: "Sign in",
       href: "/sign-in",
     },

@@ -6,7 +6,11 @@
 "use client";
 
 import { Component, type ReactNode, type ErrorInfo } from "react";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faTriangleExclamation,
+  faRotate,
+} from "@fortawesome/free-solid-svg-icons";
 import { Button } from "@/components/ui/button";
 
 interface ErrorBoundaryProps {
@@ -72,7 +76,10 @@ export class ErrorBoundary extends Component<
       return (
         <div className="flex min-h-[400px] flex-1 flex-col items-center justify-center gap-4 p-8">
           <div className="bg-destructive/10 flex size-16 items-center justify-center rounded-full">
-            <AlertTriangle className="text-destructive size-8" />
+            <FontAwesomeIcon
+              icon={faTriangleExclamation}
+              className="text-destructive size-8"
+            />
           </div>
           <div className="text-center">
             <h2 className="text-lg font-semibold">Something went wrong</h2>
@@ -81,7 +88,7 @@ export class ErrorBoundary extends Component<
             </p>
           </div>
           <Button onClick={this.handleRetry} variant="outline" size="sm">
-            <RefreshCw className="mr-2 size-4" />
+            <FontAwesomeIcon icon={faRotate} className="mr-2 size-4" />
             Try again
           </Button>
         </div>

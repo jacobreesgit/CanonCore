@@ -36,8 +36,8 @@ export class ItemsSettingsPage {
   async openSettings(itemName: string) {
     const slug = slugify(itemName);
     const moreButton = this.page.getByTestId(`item-more-${slug}`);
-    await moreButton.waitFor({ state: "visible", timeout: Timeouts.api });
-    await moreButton.click();
+    await moreButton.waitFor({ state: "attached", timeout: Timeouts.api });
+    await moreButton.click({ force: true });
 
     // Click the "Settings" menu item in the dropdown
     const settingsOption = this.page.getByRole("menuitem", {

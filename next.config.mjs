@@ -82,7 +82,11 @@ const nextConfig = {
   transpilePackages: ["fumadocs-core", "fumadocs-mdx", "fumadocs-ui"],
   experimental: {
     // Tree-shake barrel imports for these packages to reduce bundle size
-    optimizePackageImports: ["lucide-react", "date-fns", "motion"],
+    optimizePackageImports: [
+      "date-fns",
+      "motion",
+      "@fortawesome/free-solid-svg-icons",
+    ],
   },
   /**
    * Bot handling: Aggressive bots are blocked at proxy level, beneficial bots
@@ -102,6 +106,9 @@ const nextConfig = {
       {
         pathname: "/api/user/hero",
       },
+      {
+        pathname: "/images/**",
+      },
     ],
     remotePatterns: [
       {
@@ -118,6 +125,11 @@ const nextConfig = {
         protocol: "https",
         hostname: "img.youtube.com",
         pathname: "/vi/**",
+      },
+      {
+        protocol: "https",
+        hostname: "l4wlsi8vxy8hre4v.public.blob.vercel-storage.com",
+        pathname: "/**",
       },
     ],
   },

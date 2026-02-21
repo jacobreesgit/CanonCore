@@ -22,7 +22,7 @@ export default function PublicError({
   }, [error]);
 
   return (
-    <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-8">
+    <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
       <div className="text-center">
         <h1 className="text-lg font-semibold">Something went wrong</h1>
         <p className="text-muted-foreground mt-1 text-sm">

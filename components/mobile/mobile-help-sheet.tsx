@@ -7,17 +7,18 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  Book,
-  Cloud,
-  FolderOpen,
-  HelpCircle,
-  LayoutGrid,
-  Rocket,
-  Settings,
-  Share2,
-  User,
-} from "lucide-react";
+  faBook,
+  faCircleQuestion,
+  faCloud,
+  faFolderOpen,
+  faGear,
+  faRocket,
+  faShareNodes,
+  faTableCellsLarge,
+  faUser,
+} from "@fortawesome/free-solid-svg-icons";
 import { MobileBottomSheet } from "./mobile-bottom-sheet";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -45,43 +46,43 @@ const DOC_SECTIONS: DocSection[] = [
   {
     label: "Getting Started",
     href: "/docs/getting-started/quick-tour",
-    icon: <Rocket className="size-4" />,
+    icon: <FontAwesomeIcon icon={faRocket} className="size-4" />,
     description: "Create account, sign in, quick tour",
   },
   {
     label: "Files & Folders",
     href: "/docs/files-and-folders/navigation",
-    icon: <FolderOpen className="size-4" />,
+    icon: <FontAwesomeIcon icon={faFolderOpen} className="size-4" />,
     description: "Create, organise, delete items",
   },
   {
     label: "Google Drive",
     href: "/docs/google-drive/connect-drive",
-    icon: <Cloud className="size-4" />,
+    icon: <FontAwesomeIcon icon={faCloud} className="size-4" />,
     description: "Connect, sync, upload files",
   },
   {
     label: "Views",
     href: "/docs/views/grid-view",
-    icon: <LayoutGrid className="size-4" />,
+    icon: <FontAwesomeIcon icon={faTableCellsLarge} className="size-4" />,
     description: "Grid, tree, sort & filter",
   },
   {
     label: "Sharing",
     href: "/docs/sharing/public-profile",
-    icon: <Share2 className="size-4" />,
+    icon: <FontAwesomeIcon icon={faShareNodes} className="size-4" />,
     description: "Public profile, explore, forking",
   },
   {
     label: "Preferences",
     href: "/docs/preferences/dark-mode",
-    icon: <Settings className="size-4" />,
+    icon: <FontAwesomeIcon icon={faGear} className="size-4" />,
     description: "Dark mode, default settings",
   },
   {
     label: "Account",
     href: "/docs/account/profile-settings",
-    icon: <User className="size-4" />,
+    icon: <FontAwesomeIcon icon={faUser} className="size-4" />,
     description: "Profile, security, password",
   },
 ];
@@ -109,7 +110,11 @@ export function MobileHelpSheet({ open, onOpenChange }: MobileHelpSheetProps) {
         {/* Header */}
         <div className="flex items-center gap-3 py-3">
           <div className="bg-primary/10 flex size-12 items-center justify-center rounded-full">
-            <HelpCircle className="text-primary size-6" aria-hidden="true" />
+            <FontAwesomeIcon
+              icon={faCircleQuestion}
+              className="text-primary size-6"
+              aria-hidden="true"
+            />
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-semibold">Documentation</p>
@@ -130,7 +135,11 @@ export function MobileHelpSheet({ open, onOpenChange }: MobileHelpSheetProps) {
             "hover:bg-accent transition-colors"
           )}
         >
-          <Book className="text-primary size-5" aria-hidden="true" />
+          <FontAwesomeIcon
+            icon={faBook}
+            className="text-primary size-5"
+            aria-hidden="true"
+          />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium">Browse All Documentation</p>
             <p className="text-muted-foreground text-xs">

@@ -5,7 +5,8 @@
 
 "use client";
 
-import { UploadIcon } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faUpload } from "@fortawesome/free-solid-svg-icons";
 import type { ReactNode } from "react";
 import { createContext, useContext } from "react";
 import type { DropEvent, DropzoneOptions, FileRejection } from "react-dropzone";
@@ -187,7 +188,7 @@ export const DropzoneContent = ({
   return (
     <div className={cn("flex flex-col items-center justify-center", className)}>
       <div className="bg-muted text-muted-foreground flex size-8 items-center justify-center rounded-md">
-        <UploadIcon size={16} />
+        <FontAwesomeIcon icon={faUpload} className="size-4" />
       </div>
       <p className="my-2 w-full truncate text-sm font-medium">
         {src.length > maxLabelItems
@@ -250,7 +251,7 @@ export const DropzoneEmptyState = ({
   return (
     <div className={cn("flex flex-col items-center justify-center", className)}>
       <div className="bg-muted text-muted-foreground flex size-8 items-center justify-center rounded-md">
-        <UploadIcon size={16} />
+        <FontAwesomeIcon icon={faUpload} className="size-4" />
       </div>
       <p className="my-2 w-full truncate text-sm font-medium text-wrap">
         Upload {maxFiles === 1 ? "a file" : "files"}

@@ -9,7 +9,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
-import { X, Loader2 } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSpinner, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { Button } from "@/components/ui/button";
 import type { SerializedItemFile } from "@/lib/types";
 
@@ -20,9 +21,11 @@ function VideoPlayerSkeleton() {
   return (
     <div className="flex h-full w-full items-center justify-center">
       <div className="flex flex-col items-center gap-3">
-        <Loader2
+        <FontAwesomeIcon
+          icon={faSpinner}
+          spin
           aria-hidden="true"
-          className="size-8 animate-spin text-white/70"
+          className="size-8 text-white/70"
         />
         <span className="text-sm text-white/70">Loading player…</span>
       </div>
@@ -138,7 +141,7 @@ export function MediaOverlay({
         className="absolute top-4 right-4 z-10 size-10 rounded-full bg-black/50 text-white hover:bg-black/70"
         aria-label="Close player"
       >
-        <X aria-hidden="true" className="size-5" />
+        <FontAwesomeIcon icon={faXmark} aria-hidden="true" className="size-5" />
       </Button>
 
       {/* Player */}

@@ -21,7 +21,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { forgotPassword } from "@/lib/auth-actions";
-import { MailIcon } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faEnvelope } from "@fortawesome/free-solid-svg-icons";
 
 /**
  * Renders forgot password form with email input.
@@ -91,7 +92,7 @@ export function ForgotPasswordForm() {
             <>
               <div className="flex justify-center">
                 <div className="bg-primary text-primary-foreground flex size-14 items-center justify-center rounded-full">
-                  <MailIcon className="size-7" />
+                  <FontAwesomeIcon icon={faEnvelope} className="size-7" />
                 </div>
               </div>
 

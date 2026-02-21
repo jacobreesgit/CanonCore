@@ -7,10 +7,10 @@
  *
  * Usage:
  *   pnpm run seed                          # Seeds development (default)
- *   SEED_TARGET=production pnpm run seed   # Seeds production
- *   SEED_TARGET=e2e pnpm run seed          # Seeds e2e
- *   pnpm run seed:production               # Convenience script
- *   pnpm run seed:e2e                      # Convenience script
+ *   pnpm run seed:production               # Seeds production
+ *   pnpm run seed:screenshots              # Seeds screenshot DB
+ *   pnpm run seed:demo                     # Seeds demo.canoncore.com DB
+ *   pnpm run seed:e2e                      # Seeds E2E DB (schema only, no Drive)
  *
  * Flow:
  *   1. Resolve SEED_TARGET to pick correct DATABASE_URL and Drive root folder
@@ -22,9 +22,11 @@
  * Branching Strategy:
  *   Same Google Drive account with separate root folders per Neon branch.
  *   SEED_TARGET selects which DATABASE_URL and root folder to use:
- *     - development: DATABASE_URL + GOOGLE_SEED_ROOT_FOLDER_ID (defaults)
- *     - production:  SEED_PRODUCTION_DATABASE_URL + SEED_PRODUCTION_ROOT_FOLDER_ID
- *     - e2e:         SCREENSHOT_DATABASE_URL + SEED_E2E_ROOT_FOLDER_ID
+ *     - development:  DATABASE_URL + GOOGLE_SEED_ROOT_FOLDER_ID (defaults)
+ *     - production:   SEED_PRODUCTION_DATABASE_URL + SEED_PRODUCTION_ROOT_FOLDER_ID
+ *     - screenshots:  SCREENSHOT_DATABASE_URL + SEED_SCREENSHOTS_ROOT_FOLDER_ID
+ *     - demo:         DEMO_DATABASE_URL + SEED_DEMO_ROOT_FOLDER_ID
+ *     - e2e:          E2E_DATABASE_URL (no Drive — tests use ephemeral users)
  *
  * Required Environment Variables:
  *   - ALLOW_SEEDING: Must be "true" to run (prevents accidental seeding)
@@ -37,10 +39,14 @@
  *   - ENCRYPTION_KEY: For encrypting Drive tokens
  *
  * Optional (for non-development targets):
- *   - SEED_TARGET: "development" | "production" | "e2e" (default: "development")
+ *   - SEED_TARGET: "development" | "production" | "screenshots" | "demo" | "e2e"
  *   - SEED_PRODUCTION_DATABASE_URL: Production Neon connection string
  *   - SEED_PRODUCTION_ROOT_FOLDER_ID: Production Drive root folder
- *   - SEED_E2E_ROOT_FOLDER_ID: E2E Drive root folder
+ *   - SCREENSHOT_DATABASE_URL: Screenshot Neon connection string
+ *   - SEED_SCREENSHOTS_ROOT_FOLDER_ID: Screenshot Drive root folder
+ *   - DEMO_DATABASE_URL: Demo Neon connection string
+ *   - SEED_DEMO_ROOT_FOLDER_ID: Demo Drive root folder
+ *   - E2E_DATABASE_URL: E2E Neon connection string (no Drive needed)
  */
 
 // Load environment variables before any other imports
@@ -50,9 +56,15 @@ import fs from "fs";
 dotenv.config({ path: path.resolve(__dirname, "../.env.local") });
 
 /** Valid seed target branches. */
-type SeedTarget = "development" | "production" | "e2e";
+type SeedTarget = "development" | "production" | "screenshots" | "demo" | "e2e";
 
-const VALID_SEED_TARGETS: SeedTarget[] = ["development", "production", "e2e"];
+const VALID_SEED_TARGETS: SeedTarget[] = [
+  "development",
+  "production",
+  "screenshots",
+  "demo",
+  "e2e",
+];
 
 /**
  * Resolves SEED_TARGET to the correct DATABASE_URL and Drive root folder ID.
@@ -96,25 +108,58 @@ function resolveSeedTarget(): SeedTarget {
       break;
     }
 
-    case "e2e": {
-      const e2eDbUrl = process.env.SCREENSHOT_DATABASE_URL;
-      const e2eRootFolder = process.env.SEED_E2E_ROOT_FOLDER_ID;
+    case "screenshots": {
+      const screenshotDbUrl = process.env.SCREENSHOT_DATABASE_URL;
+      const screenshotRootFolder = process.env.SEED_SCREENSHOTS_ROOT_FOLDER_ID;
 
-      if (!e2eDbUrl) {
+      if (!screenshotDbUrl) {
         console.error(
-          "❌ SCREENSHOT_DATABASE_URL is required when SEED_TARGET=e2e"
+          "❌ SCREENSHOT_DATABASE_URL is required when SEED_TARGET=screenshots"
         );
         process.exit(1);
       }
-      if (!e2eRootFolder) {
+      if (!screenshotRootFolder) {
         console.error(
-          "❌ SEED_E2E_ROOT_FOLDER_ID is required when SEED_TARGET=e2e"
+          "❌ SEED_SCREENSHOTS_ROOT_FOLDER_ID is required when SEED_TARGET=screenshots"
         );
+        process.exit(1);
+      }
+
+      process.env.DATABASE_URL = screenshotDbUrl;
+      process.env.GOOGLE_SEED_ROOT_FOLDER_ID = screenshotRootFolder;
+      break;
+    }
+
+    case "demo": {
+      const demoDbUrl = process.env.DEMO_DATABASE_URL;
+      const demoRootFolder = process.env.SEED_DEMO_ROOT_FOLDER_ID;
+
+      if (!demoDbUrl) {
+        console.error("❌ DEMO_DATABASE_URL is required when SEED_TARGET=demo");
+        process.exit(1);
+      }
+      if (!demoRootFolder) {
+        console.error(
+          "❌ SEED_DEMO_ROOT_FOLDER_ID is required when SEED_TARGET=demo"
+        );
+        process.exit(1);
+      }
+
+      process.env.DATABASE_URL = demoDbUrl;
+      process.env.GOOGLE_SEED_ROOT_FOLDER_ID = demoRootFolder;
+      break;
+    }
+
+    case "e2e": {
+      const e2eDbUrl = process.env.E2E_DATABASE_URL;
+
+      if (!e2eDbUrl) {
+        console.error("❌ E2E_DATABASE_URL is required when SEED_TARGET=e2e");
         process.exit(1);
       }
 
       process.env.DATABASE_URL = e2eDbUrl;
-      process.env.GOOGLE_SEED_ROOT_FOLDER_ID = e2eRootFolder;
+      // E2E tests use ephemeral users — no Drive folder needed
       break;
     }
   }
@@ -1995,6 +2040,8 @@ const PLAYLIST_DEFINITIONS: Record<
     /** Optional Picsum seed for reproducible artwork. */
     artworkSeed?: string;
     itemCount: { min: number; max: number };
+    /** Optional TMDB IDs to match specific items instead of random selection. */
+    tmdbIds?: number[];
   }>
 > = {
   "demo@canoncore.com": [
@@ -2010,6 +2057,17 @@ const PLAYLIST_DEFINITIONS: Record<
       isPublic: true,
       artworkSeed: "demo-favourites",
       itemCount: { min: 3, max: 5 },
+    },
+    {
+      name: "MCU Marathon",
+      description:
+        "The essential Marvel Cinematic Universe watching order — from Iron Man to Spider-Man: No Way Home.",
+      isPublic: true,
+      itemCount: { min: 12, max: 12 },
+      tmdbIds: [
+        1726, 24428, 100402, 118340, 271110, 284052, 315635, 284054, 299536,
+        299534, 566525, 634649,
+      ],
     },
     {
       name: "Watch Later",
@@ -2060,7 +2118,7 @@ async function seedPlaylistsForUser(
   // Get all root-level items for this user
   const rootItems = await prisma.item.findMany({
     where: { userId, parentId: null },
-    select: { id: true },
+    select: { id: true, tmdbId: true },
   });
 
   if (rootItems.length === 0) return;
@@ -2069,12 +2127,23 @@ async function seedPlaylistsForUser(
     const def = definitions[i];
     const itemCount = getRandomCount(def.itemCount.min, def.itemCount.max);
 
-    // Shuffle and pick items
-    const shuffled = [...rootItems].sort(() => Math.random() - 0.5);
-    const selectedItems = shuffled.slice(
-      0,
-      Math.min(itemCount, shuffled.length)
-    );
+    let selectedItems: { id: string }[];
+    if (def.tmdbIds) {
+      // Pick specific items by TMDB ID, preserving the order defined
+      const tmdbMap = new Map(rootItems.map((item) => [item.tmdbId, item]));
+      selectedItems = def.tmdbIds
+        .map((id) => tmdbMap.get(id))
+        .filter(Boolean) as { id: string }[];
+      if (selectedItems.length < def.tmdbIds.length) {
+        console.warn(
+          `   ⚠️  Playlist "${def.name}": expected ${def.tmdbIds.length} items, found ${selectedItems.length}`
+        );
+      }
+    } else {
+      // Shuffle and pick random items
+      const shuffled = [...rootItems].sort(() => Math.random() - 0.5);
+      selectedItems = shuffled.slice(0, Math.min(itemCount, shuffled.length));
+    }
 
     // Download artwork from Picsum if seed is defined
     let artworkData: ImageData | null = null;
@@ -2121,22 +2190,33 @@ async function seedPlaylistsForUser(
   }
 }
 
+/** Whether this seed target uses Google Drive for file storage. */
+const DRIVE_TARGETS: SeedTarget[] = [
+  "development",
+  "production",
+  "screenshots",
+  "demo",
+];
+const usesDrive = DRIVE_TARGETS.includes(seedTarget);
+
 /**
  * Main seed function.
- * Google Drive is REQUIRED - validates setup before proceeding.
- * Always does a full wipe of Drive and database before seeding.
+ * Google Drive is required for most targets (development, production, screenshots, demo).
+ * E2E target seeds without Drive — tests create ephemeral users.
+ * Always does a full wipe of Drive (if applicable) and database before seeding.
  */
 async function main(): Promise<void> {
   // Validate configuration before seeding
   validateContentDistribution();
 
   log(
-    `\n🌱 Starting database seed (target: ${seedTarget}) with Google Drive integration...\n`
+    `\n🌱 Starting database seed (target: ${seedTarget})${usesDrive ? " with Google Drive integration" : ""}...\n`
   );
 
-  // Pre-flight check: Drive is REQUIRED for seeding
-  // This will throw with clear instructions if not configured
-  await assertDriveConfigured("seed");
+  // Pre-flight check: Drive is REQUIRED for most targets
+  if (usesDrive) {
+    await assertDriveConfigured("seed");
+  }
 
   // Validate environment (ALLOW_SEEDING, TMDB_API_KEY, etc.)
   validateEnvironment();
@@ -2147,9 +2227,11 @@ async function main(): Promise<void> {
 
   // Wrap all database operations with audit context for tracking
   await withAuditContext({ source: "seed" }, async () => {
-    // Full wipe: Clean Google Drive and database
+    // Full wipe: Clean Google Drive (if applicable) and database
     console.log("🧹 Wiping all content...\n");
-    await cleanupGoogleDrive();
+    if (usesDrive) {
+      await cleanupGoogleDrive();
+    }
     await cleanupSeedUsers();
 
     // Create all seed users
@@ -2173,8 +2255,8 @@ async function main(): Promise<void> {
       log(`\n📚 Seeding content for ${email}...`);
 
       try {
-        // Create Drive connection for all users (shared seed Drive account)
-        const ctx = await createDriveConnection(userId);
+        // Create Drive connection (null for E2E — no Drive needed)
+        const ctx = usesDrive ? await createDriveConnection(userId) : null;
 
         // Initialize progress tracking with user-specific IDs
         const progress: SeedProgress = {
@@ -2220,7 +2302,7 @@ async function main(): Promise<void> {
           `\n✅ Seeded ${movieCount} movies and ${tvCount} TV show items in ${totalTime}s`
         );
 
-        if (isFirstUser) {
+        if (isFirstUser && usesDrive) {
           log(`   📁 Content synced to Google Drive`);
 
           // Run auto-sync to catch any pre-existing files, set changePageToken, and fetch quota

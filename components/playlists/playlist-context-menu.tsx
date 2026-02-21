@@ -25,16 +25,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  Pencil,
-  Eye,
-  EyeOff,
-  Trash2,
-  Loader2,
-  X,
-  ExternalLink,
-  ArrowRight,
-} from "lucide-react";
+  faPencil,
+  faEye,
+  faEyeSlash,
+  faTrashCan,
+  faSpinner,
+  faXmark,
+  faArrowUpRightFromSquare,
+  faArrowRight,
+} from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/lib/utils";
 import { MENU_ITEM_CLASSES } from "@/components/items/item-context-menu";
 
@@ -82,7 +83,11 @@ export function renderPlaylistMenuItems({
     <>
       {onRename && (
         <MenuItem onClick={onRename} className={MENU_ITEM_CLASSES}>
-          <Pencil aria-hidden="true" className="size-4" strokeWidth={2} />
+          <FontAwesomeIcon
+            icon={faPencil}
+            aria-hidden="true"
+            className="size-4"
+          />
           <span>Rename</span>
         </MenuItem>
       )}
@@ -90,12 +95,20 @@ export function renderPlaylistMenuItems({
         <MenuItem onClick={onToggleVisibility} className={MENU_ITEM_CLASSES}>
           {isPublic ? (
             <>
-              <EyeOff aria-hidden="true" className="size-4" strokeWidth={2} />
+              <FontAwesomeIcon
+                icon={faEyeSlash}
+                aria-hidden="true"
+                className="size-4"
+              />
               <span>Make Private</span>
             </>
           ) : (
             <>
-              <Eye aria-hidden="true" className="size-4" strokeWidth={2} />
+              <FontAwesomeIcon
+                icon={faEye}
+                aria-hidden="true"
+                className="size-4"
+              />
               <span>Make Public</span>
             </>
           )}
@@ -105,7 +118,11 @@ export function renderPlaylistMenuItems({
         <>
           <MenuSeparator className="bg-white/[0.08]" />
           <MenuItem onClick={onDeleteClick} className={DELETE_ITEM_CLASSES}>
-            <Trash2 aria-hidden="true" className="size-4" strokeWidth={2} />
+            <FontAwesomeIcon
+              icon={faTrashCan}
+              aria-hidden="true"
+              className="size-4"
+            />
             <span>Delete</span>
           </MenuItem>
         </>
@@ -197,7 +214,11 @@ export function PlaylistContextMenu({
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  <FontAwesomeIcon
+                    icon={faSpinner}
+                    spin
+                    className="mr-2 size-4"
+                  />
                   Deleting...
                 </>
               ) : (
@@ -244,21 +265,33 @@ export function renderPlaylistItemMenuItems({
         onClick={() => (window.location.href = itemHref)}
         className={MENU_ITEM_CLASSES}
       >
-        <ArrowRight aria-hidden="true" className="size-4" strokeWidth={2} />
+        <FontAwesomeIcon
+          icon={faArrowRight}
+          aria-hidden="true"
+          className="size-4"
+        />
         <span>Go to Item</span>
       </MenuItem>
       <MenuItem
         onClick={() => window.open(itemHref, "_blank")}
         className={MENU_ITEM_CLASSES}
       >
-        <ExternalLink aria-hidden="true" className="size-4" strokeWidth={2} />
+        <FontAwesomeIcon
+          icon={faArrowUpRightFromSquare}
+          aria-hidden="true"
+          className="size-4"
+        />
         <span>Open in New Tab</span>
       </MenuItem>
       {onRemove && (
         <>
           <MenuSeparator className="bg-white/[0.08]" />
           <MenuItem onClick={onRemove} className={DELETE_ITEM_CLASSES}>
-            <X aria-hidden="true" className="size-4" strokeWidth={2} />
+            <FontAwesomeIcon
+              icon={faXmark}
+              aria-hidden="true"
+              className="size-4"
+            />
             <span>Remove from Playlist</span>
           </MenuItem>
         </>
@@ -349,7 +382,11 @@ export function PlaylistItemContextMenu({
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  <FontAwesomeIcon
+                    icon={faSpinner}
+                    spin
+                    className="mr-2 size-4"
+                  />
                   Removing...
                 </>
               ) : (

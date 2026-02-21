@@ -43,7 +43,7 @@
   --radius: 0.625rem;
 
   /* Sidebar */
-  --sidebar: #111111;
+  --sidebar: #0a0a0a;
   --sidebar-foreground: rgba(255, 255, 255, 0.95);
   --sidebar-primary: oklch(0.488 0.243 264.376);
   --sidebar-primary-foreground: rgba(255, 255, 255, 0.95);

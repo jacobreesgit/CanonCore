@@ -6,7 +6,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Compass, Library, User, HelpCircle } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faCompass,
+  faBookOpen,
+  faUser,
+  faCircleQuestion,
+} from "@fortawesome/free-solid-svg-icons";
 import {
   MobileFooterNav,
   MobileFooterContainer,
@@ -42,7 +48,7 @@ describe("MobileFooterNav", () => {
           items={[
             {
               label: "Test",
-              icon: <Compass className="h-5 w-5" />,
+              icon: <FontAwesomeIcon icon={faCompass} className="h-5 w-5" />,
               ariaLabel: "Test",
               href: "/test",
             },
@@ -63,7 +69,7 @@ describe("MobileFooterNav", () => {
           items={[
             {
               label: "Test",
-              icon: <Compass className="h-5 w-5" />,
+              icon: <FontAwesomeIcon icon={faCompass} className="h-5 w-5" />,
               ariaLabel: "Test",
               href: "/test",
             },
@@ -84,7 +90,7 @@ describe("MobileFooterNav", () => {
           items={[
             {
               label: "Explore",
-              icon: <Compass className="h-5 w-5" />,
+              icon: <FontAwesomeIcon icon={faCompass} className="h-5 w-5" />,
               ariaLabel: "Explore",
               href: "/explore",
             },
@@ -104,7 +110,7 @@ describe("MobileFooterNav", () => {
           items={[
             {
               label: "Explore",
-              icon: <Compass className="h-5 w-5" />,
+              icon: <FontAwesomeIcon icon={faCompass} className="h-5 w-5" />,
               ariaLabel: "Explore",
               href: "/explore",
             },
@@ -124,7 +130,7 @@ describe("MobileFooterNav", () => {
           items={[
             {
               label: "My Items",
-              icon: <Library className="h-5 w-5" />,
+              icon: <FontAwesomeIcon icon={faBookOpen} className="h-5 w-5" />,
               ariaLabel: "My Items",
               href: "/u/johndoe",
             },
@@ -144,7 +150,7 @@ describe("MobileFooterNav", () => {
           items={[
             {
               label: "Explore",
-              icon: <Compass className="h-5 w-5" />,
+              icon: <FontAwesomeIcon icon={faCompass} className="h-5 w-5" />,
               ariaLabel: "Explore",
               href: "/explore",
               isActive: true,
@@ -168,7 +174,7 @@ describe("MobileFooterNav", () => {
           items={[
             {
               label: "Account",
-              icon: <User className="h-5 w-5" />,
+              icon: <FontAwesomeIcon icon={faUser} className="h-5 w-5" />,
               ariaLabel: "Account menu",
               sheet: "user",
             },
@@ -192,7 +198,9 @@ describe("MobileFooterNav", () => {
           items={[
             {
               label: "Help",
-              icon: <HelpCircle className="h-5 w-5" />,
+              icon: (
+                <FontAwesomeIcon icon={faCircleQuestion} className="h-5 w-5" />
+              ),
               ariaLabel: "Help",
               sheet: "help",
             },
@@ -215,7 +223,7 @@ describe("MobileFooterNav", () => {
           items={[
             {
               label: "Account",
-              icon: <User className="h-5 w-5" />,
+              icon: <FontAwesomeIcon icon={faUser} className="h-5 w-5" />,
               ariaLabel: "Account menu",
               sheet: "user",
             },
@@ -236,7 +244,7 @@ describe("MobileFooterNav", () => {
           items={[
             {
               label: "Account",
-              icon: <User className="h-5 w-5" />,
+              icon: <FontAwesomeIcon icon={faUser} className="h-5 w-5" />,
               ariaLabel: "Account menu",
               sheet: "user",
             },
@@ -249,7 +257,7 @@ describe("MobileFooterNav", () => {
       const avatar = document.querySelector('[data-slot="avatar"]');
       expect(avatar).not.toBeInTheDocument();
 
-      // Icon should be rendered (User icon from lucide)
+      // Icon should be rendered (FontAwesomeIcon)
       const button = screen.getByRole("button", { name: /account menu/i });
       expect(button.querySelector("svg")).toBeInTheDocument();
     });
@@ -262,7 +270,7 @@ describe("MobileFooterNav", () => {
           items={[
             {
               label: "Explore",
-              icon: <Compass className="h-5 w-5" />,
+              icon: <FontAwesomeIcon icon={faCompass} className="h-5 w-5" />,
               ariaLabel: "Explore",
               href: "/explore",
             },
@@ -281,7 +289,7 @@ describe("MobileFooterNav", () => {
           items={[
             {
               label: "Account",
-              icon: <User className="h-5 w-5" />,
+              icon: <FontAwesomeIcon icon={faUser} className="h-5 w-5" />,
               ariaLabel: "Account menu",
               sheet: "user",
             },

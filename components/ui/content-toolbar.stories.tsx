@@ -5,7 +5,8 @@
 
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import { fn } from "storybook/test";
-import { Plus, Settings2 } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faGears, faPlus } from "@fortawesome/free-solid-svg-icons";
 
 import { ContentToolbar } from "@/components/ui/content-toolbar";
 import { Button } from "@/components/ui/button";
@@ -134,7 +135,7 @@ export const WithOwnerActions: Story = {
     actions: (
       <>
         <Button variant="outline" size="sm" className="gap-1.5">
-          <Plus className="size-4" strokeWidth={2} />
+          <FontAwesomeIcon icon={faPlus} className="size-4" />
           <span className="hidden xl:inline">Add</span>
         </Button>
         <EditModeToggle isEditing={false} onToggle={fn()} />
@@ -158,12 +159,12 @@ export const ItemDetailPage: Story = {
     actions: (
       <>
         <Button variant="outline" size="sm" className="gap-1.5">
-          <Plus className="size-4" strokeWidth={2} />
+          <FontAwesomeIcon icon={faPlus} className="size-4" />
           <span className="hidden xl:inline">Add</span>
         </Button>
         <EditModeToggle isEditing={false} onToggle={fn()} />
         <Button variant="outline" size="sm" className="gap-1.5">
-          <Settings2 className="size-4" />
+          <FontAwesomeIcon icon={faGears} className="size-4" />
           <span className="hidden xl:inline">Settings</span>
         </Button>
       </>

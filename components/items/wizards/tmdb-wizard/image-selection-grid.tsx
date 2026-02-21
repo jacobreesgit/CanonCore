@@ -6,7 +6,14 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { Check, ImageOff, ImageIcon, SkipForward, Globe } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faCheck,
+  faImagePortrait,
+  faImage,
+  faForwardStep,
+  faGlobe,
+} from "@fortawesome/free-solid-svg-icons";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useImageLoaded } from "@/hooks/use-image-loaded";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -185,7 +192,7 @@ export function ImageSelectionGrid({
       >
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="tmdb" disabled={disabled}>
-            <Globe className="mr-1.5 size-3.5" />
+            <FontAwesomeIcon icon={faGlobe} className="mr-1.5 size-3.5" />
             From TMDB
             {tmdbImages.length > 0 && (
               <span className="bg-muted ml-1.5 rounded px-1.5 py-0.5 text-xs tabular-nums">
@@ -249,7 +256,7 @@ export function ImageSelectionGrid({
               disabled && "cursor-not-allowed opacity-50"
             )}
           >
-            <SkipForward className="size-3.5" />
+            <FontAwesomeIcon icon={faForwardStep} className="size-3.5" />
             Skip {type} selection
           </Label>
         </div>
@@ -304,7 +311,10 @@ function ImageThumbnail({
           aspectClass
         )}
       >
-        <ImageOff className="text-muted-foreground/50 size-6" />
+        <FontAwesomeIcon
+          icon={faImagePortrait}
+          className="text-muted-foreground/50 size-6"
+        />
       </div>
     );
   }
@@ -337,7 +347,10 @@ function ImageThumbnail({
       {/* Image icon placeholder while loading */}
       {!isLoaded && (
         <div className="absolute inset-0 z-0 flex items-center justify-center">
-          <ImageIcon className="text-muted-foreground/50 size-8" />
+          <FontAwesomeIcon
+            icon={faImage}
+            className="text-muted-foreground/50 size-8"
+          />
         </div>
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -358,7 +371,7 @@ function ImageThumbnail({
       {isSelected && !isSkipped && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/30">
           <div className="bg-brand flex size-8 items-center justify-center rounded-full shadow-lg">
-            <Check className="size-5 text-white" />
+            <FontAwesomeIcon icon={faCheck} className="size-5 text-white" />
           </div>
         </div>
       )}
@@ -427,7 +440,10 @@ function ExistingFileThumbnail({
           aspectClass
         )}
       >
-        <ImageOff className="text-muted-foreground/50 size-5" />
+        <FontAwesomeIcon
+          icon={faImagePortrait}
+          className="text-muted-foreground/50 size-5"
+        />
         <span className="text-muted-foreground max-w-full truncate text-xs">
           {file.filename}
         </span>
@@ -462,7 +478,10 @@ function ExistingFileThumbnail({
       {/* Image icon placeholder while loading */}
       {!isLoaded && (
         <div className="absolute inset-0 z-0 flex items-center justify-center">
-          <ImageIcon className="text-muted-foreground/50 size-8" />
+          <FontAwesomeIcon
+            icon={faImage}
+            className="text-muted-foreground/50 size-8"
+          />
         </div>
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -483,7 +502,7 @@ function ExistingFileThumbnail({
       {isSelected && !isSkipped && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/30">
           <div className="bg-brand flex size-8 items-center justify-center rounded-full shadow-lg">
-            <Check className="size-5 text-white" />
+            <FontAwesomeIcon icon={faCheck} className="size-5 text-white" />
           </div>
         </div>
       )}
@@ -508,7 +527,10 @@ function ExistingFileThumbnail({
 function EmptyState({ message }: { message: string }) {
   return (
     <div className="bg-muted/30 flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-12">
-      <ImageOff className="text-muted-foreground/50 size-8" />
+      <FontAwesomeIcon
+        icon={faImagePortrait}
+        className="text-muted-foreground/50 size-8"
+      />
       <p className="text-muted-foreground text-sm">{message}</p>
     </div>
   );

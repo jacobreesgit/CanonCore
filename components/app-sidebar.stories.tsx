@@ -1,28 +1,24 @@
 /**
  * Storybook stories for the AppSidebar component.
- * Covers sidebar states for different contexts and user types.
+ * Covers sidebar states for different user types.
  */
 import type { Meta, StoryObj } from "@storybook/nextjs";
-import type { Root as PageTreeRoot } from "fumadocs-core/page-tree";
 import { AppSidebar } from "./app-sidebar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { SpotlightProvider } from "@/contexts/spotlight-context";
 import type { GoogleDriveConnection } from "@/lib/types";
 
 /**
- * Main application sidebar with context-aware navigation.
+ * Main application sidebar with consistent navigation.
  *
  * ## Features
  * - Logo and branding in header
- * - Context-based content (my-items, docs, home)
+ * - Main nav with My Items, Explore, Get Help, Legal
+ * - Collapsible Get Help with doc section sub-items
+ * - Collapsible Legal with policy sub-items
  * - User menu with settings and logout
  * - Guest buttons for unauthenticated users
  * - Collapsible on mobile (offcanvas mode)
- *
- * ## Contexts
- * - **my-items**: Main nav with My Items, Explore
- * - **docs**: Documentation tree navigation
- * - **home**: Guest navigation without auth-specific items
  */
 const meta = {
   title: "Navigation/AppSidebar",
@@ -33,7 +29,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Main application sidebar with context-aware navigation. Supports my-items, docs, and home contexts with user menu.",
+          "Main application sidebar with consistent navigation. Includes collapsible Get Help and Legal sections with sub-items.",
       },
     },
     nextjs: {
@@ -44,20 +40,15 @@ const meta = {
     },
   },
   argTypes: {
-    context: {
-      control: "select",
-      options: ["my-items", "docs", "home"],
-      description: "Determines which navigation content to display",
-    },
     user: {
       description: "Current user (null for guests)",
     },
     driveConnection: {
-      control: false, // Contains BigInt values that cannot be serialized
+      control: false,
       description: "Google Drive connection (null if not connected)",
     },
-    docsTree: {
-      description: "Fumadocs page tree for docs context",
+    pinnedItems: {
+      description: "Pinned items for sidebar (authenticated users only)",
     },
   },
   decorators: [
@@ -100,75 +91,40 @@ const mockDriveConnection: GoogleDriveConnection = {
   quotaBytesTotal: BigInt(15_000_000_000),
 };
 
-const mockDocsTree: PageTreeRoot = {
-  name: "Documentation",
-  children: [
-    { type: "page", name: "Introduction", url: "/docs" },
-    { type: "page", name: "Getting Started", url: "/docs/getting-started" },
-    { type: "separator", name: "Features" },
-    {
-      type: "folder",
-      name: "Media Library",
-      children: [
-        {
-          type: "page",
-          name: "Adding Items",
-          url: "/docs/media-library/adding",
-        },
-        {
-          type: "page",
-          name: "TMDB Integration",
-          url: "/docs/media-library/tmdb",
-        },
-      ],
-    },
-    {
-      type: "folder",
-      name: "Google Drive",
-      children: [
-        {
-          type: "page",
-          name: "Connecting",
-          url: "/docs/google-drive/connecting",
-        },
-        { type: "page", name: "Syncing", url: "/docs/google-drive/syncing" },
-      ],
-    },
-  ],
-};
+const mockPinnedItems = [
+  { id: "item-1", name: "Movies", pinnedOrder: 0 },
+  { id: "item-2", name: "TV Shows", pinnedOrder: 1 },
+];
 
 /**
- * Authenticated user in my-items context.
- * Full navigation with user menu.
+ * Authenticated user with full navigation.
+ * Shows My Items with pinned children, Get Help, Legal.
  */
-export const AuthenticatedMyItems: Story = {
+export const Authenticated: Story = {
   args: {
     user: mockUser,
-    context: "my-items",
     driveConnection: mockDriveConnection,
+    pinnedItems: mockPinnedItems,
   },
 };
 
 /**
- * Authenticated without Drive connection.
- * No storage indicator in user menu.
+ * Authenticated without Drive connection or pinned items.
  */
 export const AuthenticatedNoDrive: Story = {
   args: {
     user: mockUser,
-    context: "my-items",
     driveConnection: null,
   },
 };
 
 /**
- * Guest user in home context.
- * Shows Explore, Get Help, and Get Started.
+ * Guest user.
+ * Shows Explore, Get Help, Legal, and sign-in buttons.
  */
-export const GuestHome: Story = {
+export const Guest: Story = {
   args: {
     user: null,
-    context: "home",
     driveConnection: null,
   },
   parameters: {
@@ -181,40 +137,18 @@ export const GuestHome: Story = {
 };
 
 /**
- * Authenticated user in docs context.
- * Shows documentation tree navigation.
+ * User browsing docs.
+ * Get Help section is active and expanded.
  */
-export const AuthenticatedDocs: Story = {
+export const OnDocsPage: Story = {
   args: {
     user: mockUser,
-    context: "docs",
-    docsTree: mockDocsTree,
     driveConnection: null,
   },
   parameters: {
     nextjs: {
       navigation: {
-        pathname: "/docs",
-      },
-    },
-  },
-};
-
-/**
- * Guest user in docs context.
- * Shows docs tree with "Back to Home" link.
- */
-export const GuestDocs: Story = {
-  args: {
-    user: null,
-    context: "docs",
-    docsTree: mockDocsTree,
-    driveConnection: null,
-  },
-  parameters: {
-    nextjs: {
-      navigation: {
-        pathname: "/docs",
+        pathname: "/docs/getting-started/create-account",
       },
     },
   },

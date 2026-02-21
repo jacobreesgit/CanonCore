@@ -84,3 +84,13 @@ portfolio.md
 
 # Production screenshots (temporary, not for repo)
 production-*.png
+
+# Temporary design reference screenshots
+explore.png
+item.png
+use-cases-collage.png
+homepage-*.png
+payload-hero.png
+
+# Lighthouse reports
+.lighthouse/

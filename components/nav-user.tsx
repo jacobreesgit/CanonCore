@@ -6,7 +6,12 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { LogOut, MoreVertical, Settings } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faRightFromBracket,
+  faEllipsisVertical,
+  faGear,
+} from "@fortawesome/free-solid-svg-icons";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -92,7 +97,11 @@ export function NavUser({ user, driveConnection }: NavUserProps) {
                   {user.email}
                 </span>
               </div>
-              <MoreVertical aria-hidden="true" className="ml-auto size-4" />
+              <FontAwesomeIcon
+                icon={faEllipsisVertical}
+                className="ml-auto size-4"
+                aria-hidden="true"
+              />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -138,14 +147,14 @@ export function NavUser({ user, driveConnection }: NavUserProps) {
               onClick={() => setProfileDialogOpen(true)}
               data-testid="my-items-settings-button"
             >
-              <Settings aria-hidden="true" />
+              <FontAwesomeIcon icon={faGear} aria-hidden="true" />
               Settings
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={handleSignOut}
               data-testid="my-items-sign-out-button"
             >
-              <LogOut aria-hidden="true" />
+              <FontAwesomeIcon icon={faRightFromBracket} aria-hidden="true" />
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>

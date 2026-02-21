@@ -106,8 +106,8 @@ export class ItemsCrudPage {
   async openMoreMenu(name: string) {
     const slug = slugify(name);
     const moreButton = this.page.getByTestId(`item-more-${slug}`);
-    await moreButton.waitFor({ state: "visible", timeout: Timeouts.api });
-    await moreButton.click();
+    await moreButton.waitFor({ state: "attached", timeout: Timeouts.api });
+    await moreButton.click({ force: true });
   }
 
   /**

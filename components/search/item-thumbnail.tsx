@@ -6,8 +6,9 @@
 
 "use client";
 
-import type { LucideIcon } from "lucide-react";
-import { Folder } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faFolder } from "@fortawesome/free-solid-svg-icons";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { cn } from "@/lib/utils";
 import { useImageLoaded } from "@/hooks/use-image-loaded";
 import { getTmdbPosterUrl } from "@/lib/tmdb-image-utils";
@@ -23,8 +24,8 @@ interface ItemThumbnailProps {
   rounded?: string;
   /** Icon size class for the fallback icon. */
   iconSize?: string;
-  /** Fallback icon component (defaults to Folder). */
-  fallbackIcon?: LucideIcon;
+  /** Fallback icon definition (defaults to faFolder). */
+  fallbackIcon?: IconDefinition;
   /** Additional classes on the fallback icon container. */
   fallbackClassName?: string;
 }
@@ -51,7 +52,7 @@ export function ItemThumbnail({
   size = "size-8",
   rounded = "rounded-md",
   iconSize = "size-4",
-  fallbackIcon: FallbackIcon = Folder,
+  fallbackIcon = faFolder,
   fallbackClassName,
 }: ItemThumbnailProps) {
   const src = resolveSrc(tmdbPosterPath, artworkId);
@@ -67,7 +68,11 @@ export function ItemThumbnail({
           fallbackClassName
         )}
       >
-        <FallbackIcon aria-hidden="true" className={iconSize} />
+        <FontAwesomeIcon
+          icon={fallbackIcon}
+          className={iconSize}
+          aria-hidden="true"
+        />
       </div>
     );
   }
@@ -82,9 +87,10 @@ export function ItemThumbnail({
     >
       {!loaded && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <FallbackIcon
-            aria-hidden="true"
+          <FontAwesomeIcon
+            icon={fallbackIcon}
             className={cn("text-muted-foreground/50", iconSize)}
+            aria-hidden="true"
           />
         </div>
       )}

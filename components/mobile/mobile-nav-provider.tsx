@@ -8,7 +8,8 @@
 
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { AlertTriangle } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { MobileFooterContainer } from "./mobile-footer-nav";
@@ -178,7 +179,8 @@ export function MobileNavProvider({
           aria-live="assertive"
           className="fixed inset-x-0 top-0 z-40 flex items-center gap-3 border-b border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 backdrop-blur-md lg:hidden"
         >
-          <AlertTriangle
+          <FontAwesomeIcon
+            icon={faTriangleExclamation}
             className="size-4 shrink-0 text-amber-400"
             aria-hidden="true"
           />

@@ -15,7 +15,8 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Plus } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { getItems } from "@/lib/item-actions";
 import { ItemsView } from "@/components/items";
 import { EditModeToggle } from "@/components/items/edit-mode-toggle";
@@ -239,7 +240,7 @@ function OwnerModeContent({
         aria-label="Add"
         data-testid="items-add-button"
       >
-        <Plus className="size-4" strokeWidth={2} />
+        <FontAwesomeIcon icon={faPlus} className="size-4" />
         <span className="hidden xl:inline">Add</span>
       </Button>
       <EditModeToggle

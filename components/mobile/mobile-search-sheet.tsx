@@ -8,7 +8,12 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Search, Globe, X } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faMagnifyingGlass,
+  faXmark,
+  faGlobe,
+} from "@fortawesome/free-solid-svg-icons";
 import { toast } from "sonner";
 import { getSearchableItems } from "@/lib/item-actions";
 import { searchPublicUsers, searchPublicItems } from "@/lib/public-auth";
@@ -286,7 +291,8 @@ export function MobileSearchSheet({
       {/* Search input */}
       <div className="px-4 pt-2 pb-3">
         <div className="relative">
-          <Search
+          <FontAwesomeIcon
+            icon={faMagnifyingGlass}
             className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2"
             aria-hidden="true"
           />
@@ -311,7 +317,11 @@ export function MobileSearchSheet({
               onClick={clearSearch}
               aria-label="Clear search"
             >
-              <X className="size-4" aria-hidden="true" />
+              <FontAwesomeIcon
+                icon={faXmark}
+                className="size-4"
+                aria-hidden="true"
+              />
             </Button>
           )}
         </div>
@@ -326,7 +336,8 @@ export function MobileSearchSheet({
         {/* Empty state */}
         {hasInitialized && !isAnyLoading && !hasResults && (
           <div className="flex flex-col items-center justify-center py-12">
-            <Search
+            <FontAwesomeIcon
+              icon={faMagnifyingGlass}
               className="text-muted-foreground/50 mb-3 size-10"
               aria-hidden="true"
             />
@@ -441,7 +452,7 @@ export function MobileSearchSheet({
                         size="size-10"
                         rounded="rounded-lg"
                         iconSize="size-5"
-                        fallbackIcon={Globe}
+                        fallbackIcon={faGlobe}
                       />
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium">{item.name}</p>

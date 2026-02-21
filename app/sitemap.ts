@@ -31,6 +31,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 0.7,
     },
+    {
+      url: `${BASE_URL}/legal`,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
+      url: `${BASE_URL}/legal/privacy-policy`,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
+      url: `${BASE_URL}/legal/terms-of-service`,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
+      url: `${BASE_URL}/legal/cookie-policy`,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
   ];
 
   // Fetch profiles, items, and playlists in parallel — independent queries

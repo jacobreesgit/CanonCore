@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NavMain } from "@/components/nav-main";
-import { Folder } from "lucide-react";
+import { faFolder } from "@fortawesome/free-solid-svg-icons";
 
 // Mock next/navigation
 const mockPathname = vi.fn();
@@ -64,12 +64,42 @@ vi.mock("@/components/ui/sidebar", () => ({
       {children}
     </button>
   ),
+  SidebarMenuAction: ({ children }: { children: React.ReactNode }) => (
+    <button>{children}</button>
+  ),
+  SidebarMenuSub: ({ children }: { children: React.ReactNode }) => (
+    <ul>{children}</ul>
+  ),
+  SidebarMenuSubItem: ({ children }: { children: React.ReactNode }) => (
+    <li>{children}</li>
+  ),
+  SidebarMenuSubButton: ({
+    children,
+    isActive,
+  }: {
+    children: React.ReactNode;
+    isActive?: boolean;
+    asChild?: boolean;
+  }) => <a data-active={isActive}>{children}</a>,
+}));
+
+// Mock collapsible
+vi.mock("@/components/ui/collapsible", () => ({
+  Collapsible: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  CollapsibleTrigger: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  CollapsibleContent: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
 }));
 
 // Test items with dynamic URL (simulating what app-sidebar builds)
 const testUsername = "testuser";
 const testItems = [
-  { title: "My Items", url: `/u/${testUsername}`, icon: Folder },
+  { title: "My Items", url: `/u/${testUsername}`, icon: faFolder },
 ];
 
 describe("NavMain", () => {
@@ -220,7 +250,9 @@ describe("NavMain", () => {
   });
 
   describe("Explore navigation", () => {
-    const exploreItems = [{ title: "Explore", url: "/explore", icon: Folder }];
+    const exploreItems = [
+      { title: "Explore", url: "/explore", icon: faFolder },
+    ];
 
     it("renders Explore button as active on /explore", () => {
       mockPathname.mockReturnValue("/explore");

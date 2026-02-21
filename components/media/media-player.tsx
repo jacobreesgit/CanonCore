@@ -23,15 +23,7 @@ import "@vidstack/react/player/styles/default/layouts/video.css";
 import type { SerializedItemFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { getMimeTypeByExtension } from "@/lib/file-type-utils";
-import dynamic from "next/dynamic";
-
-const Shader1 = dynamic(
-  () =>
-    import("@/components/shader-background").then((mod) => ({
-      default: mod.Shader1,
-    })),
-  { ssr: false }
-);
+import { MeshGradient } from "@mesh-gradient/react";
 
 /**
  * Language code mapping for subtitle files.
@@ -179,14 +171,17 @@ export function VideoPlayer({
         />
       )}
 
-      {/* Show animated shader background for audio without artwork */}
+      {/* Show video background for audio without artwork */}
       {showShaderBackground && (
         <div className="absolute inset-0 z-0">
-          {typeof window !== "undefined" && navigator.webdriver ? (
-            <div className="h-full w-full bg-gradient-to-br from-blue-900 via-purple-900 to-slate-900" />
-          ) : (
-            <Shader1 className="h-full" />
-          )}
+          <MeshGradient
+            className="absolute inset-0 h-full w-full"
+            options={{
+              colors: ["#0d0d0d", "#1a0a1e", "#0a1628", "#1e1e2e"],
+              animationSpeed: 0.15,
+              seed: 19,
+            }}
+          />
         </div>
       )}
 

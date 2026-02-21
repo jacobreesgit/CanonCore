@@ -5,7 +5,16 @@
 
 "use client";
 
-import { Folder, FolderOpen, FilterX, ListMusic, Plus, X } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faFolder,
+  faFolderOpen,
+  faFilterCircleXmark,
+  faMusic,
+  faPlus,
+  faXmark,
+} from "@fortawesome/free-solid-svg-icons";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -19,66 +28,66 @@ export type EmptyStateVariant =
   | "playlist-empty";
 
 interface EmptyStateConfig {
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  icon: IconDefinition;
   title: string;
   description: string;
   actionLabel: string;
-  actionIcon: React.ComponentType<{ className?: string }>;
+  actionIcon: IconDefinition;
 }
 
 const EMPTY_STATE_CONFIG: Record<EmptyStateVariant, EmptyStateConfig> = {
   "first-time": {
-    icon: Folder,
+    icon: faFolder,
     title: "No items yet",
     description:
       "Create your first item to start organizing your media library.",
     actionLabel: "Add Item",
-    actionIcon: Plus,
+    actionIcon: faPlus,
   },
   "no-children": {
-    icon: FolderOpen,
+    icon: faFolderOpen,
     title: "No child items",
     description: "Add child items to organise content within this folder.",
     actionLabel: "Add Child",
-    actionIcon: Plus,
+    actionIcon: faPlus,
   },
   "filter-empty": {
-    icon: FilterX,
+    icon: faFilterCircleXmark,
     title: "No matching items",
     description:
       "No items match your current filter. Try adjusting your filter criteria.",
     actionLabel: "Clear Filter",
-    actionIcon: X,
+    actionIcon: faXmark,
   },
   "public-profile-empty": {
-    icon: Folder,
+    icon: faFolder,
     title: "No public items yet",
     description:
       "This user hasn't shared any items publicly. Check back later!",
     actionLabel: "",
-    actionIcon: Folder,
+    actionIcon: faFolder,
   },
   "public-item-empty": {
-    icon: FolderOpen,
+    icon: faFolderOpen,
     title: "No child items",
     description: "This item doesn't have any children.",
     actionLabel: "",
-    actionIcon: FolderOpen,
+    actionIcon: faFolderOpen,
   },
   "explore-empty": {
-    icon: Folder,
+    icon: faFolder,
     title: "Nothing here yet",
     description:
       "Be the first to share your items! Make your profile public to have your items featured here.",
     actionLabel: "",
-    actionIcon: Folder,
+    actionIcon: faFolder,
   },
   "playlist-empty": {
-    icon: ListMusic,
+    icon: faMusic,
     title: "No items in this playlist",
     description: "Add items to this playlist from your library.",
     actionLabel: "Add Items",
-    actionIcon: Plus,
+    actionIcon: faPlus,
   },
 };
 
@@ -108,8 +117,6 @@ interface EmptyStateProps {
  */
 export function EmptyState({ variant, onAction, className }: EmptyStateProps) {
   const config = EMPTY_STATE_CONFIG[variant];
-  const Icon = config.icon;
-  const ActionIcon = config.actionIcon;
 
   return (
     <div
@@ -129,7 +136,10 @@ export function EmptyState({ variant, onAction, className }: EmptyStateProps) {
           "ring-border/50 shadow-sm ring-1"
         )}
       >
-        <Icon className="text-muted-foreground/70 size-10" strokeWidth={1.25} />
+        <FontAwesomeIcon
+          icon={config.icon}
+          className="text-muted-foreground/70 size-10"
+        />
         {/* Subtle inner glow */}
         <div className="from-foreground/5 absolute inset-0 rounded-2xl bg-gradient-to-t to-transparent" />
       </div>
@@ -156,7 +166,7 @@ export function EmptyState({ variant, onAction, className }: EmptyStateProps) {
             "transition-shadow duration-200"
           )}
         >
-          <ActionIcon className="size-4" />
+          <FontAwesomeIcon icon={config.actionIcon} className="size-4" />
           {config.actionLabel}
         </Button>
       )}

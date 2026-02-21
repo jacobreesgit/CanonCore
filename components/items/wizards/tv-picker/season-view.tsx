@@ -6,7 +6,12 @@
 
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { forwardRef } from "react";
-import { ChevronRight, Film, Layers } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faChevronRight,
+  faFilm,
+  faLayerGroup,
+} from "@fortawesome/free-solid-svg-icons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getPosterUrl, getStillUrl } from "@/lib/tmdb-client";
 import { cn } from "@/lib/utils";
@@ -144,7 +149,8 @@ export function SeasonView({
           </div>
         ) : (
           <div className="bg-muted flex h-20 w-14 shrink-0 items-center justify-center rounded-lg">
-            <Layers
+            <FontAwesomeIcon
+              icon={faLayerGroup}
               className="text-muted-foreground size-5"
               aria-hidden="true"
             />
@@ -252,7 +258,11 @@ const EpisodeItemWithKeyboard = forwardRef<
         </div>
       ) : (
         <div className="bg-muted flex h-12 w-20 shrink-0 items-center justify-center rounded-lg">
-          <Film className="text-muted-foreground size-4" aria-hidden="true" />
+          <FontAwesomeIcon
+            icon={faFilm}
+            className="text-muted-foreground size-4"
+            aria-hidden="true"
+          />
         </div>
       )}
 
@@ -270,7 +280,8 @@ const EpisodeItemWithKeyboard = forwardRef<
         )}
       </div>
 
-      <ChevronRight
+      <FontAwesomeIcon
+        icon={faChevronRight}
         className="text-muted-foreground size-4 shrink-0"
         aria-hidden="true"
       />

@@ -4,7 +4,13 @@
  */
 
 import { SyncStatus } from "@prisma/client";
-import { Loader2, Circle, AlertTriangle } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faSpinner,
+  faCircle,
+  faTriangleExclamation,
+  faCircleCheck,
+} from "@fortawesome/free-solid-svg-icons";
 import {
   Tooltip,
   TooltipContent,
@@ -39,8 +45,10 @@ export function SyncBadge({
 
   if (syncStatus === "SYNCING") {
     return (
-      <Loader2
-        className={cn("text-muted-foreground size-3 animate-spin", className)}
+      <FontAwesomeIcon
+        icon={faSpinner}
+        spin
+        className={cn("text-muted-foreground size-3", className)}
       />
     );
   }
@@ -50,11 +58,9 @@ export function SyncBadge({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Circle
-              className={cn(
-                "text-muted-foreground size-2 fill-current",
-                className
-              )}
+            <FontAwesomeIcon
+              icon={faCircle}
+              className={cn("text-muted-foreground size-2", className)}
             />
           </TooltipTrigger>
           <TooltipContent>Waiting to sync</TooltipContent>
@@ -68,7 +74,8 @@ export function SyncBadge({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <AlertTriangle
+            <FontAwesomeIcon
+              icon={faTriangleExclamation}
               className={cn("text-destructive size-3", className)}
             />
           </TooltipTrigger>
@@ -84,41 +91,63 @@ export function SyncBadge({
 }
 
 interface SyncIconProps {
-  /** Current sync status of the item */
-  syncStatus: SyncStatus;
+  /** Current sync status of the item. */
+  syncStatus?: SyncStatus;
+  /** Google Drive folder ID — shows synced icon when linked. */
+  driveFileId?: string | null;
   /** Additional CSS classes */
   className?: string;
 }
 
 /**
  * Icon-only version for compact display.
- * No tooltips, just the visual indicator.
+ * Shows sync state for SYNCING/PENDING/ERROR, and a white check
+ * when the item is linked to Google Drive and fully synced.
  *
  * @param syncStatus - The current sync state
+ * @param driveFileId - Google Drive folder ID (shows synced icon when present)
  * @param className - Additional CSS classes
  */
-export function SyncIcon({ syncStatus, className }: SyncIconProps) {
-  if (syncStatus === "SYNCED") return null;
-
+export function SyncIcon({
+  syncStatus,
+  driveFileId,
+  className,
+}: SyncIconProps) {
   if (syncStatus === "SYNCING") {
     return (
-      <Loader2
-        className={cn("text-muted-foreground size-3 animate-spin", className)}
+      <FontAwesomeIcon
+        icon={faSpinner}
+        spin
+        className={cn("text-muted-foreground size-3", className)}
       />
     );
   }
 
   if (syncStatus === "PENDING") {
     return (
-      <Circle
-        className={cn("text-muted-foreground size-2 fill-current", className)}
+      <FontAwesomeIcon
+        icon={faCircle}
+        className={cn("text-muted-foreground size-2", className)}
       />
     );
   }
 
   if (syncStatus === "ERROR") {
     return (
-      <AlertTriangle className={cn("text-destructive size-3", className)} />
+      <FontAwesomeIcon
+        icon={faTriangleExclamation}
+        className={cn("text-destructive size-3", className)}
+      />
+    );
+  }
+
+  if (driveFileId && (!syncStatus || syncStatus === "SYNCED")) {
+    return (
+      <FontAwesomeIcon
+        icon={faCircleCheck}
+        className={cn("size-3.5 text-white/70", className)}
+        aria-hidden="true"
+      />
     );
   }
 

@@ -5,7 +5,12 @@
 "use client";
 
 import { useCallback } from "react";
-import { AlertCircle, ArrowLeft, ArrowRight } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faCircleExclamation,
+  faArrowLeft,
+  faArrowRight,
+} from "@fortawesome/free-solid-svg-icons";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -75,7 +80,11 @@ export function TMDBTextStep({
             "border-destructive/50 bg-destructive/10 text-destructive flex items-center gap-2 rounded-md border px-3 py-2 text-sm"
           )}
         >
-          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <FontAwesomeIcon
+            icon={faCircleExclamation}
+            className="h-4 w-4 shrink-0"
+            aria-hidden="true"
+          />
           <span>{error}</span>
         </div>
       )}
@@ -99,7 +108,11 @@ export function TMDBTextStep({
               onClick={onBack}
               disabled={isLoading}
             >
-              <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+              <FontAwesomeIcon
+                icon={faArrowLeft}
+                className="mr-2 h-4 w-4"
+                aria-hidden="true"
+              />
               Back
             </Button>
           ) : (
@@ -108,7 +121,11 @@ export function TMDBTextStep({
 
           <Button type="button" onClick={() => onNext()} disabled={isLoading}>
             Next
-            <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+            <FontAwesomeIcon
+              icon={faArrowRight}
+              className="ml-2 h-4 w-4"
+              aria-hidden="true"
+            />
           </Button>
         </div>
       )}

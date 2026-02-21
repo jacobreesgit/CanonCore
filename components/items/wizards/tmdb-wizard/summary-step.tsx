@@ -5,15 +5,16 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  AlertCircle,
-  ArrowLeft,
-  Check,
-  Image as ImageIcon,
-  Sparkles,
-  SkipForward,
-  Type,
-} from "lucide-react";
+  faCircleExclamation,
+  faArrowLeft,
+  faCheck,
+  faImage,
+  faWandMagicSparkles,
+  faForwardStep,
+  faFont,
+} from "@fortawesome/free-solid-svg-icons";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -109,7 +110,11 @@ export function TMDBSummaryStep({
             "border-destructive/50 bg-destructive/10 text-destructive flex items-center gap-2 rounded-md border px-3 py-2 text-sm"
           )}
         >
-          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <FontAwesomeIcon
+            icon={faCircleExclamation}
+            className="h-4 w-4 shrink-0"
+            aria-hidden="true"
+          />
           <span>{error}</span>
         </div>
       )}
@@ -119,19 +124,21 @@ export function TMDBSummaryStep({
         {/* Text options summary */}
         <SummarySection
           title="Title & Description"
-          icon={Type}
+          icon={faFont}
           onClick={() => onEditStep("text")}
         >
           <div className="space-y-2 text-sm">
             <div className="flex items-start gap-2">
               <div className="mt-0.5 shrink-0">
                 {textOptions.updateName ? (
-                  <Check
+                  <FontAwesomeIcon
+                    icon={faCheck}
                     className="h-3 w-3 text-green-500"
                     aria-hidden="true"
                   />
                 ) : (
-                  <SkipForward
+                  <FontAwesomeIcon
+                    icon={faForwardStep}
                     className="text-muted-foreground h-3 w-3"
                     aria-hidden="true"
                   />
@@ -149,12 +156,14 @@ export function TMDBSummaryStep({
             <div className="flex items-start gap-2">
               <div className="mt-0.5 shrink-0">
                 {textOptions.updateDescription ? (
-                  <Check
+                  <FontAwesomeIcon
+                    icon={faCheck}
                     className="h-3 w-3 text-green-500"
                     aria-hidden="true"
                   />
                 ) : (
-                  <SkipForward
+                  <FontAwesomeIcon
+                    icon={faForwardStep}
                     className="text-muted-foreground h-3 w-3"
                     aria-hidden="true"
                   />
@@ -179,13 +188,17 @@ export function TMDBSummaryStep({
         {/* Poster summary */}
         <SummarySection
           title="Poster"
-          icon={ImageIcon}
+          icon={faImage}
           onClick={() => onEditStep("poster")}
         >
           <div className="flex items-center gap-3">
             {poster.skipped ? (
               <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                <SkipForward className="h-4 w-4" aria-hidden="true" />
+                <FontAwesomeIcon
+                  icon={faForwardStep}
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                />
                 <span>Skipped</span>
               </div>
             ) : poster.value ? (
@@ -201,7 +214,8 @@ export function TMDBSummaryStep({
                   />
                 ) : (
                   <div className="bg-muted flex h-16 w-12 items-center justify-center rounded">
-                    <ImageIcon
+                    <FontAwesomeIcon
+                      icon={faImage}
                       className="text-muted-foreground h-6 w-6"
                       aria-hidden="true"
                     />
@@ -216,7 +230,11 @@ export function TMDBSummaryStep({
               </>
             ) : (
               <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                <ImageIcon className="h-4 w-4" aria-hidden="true" />
+                <FontAwesomeIcon
+                  icon={faImage}
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                />
                 <span>No poster selected</span>
               </div>
             )}
@@ -228,13 +246,17 @@ export function TMDBSummaryStep({
         {/* Hero summary */}
         <SummarySection
           title="Hero Image"
-          icon={Sparkles}
+          icon={faWandMagicSparkles}
           onClick={() => onEditStep("hero")}
         >
           <div className="flex items-center gap-3">
             {backdrop.skipped ? (
               <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                <SkipForward className="h-4 w-4" aria-hidden="true" />
+                <FontAwesomeIcon
+                  icon={faForwardStep}
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                />
                 <span>Skipped</span>
               </div>
             ) : backdrop.value ? (
@@ -250,7 +272,8 @@ export function TMDBSummaryStep({
                   />
                 ) : (
                   <div className="bg-muted flex h-12 w-20 items-center justify-center rounded">
-                    <Sparkles
+                    <FontAwesomeIcon
+                      icon={faWandMagicSparkles}
                       className="text-muted-foreground h-6 w-6"
                       aria-hidden="true"
                     />
@@ -265,7 +288,11 @@ export function TMDBSummaryStep({
               </>
             ) : (
               <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                <Sparkles className="h-4 w-4" aria-hidden="true" />
+                <FontAwesomeIcon
+                  icon={faWandMagicSparkles}
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                />
                 <span>No hero selected</span>
               </div>
             )}
@@ -294,7 +321,11 @@ export function TMDBSummaryStep({
               onClick={onBack}
               disabled={isLoading}
             >
-              <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+              <FontAwesomeIcon
+                icon={faArrowLeft}
+                className="mr-2 h-4 w-4"
+                aria-hidden="true"
+              />
               Back
             </Button>
           ) : (
@@ -304,7 +335,11 @@ export function TMDBSummaryStep({
           <Button type="button" onClick={handleApply} disabled={isLoading}>
             {isLoading ? "Applying..." : "Apply"}
             {!isLoading && (
-              <Check className="ml-2 h-4 w-4" aria-hidden="true" />
+              <FontAwesomeIcon
+                icon={faCheck}
+                className="ml-2 h-4 w-4"
+                aria-hidden="true"
+              />
             )}
           </Button>
         </div>
@@ -318,7 +353,7 @@ export function TMDBSummaryStep({
  */
 interface SummarySectionProps {
   title: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: import("@fortawesome/fontawesome-svg-core").IconDefinition;
   onClick: () => void;
   children: React.ReactNode;
 }
@@ -328,7 +363,7 @@ interface SummarySectionProps {
  */
 function SummarySection({
   title,
-  icon: Icon,
+  icon,
   onClick,
   children,
 }: SummarySectionProps) {
@@ -336,7 +371,11 @@ function SummarySection({
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Icon className="text-muted-foreground h-4 w-4" aria-hidden="true" />
+          <FontAwesomeIcon
+            icon={icon}
+            className="text-muted-foreground h-4 w-4"
+            aria-hidden="true"
+          />
           <span className="font-medium">{title}</span>
         </div>
         <Button

@@ -121,7 +121,7 @@ export const SyncIconVariant: Story = {
   render: () => (
     <div className="flex items-center gap-8">
       <div className="flex flex-col items-center gap-2">
-        <SyncIcon syncStatus="SYNCED" />
+        <SyncIcon syncStatus="SYNCED" driveFileId="1abc" />
         <span className="text-muted-foreground text-xs">Synced</span>
       </div>
       <div className="flex flex-col items-center gap-2">
@@ -135,6 +135,10 @@ export const SyncIconVariant: Story = {
       <div className="flex flex-col items-center gap-2">
         <SyncIcon syncStatus="ERROR" />
         <span className="text-muted-foreground text-xs">Error</span>
+      </div>
+      <div className="flex flex-col items-center gap-2">
+        <SyncIcon syncStatus="SYNCED" />
+        <span className="text-muted-foreground text-xs">No Drive</span>
       </div>
     </div>
   ),

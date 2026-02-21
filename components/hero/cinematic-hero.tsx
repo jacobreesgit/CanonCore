@@ -16,20 +16,14 @@
 import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import useEmblaCarousel from "embla-carousel-react";
 
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MetadataLine } from "@/components/items/metadata-line";
 
-const Shader1 = dynamic(
-  () =>
-    import("@/components/shader-background").then((mod) => ({
-      default: mod.Shader1,
-    })),
-  { ssr: false }
-);
+import { MeshGradient } from "@mesh-gradient/react";
+
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { HeroAvatar } from "./hero-avatar";
 import type { CinematicHeroProps } from "./types";
@@ -44,7 +38,6 @@ export function CinematicHero({
   headingLevel = "h2",
   autoAdvanceInterval = 5000,
   enableKenBurns = true,
-  disableShader = false,
   backgroundElement,
   className,
 }: CinematicHeroProps) {
@@ -121,7 +114,7 @@ export function CinematicHero({
   return (
     <section
       className={cn(
-        "relative h-[55vh] w-full overflow-hidden md:h-[65vh]",
+        "relative h-[calc(55vh+var(--header-height))] w-full overflow-hidden md:h-[calc(65vh+var(--header-height))]",
         className
       )}
       onMouseEnter={() => setIsPaused(true)}
@@ -182,10 +175,15 @@ export function CinematicHero({
                     onError={() => handleImageLoad(slide.id)}
                     unoptimized={backgroundSrc.startsWith("/api/")}
                   />
-                ) : disableShader ? (
-                  <div className="h-full w-full bg-gradient-to-br from-blue-900 via-purple-900 to-slate-900" />
                 ) : (
-                  <Shader1 className="h-full w-full" />
+                  <MeshGradient
+                    className="absolute inset-0 h-full w-full"
+                    options={{
+                      colors: ["#0a0a0a", "#1a1a2e", "#16213e", "#0f3460"],
+                      animationSpeed: 0.2,
+                      seed: 7,
+                    }}
+                  />
                 )}
 
                 {/* Cinematic diagonal overlay — strongest at bottom-left content area */}

@@ -100,149 +100,153 @@ export function GridViewContent({
   onItemSelectChange,
   currentUser,
 }: GridViewContentProps) {
-  if (isEditing) {
-    return (
-      <Section className="py-8" aria-label="Contents">
-        <SortableGrid
-          items={currentLevelItems}
-          onItemsChange={onItemsChange}
-          onItemClick={onItemClick}
-          onOpenSettings={onOpenSettings}
-          onDeleteItem={onDeleteItem}
-          hasDriveConnection={hasDriveConnection}
-          onPinItem={onPinItem}
-          onUnpinItem={onUnpinItem}
-          isItemSelected={isItemSelected}
-          onItemSelectChange={onItemSelectChange}
-          currentUser={currentUser}
-        />
-      </Section>
-    );
-  }
-
   return (
-    <div className="flex flex-col">
-      {/* Pinned items section */}
-      {pinnedItems.length > 0 && (
-        <Section className="py-8" aria-label="Pinned items">
-          <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
-            Pinned
-          </h2>
-          <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
-            {pinnedItems.map((item, index) => (
-              <ItemContextMenu
-                key={item.id}
-                itemName={item.name}
-                driveFileId={item.driveFileId}
-                showAddChild={true}
-                isPinned={true}
-                onSettings={() => onOpenSettings(item.id)}
-                onDelete={() => onDeleteItem(item.id)}
-                onAddChild={
-                  onAddChild ? (n, d) => onAddChild(item.id, n, d) : undefined
-                }
-                onAddChildComplete={onAddChildComplete}
-                hasDriveConnection={hasDriveConnection}
-                onPin={() => onPinItem(item.id)}
-                onUnpin={() => onUnpinItem(item.id)}
-              >
-                <GridItem
-                  id={item.id}
-                  name={item.name}
-                  description={item.description}
-                  onClick={() => onItemClick(item.id)}
-                  tmdbPosterPath={item.tmdbPosterPath}
-                  artworkId={item.artworkId}
-                  progressPercentage={item.progress?.percentage ?? null}
-                  watchedCount={item.progress?.watchedItems}
-                  totalMediaCount={item.progress?.itemsWithMedia}
-                  totalItems={item.progress?.totalItems}
-                  showArtwork={true}
-                  showDescription={true}
-                  priority={index < 5}
-                  moreMenuProps={{
-                    itemName: item.name,
-                    driveFileId: item.driveFileId,
-                    hasDriveConnection,
-                    isPinned: true,
-                    showAddChild: true,
-                    onSettings: () => onOpenSettings(item.id),
-                    onDelete: () => onDeleteItem(item.id),
-                    onAddChild: onAddChild
-                      ? (n, d) => onAddChild(item.id, n, d)
-                      : undefined,
-                    onAddChildComplete,
-                    onPin: () => onPinItem(item.id),
-                    onUnpin: () => onUnpinItem(item.id),
-                  }}
-                />
-              </ItemContextMenu>
-            ))}
-          </div>
+    <>
+      {/* Edit mode: SortableGrid (conditionally rendered — dynamic import) */}
+      {isEditing && (
+        <Section className="py-8" aria-label="Contents">
+          <SortableGrid
+            items={currentLevelItems}
+            onItemsChange={onItemsChange}
+            onItemClick={onItemClick}
+            onOpenSettings={onOpenSettings}
+            onDeleteItem={onDeleteItem}
+            hasDriveConnection={hasDriveConnection}
+            onPinItem={onPinItem}
+            onUnpinItem={onUnpinItem}
+            isItemSelected={isItemSelected}
+            onItemSelectChange={onItemSelectChange}
+            currentUser={currentUser}
+          />
         </Section>
       )}
 
-      {/* Library section (items not pinned) */}
-      {unpinnedItems.length > 0 && (
-        <Section className="py-8" aria-label="Library">
-          {pinnedItems.length > 0 && (
+      {/* View mode: always mounted to prevent flash on edit→view toggle */}
+      <div style={{ display: isEditing ? "none" : "contents" }}>
+        {/* Pinned items section */}
+        {pinnedItems.length > 0 && (
+          <Section className="py-8" aria-label="Pinned items">
             <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
-              Library
+              Pinned
             </h2>
-          )}
-          <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
-            {unpinnedItems.map((item, index) => (
-              <ItemContextMenu
-                key={item.id}
-                itemName={item.name}
-                driveFileId={item.driveFileId}
-                showAddChild={true}
-                isPinned={false}
-                onSettings={() => onOpenSettings(item.id)}
-                onDelete={() => onDeleteItem(item.id)}
-                onAddChild={
-                  onAddChild ? (n, d) => onAddChild(item.id, n, d) : undefined
-                }
-                onAddChildComplete={onAddChildComplete}
-                hasDriveConnection={hasDriveConnection}
-                onPin={() => onPinItem(item.id)}
-                onUnpin={() => onUnpinItem(item.id)}
-              >
-                <GridItem
-                  id={item.id}
-                  name={item.name}
-                  description={item.description}
-                  onClick={() => onItemClick(item.id)}
-                  tmdbPosterPath={item.tmdbPosterPath}
-                  artworkId={item.artworkId}
-                  progressPercentage={item.progress?.percentage ?? null}
-                  watchedCount={item.progress?.watchedItems}
-                  totalMediaCount={item.progress?.itemsWithMedia}
-                  totalItems={item.progress?.totalItems}
-                  showArtwork={true}
-                  showDescription={true}
-                  priority={index < 8}
-                  moreMenuProps={{
-                    itemName: item.name,
-                    driveFileId: item.driveFileId,
-                    hasDriveConnection,
-                    isPinned: false,
-                    showAddChild: true,
-                    onSettings: () => onOpenSettings(item.id),
-                    onDelete: () => onDeleteItem(item.id),
-                    onAddChild: onAddChild
-                      ? (n, d) => onAddChild(item.id, n, d)
-                      : undefined,
-                    onAddChildComplete,
-                    onPin: () => onPinItem(item.id),
-                    onUnpin: () => onUnpinItem(item.id),
-                  }}
-                />
-              </ItemContextMenu>
-            ))}
-          </div>
-        </Section>
-      )}
-    </div>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
+              {pinnedItems.map((item, index) => (
+                <ItemContextMenu
+                  key={item.id}
+                  itemName={item.name}
+                  driveFileId={item.driveFileId}
+                  showAddChild={true}
+                  isPinned={true}
+                  onSettings={() => onOpenSettings(item.id)}
+                  onDelete={() => onDeleteItem(item.id)}
+                  onAddChild={
+                    onAddChild ? (n, d) => onAddChild(item.id, n, d) : undefined
+                  }
+                  onAddChildComplete={onAddChildComplete}
+                  hasDriveConnection={hasDriveConnection}
+                  onPin={() => onPinItem(item.id)}
+                  onUnpin={() => onUnpinItem(item.id)}
+                >
+                  <GridItem
+                    id={item.id}
+                    name={item.name}
+                    description={item.description}
+                    onClick={() => onItemClick(item.id)}
+                    tmdbPosterPath={item.tmdbPosterPath}
+                    artworkId={item.artworkId}
+                    progressPercentage={item.progress?.percentage ?? null}
+                    watchedCount={item.progress?.watchedItems}
+                    totalMediaCount={item.progress?.itemsWithMedia}
+                    totalItems={item.progress?.totalItems}
+                    showArtwork={true}
+                    showDescription={true}
+                    priority={index < 5}
+                    driveFileId={item.driveFileId}
+                    moreMenuProps={{
+                      itemName: item.name,
+                      driveFileId: item.driveFileId,
+                      hasDriveConnection,
+                      isPinned: true,
+                      showAddChild: true,
+                      onSettings: () => onOpenSettings(item.id),
+                      onDelete: () => onDeleteItem(item.id),
+                      onAddChild: onAddChild
+                        ? (n, d) => onAddChild(item.id, n, d)
+                        : undefined,
+                      onAddChildComplete,
+                      onPin: () => onPinItem(item.id),
+                      onUnpin: () => onUnpinItem(item.id),
+                    }}
+                  />
+                </ItemContextMenu>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {/* Library section (items not pinned) */}
+        {unpinnedItems.length > 0 && (
+          <Section className="py-8" aria-label="Library">
+            {pinnedItems.length > 0 && (
+              <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
+                Library
+              </h2>
+            )}
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
+              {unpinnedItems.map((item, index) => (
+                <ItemContextMenu
+                  key={item.id}
+                  itemName={item.name}
+                  driveFileId={item.driveFileId}
+                  showAddChild={true}
+                  isPinned={false}
+                  onSettings={() => onOpenSettings(item.id)}
+                  onDelete={() => onDeleteItem(item.id)}
+                  onAddChild={
+                    onAddChild ? (n, d) => onAddChild(item.id, n, d) : undefined
+                  }
+                  onAddChildComplete={onAddChildComplete}
+                  hasDriveConnection={hasDriveConnection}
+                  onPin={() => onPinItem(item.id)}
+                  onUnpin={() => onUnpinItem(item.id)}
+                >
+                  <GridItem
+                    id={item.id}
+                    name={item.name}
+                    description={item.description}
+                    onClick={() => onItemClick(item.id)}
+                    tmdbPosterPath={item.tmdbPosterPath}
+                    artworkId={item.artworkId}
+                    progressPercentage={item.progress?.percentage ?? null}
+                    watchedCount={item.progress?.watchedItems}
+                    totalMediaCount={item.progress?.itemsWithMedia}
+                    totalItems={item.progress?.totalItems}
+                    showArtwork={true}
+                    showDescription={true}
+                    priority={index < 8}
+                    driveFileId={item.driveFileId}
+                    moreMenuProps={{
+                      itemName: item.name,
+                      driveFileId: item.driveFileId,
+                      hasDriveConnection,
+                      isPinned: false,
+                      showAddChild: true,
+                      onSettings: () => onOpenSettings(item.id),
+                      onDelete: () => onDeleteItem(item.id),
+                      onAddChild: onAddChild
+                        ? (n, d) => onAddChild(item.id, n, d)
+                        : undefined,
+                      onAddChildComplete,
+                      onPin: () => onPinItem(item.id),
+                      onUnpin: () => onUnpinItem(item.id),
+                    }}
+                  />
+                </ItemContextMenu>
+              ))}
+            </div>
+          </Section>
+        )}
+      </div>
+    </>
   );
 }
