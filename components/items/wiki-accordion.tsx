@@ -3,7 +3,8 @@
  * Shows locked sections with "Coming Soon" messaging.
  */
 
-import { Lock, ChevronRight } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faLock, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/lib/utils";
 import type { WikiSection } from "@/lib/mock-data";
 import { MOCK_WIKI_SECTIONS_MOVIE } from "@/lib/mock-data";
@@ -52,7 +53,8 @@ export function WikiAccordion({
             )}
           >
             <div className="flex items-center gap-3">
-              <ChevronRight
+              <FontAwesomeIcon
+                icon={faChevronRight}
                 className="size-4 text-[var(--tertiary-foreground)]"
                 aria-hidden="true"
               />
@@ -60,7 +62,8 @@ export function WikiAccordion({
                 {section.title}
               </span>
             </div>
-            <Lock
+            <FontAwesomeIcon
+              icon={faLock}
               className="size-4 text-[var(--tertiary-foreground)]"
               aria-hidden="true"
             />

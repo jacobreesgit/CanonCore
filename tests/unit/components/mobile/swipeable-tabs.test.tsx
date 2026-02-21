@@ -8,7 +8,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, act, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Settings2, Film, Sparkles, User, Lock } from "lucide-react";
+import {
+  faFilm,
+  faGears,
+  faLock,
+  faUser,
+  faWandMagicSparkles,
+} from "@fortawesome/free-solid-svg-icons";
 import { SwipeableTabs } from "@/components/mobile/swipeable-tabs";
 
 // ---------------------------------------------------------------------------
@@ -357,31 +363,31 @@ const selectModeTabs = [
   {
     id: "tab1",
     label: "Profile",
-    icon: User,
+    icon: faUser,
     content: <div>Profile Content</div>,
   },
   {
     id: "tab2",
     label: "Account",
-    icon: Lock,
+    icon: faLock,
     content: <div>Account Content</div>,
   },
   {
     id: "tab3",
     label: "Connections",
-    icon: Settings2,
+    icon: faGears,
     content: <div>Connections Content</div>,
   },
   {
     id: "tab4",
     label: "Preferences",
-    icon: Film,
+    icon: faFilm,
     content: <div>Preferences Content</div>,
   },
   {
     id: "tab5",
     label: "Activity",
-    icon: Sparkles,
+    icon: faWandMagicSparkles,
     content: <div>Activity Content</div>,
   },
 ];

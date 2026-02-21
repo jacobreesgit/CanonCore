@@ -5,7 +5,14 @@
 
 "use client";
 
-import { ChevronRight, Film, Layers, Loader2, Tv } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faChevronRight,
+  faFilm,
+  faLayerGroup,
+  faSpinner,
+  faTv,
+} from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/lib/utils";
 import { getPosterUrl, getStillUrl } from "@/lib/tmdb-client";
 import type { TMDBSeasonSummary, TMDBEpisode } from "@/lib/tmdb-client";
@@ -53,7 +60,10 @@ export function SeasonItem({ season, onClick }: SeasonItemProps) {
         </div>
       ) : (
         <div className="bg-muted flex h-12 w-8 shrink-0 items-center justify-center rounded">
-          <Layers className="text-muted-foreground size-4" />
+          <FontAwesomeIcon
+            icon={faLayerGroup}
+            className="text-muted-foreground size-4"
+          />
         </div>
       )}
 
@@ -62,7 +72,10 @@ export function SeasonItem({ season, onClick }: SeasonItemProps) {
         <p className="text-muted-foreground text-xs">{episodeText}</p>
       </div>
 
-      <ChevronRight className="text-muted-foreground size-4 shrink-0" />
+      <FontAwesomeIcon
+        icon={faChevronRight}
+        className="text-muted-foreground size-4 shrink-0"
+      />
     </button>
   );
 }
@@ -107,7 +120,10 @@ export function EpisodeItem({ episode, onClick }: EpisodeItemProps) {
         </div>
       ) : (
         <div className="bg-muted flex h-10 w-16 shrink-0 items-center justify-center rounded">
-          <Film className="text-muted-foreground size-4" />
+          <FontAwesomeIcon
+            icon={faFilm}
+            className="text-muted-foreground size-4"
+          />
         </div>
       )}
 
@@ -125,7 +141,10 @@ export function EpisodeItem({ episode, onClick }: EpisodeItemProps) {
         )}
       </div>
 
-      <ChevronRight className="text-muted-foreground size-4 shrink-0" />
+      <FontAwesomeIcon
+        icon={faChevronRight}
+        className="text-muted-foreground size-4 shrink-0"
+      />
     </button>
   );
 }
@@ -144,7 +163,11 @@ interface LoadingStateProps {
 export function LoadingState({ message }: LoadingStateProps) {
   return (
     <div className="flex min-h-[200px] flex-col items-center justify-center gap-3">
-      <Loader2 className="text-muted-foreground size-8 animate-spin" />
+      <FontAwesomeIcon
+        icon={faSpinner}
+        className="text-muted-foreground size-8"
+        spin
+      />
       <p className="text-muted-foreground text-sm">{message}</p>
     </div>
   );
@@ -165,7 +188,7 @@ export function ErrorState({ message }: ErrorStateProps) {
   return (
     <div className="flex min-h-[200px] flex-col items-center justify-center gap-3">
       <div className="bg-destructive/10 flex size-12 items-center justify-center rounded-full">
-        <Tv className="text-destructive size-6" />
+        <FontAwesomeIcon icon={faTv} className="text-destructive size-6" />
       </div>
       <p className="text-muted-foreground text-center text-sm">{message}</p>
     </div>

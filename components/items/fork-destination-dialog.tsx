@@ -25,15 +25,16 @@ import {
   MobileBottomSheetFooter,
 } from "@/components/mobile/mobile-bottom-sheet";
 import { Button } from "@/components/ui/button";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  Folder,
-  FolderOpen,
-  ChevronRight,
-  Home,
-  Loader2,
-  Copy,
-  Search,
-} from "lucide-react";
+  faFolder,
+  faFolderOpen,
+  faChevronRight,
+  faHouse,
+  faSpinner,
+  faCopy,
+  faMagnifyingGlass,
+} from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/lib/utils";
 import { getAllItems } from "@/lib/item-actions";
 import { MAX_ITEM_DEPTH } from "@/lib/config/items";
@@ -86,15 +87,21 @@ function FolderItemRow({
       style={{ ...style, paddingLeft: `${12 + folder.depth * 16}px` }}
     >
       {folder.hasChildren ? (
-        <FolderOpen className="h-4 w-4 flex-shrink-0" />
+        <FontAwesomeIcon
+          icon={faFolderOpen}
+          className="h-4 w-4 flex-shrink-0"
+        />
       ) : (
-        <Folder className="h-4 w-4 flex-shrink-0" />
+        <FontAwesomeIcon icon={faFolder} className="h-4 w-4 flex-shrink-0" />
       )}
       <span className="min-w-0 truncate text-sm font-medium">
         {folder.name}
       </span>
       {folder.hasChildren && (
-        <ChevronRight className="ml-auto h-4 w-4 flex-shrink-0 opacity-50" />
+        <FontAwesomeIcon
+          icon={faChevronRight}
+          className="ml-auto h-4 w-4 flex-shrink-0 opacity-50"
+        />
       )}
     </button>
   );
@@ -112,7 +119,7 @@ function ForkingOverlay() {
         exit={{ opacity: 0 }}
         className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-lg bg-black/60 backdrop-blur-sm"
       >
-        <Loader2 className="h-8 w-8 animate-spin text-white" />
+        <FontAwesomeIcon icon={faSpinner} className="h-8 w-8 text-white" spin />
         <p className="text-muted-foreground mt-3 text-sm font-medium">
           Adding to your library...
         </p>
@@ -159,7 +166,11 @@ function FolderListContent({
   if (loading) {
     return (
       <div className="flex h-48 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-[var(--tertiary-foreground)]" />
+        <FontAwesomeIcon
+          icon={faSpinner}
+          className="h-6 w-6 text-[var(--tertiary-foreground)]"
+          spin
+        />
       </div>
     );
   }
@@ -177,7 +188,10 @@ function FolderListContent({
       {/* Search input - only show if there are folders */}
       {folders.length > 0 && (
         <div className="relative mb-3">
-          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--tertiary-foreground)]" />
+          <FontAwesomeIcon
+            icon={faMagnifyingGlass}
+            className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--tertiary-foreground)]"
+          />
           <input
             type="text"
             placeholder="Search folders…"
@@ -212,7 +226,7 @@ function FolderListContent({
             isForking && "pointer-events-none opacity-50"
           )}
         >
-          <Home className="h-4 w-4 flex-shrink-0" />
+          <FontAwesomeIcon icon={faHouse} className="h-4 w-4 flex-shrink-0" />
           <span className="text-sm font-medium">My Items (Root)</span>
         </motion.button>
       )}
@@ -254,7 +268,8 @@ function FolderListContent({
             </div>
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 py-12">
-              <Search
+              <FontAwesomeIcon
+                icon={faMagnifyingGlass}
                 aria-hidden="true"
                 className="size-8 text-[var(--tertiary-foreground)]"
               />
@@ -391,7 +406,7 @@ export function ForkDestinationDialog({
         >
           <DialogHeader>
             <DialogTitle className="text-foreground flex items-center gap-2">
-              <Copy className="h-5 w-5" />
+              <FontAwesomeIcon icon={faCopy} className="h-5 w-5" />
               Fork to Library
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
@@ -437,12 +452,12 @@ export function ForkDestinationDialog({
             >
               {isForking ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <FontAwesomeIcon icon={faSpinner} className="h-4 w-4" spin />
                   Forking…
                 </>
               ) : (
                 <>
-                  <Copy className="h-4 w-4" />
+                  <FontAwesomeIcon icon={faCopy} className="h-4 w-4" />
                   Fork Here
                 </>
               )}
@@ -474,7 +489,11 @@ export function ForkDestinationDialog({
                 "bg-primary/10 ring-primary/20 ring-1"
               )}
             >
-              <Copy aria-hidden="true" className="text-primary size-5" />
+              <FontAwesomeIcon
+                icon={faCopy}
+                aria-hidden="true"
+                className="text-primary size-5"
+              />
             </div>
             <div className="min-w-0">
               <MobileBottomSheetTitle>Fork to Library</MobileBottomSheetTitle>
@@ -507,12 +526,21 @@ export function ForkDestinationDialog({
             >
               {isForking ? (
                 <>
-                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                  <FontAwesomeIcon
+                    icon={faSpinner}
+                    aria-hidden="true"
+                    className="size-4"
+                    spin
+                  />
                   Forking…
                 </>
               ) : (
                 <>
-                  <Copy aria-hidden="true" className="size-4" />
+                  <FontAwesomeIcon
+                    icon={faCopy}
+                    aria-hidden="true"
+                    className="size-4"
+                  />
                   Fork Here
                 </>
               )}

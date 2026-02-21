@@ -22,7 +22,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { resetPassword } from "@/lib/auth-actions";
-import { Check } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCheck } from "@fortawesome/free-solid-svg-icons";
 
 /**
  * Form component for entering and confirming new password.
@@ -110,7 +111,7 @@ function ResetPasswordFormInner() {
             <>
               <div className="flex justify-center">
                 <div className="flex size-14 items-center justify-center rounded-full bg-green-500 text-white">
-                  <Check className="size-7" />
+                  <FontAwesomeIcon icon={faCheck} className="size-7" />
                 </div>
               </div>
 

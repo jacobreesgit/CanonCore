@@ -7,7 +7,13 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, Moon, Settings, Sun } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faGear,
+  faMoon,
+  faRightFromBracket,
+  faSun,
+} from "@fortawesome/free-solid-svg-icons";
 import { useTheme } from "next-themes";
 import { signOut } from "next-auth/react";
 import { toast } from "sonner";
@@ -151,9 +157,17 @@ export function MobileUserSheet({
               onClick={toggleTheme}
             >
               {theme === "dark" ? (
-                <Sun className="size-4" aria-hidden="true" />
+                <FontAwesomeIcon
+                  icon={faSun}
+                  className="size-4"
+                  aria-hidden="true"
+                />
               ) : (
-                <Moon className="size-4" aria-hidden="true" />
+                <FontAwesomeIcon
+                  icon={faMoon}
+                  className="size-4"
+                  aria-hidden="true"
+                />
               )}
               {theme === "dark" ? "Light Mode" : "Dark Mode"}
             </Button>
@@ -163,7 +177,11 @@ export function MobileUserSheet({
               className="w-full justify-start gap-2"
               onClick={handleOpenSettings}
             >
-              <Settings className="size-4" aria-hidden="true" />
+              <FontAwesomeIcon
+                icon={faGear}
+                className="size-4"
+                aria-hidden="true"
+              />
               Settings
             </Button>
 
@@ -173,7 +191,11 @@ export function MobileUserSheet({
               onClick={handleSignOut}
               disabled={isSigningOut}
             >
-              <LogOut className="size-4" aria-hidden="true" />
+              <FontAwesomeIcon
+                icon={faRightFromBracket}
+                className="size-4"
+                aria-hidden="true"
+              />
               {isSigningOut ? "Signing out…" : "Sign out"}
             </Button>
           </div>

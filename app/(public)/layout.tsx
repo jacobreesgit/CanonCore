@@ -11,6 +11,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { MobileNavProvider } from "@/components/mobile";
 import { auth, getExtendedSidebarUser } from "@/lib/auth";
 import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
+import { getPinnedItems } from "@/lib/item-actions";
 import { MyItemsProviders } from "@/components/items/my-items-providers";
 
 /**
@@ -24,10 +25,14 @@ export default async function PublicLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
-  const [user, driveConnection] = await Promise.all([
+  const [user, driveConnection, pinnedResult] = await Promise.all([
     getExtendedSidebarUser(session),
     session?.user ? getGoogleDriveConnection() : Promise.resolve(null),
+    session?.user
+      ? getPinnedItems()
+      : Promise.resolve({ success: true as const, data: [] }),
   ]);
+  const pinnedItems = "data" in pinnedResult ? (pinnedResult.data ?? []) : [];
   const driveNeedsReauth = driveConnection?.needsReauth ?? false;
 
   // Prepare user data for mobile nav (null-safe)
@@ -56,10 +61,10 @@ export default async function PublicLayout({
       <AppSidebar
         variant="inset"
         user={user}
-        context="home"
         driveConnection={driveConnection}
+        pinnedItems={pinnedItems}
       />
-      <SidebarInset className="lg:overflow-hidden">
+      <SidebarInset className="bg-transparent lg:overflow-hidden">
         <main
           id="main-content"
           tabIndex={-1}

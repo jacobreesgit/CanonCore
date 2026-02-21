@@ -5,7 +5,11 @@
 
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import { fn } from "storybook/test";
-import { Film, ImageIcon, FileText } from "lucide-react";
+import {
+  faFilm,
+  faImage,
+  faFileLines,
+} from "@fortawesome/free-solid-svg-icons";
 
 import { FileTypeCombobox } from "./file-type-combobox";
 import type { SerializedItemFile, QueuedFile } from "@/lib/types";
@@ -151,7 +155,7 @@ export const MediaSelectMode: Story = {
     <FileTypeCombobox
       label="Primary Media"
       description="Select the main video or audio file for this item"
-      icon={Film}
+      icon={faFilm}
       fileType="media"
       uploadOnly={false}
       files={mockMediaFiles}
@@ -169,7 +173,7 @@ export const MediaWithSelection: Story = {
     <FileTypeCombobox
       label="Primary Media"
       description="Select the main video or audio file for this item"
-      icon={Film}
+      icon={faFilm}
       fileType="media"
       uploadOnly={false}
       files={mockMediaFiles}
@@ -194,7 +198,7 @@ export const ArtworkSelectMode: Story = {
     <FileTypeCombobox
       label="Poster"
       description="Select poster artwork for this item"
-      icon={ImageIcon}
+      icon={faImage}
       fileType="artwork"
       uploadOnly={false}
       files={mockArtworkFiles}
@@ -219,7 +223,7 @@ export const SubtitleSelectMode: Story = {
     <FileTypeCombobox
       label="Subtitles"
       description="Select subtitle file for this media"
-      icon={FileText}
+      icon={faFileLines}
       fileType="subtitle"
       uploadOnly={false}
       files={[]}
@@ -244,7 +248,7 @@ export const EmptyFileList: Story = {
     <FileTypeCombobox
       label="Primary Media"
       description="No media files uploaded yet"
-      icon={Film}
+      icon={faFilm}
       fileType="media"
       uploadOnly={false}
       files={[]}
@@ -269,7 +273,7 @@ export const DisabledNoDrive: Story = {
     <FileTypeCombobox
       label="Primary Media"
       description="Connect Google Drive to upload files"
-      icon={Film}
+      icon={faFilm}
       fileType="media"
       uploadOnly={false}
       files={[]}
@@ -297,7 +301,7 @@ export const UploadOnlyMode: Story = {
     <FileTypeCombobox
       label="Poster"
       description="Drop poster images here or click to browse"
-      icon={ImageIcon}
+      icon={faImage}
       fileType="artwork"
       uploadOnly={true}
       queuedFiles={[]}
@@ -319,7 +323,7 @@ export const UploadOnlyWithFiles: Story = {
     <FileTypeCombobox
       label="Poster"
       description="Poster images queued for upload"
-      icon={ImageIcon}
+      icon={faImage}
       fileType="artwork"
       uploadOnly={true}
       queuedFiles={[
@@ -343,7 +347,7 @@ export const UploadOnlyDisabled: Story = {
     <FileTypeCombobox
       label="Poster"
       description="Connect Google Drive to upload files"
-      icon={ImageIcon}
+      icon={faImage}
       fileType="artwork"
       uploadOnly={true}
       queuedFiles={[]}

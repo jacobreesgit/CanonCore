@@ -6,14 +6,15 @@
 
 "use client";
 
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  Folder,
-  Film,
-  ImageIcon,
-  FileText,
-  Music,
-  FolderOpen,
-} from "lucide-react";
+  faFolder,
+  faFilm,
+  faImage,
+  faFileLines,
+  faMusic,
+  faFolderOpen,
+} from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/lib/utils";
 import type { FileCounts } from "@/lib/types";
 
@@ -64,12 +65,12 @@ export function ItemStats({
   const hasContent = hasChildren || hasFiles;
 
   // Determine icon: Film (video), Music (audio), FolderOpen (mixed)
-  const MediaIcon =
+  const mediaIcon =
     mediaIconType === "music"
-      ? Music
+      ? faMusic
       : mediaIconType === "mixed"
-        ? FolderOpen
-        : Film;
+        ? faFolderOpen
+        : faFilm;
 
   if (!hasContent && !showEmpty) {
     return null;
@@ -120,7 +121,7 @@ export function ItemStats({
     >
       {hasChildren && (
         <span className="flex items-center gap-1.5">
-          <Folder className="size-4" />
+          <FontAwesomeIcon icon={faFolder} className="size-4" />
           <span>
             {childCount} {childCount === 1 ? "child" : "children"}
           </span>
@@ -128,19 +129,19 @@ export function ItemStats({
       )}
       {fileCounts.media > 0 && (
         <span className="flex items-center gap-1.5">
-          <MediaIcon className="size-4" />
+          <FontAwesomeIcon icon={mediaIcon} className="size-4" />
           <span>{fileCounts.media}</span>
         </span>
       )}
       {fileCounts.artwork > 0 && (
         <span className="flex items-center gap-1.5">
-          <ImageIcon className="size-4" />
+          <FontAwesomeIcon icon={faImage} className="size-4" />
           <span>{fileCounts.artwork}</span>
         </span>
       )}
       {fileCounts.subtitles > 0 && (
         <span className="flex items-center gap-1.5">
-          <FileText className="size-4" />
+          <FontAwesomeIcon icon={faFileLines} className="size-4" />
           <span>{fileCounts.subtitles}</span>
         </span>
       )}

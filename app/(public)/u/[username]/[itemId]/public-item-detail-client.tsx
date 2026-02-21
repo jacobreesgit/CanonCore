@@ -33,7 +33,8 @@ const SwipeableUnderlineTabs = dynamic(
 import { HeroContentLayout } from "@/components/ui/hero-content-layout";
 import { ContentToolbar } from "@/components/ui/content-toolbar";
 import { sortItems, filterItems, publicItemsToTree } from "@/lib/item-utils";
-import { Copy, Check, Loader2 } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCopy, faCheck, faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "sonner";
 import { getTmdbBackdropUrl } from "@/lib/tmdb-image-utils";
 import type { PublicItem } from "@/lib/public-auth";
@@ -216,9 +217,18 @@ export function PublicItemClient({
           data-testid="profile-fork-button"
         >
           {isForking ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            <FontAwesomeIcon
+              icon={faSpinner}
+              className="size-4"
+              spin
+              aria-hidden="true"
+            />
           ) : (
-            <Copy className="size-4" aria-hidden="true" />
+            <FontAwesomeIcon
+              icon={faCopy}
+              className="size-4"
+              aria-hidden="true"
+            />
           )}
           Fork to Library
         </HeroButton>
@@ -234,13 +244,21 @@ export function PublicItemClient({
             }
           }}
         >
-          <Check className="size-4 text-green-400" aria-hidden="true" />
+          <FontAwesomeIcon
+            icon={faCheck}
+            className="size-4 text-green-400"
+            aria-hidden="true"
+          />
           In Your Library
         </HeroButton>
       )}
       {!isOwnItem && !isAuthenticated && (
         <HeroButton onClick={() => router.push("/sign-in")}>
-          <Copy className="size-4" aria-hidden="true" />
+          <FontAwesomeIcon
+            icon={faCopy}
+            className="size-4"
+            aria-hidden="true"
+          />
           Sign in to Fork
         </HeroButton>
       )}
@@ -252,7 +270,7 @@ export function PublicItemClient({
   const contentsActions =
     forkInfo && forkInfo.forkCount > 0 ? (
       <span className="text-muted-foreground hidden items-center gap-1.5 text-sm lg:flex">
-        <Copy className="size-4" />
+        <FontAwesomeIcon icon={faCopy} className="size-4" />
         {forkInfo.forkCount} {forkInfo.forkCount === 1 ? "fork" : "forks"}
       </span>
     ) : undefined;

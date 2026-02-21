@@ -182,6 +182,32 @@ export function SignInForm() {
               Sign up
             </Link>
           </p>
+
+          <p className="text-muted-foreground text-center text-xs">
+            <Link
+              href="/legal/privacy-policy"
+              className="text-primary focus-visible:ring-ring hover:underline focus-visible:underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              target="_blank"
+            >
+              Privacy Policy
+            </Link>
+            {" · "}
+            <Link
+              href="/legal/terms-of-service"
+              className="text-primary focus-visible:ring-ring hover:underline focus-visible:underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              target="_blank"
+            >
+              Terms of Service
+            </Link>
+            {" · "}
+            <Link
+              href="/legal/cookie-policy"
+              className="text-primary focus-visible:ring-ring hover:underline focus-visible:underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              target="_blank"
+            >
+              Cookie Policy
+            </Link>
+          </p>
         </div>
       </div>
     </main>

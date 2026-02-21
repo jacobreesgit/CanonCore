@@ -23,7 +23,12 @@ import {
   type RefObject,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Globe, ListMusic } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faMagnifyingGlass,
+  faGlobe,
+  faMusic,
+} from "@fortawesome/free-solid-svg-icons";
 import { toast } from "sonner";
 import {
   CommandDialog,
@@ -387,9 +392,10 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
         {hasInitialized && !isAnyLoading && (
           <CommandEmpty className="flex-1 py-12 text-center">
             <div className="flex flex-col items-center gap-2">
-              <Search
-                aria-hidden="true"
+              <FontAwesomeIcon
+                icon={faMagnifyingGlass}
                 className="text-muted-foreground/50 size-8"
+                aria-hidden="true"
               />
               <p className="text-muted-foreground text-sm">No results found.</p>
             </div>
@@ -458,7 +464,7 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
                   <ItemThumbnail
                     tmdbPosterPath={item.tmdbPosterPath}
                     artworkId={item.artworkId}
-                    fallbackIcon={Globe}
+                    fallbackIcon={faGlobe}
                     fallbackClassName="group-aria-selected:bg-primary/10 group-aria-selected:text-primary transition-colors"
                   />
                   <div className="flex min-w-0 flex-1 flex-col">
@@ -505,7 +511,10 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
                     </div>
                   ) : (
                     <div className="bg-muted group-aria-selected:bg-primary/10 flex size-9 shrink-0 items-center justify-center rounded transition-colors">
-                      <ListMusic className="text-muted-foreground group-aria-selected:text-primary size-4 transition-colors" />
+                      <FontAwesomeIcon
+                        icon={faMusic}
+                        className="text-muted-foreground group-aria-selected:text-primary size-4 transition-colors"
+                      />
                     </div>
                   )}
                   <div className="flex min-w-0 flex-1 flex-col">
@@ -518,7 +527,10 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
                       {playlist.ownerUsername}
                     </span>
                   </div>
-                  <Globe className="text-muted-foreground/50 size-3.5 shrink-0" />
+                  <FontAwesomeIcon
+                    icon={faGlobe}
+                    className="text-muted-foreground/50 size-3.5 shrink-0"
+                  />
                 </CommandItem>
               ))
             )}

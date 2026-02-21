@@ -3,15 +3,16 @@
 
 import { useDirection } from "@radix-ui/react-direction";
 import { Slot } from "@radix-ui/react-slot";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  FileArchiveIcon,
-  FileAudioIcon,
-  FileCodeIcon,
-  FileCogIcon,
-  FileIcon,
-  FileTextIcon,
-  FileVideoIcon,
-} from "lucide-react";
+  faFileZipper,
+  faFileAudio,
+  faFileCode,
+  faFilePen,
+  faFile,
+  faFileLines,
+  faFileVideo,
+} from "@fortawesome/free-solid-svg-icons";
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { useAsRef } from "@/hooks/use-as-ref";
@@ -40,18 +41,18 @@ function getFileIcon(file: File) {
   const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
 
   if (type.startsWith("video/")) {
-    return <FileVideoIcon />;
+    return <FontAwesomeIcon icon={faFileVideo} aria-hidden="true" />;
   }
 
   if (type.startsWith("audio/")) {
-    return <FileAudioIcon />;
+    return <FontAwesomeIcon icon={faFileAudio} aria-hidden="true" />;
   }
 
   if (
     type.startsWith("text/") ||
     ["txt", "md", "rtf", "pdf"].includes(extension)
   ) {
-    return <FileTextIcon />;
+    return <FontAwesomeIcon icon={faFileLines} aria-hidden="true" />;
   }
 
   if (
@@ -73,21 +74,21 @@ function getFileIcon(file: File) {
       "cs",
     ].includes(extension)
   ) {
-    return <FileCodeIcon />;
+    return <FontAwesomeIcon icon={faFileCode} aria-hidden="true" />;
   }
 
   if (["zip", "rar", "7z", "tar", "gz", "bz2"].includes(extension)) {
-    return <FileArchiveIcon />;
+    return <FontAwesomeIcon icon={faFileZipper} aria-hidden="true" />;
   }
 
   if (
     ["exe", "msi", "app", "apk", "deb", "rpm"].includes(extension) ||
     type.startsWith("application/")
   ) {
-    return <FileCogIcon />;
+    return <FontAwesomeIcon icon={faFilePen} aria-hidden="true" />;
   }
 
-  return <FileIcon />;
+  return <FontAwesomeIcon icon={faFile} aria-hidden="true" />;
 }
 
 type Direction = "ltr" | "rtl";

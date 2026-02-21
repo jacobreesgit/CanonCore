@@ -6,7 +6,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CloudOff, Loader2 } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCloudArrowDown, faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { getPendingCount, isQueueAvailable } from "@/lib/sync-queue";
 import { cn } from "@/lib/utils";
 
@@ -104,9 +105,15 @@ export function PendingIndicator() {
       )}
     >
       <div className="relative flex size-3 items-center justify-center">
-        <CloudOff className="size-3" aria-hidden="true" />
-        <Loader2
-          className="absolute size-3 animate-spin opacity-50"
+        <FontAwesomeIcon
+          icon={faCloudArrowDown}
+          className="size-3"
+          aria-hidden="true"
+        />
+        <FontAwesomeIcon
+          icon={faSpinner}
+          spin
+          className="absolute size-3 opacity-50"
           aria-hidden="true"
         />
       </div>

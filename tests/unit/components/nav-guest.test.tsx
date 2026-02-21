@@ -40,30 +40,6 @@ describe("AuthButtons", () => {
     vi.clearAllMocks();
   });
 
-  it("renders Get Help as active on /docs", () => {
-    mockPathname.mockReturnValue("/docs");
-    render(<AuthButtons />);
-
-    const getHelpButton = screen.getByRole("button", { name: /get help/i });
-    expect(getHelpButton).toHaveAttribute("data-active", "true");
-  });
-
-  it("renders Get Help as active on /docs/getting-started", () => {
-    mockPathname.mockReturnValue("/docs/getting-started");
-    render(<AuthButtons />);
-
-    const getHelpButton = screen.getByRole("button", { name: /get help/i });
-    expect(getHelpButton).toHaveAttribute("data-active", "true");
-  });
-
-  it("renders Get Help as inactive on /", () => {
-    mockPathname.mockReturnValue("/");
-    render(<AuthButtons />);
-
-    const getHelpButton = screen.getByRole("button", { name: /get help/i });
-    expect(getHelpButton).toHaveAttribute("data-active", "false");
-  });
-
   it("renders Get Started as active on /sign-in", () => {
     mockPathname.mockReturnValue("/sign-in");
     render(<AuthButtons />);

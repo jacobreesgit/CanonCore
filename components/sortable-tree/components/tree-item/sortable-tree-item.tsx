@@ -38,6 +38,8 @@ interface SortableTreeItemProps extends Omit<TreeItemProps, "handleProps"> {
   isSelected?: boolean;
   /** Callback when selection state changes. */
   onSelectChange?: (selected: boolean) => void;
+  /** Whether edit/reorder mode is active. Controls drag handles and visual richness. */
+  isEditing?: boolean;
 }
 
 const animateLayoutChanges: AnimateLayoutChanges = ({
@@ -70,6 +72,7 @@ export function SortableTreeItem({
   onUnpin,
   isSelected,
   onSelectChange,
+  isEditing = true,
   ...props
 }: SortableTreeItemProps) {
   const {
@@ -109,17 +112,34 @@ export function SortableTreeItem({
         wrapperRef={setDroppableNodeRef}
         id={id}
         value={value}
+        driveFileId={driveFileId}
         style={style}
         ghost={isDragging}
         disableSelection={isSorting}
         disableInteraction={isSorting}
-        handleProps={{
-          ...attributes,
-          ...listeners,
-        }}
-        showDragHandle={true}
+        handleProps={isEditing ? { ...attributes, ...listeners } : undefined}
+        showDragHandle={isEditing}
+        showThumbnail={!isEditing}
+        showDescription={!isEditing}
         isSelected={isSelected}
-        onSelectChange={onSelectChange}
+        onSelectChange={isEditing ? onSelectChange : undefined}
+        moreMenuProps={
+          !isEditing
+            ? {
+                itemName: value,
+                driveFileId,
+                hasDriveConnection,
+                isPinned,
+                showAddChild: true,
+                onSettings,
+                onDelete,
+                onAddChild,
+                onAddChildComplete,
+                onPin,
+                onUnpin,
+              }
+            : undefined
+        }
         {...props}
       />
     </ItemContextMenu>

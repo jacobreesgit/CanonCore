@@ -87,17 +87,11 @@ vi.mock("next/image", () => ({
   ),
 }));
 
-// Mock next/dynamic — the only dynamic import in cinematic-hero is Shader1
-vi.mock("next/dynamic", () => ({
-  default: () =>
-    function MockShader(props: Record<string, unknown>) {
-      return <div {...props}>Shader</div>;
-    },
-}));
-
-// Mock ShaderBackground
-vi.mock("@/components/shader-background", () => ({
-  Shader1: () => <div>Shader</div>,
+// Mock MeshGradient — used as fallback when no background image
+vi.mock("@mesh-gradient/react", () => ({
+  MeshGradient: ({ className }: { className?: string }) => (
+    <div data-testid="mesh-gradient" className={className} />
+  ),
 }));
 
 // Mock Skeleton
@@ -464,30 +458,15 @@ describe("CinematicHero", () => {
     });
   });
 
-  describe("shader fallback", () => {
-    it("should show Shader1 fallback when no background image", () => {
+  describe("mesh gradient fallback", () => {
+    it("should show MeshGradient fallback when no background image", () => {
       const slidesWithoutArt: HeroSlide[] = [
         { ...mockSlides[0], artworkId: null, backgroundUrl: null },
       ];
 
       render(<CinematicHero slides={slidesWithoutArt} />);
 
-      // The mock Shader1 renders "Shader" text
-      expect(screen.getByText("Shader")).toBeInTheDocument();
-    });
-
-    it("should show gradient fallback when disableShader is true", () => {
-      const slidesWithoutArt: HeroSlide[] = [
-        { ...mockSlides[0], artworkId: null, backgroundUrl: null },
-      ];
-
-      const { container } = render(
-        <CinematicHero slides={slidesWithoutArt} disableShader />
-      );
-
-      // Gradient fallback should NOT have shader content
-      expect(screen.queryByText("Shader")).not.toBeInTheDocument();
-      expect(container.querySelector(".bg-gradient-to-br")).toBeInTheDocument();
+      expect(screen.getByTestId("mesh-gradient")).toBeInTheDocument();
     });
   });
 });

@@ -25,7 +25,8 @@ import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { signUp } from "@/lib/auth-actions";
 import { useUsernameValidation } from "@/hooks/use-username-validation";
-import { Check, X, Loader2 } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCheck, faXmark, faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/lib/utils";
 
 /**
@@ -216,11 +217,21 @@ export function SignUpForm() {
                 {username && (
                   <div className="absolute top-1/2 right-3 -translate-y-1/2">
                     {isValidating ? (
-                      <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+                      <FontAwesomeIcon
+                        icon={faSpinner}
+                        className="text-muted-foreground h-4 w-4"
+                        spin
+                      />
                     ) : isUsernameValid ? (
-                      <Check className="h-4 w-4 text-green-500" />
+                      <FontAwesomeIcon
+                        icon={faCheck}
+                        className="h-4 w-4 text-green-500"
+                      />
                     ) : usernameError ? (
-                      <X className="text-destructive h-4 w-4" />
+                      <FontAwesomeIcon
+                        icon={faXmark}
+                        className="text-destructive h-4 w-4"
+                      />
                     ) : null}
                   </div>
                 )}
@@ -287,6 +298,26 @@ export function SignUpForm() {
               {loading ? "Creating account..." : "Create account"}
             </Button>
           </form>
+
+          <p className="text-muted-foreground text-center text-xs">
+            By creating an account, you agree to our{" "}
+            <Link
+              href="/legal/terms-of-service"
+              className="text-primary focus-visible:ring-ring hover:underline focus-visible:underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              target="_blank"
+            >
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link
+              href="/legal/privacy-policy"
+              className="text-primary focus-visible:ring-ring hover:underline focus-visible:underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              target="_blank"
+            >
+              Privacy Policy
+            </Link>
+            .
+          </p>
 
           <p className="text-muted-foreground text-center text-sm">
             Already have an account?{" "}

@@ -8,7 +8,7 @@ import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
 import { SiteHeader } from "@/components/site-header";
-import { HeroContent } from "./landing-hero";
+import { HomepageContent } from "@/components/homepage/homepage-content";
 
 export const metadata: Metadata = {
   title: "CanonCore - Media Library Management",
@@ -47,9 +47,10 @@ export default async function LandingPage() {
         titleHref="/"
         driveNeedsReauth={driveNeedsReauth}
       />
-      <main className="flex-1 overflow-y-auto">
-        <HeroContent />
-      </main>
+      {/* Pull homepage up behind the glass header so mesh gradient bleeds through */}
+      <div className="-mt-(--header-height)">
+        <HomepageContent />
+      </div>
     </>
   );
 }

@@ -16,7 +16,8 @@ import {
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
-import { Copy, UserX } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCopy, faUserXmark } from "@fortawesome/free-solid-svg-icons";
 import { CinematicHero, type HeroSlide } from "@/components/hero";
 import { HeroButton } from "@/components/items/hero-button";
 import { PlaylistButton } from "@/components/items/playlist-button";
@@ -373,12 +374,20 @@ export function ExploreClient({
                     data-testid="hero-fork-button"
                     onClick={() => handleForkClick(slide.id)}
                   >
-                    <Copy className="size-4" aria-hidden="true" />
+                    <FontAwesomeIcon
+                      icon={faCopy}
+                      className="size-4"
+                      aria-hidden="true"
+                    />
                     Fork
                   </HeroButton>
                 ) : (
                   <HeroButton onClick={() => router.push("/sign-in")}>
-                    <Copy className="size-4" aria-hidden="true" />
+                    <FontAwesomeIcon
+                      icon={faCopy}
+                      className="size-4"
+                      aria-hidden="true"
+                    />
                     Sign in to Fork
                   </HeroButton>
                 )}
@@ -418,7 +427,11 @@ export function ExploreClient({
               aria-label="Exclude my items"
               data-testid="explore-exclude-mine"
             >
-              <UserX aria-hidden="true" className="size-4" />
+              <FontAwesomeIcon
+                icon={faUserXmark}
+                className="size-4"
+                aria-hidden="true"
+              />
               <span className="hidden sm:inline">Exclude Mine</span>
             </button>
           ) : undefined

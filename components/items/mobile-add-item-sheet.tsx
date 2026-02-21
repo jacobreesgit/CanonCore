@@ -9,21 +9,23 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  Plus,
-  Loader2,
-  Sparkles,
-  ChevronLeft,
-  ChevronRight,
-  Tv,
-  Film,
-  ImageIcon,
-  FileText,
-  Trash2,
-  AlertCircle,
-  RefreshCw,
-  X,
-} from "lucide-react";
+  faPlus,
+  faSpinner,
+  faWandMagicSparkles,
+  faChevronLeft,
+  faChevronRight,
+  faTv,
+  faFilm,
+  faImage,
+  faFileLines,
+  faTrashCan,
+  faCircleExclamation,
+  faArrowsRotate,
+  faXmark,
+} from "@fortawesome/free-solid-svg-icons";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
   MobileBottomSheet,
   MobileBottomSheetHeader,
@@ -142,9 +144,11 @@ export function MobileAddItemSheet({
           />
           {form.isLoadingPreview && (
             <div className="bg-background/80 absolute inset-0 flex items-center justify-center gap-2 rounded-md">
-              <Loader2
+              <FontAwesomeIcon
+                icon={faSpinner}
                 aria-hidden="true"
-                className="text-muted-foreground size-4 animate-spin"
+                className="text-muted-foreground size-4"
+                spin
               />
               <span className="text-muted-foreground text-sm">Loading…</span>
             </div>
@@ -199,7 +203,7 @@ export function MobileAddItemSheet({
         uploadOnly
         label="Primary Media"
         description="The file that plays when clicking on this item."
-        icon={Film}
+        icon={faFilm}
         fileType="media"
         queuedFiles={form.queuedFiles.media}
         onQueueFilesChange={form.updateCategory("media")}
@@ -210,7 +214,7 @@ export function MobileAddItemSheet({
         uploadOnly
         label="Primary Artwork"
         description="The image used as the thumbnail."
-        icon={ImageIcon}
+        icon={faImage}
         fileType="artwork"
         queuedFiles={form.queuedFiles.artwork}
         onQueueFilesChange={form.updateCategory("artwork")}
@@ -221,7 +225,7 @@ export function MobileAddItemSheet({
         uploadOnly
         label="Hero Image"
         description="The image used as the banner background."
-        icon={Sparkles}
+        icon={faWandMagicSparkles}
         fileType="artwork"
         queuedFiles={form.queuedFiles.hero}
         onQueueFilesChange={form.updateCategory("hero")}
@@ -232,7 +236,7 @@ export function MobileAddItemSheet({
         uploadOnly
         label="Default Subtitle"
         description="The subtitle track that loads by default."
-        icon={FileText}
+        icon={faFileLines}
         fileType="subtitle"
         queuedFiles={form.queuedFiles.subtitle}
         onQueueFilesChange={form.updateCategory("subtitle")}
@@ -277,7 +281,7 @@ export function MobileAddItemSheet({
         <>
           <SummaryArtworkDropzone
             label="Poster"
-            icon={ImageIcon}
+            icon={faImage}
             value={form.posterValue}
             source={form.posterSource}
             queuedFiles={form.queuedFiles.artwork}
@@ -289,7 +293,7 @@ export function MobileAddItemSheet({
           />
           <SummaryArtworkDropzone
             label="Hero Banner"
-            icon={Sparkles}
+            icon={faWandMagicSparkles}
             value={form.backdropValue}
             source={form.backdropSource}
             queuedFiles={form.queuedFiles.hero}
@@ -318,9 +322,11 @@ export function MobileAddItemSheet({
         <div className="flex items-center gap-2 text-sm">
           {form.isUploading && form.uploadProgress && (
             <>
-              <Loader2
+              <FontAwesomeIcon
+                icon={faSpinner}
+                spin
                 aria-hidden="true"
-                className="text-primary size-4 animate-spin"
+                className="text-primary size-4"
               />
               <span className="flex items-center gap-2">
                 <span>Uploading…</span>
@@ -348,7 +354,8 @@ export function MobileAddItemSheet({
 
           {form.hasUploadError && (
             <div className="flex items-center gap-2">
-              <AlertCircle
+              <FontAwesomeIcon
+                icon={faCircleExclamation}
                 aria-hidden="true"
                 className="text-destructive size-4"
               />
@@ -369,7 +376,11 @@ export function MobileAddItemSheet({
               onClick={form.handleRetryUpload}
               className="h-7 gap-1 px-2 text-xs"
             >
-              <RefreshCw aria-hidden="true" className="size-3" />
+              <FontAwesomeIcon
+                icon={faArrowsRotate}
+                aria-hidden="true"
+                className="size-3"
+              />
               Retry
             </Button>
             <Button
@@ -380,7 +391,11 @@ export function MobileAddItemSheet({
               className="text-muted-foreground hover:text-foreground size-7 p-0"
               aria-label="Dismiss upload errors"
             >
-              <X aria-hidden="true" className="size-4" />
+              <FontAwesomeIcon
+                icon={faXmark}
+                aria-hidden="true"
+                className="size-4"
+              />
             </Button>
           </div>
         )}
@@ -393,7 +408,7 @@ export function MobileAddItemSheet({
     {
       id: "details",
       label: "Details",
-      icon: Plus,
+      icon: faPlus,
       content: detailsContent,
     },
   ];
@@ -401,7 +416,7 @@ export function MobileAddItemSheet({
     mainTabs.push({
       id: "files",
       label: "Files",
-      icon: Film,
+      icon: faFilm,
       content: filesContent,
     });
   }
@@ -411,7 +426,7 @@ export function MobileAddItemSheet({
     {
       id: "details",
       label: "Details",
-      icon: Sparkles,
+      icon: faWandMagicSparkles,
       content: summaryDetailsContent,
     },
   ];
@@ -419,7 +434,7 @@ export function MobileAddItemSheet({
     summaryTabs.push({
       id: "files",
       label: "Files",
-      icon: Film,
+      icon: faFilm,
       content: filesContent,
     });
   }
@@ -463,7 +478,11 @@ export function MobileAddItemSheet({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Back"
               >
-                <ChevronLeft aria-hidden="true" className="size-5" />
+                <FontAwesomeIcon
+                  icon={faChevronLeft}
+                  aria-hidden="true"
+                  className="size-5"
+                />
               </Button>
               <div
                 className={cn(
@@ -471,7 +490,11 @@ export function MobileAddItemSheet({
                   "bg-blue-500/10 ring-1 ring-blue-500/20"
                 )}
               >
-                <Tv aria-hidden="true" className="size-5 text-blue-500" />
+                <FontAwesomeIcon
+                  icon={faTv}
+                  aria-hidden="true"
+                  className="size-5 text-blue-500"
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <MobileBottomSheetTitle>Select Season</MobileBottomSheetTitle>
@@ -540,7 +563,11 @@ export function MobileAddItemSheet({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Cancel"
               >
-                <ChevronLeft aria-hidden="true" className="size-5" />
+                <FontAwesomeIcon
+                  icon={faChevronLeft}
+                  aria-hidden="true"
+                  className="size-5"
+                />
               </Button>
               <div
                 className={cn(
@@ -548,7 +575,11 @@ export function MobileAddItemSheet({
                   "bg-brand/10 ring-brand/20 ring-1"
                 )}
               >
-                <Sparkles aria-hidden="true" className="text-brand size-5" />
+                <FontAwesomeIcon
+                  icon={faWandMagicSparkles}
+                  aria-hidden="true"
+                  className="text-brand size-5"
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <MobileBottomSheetTitle>Apply Metadata</MobileBottomSheetTitle>
@@ -610,7 +641,11 @@ export function MobileAddItemSheet({
                   onClick={form.wizardFooterProps.onBack}
                   disabled={form.wizardFooterProps.isDisabled}
                 >
-                  <ChevronLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+                  <FontAwesomeIcon
+                    icon={faChevronLeft}
+                    className="mr-2 h-4 w-4"
+                    aria-hidden="true"
+                  />
                   Back
                 </Button>
                 <div className="flex gap-2">
@@ -633,7 +668,8 @@ export function MobileAddItemSheet({
                   >
                     {form.wizardFooterProps.isLastStep ? "Apply" : "Next"}
                     {!form.wizardFooterProps.isLastStep && (
-                      <ChevronRight
+                      <FontAwesomeIcon
+                        icon={faChevronRight}
                         className="ml-2 h-4 w-4"
                         aria-hidden="true"
                       />
@@ -676,7 +712,11 @@ export function MobileAddItemSheet({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Back"
               >
-                <ChevronLeft aria-hidden="true" className="size-5" />
+                <FontAwesomeIcon
+                  icon={faChevronLeft}
+                  aria-hidden="true"
+                  className="size-5"
+                />
               </Button>
               <div
                 className={cn(
@@ -684,7 +724,11 @@ export function MobileAddItemSheet({
                   "bg-brand/10 ring-brand/20 ring-1"
                 )}
               >
-                <Sparkles aria-hidden="true" className="text-brand size-5" />
+                <FontAwesomeIcon
+                  icon={faWandMagicSparkles}
+                  aria-hidden="true"
+                  className="text-brand size-5"
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <MobileBottomSheetTitle>Review & Create</MobileBottomSheetTitle>
@@ -729,17 +773,21 @@ export function MobileAddItemSheet({
               >
                 {form.isLoading ? (
                   <>
-                    <Loader2
+                    <FontAwesomeIcon
+                      icon={faSpinner}
                       aria-hidden="true"
-                      className="size-4 animate-spin"
+                      className="size-4"
+                      spin
                     />
                     Creating…
                   </>
                 ) : form.isUploading ? (
                   <>
-                    <Loader2
+                    <FontAwesomeIcon
+                      icon={faSpinner}
                       aria-hidden="true"
-                      className="size-4 animate-spin"
+                      className="size-4"
+                      spin
                     />
                     Uploading…
                   </>
@@ -780,7 +828,11 @@ export function MobileAddItemSheet({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Back"
               >
-                <ChevronLeft aria-hidden="true" className="size-5" />
+                <FontAwesomeIcon
+                  icon={faChevronLeft}
+                  aria-hidden="true"
+                  className="size-5"
+                />
               </Button>
               <div
                 className={cn(
@@ -788,7 +840,8 @@ export function MobileAddItemSheet({
                   "bg-violet-500/10 ring-1 ring-violet-500/20"
                 )}
               >
-                <ImageIcon
+                <FontAwesomeIcon
+                  icon={faImage}
                   aria-hidden="true"
                   className="size-5 text-violet-500"
                 />
@@ -861,7 +914,11 @@ export function MobileAddItemSheet({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Back"
               >
-                <ChevronLeft aria-hidden="true" className="size-5" />
+                <FontAwesomeIcon
+                  icon={faChevronLeft}
+                  aria-hidden="true"
+                  className="size-5"
+                />
               </Button>
               <div
                 className={cn(
@@ -869,7 +926,8 @@ export function MobileAddItemSheet({
                   "bg-violet-500/10 ring-1 ring-violet-500/20"
                 )}
               >
-                <ImageIcon
+                <FontAwesomeIcon
+                  icon={faImage}
                   aria-hidden="true"
                   className="size-5 text-violet-500"
                 />
@@ -942,7 +1000,11 @@ export function MobileAddItemSheet({
                 "bg-primary/10 ring-primary/20 ring-1"
               )}
             >
-              <Plus aria-hidden="true" className="text-primary size-5" />
+              <FontAwesomeIcon
+                icon={faPlus}
+                aria-hidden="true"
+                className="text-primary size-5"
+              />
             </div>
             <div className="min-w-0">
               <MobileBottomSheetTitle>Create Item</MobileBottomSheetTitle>
@@ -984,12 +1046,22 @@ export function MobileAddItemSheet({
             >
               {form.isLoading ? (
                 <>
-                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                  <FontAwesomeIcon
+                    icon={faSpinner}
+                    aria-hidden="true"
+                    className="size-4"
+                    spin
+                  />
                   Creating…
                 </>
               ) : form.isUploading ? (
                 <>
-                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                  <FontAwesomeIcon
+                    icon={faSpinner}
+                    aria-hidden="true"
+                    className="size-4"
+                    spin
+                  />
                   Uploading…
                 </>
               ) : (
@@ -1015,7 +1087,7 @@ export function MobileAddItemSheet({
  */
 function SummaryArtworkDropzone({
   label,
-  icon: Icon,
+  icon,
   value,
   source,
   queuedFiles,
@@ -1026,7 +1098,7 @@ function SummaryArtworkDropzone({
   helpText,
 }: {
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: IconDefinition;
   value: string | null;
   source: ArtworkSelectionSource | null;
   queuedFiles: QueuedFile[];
@@ -1085,7 +1157,11 @@ function SummaryArtworkDropzone({
             "bg-primary/10"
           )}
         >
-          <Icon aria-hidden="true" className="text-primary size-3.5" />
+          <FontAwesomeIcon
+            icon={icon}
+            aria-hidden="true"
+            className="text-primary size-3.5"
+          />
         </div>
         <span className="text-sm font-medium">{label}</span>
       </div>
@@ -1113,7 +1189,8 @@ function SummaryArtworkDropzone({
           />
         ) : (
           <div className="flex size-full flex-col items-center justify-center gap-1">
-            <Icon
+            <FontAwesomeIcon
+              icon={icon}
               aria-hidden="true"
               className="text-muted-foreground/50 size-6"
             />
@@ -1132,7 +1209,11 @@ function SummaryArtworkDropzone({
           onClick={onClear}
           disabled={disabled}
         >
-          <Trash2 aria-hidden="true" className="mr-1.5 size-3.5" />
+          <FontAwesomeIcon
+            icon={faTrashCan}
+            aria-hidden="true"
+            className="mr-1.5 size-3.5"
+          />
           Clear
         </Button>
       )}

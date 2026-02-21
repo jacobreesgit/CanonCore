@@ -7,7 +7,8 @@
 "use client";
 
 import { memo, useState } from "react";
-import { User } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faUser } from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/lib/utils";
 
 interface UserThumbnailProps {
@@ -93,7 +94,11 @@ export const UserThumbnail = memo(function UserThumbnail({
       )}
       {(!shouldShowImage || imageError) &&
         (initials || (
-          <User aria-hidden="true" className={ICON_CLASSES[size]} />
+          <FontAwesomeIcon
+            icon={faUser}
+            className={ICON_CLASSES[size]}
+            aria-hidden="true"
+          />
         ))}
     </div>
   );

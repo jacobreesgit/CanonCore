@@ -5,7 +5,8 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Check } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCheck } from "@fortawesome/free-solid-svg-icons";
 
 type StepState = "completed" | "current" | "upcoming";
 
@@ -118,7 +119,11 @@ export function WizardStepIndicator<TStep extends string>({
                   )}
                 >
                   {state === "completed" ? (
-                    <Check className="h-4 w-4" aria-hidden="true" />
+                    <FontAwesomeIcon
+                      icon={faCheck}
+                      className="h-4 w-4"
+                      aria-hidden="true"
+                    />
                   ) : (
                     <span>{index + 1}</span>
                   )}

@@ -192,6 +192,22 @@ export const SyncError: Story = {
   },
 };
 
+/** Tree item with Drive sync indicator (cloud icon visible at rest). */
+export const DriveSynced: Story = {
+  args: {
+    showDragHandle: false,
+    driveFileId: "1abc-drive-folder-id",
+    syncStatus: "SYNCED",
+    moreMenuProps: {
+      itemName: "Sample Item",
+      driveFileId: "1abc-drive-folder-id",
+      hasDriveConnection: true,
+      onSettings: fn(),
+      onDelete: fn(),
+    },
+  },
+};
+
 /**
  * Clone/overlay state during drag operation.
  */

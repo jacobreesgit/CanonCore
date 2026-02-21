@@ -17,7 +17,8 @@
     "sentry.server.config.ts",
     "sentry.edge.config.ts",
     "instrumentation-client.ts",
-    "instrumentation.ts"
+    "instrumentation.ts",
+    "_payload-ref/**"
   ],
   "ignoreBinaries": [],
   "ignoreDependencies": ["pino-pretty", "baseline-browser-mapping"],

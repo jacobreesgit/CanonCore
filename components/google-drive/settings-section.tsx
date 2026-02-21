@@ -25,16 +25,17 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  Cloud,
-  Trash2,
-  AlertTriangle,
-  Loader2,
-  CheckCircle2,
-  Link2,
-  ExternalLink,
-  RefreshCw,
-} from "lucide-react";
+  faCloud,
+  faTrashCan,
+  faTriangleExclamation,
+  faSpinner,
+  faCircleCheck,
+  faLink,
+  faArrowUpRightFromSquare,
+  faRotate,
+} from "@fortawesome/free-solid-svg-icons";
 import {
   initiateGoogleDriveOAuth,
   disconnectGoogleDrive,
@@ -159,7 +160,11 @@ export function GoogleDriveSettingsSection({
             "bg-primary/10"
           )}
         >
-          <Cloud aria-hidden="true" className="text-primary size-3.5" />
+          <FontAwesomeIcon
+            icon={faCloud}
+            aria-hidden="true"
+            className="text-primary size-3.5"
+          />
         </div>
         <Label className="text-sm font-medium">Google Drive</Label>
       </div>
@@ -176,12 +181,20 @@ export function GoogleDriveSettingsSection({
                 </span>
                 {connection.needsReauth ? (
                   <Badge variant="destructive" className="shrink-0 text-xs">
-                    <AlertTriangle aria-hidden="true" className="mr-1 size-3" />
+                    <FontAwesomeIcon
+                      icon={faTriangleExclamation}
+                      aria-hidden="true"
+                      className="mr-1 size-3"
+                    />
                     Reconnect
                   </Badge>
                 ) : (
                   <Badge variant="secondary" className="shrink-0 text-xs">
-                    <CheckCircle2 aria-hidden="true" className="mr-1 size-3" />
+                    <FontAwesomeIcon
+                      icon={faCircleCheck}
+                      aria-hidden="true"
+                      className="mr-1 size-3"
+                    />
                     Connected
                   </Badge>
                 )}
@@ -217,7 +230,11 @@ export function GoogleDriveSettingsSection({
                 className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
               >
                 Manage Storage
-                <ExternalLink aria-hidden="true" className="size-3" />
+                <FontAwesomeIcon
+                  icon={faArrowUpRightFromSquare}
+                  aria-hidden="true"
+                  className="size-3"
+                />
               </a>
             </div>
 
@@ -234,12 +251,18 @@ export function GoogleDriveSettingsSection({
                     className="h-7 gap-1.5 px-2 text-xs"
                   >
                     {isSyncing ? (
-                      <Loader2
+                      <FontAwesomeIcon
+                        icon={faSpinner}
+                        spin
                         aria-hidden="true"
-                        className="size-3.5 animate-spin"
+                        className="size-3.5"
                       />
                     ) : (
-                      <RefreshCw aria-hidden="true" className="size-3.5" />
+                      <FontAwesomeIcon
+                        icon={faRotate}
+                        aria-hidden="true"
+                        className="size-3.5"
+                      />
                     )}
                     Sync
                   </Button>
@@ -266,7 +289,8 @@ export function GoogleDriveSettingsSection({
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          <ExternalLink
+                          <FontAwesomeIcon
+                            icon={faArrowUpRightFromSquare}
                             aria-hidden="true"
                             className="size-3.5"
                           />
@@ -295,12 +319,18 @@ export function GoogleDriveSettingsSection({
                         className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 gap-1.5 px-2 text-xs"
                       >
                         {isDisconnecting ? (
-                          <Loader2
+                          <FontAwesomeIcon
+                            icon={faSpinner}
+                            spin
                             aria-hidden="true"
-                            className="size-3.5 animate-spin"
+                            className="size-3.5"
                           />
                         ) : (
-                          <Trash2 aria-hidden="true" className="size-3.5" />
+                          <FontAwesomeIcon
+                            icon={faTrashCan}
+                            aria-hidden="true"
+                            className="size-3.5"
+                          />
                         )}
                         Disconnect
                       </Button>
@@ -335,7 +365,8 @@ export function GoogleDriveSettingsSection({
           {connection.lastError === "ROOT_FOLDER_TRASHED" && (
             <div className="rounded-md border border-yellow-500/50 bg-yellow-500/10 p-3">
               <div className="flex items-start gap-2">
-                <AlertTriangle
+                <FontAwesomeIcon
+                  icon={faTriangleExclamation}
                   aria-hidden="true"
                   className="mt-0.5 size-4 text-yellow-600 dark:text-yellow-500"
                 />
@@ -354,7 +385,11 @@ export function GoogleDriveSettingsSection({
                       rel="noopener noreferrer"
                       className="text-primary hover:text-primary/80 inline-flex items-center gap-1.5 text-xs transition-colors"
                     >
-                      <ExternalLink aria-hidden="true" className="size-3" />
+                      <FontAwesomeIcon
+                        icon={faArrowUpRightFromSquare}
+                        aria-hidden="true"
+                        className="size-3"
+                      />
                       Restore in Drive
                     </a>
                   )}
@@ -367,7 +402,8 @@ export function GoogleDriveSettingsSection({
           {connection.lastError === "ROOT_FOLDER_DELETED" && (
             <div className="border-destructive/50 bg-destructive/10 rounded-md border p-3">
               <div className="flex items-start gap-2">
-                <AlertTriangle
+                <FontAwesomeIcon
+                  icon={faTriangleExclamation}
                   aria-hidden="true"
                   className="text-destructive mt-0.5 size-4"
                 />
@@ -393,12 +429,18 @@ export function GoogleDriveSettingsSection({
               disabled={isConnecting}
             >
               {isConnecting ? (
-                <Loader2
+                <FontAwesomeIcon
+                  icon={faSpinner}
+                  spin
                   aria-hidden="true"
-                  className="mr-1.5 size-3.5 animate-spin"
+                  className="mr-1.5 size-3.5"
                 />
               ) : (
-                <Link2 aria-hidden="true" className="mr-1.5 size-3.5" />
+                <FontAwesomeIcon
+                  icon={faLink}
+                  aria-hidden="true"
+                  className="mr-1.5 size-3.5"
+                />
               )}
               Reconnect
             </Button>
@@ -411,12 +453,18 @@ export function GoogleDriveSettingsSection({
           </p>
           <Button onClick={handleConnect} disabled={isConnecting} size="sm">
             {isConnecting ? (
-              <Loader2
+              <FontAwesomeIcon
+                icon={faSpinner}
+                spin
                 aria-hidden="true"
-                className="mr-1.5 size-3.5 animate-spin"
+                className="mr-1.5 size-3.5"
               />
             ) : (
-              <Cloud aria-hidden="true" className="mr-1.5 size-3.5" />
+              <FontAwesomeIcon
+                icon={faCloud}
+                aria-hidden="true"
+                className="mr-1.5 size-3.5"
+              />
             )}
             Connect Google Drive
           </Button>

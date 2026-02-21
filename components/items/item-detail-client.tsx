@@ -15,7 +15,13 @@ import {
   useSyncExternalStore,
 } from "react";
 import dynamic from "next/dynamic";
-import { Play, Plus, Settings2, SkipForward } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faPlay,
+  faPlus,
+  faGears,
+  faForwardStep,
+} from "@fortawesome/free-solid-svg-icons";
 import { ItemsView } from "./items-view";
 import { EditModeToggle } from "./edit-mode-toggle";
 import { useItemsUrlState } from "@/hooks/use-items-url-state";
@@ -327,19 +333,19 @@ export function ItemDetailClient({
     <>
       {hasMedia && (
         <HeroButton variant="primary" onClick={handlePlay}>
-          <Play className="size-4" />
+          <FontAwesomeIcon icon={faPlay} className="size-4" />
           {hasProgress ? `Resume ${primaryMedia?.filename ?? ""}` : "Play"}
         </HeroButton>
       )}
       {nextItem && (
-        <HeroButton onClick={() => goToNext(nextItem)}>
-          <SkipForward className="size-4" />
+        <HeroButton variant="primary" onClick={() => goToNext(nextItem)}>
+          <FontAwesomeIcon icon={faForwardStep} className="size-4" />
           Next Up: {nextItem.name}
         </HeroButton>
       )}
       <PlaylistButton itemId={item.id} />
       <HeroButton onClick={handleOpenSettings} aria-label="Settings">
-        <Settings2 className="size-4" />
+        <FontAwesomeIcon icon={faGears} className="size-4" />
         Settings
       </HeroButton>
     </>
@@ -380,7 +386,7 @@ export function ItemDetailClient({
         aria-label="Add"
         data-testid="items-add-button"
       >
-        <Plus className="size-4" strokeWidth={2} />
+        <FontAwesomeIcon icon={faPlus} className="size-4" />
         <span className="hidden xl:inline">Add</span>
       </Button>
       <EditModeToggle

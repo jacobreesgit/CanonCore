@@ -6,7 +6,8 @@
 
 "use client";
 
-import { Film } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faFilm } from "@fortawesome/free-solid-svg-icons";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import type { TmdbDisplayOptions } from "@/lib/types";
@@ -44,7 +45,11 @@ export function TmdbDisplayOptionsEditor({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Film className="text-muted-foreground h-4 w-4" aria-hidden="true" />
+        <FontAwesomeIcon
+          icon={faFilm}
+          className="text-muted-foreground h-4 w-4"
+          aria-hidden="true"
+        />
         <span className="font-medium">Detail Page Display</span>
       </div>
       <p className="text-muted-foreground text-xs">

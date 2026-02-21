@@ -7,7 +7,8 @@
 "use client";
 
 import { memo } from "react";
-import { Loader2, Trash2 } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSpinner, faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -141,12 +142,21 @@ export const BulkActionsToolbar = memo(function BulkActionsToolbar({
             >
               {isDeleting ? (
                 <>
-                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  <FontAwesomeIcon
+                    icon={faSpinner}
+                    className="size-4"
+                    aria-hidden="true"
+                    spin
+                  />
                   <span className="hidden xl:inline">Deleting…</span>
                 </>
               ) : (
                 <>
-                  <Trash2 className="size-4" aria-hidden="true" />
+                  <FontAwesomeIcon
+                    icon={faTrashCan}
+                    className="size-4"
+                    aria-hidden="true"
+                  />
                   <span className="hidden xl:inline">Delete</span>
                 </>
               )}

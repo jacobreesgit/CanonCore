@@ -8,15 +8,17 @@
 
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  ChevronDown,
-  Film,
-  FileText,
-  File,
-  Plus,
-  X,
-  CloudOff,
-} from "lucide-react";
+  faChevronDown,
+  faFilm,
+  faFileLines,
+  faFile,
+  faPlus,
+  faXmark,
+  faCloudArrowDown,
+} from "@fortawesome/free-solid-svg-icons";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -40,7 +42,7 @@ interface FileCategoryConfig {
   key: keyof Pick<QueuedFilesByCategory, "media" | "subtitle">;
   label: string;
   description: string;
-  icon: typeof Film;
+  icon: IconDefinition;
   accept: Record<string, string[]>;
 }
 
@@ -52,14 +54,14 @@ const FILE_CATEGORIES: FileCategoryConfig[] = [
     key: "media",
     label: "Media Files",
     description: "Video or audio files",
-    icon: Film,
+    icon: faFilm,
     accept: { "video/*": [], "audio/*": [] },
   },
   {
     key: "subtitle",
     label: "Subtitles",
     description: "SRT, VTT, ASS subtitle files",
-    icon: FileText,
+    icon: faFileLines,
     accept: { "text/plain": [".srt", ".vtt", ".sub", ".ass"] },
   },
 ];
@@ -200,7 +202,7 @@ export function FilesSection({
                     : "bg-muted text-muted-foreground"
                 )}
               >
-                <File className="size-4" />
+                <FontAwesomeIcon icon={faFile} className="size-4" />
               </div>
               <div>
                 <span className="text-sm font-medium">Files</span>
@@ -216,7 +218,8 @@ export function FilesSection({
               {!isOpen && totalCount === 0 && (
                 <span className="text-muted-foreground text-xs">Optional</span>
               )}
-              <ChevronDown
+              <FontAwesomeIcon
+                icon={faChevronDown}
                 className={cn(
                   "text-muted-foreground size-4 transition-transform duration-200",
                   isOpen && "rotate-180"
@@ -240,7 +243,10 @@ export function FilesSection({
                 <div className="space-y-4 border-t px-4 py-4">
                   {!hasDriveConnection ? (
                     <div className="bg-muted/30 flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-8">
-                      <CloudOff className="text-muted-foreground/50 size-8" />
+                      <FontAwesomeIcon
+                        icon={faCloudArrowDown}
+                        className="text-muted-foreground/50 size-8"
+                      />
                       <p className="text-muted-foreground text-sm">
                         Connect Google Drive in Settings to upload files
                       </p>
@@ -288,13 +294,14 @@ function FileCategoryDropzone({
   onRemove,
   disabled,
 }: FileCategoryDropzoneProps) {
-  const Icon = config.icon;
-
   return (
     <div className="space-y-2">
       {/* Category header */}
       <div className="flex items-center gap-2">
-        <Icon className="text-muted-foreground size-4" />
+        <FontAwesomeIcon
+          icon={config.icon}
+          className="text-muted-foreground size-4"
+        />
         <span className="text-sm font-medium">{config.label}</span>
         {files.length > 0 && (
           <span className="bg-muted rounded-full px-2 py-0.5 text-xs tabular-nums">
@@ -314,7 +321,10 @@ function FileCategoryDropzone({
       >
         <DropzoneEmptyState>
           <div className="flex flex-col items-center justify-center gap-1 py-2">
-            <Plus className="text-muted-foreground size-5" />
+            <FontAwesomeIcon
+              icon={faPlus}
+              className="text-muted-foreground size-5"
+            />
             <p className="text-muted-foreground text-xs">
               {config.description}
             </p>
@@ -322,7 +332,7 @@ function FileCategoryDropzone({
         </DropzoneEmptyState>
         <DropzoneContent>
           <div className="flex flex-col items-center justify-center gap-1 py-2">
-            <Plus className="text-primary size-5" />
+            <FontAwesomeIcon icon={faPlus} className="text-primary size-5" />
             <p className="text-xs font-medium">Drop to add</p>
           </div>
         </DropzoneContent>
@@ -347,7 +357,10 @@ function FileCategoryDropzone({
                 className="group bg-muted/50 flex items-center justify-between rounded-lg px-3 py-2"
               >
                 <div className="flex min-w-0 items-center gap-2">
-                  <Icon className="text-muted-foreground size-3.5 shrink-0" />
+                  <FontAwesomeIcon
+                    icon={config.icon}
+                    className="text-muted-foreground size-3.5 shrink-0"
+                  />
                   <span className="truncate text-xs">{qf.file.name}</span>
                   <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
                     {formatBytes(qf.file.size)}
@@ -366,7 +379,7 @@ function FileCategoryDropzone({
                   disabled={disabled}
                   className="size-6 opacity-0 transition-opacity group-hover:opacity-100"
                 >
-                  <X className="size-3" />
+                  <FontAwesomeIcon icon={faXmark} className="size-3" />
                   <span className="sr-only">Remove {qf.file.name}</span>
                 </Button>
               </motion.div>

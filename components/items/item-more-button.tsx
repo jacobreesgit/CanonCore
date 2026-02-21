@@ -25,7 +25,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { AddItemDialog } from "./add-item-dialog";
-import { MoreHorizontal, Loader2 } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faEllipsis, faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/lib/utils";
 import { slugify } from "@/lib/slugify";
 import { renderMenuItems, type ItemMenuActions } from "./item-context-menu";
@@ -84,7 +85,11 @@ export function ItemMoreButton({ className, ...actions }: ItemMoreButtonProps) {
               className
             )}
           >
-            <MoreHorizontal className="size-4" aria-hidden="true" />
+            <FontAwesomeIcon
+              icon={faEllipsis}
+              className="size-4"
+              aria-hidden="true"
+            />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -141,7 +146,11 @@ export function ItemMoreButton({ className, ...actions }: ItemMoreButtonProps) {
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  <FontAwesomeIcon
+                    icon={faSpinner}
+                    className="mr-2 size-4"
+                    spin
+                  />
                   Deleting…
                 </>
               ) : (

@@ -3,6 +3,7 @@
  * Handles JWT-based session management and user authentication.
  */
 
+import { cache } from "react";
 import NextAuth, { type Session } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
@@ -91,11 +92,11 @@ export async function getExtendedSidebarUser(
 }
 
 /**
- * NextAuth handlers and auth function.
+ * NextAuth handlers and raw auth function.
  * - handlers: API route handlers for /api/auth/*
- * - auth: Server-side session retrieval function
+ * - uncachedAuth: Raw session retrieval (use `auth` instead)
  */
-export const { handlers, auth } = NextAuth({
+export const { handlers, auth: uncachedAuth } = NextAuth({
   session: {
     strategy: "jwt",
   },
@@ -160,3 +161,11 @@ export const { handlers, auth } = NextAuth({
     },
   },
 });
+
+/**
+ * Cached auth function — deduplicates per-request.
+ * Prevents redundant JWT decode/validation when auth()
+ * is called from layout, page, and server actions within
+ * the same React server component render tree.
+ */
+export const auth = cache(uncachedAuth);

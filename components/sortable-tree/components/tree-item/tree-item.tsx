@@ -12,7 +12,12 @@ import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { slugify } from "@/lib/slugify";
 import { ProgressBar } from "@/components/ui/progress-bar";
-import { ChevronRight, GripVertical, Folder } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faChevronRight,
+  faGripVertical,
+  faFolder,
+} from "@fortawesome/free-solid-svg-icons";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SyncIcon } from "@/components/items/sync-badge";
 import { getTmdbPosterUrl } from "@/lib/tmdb-image-utils";
@@ -71,6 +76,8 @@ export interface TreeItemProps extends Omit<
   artworkId?: string | null;
   /** Whether to show thumbnail. Defaults to false for backward compatibility. */
   showThumbnail?: boolean;
+  /** Google Drive folder ID — shows cloud icon when linked. */
+  driveFileId?: string | null;
   /** Props for the more options dropdown menu (view mode only). */
   moreMenuProps?: ItemMenuActions;
 }
@@ -106,6 +113,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       tmdbPosterPath,
       artworkId,
       showThumbnail = false,
+      driveFileId,
       // Destructure to prevent passing to DOM element via ...props
       description,
       showDescription: _showDescription,
@@ -214,9 +222,9 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
               )}
               {...handleProps}
             >
-              <GripVertical
+              <FontAwesomeIcon
+                icon={faGripVertical}
                 className="size-3.5"
-                strokeWidth={2.5}
                 aria-hidden="true"
               />
             </button>
@@ -239,12 +247,12 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                 "focus-visible:ring-1 focus-visible:ring-white focus-visible:outline-none"
               )}
             >
-              <ChevronRight
+              <FontAwesomeIcon
+                icon={faChevronRight}
                 className={cn(
                   "size-4 transition-transform duration-200 ease-out",
                   !collapsed && "rotate-90"
                 )}
-                strokeWidth={2.5}
                 aria-hidden="true"
               />
             </button>
@@ -255,7 +263,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
             showThumbnail &&
             (() => {
               const thumbnailSrc = tmdbPosterPath
-                ? getTmdbPosterUrl(tmdbPosterPath, "w92")
+                ? getTmdbPosterUrl(tmdbPosterPath, "w500")
                 : artworkId
                   ? `/api/artwork/${artworkId}`
                   : null;
@@ -277,7 +285,8 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">
-                      <Folder
+                      <FontAwesomeIcon
+                        icon={faFolder}
                         className="size-4 text-[var(--tertiary-foreground)]"
                         aria-hidden="true"
                       />
@@ -338,12 +347,22 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
             </div>
           )}
 
-          {/* More Options Button - view mode only */}
+          {/* More Options Button - visually hidden, kept in DOM for Playwright */}
           {!ghost && !showDragHandle && moreMenuProps && (
-            <div className="flex-shrink-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100">
+            <div className="pointer-events-none absolute size-0 opacity-0">
               <ItemMoreButton {...moreMenuProps} />
             </div>
           )}
+
+          {/* Drive sync indicator — visible when item is linked to Google Drive */}
+          {!ghost &&
+            !showDragHandle &&
+            driveFileId &&
+            (!syncStatus || syncStatus === "SYNCED") && (
+              <div className="flex size-7 flex-shrink-0 items-center justify-center">
+                <SyncIcon driveFileId={driveFileId} syncStatus={syncStatus} />
+              </div>
+            )}
 
           {/* Child Count Badge (for clone/drag overlay) */}
           {clone && childCount !== undefined && childCount > 1 ? (

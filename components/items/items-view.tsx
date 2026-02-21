@@ -20,8 +20,6 @@ import { useSettingsDialog } from "@/hooks/use-settings-dialog";
 import { UniqueIdentifier } from "@dnd-kit/core";
 import { toast } from "sonner";
 
-// Static imports for view-only mode (common case)
-import { Tree } from "@/components/sortable-tree";
 import { Section } from "@/components/ui/section";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GridViewContent } from "./grid-view-content";
@@ -652,7 +650,7 @@ export function ItemsView({
         />
       )}
 
-      {/* Items display */}
+      {/* Items display — grid/tree toggled via CSS display, SortableTree always mounted with disabled DnD in view mode */}
       {currentLevelItems.length === 0 ? (
         <Section
           className="flex flex-1 flex-col"
@@ -663,56 +661,48 @@ export function ItemsView({
             onAction={handleEmptyStateAction}
           />
         </Section>
-      ) : viewMode === "grid" ? (
-        <GridViewContent
-          isEditing={isEditing}
-          currentLevelItems={currentLevelItems}
-          pinnedItems={pinnedGridItems}
-          unpinnedItems={unpinnedGridItems}
-          onItemsChange={handleGridItemsChange}
-          onItemClick={handleItemClick}
-          onOpenSettings={handleOpenSettings}
-          onDeleteItem={handleDeleteItem}
-          onAddChild={handleAddChild}
-          onAddChildComplete={refetchItems}
-          onPinItem={handlePinItem}
-          onUnpinItem={handleUnpinItem}
-          hasDriveConnection={hasDriveConnection}
-          isItemSelected={bulkSelection.isSelected}
-          onItemSelectChange={handleItemSelectionChange}
-          currentUser={currentUser}
-        />
       ) : (
-        <Section className="py-8" aria-label="Contents">
-          {isEditing ? (
-            <SortableTree
-              items={treeItemsProcessed}
-              onItemsChange={handleTreeItemsChange}
+        <>
+          <div style={{ display: viewMode === "grid" ? "contents" : "none" }}>
+            <GridViewContent
+              isEditing={isEditing}
+              currentLevelItems={currentLevelItems}
+              pinnedItems={pinnedGridItems}
+              unpinnedItems={unpinnedGridItems}
+              onItemsChange={handleGridItemsChange}
               onItemClick={handleItemClick}
               onOpenSettings={handleOpenSettings}
               onDeleteItem={handleDeleteItem}
               onAddChild={handleAddChild}
               onAddChildComplete={refetchItems}
-              hasDriveConnection={hasDriveConnection}
               onPinItem={handlePinItem}
               onUnpinItem={handleUnpinItem}
+              hasDriveConnection={hasDriveConnection}
               isItemSelected={bulkSelection.isSelected}
               onItemSelectChange={handleItemSelectionChange}
+              currentUser={currentUser}
             />
-          ) : (
-            <Tree
-              items={treeItemsProcessed}
-              onItemClick={handleItemClick}
-              onOpenSettings={handleOpenSettings}
-              onDeleteItem={handleDeleteItem}
-              onAddChild={handleAddChild}
-              onAddChildComplete={refetchItems}
-              hasDriveConnection={hasDriveConnection}
-              onPinItem={handlePinItem}
-              onUnpinItem={handleUnpinItem}
-            />
-          )}
-        </Section>
+          </div>
+          <div style={{ display: viewMode === "tree" ? "contents" : "none" }}>
+            <Section className="py-8" aria-label="Contents">
+              <SortableTree
+                items={treeItemsProcessed}
+                onItemsChange={handleTreeItemsChange}
+                onItemClick={handleItemClick}
+                onOpenSettings={handleOpenSettings}
+                onDeleteItem={handleDeleteItem}
+                onAddChild={handleAddChild}
+                onAddChildComplete={refetchItems}
+                hasDriveConnection={hasDriveConnection}
+                onPinItem={handlePinItem}
+                onUnpinItem={handleUnpinItem}
+                isItemSelected={bulkSelection.isSelected}
+                onItemSelectChange={handleItemSelectionChange}
+                isEditing={isEditing}
+              />
+            </Section>
+          </div>
+        </>
       )}
 
       {/* Item Settings Dialog */}

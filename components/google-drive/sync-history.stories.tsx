@@ -5,34 +5,35 @@
 
 import type { Meta, StoryObj } from "@storybook/nextjs";
 import { formatDistanceToNow } from "date-fns";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  CheckCircle2,
-  XCircle,
-  FolderPlus,
-  Pencil,
-  Trash2,
-  Upload,
-  Download,
-  RefreshCw,
-  MoveRight,
-  History,
-  Loader2,
-  type LucideIcon,
-} from "lucide-react";
+  faCircleCheck,
+  faCircleXmark,
+  faFolderPlus,
+  faPencil,
+  faTrashCan,
+  faUpload,
+  faDownload,
+  faRotate,
+  faArrowRight,
+  faClockRotateLeft,
+  faSpinner,
+} from "@fortawesome/free-solid-svg-icons";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 
 import { cn } from "@/lib/utils";
 import { SyncLogAction, SyncLogStatus } from "@/lib/sync-utils";
 import { SyncHistory } from "./sync-history";
 
 /** Icon mapping for each action type */
-const ACTION_ICONS: Record<SyncLogAction, LucideIcon> = {
-  [SyncLogAction.CREATE]: FolderPlus,
-  [SyncLogAction.RENAME]: Pencil,
-  [SyncLogAction.DELETE]: Trash2,
-  [SyncLogAction.MOVE]: MoveRight,
-  [SyncLogAction.UPLOAD]: Upload,
-  [SyncLogAction.DOWNLOAD]: Download,
-  [SyncLogAction.SYNC]: RefreshCw,
+const ACTION_ICONS: Record<SyncLogAction, IconDefinition> = {
+  [SyncLogAction.CREATE]: faFolderPlus,
+  [SyncLogAction.RENAME]: faPencil,
+  [SyncLogAction.DELETE]: faTrashCan,
+  [SyncLogAction.MOVE]: faArrowRight,
+  [SyncLogAction.UPLOAD]: faUpload,
+  [SyncLogAction.DOWNLOAD]: faDownload,
+  [SyncLogAction.SYNC]: faRotate,
 };
 
 /** Human-readable labels for each action type */
@@ -86,8 +87,10 @@ function MockSyncHistory({ logs, loading, error }: MockSyncHistoryProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center gap-2 py-8">
-        <Loader2
-          className="text-muted-foreground size-4 animate-spin"
+        <FontAwesomeIcon
+          icon={faSpinner}
+          spin
+          className="text-muted-foreground size-4"
           aria-hidden="true"
         />
         <span className="text-muted-foreground text-sm">Loading...</span>
@@ -107,7 +110,8 @@ function MockSyncHistory({ logs, loading, error }: MockSyncHistoryProps) {
     return (
       <div className="space-y-3 py-4 text-center">
         <div className="bg-muted/50 mx-auto flex size-10 items-center justify-center rounded-full">
-          <History
+          <FontAwesomeIcon
+            icon={faClockRotateLeft}
             className="text-muted-foreground size-5"
             aria-hidden="true"
           />
@@ -125,7 +129,7 @@ function MockSyncHistory({ logs, loading, error }: MockSyncHistoryProps) {
 
       <div className="space-y-1.5">
         {logs.map((log) => {
-          const Icon: LucideIcon = ACTION_ICONS[log.action] ?? RefreshCw;
+          const icon: IconDefinition = ACTION_ICONS[log.action] ?? faRotate;
           const label = ACTION_LABELS[log.action] ?? log.action;
           const name = log.itemName || log.fileName || "Sync operation";
           const isSuccess = log.status === SyncLogStatus.SUCCESS;
@@ -152,7 +156,11 @@ function MockSyncHistory({ logs, loading, error }: MockSyncHistoryProps) {
                   !isSuccess && !isFailed && "bg-muted text-muted-foreground"
                 )}
               >
-                <Icon className="size-3.5" aria-hidden="true" />
+                <FontAwesomeIcon
+                  icon={icon}
+                  className="size-3.5"
+                  aria-hidden="true"
+                />
               </div>
 
               {/* Content */}
@@ -160,13 +168,15 @@ function MockSyncHistory({ logs, loading, error }: MockSyncHistoryProps) {
                 <div className="flex items-center gap-1.5">
                   <span className="truncate text-sm font-medium">{name}</span>
                   {isSuccess && (
-                    <CheckCircle2
+                    <FontAwesomeIcon
+                      icon={faCircleCheck}
                       className="size-3 shrink-0 text-emerald-700 dark:text-emerald-500"
                       aria-hidden="true"
                     />
                   )}
                   {isFailed && (
-                    <XCircle
+                    <FontAwesomeIcon
+                      icon={faCircleXmark}
                       className="text-destructive size-3 shrink-0"
                       aria-hidden="true"
                     />

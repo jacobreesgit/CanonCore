@@ -9,7 +9,8 @@
 import { forwardRef, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ListMusic, Eye, Lock } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faMusic, faEye, faLock } from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/lib/utils";
 import { CardShell } from "@/components/ui/card-shell";
 import { getTmdbPosterUrl } from "@/lib/tmdb-image-utils";
@@ -161,7 +162,10 @@ export const PlaylistGridItem = forwardRef<
     // 0 posters: icon fallback
     artwork = (
       <div className="from-card to-background flex size-full items-center justify-center bg-gradient-to-br">
-        <ListMusic className="text-muted-foreground/40 size-10" />
+        <FontAwesomeIcon
+          icon={faMusic}
+          className="text-muted-foreground/40 size-10"
+        />
       </div>
     );
   }
@@ -188,9 +192,9 @@ export const PlaylistGridItem = forwardRef<
       {isOwner && playlist.isPublic !== undefined && (
         <div className="mb-auto flex justify-end">
           {playlist.isPublic ? (
-            <Eye className="size-3.5 text-white/60" />
+            <FontAwesomeIcon icon={faEye} className="size-3.5 text-white/60" />
           ) : (
-            <Lock className="size-3.5 text-white/60" />
+            <FontAwesomeIcon icon={faLock} className="size-3.5 text-white/60" />
           )}
         </div>
       )}

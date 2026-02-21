@@ -70,6 +70,8 @@ export function itemsToTree(items: ItemInput[]): TreeItem[] {
       children: [],
       // Include pinned order for sidebar pin state
       pinnedOrder: "pinnedOrder" in item ? item.pinnedOrder : null,
+      // Include TMDB poster path for CDN thumbnail
+      tmdbPosterPath: "tmdbPosterPath" in item ? item.tmdbPosterPath : null,
       // Include artwork if available
       artworkId: "artworkId" in item ? item.artworkId : null,
       // Include Google Drive folder ID if synced
@@ -146,6 +148,8 @@ export function publicItemsToTree(
     parentId: string | null;
     depth: number;
     order: number;
+    /** TMDB poster path for CDN thumbnail (takes precedence over artworkId). */
+    tmdbPosterPath?: string | null;
     artworkId: string | null;
     // Optional progress fields (only included for own items)
     progressPercentage?: number | null;
@@ -169,6 +173,8 @@ export function publicItemsToTree(
       order: item.order,
       parentId: item.parentId,
       children: [],
+      // Include TMDB poster path for CDN thumbnail
+      tmdbPosterPath: item.tmdbPosterPath ?? null,
       artworkId: item.artworkId,
       // Include progress data if available (for own items)
       progressPercentage: item.progressPercentage ?? null,

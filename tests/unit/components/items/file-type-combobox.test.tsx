@@ -7,7 +7,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FileTypeCombobox } from "@/components/items/file-type-combobox";
-import { Film, ImageIcon, FileText } from "lucide-react";
+import {
+  faFilm,
+  faImage,
+  faFileLines,
+} from "@fortawesome/free-solid-svg-icons";
 import type { SerializedItemFile, QueuedFile } from "@/lib/types";
 import { deleteItemFile } from "@/lib/item-file-actions";
 import { toast } from "sonner";
@@ -63,7 +67,7 @@ describe("FileTypeCombobox Delete", () => {
   const defaultProps = {
     label: "Primary Media",
     description: "The file that plays",
-    icon: Film,
+    icon: faFilm,
     files: [
       createMockFile({ id: "m1", filename: "movie.mp4", isPrimary: true }),
       createMockFile({ id: "m2", filename: "movie-hd.mkv" }),
@@ -323,7 +327,7 @@ describe("FileTypeCombobox Drive Link", () => {
   const defaultProps = {
     label: "Primary Media",
     description: "The file that plays",
-    icon: Film,
+    icon: faFilm,
     files: [
       createMockFile({ id: "m1", filename: "movie.mp4", isPrimary: true }),
     ],
@@ -419,7 +423,7 @@ describe("FileTypeCombobox Upload-Only Mode", () => {
     uploadOnly: true as const,
     label: "Primary Media",
     description: "The file that plays when clicking on this item.",
-    icon: Film,
+    icon: faFilm,
     fileType: "media" as const,
     queuedFiles: [] as QueuedFile[],
     onQueueFilesChange: vi.fn(),
@@ -526,7 +530,7 @@ describe("FileTypeCombobox Upload-Only Mode", () => {
         {...defaultProps}
         label="Primary Artwork"
         description="The image used as the thumbnail."
-        icon={ImageIcon}
+        icon={faImage}
         fileType="artwork"
       />
     );
@@ -558,7 +562,7 @@ describe("FileTypeCombobox Upload-Only Mode - Subtitle Category", () => {
     uploadOnly: true as const,
     label: "Default Subtitle",
     description: "The subtitle track that loads by default.",
-    icon: FileText,
+    icon: faFileLines,
     fileType: "subtitle" as const,
     queuedFiles: [] as QueuedFile[],
     onQueueFilesChange: vi.fn(),

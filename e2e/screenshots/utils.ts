@@ -14,10 +14,12 @@ import { Timeouts } from "../config/timeouts";
 type ScreenshotName =
   | "01-library-grid"
   | "02-tree-view"
+  | "03-item-detail"
   | "04-tmdb-wizard"
   | "06-google-drive-sync"
   | "07-explore-page"
   | "08-spotlight-search"
+  | "09-playlist-detail"
   | "32-fork-dialog"
   | "36-docs";
 
@@ -81,8 +83,15 @@ export async function captureScreenshot(
     content: "nextjs-portal { display: none !important; }",
   });
 
-  const isMobile = page.viewportSize()!.width < 1024;
-  const suffix = isMobile ? "mobile" : "desktop";
+  const width = page.viewportSize()!.width;
+  const suffix =
+    width < 1024
+      ? "mobile"
+      : width >= 1920
+        ? "desktop"
+        : width >= 1500
+          ? "laptop-lg"
+          : "laptop";
 
   // Brief settle for CSS animations before capture
   await page.waitForTimeout(Timeouts.animation);
@@ -151,8 +160,8 @@ export async function openSpotlight(page: Page): Promise<void> {
       .getByRole("button", { name: /search/i });
     await searchButton.click();
   } else {
-    const searchButton = page.getByRole("button", { name: /search/i }).first();
-    await searchButton.click();
+    // Use "/" keyboard shortcut — works even with collapsed sidebar
+    await page.keyboard.press("/");
   }
 
   await page.waitForSelector('[role="dialog"]', { timeout: Timeouts.api });
@@ -171,4 +180,23 @@ export async function switchToTreeView(
   const isMobile = page.viewportSize()!.width < 1024;
   const sortFilter = new ItemsSortFilterPage(page, username, isMobile);
   await sortFilter.switchToTree();
+}
+
+/**
+ * Collapse the desktop sidebar. No-op on mobile viewports.
+ * Replicates NavPage.closeSidebar() as a standalone helper.
+ *
+ * @param page - Playwright page
+ */
+export async function collapseSidebar(page: Page): Promise<void> {
+  const isMobile = page.viewportSize()!.width < 1024;
+  if (isMobile) return;
+  const sidebarWrapper = page.locator('[data-slot="sidebar"]');
+  const state = await sidebarWrapper.getAttribute("data-state");
+  if (state === "expanded") {
+    await page.getByTestId("sidebar-trigger").click();
+    await expect(sidebarWrapper).toHaveAttribute("data-state", "collapsed", {
+      timeout: Timeouts.animation,
+    });
+  }
 }

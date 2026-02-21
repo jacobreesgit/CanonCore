@@ -5,7 +5,8 @@
 
 "use client";
 
-import { Filter, X } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faFilter, faXmark } from "@fortawesome/free-solid-svg-icons";
 
 import {
   DropdownMenu,
@@ -74,7 +75,11 @@ export function FilterDropdown({
           className
         )}
       >
-        <Filter aria-hidden="true" className="size-4" />
+        <FontAwesomeIcon
+          icon={faFilter}
+          aria-hidden="true"
+          className="size-4"
+        />
         <span>Filter{hasActive ? ` (${activeCount})` : ""}</span>
         {hasActive && (
           <span
@@ -144,7 +149,11 @@ export function FilterDropdown({
                 "cursor-pointer"
               )}
             >
-              <X aria-hidden="true" className="size-4" />
+              <FontAwesomeIcon
+                icon={faXmark}
+                aria-hidden="true"
+                className="size-4"
+              />
               Clear filters
             </button>
           </>

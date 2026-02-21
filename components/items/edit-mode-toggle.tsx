@@ -7,7 +7,8 @@
 "use client";
 
 import React, { useCallback } from "react";
-import { Pencil, Check } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPencil, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -73,12 +74,20 @@ export function EditModeToggle({
     >
       {isEditing ? (
         <>
-          <Check aria-hidden="true" className="size-4" />
+          <FontAwesomeIcon
+            icon={faCheck}
+            aria-hidden="true"
+            className="size-4"
+          />
           <span className="hidden xl:inline">Done</span>
         </>
       ) : (
         <>
-          <Pencil aria-hidden="true" className="size-4" />
+          <FontAwesomeIcon
+            icon={faPencil}
+            aria-hidden="true"
+            className="size-4"
+          />
           <span className="hidden xl:inline">Edit</span>
         </>
       )}

@@ -9,17 +9,18 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  Loader2,
-  ImageIcon,
-  FileText,
-  Film,
-  Settings2,
-  Sparkles,
-  ChevronLeft,
-  ChevronRight,
-  Tv,
-} from "lucide-react";
+  faSpinner,
+  faImage,
+  faFileLines,
+  faFilm,
+  faGears,
+  faWandMagicSparkles,
+  faChevronLeft,
+  faChevronRight,
+  faTv,
+} from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@/components/ui/dialog";
 import { AnimatedDialogContent } from "@/components/ui/animated-dialog-content";
 import {
@@ -109,9 +110,11 @@ export function ItemSettingsDialog({
           {(form.isLoadingPreview || form.isApplyingMetadata) && (
             <div className="bg-background/80 absolute inset-0 flex items-center justify-center rounded-md">
               <div className="flex items-center gap-2">
-                <Loader2
+                <FontAwesomeIcon
+                  icon={faSpinner}
                   aria-hidden="true"
-                  className="text-muted-foreground size-4 animate-spin"
+                  className="text-muted-foreground size-4"
+                  spin
                 />
                 <span className="text-muted-foreground text-sm">
                   {form.isLoadingPreview ? "Loading preview…" : "Applying…"}
@@ -191,7 +194,7 @@ export function ItemSettingsDialog({
       <FileTypeCombobox
         label="Primary Media"
         description="The file that plays when clicking on this item."
-        icon={Film}
+        icon={faFilm}
         files={files.media}
         selectedId={form.primaryMediaId}
         onSelect={form.setPrimaryMediaId}
@@ -205,7 +208,7 @@ export function ItemSettingsDialog({
       <FileTypeCombobox
         label="Primary Artwork"
         description="The image used as the thumbnail."
-        icon={ImageIcon}
+        icon={faImage}
         files={files.artwork}
         selectedId={form.primaryArtworkId}
         onSelect={form.setPrimaryArtworkId}
@@ -219,7 +222,7 @@ export function ItemSettingsDialog({
       <FileTypeCombobox
         label="Hero Image"
         description="The image used as the banner background."
-        icon={Sparkles}
+        icon={faWandMagicSparkles}
         files={files.artwork}
         selectedId={form.heroArtworkId}
         onSelect={form.setHeroArtworkId}
@@ -233,7 +236,7 @@ export function ItemSettingsDialog({
       <FileTypeCombobox
         label="Default Subtitle"
         description="The subtitle track that loads by default."
-        icon={FileText}
+        icon={faFileLines}
         files={files.subtitles}
         selectedId={form.primarySubtitleId}
         onSelect={form.setPrimarySubtitleId}
@@ -269,7 +272,11 @@ export function ItemSettingsDialog({
                   "bg-primary/10 ring-primary/20 ring-1"
                 )}
               >
-                <Settings2 aria-hidden="true" className="text-primary size-5" />
+                <FontAwesomeIcon
+                  icon={faGears}
+                  aria-hidden="true"
+                  className="text-primary size-5"
+                />
               </div>
               <div className="min-w-0">
                 <DialogTitle className="text-lg">Item Settings</DialogTitle>
@@ -293,7 +300,11 @@ export function ItemSettingsDialog({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Back"
               >
-                <ChevronLeft aria-hidden="true" className="size-5" />
+                <FontAwesomeIcon
+                  icon={faChevronLeft}
+                  aria-hidden="true"
+                  className="size-5"
+                />
               </Button>
               <div
                 className={cn(
@@ -301,7 +312,11 @@ export function ItemSettingsDialog({
                   "bg-blue-500/10 ring-1 ring-blue-500/20"
                 )}
               >
-                <Tv aria-hidden="true" className="size-5 text-blue-500" />
+                <FontAwesomeIcon
+                  icon={faTv}
+                  aria-hidden="true"
+                  className="size-5 text-blue-500"
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-lg">Select Season</DialogTitle>
@@ -330,7 +345,11 @@ export function ItemSettingsDialog({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Cancel"
               >
-                <ChevronLeft aria-hidden="true" className="size-5" />
+                <FontAwesomeIcon
+                  icon={faChevronLeft}
+                  aria-hidden="true"
+                  className="size-5"
+                />
               </Button>
               <div
                 className={cn(
@@ -338,7 +357,11 @@ export function ItemSettingsDialog({
                   "bg-brand/10 ring-brand/20 ring-1"
                 )}
               >
-                <Sparkles aria-hidden="true" className="text-brand size-5" />
+                <FontAwesomeIcon
+                  icon={faWandMagicSparkles}
+                  aria-hidden="true"
+                  className="text-brand size-5"
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-lg">Apply Metadata</DialogTitle>
@@ -410,7 +433,12 @@ export function ItemSettingsDialog({
             >
               {form.isSaving ? (
                 <>
-                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                  <FontAwesomeIcon
+                    icon={faSpinner}
+                    aria-hidden="true"
+                    className="size-4"
+                    spin
+                  />
                   Saving...
                 </>
               ) : (
@@ -432,7 +460,11 @@ export function ItemSettingsDialog({
                 onClick={form.wizardFooterProps.onBack}
                 disabled={form.wizardFooterProps.isDisabled}
               >
-                <ChevronLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+                <FontAwesomeIcon
+                  icon={faChevronLeft}
+                  className="mr-2 h-4 w-4"
+                  aria-hidden="true"
+                />
                 Back
               </Button>
               <div className="flex gap-2">
@@ -453,7 +485,11 @@ export function ItemSettingsDialog({
                 >
                   {form.wizardFooterProps.isLastStep ? "Apply" : "Next"}
                   {!form.wizardFooterProps.isLastStep && (
-                    <ChevronRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                    <FontAwesomeIcon
+                      icon={faChevronRight}
+                      className="ml-2 h-4 w-4"
+                      aria-hidden="true"
+                    />
                   )}
                 </Button>
               </div>

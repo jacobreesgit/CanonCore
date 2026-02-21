@@ -8,7 +8,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "motion/react";
 import Image from "next/image";
-import { Check, X, ImageOff } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faCheck,
+  faXmark,
+  faImagePortrait,
+} from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/lib/utils";
 import type { QueuedFile } from "@/lib/types";
 
@@ -83,7 +88,10 @@ export function QueuedFileThumbnail({
           aspectClass
         )}
       >
-        <ImageOff className="text-muted-foreground/50 size-5" />
+        <FontAwesomeIcon
+          icon={faImagePortrait}
+          className="text-muted-foreground/50 size-5"
+        />
         <span className="text-muted-foreground max-w-full truncate text-xs">
           {file.file.name}
         </span>
@@ -135,7 +143,7 @@ export function QueuedFileThumbnail({
         {isSelected && !isSkipped && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/30">
             <div className="bg-brand flex size-8 items-center justify-center rounded-full shadow-lg">
-              <Check className="size-5 text-white" />
+              <FontAwesomeIcon icon={faCheck} className="size-5 text-white" />
             </div>
           </div>
         )}
@@ -170,7 +178,7 @@ export function QueuedFileThumbnail({
         )}
         aria-label={`Remove ${file.file.name}`}
       >
-        <X className="size-3" />
+        <FontAwesomeIcon icon={faXmark} className="size-3" />
       </button>
     </motion.div>
   );

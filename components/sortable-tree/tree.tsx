@@ -86,6 +86,8 @@ export function Tree({
           depth,
           pinnedOrder,
           driveFileId,
+          tmdbPosterPath,
+          artworkId,
           fileCounts,
           childCount,
           mediaIconType,
@@ -127,6 +129,10 @@ export function Tree({
               }
               onClick={() => onItemClick?.(String(id))}
               showDragHandle={false}
+              showThumbnail={true}
+              tmdbPosterPath={tmdbPosterPath}
+              artworkId={artworkId}
+              driveFileId={driveFileId}
               fileCounts={fileCounts}
               mediaIconType={mediaIconType}
               progressPercentage={progressPercentage}

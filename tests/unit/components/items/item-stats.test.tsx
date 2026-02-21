@@ -7,31 +7,26 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { ItemStats } from "@/components/items/item-stats";
 
-// Mock lucide-react icons with distinguishable aria-labels
-vi.mock("lucide-react", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("lucide-react")>();
-  return {
-    ...actual,
-    Film: (props: React.SVGProps<SVGSVGElement>) => (
-      <svg {...props} aria-label="film-icon" />
-    ),
-    Music: (props: React.SVGProps<SVGSVGElement>) => (
-      <svg {...props} aria-label="music-icon" />
-    ),
-    FolderOpen: (props: React.SVGProps<SVGSVGElement>) => (
-      <svg {...props} aria-label="folder-open-icon" />
-    ),
-    Folder: (props: React.SVGProps<SVGSVGElement>) => (
-      <svg {...props} aria-label="folder-icon" />
-    ),
-    ImageIcon: (props: React.SVGProps<SVGSVGElement>) => (
-      <svg {...props} aria-label="image-icon" />
-    ),
-    FileText: (props: React.SVGProps<SVGSVGElement>) => (
-      <svg {...props} aria-label="file-text-icon" />
-    ),
-  };
-});
+// Mock @fortawesome/react-fontawesome with distinguishable aria-labels
+// Maps FA icon names to test-friendly aria-labels
+const iconNameToLabel: Record<string, string> = {
+  film: "film-icon",
+  music: "music-icon",
+  "folder-open": "folder-open-icon",
+  folder: "folder-icon",
+  image: "image-icon",
+  "file-lines": "file-lines-icon",
+};
+
+vi.mock("@fortawesome/react-fontawesome", () => ({
+  FontAwesomeIcon: (props: {
+    icon: { iconName: string };
+    className?: string;
+  }) => {
+    const label = iconNameToLabel[props.icon.iconName] ?? props.icon.iconName;
+    return <svg className={props.className ?? ""} aria-label={label} />;
+  },
+}));
 
 describe("ItemStats", () => {
   describe("mediaIconType icon selection", () => {
@@ -118,10 +113,10 @@ describe("ItemStats", () => {
       expect(within(artworkSpan).getByText("2")).toBeInTheDocument();
     });
 
-    it("shows subtitle count next to file text icon", () => {
+    it("shows subtitle count next to file lines icon", () => {
       render(<ItemStats fileCounts={{ media: 0, artwork: 0, subtitles: 4 }} />);
 
-      const fileTextIcon = screen.getByLabelText("file-text-icon");
+      const fileTextIcon = screen.getByLabelText("file-lines-icon");
       const subtitleSpan = fileTextIcon.closest("span")!;
       expect(within(subtitleSpan).getByText("4")).toBeInTheDocument();
     });

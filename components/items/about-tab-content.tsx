@@ -8,7 +8,8 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { Filter } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faFilter } from "@fortawesome/free-solid-svg-icons";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,7 +63,11 @@ function SectionFilterDropdown({
           "focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
         )}
       >
-        <Filter aria-hidden="true" className="size-4" />
+        <FontAwesomeIcon
+          icon={faFilter}
+          aria-hidden="true"
+          className="size-4"
+        />
         <span>{current.label}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent

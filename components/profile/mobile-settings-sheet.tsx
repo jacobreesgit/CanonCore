@@ -8,22 +8,23 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  Loader2,
-  Settings,
-  Lock,
-  Mail,
-  Cloud,
-  Globe,
-  AtSign,
-  Check,
-  X,
-  Upload,
-  User,
-  ChevronLeft,
-  List,
-  LogOut,
-} from "lucide-react";
+  faAt,
+  faCheck,
+  faChevronLeft,
+  faCloud,
+  faEnvelope,
+  faGear,
+  faGlobe,
+  faList,
+  faLock,
+  faRightFromBracket,
+  faSpinner,
+  faUpload,
+  faUser,
+  faXmark,
+} from "@fortawesome/free-solid-svg-icons";
 import { signOut } from "next-auth/react";
 import { toast } from "sonner";
 import { clearSearchCache } from "@/components/search/spotlight-search";
@@ -165,7 +166,11 @@ export function MobileSettingsSheet({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <Globe aria-hidden="true" className="text-brand h-5 w-5" />
+              <FontAwesomeIcon
+                icon={faGlobe}
+                aria-hidden="true"
+                className="text-brand h-5 w-5"
+              />
               Make your profile public?
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
@@ -225,7 +230,11 @@ export function MobileSettingsSheet({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Back"
               >
-                <ChevronLeft aria-hidden="true" className="size-5" />
+                <FontAwesomeIcon
+                  icon={faChevronLeft}
+                  aria-hidden="true"
+                  className="size-5"
+                />
               </Button>
               <div
                 className={cn(
@@ -233,7 +242,11 @@ export function MobileSettingsSheet({
                   "bg-primary/10 ring-primary/20 ring-1"
                 )}
               >
-                <Lock aria-hidden="true" className="text-primary size-5" />
+                <FontAwesomeIcon
+                  icon={faLock}
+                  aria-hidden="true"
+                  className="text-primary size-5"
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <MobileBottomSheetTitle>Change Password</MobileBottomSheetTitle>
@@ -317,9 +330,11 @@ export function MobileSettingsSheet({
               >
                 {form.isPasswordSaving ? (
                   <>
-                    <Loader2
+                    <FontAwesomeIcon
+                      icon={faSpinner}
+                      spin
                       aria-hidden="true"
-                      className="size-4 animate-spin"
+                      className="size-4"
                     />
                     Changing…
                   </>
@@ -361,7 +376,11 @@ export function MobileSettingsSheet({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Back"
               >
-                <ChevronLeft aria-hidden="true" className="size-5" />
+                <FontAwesomeIcon
+                  icon={faChevronLeft}
+                  aria-hidden="true"
+                  className="size-5"
+                />
               </Button>
               <div
                 className={cn(
@@ -369,7 +388,11 @@ export function MobileSettingsSheet({
                   "bg-primary/10 ring-primary/20 ring-1"
                 )}
               >
-                <Mail aria-hidden="true" className="text-primary size-5" />
+                <FontAwesomeIcon
+                  icon={faEnvelope}
+                  aria-hidden="true"
+                  className="text-primary size-5"
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <MobileBottomSheetTitle>Change Email</MobileBottomSheetTitle>
@@ -439,9 +462,11 @@ export function MobileSettingsSheet({
               >
                 {form.isEmailSaving ? (
                   <>
-                    <Loader2
+                    <FontAwesomeIcon
+                      icon={faSpinner}
+                      spin
                       aria-hidden="true"
-                      className="size-4 animate-spin"
+                      className="size-4"
                     />
                     Changing…
                   </>
@@ -483,7 +508,11 @@ export function MobileSettingsSheet({
                 className="hover:bg-muted/50 size-10 transition-all active:scale-95"
                 aria-label="Back"
               >
-                <ChevronLeft aria-hidden="true" className="size-5" />
+                <FontAwesomeIcon
+                  icon={faChevronLeft}
+                  aria-hidden="true"
+                  className="size-5"
+                />
               </Button>
               <div
                 className={cn(
@@ -491,7 +520,11 @@ export function MobileSettingsSheet({
                   "bg-primary/10 ring-primary/20 ring-1"
                 )}
               >
-                <AtSign aria-hidden="true" className="text-primary size-5" />
+                <FontAwesomeIcon
+                  icon={faAt}
+                  aria-hidden="true"
+                  className="text-primary size-5"
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <MobileBottomSheetTitle>Change Username</MobileBottomSheetTitle>
@@ -542,19 +575,23 @@ export function MobileSettingsSheet({
                   {form.newUsername && (
                     <div className="absolute top-1/2 right-3 -translate-y-1/2">
                       {form.usernameValidation.isValidating ? (
-                        <Loader2
+                        <FontAwesomeIcon
+                          icon={faSpinner}
+                          spin
                           aria-hidden="true"
-                          className="text-muted-foreground size-4 animate-spin"
+                          className="text-muted-foreground size-4"
                         />
                       ) : form.usernameValidation.isValidFormat &&
                         form.usernameValidation.isAvailable === true ? (
-                        <Check
+                        <FontAwesomeIcon
+                          icon={faCheck}
                           aria-hidden="true"
                           className="size-4 text-green-500"
                         />
                       ) : form.usernameValidation.error ||
                         form.usernameValidation.isAvailable === false ? (
-                        <X
+                        <FontAwesomeIcon
+                          icon={faXmark}
                           aria-hidden="true"
                           className="text-destructive size-4"
                         />
@@ -623,9 +660,11 @@ export function MobileSettingsSheet({
               >
                 {form.isUsernameSaving ? (
                   <>
-                    <Loader2
+                    <FontAwesomeIcon
+                      icon={faSpinner}
+                      spin
                       aria-hidden="true"
-                      className="size-4 animate-spin"
+                      className="size-4"
                     />
                     Changing…
                   </>
@@ -673,7 +712,10 @@ export function MobileSettingsSheet({
             <div className="absolute right-2 bottom-2 flex gap-2">
               <FileUploadTrigger asChild>
                 <Button size="sm" variant="secondary" className="shadow-md">
-                  <Upload className="mr-1.5 size-3.5" />
+                  <FontAwesomeIcon
+                    icon={faUpload}
+                    className="mr-1.5 size-3.5"
+                  />
                   Change Cover
                 </Button>
               </FileUploadTrigger>
@@ -685,7 +727,7 @@ export function MobileSettingsSheet({
                   aria-label="Remove cover"
                   onClick={form.handleRemoveHeroImage}
                 >
-                  <X className="size-3.5" />
+                  <FontAwesomeIcon icon={faXmark} className="size-3.5" />
                 </Button>
               )}
             </div>
@@ -719,7 +761,8 @@ export function MobileSettingsSheet({
                     .join("")
                     .toUpperCase()
                     .slice(0, 2) || (
-                    <User
+                    <FontAwesomeIcon
+                      icon={faUser}
                       aria-hidden="true"
                       className="text-muted-foreground size-7"
                     />
@@ -733,7 +776,7 @@ export function MobileSettingsSheet({
                   className="absolute -right-1 -bottom-1 size-7 rounded-full shadow-md"
                   aria-label="Upload avatar"
                 >
-                  <Upload className="size-3.5" />
+                  <FontAwesomeIcon icon={faUpload} className="size-3.5" />
                 </Button>
               </FileUploadTrigger>
             </div>
@@ -776,7 +819,8 @@ export function MobileSettingsSheet({
                 form.isPublic ? "bg-green-500/10" : "bg-muted"
               )}
             >
-              <Globe
+              <FontAwesomeIcon
+                icon={faGlobe}
                 aria-hidden="true"
                 className={cn(
                   "size-4",
@@ -848,7 +892,7 @@ export function MobileSettingsSheet({
         onClick={() => form.setCurrentStep("password")}
         className="w-full justify-start gap-2"
       >
-        <Lock aria-hidden="true" className="size-4" />
+        <FontAwesomeIcon icon={faLock} aria-hidden="true" className="size-4" />
         Change Password
       </Button>
 
@@ -868,7 +912,11 @@ export function MobileSettingsSheet({
         }}
         className="w-full justify-start gap-2"
       >
-        <LogOut aria-hidden="true" className="size-4" />
+        <FontAwesomeIcon
+          icon={faRightFromBracket}
+          aria-hidden="true"
+          className="size-4"
+        />
         Sign out
       </Button>
     </div>
@@ -890,7 +938,11 @@ export function MobileSettingsSheet({
   ) : (
     <div className="space-y-4 py-8 text-center">
       <div className="bg-muted/50 mx-auto flex size-12 items-center justify-center rounded-full">
-        <Cloud aria-hidden="true" className="text-muted-foreground size-6" />
+        <FontAwesomeIcon
+          icon={faCloud}
+          aria-hidden="true"
+          className="text-muted-foreground size-6"
+        />
       </div>
       <div className="space-y-1">
         <p className="text-sm font-medium">No sync activity</p>
@@ -905,25 +957,25 @@ export function MobileSettingsSheet({
     {
       id: "profile",
       label: "Profile",
-      icon: User,
+      icon: faUser,
       content: profileContent,
     },
     {
       id: "account",
       label: "Account",
-      icon: Lock,
+      icon: faLock,
       content: accountContent,
     },
     {
       id: "connections",
       label: "Connections",
-      icon: Cloud,
+      icon: faCloud,
       content: connectionsContent,
     },
     {
       id: "activity",
       label: "Activity",
-      icon: List,
+      icon: faList,
       content: activityContent,
     },
   ];
@@ -957,7 +1009,11 @@ export function MobileSettingsSheet({
                 "bg-primary/10 ring-primary/20 ring-1"
               )}
             >
-              <Settings aria-hidden="true" className="text-primary size-5" />
+              <FontAwesomeIcon
+                icon={faGear}
+                aria-hidden="true"
+                className="text-primary size-5"
+              />
             </div>
             <div className="min-w-0">
               <MobileBottomSheetTitle>Settings</MobileBottomSheetTitle>
@@ -997,7 +1053,12 @@ export function MobileSettingsSheet({
             >
               {form.isMainSaving ? (
                 <>
-                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                  <FontAwesomeIcon
+                    icon={faSpinner}
+                    spin
+                    aria-hidden="true"
+                    className="size-4"
+                  />
                   Saving…
                 </>
               ) : (

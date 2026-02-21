@@ -163,7 +163,7 @@ export default async function ProfilePage({ params }: PageProps) {
         titleHref={`/u/${profile.username}`}
         driveNeedsReauth={driveNeedsReauth}
       />
-      <div className="bg-background text-foreground flex flex-1 flex-col">
+      <div className="bg-background text-foreground -mt-(--header-height) flex flex-1 flex-col">
         <ProfilePageContent
           profile={{
             id: profileData.profile.id,

@@ -123,6 +123,8 @@ interface SortableTreeProps {
   isItemSelected?: (id: string) => boolean;
   /** Callback when an item's selection state changes. */
   onItemSelectChange?: (id: string, selected: boolean) => void;
+  /** Whether edit/reorder mode is active. When false, DnD is disabled and view-mode visuals shown. */
+  isEditing?: boolean;
 }
 
 /**
@@ -157,6 +159,7 @@ export function SortableTree({
   onUnpinItem,
   isItemSelected,
   onItemSelectChange,
+  isEditing = true,
 }: SortableTreeProps) {
   const [items, setItems] = useState(() => defaultItems);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
@@ -296,7 +299,11 @@ export function SortableTree({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <SortableContext items={sortedIds} strategy={verticalListSortingStrategy}>
+      <SortableContext
+        items={sortedIds}
+        strategy={verticalListSortingStrategy}
+        disabled={!isEditing}
+      >
         <ul className="space-y-1">
           {flattenedItems.map(
             ({
@@ -308,7 +315,15 @@ export function SortableTree({
               depth,
               pinnedOrder,
               tmdbPosterPath,
+              artworkId,
               driveFileId,
+              fileCounts,
+              childCount,
+              mediaIconType,
+              progressPercentage,
+              watchedCount,
+              totalMediaCount,
+              totalItems,
             }) => (
               <SortableTreeItem
                 key={id}
@@ -340,8 +355,15 @@ export function SortableTree({
                 }
                 onAddChildComplete={onAddChildComplete}
                 tmdbPosterPath={tmdbPosterPath}
+                artworkId={artworkId}
                 driveFileId={driveFileId}
-                showDescription={false}
+                fileCounts={fileCounts}
+                childCount={childCount}
+                mediaIconType={mediaIconType}
+                progressPercentage={progressPercentage}
+                watchedCount={watchedCount}
+                totalMediaCount={totalMediaCount}
+                totalItems={totalItems}
                 hasDriveConnection={hasDriveConnection}
                 onPin={onPinItem ? () => onPinItem(String(id)) : undefined}
                 onUnpin={
@@ -353,6 +375,7 @@ export function SortableTree({
                     ? (selected) => onItemSelectChange(String(id), selected)
                     : undefined
                 }
+                isEditing={isEditing}
               />
             )
           )}

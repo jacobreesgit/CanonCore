@@ -21,13 +21,14 @@
 
 import { useState, useEffect, useRef, useTransition, useCallback } from "react";
 import Link from "next/link";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  AlertTriangle,
-  ChevronRight,
-  MoreVertical,
-  Pencil,
-  Trash2,
-} from "lucide-react";
+  faTriangleExclamation,
+  faChevronRight,
+  faEllipsisVertical,
+  faPencil,
+  faTrashCan,
+} from "@fortawesome/free-solid-svg-icons";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -166,7 +167,7 @@ export function SiteHeader({
     <header
       data-testid="nav-header"
       className={cn(
-        "bg-background sticky top-0 z-50 hidden shrink-0 flex-col border-b transition duration-300 ease-out lg:flex",
+        "sticky top-0 z-50 hidden shrink-0 flex-col border-b border-white/[0.06] bg-white/[0.03] backdrop-blur-xl transition duration-300 ease-out lg:flex",
         !isVisible && "-translate-y-full opacity-0"
       )}
     >
@@ -206,7 +207,8 @@ export function SiteHeader({
 
             return (
               <div key={crumb.id} className="flex min-w-0 items-center gap-1">
-                <ChevronRight
+                <FontAwesomeIcon
+                  icon={faChevronRight}
                   className="text-muted-foreground/40 size-3.5 shrink-0"
                   aria-hidden="true"
                 />
@@ -236,7 +238,11 @@ export function SiteHeader({
                 className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring ml-auto rounded-md p-1.5 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
                 aria-label="Item actions"
               >
-                <MoreVertical className="size-4" aria-hidden="true" />
+                <FontAwesomeIcon
+                  icon={faEllipsisVertical}
+                  className="size-4"
+                  aria-hidden="true"
+                />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
@@ -245,7 +251,11 @@ export function SiteHeader({
                   onClick={onRename}
                   className="cursor-pointer gap-2"
                 >
-                  <Pencil className="size-4" aria-hidden="true" />
+                  <FontAwesomeIcon
+                    icon={faPencil}
+                    className="size-4"
+                    aria-hidden="true"
+                  />
                   Rename
                 </DropdownMenuItem>
               )}
@@ -254,7 +264,11 @@ export function SiteHeader({
                   onClick={onDelete}
                   className="text-destructive focus:text-destructive cursor-pointer gap-2"
                 >
-                  <Trash2 className="size-4" aria-hidden="true" />
+                  <FontAwesomeIcon
+                    icon={faTrashCan}
+                    className="size-4"
+                    aria-hidden="true"
+                  />
                   Delete
                 </DropdownMenuItem>
               )}
@@ -268,9 +282,10 @@ export function SiteHeader({
         <div
           role="alert"
           aria-live="assertive"
-          className="flex items-center gap-3 border-t border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 lg:px-6"
+          className="flex items-center gap-3 border-t border-white/[0.06] bg-white/[0.03] px-4 py-2 backdrop-blur-xl lg:px-6"
         >
-          <AlertTriangle
+          <FontAwesomeIcon
+            icon={faTriangleExclamation}
             className="size-4 shrink-0 text-amber-400"
             aria-hidden="true"
           />

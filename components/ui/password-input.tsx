@@ -6,7 +6,8 @@
 "use client";
 
 import * as React from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -62,9 +63,9 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
           aria-label={showPassword ? "Hide password" : "Show password"}
         >
           {showPassword ? (
-            <EyeOff className="size-4" />
+            <FontAwesomeIcon icon={faEyeSlash} className="size-4" />
           ) : (
-            <Eye className="size-4" />
+            <FontAwesomeIcon icon={faEye} className="size-4" />
           )}
         </Button>
       </div>

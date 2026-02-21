@@ -198,8 +198,8 @@ describe("GridItem", () => {
 
     it("should show sync icon when status is SYNCING", () => {
       render(<GridItem id="1" name="Test" syncStatus="SYNCING" />);
-      // SyncIcon renders with animate-spin for SYNCING
-      const animatedElement = document.querySelector('[class*="animate-spin"]');
+      // SyncIcon renders with fa-spin for SYNCING (Font Awesome spin prop)
+      const animatedElement = document.querySelector('[class*="fa-spin"]');
       expect(animatedElement).toBeInTheDocument();
     });
   });
