@@ -21,6 +21,8 @@ import {
   faUpload,
   faUser,
   faXmark,
+  faDownload,
+  faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@/components/ui/dialog";
 import { AnimatedDialogContent } from "@/components/ui/animated-dialog-content";
@@ -62,7 +64,10 @@ import {
   removeProfileImage,
   removeHeroImage,
   changePassword,
+  deleteAccount,
+  exportAccountData,
 } from "@/lib/user-actions";
+import { signOut } from "next-auth/react";
 import { passwordSchema, emailSchema } from "@/lib/validations";
 import {
   GoogleDriveSettingsSection,
@@ -75,7 +80,12 @@ import { SETTINGS_MESSAGES } from "@/lib/constants/messages";
 import type { GoogleDriveConnection } from "@/lib/types";
 
 /** Steps for settings dialog navigation. */
-type SettingsStep = "main" | "password" | "email" | "username";
+type SettingsStep =
+  | "main"
+  | "password"
+  | "email"
+  | "username"
+  | "delete-account";
 
 /** Available settings tabs */
 type SettingsTab = "profile" | "account" | "connections" | "activity";
@@ -142,6 +152,14 @@ export function SettingsDialog({
   const [newUsername, setNewUsername] = useState(user.username ?? "");
   const [usernamePassword, setUsernamePassword] = useState("");
   const [isUsernameSaving, setIsUsernameSaving] = useState(false);
+
+  // Delete account state
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Data export state
+  const [isExporting, setIsExporting] = useState(false);
 
   // Main step state
   const [name, setName] = useState(user.name ?? "");
@@ -218,6 +236,11 @@ export function SettingsDialog({
       setRemoveProfile(false);
       setRemoveHero(false);
       setIsMainSaving(false);
+      // Reset delete account state
+      setDeletePassword("");
+      setDeleteConfirmText("");
+      setIsDeleting(false);
+      setIsExporting(false);
     }
   }, [open, user.name, user.email, user.username, user.isPublic]);
 
@@ -231,6 +254,8 @@ export function SettingsDialog({
 
   const handleBack = useCallback(() => {
     setCurrentStep("main");
+    setDeletePassword("");
+    setDeleteConfirmText("");
   }, []);
 
   // Password handlers
@@ -508,6 +533,51 @@ export function SettingsDialog({
     onOpenChange,
   ]);
 
+  const handleDataExport = useCallback(async () => {
+    setIsExporting(true);
+    try {
+      const result = await exportAccountData();
+      if (result.success && result.data) {
+        const blob = new Blob([JSON.stringify(result.data, null, 2)], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `canoncore-export-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        // Delay revocation — click() is async, immediate revoke can cancel download
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        toast.success("Data exported successfully");
+      } else if (!result.success) {
+        toast.error(result.error);
+      }
+    } catch {
+      toast.error("Failed to export data");
+    } finally {
+      setIsExporting(false);
+    }
+  }, []);
+
+  const handleDeleteAccount = useCallback(async () => {
+    setIsDeleting(true);
+    try {
+      const result = await deleteAccount(deletePassword, deleteConfirmText);
+      if (result.success) {
+        toast.success("Account deleted");
+        await signOut({ callbackUrl: "/" });
+      } else {
+        toast.error(result.error);
+      }
+    } catch {
+      toast.error("Failed to delete account");
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [deletePassword, deleteConfirmText]);
+
   // Computed image sources
   const profileImageSrc = profileImagePreview
     ? profileImagePreview
@@ -669,6 +739,45 @@ export function SettingsDialog({
             </div>
           </DialogHeader>
         );
+      case "delete-account":
+        return (
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleBack}
+                disabled={isDeleting}
+                className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                aria-label="Back"
+              >
+                <FontAwesomeIcon
+                  icon={faChevronLeft}
+                  aria-hidden="true"
+                  className="size-5"
+                />
+              </Button>
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                  "bg-destructive/10 ring-destructive/20 ring-1"
+                )}
+              >
+                <FontAwesomeIcon
+                  icon={faTrash}
+                  aria-hidden="true"
+                  className="text-destructive size-5"
+                />
+              </div>
+              <div className="min-w-0">
+                <DialogTitle className="text-lg">Delete Account</DialogTitle>
+                <DialogDescription className="text-sm">
+                  This action is permanent and cannot be undone
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        );
       default:
         return null;
     }
@@ -787,6 +896,39 @@ export function SettingsDialog({
                 </>
               ) : (
                 "Change Username"
+              )}
+            </Button>
+          </DialogFooter>
+        );
+      case "delete-account":
+        return (
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleBack}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={
+                isDeleting || !deletePassword || deleteConfirmText !== "DELETE"
+              }
+            >
+              {isDeleting ? (
+                <>
+                  <FontAwesomeIcon
+                    icon={faSpinner}
+                    spin
+                    aria-hidden="true"
+                    className="size-4"
+                  />
+                  Deleting…
+                </>
+              ) : (
+                "Delete My Account"
               )}
             </Button>
           </DialogFooter>
@@ -1128,6 +1270,68 @@ export function SettingsDialog({
                     </Button>
                   </CardContent>
                 </Card>
+
+                {/* Your Data */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Your Data</CardTitle>
+                    <CardDescription>
+                      Download a copy of all your data as JSON
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleDataExport}
+                      disabled={isExporting}
+                      className="w-full"
+                    >
+                      {isExporting ? (
+                        <>
+                          <FontAwesomeIcon
+                            icon={faSpinner}
+                            spin
+                            aria-hidden="true"
+                            className="mr-2 size-4"
+                          />
+                          Preparing…
+                        </>
+                      ) : (
+                        <>
+                          <FontAwesomeIcon
+                            icon={faDownload}
+                            aria-hidden="true"
+                            className="mr-2 size-4"
+                          />
+                          Download My Data
+                        </>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Danger Zone */}
+                <Card className="border-destructive/30">
+                  <CardHeader>
+                    <CardTitle className="text-destructive">
+                      Danger Zone
+                    </CardTitle>
+                    <CardDescription>
+                      Permanently delete your account and all associated data
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => setCurrentStep("delete-account")}
+                      className="w-full"
+                    >
+                      Delete Account
+                    </Button>
+                  </CardContent>
+                </Card>
               </div>
             </TabsContent>
 
@@ -1272,6 +1476,46 @@ export function SettingsDialog({
               <p className="text-muted-foreground text-xs">
                 Password required to confirm this change.
               </p>
+            </div>
+          </div>
+        );
+      case "delete-account":
+        return (
+          <div className="space-y-4 py-4">
+            <div className="bg-destructive/10 border-destructive/20 rounded-lg border p-3">
+              <p className="text-destructive text-sm font-medium">
+                This will permanently delete your account, all items, playlists,
+                and uploaded files. If Google Drive is connected, your CanonCore
+                folder will be moved to trash.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="delete-password">Password</Label>
+              <PasswordInput
+                id="delete-password"
+                name="current-password"
+                autoComplete="current-password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="Enter your password"
+                className="h-10"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="delete-confirm">
+                Type <span className="font-mono font-bold">DELETE</span> to
+                confirm
+              </Label>
+              <Input
+                id="delete-confirm"
+                autoComplete="off"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="DELETE"
+                className="h-10"
+              />
             </div>
           </div>
         );

@@ -49,6 +49,16 @@ export const rateLimiters = {
     limiter: Ratelimit.slidingWindow(10, "1 m"),
     prefix: "ratelimit:image-upload",
   }),
+  accountDeletion: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(3, "1 h"),
+    prefix: "ratelimit:account-deletion",
+  }),
+  dataExport: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(5, "1 h"),
+    prefix: "ratelimit:data-export",
+  }),
 
   // Item rate limiters (generous - normal user operations)
   itemCreate: new Ratelimit({

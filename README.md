@@ -94,6 +94,10 @@ Multi-layer defence against aggressive AI crawlers: robots.txt for polite bots, 
 
 Route-level error boundaries catch failures gracefully with styled recovery pages and a retry option. Custom 404 pages guide users back to relevant content. A global error boundary catches root layout failures as a last resort. Every error is reported to Sentry for monitoring.
 
+### Account Management
+
+You own your data. Download a complete export of your account as JSON — profile, items with file metadata and TMDB fields, playlists with memberships, and fork records — from Settings at any time. If you want to leave, permanent account deletion removes everything: items, playlists, files, forks, and audit records. Deletion requires your password and typing "DELETE" to confirm. If Google Drive is connected, the CanonCore folder is moved to trash before the account is removed. Prisma cascade relations handle all dependent records in a single operation.
+
 ### Audit Logging
 
 Every database mutation is automatically logged via a Prisma extension. Context includes user, action, model, and record ID. Sensitive fields are redacted. 90-day retention in production.

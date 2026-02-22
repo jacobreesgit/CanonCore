@@ -43,6 +43,7 @@ vi.mock("@/lib/prisma", () => ({
       findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
       deleteMany: vi.fn(),
     },
     passwordReset: {
@@ -96,6 +97,15 @@ vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
   revalidateTag: vi.fn(),
 }));
+
+// Mock next/server `after` (runs callback synchronously in tests)
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>();
+  return {
+    ...actual,
+    after: vi.fn((fn: () => void) => fn()),
+  };
+});
 
 // Mock rate limiting (returns null = allowed)
 vi.mock("@/lib/rate-limit", () => ({

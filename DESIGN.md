@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: February 2026 (v9.0.0)
+Last updated: February 2026 (v9.1.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -296,7 +296,7 @@ All mutations go through server actions in `lib/*-actions.ts`:
 - `lib/google-drive-actions.ts` - OAuth, sync, connection management
 - `lib/tmdb-actions.ts` - Metadata search, image fetching
 - `lib/auth-actions.ts` - Sign up, forgot password, reset password
-- `lib/user-actions.ts` - Profile updates, image uploads
+- `lib/user-actions.ts` - Profile updates, image uploads, account deletion, data export
 - `lib/fork-actions.ts` - Forking collections
 
 **Parallel Async Pattern:**
@@ -403,6 +403,8 @@ Upstash Redis with different thresholds per action:
 - Item mutations: 30 requests/minute
 - Playlist mutations: 30 requests/minute
 - Search: 30-60 requests/minute per section
+- Account deletion: 3 requests/hour
+- Data export: 5 requests/hour
 - API routes (artwork/stream/avatar/hero): 60 requests/minute
 - Bot crawlers: 120 requests/minute
 
@@ -828,6 +830,33 @@ The landing page uses a full-bleed animated mesh gradient background (`@mesh-gra
 
 - Sensitive fields (password, token, secret) automatically redacted
 - 90-day retention in production, 7-day in development
+
+### Account Management
+
+**Account Deletion:**
+
+- Accessible from Settings > Account > Danger Zone
+- Requires password verification (bcryptjs compare) and typing "DELETE" to confirm
+- Validated with `deleteAccountSchema` (Zod) in `lib/validations.ts`
+- Best-effort Google Drive folder trash before deletion (logs warning on failure, proceeds)
+- `prisma.user.delete()` triggers cascade deletion: Items, ItemFiles, Playlists, PlaylistItems, Forks, SyncLogs, PasswordResets, GoogleDriveConnection
+- Security event logging at each stage via `logSecurityEvent()`: rate limited, wrong password, confirmed, completed
+- Non-blocking completion logging via `after()` from `next/server`
+- Client-side `signOut({ callbackUrl: "/" })` after successful deletion
+
+**Data Export:**
+
+- Accessible from Settings > Account > Your Data
+- `exportAccountData` server action returns typed `AccountExportData` interface
+- Includes: user profile, items (with files metadata and TMDB fields), playlists (with item memberships), fork records
+- Excludes: binary data (artwork blobs, uploaded files), password hashes, OAuth tokens
+- Client creates `Blob` from JSON response, triggers download as `canoncore-export-YYYY-MM-DD.json`
+- Delayed `URL.revokeObjectURL()` (60s) to prevent download cancellation from immediate revocation
+
+**Rate Limiting:**
+
+- `accountDeletion`: 3 requests per hour (sliding window)
+- `dataExport`: 5 requests per hour (sliding window)
 
 ---
 
