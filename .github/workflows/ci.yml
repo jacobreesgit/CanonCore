@@ -52,11 +52,11 @@ jobs:
     needs: quality
     env:
       DATABASE_URL: ${{ secrets.E2E_DATABASE_URL }}
-      AUTH_SECRET: "ci-placeholder-secret-not-used"
-      RESEND_API_KEY: "re_ci_placeholder"
-      UPSTASH_REDIS_REST_URL: "https://ci-placeholder.upstash.io"
-      UPSTASH_REDIS_REST_TOKEN: "ci-placeholder-token"
-      ENCRYPTION_KEY: "Y2ktcGxhY2Vob2xkZXIta2V5LW5vdC11c2Vk"
+      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+      UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+      ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -86,11 +86,11 @@ jobs:
     needs: quality
     env:
       DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
-      AUTH_SECRET: "ci-placeholder-secret-not-used"
-      RESEND_API_KEY: "re_ci_placeholder"
-      UPSTASH_REDIS_REST_URL: "https://ci-placeholder.upstash.io"
-      UPSTASH_REDIS_REST_TOKEN: "ci-placeholder-token"
-      ENCRYPTION_KEY: "Y2ktcGxhY2Vob2xkZXIta2V5LW5vdC11c2Vk"
+      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+      UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+      ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
