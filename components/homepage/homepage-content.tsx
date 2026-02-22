@@ -6,6 +6,8 @@ import { LazyMotion } from "motion/react";
 const loadFeatures = () =>
   import("@/lib/motion-features").then((res) => res.default);
 
+import Link from "next/link";
+
 import { BackgroundGrid } from "./background-grid";
 import { BackgroundScanline } from "./background-scanline";
 import { HeroSection } from "./hero-section";
@@ -57,6 +59,30 @@ export function HomepageContent() {
           <div>
             <FeatureAccordion />
             <ManifestoCta />
+            <footer className="text-muted-foreground py-6 text-center text-sm">
+              <div className="flex items-center justify-center gap-4">
+                <Link
+                  href="/legal/privacy-policy"
+                  className="transition-colors hover:text-white"
+                >
+                  Privacy Policy
+                </Link>
+                <span className="text-white/20">·</span>
+                <Link
+                  href="/legal/terms-of-service"
+                  className="transition-colors hover:text-white"
+                >
+                  Terms of Service
+                </Link>
+                <span className="text-white/20">·</span>
+                <Link
+                  href="/legal/cookie-policy"
+                  className="transition-colors hover:text-white"
+                >
+                  Cookie Policy
+                </Link>
+              </div>
+            </footer>
           </div>
         </div>
       </div>
