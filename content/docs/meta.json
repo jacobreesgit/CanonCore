@@ -9,6 +9,7 @@
     "---Your Account---",
     "account/profile-settings",
     "account/password-reset",
+    "account/your-data",
     "account/sign-out",
     "account/security",
     "---Items---",

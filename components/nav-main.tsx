@@ -288,7 +288,7 @@ export function NavMain({ items, username, pinnedItems }: NavMainProps) {
           <NavCollapsibleItem
             label="Legal"
             icon={faScaleBalanced}
-            isActive={pathname.startsWith("/legal")}
+            isActive={false}
             defaultOpen={false}
           >
             {legalLinks.map(({ href, label, icon: legalIcon }) => (

@@ -1,0 +1,45 @@
+---
+title: Your Data
+description: Download your data or permanently delete your account
+---
+
+Your data belongs to you. CanonCore lets you export everything or delete your account entirely — both from the **Account** tab in settings.
+
+## Download your data
+
+Get a complete copy of your account as a JSON file. The export includes your profile, all items with file metadata and TMDB fields, playlists with their item memberships, and fork records.
+
+1. Open **Settings** and switch to the **Account** tab
+2. Under **Your Data**, click **Download My Data**
+3. A JSON file named `canoncore-export-YYYY-MM-DD.json` downloads to your device
+
+The export doesn't include binary files like artwork images or uploaded media — just the structured data and metadata.
+
+## Delete your account
+
+Account deletion is permanent. Once confirmed, CanonCore removes your account and everything associated with it: items, playlists, files, forks, and sync logs. There's no way to undo this.
+
+1. Open **Settings** and switch to the **Account** tab
+2. Under **Danger Zone**, click **Delete Account**
+3. Enter your current password
+4. Type `DELETE` in the confirmation field
+5. Click **Delete My Account**
+
+After deletion, you're signed out and redirected to the homepage.
+
+### What gets deleted
+
+- Your profile (name, email, avatar, hero banner)
+- All items and their file records
+- All playlists and playlist memberships
+- All fork records
+- Google Drive connection details
+- Sync logs and password reset tokens
+
+### Google Drive files
+
+If you have Google Drive connected, CanonCore moves your CanonCore folder to Google Drive's trash before deleting your account. Your actual media files stay in your Drive — you can restore them from the trash if needed. If the folder can't be trashed (for example, if your Google token has expired), the account deletion still proceeds.
+
+### Before you delete
+
+Consider [downloading your data](#download-your-data) first, so you have a record of your library structure and metadata.

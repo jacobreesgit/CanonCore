@@ -172,6 +172,18 @@ export function validateUsername(username: string): {
 }
 
 // =============================================================================
+// Account Management Validation
+// =============================================================================
+
+/** Schema for account deletion confirmation. */
+export const deleteAccountSchema = z.object({
+  password: z.string().min(1, "Password is required"),
+  confirmText: z.string().refine((val) => val === "DELETE", {
+    message: 'You must type "DELETE" to confirm',
+  }),
+});
+
+// =============================================================================
 // TMDB Response Validation
 // =============================================================================
 
