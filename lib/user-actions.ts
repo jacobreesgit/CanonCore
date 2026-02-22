@@ -12,10 +12,18 @@ import sharp from "sharp";
 import { z } from "zod";
 import { fileTypeFromBuffer } from "file-type";
 
+import { after } from "next/server";
+
 import { auth } from "@/lib/auth";
+import { getDriveClient, withRateLimit } from "@/lib/google-drive-client";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { emailSchema, passwordSchema, usernameSchema } from "@/lib/validations";
+import {
+  emailSchema,
+  passwordSchema,
+  usernameSchema,
+  deleteAccountSchema,
+} from "@/lib/validations";
 import { logger } from "@/lib/logger";
 
 /** Standardised bcrypt cost factor for all password hashing. */
@@ -570,4 +578,290 @@ export async function getProfile(): Promise<
     logger.error({ err: error }, "Get profile error");
     return { success: false, error: "Failed to get profile" };
   }
+}
+
+/**
+ * Permanently deletes the authenticated user's account and all associated data.
+ * Requires password verification and typing "DELETE" to confirm.
+ * Attempts to trash Google Drive folder if connected (best-effort).
+ * Prisma cascades handle: Items, ItemFiles, Playlists, PlaylistItems, Forks, SyncLogs, PasswordResets, GoogleDriveConnection.
+ *
+ * @param password - Current password for verification
+ * @param confirmText - Must be exactly "DELETE"
+ * @returns Success or error result
+ */
+export async function deleteAccount(
+  password: string,
+  confirmText: string
+): Promise<ActionResult> {
+  const [userId, rateLimitResult] = await Promise.all([
+    getAuthUserId(),
+    checkRateLimit("accountDeletion"),
+  ]);
+
+  if (!userId) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  if (rateLimitResult) {
+    await logSecurityEvent("ACCOUNT_DELETION_RATE_LIMITED", { userId });
+    return { success: false, ...rateLimitResult };
+  }
+
+  // Validate input
+  const parsed = deleteAccountSchema.safeParse({ password, confirmText });
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  // Fetch user with password hash and Drive connection
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      passwordHash: true,
+      googleDriveConnection: {
+        select: {
+          id: true,
+          rootFolderId: true,
+          encryptedRefreshToken: true,
+          encryptedAccessToken: true,
+          accessTokenExpiry: true,
+        },
+      },
+    },
+  });
+
+  if (!user) {
+    return { success: false, error: "User not found" };
+  }
+
+  // Verify password
+  const passwordValid = await compare(password, user.passwordHash);
+  if (!passwordValid) {
+    await logSecurityEvent("ACCOUNT_DELETION_WRONG_PASSWORD", { userId });
+    return { success: false, error: "Incorrect password" };
+  }
+
+  await logSecurityEvent("ACCOUNT_DELETION_CONFIRMED", { userId });
+
+  // Best-effort: trash Drive folder if connected
+  if (user.googleDriveConnection) {
+    try {
+      const drive = await getDriveClient(user.googleDriveConnection);
+      await withRateLimit(() =>
+        drive.files.update({
+          fileId: user.googleDriveConnection!.rootFolderId,
+          requestBody: { trashed: true },
+        })
+      );
+    } catch (err) {
+      logger.warn(
+        { err, userId },
+        "[deleteAccount] Failed to trash Drive folder, proceeding with deletion"
+      );
+    }
+  }
+
+  // Delete user — Prisma cascades handle all related records
+  try {
+    await prisma.user.delete({ where: { id: userId } });
+  } catch (error) {
+    logger.error({ error, userId }, "[deleteAccount] Failed to delete user");
+    return { success: false, error: "Failed to delete account" };
+  }
+
+  // Log completion after response (non-blocking)
+  after(() => {
+    logSecurityEvent("ACCOUNT_DELETION_COMPLETED", { userId });
+  });
+
+  return { success: true };
+}
+
+/** Shape of the exported account data. */
+export interface AccountExportData {
+  exportedAt: string;
+  user: {
+    name: string | null;
+    email: string;
+    username: string | null;
+    isPublic: boolean;
+    createdAt: string;
+  };
+  items: AccountExportItem[];
+  playlists: AccountExportPlaylist[];
+  forks: AccountExportFork[];
+}
+
+interface AccountExportItem {
+  name: string;
+  description: string | null;
+  isPublic: boolean;
+  inheritVisibility: boolean;
+  tmdbId: number | null;
+  tmdbType: string | null;
+  tmdbPosterPath: string | null;
+  tmdbBackdropPath: string | null;
+  createdAt: string;
+  files: {
+    filename: string;
+    mimeType: string | null;
+    size: number | null;
+    fileType: string;
+    isPrimary: boolean;
+    isHero: boolean;
+  }[];
+}
+
+interface AccountExportPlaylist {
+  name: string;
+  description: string | null;
+  isPublic: boolean;
+  createdAt: string;
+  items: {
+    itemName: string;
+    addedAt: string;
+    order: number;
+  }[];
+}
+
+interface AccountExportFork {
+  sourceItemName: string;
+  targetItemName: string;
+  createdAt: string;
+}
+
+/**
+ * Exports all account data as a JSON object for download.
+ * Includes user profile, items (with files metadata and TMDB fields),
+ * playlists (with item memberships), and fork records.
+ * Excludes binary data (artwork, uploaded files).
+ *
+ * @returns JSON export data or error
+ */
+export async function exportAccountData(): Promise<
+  ActionResult<AccountExportData>
+> {
+  const [userId, rateLimitResult] = await Promise.all([
+    getAuthUserId(),
+    checkRateLimit("dataExport"),
+  ]);
+
+  if (!userId) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  if (rateLimitResult) {
+    return { success: false, ...rateLimitResult };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      name: true,
+      email: true,
+      username: true,
+      isPublic: true,
+      createdAt: true,
+      items: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          isPublic: true,
+          inheritVisibility: true,
+          tmdbId: true,
+          tmdbType: true,
+          tmdbPosterPath: true,
+          tmdbBackdropPath: true,
+          createdAt: true,
+          files: {
+            select: {
+              filename: true,
+              mimeType: true,
+              size: true,
+              fileType: true,
+              isPrimary: true,
+              isHero: true,
+            },
+          },
+        },
+      },
+      playlists: {
+        select: {
+          name: true,
+          description: true,
+          isPublic: true,
+          createdAt: true,
+          playlistItems: {
+            select: {
+              order: true,
+              addedAt: true,
+              item: { select: { name: true } },
+            },
+            orderBy: { order: "asc" },
+          },
+        },
+      },
+      forks: {
+        select: {
+          sourceItem: { select: { name: true } },
+          targetItem: { select: { name: true } },
+          createdAt: true,
+        },
+      },
+    },
+  });
+
+  if (!user) {
+    return { success: false, error: "User not found" };
+  }
+
+  const exportData: AccountExportData = {
+    exportedAt: new Date().toISOString(),
+    user: {
+      name: user.name,
+      email: user.email,
+      username: user.username,
+      isPublic: user.isPublic,
+      createdAt: user.createdAt.toISOString(),
+    },
+    items: user.items.map((item) => ({
+      name: item.name,
+      description: item.description,
+      isPublic: item.isPublic,
+      inheritVisibility: item.inheritVisibility,
+      tmdbId: item.tmdbId,
+      tmdbType: item.tmdbType,
+      tmdbPosterPath: item.tmdbPosterPath,
+      tmdbBackdropPath: item.tmdbBackdropPath,
+      createdAt: item.createdAt.toISOString(),
+      files: item.files.map((f) => ({
+        filename: f.filename,
+        mimeType: f.mimeType,
+        size: f.size ? Number(f.size) : null,
+        fileType: f.fileType,
+        isPrimary: f.isPrimary,
+        isHero: f.isHero,
+      })),
+    })),
+    playlists: user.playlists.map((pl) => ({
+      name: pl.name,
+      description: pl.description,
+      isPublic: pl.isPublic,
+      createdAt: pl.createdAt.toISOString(),
+      items: pl.playlistItems.map((pi) => ({
+        itemName: pi.item.name,
+        addedAt: pi.addedAt.toISOString(),
+        order: pi.order,
+      })),
+    })),
+    forks: user.forks.map((f) => ({
+      sourceItemName: f.sourceItem.name,
+      targetItemName: f.targetItem.name,
+      createdAt: f.createdAt.toISOString(),
+    })),
+  };
+
+  return { success: true, data: exportData };
 }
