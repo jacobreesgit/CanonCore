@@ -77,6 +77,8 @@ interface MediaSearchComboboxProps {
   className?: string;
   /** Input element id for label association */
   id?: string;
+  /** Whether the input should receive focus on mount */
+  autoFocus?: boolean;
 }
 
 /**
@@ -90,6 +92,7 @@ export function MediaSearchCombobox({
   placeholder = "Search movies & TV shows...",
   className,
   id,
+  autoFocus,
 }: MediaSearchComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
@@ -224,6 +227,7 @@ export function MediaSearchCombobox({
             onFocus={handleFocus}
             onClick={(e) => e.stopPropagation()}
             autoComplete="off"
+            autoFocus={autoFocus}
             className="pl-10"
             data-testid="media-search-input"
           />

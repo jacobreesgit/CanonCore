@@ -77,6 +77,9 @@ const securityHeaders = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Use a separate build directory for E2E server to avoid lock conflicts
+  // with the dev server running on port 3000.
+  ...(process.env.NEXT_DIST_DIR && { distDir: process.env.NEXT_DIST_DIR }),
   devIndicators: false,
   // Transpile fumadocs packages to ensure proper compilation on Vercel
   transpilePackages: ["fumadocs-core", "fumadocs-mdx", "fumadocs-ui"],

@@ -16,7 +16,7 @@ I use this daily for my own movie and TV library. Active development continues.
 
 ### Homepage
 
-The landing page features a full-bleed animated mesh gradient background with a grid overlay and CRT scanline effect. Content scrolls over the sticky background. A two-column hero section combines a media stack (glass-morphism screenshot carousel) with a typed command-line pill and logo showcase. Below the hero, a feature accordion with image crossfade showcases core capabilities, followed by a closing manifesto CTA. All motion is async-loaded via LazyMotion (~15KB). Desktop Lighthouse: Performance 96, LCP 1.3s, TBT 0ms, total transfer 1,161 KiB.
+The landing page features a full-bleed animated mesh gradient background with a grid overlay and CRT scanline effect. Content scrolls over the sticky background. A Payload-inspired 16-column grid hero section uses CSS Modules with container queries for sidebar-aware responsiveness — the layout adapts to its container width, not the viewport. The media stack (glass-morphism screenshot pair) is a server component with pure CSS animations, shipping zero client JavaScript. Below the hero, a feature accordion with image crossfade showcases core capabilities, followed by a closing manifesto CTA. Remaining motion is async-loaded via LazyMotion (~15KB). Desktop Lighthouse: Performance 96, LCP 1.3s, TBT 0ms, total transfer 1,161 KiB.
 
 ### Browsing & Organisation
 
@@ -49,6 +49,8 @@ Vidstack-powered player streams media directly from Google Drive via HTTP range 
 ### One-Click Metadata
 
 You can enrich movies and TV shows with TMDB metadata. A four-step wizard lets you search for a title, review the description, select from multiple poster options, choose a backdrop image, and review everything before applying. For TV shows, an episode picker lets you navigate into seasons and episodes. Per-item display toggles control what metadata appears: tagline, cast, genres, providers, and videos.
+
+After the initial wizard, per-field artwork editing lets you change an individual poster, backdrop, or episode still without re-applying all metadata. An inline detach flow removes all TMDB data with a single confirmation while preserving the item's name and description. Override badges on the Files tab show when uploaded artwork takes precedence over TMDB artwork. The same settings form powers both the desktop dialog and mobile bottom sheet through a shared hook.
 
 ### Progress Tracking
 
@@ -124,7 +126,7 @@ Sentry error tracking across client, server, and edge runtimes with source maps 
 
 ### Performance
 
-Google Drive operations batched up to 100 per request, reducing sync time for large folders from ~45s to ~3s. Edit mode separation extracts a view-only Grid from SortableGrid to avoid dnd-kit overhead in browse mode (~40KB saved). TMDB resolution and metadata fetches chained as a single promise running concurrently with other server-side fetches, eliminating sequential await waterfalls. Offline queue persists actions to IndexedDB when offline, replaying on reconnect with exponential backoff and jitter. Homepage performance pass cut total transfer by 65% (3,344 KiB → 1,161 KiB): replaced a 328KB noise texture with a CSS-generated SVG feTurbulence data URI, migrated all images to next/image with CDN support, async-loaded motion features via LazyMotion, and deduplicated `auth()` with `React.cache()` to eliminate redundant JWT decodes per request.
+Google Drive operations batched up to 100 per request, reducing sync time for large folders from ~45s to ~3s. Edit mode separation extracts a view-only Grid from SortableGrid to avoid dnd-kit overhead in browse mode (~40KB saved). TMDB resolution and metadata fetches chained as a single promise running concurrently with other server-side fetches, eliminating sequential await waterfalls. Offline queue persists actions to IndexedDB when offline, replaying on reconnect with exponential backoff and jitter. Homepage performance pass cut total transfer by 65% (3,344 KiB → 1,161 KiB): replaced a 328KB noise texture with a CSS-generated SVG feTurbulence data URI, migrated all images to next/image with CDN support, async-loaded motion features via LazyMotion, and deduplicated `auth()` with `React.cache()` to eliminate redundant JWT decodes per request. The hero section's media stack ships as a server component with CSS-only animations — no client JavaScript for the image stack at all.
 
 ### Accessibility
 

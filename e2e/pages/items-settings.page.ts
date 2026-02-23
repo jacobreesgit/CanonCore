@@ -75,6 +75,50 @@ export class ItemsSettingsPage {
     );
   }
 
+  // ── TMDB Tab ─────────────────────────────────────────────
+
+  /** Switch to the TMDB tab in the settings dialog. */
+  async switchToTmdbTab() {
+    const tmdbTab = this.page.getByRole("tab", { name: /tmdb/i });
+    await tmdbTab.waitFor({ state: "visible", timeout: Timeouts.api });
+    await tmdbTab.click();
+  }
+
+  /** Assert the TMDB metadata section is visible with poster/backdrop fields. */
+  async expectTmdbMetadataVisible() {
+    await expect(this.page.getByText("Poster")).toBeVisible({
+      timeout: Timeouts.api,
+    });
+    await expect(
+      this.page.getByRole("button", { name: /detach/i })
+    ).toBeVisible();
+  }
+
+  /** Assert the TMDB tab is no longer present (after detach). */
+  async expectTmdbTabGone() {
+    await expect(this.page.getByRole("tab", { name: /tmdb/i })).not.toBeVisible(
+      {
+        timeout: Timeouts.animation,
+      }
+    );
+  }
+
+  /** Click the Detach button and confirm the dialog. */
+  async detachTmdb() {
+    await this.page.getByRole("button", { name: /detach/i }).click();
+    await expect(this.page.getByText(/are you sure/i)).toBeVisible({
+      timeout: Timeouts.animation,
+    });
+    await this.page.getByRole("button", { name: /confirm/i }).click();
+  }
+
+  /** Click the Clear button for a specific artwork field. */
+  async clearArtwork(field: "poster" | "backdrop") {
+    await this.page
+      .getByRole("button", { name: new RegExp(`clear ${field}`, "i") })
+      .click();
+  }
+
   // ── Form Interactions ──────────────────────────────────
 
   /**

@@ -7,30 +7,33 @@ import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { HeroButton } from "@/components/items/hero-button";
 import { MediaStack } from "./media-stack";
 import { GradientText } from "./gradient-text";
+import styles from "./hero-section.module.css";
 
 export function HeroSection() {
   return (
-    <section className="relative min-h-svh overflow-hidden">
-      {/* Text content — vertically centered on desktop, stacked on mobile */}
-      <div className="relative z-10 flex min-h-[calc(100dvh-4rem)] items-center px-6 md:px-10 lg:px-16">
-        <div className="w-full lg:max-w-md">
-          <h1 className="text-4xl font-semibold tracking-tight text-balance text-white md:text-5xl lg:text-6xl">
-            Your media library.
-            <br />
-            <GradientText
-              colors={["#a78bfa", "#c084fc", "#e879f9", "#818cf8"]}
-              animationSpeed={6}
-            >
-              Elevated.
-            </GradientText>
-          </h1>
+    <section className={styles.heroWrapper}>
+      <div className={styles.heroContentWrapper}>
+        {/* Text — cols 1-4 on desktop, full width on mobile */}
+        <div className={styles.heroContent}>
+          <div className={styles.heroText}>
+            <h1 className="text-4xl font-semibold tracking-tight text-white md:text-5xl lg:text-6xl">
+              Your media library.
+              <br />
+              <GradientText
+                colors={["#a78bfa", "#c084fc", "#e879f9", "#818cf8"]}
+                animationSpeed={6}
+              >
+                Elevated.
+              </GradientText>
+            </h1>
 
-          <p className="text-muted-foreground mt-6 max-w-sm text-lg leading-relaxed">
-            Organise, stream, and share your personal media collection — synced
-            with Google Drive.
-          </p>
+            <p className="text-muted-foreground max-w-sm text-lg leading-relaxed">
+              Organise, stream, and share your personal media collection —
+              synced with Google Drive.
+            </p>
+          </div>
 
-          <ul className="mt-8 flex flex-wrap items-center gap-4">
+          <ul className={styles.primaryButtons}>
             <li>
               <HeroButton variant="primary" asChild>
                 <Link href="/sign-up" className="group">
@@ -56,17 +59,12 @@ export function HeroSection() {
               </HeroButton>
             </li>
           </ul>
-
-          {/* MediaStack — inline on mobile */}
-          <div className="mt-10 lg:hidden">
-            <MediaStack />
-          </div>
         </div>
-      </div>
 
-      {/* MediaStack — absolute positioned on desktop, overflows right edge */}
-      <div className="pointer-events-none absolute inset-y-0 left-[45%] hidden w-[75%] items-center lg:flex">
-        <MediaStack priority />
+        {/* Images — cols 8-16 on desktop, full width on mobile */}
+        <div className={styles.graphicWrapper}>
+          <MediaStack />
+        </div>
       </div>
     </section>
   );

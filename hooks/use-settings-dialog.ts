@@ -21,6 +21,9 @@ export interface SettingsDialogState {
     hasParent: boolean;
     hasChildren: boolean;
     tmdbId: number | null;
+    tmdbType: string | null;
+    tmdbPosterPath: string | null;
+    tmdbBackdropPath: string | null;
     tmdbShowTagline: boolean;
     tmdbShowMetadata: boolean;
     tmdbShowGenres: boolean;
@@ -89,6 +92,9 @@ export function useSettingsDialog({
           hasParent: item.parentId !== null,
           hasChildren: item.childCount > 0,
           tmdbId: item.tmdbId,
+          tmdbType: item.tmdbType,
+          tmdbPosterPath: item.tmdbPosterPath,
+          tmdbBackdropPath: item.tmdbBackdropPath,
           tmdbShowTagline: item.tmdbShowTagline,
           tmdbShowMetadata: item.tmdbShowMetadata,
           tmdbShowGenres: item.tmdbShowGenres,
@@ -143,6 +149,9 @@ export function useSettingsDialog({
           hasParent: updatedItem.parentId !== null,
           hasChildren: updatedItem.childCount > 0,
           tmdbId: updatedItem.tmdbId,
+          tmdbType: updatedItem.tmdbType,
+          tmdbPosterPath: updatedItem.tmdbPosterPath,
+          tmdbBackdropPath: updatedItem.tmdbBackdropPath,
           tmdbShowTagline: updatedItem.tmdbShowTagline,
           tmdbShowMetadata: updatedItem.tmdbShowMetadata,
           tmdbShowGenres: updatedItem.tmdbShowGenres,

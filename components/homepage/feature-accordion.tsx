@@ -12,35 +12,35 @@ const FEATURES = [
     title: "Google Drive Native",
     description:
       "Your media stays in Google Drive — CanonCore reads it directly. No uploads, no migrations, no storage limits. Connect once and your entire library is ready.",
-    image: "/images/06-google-drive-sync.png",
+    image: "/images/06-google-drive-sync.webp",
     learnMoreHref: "/docs/google-drive/sync-files",
   },
   {
     title: "Cinema-Grade Metadata",
     description:
       "One click pulls posters, backdrops, cast, genres, and ratings from TMDB. Every item in your library gets the treatment it deserves.",
-    image: "/images/04-tmdb-wizard.png",
+    image: "/images/04-tmdb-wizard.webp",
     learnMoreHref: "/docs/files-and-folders/item-settings",
   },
   {
     title: "Curate with Playlists",
     description:
       "Group items into themed playlists \u2014 weekend watchlists, all-time favourites, or anything you like. Drag to reorder, add custom artwork, and share publicly or via private link.",
-    image: "/images/09-playlist-detail.png",
+    image: "/images/09-playlist-detail.webp",
     learnMoreHref: "/docs/playlists/create-playlist",
   },
   {
     title: "Instant Spotlight Search",
     description:
       "Hit \u2318K and find anything in your library instantly. Spotlight searches across titles, genres, and metadata \u2014 no scrolling, no hunting.",
-    image: "/images/08-spotlight-search.png",
+    image: "/images/08-spotlight-search.webp",
     learnMoreHref: "/docs/files-and-folders/navigation",
   },
   {
     title: "Built to Share",
     description:
       "Go public with your profile, curate playlists, and let others fork your collections. Forking copies an entire library structure into someone else\u2019s account \u2014 they get their own editable version while yours stays untouched.",
-    image: "/images/32-fork-dialog.png",
+    image: "/images/32-fork-dialog.webp",
     learnMoreHref: "/docs/sharing/public-profile",
   },
 ];
