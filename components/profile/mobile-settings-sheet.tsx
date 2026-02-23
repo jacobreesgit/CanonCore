@@ -14,6 +14,7 @@ import {
   faCheck,
   faChevronLeft,
   faCloud,
+  faDownload,
   faEnvelope,
   faGear,
   faGlobe,
@@ -21,6 +22,7 @@ import {
   faLock,
   faRightFromBracket,
   faSpinner,
+  faTrash,
   faUpload,
   faUser,
   faXmark,
@@ -28,6 +30,7 @@ import {
 import { signOut } from "next-auth/react";
 import { toast } from "sonner";
 import { clearSearchCache } from "@/components/search/spotlight-search";
+import { deleteAccount, exportAccountData } from "@/lib/user-actions";
 import {
   MobileBottomSheet,
   MobileBottomSheetHeader,
@@ -108,11 +111,21 @@ export function MobileSettingsSheet({
   const [activeTab, setActiveTab] = useState("profile");
   const [showDiscardAlert, setShowDiscardAlert] = useState(false);
 
+  // Delete account local state (mirrors desktop pattern)
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
   // Reset form when sheet opens
   useEffect(() => {
     if (open) {
       form.resetForm();
       setActiveTab("profile");
+      setDeletePassword("");
+      setDeleteConfirmText("");
+      setIsDeleting(false);
+      setIsExporting(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only reset on open change
   }, [open]);
@@ -140,6 +153,65 @@ export function MobileSettingsSheet({
     setShowDiscardAlert(false);
     handleMainCancel();
   }, [handleMainCancel]);
+
+  /**
+   * Navigates back from delete step, clearing local state.
+   */
+  const handleDeleteBack = useCallback(() => {
+    setDeletePassword("");
+    setDeleteConfirmText("");
+    form.handleBack();
+  }, [form]);
+
+  /**
+   * Calls deleteAccount server action and signs out on success.
+   */
+  const handleDeleteAccount = useCallback(async () => {
+    setIsDeleting(true);
+    try {
+      const result = await deleteAccount(deletePassword, deleteConfirmText);
+      if (result.success) {
+        toast.success("Account deleted");
+        await signOut({ callbackUrl: "/" });
+      } else {
+        toast.error(result.error);
+      }
+    } catch {
+      toast.error("Failed to delete account");
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [deletePassword, deleteConfirmText]);
+
+  /**
+   * Exports account data as JSON download.
+   */
+  const handleDataExport = useCallback(async () => {
+    setIsExporting(true);
+    try {
+      const result = await exportAccountData();
+      if (result.success && result.data) {
+        const blob = new Blob([JSON.stringify(result.data, null, 2)], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `canoncore-export-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        toast.success("Data exported successfully");
+      } else if (!result.success) {
+        toast.error(result.error);
+      }
+    } catch {
+      toast.error("Failed to export data");
+    } finally {
+      setIsExporting(false);
+    }
+  }, []);
 
   // -------------------------------------------------------------------------
   // Discard alert helper
@@ -680,6 +752,140 @@ export function MobileSettingsSheet({
     );
   }
 
+  if (form.currentStep === "delete-account") {
+    return (
+      <>
+        <MobileBottomSheet
+          open={open}
+          onOpenChange={onOpenChange}
+          snapPoints={[0.85]}
+          repositionInputs
+          title="Delete Account"
+          className={cn(
+            "bg-[#1a1a1a]/95 backdrop-blur-xl",
+            "border-t border-white/[0.08]",
+            "text-foreground"
+          )}
+        >
+          <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleDeleteBack}
+                disabled={isDeleting}
+                className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                aria-label="Back"
+              >
+                <FontAwesomeIcon
+                  icon={faChevronLeft}
+                  aria-hidden="true"
+                  className="size-5"
+                />
+              </Button>
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                  "bg-destructive/10 ring-destructive/20 ring-1"
+                )}
+              >
+                <FontAwesomeIcon
+                  icon={faTrash}
+                  aria-hidden="true"
+                  className="text-destructive size-5"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <MobileBottomSheetTitle>Delete Account</MobileBottomSheetTitle>
+                <p className="text-muted-foreground text-sm">
+                  This action is permanent and cannot be undone
+                </p>
+              </div>
+            </div>
+          </MobileBottomSheetHeader>
+
+          <MobileBottomSheetContent>
+            <div className="space-y-4 py-2">
+              <div className="bg-destructive/10 border-destructive/20 rounded-lg border p-3">
+                <p className="text-destructive text-sm font-medium">
+                  This will permanently delete your account, all items,
+                  playlists, and uploaded files. If Google Drive is connected,
+                  your CanonCore folder will be moved to trash.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="delete-password">Password</Label>
+                <PasswordInput
+                  id="delete-password"
+                  name="current-password"
+                  autoComplete="current-password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="h-10"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="delete-confirm">
+                  Type <span className="font-mono font-bold">DELETE</span> to
+                  confirm
+                </Label>
+                <Input
+                  id="delete-confirm"
+                  autoComplete="off"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="DELETE"
+                  className="h-10"
+                />
+              </div>
+            </div>
+          </MobileBottomSheetContent>
+
+          <MobileBottomSheetFooter className="pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={handleDeleteBack}
+                disabled={isDeleting}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteAccount}
+                disabled={
+                  isDeleting ||
+                  !deletePassword ||
+                  deleteConfirmText !== "DELETE"
+                }
+                className="flex-1"
+              >
+                {isDeleting ? (
+                  <>
+                    <FontAwesomeIcon
+                      icon={faSpinner}
+                      spin
+                      aria-hidden="true"
+                      className="size-4"
+                    />
+                    Deleting…
+                  </>
+                ) : (
+                  "Delete My Account"
+                )}
+              </Button>
+            </div>
+          </MobileBottomSheetFooter>
+        </MobileBottomSheet>
+        {discardAlert}
+      </>
+    );
+  }
+
   // -------------------------------------------------------------------------
   // Tab content
   // -------------------------------------------------------------------------
@@ -919,6 +1125,60 @@ export function MobileSettingsSheet({
         />
         Sign out
       </Button>
+
+      {/* Your Data */}
+      <div className="rounded-lg border border-white/[0.08] p-4">
+        <div className="space-y-1">
+          <p className="text-sm font-medium">Your Data</p>
+          <p className="text-muted-foreground text-xs">
+            Download a copy of all your data as JSON
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          onClick={handleDataExport}
+          disabled={isExporting}
+          className="mt-3 w-full justify-start gap-2"
+        >
+          {isExporting ? (
+            <>
+              <FontAwesomeIcon
+                icon={faSpinner}
+                spin
+                aria-hidden="true"
+                className="size-4"
+              />
+              Preparing…
+            </>
+          ) : (
+            <>
+              <FontAwesomeIcon
+                icon={faDownload}
+                aria-hidden="true"
+                className="size-4"
+              />
+              Download My Data
+            </>
+          )}
+        </Button>
+      </div>
+
+      {/* Danger Zone */}
+      <div className="border-destructive/30 rounded-lg border p-4">
+        <div className="space-y-1">
+          <p className="text-destructive text-sm font-medium">Danger Zone</p>
+          <p className="text-muted-foreground text-xs">
+            Permanently delete your account and all associated data
+          </p>
+        </div>
+        <Button
+          variant="destructive"
+          onClick={() => form.setCurrentStep("delete-account")}
+          className="mt-3 w-full"
+        >
+          Delete Account
+        </Button>
+      </div>
     </div>
   );
 

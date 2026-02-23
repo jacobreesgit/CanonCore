@@ -4,9 +4,16 @@
  */
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faStar } from "@fortawesome/free-solid-svg-icons";
+import {
+  faStar,
+  faCircleCheck,
+  faSpinner,
+  faCircle,
+  faTriangleExclamation,
+} from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/lib/utils";
 import { formatRuntime } from "@/lib/tmdb-client";
+import type { SyncStatus } from "@/lib/types";
 
 interface MetadataLineProps {
   /** Release year (e.g., "2024"). */
@@ -21,6 +28,10 @@ interface MetadataLineProps {
   genres?: string[];
   /** Maximum number of genres to show. */
   maxGenres?: number;
+  /** Sync status for displaying indicator. */
+  syncStatus?: SyncStatus;
+  /** Google Drive folder ID — shows synced indicator when linked. */
+  driveFileId?: string | null;
   /** Additional CSS classes. */
   className?: string;
 }
@@ -35,6 +46,8 @@ export function MetadataLine({
   voteAverage,
   genres,
   maxGenres = 3,
+  syncStatus,
+  driveFileId,
   className,
 }: MetadataLineProps) {
   const items: React.ReactNode[] = [];
@@ -74,6 +87,57 @@ export function MetadataLine({
   if (genres && genres.length > 0) {
     const visibleGenres = genres.slice(0, maxGenres);
     items.push(<span key="genres">{visibleGenres.join(", ")}</span>);
+  }
+
+  // Sync status indicator with icon + label
+  if (syncStatus === "SYNCING") {
+    items.push(
+      <span key="sync" className="inline-flex items-center gap-1.5">
+        <FontAwesomeIcon
+          icon={faSpinner}
+          spin
+          className="size-3.5"
+          aria-hidden="true"
+        />
+        <span>Syncing</span>
+      </span>
+    );
+  } else if (syncStatus === "PENDING") {
+    items.push(
+      <span key="sync" className="inline-flex items-center gap-1.5">
+        <FontAwesomeIcon
+          icon={faCircle}
+          className="size-2"
+          aria-hidden="true"
+        />
+        <span>Pending sync</span>
+      </span>
+    );
+  } else if (syncStatus === "ERROR") {
+    items.push(
+      <span
+        key="sync"
+        className="text-destructive inline-flex items-center gap-1.5"
+      >
+        <FontAwesomeIcon
+          icon={faTriangleExclamation}
+          className="size-3.5"
+          aria-hidden="true"
+        />
+        <span>Sync failed</span>
+      </span>
+    );
+  } else if (driveFileId && (!syncStatus || syncStatus === "SYNCED")) {
+    items.push(
+      <span key="sync" className="inline-flex items-center gap-1.5">
+        <FontAwesomeIcon
+          icon={faCircleCheck}
+          className="size-3.5"
+          aria-hidden="true"
+        />
+        <span>Synced</span>
+      </span>
+    );
   }
 
   if (items.length === 0) return null;

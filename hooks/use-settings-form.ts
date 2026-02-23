@@ -25,7 +25,12 @@ import { SETTINGS_MESSAGES } from "@/lib/constants/messages";
 import type { GoogleDriveConnection } from "@/lib/types";
 
 /** Steps for settings dialog navigation. */
-export type SettingsFormStep = "main" | "password" | "email" | "username";
+export type SettingsFormStep =
+  | "main"
+  | "password"
+  | "email"
+  | "username"
+  | "delete-account";
 
 /** User data required by the settings form. */
 export interface SettingsFormUser {

@@ -49,9 +49,13 @@ export class ExplorePage {
     } else {
       const trigger = this.page.getByTestId("explore-sort-dropdown");
       await expect(trigger).toBeVisible({ timeout: Timeouts.api });
-      await trigger.click();
+      // Retry click until Radix dropdown opens — the trigger may be
+      // server-rendered but not yet hydrated on first attempt.
       const option = this.page.getByTestId(`sort-option-${value}`);
-      await expect(option).toBeVisible({ timeout: Timeouts.api });
+      await expect(async () => {
+        await trigger.click();
+        await expect(option).toBeVisible({ timeout: 1000 });
+      }).toPass({ timeout: Timeouts.api });
       await option.click();
     }
   }
@@ -123,8 +127,12 @@ export class ExplorePage {
       state: "visible",
       timeout: Timeouts.navigation,
     });
-    await optionsTrigger.click();
-    await expect(sheet).toBeVisible({ timeout: Timeouts.animation });
+    // Retry click until sheet opens — the trigger may be
+    // server-rendered but not yet hydrated on first attempt.
+    await expect(async () => {
+      await optionsTrigger.click();
+      await expect(sheet).toBeVisible({ timeout: 1000 });
+    }).toPass({ timeout: Timeouts.navigation });
   }
 
   // ── Private Helpers ──────────────────────────────────────

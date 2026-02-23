@@ -5,7 +5,7 @@
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import { Timeouts } from "../config/timeouts";
-import { slugify } from "../../lib/slugify";
+import { getItemLocator, openItemMoreMenu } from "../config/item-locators";
 
 export class ItemsPinnedPage {
   constructor(
@@ -24,15 +24,12 @@ export class ItemsPinnedPage {
 
   // ── Helpers ─────────────────────────────────────────────
 
-  /**
-   * Open the more options dropdown for an item.
-   * The button is visually hidden (opacity 0) — force-click to bypass visibility check.
-   */
+  private getItemLocator(name: string) {
+    return getItemLocator(this.page, name);
+  }
+
   private async openMoreMenu(name: string) {
-    const slug = slugify(name);
-    const moreButton = this.page.getByTestId(`item-more-${slug}`);
-    await moreButton.waitFor({ state: "attached", timeout: Timeouts.api });
-    await moreButton.click({ force: true });
+    await openItemMoreMenu(this.page, name);
   }
 
   // ── Pin / Unpin ──────────────────────────────────────────
