@@ -347,20 +347,33 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
             </div>
           )}
 
-          {/* More Options Button - visually hidden, kept in DOM for Playwright */}
-          {!ghost && !showDragHandle && moreMenuProps && (
-            <div className="pointer-events-none absolute size-0 opacity-0">
-              <ItemMoreButton {...moreMenuProps} />
-            </div>
-          )}
-
-          {/* Drive sync indicator — visible when item is linked to Google Drive */}
+          {/* Trailing action: sync icon replaced by more options on hover */}
           {!ghost &&
             !showDragHandle &&
-            driveFileId &&
-            (!syncStatus || syncStatus === "SYNCED") && (
-              <div className="flex size-7 flex-shrink-0 items-center justify-center">
-                <SyncIcon driveFileId={driveFileId} syncStatus={syncStatus} />
+            (moreMenuProps ||
+              (driveFileId && (!syncStatus || syncStatus === "SYNCED"))) && (
+              <div className="relative size-7 flex-shrink-0">
+                {/* Sync icon — hidden on hover when more menu is available */}
+                {driveFileId && (!syncStatus || syncStatus === "SYNCED") && (
+                  <div
+                    className={cn(
+                      "absolute inset-0 flex items-center justify-center transition-opacity duration-150",
+                      moreMenuProps &&
+                        "group-hover:opacity-0 group-has-[[data-state=open]]:opacity-0"
+                    )}
+                  >
+                    <SyncIcon
+                      driveFileId={driveFileId}
+                      syncStatus={syncStatus}
+                    />
+                  </div>
+                )}
+                {/* More options button — appears on hover, replacing sync icon */}
+                {moreMenuProps && (
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-has-[[data-state=open]]:opacity-100 focus-within:opacity-100">
+                    <ItemMoreButton {...moreMenuProps} />
+                  </div>
+                )}
               </div>
             )}
 

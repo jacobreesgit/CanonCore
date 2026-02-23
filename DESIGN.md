@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: February 2026 (v9.3.0)
+Last updated: February 2026 (v9.4.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -488,8 +488,8 @@ Multi-layer defence against aggressive AI crawlers:
 
 **View Modes:**
 
-- Grid: Movie poster cards with progress bars (Netflix-style)
-- Tree: Hierarchical list showing all descendants
+- Grid: Movie poster cards with progress bars (Netflix-style). Cards stay elevated (`z-10`, `scale-105`, shadow) while Radix dropdown is open via `has-[[data-state=open]]` CSS selectors. More-options button appears on hover/focus-within.
+- Tree: Hierarchical list showing all descendants. Trailing action area shows Drive sync icon by default, swaps to more-options button on hover via paired opacity transitions.
 
 **Edit Mode:**
 
@@ -550,6 +550,7 @@ Multi-layer defence against aggressive AI crawlers:
 - Navigation dots with `role="tablist"` semantics
 - Screen reader `aria-live` slide announcements
 - Attribution text with optional linking via `attributionHref`
+- Sync status indicators inline in metadata line: SYNCED (check icon), SYNCING (animated spinner), PENDING (dot), ERROR (warning triangle). `HeroSlide` type extended with optional `syncStatus` and `driveFileId`. Explore page fetches sync data server-side, filtered to current user's own items only (privacy).
 
 ### Google Drive Integration
 
@@ -892,6 +893,7 @@ Hero section and media stack use CSS Modules (`hero-section.module.css`, `media-
 - Security event logging at each stage via `logSecurityEvent()`: rate limited, wrong password, confirmed, completed
 - Non-blocking completion logging via `after()` from `next/server`
 - Client-side `signOut({ callbackUrl: "/" })` after successful deletion
+- Mobile parity: `MobileSettingsSheet` includes full delete account flow via `"delete-account"` step in `SettingsFormStep`, and data export button in the account section
 
 **Data Export:**
 
@@ -1287,6 +1289,13 @@ Husky manages Git hooks:
 
 - `e2e/config/timeouts.ts` - Centralised timeout constants (animation, navigation, api, upload, heavy)
 - `e2e/config/test-data.ts` - Collision-free test data (UUID-based IDs, emails, usernames)
+- `e2e/config/item-locators.ts` - Shared `getItemLocator` (visible=true filter for card/tree coexistence) and `openItemMoreMenu` (hover-then-click for Radix interactability) used across 6 POMs
+
+**Patterns:**
+
+- **Hover-then-click:** More-options buttons are hidden (`opacity-0`) until hover. POMs hover the parent item first, then click the revealed button — `force: true` clicks removed in favour of natural pointer event sequences
+- **Radix hydration retry:** `expect().toPass()` wraps click → visibility assertion pairs with 1s inner timeout, retrying up to the outer timeout. Handles server-rendered Radix triggers not yet hydrated on first click
+- **CardShell `.first()`:** CardShell renders item names twice (default + hover overlay). Selectors use `.first()` to avoid strict mode violations
 
 **Projects:**
 

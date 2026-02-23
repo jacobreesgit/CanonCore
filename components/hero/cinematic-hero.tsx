@@ -296,9 +296,11 @@ export function CinematicHero({
                 </p>
               )}
 
-              {/* Metadata line (includes genres inline) */}
+              {/* Metadata line (includes genres and sync status inline) */}
               {(activeSlide.metadata ||
-                (activeSlide.genres && activeSlide.genres.length > 0)) && (
+                (activeSlide.genres && activeSlide.genres.length > 0) ||
+                activeSlide.syncStatus ||
+                activeSlide.driveFileId) && (
                 <div className="mt-4">
                   <MetadataLine
                     year={activeSlide.metadata?.year}
@@ -306,6 +308,8 @@ export function CinematicHero({
                     contentRating={activeSlide.metadata?.contentRating}
                     voteAverage={activeSlide.metadata?.voteAverage}
                     genres={activeSlide.genres}
+                    syncStatus={activeSlide.syncStatus}
+                    driveFileId={activeSlide.driveFileId}
                   />
                 </div>
               )}

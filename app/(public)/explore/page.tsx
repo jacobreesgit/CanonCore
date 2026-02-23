@@ -13,8 +13,10 @@ import {
 import { getProfile } from "@/lib/user-actions";
 import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
 import { getItemTmdbMetadata } from "@/lib/tmdb-client";
+import { prisma } from "@/lib/prisma";
 import { SiteHeader } from "@/components/site-header";
 import { ExploreClient } from "./explore-client";
+import type { SyncStatus } from "@/lib/types";
 
 export const metadata: Metadata = {
   title: "Explore | CanonCore",
@@ -90,6 +92,34 @@ export default async function ExplorePage() {
       }
     : null;
 
+  // Build sync data map for the current user's own featured items only.
+  // This keeps driveFileId out of the public response for other users' items.
+  let ownItemSyncData:
+    | Record<string, { syncStatus: SyncStatus; driveFileId: string | null }>
+    | undefined;
+
+  if (currentUserId) {
+    const ownFeaturedIds = enrichedFeaturedItems
+      .filter((item) => item.ownerUserId === currentUserId)
+      .map((item) => item.id);
+
+    if (ownFeaturedIds.length > 0) {
+      const syncRows = await prisma.item.findMany({
+        where: { id: { in: ownFeaturedIds }, userId: currentUserId },
+        select: { id: true, syncStatus: true, driveFileId: true },
+      });
+      ownItemSyncData = Object.fromEntries(
+        syncRows.map((row) => [
+          row.id,
+          {
+            syncStatus: row.syncStatus as SyncStatus,
+            driveFileId: row.driveFileId,
+          },
+        ])
+      );
+    }
+  }
+
   return (
     <>
       <SiteHeader
@@ -103,6 +133,7 @@ export default async function ExplorePage() {
           featuredItems={enrichedFeaturedItems}
           playlists={playlists}
           currentUser={currentUser}
+          ownItemSyncData={ownItemSyncData}
         />
       </div>
     </>

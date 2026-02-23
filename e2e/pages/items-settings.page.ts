@@ -6,7 +6,7 @@
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import { Timeouts } from "../config/timeouts";
-import { slugify } from "../../lib/slugify";
+import { openItemMoreMenu } from "../config/item-locators";
 
 export class ItemsSettingsPage {
   constructor(
@@ -34,10 +34,7 @@ export class ItemsSettingsPage {
    * @param itemName - The name of the item to configure
    */
   async openSettings(itemName: string) {
-    const slug = slugify(itemName);
-    const moreButton = this.page.getByTestId(`item-more-${slug}`);
-    await moreButton.waitFor({ state: "attached", timeout: Timeouts.api });
-    await moreButton.click({ force: true });
+    await openItemMoreMenu(this.page, itemName);
 
     // Click the "Settings" menu item in the dropdown
     const settingsOption = this.page.getByRole("menuitem", {
@@ -86,12 +83,9 @@ export class ItemsSettingsPage {
 
   /** Assert the TMDB metadata section is visible with poster/backdrop fields. */
   async expectTmdbMetadataVisible() {
-    await expect(this.page.getByText("Poster")).toBeVisible({
+    await expect(this.page.getByText("Poster", { exact: true })).toBeVisible({
       timeout: Timeouts.api,
     });
-    await expect(
-      this.page.getByRole("button", { name: /detach/i })
-    ).toBeVisible();
   }
 
   /** Assert the TMDB tab is no longer present (after detach). */
@@ -103,9 +97,19 @@ export class ItemsSettingsPage {
     );
   }
 
-  /** Click the Detach button and confirm the dialog. */
+  /**
+   * Click the Detach TMDB button and confirm the dialog.
+   * The detach action is on the Details tab inside TmdbSourceField
+   * (an inline icon button with aria-label="Detach TMDB").
+   */
   async detachTmdb() {
-    await this.page.getByRole("button", { name: /detach/i }).click();
+    const detachButton = this.page.getByRole("button", {
+      name: /detach tmdb/i,
+    });
+    await detachButton.waitFor({ state: "visible", timeout: Timeouts.api });
+    await detachButton.click();
+
+    // Confirm in the alert dialog
     await expect(this.page.getByText(/are you sure/i)).toBeVisible({
       timeout: Timeouts.animation,
     });
@@ -128,7 +132,7 @@ export class ItemsSettingsPage {
    * @param newName - The new name to set
    */
   async rename(newName: string) {
-    const nameInput = this.page.getByRole("combobox", { name: /item name/i });
+    const nameInput = this.page.getByRole("textbox", { name: /item name/i });
     await nameInput.waitFor({ state: "visible", timeout: Timeouts.api });
     await nameInput.clear();
     await nameInput.fill(newName);
@@ -155,13 +159,21 @@ export class ItemsSettingsPage {
    * @param query - The search query (e.g., "The Dark Knight")
    */
   async searchTmdb(query: string) {
-    const nameInput = this.page.getByRole("combobox", { name: /item name/i });
-    await nameInput.waitFor({ state: "visible", timeout: Timeouts.api });
-    await nameInput.clear();
-    await nameInput.fill(query);
+    // TMDB search is now triggered via the "Search TMDB" button in TmdbSourceField,
+    // which navigates to a dedicated media search step with a combobox.
+    const searchButton = this.page.getByRole("button", {
+      name: /search tmdb/i,
+    });
+    await searchButton.waitFor({ state: "visible", timeout: Timeouts.api });
+    await searchButton.click();
 
-    // Wait for TMDB search results to appear (combobox listbox)
-    await expect(this.page.getByRole("listbox")).toBeVisible({
+    // Wait for the media search combobox to appear
+    const searchInput = this.page.getByTestId("media-search-input");
+    await searchInput.waitFor({ state: "visible", timeout: Timeouts.api });
+    await searchInput.fill(query);
+
+    // Wait for TMDB search results to appear
+    await expect(this.page.getByRole("option").first()).toBeVisible({
       timeout: Timeouts.api,
     });
   }

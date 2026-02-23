@@ -7,6 +7,7 @@ import type { Page, Locator } from "@playwright/test";
 import { expect } from "@playwright/test";
 import { Timeouts } from "../config/timeouts";
 import { slugify } from "../../lib/slugify";
+import { getItemLocator, openItemMoreMenu } from "../config/item-locators";
 
 export class ItemsCrudPage {
   constructor(
@@ -59,11 +60,8 @@ export class ItemsCrudPage {
    * @param name - The item name to check
    */
   async expectItemVisible(name: string) {
-    const slug = slugify(name);
-    const card = this.page.getByTestId(`item-card-${slug}`);
-    const tree = this.page.getByTestId(`item-tree-${slug}`);
-
-    await expect(card.or(tree).first()).toBeVisible({ timeout: Timeouts.api });
+    const item = this.getItemLocator(name);
+    await expect(item).toBeVisible({ timeout: Timeouts.api });
   }
 
   /**
@@ -73,11 +71,13 @@ export class ItemsCrudPage {
    */
   async expectItemNotVisible(name: string) {
     const slug = slugify(name);
-    const card = this.page.getByTestId(`item-card-${slug}`);
-    const tree = this.page.getByTestId(`item-tree-${slug}`);
-
-    await expect(card).not.toBeVisible({ timeout: Timeouts.api });
-    await expect(tree).not.toBeVisible({ timeout: Timeouts.api });
+    // Check both individually — neither should be visible
+    await expect(this.page.getByTestId(`item-card-${slug}`)).not.toBeVisible({
+      timeout: Timeouts.api,
+    });
+    await expect(this.page.getByTestId(`item-tree-${slug}`)).not.toBeVisible({
+      timeout: Timeouts.api,
+    });
   }
 
   // ── Item Interaction ───────────────────────────────────
@@ -88,11 +88,7 @@ export class ItemsCrudPage {
    * @param name - The item name to click
    */
   async clickItem(name: string) {
-    const slug = slugify(name);
-    const card = this.page.getByTestId(`item-card-${slug}`);
-    const tree = this.page.getByTestId(`item-tree-${slug}`);
-
-    const target = card.or(tree).first();
+    const target = this.getItemLocator(name);
     await target.waitFor({ state: "visible", timeout: Timeouts.api });
     await target.click();
     await this.page.waitForLoadState("domcontentloaded");
@@ -100,14 +96,13 @@ export class ItemsCrudPage {
 
   /**
    * Open the more menu (ellipsis dropdown) for a specific item.
+   * Hovers the parent item to reveal the button (group-hover:opacity-100),
+   * then clicks normally so Radix receives the full pointer event sequence.
    *
    * @param name - The item name whose more menu to open
    */
   async openMoreMenu(name: string) {
-    const slug = slugify(name);
-    const moreButton = this.page.getByTestId(`item-more-${slug}`);
-    await moreButton.waitFor({ state: "attached", timeout: Timeouts.api });
-    await moreButton.click({ force: true });
+    await openItemMoreMenu(this.page, name);
   }
 
   /**
@@ -179,10 +174,6 @@ export class ItemsCrudPage {
    * @returns A Locator matching the card or tree item
    */
   getItemLocator(name: string): Locator {
-    const slug = slugify(name);
-    return this.page
-      .getByTestId(`item-card-${slug}`)
-      .or(this.page.getByTestId(`item-tree-${slug}`))
-      .first();
+    return getItemLocator(this.page, name);
   }
 }

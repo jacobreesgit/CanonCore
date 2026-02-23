@@ -52,7 +52,7 @@ import type {
   ItemProgress,
 } from "@/lib/types";
 import type { TmdbItemMetadata, TmdbItemDetails } from "@/lib/tmdb-client";
-import type { TmdbDisplayOptions } from "@/lib/types";
+import type { TmdbDisplayOptions, SyncStatus } from "@/lib/types";
 import { getItems } from "@/lib/item-actions";
 import { useGoToItem } from "@/hooks/use-go-to-item";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -113,6 +113,8 @@ interface ItemDetailClientProps {
     tmdbShowProviders: boolean;
     tmdbShowVideos: boolean;
     tmdbShowRecommendations: boolean;
+    syncStatus?: SyncStatus;
+    driveFileId?: string | null;
   };
   /** Child items to display. */
   childItems: ItemWithArtwork[];
@@ -496,6 +498,8 @@ export function ItemDetailClient({
               : undefined,
           progress: progressPercentage,
           progressLabel,
+          syncStatus: item.syncStatus,
+          driveFileId: item.driveFileId,
         },
       ]}
       headingLevel="h1"

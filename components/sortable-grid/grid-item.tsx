@@ -209,8 +209,8 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
           !isDragging &&
             !isOverlay && [
               "transition-all duration-300 ease-out",
-              "hover:z-10 hover:scale-105",
-              "hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]",
+              "hover:z-10 hover:scale-105 has-[[data-state=open]]:z-10 has-[[data-state=open]]:scale-105",
+              "hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] has-[[data-state=open]]:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]",
               "active:scale-[0.98] active:transition-transform active:duration-100",
             ],
           // Focus styles for accessibility
@@ -350,7 +350,8 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
           className={cn(
             "absolute inset-x-0 bottom-0 z-10",
             "transition-opacity duration-200",
-            !isEditMode && "group-hover:opacity-0 group-focus-visible:opacity-0"
+            !isEditMode &&
+              "group-hover:opacity-0 group-focus-visible:opacity-0 group-has-[[data-state=open]]:opacity-0"
           )}
         >
           {/* Small gradient */}
@@ -389,7 +390,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
             className={cn(
               "absolute inset-0 z-20 flex flex-col justify-end p-2 md:p-3",
               "opacity-0 transition-opacity duration-200",
-              "group-hover:opacity-100 group-focus-visible:opacity-100"
+              "group-hover:opacity-100 group-focus-visible:opacity-100 group-has-[[data-state=open]]:opacity-100"
             )}
             style={{ background: "var(--gradient-card)" }}
             aria-hidden="true"
@@ -460,10 +461,19 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
           </div>
         )}
 
-        {/* More Options Button - visually hidden, kept in DOM for Playwright */}
+        {/* More Options Button - view mode only, top right, above hover overlay */}
         {!isEditMode && moreMenuProps && (
-          <div className="absolute top-2 right-2 z-30 opacity-0">
-            <ItemMoreButton {...moreMenuProps} />
+          <div
+            className={cn(
+              "absolute top-2 right-2 z-30",
+              "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 group-has-[[data-state=open]]:opacity-100",
+              "transition-opacity duration-150"
+            )}
+          >
+            <ItemMoreButton
+              {...moreMenuProps}
+              className="border-white/[0.08] bg-black/55 hover:bg-black/70"
+            />
           </div>
         )}
       </div>

@@ -86,8 +86,9 @@ publicTest.describe("Playlist Visibility", () => {
       await expect(playlistSection).toBeVisible({
         timeout: Timeouts.api,
       });
+      // CardShell renders the name twice (default + hover overlay), use .first()
       await expect(
-        playlistSection.getByText("Public Weekend Picks")
+        playlistSection.getByText("Public Weekend Picks").first()
       ).toBeVisible({
         timeout: Timeouts.api,
       });
