@@ -54,59 +54,64 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   // Fetch profiles, items, and playlists in parallel — independent queries
-  const [publicUsers, publicItems, publicPlaylists] = await Promise.all([
-    prisma.user.findMany({
-      where: { isPublic: true, username: { not: null } },
-      select: { username: true, updatedAt: true },
-    }),
-    prisma.item.findMany({
-      where: {
-        isPublic: true,
-        inheritVisibility: false,
-        user: { isPublic: true, username: { not: null } },
-      },
-      select: {
-        id: true,
-        updatedAt: true,
-        user: { select: { username: true } },
-      },
-    }),
-    prisma.playlist.findMany({
-      where: {
-        isPublic: true,
-        user: { isPublic: true, username: { not: null } },
-        playlistItems: { some: { item: { isPublic: true } } },
-      },
-      select: {
-        id: true,
-        updatedAt: true,
-        user: { select: { username: true } },
-      },
-    }),
-  ]);
+  // Gracefully degrade to static-only sitemap when DB is unavailable (e.g. CI builds)
+  try {
+    const [publicUsers, publicItems, publicPlaylists] = await Promise.all([
+      prisma.user.findMany({
+        where: { isPublic: true, username: { not: null } },
+        select: { username: true, updatedAt: true },
+      }),
+      prisma.item.findMany({
+        where: {
+          isPublic: true,
+          inheritVisibility: false,
+          user: { isPublic: true, username: { not: null } },
+        },
+        select: {
+          id: true,
+          updatedAt: true,
+          user: { select: { username: true } },
+        },
+      }),
+      prisma.playlist.findMany({
+        where: {
+          isPublic: true,
+          user: { isPublic: true, username: { not: null } },
+          playlistItems: { some: { item: { isPublic: true } } },
+        },
+        select: {
+          id: true,
+          updatedAt: true,
+          user: { select: { username: true } },
+        },
+      }),
+    ]);
 
-  const profilePages: MetadataRoute.Sitemap = publicUsers.map((user) => ({
-    url: `${BASE_URL}/u/${user.username}`,
-    lastModified: user.updatedAt,
-    changeFrequency: "weekly" as const,
-    priority: 0.8,
-  }));
-
-  const itemPages: MetadataRoute.Sitemap = publicItems.map((item) => ({
-    url: `${BASE_URL}/u/${item.user.username}/${item.id}`,
-    lastModified: item.updatedAt,
-    changeFrequency: "weekly" as const,
-    priority: 0.6,
-  }));
-
-  const playlistPages: MetadataRoute.Sitemap = publicPlaylists.map(
-    (playlist) => ({
-      url: `${BASE_URL}/u/${playlist.user.username}/playlists/${playlist.id}`,
-      lastModified: playlist.updatedAt,
+    const profilePages: MetadataRoute.Sitemap = publicUsers.map((user) => ({
+      url: `${BASE_URL}/u/${user.username}`,
+      lastModified: user.updatedAt,
       changeFrequency: "weekly" as const,
-      priority: 0.5,
-    })
-  );
+      priority: 0.8,
+    }));
 
-  return [...staticPages, ...profilePages, ...itemPages, ...playlistPages];
+    const itemPages: MetadataRoute.Sitemap = publicItems.map((item) => ({
+      url: `${BASE_URL}/u/${item.user.username}/${item.id}`,
+      lastModified: item.updatedAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.6,
+    }));
+
+    const playlistPages: MetadataRoute.Sitemap = publicPlaylists.map(
+      (playlist) => ({
+        url: `${BASE_URL}/u/${playlist.user.username}/playlists/${playlist.id}`,
+        lastModified: playlist.updatedAt,
+        changeFrequency: "weekly" as const,
+        priority: 0.5,
+      })
+    );
+
+    return [...staticPages, ...profilePages, ...itemPages, ...playlistPages];
+  } catch {
+    return staticPages;
+  }
 }
