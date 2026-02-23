@@ -1,0 +1,110 @@
+/*
+ * Hero section layout — mirrors Payload's 16-col grid structure.
+ * Uses container queries (not viewport) for sidebar-aware responsiveness.
+ *
+ * Payload equivalents:
+ *   .heroWrapper      → BlockWrapper (overflow-x: hidden, flex column)
+ *   .heroContentWrapper → Gutter + .grid (padding + 16-col grid)
+ *   .heroContent      → cols-4 cols-m-8
+ *   .graphicWrapper   → cols-8 start-8 start-m-1
+ *   --gutter-h        → var(--gutter-h) from Gutter
+ *   --column          → calc((100vw - gutter*2) / 16), here using cqw
+ */
+
+.heroWrapper {
+  container-type: inline-size;
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  overflow-x: hidden;
+  min-height: 100svh;
+}
+
+/* Mobile-first: 8-col grid */
+.heroContentWrapper {
+  --gutter-h: 1.5rem;
+  --column: calc((100cqw - (var(--gutter-h) * 2)) / 8);
+
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-row-gap: 0;
+  grid-column-gap: 0;
+  padding-top: 6rem;
+  padding-left: var(--gutter-h);
+  padding-right: var(--gutter-h);
+  min-height: 50vh;
+  align-items: center;
+}
+
+/* Desktop: 16-col grid (matches project MOBILE_BREAKPOINT = 1024) */
+@container (min-width: 1024px) {
+  .heroContentWrapper {
+    --gutter-h: 4rem;
+    --column: calc((100cqw - (var(--gutter-h) * 2)) / 16);
+    grid-template-columns: repeat(16, 1fr);
+    padding-top: 0;
+    min-height: calc(100dvh - 4rem);
+  }
+}
+
+@container (min-width: 1600px) {
+  .heroContentWrapper {
+    --gutter-h: 8rem;
+  }
+}
+
+/* Text column — cols-4 on desktop, cols-8 (full) on mobile */
+.heroContent {
+  grid-column: span 8;
+  display: flex;
+  flex-direction: column;
+  row-gap: 2rem;
+}
+
+@container (min-width: 1024px) {
+  .heroContent {
+    grid-column: span 4;
+  }
+}
+
+.heroText {
+  display: flex;
+  flex-direction: column;
+  row-gap: 2rem;
+}
+
+.heroText > h1 {
+  text-wrap: balance;
+  margin: 0;
+}
+
+/* Heading overflows into grid gap columns like Payload */
+@container (min-width: 1024px) {
+  .heroText > h1 {
+    width: 150%;
+  }
+}
+
+.primaryButtons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Image column — cols-8 start-8 on desktop, cols-8 (full) on mobile */
+.graphicWrapper {
+  grid-column: span 8;
+}
+
+@container (min-width: 1024px) {
+  .graphicWrapper {
+    grid-column: 8 / span 8;
+  }
+}

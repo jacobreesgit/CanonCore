@@ -33,7 +33,11 @@ import type {
 import { ITEM_MESSAGES } from "@/lib/constants/messages";
 
 /** Steps for item settings navigation. */
-export type ItemSettingsStep = "main" | "episode-picker" | "tmdb-wizard";
+export type ItemSettingsStep =
+  | "main"
+  | "tmdb-search"
+  | "episode-picker"
+  | "tmdb-wizard";
 
 /** Item data required by the settings form. */
 export interface ItemSettingsFormItem {
@@ -45,6 +49,9 @@ export interface ItemSettingsFormItem {
   hasParent: boolean;
   hasChildren: boolean;
   tmdbId: number | null;
+  tmdbType: string | null;
+  tmdbPosterPath: string | null;
+  tmdbBackdropPath: string | null;
   tmdbShowTagline: boolean;
   tmdbShowMetadata: boolean;
   tmdbShowGenres: boolean;
@@ -126,6 +133,10 @@ export interface UseItemSettingsFormReturn {
   setWizardHeaderProps: (props: TMDBWizardHeaderProps | null) => void;
   wizardFooterProps: TMDBWizardFooterProps | null;
   setWizardFooterProps: (props: TMDBWizardFooterProps | null) => void;
+
+  // TMDB source field navigation
+  handleOpenTmdbSearch: () => void;
+  handleTmdbSearchBack: () => void;
 
   // TMDB media selection
   pendingTmdbResult: TMDBSearchResult | null;
@@ -328,36 +339,41 @@ export function useItemSettingsForm(
     setPrimarySubtitleId(initialSubtitleId);
   }, [initialMediaId, initialArtworkId, initialHeroId, initialSubtitleId]);
 
-  // Dirty state detection
-  const isDirty = useMemo(() => {
-    const displayOptionsDirty =
+  // Whether TMDB display options have been changed from their original values
+  const displayOptionsDirty = useMemo(
+    () =>
       displayOptions.showTagline !== originalDisplayOptions.showTagline ||
       displayOptions.showMetadata !== originalDisplayOptions.showMetadata ||
       displayOptions.showGenres !== originalDisplayOptions.showGenres ||
       displayOptions.showCast !== originalDisplayOptions.showCast ||
       displayOptions.showProviders !== originalDisplayOptions.showProviders ||
-      displayOptions.showVideos !== originalDisplayOptions.showVideos;
+      displayOptions.showVideos !== originalDisplayOptions.showVideos ||
+      displayOptions.showRecommendations !==
+        originalDisplayOptions.showRecommendations,
+    [displayOptions, originalDisplayOptions]
+  );
 
-    return (
+  // Dirty state detection
+  const isDirty = useMemo(
+    () =>
       name !== originalValues.name ||
       description !== originalValues.description ||
       primaryMediaId !== originalValues.primaryMediaId ||
       primaryArtworkId !== originalValues.primaryArtworkId ||
       heroArtworkId !== originalValues.heroArtworkId ||
       primarySubtitleId !== originalValues.primarySubtitleId ||
-      displayOptionsDirty
-    );
-  }, [
-    name,
-    description,
-    primaryMediaId,
-    primaryArtworkId,
-    heroArtworkId,
-    primarySubtitleId,
-    originalValues,
-    displayOptions,
-    originalDisplayOptions,
-  ]);
+      displayOptionsDirty,
+    [
+      name,
+      description,
+      primaryMediaId,
+      primaryArtworkId,
+      heroArtworkId,
+      primarySubtitleId,
+      originalValues,
+      displayOptionsDirty,
+    ]
+  );
 
   // Current values for wizard
   const currentValues: CurrentTextValues = useMemo(
@@ -428,14 +444,6 @@ export function useItemSettingsForm(
       }
 
       // Save item settings and TMDB display options in parallel
-      const displayOptionsDirty =
-        displayOptions.showTagline !== originalDisplayOptions.showTagline ||
-        displayOptions.showMetadata !== originalDisplayOptions.showMetadata ||
-        displayOptions.showGenres !== originalDisplayOptions.showGenres ||
-        displayOptions.showCast !== originalDisplayOptions.showCast ||
-        displayOptions.showProviders !== originalDisplayOptions.showProviders ||
-        displayOptions.showVideos !== originalDisplayOptions.showVideos;
-
       const hasFieldChanges = Object.keys(changes).length > 0;
 
       const [settingsResult, displayResult] = await Promise.all([
@@ -483,7 +491,7 @@ export function useItemSettingsForm(
     primarySubtitleId,
     originalValues,
     displayOptions,
-    originalDisplayOptions,
+    displayOptionsDirty,
     uploadCount,
     item.id,
     onSettingsChange,
@@ -686,6 +694,20 @@ export function useItemSettingsForm(
   }, []);
 
   /**
+   * Opens the TMDB search step (from TmdbSourceField trigger).
+   */
+  const handleOpenTmdbSearch = useCallback(() => {
+    setCurrentStep("tmdb-search");
+  }, []);
+
+  /**
+   * Returns from TMDB search step to main step.
+   */
+  const handleTmdbSearchBack = useCallback(() => {
+    setCurrentStep("main");
+  }, []);
+
+  /**
    * Handles display option changes (saved with Save Changes button).
    */
   const handleDisplayOptionsChange = useCallback(
@@ -772,6 +794,10 @@ export function useItemSettingsForm(
     setWizardHeaderProps,
     wizardFooterProps,
     setWizardFooterProps,
+
+    // TMDB source field navigation
+    handleOpenTmdbSearch,
+    handleTmdbSearchBack,
 
     // TMDB media selection
     pendingTmdbResult,

@@ -230,3 +230,26 @@ export const tmdbSeasonImagesSchema = z.object({
 export const tmdbEpisodeImagesSchema = z.object({
   stills: z.array(tmdbImageSchema),
 });
+
+/**
+ * Schema for clearing TMDB fields on an item.
+ * Supports clearing individual artwork paths or full TMDB detach.
+ */
+export const clearTmdbFieldSchema = z.object({
+  itemId: z.string().min(1),
+  field: z.enum(["poster", "backdrop", "all"]),
+});
+
+/**
+ * Schema for TMDB display options.
+ * Validates the 7 boolean display preference fields.
+ */
+export const tmdbDisplayOptionsSchema = z.object({
+  showTagline: z.boolean(),
+  showMetadata: z.boolean(),
+  showGenres: z.boolean(),
+  showCast: z.boolean(),
+  showProviders: z.boolean(),
+  showVideos: z.boolean(),
+  showRecommendations: z.boolean(),
+});

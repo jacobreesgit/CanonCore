@@ -63,7 +63,7 @@ export class ItemsCrudPage {
     const card = this.page.getByTestId(`item-card-${slug}`);
     const tree = this.page.getByTestId(`item-tree-${slug}`);
 
-    await expect(card.or(tree)).toBeVisible({ timeout: Timeouts.api });
+    await expect(card.or(tree).first()).toBeVisible({ timeout: Timeouts.api });
   }
 
   /**
@@ -92,7 +92,7 @@ export class ItemsCrudPage {
     const card = this.page.getByTestId(`item-card-${slug}`);
     const tree = this.page.getByTestId(`item-tree-${slug}`);
 
-    const target = card.or(tree);
+    const target = card.or(tree).first();
     await target.waitFor({ state: "visible", timeout: Timeouts.api });
     await target.click();
     await this.page.waitForLoadState("domcontentloaded");
@@ -182,6 +182,7 @@ export class ItemsCrudPage {
     const slug = slugify(name);
     return this.page
       .getByTestId(`item-card-${slug}`)
-      .or(this.page.getByTestId(`item-tree-${slug}`));
+      .or(this.page.getByTestId(`item-tree-${slug}`))
+      .first();
   }
 }

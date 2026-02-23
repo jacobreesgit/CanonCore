@@ -29,7 +29,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { FileTypeCombobox } from "@/components/items/file-type-combobox";
@@ -38,7 +40,8 @@ import { ItemDialogTabs } from "@/components/items/item-dialog-tabs";
 import { TMDBWizard } from "./wizards/tmdb-wizard";
 
 import { TVPicker } from "./wizards/tv-picker";
-import { TmdbDisplayOptionsEditor } from "@/components/items/tmdb-display-options";
+import { TmdbMetadataSection } from "@/components/items/tmdb-metadata-section";
+import { TmdbSourceField } from "@/components/items/tmdb-source-field";
 import { cn } from "@/lib/utils";
 import { VisibilityToggle } from "@/components/items/visibility-toggle";
 import {
@@ -98,30 +101,20 @@ export function ItemSettingsDialog({
   const detailsContent = (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="item-name">Item name</Label>
-        <div className="relative">
-          <MediaSearchCombobox
-            id="item-name"
-            onSelect={form.handleMediaSelect}
-            onChange={form.setName}
-            value={form.name}
-            placeholder="Search movies & TV shows…"
-          />
-          {(form.isLoadingPreview || form.isApplyingMetadata) && (
-            <div className="bg-background/80 absolute inset-0 flex items-center justify-center rounded-md">
-              <div className="flex items-center gap-2">
-                <FontAwesomeIcon
-                  icon={faSpinner}
-                  aria-hidden="true"
-                  className="text-muted-foreground size-4"
-                  spin
-                />
-                <span className="text-muted-foreground text-sm">
-                  {form.isLoadingPreview ? "Loading preview…" : "Applying…"}
-                </span>
-              </div>
-            </div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="item-name">Item name</Label>
+          {item.tmdbId !== null && (
+            <Badge variant="destructive">Managed by TMDB</Badge>
           )}
+        </div>
+        <div className="relative">
+          <Input
+            id="item-name"
+            value={form.name}
+            onChange={(e) => form.setName(e.target.value)}
+            disabled={item.tmdbId !== null}
+            placeholder="Enter item name\u2026"
+          />
         </div>
       </div>
 
@@ -134,7 +127,7 @@ export function ItemSettingsDialog({
           id="item-description"
           value={form.description}
           onChange={(e) => form.setDescription(e.target.value)}
-          placeholder="Add a short description…"
+          placeholder="Add a short description\u2026"
           maxLength={1000}
           className="min-h-[80px] resize-none"
         />
@@ -173,6 +166,13 @@ export function ItemSettingsDialog({
           }}
         />
       </div>
+
+      {/* TMDB Source field */}
+      <TmdbSourceField
+        item={item}
+        onChange={form.handleOpenTmdbSearch}
+        onSettingsChange={onSettingsChange ?? (async () => {})}
+      />
     </div>
   );
 
@@ -217,6 +217,13 @@ export function ItemSettingsDialog({
         itemId={item.id}
         fileType="artwork"
         disabled={!hasDriveConnection}
+        note={
+          item.tmdbPosterPath ? (
+            <Badge variant="destructive">
+              Currently using TMDB poster. Upload to override.
+            </Badge>
+          ) : undefined
+        }
       />
 
       <FileTypeCombobox
@@ -231,6 +238,13 @@ export function ItemSettingsDialog({
         itemId={item.id}
         fileType="artwork"
         disabled={!hasDriveConnection}
+        note={
+          item.tmdbBackdropPath ? (
+            <Badge variant="destructive">
+              Currently using TMDB backdrop. Upload to override.
+            </Badge>
+          ) : undefined
+        }
       />
 
       <FileTypeCombobox
@@ -251,9 +265,13 @@ export function ItemSettingsDialog({
 
   // TMDB tab content (only when item has TMDB metadata)
   const tmdbContent = item.tmdbId ? (
-    <TmdbDisplayOptionsEditor
+    <TmdbMetadataSection
+      item={item}
       displayOptions={form.displayOptions}
-      onChange={form.handleDisplayOptionsChange}
+      onDisplayOptionsChange={form.handleDisplayOptionsChange}
+      onSettingsChange={onSettingsChange ?? (async () => {})}
+      hasUploadedPoster={!!form.primaryArtworkId}
+      hasUploadedHero={!!form.heroArtworkId}
     />
   ) : undefined;
 
@@ -284,6 +302,44 @@ export function ItemSettingsDialog({
                   {hasDriveConnection
                     ? "Configure display preferences and upload files"
                     : "Configure display preferences"}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        );
+      case "tmdb-search":
+        return (
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={form.handleTmdbSearchBack}
+                className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                aria-label="Back"
+              >
+                <FontAwesomeIcon
+                  icon={faChevronLeft}
+                  aria-hidden="true"
+                  className="size-5"
+                />
+              </Button>
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                  "bg-brand/10 ring-brand/20 ring-1"
+                )}
+              >
+                <FontAwesomeIcon
+                  icon={faFilm}
+                  aria-hidden="true"
+                  className="text-brand size-5"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-lg">Search TMDB</DialogTitle>
+                <DialogDescription className="text-sm">
+                  Find a movie or TV show to link
                 </DialogDescription>
               </div>
             </div>
@@ -447,6 +503,8 @@ export function ItemSettingsDialog({
             </Button>
           </DialogFooter>
         );
+      case "tmdb-search":
+        return null;
       case "episode-picker":
         return null;
       case "tmdb-wizard":
@@ -518,6 +576,17 @@ export function ItemSettingsDialog({
             ) : (
               <div className="space-y-4">{detailsContent}</div>
             )}
+          </div>
+        );
+      case "tmdb-search":
+        return (
+          <div className="py-4">
+            <MediaSearchCombobox
+              id="tmdb-search-input"
+              onSelect={form.handleMediaSelect}
+              placeholder="Search movies & TV shows\u2026"
+              autoFocus
+            />
           </div>
         );
       case "episode-picker":

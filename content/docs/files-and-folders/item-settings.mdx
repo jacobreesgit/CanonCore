@@ -1,6 +1,6 @@
 ---
 title: Item Settings
-description: Configure item names, descriptions, and primary files
+description: Configure item names, descriptions, TMDB metadata, and primary files
 ---
 
 The Settings dialogue lets you configure items - rename them, add descriptions, and choose which files play or display by default.
@@ -111,6 +111,36 @@ There are two places to set these:
 **From the TMDB tab in Settings** — Once an item has TMDB metadata, the Settings dialogue shows a **TMDB** tab alongside Details and Files. Open it to adjust display options at any time. Changes save automatically — no need to click Save.
 
 Display preferences carry over when someone forks your item.
+
+### Change individual artwork
+
+Once an item has TMDB metadata, you can swap out its poster, backdrop, or episode still without re-running the full wizard.
+
+1. Open the **TMDB** tab in Settings
+2. Click the artwork field you want to change (Poster, Backdrop, or Still)
+3. Browse the available images from TMDB
+4. Select an image, then click **Apply**
+
+The gallery shows images sorted by community rating. Movies and TV shows have poster and backdrop fields. Seasons have a poster field. Episodes have a still field.
+
+To remove a single artwork image without detaching all metadata, click the trash icon on that artwork field. The other TMDB data stays intact.
+
+### Remove TMDB metadata
+
+If you want to completely detach an item from TMDB:
+
+1. Open the **Details** tab in Settings
+2. Find the TMDB source field (it shows the linked movie or TV show)
+3. Click the trash icon
+4. Confirm in the dialogue that appears
+
+Detaching removes the TMDB link, poster, backdrop, and resets display options to defaults. The item's name and description stay as they are — you won't lose any text you've written.
+
+After detaching, the TMDB tab disappears from Settings. You can always re-link by searching for a title in the name field again.
+
+### Artwork overrides
+
+When an item has TMDB artwork, you'll see a badge on the Files tab saying "Currently using TMDB poster. Upload to override." Uploading your own artwork through Google Drive takes precedence over the TMDB image. On the TMDB tab, a badge reading "Overridden by uploaded artwork" confirms your upload is being used instead. If you remove the uploaded file, the TMDB artwork becomes active again.
 
 ### When TMDB has no results
 

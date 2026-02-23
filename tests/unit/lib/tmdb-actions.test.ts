@@ -16,6 +16,7 @@ import {
   getSeasonImagesAction,
   getEpisodeImagesAction,
   getSeasonDataAction,
+  clearTmdbFieldAction,
 } from "@/lib/tmdb-actions";
 
 // Mock dependencies
@@ -1325,6 +1326,123 @@ describe("tmdb-actions", () => {
       if (!result.success) {
         expect(result.error).toBe("Failed to fetch season data");
       }
+    });
+  });
+
+  describe("clearTmdbFieldAction", () => {
+    const mockItem = {
+      id: "item-123",
+      userId: "user-123",
+      tmdbId: 155,
+      tmdbType: "movie",
+      tmdbPosterPath: "/poster.jpg",
+      tmdbBackdropPath: "/backdrop.jpg",
+    };
+
+    it("clears poster path only", async () => {
+      vi.mocked(prisma.item.findUnique).mockResolvedValue(mockItem as never);
+      vi.mocked(prisma.item.update).mockResolvedValue(mockItem as never);
+
+      const result = await clearTmdbFieldAction("item-123", "poster");
+
+      expect(result).toEqual({ success: true });
+      expect(prisma.item.update).toHaveBeenCalledWith({
+        where: { id: "item-123" },
+        data: { tmdbPosterPath: null },
+      });
+    });
+
+    it("clears backdrop path only", async () => {
+      vi.mocked(prisma.item.findUnique).mockResolvedValue(mockItem as never);
+      vi.mocked(prisma.item.update).mockResolvedValue(mockItem as never);
+
+      const result = await clearTmdbFieldAction("item-123", "backdrop");
+
+      expect(result).toEqual({ success: true });
+      expect(prisma.item.update).toHaveBeenCalledWith({
+        where: { id: "item-123" },
+        data: { tmdbBackdropPath: null },
+      });
+    });
+
+    it("clears all TMDB fields on full detach", async () => {
+      vi.mocked(prisma.item.findUnique).mockResolvedValue(mockItem as never);
+      vi.mocked(prisma.item.update).mockResolvedValue(mockItem as never);
+
+      const result = await clearTmdbFieldAction("item-123", "all");
+
+      expect(result).toEqual({ success: true });
+      expect(prisma.item.update).toHaveBeenCalledWith({
+        where: { id: "item-123" },
+        data: {
+          tmdbId: null,
+          tmdbType: null,
+          tmdbPosterPath: null,
+          tmdbBackdropPath: null,
+          tmdbShowTagline: true,
+          tmdbShowMetadata: true,
+          tmdbShowGenres: true,
+          tmdbShowCast: true,
+          tmdbShowProviders: true,
+          tmdbShowVideos: true,
+          tmdbShowRecommendations: true,
+        },
+      });
+    });
+
+    it("rejects unauthenticated requests", async () => {
+      vi.mocked(auth).mockResolvedValue(null as never);
+
+      const result = await clearTmdbFieldAction("item-123", "poster");
+
+      expect(result).toEqual({ success: false, error: "Unauthorized" });
+    });
+
+    it("rejects rate-limited requests", async () => {
+      vi.mocked(checkRateLimit).mockResolvedValue({
+        error: "Too many requests",
+      });
+
+      const result = await clearTmdbFieldAction("item-123", "poster");
+
+      expect(result).toEqual({ success: false, error: "Too many requests" });
+    });
+
+    it("rejects non-owner requests", async () => {
+      vi.mocked(prisma.item.findUnique).mockResolvedValue({
+        ...mockItem,
+        userId: "other-user",
+      } as never);
+
+      const result = await clearTmdbFieldAction("item-123", "poster");
+
+      expect(result).toEqual({ success: false, error: "Unauthorized" });
+    });
+
+    it("returns error for non-existent item", async () => {
+      vi.mocked(prisma.item.findUnique).mockResolvedValue(null);
+
+      const result = await clearTmdbFieldAction("item-123", "poster");
+
+      expect(result).toEqual({ success: false, error: "Item not found" });
+    });
+
+    it("rejects invalid field values via Zod validation", async () => {
+      const result = await clearTmdbFieldAction("item-123", "invalid" as never);
+
+      expect(result).toEqual({ success: false, error: "Invalid input" });
+      // Should short-circuit before hitting rate limit or auth
+      expect(checkRateLimit).not.toHaveBeenCalled();
+    });
+
+    it("calls revalidatePath after successful clear", async () => {
+      vi.mocked(prisma.item.findUnique).mockResolvedValue(mockItem as never);
+      vi.mocked(prisma.item.update).mockResolvedValue(mockItem as never);
+
+      await clearTmdbFieldAction("item-123", "poster");
+
+      const { revalidatePath } = await import("next/cache");
+      expect(revalidatePath).toHaveBeenCalledWith("/u", "layout");
     });
   });
 });

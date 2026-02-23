@@ -472,4 +472,39 @@ describe("updateTmdbDisplayOptions integration", () => {
       error: "Item not found",
     });
   });
+
+  it("applies poster-only update without clobbering backdrop", async () => {
+    // Create item with existing TMDB data
+    const item = await prisma.item.create({
+      data: {
+        name: "Test Movie",
+        userId: TEST_USER_ID,
+        tmdbId: 100,
+        tmdbType: "movie",
+        tmdbPosterPath: "/old-poster.jpg",
+        tmdbBackdropPath: "/existing-backdrop.jpg",
+      },
+    });
+
+    vi.mocked(getMovie).mockResolvedValue({
+      id: 100,
+      title: "Test Movie",
+      overview: "A test movie",
+      poster_path: "/new-poster.jpg",
+      backdrop_path: "/new-backdrop.jpg",
+      release_date: "2024-01-01",
+    } as never);
+
+    await applyMetadataAction(item.id, 100, "movie", {
+      updateName: false,
+      updateDescription: false,
+      updatePoster: true,
+      updateBackdrop: false,
+      posterPath: "/new-poster.jpg",
+    });
+
+    const updated = await prisma.item.findUnique({ where: { id: item.id } });
+    expect(updated?.tmdbPosterPath).toBe("/new-poster.jpg");
+    expect(updated?.tmdbBackdropPath).toBe("/existing-backdrop.jpg");
+  });
 });

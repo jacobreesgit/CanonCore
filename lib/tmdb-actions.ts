@@ -37,6 +37,10 @@ import {
   type TMDBEpisode,
 } from "@/lib/tmdb-client";
 import { handlePrismaError } from "@/lib/errors";
+import {
+  clearTmdbFieldSchema,
+  tmdbDisplayOptionsSchema,
+} from "@/lib/validations";
 import type { TmdbDisplayOptions } from "@/lib/types";
 
 /**
@@ -163,9 +167,18 @@ export async function applyMetadataAction(
   options: ApplyMetadataOptions = DEFAULT_METADATA_OPTIONS,
   displayOptions?: TmdbDisplayOptions
 ): Promise<ActionResult> {
-  const session = await auth();
+  // Parallel auth + rate limit (per codebase pattern)
+  const [session, rateLimitResult] = await Promise.all([
+    auth(),
+    checkRateLimit("itemUpdate"),
+  ]);
+
   if (!session?.user?.id) {
     return { success: false, error: "Not authenticated" };
+  }
+
+  if (rateLimitResult) {
+    return { success: false, error: rateLimitResult.error };
   }
 
   // Merge with defaults
@@ -851,6 +864,12 @@ export async function updateTmdbDisplayOptions(
   itemId: string,
   displayOptions: TmdbDisplayOptions
 ): Promise<ActionResult> {
+  // Validate input at system boundary (server actions callable via HTTP POST)
+  const parsed = tmdbDisplayOptionsSchema.safeParse(displayOptions);
+  if (!parsed.success) {
+    return { success: false, error: "Invalid display options" };
+  }
+
   const [rateLimitResult, session] = await Promise.all([
     checkRateLimit("itemUpdate"),
     auth(),
@@ -898,5 +917,85 @@ export async function updateTmdbDisplayOptions(
     return { success: false, error: "Failed to update display options" };
   }
 
+  revalidatePath("/u", "layout");
+  return { success: true };
+}
+
+/**
+ * Clears individual TMDB fields or fully detaches TMDB metadata from an item.
+ *
+ * - "poster": nulls tmdbPosterPath only
+ * - "backdrop": nulls tmdbBackdropPath only
+ * - "all": nulls tmdbId, tmdbType, tmdbPosterPath, tmdbBackdropPath and resets display options
+ *
+ * @param itemId - Item to modify
+ * @param field - Which field(s) to clear
+ * @returns Success or error result
+ */
+export async function clearTmdbFieldAction(
+  itemId: string,
+  field: "poster" | "backdrop" | "all"
+): Promise<ActionResult> {
+  // Validate input at system boundary (server actions callable via HTTP POST)
+  const parsed = clearTmdbFieldSchema.safeParse({ itemId, field });
+  if (!parsed.success) {
+    return { success: false, error: "Invalid input" };
+  }
+
+  const [rateLimitResult, session] = await Promise.all([
+    checkRateLimit("itemUpdate"),
+    auth(),
+  ]);
+
+  if (rateLimitResult) {
+    return { success: false, error: rateLimitResult.error };
+  }
+
+  if (!session?.user?.id) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const item = await prisma.item.findUnique({
+    where: { id: itemId },
+    select: { userId: true },
+  });
+
+  if (!item) {
+    return { success: false, error: "Item not found" };
+  }
+
+  if (item.userId !== session.user.id) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const data =
+    field === "all"
+      ? {
+          tmdbId: null,
+          tmdbType: null,
+          tmdbPosterPath: null,
+          tmdbBackdropPath: null,
+          tmdbShowTagline: true,
+          tmdbShowMetadata: true,
+          tmdbShowGenres: true,
+          tmdbShowCast: true,
+          tmdbShowProviders: true,
+          tmdbShowVideos: true,
+          tmdbShowRecommendations: true,
+        }
+      : field === "poster"
+        ? { tmdbPosterPath: null }
+        : { tmdbBackdropPath: null };
+
+  try {
+    await prisma.item.update({
+      where: { id: itemId },
+      data,
+    });
+  } catch {
+    return { success: false, error: "Failed to clear TMDB field" };
+  }
+
+  revalidatePath("/u", "layout");
   return { success: true };
 }

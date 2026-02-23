@@ -141,6 +141,8 @@ interface FileTypeComboboxBaseProps {
   fileType: "media" | "artwork" | "subtitle";
   /** Whether the component is disabled (no Drive connection) */
   disabled?: boolean;
+  /** Optional note rendered below the description (e.g., TMDB indicator) */
+  note?: React.ReactNode;
 }
 
 /**
@@ -197,7 +199,7 @@ function generateFileId(): string {
  * - Upload-only mode: Dropzone for queueing files before item creation
  */
 export function FileTypeCombobox(props: FileTypeComboboxProps) {
-  const { label, description, icon, fileType, disabled = false } = props;
+  const { label, description, icon, fileType, disabled = false, note } = props;
   // Render upload-only mode if specified
   if (props.uploadOnly) {
     return (
@@ -207,6 +209,7 @@ export function FileTypeCombobox(props: FileTypeComboboxProps) {
         icon={icon}
         fileType={fileType}
         disabled={disabled}
+        note={note}
         queuedFiles={props.queuedFiles}
         onQueueFilesChange={props.onQueueFilesChange}
       />
@@ -221,6 +224,7 @@ export function FileTypeCombobox(props: FileTypeComboboxProps) {
       icon={icon}
       fileType={fileType}
       disabled={disabled}
+      note={note}
       files={props.files}
       selectedId={props.selectedId}
       onSelect={props.onSelect}
@@ -241,6 +245,7 @@ function FileTypeComboboxUploadMode({
   icon,
   fileType,
   disabled,
+  note,
   queuedFiles,
   onQueueFilesChange,
 }: {
@@ -249,6 +254,7 @@ function FileTypeComboboxUploadMode({
   icon: IconDefinition;
   fileType: "media" | "artwork" | "subtitle";
   disabled?: boolean;
+  note?: React.ReactNode;
   queuedFiles: QueuedFile[];
   onQueueFilesChange: (files: QueuedFile[]) => void;
 }) {
@@ -306,6 +312,7 @@ function FileTypeComboboxUploadMode({
           />
         </div>
         <label className="text-sm font-medium">{label}</label>
+        {note}
       </div>
       <p className="text-muted-foreground text-xs">{description}</p>
 
@@ -435,6 +442,7 @@ function FileTypeComboboxSelectMode({
   icon,
   fileType,
   disabled,
+  note,
   files,
   selectedId,
   onSelect,
@@ -447,6 +455,7 @@ function FileTypeComboboxSelectMode({
   icon: IconDefinition;
   fileType: "media" | "artwork" | "subtitle";
   disabled?: boolean;
+  note?: React.ReactNode;
   files: SerializedItemFile[];
   selectedId?: string;
   onSelect: (id: string) => void;
@@ -729,6 +738,7 @@ function FileTypeComboboxSelectMode({
           />
         </div>
         <label className="text-sm font-medium">{label}</label>
+        {note}
       </div>
       <p className="text-muted-foreground text-xs">{description}</p>
 

@@ -35,7 +35,8 @@ export class ItemsHierarchyPage {
     const slug = slugify(name);
     return this.page
       .getByTestId(`item-card-${slug}`)
-      .or(this.page.getByTestId(`item-tree-${slug}`));
+      .or(this.page.getByTestId(`item-tree-${slug}`))
+      .first();
   }
 
   /**
