@@ -38,6 +38,7 @@ export default tseslint.config(
   {
     ignores: [
       ".next/**",
+      ".next-e2e/**",
       "node_modules/**",
       "e2e/**",
       "temp/**",

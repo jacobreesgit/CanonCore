@@ -34,9 +34,19 @@ vi.mock("@/lib/tmdb-actions", () => ({
   searchMediaAction: vi.fn(),
   applyMetadataAction: vi.fn(),
   getMetadataPreviewAction: vi.fn(),
-  getImagesAction: vi.fn(),
+  getImagesAction: vi.fn().mockResolvedValue({
+    success: true,
+    data: { posters: [], backdrops: [] },
+  }),
+  getSeasonImagesAction: vi
+    .fn()
+    .mockResolvedValue({ success: true, data: { posters: [] } }),
+  getEpisodeImagesAction: vi
+    .fn()
+    .mockResolvedValue({ success: true, data: { stills: [] } }),
   isTMDBAvailable: vi.fn(),
   updateTmdbDisplayOptions: vi.fn().mockResolvedValue({ success: true }),
+  clearTmdbFieldAction: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 vi.mock("sonner", () => ({
@@ -44,9 +54,6 @@ vi.mock("sonner", () => ({
 }));
 
 import {
-  searchMediaAction,
-  applyMetadataAction,
-  getMetadataPreviewAction,
   getImagesAction,
   isTMDBAvailable,
   updateTmdbDisplayOptions,
@@ -65,6 +72,9 @@ describe("ItemSettingsDialog", () => {
       hasParent: false,
       hasChildren: false,
       tmdbId: null,
+      tmdbType: null,
+      tmdbPosterPath: null,
+      tmdbBackdropPath: null,
       tmdbShowTagline: true,
       tmdbShowMetadata: true,
       tmdbShowGenres: true,
@@ -82,22 +92,6 @@ describe("ItemSettingsDialog", () => {
     // Clear localStorage to reset tab selection between tests
     localStorage.clear();
     vi.mocked(isTMDBAvailable).mockResolvedValue(true);
-    vi.mocked(searchMediaAction).mockResolvedValue({
-      success: true,
-      data: [],
-    });
-    vi.mocked(applyMetadataAction).mockResolvedValue({ success: true });
-    vi.mocked(getMetadataPreviewAction).mockResolvedValue({
-      success: true,
-      data: {
-        name: "Test Movie (2023)",
-        description: "Test description",
-        posterUrl: "https://image.tmdb.org/t/p/w185/poster.jpg",
-        backdropUrl: "https://image.tmdb.org/t/p/w780/backdrop.jpg",
-        posterPath: "/poster.jpg",
-        backdropPath: "/backdrop.jpg",
-      },
-    });
     vi.mocked(getImagesAction).mockResolvedValue({
       success: true,
       data: {
@@ -602,366 +596,82 @@ describe("ItemSettingsDialog", () => {
     });
   });
 
-  describe("TMDB Search via Name Field", () => {
-    // Helper to find the TMDB search combobox (the Item name field)
-    const findTMDBCombobox = async () => {
-      await waitFor(() => {
-        expect(screen.getByLabelText(/item name/i)).toBeInTheDocument();
-      });
-      return screen.getByRole("combobox");
-    };
-
-    // Helper to complete wizard: Next (step 1) → Next (step 2) → Next (step 3) → Apply (step 4)
-    // TMDBWizard uses headings instead of "Step X of Y" text
-    const confirmMetadata = async (
-      user: ReturnType<typeof userEvent.setup>
-    ) => {
-      // Wait for wizard step 1 (Title & Description)
-      await waitFor(() => {
-        expect(
-          screen.getByRole("heading", { name: /title & description/i })
-        ).toBeInTheDocument();
-      });
-
-      // Step 1 → Step 2 (Poster Selection)
-      await user.click(screen.getByRole("button", { name: /next/i }));
-
-      // Wait for step 2 (Select Poster)
-      await waitFor(() => {
-        expect(
-          screen.getByRole("heading", { name: /select poster/i })
-        ).toBeInTheDocument();
-      });
-
-      // Step 2 → Step 3 (Hero Selection)
-      await user.click(screen.getByRole("button", { name: /next/i }));
-
-      // Wait for step 3 (Select Hero Image)
-      await waitFor(() => {
-        expect(
-          screen.getByRole("heading", { name: /select hero image/i })
-        ).toBeInTheDocument();
-      });
-
-      // Step 3 → Step 4 (Summary/Review)
-      await user.click(screen.getByRole("button", { name: /next/i }));
-
-      // Wait for step 4 (Review Changes)
-      await waitFor(() => {
-        expect(
-          screen.getByRole("heading", { name: /review changes/i })
-        ).toBeInTheDocument();
-      });
-
-      // Step 4 → Complete
-      await user.click(screen.getByRole("button", { name: /apply/i }));
-    };
-
-    it("should render item name field with TMDB search", async () => {
-      render(<ItemSettingsDialog {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/item name/i)).toBeInTheDocument();
-      });
-
-      // The combobox serves dual purpose: name input + TMDB search
-      expect(screen.getByRole("combobox")).toBeInTheDocument();
-    });
-
-    it("should render media search combobox as name field", async () => {
-      render(<ItemSettingsDialog {...defaultProps} />);
-
-      const combobox = await findTMDBCombobox();
-      expect(combobox).toBeInTheDocument();
-      expect(combobox).toHaveValue("Test Item"); // Should show current item name
-    });
-
-    it("should show confirmation dialog when TMDB result selected", async () => {
-      const user = userEvent.setup();
-      vi.mocked(searchMediaAction).mockResolvedValue({
-        success: true,
-        data: [
-          {
-            id: 278,
-            mediaType: "movie",
-            title: "The Shawshank Redemption",
-            overview: "Two imprisoned men bond.",
-            posterPath: "/poster.jpg",
-            backdropPath: "/backdrop.jpg",
-            year: "1994",
-          },
-        ],
-      });
-      vi.mocked(getMetadataPreviewAction).mockResolvedValue({
-        success: true,
-        data: {
-          name: "The Shawshank Redemption (1994)",
-          description: "Two imprisoned men bond.",
-          posterUrl: "https://image.tmdb.org/t/p/w185/poster.jpg",
-          backdropUrl: "https://image.tmdb.org/t/p/w780/backdrop.jpg",
-          posterPath: "/poster.jpg",
-          backdropPath: "/backdrop.jpg",
-        },
-      });
-
-      render(<ItemSettingsDialog {...defaultProps} />);
-
-      const combobox = await findTMDBCombobox();
-      await user.type(combobox, "Shawshank");
-
-      await waitFor(() => {
-        expect(
-          screen.getByText("The Shawshank Redemption")
-        ).toBeInTheDocument();
-      });
-
-      await user.click(screen.getByText("The Shawshank Redemption"));
-
-      // Verify confirmation dialog appears
-      await waitFor(() => {
-        expect(screen.getByText("Apply Metadata")).toBeInTheDocument();
-      });
-    });
-
-    it("should call applyMetadataAction after confirming in dialog", async () => {
-      const user = userEvent.setup();
-      vi.mocked(searchMediaAction).mockResolvedValue({
-        success: true,
-        data: [
-          {
-            id: 278,
-            mediaType: "movie",
-            title: "The Shawshank Redemption",
-            overview: "Two imprisoned men bond.",
-            posterPath: "/poster.jpg",
-            backdropPath: "/backdrop.jpg",
-            year: "1994",
-          },
-        ],
-      });
-      vi.mocked(getMetadataPreviewAction).mockResolvedValue({
-        success: true,
-        data: {
-          name: "The Shawshank Redemption (1994)",
-          description: "Two imprisoned men bond.",
-          posterUrl: "https://image.tmdb.org/t/p/w185/poster.jpg",
-          backdropUrl: "https://image.tmdb.org/t/p/w780/backdrop.jpg",
-          posterPath: "/poster.jpg",
-          backdropPath: "/backdrop.jpg",
-        },
-      });
-
-      render(<ItemSettingsDialog {...defaultProps} />);
-
-      const combobox = await findTMDBCombobox();
-      await user.type(combobox, "Shawshank");
-
-      await waitFor(() => {
-        expect(
-          screen.getByText("The Shawshank Redemption")
-        ).toBeInTheDocument();
-      });
-
-      await user.click(screen.getByText("The Shawshank Redemption"));
-      await confirmMetadata(user);
-
-      await waitFor(() => {
-        expect(applyMetadataAction).toHaveBeenCalledWith(
-          "item-1",
-          278,
-          "movie",
-          expect.objectContaining({
-            updateName: true,
-            updateDescription: true,
-          }),
-          expect.anything()
-        );
-      });
-    });
-
-    it("should show success toast after metadata applied", async () => {
-      const user = userEvent.setup();
-      // Use a movie to test wizard flow directly (TV shows go through EpisodePicker first)
-      vi.mocked(searchMediaAction).mockResolvedValue({
-        success: true,
-        data: [
-          {
-            id: 550,
-            mediaType: "movie",
-            title: "Fight Club",
-            overview: "An insomniac office worker.",
-            posterPath: null,
-            backdropPath: null,
-            year: "1999",
-          },
-        ],
-      });
-      vi.mocked(getMetadataPreviewAction).mockResolvedValue({
-        success: true,
-        data: {
-          name: "Fight Club (1999)",
-          description: "An insomniac office worker.",
-          posterUrl: null,
-          backdropUrl: null,
-          posterPath: null,
-          backdropPath: null,
-        },
-      });
-
-      render(<ItemSettingsDialog {...defaultProps} />);
-
-      const combobox = await findTMDBCombobox();
-      await user.type(combobox, "Fight");
-
-      await waitFor(() => {
-        expect(screen.getByText("Fight Club")).toBeInTheDocument();
-      });
-
-      await user.click(screen.getByText("Fight Club"));
-      await confirmMetadata(user);
-
-      await waitFor(() => {
-        expect(toast.success).toHaveBeenCalledWith(
-          "Metadata applied successfully"
-        );
-      });
-    });
-
-    it("should show error toast when metadata application fails", async () => {
-      const user = userEvent.setup();
-      vi.mocked(applyMetadataAction).mockResolvedValue({
-        success: false,
-        error: "Movie not found on TMDB",
-      });
-      vi.mocked(searchMediaAction).mockResolvedValue({
-        success: true,
-        data: [
-          {
-            id: 999,
-            mediaType: "movie",
-            title: "Unknown Movie",
-            overview: "Test",
-            posterPath: null,
-            backdropPath: null,
-            year: "2023",
-          },
-        ],
-      });
-      vi.mocked(getMetadataPreviewAction).mockResolvedValue({
-        success: true,
-        data: {
-          name: "Unknown Movie (2023)",
-          description: "Test",
-          posterUrl: null,
-          backdropUrl: null,
-          posterPath: null,
-          backdropPath: null,
-        },
-      });
-
-      render(<ItemSettingsDialog {...defaultProps} />);
-
-      const combobox = await findTMDBCombobox();
-      await user.type(combobox, "Unknown");
-
-      await waitFor(() => {
-        expect(screen.getByText("Unknown Movie")).toBeInTheDocument();
-      });
-
-      await user.click(screen.getByText("Unknown Movie"));
-      await confirmMetadata(user);
-
-      await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith("Movie not found on TMDB");
-      });
-    });
-
-    it("should call onSettingsChange after metadata applied", async () => {
-      const onSettingsChange = vi.fn().mockResolvedValue(undefined);
-      const user = userEvent.setup();
-      vi.mocked(searchMediaAction).mockResolvedValue({
-        success: true,
-        data: [
-          {
-            id: 278,
-            mediaType: "movie",
-            title: "Test Movie",
-            overview: "Description",
-            posterPath: "/poster.jpg",
-            backdropPath: "/backdrop.jpg",
-            year: "2023",
-          },
-        ],
-      });
-      vi.mocked(getMetadataPreviewAction).mockResolvedValue({
-        success: true,
-        data: {
-          name: "Test Movie (2023)",
-          description: "Description",
-          posterUrl: "https://image.tmdb.org/t/p/w185/poster.jpg",
-          backdropUrl: "https://image.tmdb.org/t/p/w780/backdrop.jpg",
-          posterPath: "/poster.jpg",
-          backdropPath: "/backdrop.jpg",
-        },
-      });
-
+  describe("TMDB Source Field and Name Input", () => {
+    it("disables name input when item has tmdbId", () => {
       render(
         <ItemSettingsDialog
           {...defaultProps}
-          onSettingsChange={onSettingsChange}
+          item={{
+            ...defaultProps.item,
+            tmdbId: 155,
+            tmdbType: "movie",
+          }}
         />
       );
 
-      const combobox = await findTMDBCombobox();
-      await user.type(combobox, "Test");
-
-      await waitFor(() => {
-        expect(screen.getByText("Test Movie")).toBeInTheDocument();
-      });
-
-      await user.click(screen.getByText("Test Movie"));
-      await confirmMetadata(user);
-
-      await waitFor(() => {
-        expect(onSettingsChange).toHaveBeenCalled();
-      });
+      expect(screen.getByLabelText(/item name/i)).toBeDisabled();
+      expect(screen.getByText("Managed by TMDB")).toBeInTheDocument();
     });
 
-    it("should show error toast when preview fetch fails", async () => {
-      const user = userEvent.setup();
-      vi.mocked(searchMediaAction).mockResolvedValue({
-        success: true,
-        data: [
-          {
-            id: 278,
-            mediaType: "movie",
-            title: "Test Movie",
-            overview: "Description",
-            posterPath: "/poster.jpg",
-            backdropPath: "/backdrop.jpg",
-            year: "2023",
-          },
-        ],
-      });
-      vi.mocked(getMetadataPreviewAction).mockResolvedValue({
-        success: false,
-        error: "Could not fetch preview",
-      });
-
+    it("enables name input when item has no tmdbId", () => {
       render(<ItemSettingsDialog {...defaultProps} />);
 
-      const combobox = await findTMDBCombobox();
-      await user.type(combobox, "Test");
+      expect(screen.getByLabelText(/item name/i)).not.toBeDisabled();
+      expect(screen.queryByText("Managed by TMDB")).not.toBeInTheDocument();
+    });
 
-      await waitFor(() => {
-        expect(screen.getByText("Test Movie")).toBeInTheDocument();
-      });
+    it("renders TmdbSourceField on Details tab", () => {
+      render(
+        <ItemSettingsDialog
+          {...defaultProps}
+          item={{
+            ...defaultProps.item,
+            tmdbId: 155,
+            tmdbType: "movie",
+            tmdbPosterPath: "/poster.jpg",
+          }}
+        />
+      );
 
-      await user.click(screen.getByText("Test Movie"));
+      expect(screen.getByText("TMDB Source")).toBeInTheDocument();
+    });
 
-      await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith("Could not fetch preview");
-      });
+    it("navigates to tmdb-search step when TmdbSourceField trigger is clicked", async () => {
+      const user = userEvent.setup();
+      render(
+        <ItemSettingsDialog
+          {...defaultProps}
+          item={{
+            ...defaultProps.item,
+            tmdbId: null,
+            tmdbType: null,
+          }}
+        />
+      );
+
+      await user.click(screen.getByText("Search TMDB\u2026"));
+
+      expect(screen.getByText("Search TMDB")).toBeInTheDocument();
+      expect(screen.getByLabelText("Back")).toBeInTheDocument();
+    });
+
+    it("returns to main step when back button is clicked in tmdb-search", async () => {
+      const user = userEvent.setup();
+      render(
+        <ItemSettingsDialog
+          {...defaultProps}
+          item={{
+            ...defaultProps.item,
+            tmdbId: null,
+            tmdbType: null,
+          }}
+        />
+      );
+
+      await user.click(screen.getByText("Search TMDB\u2026"));
+      await user.click(screen.getByLabelText("Back"));
+
+      expect(screen.getByLabelText(/item name/i)).toBeInTheDocument();
     });
   });
 
@@ -1143,6 +853,56 @@ describe("ItemSettingsDialog", () => {
       await waitFor(() => {
         expect(toast.error).toHaveBeenCalledWith("Item has no TMDB metadata");
       });
+    });
+  });
+
+  describe("TMDB metadata section", () => {
+    it("renders TmdbMetadataSection when item has tmdbId", async () => {
+      const user = userEvent.setup();
+      render(
+        <ItemSettingsDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          item={{
+            ...defaultProps.item,
+            tmdbId: 155,
+            tmdbType: "movie",
+            tmdbPosterPath: "/poster.jpg",
+            tmdbBackdropPath: "/backdrop.jpg",
+          }}
+          files={defaultProps.files}
+        />
+      );
+
+      // Switch to TMDB tab
+      const tmdbTab = screen.getByRole("tab", { name: /tmdb/i });
+      await user.click(tmdbTab);
+
+      // Should show metadata section with poster/backdrop fields (no detach — moved to Details tab)
+      expect(screen.getByText("Poster")).toBeInTheDocument();
+      expect(screen.getByText("Backdrop")).toBeInTheDocument();
+    });
+
+    it("does not render TmdbMetadataSection when item has no tmdbId", () => {
+      render(
+        <ItemSettingsDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          item={{
+            ...defaultProps.item,
+            tmdbId: null,
+            tmdbType: null,
+            tmdbPosterPath: null,
+            tmdbBackdropPath: null,
+          }}
+          files={defaultProps.files}
+        />
+      );
+
+      // TMDB tab should not exist
+      expect(
+        screen.queryByRole("tab", { name: /tmdb/i })
+      ).not.toBeInTheDocument();
     });
   });
 });

@@ -43,6 +43,9 @@ const mockItem: ItemSettingsFormItem = {
   hasParent: false,
   hasChildren: false,
   tmdbId: null,
+  tmdbType: null,
+  tmdbPosterPath: null,
+  tmdbBackdropPath: null,
   tmdbShowTagline: true,
   tmdbShowMetadata: true,
   tmdbShowGenres: true,
@@ -285,6 +288,34 @@ describe("useItemSettingsForm", () => {
       });
 
       expect(result.current.currentStep).toBe("tmdb-wizard");
+    });
+
+    it("handleOpenTmdbSearch sets step to tmdb-search", () => {
+      const { result } = renderHook(() =>
+        useItemSettingsForm(mockItem, mockFiles)
+      );
+
+      act(() => {
+        result.current.handleOpenTmdbSearch();
+      });
+
+      expect(result.current.currentStep).toBe("tmdb-search");
+    });
+
+    it("handleTmdbSearchBack sets step to main", () => {
+      const { result } = renderHook(() =>
+        useItemSettingsForm(mockItem, mockFiles)
+      );
+
+      act(() => {
+        result.current.handleOpenTmdbSearch();
+      });
+      expect(result.current.currentStep).toBe("tmdb-search");
+
+      act(() => {
+        result.current.handleTmdbSearchBack();
+      });
+      expect(result.current.currentStep).toBe("main");
     });
   });
 

@@ -1,14 +1,19 @@
 /**
  * Playwright configuration for E2E tests.
  * Two projects: desktop Chrome and mobile Chrome (Pixel 7).
- * Max 2 workers to avoid resource contention.
+ *
+ * Uses a dedicated port (3001) so the E2E server runs against
+ * E2E_DATABASE_URL without colliding with the dev server on 3000.
  */
 import { defineConfig, devices } from "@playwright/test";
 import { config } from "dotenv";
 
 config({ path: ".env.local" });
 
-const baseURL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+const E2E_PORT = 3001;
+const baseURL = process.env.CI
+  ? (process.env.NEXT_PUBLIC_APP_URL ?? `http://localhost:${E2E_PORT}`)
+  : `http://localhost:${E2E_PORT}`;
 
 export default defineConfig({
   testDir: "./journeys",
@@ -33,6 +38,8 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {
+      PORT: String(E2E_PORT),
+      NEXT_DIST_DIR: ".next-e2e",
       DATABASE_URL: process.env.E2E_DATABASE_URL ?? "",
       BYPASS_RATE_LIMIT: "true",
     },

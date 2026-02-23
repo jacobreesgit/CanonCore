@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: February 2026 (v9.1.0)
+Last updated: February 2026 (v9.3.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -294,7 +294,7 @@ All mutations go through server actions in `lib/*-actions.ts`:
 - `lib/item-actions.ts` - CRUD, reordering, pinning, progress
 - `lib/playlist-actions.ts` - Playlist CRUD, artwork, share tokens, item membership, reordering
 - `lib/google-drive-actions.ts` - OAuth, sync, connection management
-- `lib/tmdb-actions.ts` - Metadata search, image fetching
+- `lib/tmdb-actions.ts` - Metadata search, image fetching, per-field clearing, display options
 - `lib/auth-actions.ts` - Sign up, forgot password, reset password
 - `lib/user-actions.ts` - Profile updates, image uploads, account deletion, data export
 - `lib/fork-actions.ts` - Forking collections
@@ -605,11 +605,49 @@ Multi-layer defence against aggressive AI crawlers:
 - "Use Show" applies show-level metadata, "Use Season" applies show-level
 - Episode selection skips artwork steps (stills only, no poster/backdrop galleries)
 
+**Per-Field Artwork Editing:**
+
+After initial wizard application, individual artwork fields (poster, backdrop, episode still) can be changed in isolation:
+
+- `TmdbArtworkChangeDialog` opens an image gallery scoped to a single field
+- Fetches images via `getImagesAction`, `getSeasonImagesAction`, or `getEpisodeImagesAction`
+- `AnimatedDialogContent` slot API provides smooth loading → gallery transitions
+- Content-type-aware: movies show poster + backdrop, TV shows show poster + backdrop, seasons show poster only, episodes show still only
+
+**Inline Detach:**
+
+- `TmdbSourceField` on the Details tab shows the linked TMDB source with an inline trash icon
+- Detach calls `clearTmdbFieldAction(itemId, "all")` which clears tmdbId, tmdbType, all paths, and resets display options to defaults
+- Preserves item name and description
+- Individual field clearing via `clearTmdbFieldAction(itemId, "poster" | "backdrop")` removes a single artwork path
+
+**Component Architecture:**
+
+- `TmdbSourceField` — Details tab, shows linked source with poster thumbnail, type badge, and inline detach
+- `TmdbMetadataSection` — TMDB tab container, renders artwork fields based on content type
+- `TmdbArtworkField` — per-field artwork display with change/clear actions, mirrors `FileTypeCombobox` DOM structure
+- `TmdbArtworkChangeDialog` — modal image gallery picker with apply/cancel
+- All components share visual parity with `FileTypeCombobox` (7px icon circle, label hierarchy, outline buttons, inline action icons)
+
+**Shared Form State:**
+
+- `useItemSettingsForm` hook centralises 20+ form fields, handlers, and wizard navigation state
+- Shared between `ItemSettingsDialog` (desktop) and `MobileItemSheet` (mobile) — identical logic, different UX surfaces
+- `useSettingsDialog` hook wraps file fetching and dialog lifecycle
+- Memoised computations prevent unnecessary wizard re-renders
+
+**Override Badges:**
+
+- `FileTypeCombobox` accepts a `note` prop for override indicators
+- When TMDB artwork is set, badge text reads "Currently using TMDB poster. Upload to override."
+- `TmdbArtworkField` shows matching badge when an uploaded file overrides TMDB artwork
+
 **TMDB Display Options:**
 
-- Per-item toggles: tagline, metadata, genres, cast, providers, videos (recommendations toggle soft-disabled)
-- All default to true, configurable in item settings dialog
-- Debounced save via `updateTmdbDisplayOptions` server action
+- Per-item toggles: tagline, metadata, genres, cast, providers, videos, recommendations
+- All default to true, configurable in item settings TMDB tab
+- `updateTmdbDisplayOptions` server action with `tmdbDisplayOptionsSchema` validation
+- Changes save automatically — no need to click Save
 
 **Artwork Handling:**
 
@@ -622,6 +660,7 @@ Multi-layer defence against aggressive AI crawlers:
 
 - Circuit breaker: 5 failures → 60s recovery
 - Graceful degradation if TMDB_API_KEY not set (manual metadata only)
+- `TmdbArtworkChangeDialog` shows actionable error messages ("Try closing and reopening the dialog.")
 
 ### Spotlight Search
 
@@ -729,15 +768,25 @@ Multi-layer defence against aggressive AI crawlers:
 
 The landing page uses a full-bleed animated mesh gradient background (`@mesh-gradient/react`) with a grid overlay and CRT scanline effect. The background is sticky (`position: sticky; top: 0`) and content scrolls over it with a negative top margin.
 
+**CSS Modules + Container Queries:**
+
+Hero section and media stack use CSS Modules (`hero-section.module.css`, `media-stack.module.css`) with container queries instead of viewport queries. Container queries respond to the component's container width — when the sidebar is open, the layout adapts without needing sidebar-aware viewport breakpoints. This mirrors Payload CMS's 16-column grid system.
+
+- Mobile-first 8-column grid, 16-column on `@container (min-width: 1024px)`
+- `--gutter-h` and `--column` CSS variables for Payload-style column sizing
+- `container-type: inline-size` on the hero wrapper enables container query evaluation
+
 **Sections:**
 
-- `HeroSection` — Two-column grid with headline, media stack (glass-morphism screenshot carousel), command-line terminal pill, and logo showcase
+- `HeroSection` — 16-col grid with headline (cols 1-4 desktop, full mobile), media stack (cols 8-16 desktop), command-line terminal pill, and logo showcase
+- `MediaStack` — Server component (no `"use client"`), pure CSS animations via `@keyframes stackFadeIn`, column-based sizing via inherited `--column` variable, glass morphism, `prefers-reduced-motion: reduce` support
 - `FeatureAccordion` — Expandable feature list with image crossfade using `AnimatePresence` and `m.div` opacity transitions
 - `ManifestoCta` — Closing manifesto with gradient text and dual CTAs
 
 **Performance:**
 
-- `LazyMotion` wraps all homepage content with `strict` mode. Child components use `m` from `motion/react-m` (not `motion` from `motion/react`). Feature bundle (~15KB `domAnimation`) loaded async from `lib/motion-features.ts`.
+- `MediaStack` is a server component — zero client JavaScript for the image stack (CSS-only animation)
+- `LazyMotion` wraps remaining animated content with `strict` mode. Child components use `m` from `motion/react-m` (not `motion` from `motion/react`). Feature bundle (~15KB `domAnimation`) loaded async from `lib/motion-features.ts`.
 - CSS-generated noise texture via inline SVG `feTurbulence` data URI replaces a 328KB PNG
 - All images use `next/image` with `sizes` props; Media stack IMAGE_1 has `priority` (LCP candidate)
 - `MeshGradient` must be imported statically — dynamic import causes a 616ms TBT regression
@@ -776,7 +825,7 @@ The landing page uses a full-bleed animated mesh gradient background (`@mesh-gra
 **Bottom Sheets:**
 
 - Replace desktop dialogs on mobile (< 1024px)
-- `MobileItemSheet`: combines sort, filter, view, and settings
+- `MobileItemSheet`: combines sort, filter, view, and settings (shares `useItemSettingsForm` hook with desktop dialog)
 - `MobileAddItemSheet`: item creation with TMDB search
 - `MobileOptionsSheet`: sort, filter, and view controls
 - Swipe-to-dismiss gesture support
@@ -1204,7 +1253,7 @@ Husky manages Git hooks:
 
 **Real dependencies:**
 
-- Full Next.js application (webServer block starts dev server)
+- Full Next.js application (webServer starts dev server on dedicated port 3001 with separate `.next-e2e` build directory to avoid conflicts with the dev server on port 3000)
 - Real PostgreSQL database (E2E branch via `E2E_DATABASE_URL`)
 - Real TMDB API (uses production API key)
 

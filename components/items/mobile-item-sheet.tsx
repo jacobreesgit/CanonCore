@@ -40,12 +40,15 @@ import {
   type SwipeableTab,
 } from "@/components/mobile/swipeable-tabs";
 import { DiscardChangesAlert } from "@/components/mobile/discard-changes-alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { FileTypeCombobox } from "@/components/items/file-type-combobox";
 import { MediaSearchCombobox } from "@/components/items/media-search-combobox";
-import { TmdbDisplayOptionsEditor } from "@/components/items/tmdb-display-options";
+import { TmdbMetadataSection } from "@/components/items/tmdb-metadata-section";
+import { TmdbSourceField } from "@/components/items/tmdb-source-field";
 import { VisibilityToggle } from "@/components/items/visibility-toggle";
 import { TMDBWizard } from "./wizards/tmdb-wizard";
 
@@ -171,7 +174,7 @@ export function MobileItemSheet({
     setHeroArtworkId,
     primarySubtitleId,
     setPrimarySubtitleId,
-    isLoadingPreview,
+    isLoadingPreview: _isLoadingPreview,
     isApplyingMetadata,
     handleMediaSelect,
     displayOptions,
@@ -196,6 +199,8 @@ export function MobileItemSheet({
     currentValues,
     handleTVPickerComplete,
     handleTMDBWizardComplete,
+    handleOpenTmdbSearch,
+    handleTmdbSearchBack,
   } = form;
 
   // Reset form when sheet opens
@@ -268,30 +273,20 @@ export function MobileItemSheet({
   const detailsContent = (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="mobile-item-name">Item name</Label>
-        <div className="relative">
-          <MediaSearchCombobox
-            id="mobile-item-name"
-            onSelect={handleMediaSelect}
-            onChange={setName}
-            value={name}
-            placeholder="Search movies & TV shows…"
-          />
-          {(isLoadingPreview || isApplyingMetadata) && (
-            <div className="bg-background/80 absolute inset-0 flex items-center justify-center rounded-md">
-              <div className="flex items-center gap-2">
-                <FontAwesomeIcon
-                  icon={faSpinner}
-                  aria-hidden="true"
-                  className="text-muted-foreground size-4"
-                  spin
-                />
-                <span className="text-muted-foreground text-sm">
-                  {isLoadingPreview ? "Loading preview…" : "Applying…"}
-                </span>
-              </div>
-            </div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="mobile-item-name">Item name</Label>
+          {item.tmdbId !== null && (
+            <Badge variant="destructive">Managed by TMDB</Badge>
           )}
+        </div>
+        <div className="relative">
+          <Input
+            id="mobile-item-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            disabled={item.tmdbId !== null}
+            placeholder="Enter item name\u2026"
+          />
         </div>
       </div>
 
@@ -304,7 +299,7 @@ export function MobileItemSheet({
           id="mobile-item-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Add a short description…"
+          placeholder="Add a short description\u2026"
           maxLength={1000}
           className="min-h-[80px] resize-none"
         />
@@ -342,6 +337,13 @@ export function MobileItemSheet({
           }}
         />
       </div>
+
+      {/* TMDB Source field */}
+      <TmdbSourceField
+        item={item}
+        onChange={handleOpenTmdbSearch}
+        onSettingsChange={onSettingsChange ?? (async () => {})}
+      />
     </div>
   );
 
@@ -386,6 +388,13 @@ export function MobileItemSheet({
         itemId={item.id}
         fileType="artwork"
         disabled={!hasDriveConnection}
+        note={
+          item.tmdbPosterPath ? (
+            <Badge variant="destructive">
+              Currently using TMDB poster. Upload to override.
+            </Badge>
+          ) : undefined
+        }
       />
 
       <FileTypeCombobox
@@ -400,6 +409,13 @@ export function MobileItemSheet({
         itemId={item.id}
         fileType="artwork"
         disabled={!hasDriveConnection}
+        note={
+          item.tmdbBackdropPath ? (
+            <Badge variant="destructive">
+              Currently using TMDB backdrop. Upload to override.
+            </Badge>
+          ) : undefined
+        }
       />
 
       <FileTypeCombobox
@@ -420,9 +436,13 @@ export function MobileItemSheet({
 
   // Settings tab content - TMDB
   const tmdbContent = item.tmdbId ? (
-    <TmdbDisplayOptionsEditor
+    <TmdbMetadataSection
+      item={item}
       displayOptions={displayOptions}
-      onChange={handleDisplayOptionsChange}
+      onDisplayOptionsChange={handleDisplayOptionsChange}
+      onSettingsChange={onSettingsChange ?? (async () => {})}
+      hasUploadedPoster={!!primaryArtworkId}
+      hasUploadedHero={!!heroArtworkId}
     />
   ) : null;
 
@@ -450,6 +470,76 @@ export function MobileItemSheet({
       icon: faFilm,
       content: tmdbContent,
     });
+  }
+
+  // TMDB search step
+  if (currentStep === "tmdb-search") {
+    return (
+      <>
+        <MobileBottomSheet
+          open={open}
+          onOpenChange={handleOpenChange}
+          snapPoints={[0.85]}
+          title="Search TMDB"
+          description="Find a movie or TV show to link"
+          className={cn(
+            "bg-[#1a1a1a]/95 backdrop-blur-xl",
+            "border-t border-white/[0.08]",
+            "text-foreground"
+          )}
+        >
+          <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleTmdbSearchBack}
+                className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                aria-label="Back"
+              >
+                <FontAwesomeIcon
+                  icon={faChevronLeft}
+                  aria-hidden="true"
+                  className="size-5"
+                />
+              </Button>
+              <div
+                className={cn(
+                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                  "bg-brand/10 ring-brand/20 ring-1"
+                )}
+              >
+                <FontAwesomeIcon
+                  icon={faFilm}
+                  aria-hidden="true"
+                  className="text-brand size-5"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <MobileBottomSheetTitle>Search TMDB</MobileBottomSheetTitle>
+                <p className="text-muted-foreground text-sm">
+                  Find a movie or TV show to link
+                </p>
+              </div>
+            </div>
+          </MobileBottomSheetHeader>
+          <MobileBottomSheetContent>
+            <div className="py-4">
+              <MediaSearchCombobox
+                id="mobile-tmdb-search-input"
+                onSelect={handleMediaSelect}
+                placeholder="Search movies & TV shows\u2026"
+              />
+            </div>
+          </MobileBottomSheetContent>
+        </MobileBottomSheet>
+        <DiscardChangesAlert
+          open={showDiscardAlert}
+          onOpenChange={setShowDiscardAlert}
+          onDiscard={handleDiscard}
+        />
+      </>
+    );
   }
 
   // Wizard step rendering
