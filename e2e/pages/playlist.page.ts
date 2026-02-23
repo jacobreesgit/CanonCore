@@ -120,8 +120,9 @@ export class PlaylistPage {
    * @param name - The playlist name to look for
    */
   async expectPlaylistCardVisible(name: string) {
+    // CardShell renders the name twice (default + hover overlay), use .first()
     await expect(
-      this.page.getByTestId("playlist-section").getByText(name)
+      this.page.getByTestId("playlist-section").getByText(name).first()
     ).toBeVisible({ timeout: Timeouts.api });
   }
 
@@ -131,8 +132,9 @@ export class PlaylistPage {
    * @param name - The playlist name that should not appear
    */
   async expectPlaylistCardNotVisible(name: string) {
+    // CardShell renders the name twice (default + hover overlay), use .first()
     await expect(
-      this.page.getByTestId("playlist-section").getByText(name)
+      this.page.getByTestId("playlist-section").getByText(name).first()
     ).not.toBeVisible({ timeout: Timeouts.api });
   }
 

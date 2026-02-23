@@ -51,7 +51,13 @@ import { forkItem } from "@/lib/fork-actions";
 import { getTmdbBackdropUrl } from "@/lib/tmdb-image-utils";
 import type { PublicItem, FeaturedItem } from "@/lib/public-auth";
 import type { TmdbItemMetadata } from "@/lib/tmdb-client";
-import type { SortOption } from "@/lib/types";
+import type { SortOption, SyncStatus } from "@/lib/types";
+
+/** Sync data for the current user's own featured items (passed from server). */
+interface OwnItemSyncData {
+  syncStatus: SyncStatus;
+  driveFileId: string | null;
+}
 
 /** No-op subscribe for useSyncExternalStore (value never changes). */
 const emptySubscribe = () => () => {};
@@ -88,6 +94,8 @@ interface ExploreClientProps {
   featuredItems: (FeaturedItem & { tmdbMetadata?: TmdbItemMetadata | null })[];
   playlists?: ExplorePlaylist[];
   currentUser: CurrentUser | null;
+  /** Sync data for the current user's own featured items, keyed by item ID. */
+  ownItemSyncData?: Record<string, OwnItemSyncData>;
 }
 
 /**
@@ -100,6 +108,7 @@ export function ExploreClient({
   featuredItems,
   playlists,
   currentUser,
+  ownItemSyncData,
 }: ExploreClientProps) {
   const router = useRouter();
   const {
@@ -296,8 +305,11 @@ export function ExploreClient({
         genres: item.tmdbMetadata?.genres?.length
           ? item.tmdbMetadata.genres
           : undefined,
+        // Sync data is only provided for the current user's own items (filtered server-side)
+        syncStatus: ownItemSyncData?.[item.id]?.syncStatus,
+        driveFileId: ownItemSyncData?.[item.id]?.driveFileId,
       })),
-    [featuredItems]
+    [featuredItems, ownItemSyncData]
   );
 
   // Use shared sort utility (DRY - no duplicate sort function)

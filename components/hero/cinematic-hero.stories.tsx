@@ -213,6 +213,67 @@ export const NoBackground: Story = {
   },
 };
 
+/** Item detail page (owner view) with Google Drive sync indicator. */
+export const ItemDetailSynced: Story = {
+  args: {
+    slides: [
+      {
+        ...itemSlide,
+        syncStatus: "SYNCED",
+        driveFileId: "drive-folder-abc123",
+      },
+    ],
+    headingLevel: "h1",
+    actions: (
+      <>
+        <HeroButton variant="primary" onClick={() => {}}>
+          <FontAwesomeIcon icon={faPlay} className="size-4" />
+          Play
+        </HeroButton>
+        <HeroButton onClick={() => {}}>Next Up: Chapter 5</HeroButton>
+      </>
+    ),
+  },
+};
+
+/** Item detail page with sync in progress. */
+export const ItemDetailSyncing: Story = {
+  args: {
+    slides: [
+      {
+        ...itemSlide,
+        syncStatus: "SYNCING",
+      },
+    ],
+    headingLevel: "h1",
+    actions: (
+      <HeroButton variant="primary" onClick={() => {}}>
+        <FontAwesomeIcon icon={faPlay} className="size-4" />
+        Play
+      </HeroButton>
+    ),
+  },
+};
+
+/** Item detail page with sync error. */
+export const ItemDetailSyncError: Story = {
+  args: {
+    slides: [
+      {
+        ...itemSlide,
+        syncStatus: "ERROR",
+      },
+    ],
+    headingLevel: "h1",
+    actions: (
+      <HeroButton variant="primary" onClick={() => {}}>
+        <FontAwesomeIcon icon={faPlay} className="size-4" />
+        Play
+      </HeroButton>
+    ),
+  },
+};
+
 /** Playlist hero with mosaic background element using real TMDB backdrops. */
 export const Mosaic: Story = {
   args: {

@@ -2,6 +2,8 @@
  * Shared types for the CinematicHero component.
  */
 
+import type { SyncStatus } from "@/lib/types";
+
 /**
  * Data for a single hero slide.
  * Supports item detail, carousel, and profile avatar modes.
@@ -38,6 +40,10 @@ export interface HeroSlide {
   attribution?: string;
   /** Link destination for the attribution text. */
   attributionHref?: string;
+  /** Sync status for displaying indicator (e.g., SYNCING, PENDING, ERROR, SYNCED). */
+  syncStatus?: SyncStatus;
+  /** Google Drive folder ID — shows cloud icon when linked and synced. */
+  driveFileId?: string | null;
   /** Profile data — when present, renders avatar layout. */
   profile?: {
     id: string;

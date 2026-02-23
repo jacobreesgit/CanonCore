@@ -10,6 +10,7 @@ import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import { Timeouts } from "../config/timeouts";
 import { slugify } from "../../lib/slugify";
+import { getItemLocator, openItemMoreMenu } from "../config/item-locators";
 
 export class ItemsHierarchyPage {
   constructor(
@@ -28,26 +29,12 @@ export class ItemsHierarchyPage {
 
   // ── Helpers ─────────────────────────────────────────────
 
-  /**
-   * Get a locator for an item by name, matching either card or tree testid.
-   */
   private getItemLocator(name: string) {
-    const slug = slugify(name);
-    return this.page
-      .getByTestId(`item-card-${slug}`)
-      .or(this.page.getByTestId(`item-tree-${slug}`))
-      .first();
+    return getItemLocator(this.page, name);
   }
 
-  /**
-   * Open the more options dropdown for an item.
-   * The button is visually hidden (opacity 0) — force-click to bypass visibility check.
-   */
   private async openMoreMenu(name: string) {
-    const slug = slugify(name);
-    const moreButton = this.page.getByTestId(`item-more-${slug}`);
-    await moreButton.waitFor({ state: "attached", timeout: Timeouts.api });
-    await moreButton.click({ force: true });
+    await openItemMoreMenu(this.page, name);
   }
 
   // ── Add Child ────────────────────────────────────────────

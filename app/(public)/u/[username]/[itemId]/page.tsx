@@ -225,6 +225,8 @@ export default async function ItemDetailPage({
               tmdbShowProviders: item.tmdbShowProviders,
               tmdbShowVideos: item.tmdbShowVideos,
               tmdbShowRecommendations: item.tmdbShowRecommendations,
+              syncStatus: item.syncStatus,
+              driveFileId: item.driveFileId,
             }}
             childItems={childItems}
             files={files}

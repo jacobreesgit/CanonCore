@@ -40,8 +40,8 @@ test.describe("Account Deletion", () => {
     await settings.switchToTab("account");
     await page.getByRole("button", { name: "Delete Account" }).click();
 
-    // Use getByLabel("Password") for the password field (unambiguous label)
-    await page.getByLabel("Password").fill("WrongPassword1");
+    // Use id selector — getByLabel("Password") matches both input and "Show password" button
+    await page.locator("#delete-password").fill("WrongPassword1");
     // Use id selector for the confirm field — the label contains a <span> which
     // can make getByLabel with regex fragile
     await page.locator("#delete-confirm").fill("DELETE");
@@ -61,7 +61,7 @@ test.describe("Account Deletion", () => {
     await settings.switchToTab("account");
     await page.getByRole("button", { name: "Delete Account" }).click();
 
-    await page.getByLabel("Password").fill(testUser.password);
+    await page.locator("#delete-password").fill(testUser.password);
     await page.locator("#delete-confirm").fill("DELETE");
     await page.getByRole("button", { name: "Delete My Account" }).click();
 

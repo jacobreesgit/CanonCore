@@ -68,7 +68,7 @@ test.describe("Items Settings", () => {
     await itemsCrud.expectItemVisible("Inception (2010)");
 
     await itemsSettings.openSettings("Inception (2010)");
-    await itemsSettings.switchToTmdbTab();
+    // Detach is on the Details tab (TmdbSourceField), not the TMDB tab
     await itemsSettings.detachTmdb();
     await itemsSettings.expectTmdbTabGone();
   });

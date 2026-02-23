@@ -20,7 +20,7 @@ The landing page features a full-bleed animated mesh gradient background with a 
 
 ### Browsing & Organisation
 
-Two views: **Grid** is Netflix-style with poster cards and progress bars. **Tree** is file explorer-style showing all descendants at once. Every item page has a hero banner. I wanted it to feel like browsing a streaming service, not a file manager.
+Two views: **Grid** is Netflix-style with poster cards and progress bars. **Tree** is file explorer-style showing all descendants at once. Every item page has a hero banner. Grid cards stay elevated while their context menu is open using CSS `has-[[data-state=open]]` selectors. Tree items swap the Google Drive sync icon for a more-options button on hover. I wanted it to feel like browsing a streaming service, not a file manager.
 
 Edit mode enables drag-and-drop, bulk selection, and full keyboard navigation with screen reader announcements. Pinned items (max 10) appear in the sidebar for quick access. dnd-kit only loads in edit mode to keep browsing fast.
 
@@ -70,7 +70,7 @@ Press `/` to open Spotlight Search anywhere in the app. Results load in parallel
 
 ### Cinematic Hero
 
-The explore page features a cinematic hero carousel that auto-advances through featured collections with rich TMDB metadata — tagline, release year, runtime, genres, and content rating. Item detail pages show a single hero banner with the item's backdrop artwork. Playlist detail pages use a mosaic backdrop composited from the playlist's item artwork.
+The explore page features a cinematic hero carousel that auto-advances through featured collections with rich TMDB metadata — tagline, release year, runtime, genres, and content rating. Item detail pages show a single hero banner with the item's backdrop artwork. Playlist detail pages use a mosaic backdrop composited from the playlist's item artwork. Sync status indicators appear inline in the hero metadata line for the current user's own items — a check icon for synced, animated spinner for syncing, dot for pending, and warning triangle for errors. Sync data is filtered server-side so other users' Drive state is never exposed.
 
 ### URL State
 
@@ -98,7 +98,7 @@ Route-level error boundaries catch failures gracefully with styled recovery page
 
 ### Account Management
 
-You own your data. Download a complete export of your account as JSON — profile, items with file metadata and TMDB fields, playlists with memberships, and fork records — from Settings at any time. If you want to leave, permanent account deletion removes everything: items, playlists, files, forks, and audit records. Deletion requires your password and typing "DELETE" to confirm. If Google Drive is connected, the CanonCore folder is moved to trash before the account is removed. Prisma cascade relations handle all dependent records in a single operation.
+You own your data. Download a complete export of your account as JSON — profile, items with file metadata and TMDB fields, playlists with memberships, and fork records — from Settings at any time. If you want to leave, permanent account deletion removes everything: items, playlists, files, forks, and audit records. Deletion requires your password and typing "DELETE" to confirm. If Google Drive is connected, the CanonCore folder is moved to trash before the account is removed. Prisma cascade relations handle all dependent records in a single operation. Both data export and account deletion work on mobile through the settings bottom sheet, matching full desktop parity.
 
 ### Audit Logging
 

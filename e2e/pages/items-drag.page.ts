@@ -6,7 +6,7 @@
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import { Timeouts } from "../config/timeouts";
-import { slugify } from "../../lib/slugify";
+import { getItemLocator } from "../config/item-locators";
 
 export class ItemsDragPage {
   constructor(
@@ -60,20 +60,8 @@ export class ItemsDragPage {
    * and falls back to card locators (item-card-{slug}) if tree items are not found.
    */
   async dragItem(fromName: string, toName: string) {
-    const fromSlug = slugify(fromName);
-    const toSlug = slugify(toName);
-
-    const fromTree = this.page.getByTestId(`item-tree-${fromSlug}`);
-    const toTree = this.page.getByTestId(`item-tree-${toSlug}`);
-
-    // Try tree items first, fall back to card items
-    const fromLocator = (await fromTree.isVisible())
-      ? fromTree
-      : this.page.getByTestId(`item-card-${fromSlug}`);
-    const toLocator = (await toTree.isVisible())
-      ? toTree
-      : this.page.getByTestId(`item-card-${toSlug}`);
-
+    const fromLocator = getItemLocator(this.page, fromName);
+    const toLocator = getItemLocator(this.page, toName);
     await fromLocator.dragTo(toLocator);
   }
 
@@ -81,12 +69,7 @@ export class ItemsDragPage {
 
   /** Select an item by clicking its checkbox in edit mode. */
   async selectItem(name: string) {
-    const slug = slugify(name);
-    const treeItem = this.page.getByTestId(`item-tree-${slug}`);
-    const cardItem = this.page.getByTestId(`item-card-${slug}`);
-
-    // Click the item itself -- in edit mode, clicking toggles selection
-    const item = (await treeItem.isVisible()) ? treeItem : cardItem;
+    const item = getItemLocator(this.page, name);
     await item.click();
   }
 
@@ -115,51 +98,34 @@ export class ItemsDragPage {
    * and compares their order against the provided names array.
    */
   async expectItemOrder(names: string[]) {
-    for (let i = 0; i < names.length; i++) {
-      const slug = slugify(names[i]);
-      const treeItem = this.page.getByTestId(`item-tree-${slug}`);
-      const cardItem = this.page.getByTestId(`item-card-${slug}`);
-
-      // Verify each item is visible in either view
-      const item = (await treeItem.isVisible()) ? treeItem : cardItem;
-      await expect(item).toBeVisible({ timeout: Timeouts.api });
+    // Verify each item is visible
+    for (const name of names) {
+      await expect(getItemLocator(this.page, name)).toBeVisible({
+        timeout: Timeouts.api,
+      });
     }
 
     // Verify ordering by checking that each item appears before the next
     for (let i = 0; i < names.length - 1; i++) {
-      const currentSlug = slugify(names[i]);
-      const nextSlug = slugify(names[i + 1]);
+      // Get the testid of each visible element for DOM comparison
+      const currentTestId = await getItemLocator(
+        this.page,
+        names[i]
+      ).getAttribute("data-testid");
+      const nextTestId = await getItemLocator(
+        this.page,
+        names[i + 1]
+      ).getAttribute("data-testid");
 
-      const currentTree = this.page.getByTestId(`item-tree-${currentSlug}`);
-      const currentItem = (await currentTree.isVisible())
-        ? currentTree
-        : this.page.getByTestId(`item-card-${currentSlug}`);
-
-      const nextTree = this.page.getByTestId(`item-tree-${nextSlug}`);
-      const nextItem = (await nextTree.isVisible())
-        ? nextTree
-        : this.page.getByTestId(`item-card-${nextSlug}`);
-
-      // Use evaluate to check DOM order
       const isBeforeInDom = await this.page.evaluate(
-        ([currentTestId, nextTestId]) => {
-          const current = document.querySelector(
-            `[data-testid="${currentTestId}"]`
-          );
-          const next = document.querySelector(`[data-testid="${nextTestId}"]`);
+        ([curId, nxtId]) => {
+          const current = document.querySelector(`[data-testid="${curId}"]`);
+          const next = document.querySelector(`[data-testid="${nxtId}"]`);
           if (!current || !next) return false;
           const position = current.compareDocumentPosition(next);
-          // Node.DOCUMENT_POSITION_FOLLOWING = 4
           return (position & 4) !== 0;
         },
-        [
-          (await currentTree.isVisible())
-            ? `item-tree-${currentSlug}`
-            : `item-card-${currentSlug}`,
-          (await nextTree.isVisible())
-            ? `item-tree-${nextSlug}`
-            : `item-card-${nextSlug}`,
-        ]
+        [currentTestId, nextTestId]
       );
 
       expect(isBeforeInDom).toBe(true);
