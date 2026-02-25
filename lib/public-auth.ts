@@ -11,7 +11,7 @@ import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { COMPLETION_THRESHOLD } from "@/lib/progress-utils";
+
 import { logger } from "@/lib/logger";
 import { resolveArtworkId } from "@/lib/tmdb-image-utils";
 import type {
@@ -450,10 +450,10 @@ export async function getPublicItemsForUser(
         COUNT(DISTINCT d.id) as "totalItems",
         COUNT(DISTINCT CASE WHEN f.id IS NOT NULL THEN d.id END) as "itemsWithMedia",
         COUNT(DISTINCT CASE
-          WHEN f."playbackPosition" IS NOT NULL
-            AND f."playbackDuration" IS NOT NULL
-            AND f."playbackDuration" > 0
-            AND f."playbackPosition" >= f."playbackDuration" * ${COMPLETION_THRESHOLD}
+          WHEN EXISTS(
+            SELECT 1 FROM "WatchRecord" wr
+            WHERE wr."itemId" = d.id AND wr."userId" = ${currentUserId}
+          )
           THEN d.id
         END) as "watchedItems"
       FROM descendants d
@@ -877,10 +877,10 @@ export async function getExploreItems(
         COUNT(DISTINCT d.id) as "totalItems",
         COUNT(DISTINCT CASE WHEN f.id IS NOT NULL THEN d.id END) as "itemsWithMedia",
         COUNT(DISTINCT CASE
-          WHEN f."playbackPosition" IS NOT NULL
-            AND f."playbackDuration" IS NOT NULL
-            AND f."playbackDuration" > 0
-            AND f."playbackPosition" >= f."playbackDuration" * ${COMPLETION_THRESHOLD}
+          WHEN EXISTS(
+            SELECT 1 FROM "WatchRecord" wr
+            WHERE wr."itemId" = d.id AND wr."userId" = ${currentUserId}
+          )
           THEN d.id
         END) as "watchedItems"
       FROM descendants d
@@ -1038,10 +1038,10 @@ export const getPublicLibraryProgress = cache(
         COUNT(DISTINCT i.id) as "totalItems",
         COUNT(DISTINCT CASE WHEN f.id IS NOT NULL THEN i.id END) as "itemsWithMedia",
         COUNT(DISTINCT CASE
-          WHEN f."playbackPosition" IS NOT NULL
-            AND f."playbackDuration" IS NOT NULL
-            AND f."playbackDuration" > 0
-            AND f."playbackPosition" >= f."playbackDuration" * ${COMPLETION_THRESHOLD}
+          WHEN EXISTS(
+            SELECT 1 FROM "WatchRecord" wr
+            WHERE wr."itemId" = i.id AND wr."userId" = ${userId}
+          )
           THEN i.id
         END) as "watchedItems"
       FROM "Item" i

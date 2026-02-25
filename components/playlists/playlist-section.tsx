@@ -153,10 +153,35 @@ function OwnerPlaylistSection({
     }
   }, []);
 
+  const smartPlaylists = playlists.filter((p) => p.systemType !== null);
+  const userPlaylists = playlists.filter((p) => p.systemType === null);
+
   if (!isLoaded) return null;
 
   return (
     <>
+      {smartPlaylists.length > 0 && (
+        <Section
+          className="py-8"
+          aria-label="Smart Playlists"
+          data-testid="smart-playlist-section"
+        >
+          <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
+            Smart Playlists
+          </h2>
+          <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
+            {smartPlaylists.map((playlist) => (
+              <PlaylistGridItem
+                key={playlist.id}
+                playlist={playlist}
+                username={username}
+                isOwner
+              />
+            ))}
+          </div>
+        </Section>
+      )}
+
       <Section
         className="py-8"
         aria-label="Playlists"
@@ -165,14 +190,14 @@ function OwnerPlaylistSection({
         <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
           Playlists
         </h2>
-        {playlists.length === 0 ? (
+        {userPlaylists.length === 0 ? (
           <EmptyState
             variant="playlist-empty"
             onAction={() => setShowCreate(true)}
           />
         ) : (
           <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
-            {playlists.map((playlist) => (
+            {userPlaylists.map((playlist) => (
               <PlaylistContextMenu
                 key={playlist.id}
                 playlistName={playlist.name}

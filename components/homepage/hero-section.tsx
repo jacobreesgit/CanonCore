@@ -28,8 +28,8 @@ export function HeroSection() {
             </h1>
 
             <p className="text-muted-foreground max-w-sm text-lg leading-relaxed">
-              Organise, stream, and share your personal media collection —
-              synced with Google Drive.
+              Organise, stream, and share your personal media collection, synced
+              with Google Drive.
             </p>
           </div>
 

@@ -4,7 +4,7 @@
 
 import type { MutableRefObject } from "react";
 import type { UniqueIdentifier } from "@dnd-kit/core";
-import type { FileType, SyncStatus } from "@prisma/client";
+import type { FileType, SyncStatus, SystemPlaylistType } from "@prisma/client";
 // Re-export SyncStatus enum for client-side use
 export { SyncStatus } from "@prisma/client";
 // Re-export ItemProgress from progress-utils for convenience
@@ -644,6 +644,8 @@ export interface PlaylistWithCount {
   itemCount: number;
   /** First 4 items' poster data for collage rendering. */
   previewPosters: { tmdbPosterPath: string | null; artworkId: string | null }[];
+  /** System playlist type (null for user-created playlists). */
+  systemType: string | null;
   /** When playlist was created */
   createdAt: Date;
   /** When playlist was last updated */
@@ -741,6 +743,48 @@ export interface ForkRelationship {
   } | null;
   /** Number of times this item has been forked by others */
   forkCount: number;
+}
+
+// =============================================================================
+// Home Shelf Types
+// =============================================================================
+
+/** Minimal item data needed for shelf card rendering (server-serialization rule). */
+export interface ShelfItem {
+  id: string;
+  name: string;
+  tmdbPosterPath: string | null;
+  /** Resolved artwork ID (TMDB poster or uploaded artwork fallback). */
+  artworkId: string | null;
+  /** Number of child items. */
+  childCount: number;
+  /** Playback progress 0–100 (position/duration), null when no media or no position. */
+  playbackProgress: number | null;
+}
+
+/** A single shelf on the home page. */
+export interface HomeShelf {
+  /** Playlist ID (system or user-created) */
+  playlistId: string;
+  /** System playlist type identifier (null for user-created playlists) */
+  type: SystemPlaylistType | null;
+  /** Display name for the shelf */
+  name: string;
+  /** Items to display. Uses ShelfItem (not full ItemWithArtwork) to minimise
+   *  serialisation at the RSC boundary per server-serialization rule. */
+  items: ShelfItem[];
+}
+
+/** Shelf configuration entry for My Items settings. */
+export interface ShelfConfig {
+  /** Playlist ID */
+  playlistId: string;
+  /** Display name */
+  name: string;
+  /** System type (null for user-created playlists) */
+  systemType: SystemPlaylistType | null;
+  /** Current shelf order (non-null = active shelf) */
+  shelfOrder: number | null;
 }
 
 /**

@@ -140,6 +140,8 @@ interface ItemsViewProps {
   currentUser?: CurrentUser | null;
   /** Disable tree view option (forces grid view, hides view toggle). */
   disableTreeView?: boolean;
+  /** Server-rendered shelves inserted between pinned and library sections. */
+  shelves?: React.ReactNode;
 }
 
 /**
@@ -172,6 +174,7 @@ export function ItemsView({
   hasDriveConnection = false,
   currentUser,
   disableTreeView = false,
+  shelves,
 }: ItemsViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -681,6 +684,7 @@ export function ItemsView({
               isItemSelected={bulkSelection.isSelected}
               onItemSelectChange={handleItemSelectionChange}
               currentUser={currentUser}
+              shelves={shelves}
             />
           </div>
           <div style={{ display: viewMode === "tree" ? "contents" : "none" }}>

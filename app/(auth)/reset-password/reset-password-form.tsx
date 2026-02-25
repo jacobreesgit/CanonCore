@@ -9,15 +9,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Logo } from "@/components/logo";
-import dynamic from "next/dynamic";
-
-const FloatingPaths = dynamic(
-  () =>
-    import("@/components/floating-paths").then((mod) => ({
-      default: mod.FloatingPaths,
-    })),
-  { ssr: false }
-);
+import { FloatingPaths } from "@/components/floating-paths";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";

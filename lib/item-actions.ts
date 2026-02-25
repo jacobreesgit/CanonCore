@@ -32,7 +32,6 @@ import type {
 import { buildDescendantCounter, getMediaIconType } from "@/lib/item-utils";
 import {
   type ItemProgress,
-  COMPLETION_THRESHOLD,
   findFirstIncompleteItem,
 } from "@/lib/progress-utils";
 import { MAX_ITEM_DEPTH } from "@/lib/config/items";
@@ -42,10 +41,147 @@ import {
   isItemFullyPublic,
 } from "@/lib/public-auth";
 
+// =============================================================================
+// Shared ItemWithArtwork mapper
+// =============================================================================
+
+/**
+ * Minimal input shape for the shared toItemWithArtwork mapper.
+ * Matches the Prisma include used by getItems, getAllItems, getDescendants,
+ * getItemsForProfile (owner), and getItemChildrenForProfile (owner).
+ */
+interface ItemWithFiles {
+  id: string;
+  name: string;
+  description: string | null;
+  parentId: string | null;
+  order: number;
+  depth: number;
+  pinnedOrder: number | null;
+  isPublic: boolean;
+  inheritVisibility: boolean;
+  userId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  driveFileId: string | null;
+  driveModifiedAt: Date | null;
+  driveThumbnailUrl: string | null;
+  syncStatus: "SYNCED" | "PENDING" | "SYNCING" | "ERROR";
+  syncError: string | null;
+  driveConnectionId: string | null;
+  tmdbId: number | null;
+  tmdbType: string | null;
+  tmdbPosterPath: string | null;
+  tmdbBackdropPath: string | null;
+  tmdbShowTagline: boolean;
+  tmdbShowMetadata: boolean;
+  tmdbShowGenres: boolean;
+  tmdbShowCast: boolean;
+  tmdbShowProviders: boolean;
+  tmdbShowVideos: boolean;
+  tmdbShowRecommendations: boolean;
+  files: {
+    id: string;
+    fileType: string;
+    isPrimary: boolean;
+    filename: string;
+    mimeType: string | null;
+  }[];
+}
+
+/**
+ * Maps a Prisma item (with files) to the ItemWithArtwork shape.
+ * Resolves artwork, primary media name, file counts, media icon type,
+ * and attaches pre-computed childCount and progress.
+ *
+ * @param item - Prisma item with included files
+ * @param childCount - Pre-computed descendant count
+ * @param progress - Pre-computed progress data (null if no media in subtree)
+ * @returns ItemWithArtwork for client consumption
+ */
+function toItemWithArtwork(
+  item: ItemWithFiles,
+  childCount: number,
+  progress: ItemProgress | null
+): ItemWithArtwork {
+  const artworkId = resolveArtworkId(item);
+
+  // Find primary media, or first media if no primary
+  const primaryMedia = item.files.find(
+    (f) => f.fileType === "MEDIA" && f.isPrimary
+  );
+  const firstMedia = item.files.find((f) => f.fileType === "MEDIA");
+  const resolvedPrimaryMedia = primaryMedia ?? firstMedia;
+  const primaryMediaName = resolvedPrimaryMedia?.filename ?? null;
+
+  // Calculate file counts by type
+  const mediaFiles = item.files.filter((f) => f.fileType === "MEDIA");
+  const fileCounts = {
+    media: mediaFiles.length,
+    artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
+    subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
+  };
+
+  // Determine media icon type: film (all video), music (all audio), mixed (both)
+  const mediaIconType = getMediaIconType(mediaFiles);
+
+  return {
+    id: item.id,
+    name: item.name,
+    description: item.description,
+    parentId: item.parentId,
+    order: item.order,
+    depth: item.depth,
+    pinnedOrder: item.pinnedOrder,
+    isPublic: item.isPublic,
+    inheritVisibility: item.inheritVisibility,
+    userId: item.userId,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+    // Google Drive fields
+    driveFileId: item.driveFileId,
+    driveModifiedAt: item.driveModifiedAt,
+    driveThumbnailUrl: item.driveThumbnailUrl,
+    syncStatus: item.syncStatus,
+    syncError: item.syncError,
+    driveConnectionId: item.driveConnectionId,
+    tmdbId: item.tmdbId ?? null,
+    tmdbType: item.tmdbType ?? null,
+    tmdbShowTagline: item.tmdbShowTagline,
+    tmdbShowMetadata: item.tmdbShowMetadata,
+    tmdbShowGenres: item.tmdbShowGenres,
+    tmdbShowCast: item.tmdbShowCast,
+    tmdbShowProviders: item.tmdbShowProviders,
+    tmdbShowVideos: item.tmdbShowVideos,
+    tmdbShowRecommendations: item.tmdbShowRecommendations,
+    tmdbPosterPath: item.tmdbPosterPath ?? null,
+    tmdbBackdropPath: item.tmdbBackdropPath ?? null,
+    artworkId,
+    fileCounts,
+    childCount,
+    primaryMediaName,
+    mediaIconType,
+    progress,
+  };
+}
+
+/**
+ * Resolves progress from a progress map for a single item.
+ * Returns null if no media files exist in the subtree (percentage is null).
+ */
+function resolveProgress(
+  progressMap: Map<string, ItemProgress>,
+  itemId: string
+): ItemProgress | null {
+  const itemProgress = progressMap.get(itemId);
+  return itemProgress && itemProgress.percentage !== null ? itemProgress : null;
+}
+
 /**
  * Builds a map of item IDs to their progress (self + all descendants).
  * Uses recursive CTE to count items with watched primary media.
- * Item-based counting: an item is "watched" when its primary media is >= 90% complete.
+ * Item-based counting: an item is "watched" when it has a WatchRecord
+ * (created automatically when playback reaches 80%, or manually by the user).
  *
  * @param userId - User ID for authorization
  * @param itemIds - Array of item IDs to calculate progress for
@@ -66,6 +202,7 @@ async function buildDescendantProgressMap(
       totalItems: bigint;
       itemsWithMedia: bigint;
       watchedItems: bigint;
+      progressSum: number;
     }>
   >`
     WITH RECURSIVE descendants AS (
@@ -84,12 +221,29 @@ async function buildDescendantProgressMap(
       COUNT(DISTINCT d.id) as "totalItems",
       COUNT(DISTINCT CASE WHEN f.id IS NOT NULL THEN d.id END) as "itemsWithMedia",
       COUNT(DISTINCT CASE
-        WHEN f."playbackPosition" IS NOT NULL
-          AND f."playbackDuration" IS NOT NULL
-          AND f."playbackDuration" > 0
-          AND f."playbackPosition" >= f."playbackDuration" * ${COMPLETION_THRESHOLD}
+        WHEN EXISTS(
+          SELECT 1 FROM "WatchRecord" wr
+          WHERE wr."itemId" = d.id AND wr."userId" = ${userId}
+        )
         THEN d.id
-      END) as "watchedItems"
+      END) as "watchedItems",
+      COALESCE(SUM(
+        CASE
+          WHEN f.id IS NOT NULL THEN
+            CASE
+              WHEN EXISTS(
+                SELECT 1 FROM "WatchRecord" wr
+                WHERE wr."itemId" = d.id AND wr."userId" = ${userId}
+              ) THEN 1.0
+              WHEN f."playbackPosition" IS NOT NULL
+                AND f."playbackDuration" IS NOT NULL
+                AND f."playbackDuration" > 0
+              THEN LEAST(f."playbackPosition"::float / f."playbackDuration"::float, 1.0)
+              ELSE 0.0
+            END
+          ELSE NULL
+        END
+      ), 0) as "progressSum"
     FROM descendants d
     LEFT JOIN "ItemFile" f ON f."itemId" = d.id
       AND f."fileType" = 'MEDIA'
@@ -104,13 +258,14 @@ async function buildDescendantProgressMap(
     const totalItems = Number(row.totalItems);
     const itemsWithMedia = Number(row.itemsWithMedia);
     const watchedItems = Number(row.watchedItems);
+    const progressSum = Number(row.progressSum);
 
     progressMap.set(row.rootItemId, {
       watchedItems,
       itemsWithMedia,
       percentage:
         itemsWithMedia > 0
-          ? Math.round((watchedItems / itemsWithMedia) * 100)
+          ? Math.round((progressSum / itemsWithMedia) * 100)
           : null,
       totalItems,
     });
@@ -162,7 +317,7 @@ export async function getItemProgress(
 /**
  * Fetches progress across all items in the user's library.
  * Returns aggregate completion stats for the entire collection.
- * Item-based counting: an item is "watched" when its primary media is >= 90% complete.
+ * Item-based counting: an item is "watched" when it has a WatchRecord.
  *
  * @returns Library-wide progress data or null if no items
  */
@@ -184,10 +339,10 @@ export async function getLibraryProgress(): Promise<ItemProgress | null> {
       COUNT(DISTINCT i.id) as "totalItems",
       COUNT(DISTINCT CASE WHEN f.id IS NOT NULL THEN i.id END) as "itemsWithMedia",
       COUNT(DISTINCT CASE
-        WHEN f."playbackPosition" IS NOT NULL
-          AND f."playbackDuration" IS NOT NULL
-          AND f."playbackDuration" > 0
-          AND f."playbackPosition" >= f."playbackDuration" * ${COMPLETION_THRESHOLD}
+        WHEN EXISTS(
+          SELECT 1 FROM "WatchRecord" wr
+          WHERE wr."itemId" = i.id AND wr."userId" = ${session.user.id}
+        )
         THEN i.id
       END) as "watchedItems"
     FROM "Item" i
@@ -225,7 +380,7 @@ export async function getLibraryProgress(): Promise<ItemProgress | null> {
 /**
  * Gets the first incomplete item in DFS order.
  * Used for "Go to" button on My Items and item detail pages.
- * An item is incomplete if it has primary media that is < 90% watched.
+ * An item is incomplete if it has primary media and no WatchRecord.
  *
  * @param parentId - Optional parent ID to search within (null = entire library)
  * @returns First incomplete item data or null if all complete
@@ -239,7 +394,7 @@ export async function getFirstIncompleteItem(
   }
 
   try {
-    // Query items with their primary media progress
+    // Query items with their primary media and watch status
     // Uses recursive CTE if parentId specified, otherwise fetches all
     const itemsWithProgress = parentId
       ? await prisma.$queryRaw<
@@ -249,8 +404,7 @@ export async function getFirstIncompleteItem(
             order: number;
             parentId: string | null;
             hasPrimaryMedia: boolean;
-            position: number | null;
-            duration: number | null;
+            isWatched: boolean;
           }[]
         >`
           WITH RECURSIVE descendants AS (
@@ -266,8 +420,7 @@ export async function getFirstIncompleteItem(
             i."order",
             i."parentId",
             EXISTS(SELECT 1 FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' AND f."isPrimary" = true) as "hasPrimaryMedia",
-            (SELECT f."playbackPosition" FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' AND f."isPrimary" = true LIMIT 1) as "position",
-            (SELECT f."playbackDuration" FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' AND f."isPrimary" = true LIMIT 1) as "duration"
+            EXISTS(SELECT 1 FROM "WatchRecord" wr WHERE wr."itemId" = i.id AND wr."userId" = ${session.user.id}) as "isWatched"
           FROM "Item" i
           WHERE i.id IN (SELECT id FROM descendants)
           ORDER BY i."order"
@@ -279,8 +432,7 @@ export async function getFirstIncompleteItem(
             order: number;
             parentId: string | null;
             hasPrimaryMedia: boolean;
-            position: number | null;
-            duration: number | null;
+            isWatched: boolean;
           }[]
         >`
           SELECT
@@ -289,8 +441,7 @@ export async function getFirstIncompleteItem(
             i."order",
             i."parentId",
             EXISTS(SELECT 1 FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' AND f."isPrimary" = true) as "hasPrimaryMedia",
-            (SELECT f."playbackPosition" FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' AND f."isPrimary" = true LIMIT 1) as "position",
-            (SELECT f."playbackDuration" FROM "ItemFile" f WHERE f."itemId" = i.id AND f."fileType" = 'MEDIA' AND f."isPrimary" = true LIMIT 1) as "duration"
+            EXISTS(SELECT 1 FROM "WatchRecord" wr WHERE wr."itemId" = i.id AND wr."userId" = ${session.user.id}) as "isWatched"
           FROM "Item" i
           WHERE i."userId" = ${session.user.id}
           ORDER BY i."order"
@@ -304,8 +455,7 @@ export async function getFirstIncompleteItem(
         order: item.order,
         parentId: item.parentId,
         hasPrimaryMedia: item.hasPrimaryMedia,
-        position: item.position,
-        duration: item.duration,
+        isWatched: item.isWatched,
       })),
       parentId ?? null
     );
@@ -389,72 +539,13 @@ export const getItems = cache(async function getItems(
   );
 
   // Transform to ItemWithArtwork with file counts and descendant count
-  const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => {
-    const artworkId = resolveArtworkId(item);
-
-    // Find primary media, or first media if no primary
-    const primaryMedia = item.files.find(
-      (f) => f.fileType === "MEDIA" && f.isPrimary
-    );
-    const firstMedia = item.files.find((f) => f.fileType === "MEDIA");
-    const resolvedPrimaryMedia = primaryMedia ?? firstMedia;
-    const primaryMediaName = resolvedPrimaryMedia?.filename ?? null;
-
-    // Calculate file counts by type
-    const mediaFiles = item.files.filter((f) => f.fileType === "MEDIA");
-    const fileCounts = {
-      media: mediaFiles.length,
-      artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
-      subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
-    };
-
-    // Determine media icon type: film (all video), music (all audio), mixed (both)
-    const mediaIconType = getMediaIconType(mediaFiles);
-
-    // Get progress (null if no media files in subtree)
-    const itemProgress = progressMap.get(item.id);
-    const progress =
-      itemProgress && itemProgress.percentage !== null ? itemProgress : null;
-
-    return {
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      parentId: item.parentId,
-      order: item.order,
-      depth: item.depth,
-      pinnedOrder: item.pinnedOrder,
-      isPublic: item.isPublic,
-      inheritVisibility: item.inheritVisibility,
-      userId: item.userId,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
-      // Google Drive fields
-      driveFileId: item.driveFileId,
-      driveModifiedAt: item.driveModifiedAt,
-      driveThumbnailUrl: item.driveThumbnailUrl,
-      syncStatus: item.syncStatus,
-      syncError: item.syncError,
-      driveConnectionId: item.driveConnectionId,
-      tmdbId: item.tmdbId ?? null,
-      tmdbType: item.tmdbType ?? null,
-      tmdbShowTagline: item.tmdbShowTagline,
-      tmdbShowMetadata: item.tmdbShowMetadata,
-      tmdbShowGenres: item.tmdbShowGenres,
-      tmdbShowCast: item.tmdbShowCast,
-      tmdbShowProviders: item.tmdbShowProviders,
-      tmdbShowVideos: item.tmdbShowVideos,
-      tmdbShowRecommendations: item.tmdbShowRecommendations,
-      tmdbPosterPath: item.tmdbPosterPath ?? null,
-      tmdbBackdropPath: item.tmdbBackdropPath ?? null,
-      artworkId,
-      fileCounts,
-      childCount: countDescendants(item.id),
-      primaryMediaName,
-      mediaIconType,
-      progress,
-    };
-  });
+  const itemsWithArtwork: ItemWithArtwork[] = items.map((item) =>
+    toItemWithArtwork(
+      item,
+      countDescendants(item.id),
+      resolveProgress(progressMap, item.id)
+    )
+  );
 
   return { success: true, data: itemsWithArtwork };
 });
@@ -513,72 +604,13 @@ export const getAllItems = cache(async function getAllItems(): Promise<
   );
 
   // Transform to ItemWithArtwork with file counts and descendant count
-  const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => {
-    const artworkId = resolveArtworkId(item);
-
-    // Find primary media, or first media if no primary
-    const primaryMedia = item.files.find(
-      (f) => f.fileType === "MEDIA" && f.isPrimary
-    );
-    const firstMedia = item.files.find((f) => f.fileType === "MEDIA");
-    const resolvedPrimaryMedia = primaryMedia ?? firstMedia;
-    const primaryMediaName = resolvedPrimaryMedia?.filename ?? null;
-
-    // Calculate file counts by type
-    const mediaFiles = item.files.filter((f) => f.fileType === "MEDIA");
-    const fileCounts = {
-      media: mediaFiles.length,
-      artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
-      subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
-    };
-
-    // Determine media icon type: film (all video), music (all audio), mixed (both)
-    const mediaIconType = getMediaIconType(mediaFiles);
-
-    // Get progress (null if no media files in subtree)
-    const itemProgress = progressMap.get(item.id);
-    const progress =
-      itemProgress && itemProgress.percentage !== null ? itemProgress : null;
-
-    return {
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      parentId: item.parentId,
-      order: item.order,
-      depth: item.depth,
-      pinnedOrder: item.pinnedOrder,
-      isPublic: item.isPublic,
-      inheritVisibility: item.inheritVisibility,
-      userId: item.userId,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
-      // Google Drive fields
-      driveFileId: item.driveFileId,
-      driveModifiedAt: item.driveModifiedAt,
-      driveThumbnailUrl: item.driveThumbnailUrl,
-      syncStatus: item.syncStatus,
-      syncError: item.syncError,
-      driveConnectionId: item.driveConnectionId,
-      tmdbId: item.tmdbId ?? null,
-      tmdbType: item.tmdbType ?? null,
-      tmdbShowTagline: item.tmdbShowTagline,
-      tmdbShowMetadata: item.tmdbShowMetadata,
-      tmdbShowGenres: item.tmdbShowGenres,
-      tmdbShowCast: item.tmdbShowCast,
-      tmdbShowProviders: item.tmdbShowProviders,
-      tmdbShowVideos: item.tmdbShowVideos,
-      tmdbShowRecommendations: item.tmdbShowRecommendations,
-      tmdbPosterPath: item.tmdbPosterPath ?? null,
-      tmdbBackdropPath: item.tmdbBackdropPath ?? null,
-      artworkId,
-      fileCounts,
-      childCount: countDescendants(item.id),
-      primaryMediaName,
-      mediaIconType,
-      progress,
-    };
-  });
+  const itemsWithArtwork: ItemWithArtwork[] = items.map((item) =>
+    toItemWithArtwork(
+      item,
+      countDescendants(item.id),
+      resolveProgress(progressMap, item.id)
+    )
+  );
 
   return { success: true, data: itemsWithArtwork };
 });
@@ -659,72 +691,13 @@ export const getDescendants = cache(async function getDescendants(
     items.map((i) => i.id)
   );
 
-  const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => {
-    const artworkId = resolveArtworkId(item);
-
-    // Find primary media, or first media if no primary
-    const primaryMedia = item.files.find(
-      (f) => f.fileType === "MEDIA" && f.isPrimary
-    );
-    const firstMedia = item.files.find((f) => f.fileType === "MEDIA");
-    const resolvedPrimaryMedia = primaryMedia ?? firstMedia;
-    const primaryMediaName = resolvedPrimaryMedia?.filename ?? null;
-
-    // Calculate file counts by type
-    const mediaFiles = item.files.filter((f) => f.fileType === "MEDIA");
-    const fileCounts = {
-      media: mediaFiles.length,
-      artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
-      subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
-    };
-
-    // Determine media icon type: film (all video), music (all audio), mixed (both)
-    const mediaIconType = getMediaIconType(mediaFiles);
-
-    // Get progress (null if no media files in subtree)
-    const itemProgress = progressMap.get(item.id);
-    const progress =
-      itemProgress && itemProgress.percentage !== null ? itemProgress : null;
-
-    return {
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      parentId: item.parentId,
-      order: item.order,
-      depth: item.depth,
-      pinnedOrder: item.pinnedOrder,
-      isPublic: item.isPublic,
-      inheritVisibility: item.inheritVisibility,
-      userId: item.userId,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
-      // Google Drive fields
-      driveFileId: item.driveFileId,
-      driveModifiedAt: item.driveModifiedAt,
-      driveThumbnailUrl: item.driveThumbnailUrl,
-      syncStatus: item.syncStatus,
-      syncError: item.syncError,
-      driveConnectionId: item.driveConnectionId,
-      tmdbId: item.tmdbId ?? null,
-      tmdbType: item.tmdbType ?? null,
-      tmdbShowTagline: item.tmdbShowTagline,
-      tmdbShowMetadata: item.tmdbShowMetadata,
-      tmdbShowGenres: item.tmdbShowGenres,
-      tmdbShowCast: item.tmdbShowCast,
-      tmdbShowProviders: item.tmdbShowProviders,
-      tmdbShowVideos: item.tmdbShowVideos,
-      tmdbShowRecommendations: item.tmdbShowRecommendations,
-      tmdbPosterPath: item.tmdbPosterPath ?? null,
-      tmdbBackdropPath: item.tmdbBackdropPath ?? null,
-      artworkId,
-      fileCounts,
-      childCount: countDescendants(item.id),
-      primaryMediaName,
-      mediaIconType,
-      progress,
-    };
-  });
+  const itemsWithArtwork: ItemWithArtwork[] = items.map((item) =>
+    toItemWithArtwork(
+      item,
+      countDescendants(item.id),
+      resolveProgress(progressMap, item.id)
+    )
+  );
 
   return { success: true, data: itemsWithArtwork };
 });
@@ -2054,68 +2027,13 @@ export const getItemsForProfile = cache(
       );
 
       // Transform to ItemWithArtwork
-      const itemsWithArtwork: ItemWithArtwork[] = items.map((item) => {
-        const artworkId = resolveArtworkId(item);
-
-        const primaryMedia = item.files.find(
-          (f) => f.fileType === "MEDIA" && f.isPrimary
-        );
-        const firstMedia = item.files.find((f) => f.fileType === "MEDIA");
-        const resolvedPrimaryMedia = primaryMedia ?? firstMedia;
-        const primaryMediaName = resolvedPrimaryMedia?.filename ?? null;
-
-        const mediaFiles = item.files.filter((f) => f.fileType === "MEDIA");
-        const fileCounts = {
-          media: mediaFiles.length,
-          artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
-          subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
-        };
-
-        const mediaIconType = getMediaIconType(mediaFiles);
-        const itemProgress = progressMap.get(item.id);
-        const progress =
-          itemProgress && itemProgress.percentage !== null
-            ? itemProgress
-            : null;
-
-        return {
-          id: item.id,
-          name: item.name,
-          description: item.description,
-          parentId: item.parentId,
-          order: item.order,
-          depth: item.depth,
-          pinnedOrder: item.pinnedOrder,
-          isPublic: item.isPublic,
-          inheritVisibility: item.inheritVisibility,
-          userId: item.userId,
-          createdAt: item.createdAt,
-          updatedAt: item.updatedAt,
-          driveFileId: item.driveFileId,
-          driveModifiedAt: item.driveModifiedAt,
-          driveThumbnailUrl: item.driveThumbnailUrl,
-          syncStatus: item.syncStatus,
-          syncError: item.syncError,
-          driveConnectionId: item.driveConnectionId,
-          tmdbId: item.tmdbId ?? null,
-          tmdbType: item.tmdbType ?? null,
-          tmdbShowTagline: item.tmdbShowTagline,
-          tmdbShowMetadata: item.tmdbShowMetadata,
-          tmdbShowGenres: item.tmdbShowGenres,
-          tmdbShowCast: item.tmdbShowCast,
-          tmdbShowProviders: item.tmdbShowProviders,
-          tmdbShowVideos: item.tmdbShowVideos,
-          tmdbShowRecommendations: item.tmdbShowRecommendations,
-          tmdbPosterPath: item.tmdbPosterPath ?? null,
-          tmdbBackdropPath: item.tmdbBackdropPath ?? null,
-          artworkId,
-          fileCounts,
-          childCount: countDescendants(item.id),
-          primaryMediaName,
-          mediaIconType,
-          progress,
-        };
-      });
+      const itemsWithArtwork: ItemWithArtwork[] = items.map((item) =>
+        toItemWithArtwork(
+          item,
+          countDescendants(item.id),
+          resolveProgress(progressMap, item.id)
+        )
+      );
 
       return {
         items: itemsWithArtwork,
@@ -2281,68 +2199,13 @@ export const getItemChildrenForProfile = cache(
       );
 
       // Transform to ItemWithArtwork
-      const items: ItemWithArtwork[] = children.map((item) => {
-        const artworkId = resolveArtworkId(item);
-
-        const primaryMedia = item.files.find(
-          (f) => f.fileType === "MEDIA" && f.isPrimary
-        );
-        const firstMedia = item.files.find((f) => f.fileType === "MEDIA");
-        const resolvedPrimaryMedia = primaryMedia ?? firstMedia;
-        const primaryMediaName = resolvedPrimaryMedia?.filename ?? null;
-
-        const mediaFiles = item.files.filter((f) => f.fileType === "MEDIA");
-        const fileCounts = {
-          media: mediaFiles.length,
-          artwork: item.files.filter((f) => f.fileType === "ARTWORK").length,
-          subtitles: item.files.filter((f) => f.fileType === "SUBTITLE").length,
-        };
-
-        const mediaIconType = getMediaIconType(mediaFiles);
-        const itemProgress = progressMap.get(item.id);
-        const progress =
-          itemProgress && itemProgress.percentage !== null
-            ? itemProgress
-            : null;
-
-        return {
-          id: item.id,
-          name: item.name,
-          description: item.description,
-          parentId: item.parentId,
-          order: item.order,
-          depth: item.depth,
-          pinnedOrder: item.pinnedOrder,
-          isPublic: item.isPublic,
-          inheritVisibility: item.inheritVisibility,
-          userId: item.userId,
-          createdAt: item.createdAt,
-          updatedAt: item.updatedAt,
-          driveFileId: item.driveFileId,
-          driveModifiedAt: item.driveModifiedAt,
-          driveThumbnailUrl: item.driveThumbnailUrl,
-          syncStatus: item.syncStatus,
-          syncError: item.syncError,
-          driveConnectionId: item.driveConnectionId,
-          tmdbId: item.tmdbId ?? null,
-          tmdbType: item.tmdbType ?? null,
-          tmdbShowTagline: item.tmdbShowTagline,
-          tmdbShowMetadata: item.tmdbShowMetadata,
-          tmdbShowGenres: item.tmdbShowGenres,
-          tmdbShowCast: item.tmdbShowCast,
-          tmdbShowProviders: item.tmdbShowProviders,
-          tmdbShowVideos: item.tmdbShowVideos,
-          tmdbShowRecommendations: item.tmdbShowRecommendations,
-          tmdbPosterPath: item.tmdbPosterPath ?? null,
-          tmdbBackdropPath: item.tmdbBackdropPath ?? null,
-          artworkId,
-          fileCounts,
-          childCount: countDescendants(item.id),
-          primaryMediaName,
-          mediaIconType,
-          progress,
-        };
-      });
+      const items: ItemWithArtwork[] = children.map((item) =>
+        toItemWithArtwork(
+          item,
+          countDescendants(item.id),
+          resolveProgress(progressMap, item.id)
+        )
+      );
 
       return {
         success: true,

@@ -21,6 +21,8 @@ interface HeroButtonProps {
   className?: string;
   /** Accessible label for icon-only buttons. */
   "aria-label"?: string;
+  /** Toggle state for toggle buttons. */
+  "aria-pressed"?: boolean | "true" | "false";
   /** Test ID for E2E testing. */
   "data-testid"?: string;
 }
@@ -36,6 +38,7 @@ export function HeroButton({
   disabled,
   className,
   "aria-label": ariaLabel,
+  "aria-pressed": ariaPressed,
   "data-testid": dataTestId,
 }: HeroButtonProps) {
   const Comp = asChild ? Slot : "button";
@@ -45,12 +48,13 @@ export function HeroButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel}
+      aria-pressed={ariaPressed}
       data-testid={dataTestId}
       className={cn(
         "inline-flex items-center gap-2",
         "h-10 rounded-full px-5",
         "text-sm font-medium",
-        "transition-all duration-150",
+        "transition-[background-color,transform,opacity] duration-150",
         "focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none",
         "disabled:cursor-not-allowed disabled:opacity-50",
         variant === "primary"

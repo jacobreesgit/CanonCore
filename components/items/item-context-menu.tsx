@@ -35,6 +35,9 @@ import {
   faThumbtack,
   faThumbtackSlash,
   faSpinner,
+  faEye,
+  faEyeSlash,
+  faCheckDouble,
 } from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/lib/utils";
 
@@ -58,6 +61,18 @@ export interface ItemMenuActions {
   onPin?(): Promise<void>;
   /** Callback to unpin the item from the sidebar */
   onUnpin?(): Promise<void>;
+  /** Whether this leaf item is watched (controls watched/unwatched toggle) */
+  isWatched?: boolean;
+  /** Callback to mark the item as watched (leaf items) */
+  onMarkWatched?(): Promise<void>;
+  /** Callback to mark the item as unwatched (leaf items) */
+  onMarkUnwatched?(): Promise<void>;
+  /** Whether all descendants are watched (controls all-watched/all-unwatched toggle) */
+  isAllWatched?: boolean;
+  /** Callback to mark all descendants as watched (parent items) */
+  onMarkAllWatched?(): Promise<void>;
+  /** Callback to mark all descendants as unwatched (parent items) */
+  onMarkAllUnwatched?(): Promise<void>;
 }
 
 /** Glassmorphism menu item styling shared by context menu and dropdown menu. */
@@ -112,11 +127,17 @@ export function renderMenuItems({
     showAddChild = true,
     driveFileId,
     isPinned = false,
+    isWatched = false,
+    isAllWatched = false,
     onSettings,
     onDelete,
     onAddChild,
     onPin,
     onUnpin,
+    onMarkWatched,
+    onMarkUnwatched,
+    onMarkAllWatched,
+    onMarkAllUnwatched,
   } = actions;
 
   return (
@@ -159,6 +180,44 @@ export function renderMenuItems({
             className="size-4"
           />
           <span>Pin to Sidebar</span>
+        </MenuItem>
+      )}
+      {/* Leaf items: toggle watched/unwatched */}
+      {isWatched && onMarkUnwatched && (
+        <MenuItem onClick={onMarkUnwatched} className={MENU_ITEM_CLASSES}>
+          <FontAwesomeIcon
+            icon={faEyeSlash}
+            aria-hidden="true"
+            className="size-4"
+          />
+          <span>Mark as Unwatched</span>
+        </MenuItem>
+      )}
+      {!isWatched && onMarkWatched && (
+        <MenuItem onClick={onMarkWatched} className={MENU_ITEM_CLASSES}>
+          <FontAwesomeIcon icon={faEye} aria-hidden="true" className="size-4" />
+          <span>Mark as Watched</span>
+        </MenuItem>
+      )}
+      {/* Parent items: toggle all watched/unwatched */}
+      {isAllWatched && onMarkAllUnwatched && (
+        <MenuItem onClick={onMarkAllUnwatched} className={MENU_ITEM_CLASSES}>
+          <FontAwesomeIcon
+            icon={faEyeSlash}
+            aria-hidden="true"
+            className="size-4"
+          />
+          <span>Mark All as Unwatched</span>
+        </MenuItem>
+      )}
+      {!isAllWatched && onMarkAllWatched && (
+        <MenuItem onClick={onMarkAllWatched} className={MENU_ITEM_CLASSES}>
+          <FontAwesomeIcon
+            icon={faCheckDouble}
+            aria-hidden="true"
+            className="size-4"
+          />
+          <span>Mark All as Watched</span>
         </MenuItem>
       )}
       {driveFileId && (

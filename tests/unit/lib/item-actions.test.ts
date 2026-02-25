@@ -1922,7 +1922,7 @@ describe("getFirstIncompleteItem", () => {
 
   it("returns null when all items are complete", async () => {
     mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
-    // All items have 100% progress
+    // All items are watched
     vi.mocked(prisma.$queryRaw).mockResolvedValue([
       {
         id: "item-1",
@@ -1930,8 +1930,7 @@ describe("getFirstIncompleteItem", () => {
         order: 0,
         parentId: null,
         hasPrimaryMedia: true,
-        position: 100,
-        duration: 100,
+        isWatched: true,
       },
     ]);
 
@@ -1952,8 +1951,7 @@ describe("getFirstIncompleteItem", () => {
         order: 0,
         parentId: null,
         hasPrimaryMedia: true,
-        position: 100,
-        duration: 100,
+        isWatched: true,
       },
       {
         id: "item-2",
@@ -1961,8 +1959,7 @@ describe("getFirstIncompleteItem", () => {
         order: 1,
         parentId: null,
         hasPrimaryMedia: true,
-        position: 0,
-        duration: 100,
+        isWatched: false,
       },
     ]);
 
@@ -1985,8 +1982,7 @@ describe("getFirstIncompleteItem", () => {
         order: 0,
         parentId: "parent-1",
         hasPrimaryMedia: true,
-        position: 100,
-        duration: 100,
+        isWatched: true,
       },
       {
         id: "child-2",
@@ -1994,8 +1990,7 @@ describe("getFirstIncompleteItem", () => {
         order: 1,
         parentId: "parent-1",
         hasPrimaryMedia: true,
-        position: 50,
-        duration: 100,
+        isWatched: false,
       },
     ]);
 
@@ -2016,8 +2011,7 @@ describe("getFirstIncompleteItem", () => {
         order: 0,
         parentId: null,
         hasPrimaryMedia: false,
-        position: null,
-        duration: null,
+        isWatched: false,
       },
       {
         id: "item-2",
@@ -2025,8 +2019,7 @@ describe("getFirstIncompleteItem", () => {
         order: 1,
         parentId: null,
         hasPrimaryMedia: true,
-        position: 0,
-        duration: 100,
+        isWatched: false,
       },
     ]);
 

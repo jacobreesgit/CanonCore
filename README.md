@@ -54,9 +54,23 @@ After the initial wizard, per-field artwork editing lets you change an individua
 
 ### Progress Tracking
 
-I built progress tracking because I kept losing my place in long series. Folders display watched and total counts for themselves and all descendant items, using a 90 percent completion threshold to account for credit skipping.
+I built progress tracking because I kept losing my place in long series. Progress is driven by explicit watch records rather than raw playback position — when playback crosses the 80 percent completion threshold (matching Trakt's industry standard for scrobbling), a watch record is created automatically. Items can also be manually marked as watched or unwatched from context menus and item detail pages, and batch operations let you mark an entire TV series or folder at once using recursive database traversal. Folders display watched and total counts for themselves and all descendant items.
 
 The "Go to next" action performs a depth-first traversal of the tree to locate your first incomplete item automatically.
+
+### Home Shelves
+
+The authenticated home page shows personalised horizontal scroll rows, following the Netflix/Disney+ single-row pattern. Continue Watching picks up where you left off and surfaces the next episode in a series. Watchlist holds items you plan to watch. Recently Added and Watch Again round out the defaults — four system shelves that compute their items at query time rather than storing static membership.
+
+Each shelf is backed by a playlist. System playlists are virtual — Continue Watching merges partially played items with up-next episodes using raw SQL, deduplicating and sorting by recency. User-created playlists use their real item membership. Any playlist can be promoted to a shelf, removed, or reordered from the settings panel. Shelves cap at 10 items each, scroll with snap points and arrow key navigation, and use gradient fade edges to hint at off-screen content.
+
+### Watch Status
+
+Items are automatically marked as watched when playback reaches 80 percent, matching Trakt's scrobble standard. A five-minute deduplication window prevents rapid duplicate entries from seeking or replaying.
+
+You can also mark items manually — right-click context menus and item detail pages both expose mark and unmark actions. Batch operations let you mark an entire TV series or folder as watched in one click, using recursive database traversal to find all descendants with media files.
+
+Every watch event is logged with a timestamp and source (auto or manual), building a play history for each item.
 
 ### Google Drive Sync
 
@@ -138,7 +152,7 @@ GitHub Actions pipeline enforces quality on every push and pull request. A quali
 
 ### Testing
 
-2,800+ tests across unit, integration, Storybook component, and E2E layers. Unit tests (Vitest) cover auth, items, playlists, Drive sync, and crypto operations. ~200 integration tests run against real PostgreSQL. 66 Storybook stories with component tests enforce accessibility via axe-core and verify interaction correctness. 34 E2E spec files across desktop and mobile Chrome with Playwright use 16 focused Page Object Models and composable fixtures with per-test user creation.
+3,200+ tests across unit, integration, Storybook component, and E2E layers. Unit tests (Vitest) cover auth, items, playlists, watch records, Drive sync, and crypto operations. ~200 integration tests run against real PostgreSQL. 66 Storybook stories with component tests enforce accessibility via axe-core and verify interaction correctness. 34 E2E spec files across desktop and mobile Chrome with Playwright use 16 focused Page Object Models and composable fixtures with per-test user creation.
 
 ### Component Documentation
 

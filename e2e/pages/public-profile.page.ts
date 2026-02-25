@@ -84,10 +84,21 @@ export class PublicProfilePage {
 
   // ── Fork ────────────────────────────────────────────────
 
-  /** Click the "Fork to Library" button on a public item detail page. */
+  /**
+   * Click the "Fork to Library" button on a public item detail page.
+   * Retries click until React's onClick handler fires (hydration may be
+   * delayed under heavy parallel load). The handler sets isForking=true
+   * which disables the button — we use that as the hydration signal.
+   */
   async forkItem() {
-    await this.page.getByTestId("profile-fork-button").click();
-    await this.page.waitForLoadState("domcontentloaded");
+    const button = this.page.getByTestId("profile-fork-button");
+    await expect(async () => {
+      if ((await button.isVisible()) && (await button.isEnabled())) {
+        await button.click();
+      }
+      // Handler fires → setIsForking(true) → button becomes disabled
+      await expect(button).toBeDisabled({ timeout: 2_000 });
+    }).toPass({ timeout: Timeouts.upload });
   }
 
   /** Expect the fork button to be visible. */

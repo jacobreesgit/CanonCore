@@ -1,7 +1,7 @@
 /**
  * Unit tests for progress calculation utilities.
  * Tests item-based progress tracking where an item is "watched" when
- * its primary media file is >= 90% complete.
+ * it has a WatchRecord (created at >= 80% playback or manually).
  */
 
 import { describe, it, expect } from "vitest";
@@ -16,8 +16,8 @@ import {
 
 describe("progress-utils", () => {
   describe("COMPLETION_THRESHOLD", () => {
-    it("is 90%", () => {
-      expect(COMPLETION_THRESHOLD).toBe(0.9);
+    it("is 0.8 (80% Trakt standard)", () => {
+      expect(COMPLETION_THRESHOLD).toBe(0.8);
     });
   });
 
@@ -34,24 +34,23 @@ describe("progress-utils", () => {
       expect(isFileComplete(50, 0)).toBe(false);
     });
 
-    it("returns false below 90% threshold", () => {
-      expect(isFileComplete(89, 100)).toBe(false);
-      expect(isFileComplete(50, 100)).toBe(false);
+    it("returns true at exactly 80%", () => {
+      expect(isFileComplete(80, 100)).toBe(true);
     });
 
-    it("returns true at 90% threshold", () => {
+    it("returns false at 79%", () => {
+      expect(isFileComplete(79, 100)).toBe(false);
+    });
+
+    it("returns true above 80%", () => {
       expect(isFileComplete(90, 100)).toBe(true);
-    });
-
-    it("returns true above 90% threshold", () => {
-      expect(isFileComplete(95, 100)).toBe(true);
       expect(isFileComplete(100, 100)).toBe(true);
     });
 
     it("handles decimal values correctly", () => {
-      // 90% of 3600 = 3240
-      expect(isFileComplete(3240, 3600)).toBe(true);
-      expect(isFileComplete(3239, 3600)).toBe(false);
+      // 80% of 3600 = 2880
+      expect(isFileComplete(2880, 3600)).toBe(true);
+      expect(isFileComplete(2879, 3600)).toBe(false);
     });
   });
 
@@ -64,18 +63,10 @@ describe("progress-utils", () => {
       expect(result.totalItems).toBe(0);
     });
 
-    it("returns 0% when no items have watched primary media", () => {
+    it("returns 0% when no items are watched", () => {
       const items = [
-        {
-          hasPrimaryMedia: true,
-          primaryMediaPosition: 0,
-          primaryMediaDuration: 100,
-        },
-        {
-          hasPrimaryMedia: true,
-          primaryMediaPosition: 50,
-          primaryMediaDuration: 100,
-        },
+        { hasPrimaryMedia: true, isWatched: false },
+        { hasPrimaryMedia: true, isWatched: false },
       ];
       const result = calculateProgress(items);
       expect(result.totalItems).toBe(2);
@@ -86,16 +77,8 @@ describe("progress-utils", () => {
 
     it("returns 100% when all items with media are watched", () => {
       const items = [
-        {
-          hasPrimaryMedia: true,
-          primaryMediaPosition: 95,
-          primaryMediaDuration: 100,
-        },
-        {
-          hasPrimaryMedia: true,
-          primaryMediaPosition: 100,
-          primaryMediaDuration: 100,
-        },
+        { hasPrimaryMedia: true, isWatched: true },
+        { hasPrimaryMedia: true, isWatched: true },
       ];
       const result = calculateProgress(items);
       expect(result.totalItems).toBe(2);
@@ -106,26 +89,10 @@ describe("progress-utils", () => {
 
     it("calculates correct percentage for mixed watched/unwatched", () => {
       const items = [
-        {
-          hasPrimaryMedia: true,
-          primaryMediaPosition: 95,
-          primaryMediaDuration: 100,
-        }, // watched
-        {
-          hasPrimaryMedia: true,
-          primaryMediaPosition: 50,
-          primaryMediaDuration: 100,
-        }, // unwatched
-        {
-          hasPrimaryMedia: true,
-          primaryMediaPosition: 90,
-          primaryMediaDuration: 100,
-        }, // watched
-        {
-          hasPrimaryMedia: true,
-          primaryMediaPosition: null,
-          primaryMediaDuration: 100,
-        }, // unwatched
+        { hasPrimaryMedia: true, isWatched: true },
+        { hasPrimaryMedia: true, isWatched: false },
+        { hasPrimaryMedia: true, isWatched: true },
+        { hasPrimaryMedia: true, isWatched: false },
       ];
       const result = calculateProgress(items);
       expect(result.totalItems).toBe(4);
@@ -136,21 +103,9 @@ describe("progress-utils", () => {
 
     it("counts items without primary media in totalItems but not itemsWithMedia", () => {
       const items = [
-        {
-          hasPrimaryMedia: true,
-          primaryMediaPosition: 95,
-          primaryMediaDuration: 100,
-        }, // watched
-        {
-          hasPrimaryMedia: false,
-          primaryMediaPosition: null,
-          primaryMediaDuration: null,
-        }, // no media
-        {
-          hasPrimaryMedia: false,
-          primaryMediaPosition: null,
-          primaryMediaDuration: null,
-        }, // no media
+        { hasPrimaryMedia: true, isWatched: true },
+        { hasPrimaryMedia: false, isWatched: false },
+        { hasPrimaryMedia: false, isWatched: false },
       ];
       const result = calculateProgress(items);
       expect(result.totalItems).toBe(3);
@@ -161,16 +116,8 @@ describe("progress-utils", () => {
 
     it("returns null percentage when no items have media", () => {
       const items = [
-        {
-          hasPrimaryMedia: false,
-          primaryMediaPosition: null,
-          primaryMediaDuration: null,
-        },
-        {
-          hasPrimaryMedia: false,
-          primaryMediaPosition: null,
-          primaryMediaDuration: null,
-        },
+        { hasPrimaryMedia: false, isWatched: false },
+        { hasPrimaryMedia: false, isWatched: false },
       ];
       const result = calculateProgress(items);
       expect(result.totalItems).toBe(2);
@@ -181,44 +128,64 @@ describe("progress-utils", () => {
 
     it("rounds percentage to nearest integer", () => {
       const items = [
-        {
-          hasPrimaryMedia: true,
-          primaryMediaPosition: 95,
-          primaryMediaDuration: 100,
-        }, // watched
-        {
-          hasPrimaryMedia: true,
-          primaryMediaPosition: 50,
-          primaryMediaDuration: 100,
-        }, // unwatched
-        {
-          hasPrimaryMedia: true,
-          primaryMediaPosition: 50,
-          primaryMediaDuration: 100,
-        }, // unwatched
+        { hasPrimaryMedia: true, isWatched: true },
+        { hasPrimaryMedia: true, isWatched: false },
+        { hasPrimaryMedia: true, isWatched: false },
       ];
       const result = calculateProgress(items);
       expect(result.percentage).toBe(33); // 1/3 = 33.33... rounds to 33
     });
 
-    it("handles items with null duration as unwatched", () => {
+    it("uses fractional playback for partially played items", () => {
       const items = [
-        {
-          hasPrimaryMedia: true,
-          primaryMediaPosition: 50,
-          primaryMediaDuration: null,
-        }, // unwatched
-        {
-          hasPrimaryMedia: true,
-          primaryMediaPosition: 95,
-          primaryMediaDuration: 100,
-        }, // watched
+        { hasPrimaryMedia: true, isWatched: false, playbackFraction: 0.8 },
       ];
       const result = calculateProgress(items);
-      expect(result.totalItems).toBe(2);
-      expect(result.itemsWithMedia).toBe(2);
+      expect(result.watchedItems).toBe(0);
+      expect(result.itemsWithMedia).toBe(1);
+      expect(result.percentage).toBe(80); // 0.8 / 1 = 80%
+    });
+
+    it("combines watched items and fractional playback", () => {
+      const items = [
+        { hasPrimaryMedia: true, isWatched: true }, // 1.0
+        { hasPrimaryMedia: true, isWatched: false, playbackFraction: 0.5 }, // 0.5
+      ];
+      const result = calculateProgress(items);
       expect(result.watchedItems).toBe(1);
-      expect(result.percentage).toBe(50);
+      expect(result.itemsWithMedia).toBe(2);
+      expect(result.percentage).toBe(75); // (1.0 + 0.5) / 2 = 75%
+    });
+
+    it("handles mix of watched, partially played, and unwatched", () => {
+      const items = [
+        { hasPrimaryMedia: true, isWatched: true }, // 1.0
+        { hasPrimaryMedia: true, isWatched: false, playbackFraction: 0.6 }, // 0.6
+        { hasPrimaryMedia: true, isWatched: false }, // 0.0
+        { hasPrimaryMedia: false, isWatched: false }, // no media, excluded
+      ];
+      const result = calculateProgress(items);
+      expect(result.totalItems).toBe(4);
+      expect(result.watchedItems).toBe(1);
+      expect(result.itemsWithMedia).toBe(3);
+      expect(result.percentage).toBe(53); // (1.0 + 0.6 + 0.0) / 3 = 53.33... rounds to 53
+    });
+
+    it("caps playbackFraction at 1.0", () => {
+      const items = [
+        { hasPrimaryMedia: true, isWatched: false, playbackFraction: 1.5 },
+      ];
+      const result = calculateProgress(items);
+      expect(result.percentage).toBe(100); // capped at 1.0
+    });
+
+    it("watched items count as 1.0 even with playbackFraction", () => {
+      const items = [
+        { hasPrimaryMedia: true, isWatched: true, playbackFraction: 0.3 },
+      ];
+      const result = calculateProgress(items);
+      expect(result.watchedItems).toBe(1);
+      expect(result.percentage).toBe(100); // watched = 1.0, fraction ignored
     });
   });
 
@@ -298,7 +265,7 @@ describe("progress-utils", () => {
         watchedItems: 0,
         itemsWithMedia: 0,
         percentage: null,
-        totalItems: 2, // parent + 1 child
+        totalItems: 2,
       };
       expect(formatProgressLabel(progress)).toBe("(2 items)");
     });
@@ -310,23 +277,21 @@ describe("progress-utils", () => {
       expect(result).toBeNull();
     });
 
-    it("returns null when all items are complete", () => {
+    it("returns null when all items are watched", () => {
       const items = [
         {
           id: "1",
           order: 0,
           parentId: null,
           hasPrimaryMedia: true,
-          position: 95,
-          duration: 100,
+          isWatched: true,
         },
         {
           id: "2",
           order: 1,
           parentId: null,
           hasPrimaryMedia: true,
-          position: 100,
-          duration: 100,
+          isWatched: true,
         },
       ];
       expect(findFirstIncompleteItem(items)).toBeNull();
@@ -339,135 +304,91 @@ describe("progress-utils", () => {
           order: 0,
           parentId: null,
           hasPrimaryMedia: false,
-          position: null,
-          duration: null,
+          isWatched: false,
         },
       ];
       expect(findFirstIncompleteItem(items)).toBeNull();
     });
 
-    it("returns first incomplete item in order", () => {
+    it("returns first unwatched item in order", () => {
       const items = [
         {
           id: "1",
           order: 0,
           parentId: null,
           hasPrimaryMedia: true,
-          position: 95,
-          duration: 100,
-        }, // complete
+          isWatched: true,
+        },
         {
           id: "2",
           order: 1,
           parentId: null,
           hasPrimaryMedia: true,
-          position: 50,
-          duration: 100,
-        }, // incomplete
+          isWatched: false,
+        },
         {
           id: "3",
           order: 2,
           parentId: null,
           hasPrimaryMedia: true,
-          position: 30,
-          duration: 100,
-        }, // incomplete
+          isWatched: false,
+        },
       ];
       expect(findFirstIncompleteItem(items)).toBe("2");
     });
 
     it("follows DFS order - visits children before siblings", () => {
-      // Tree structure:
-      // 1 (order 0, complete)
-      //   ├─ 1a (order 0, complete)
-      //   └─ 1b (order 1, incomplete) <- should be found
-      // 2 (order 1, incomplete) <- NOT this one
       const items = [
         {
           id: "1",
           order: 0,
           parentId: null,
           hasPrimaryMedia: true,
-          position: 95,
-          duration: 100,
+          isWatched: true,
         },
         {
           id: "1a",
           order: 0,
           parentId: "1",
           hasPrimaryMedia: true,
-          position: 95,
-          duration: 100,
+          isWatched: true,
         },
         {
           id: "1b",
           order: 1,
           parentId: "1",
           hasPrimaryMedia: true,
-          position: 50,
-          duration: 100,
+          isWatched: false,
         },
         {
           id: "2",
           order: 1,
           parentId: null,
           hasPrimaryMedia: true,
-          position: 50,
-          duration: 100,
+          isWatched: false,
         },
       ];
       expect(findFirstIncompleteItem(items)).toBe("1b");
     });
 
     it("skips items without media in DFS traversal", () => {
-      // Tree: folder -> incomplete child
       const items = [
         {
           id: "folder",
           order: 0,
           parentId: null,
           hasPrimaryMedia: false,
-          position: null,
-          duration: null,
+          isWatched: false,
         },
         {
           id: "child",
           order: 0,
           parentId: "folder",
           hasPrimaryMedia: true,
-          position: 50,
-          duration: 100,
+          isWatched: false,
         },
       ];
       expect(findFirstIncompleteItem(items)).toBe("child");
-    });
-
-    it("treats null position as incomplete (not started)", () => {
-      const items = [
-        {
-          id: "1",
-          order: 0,
-          parentId: null,
-          hasPrimaryMedia: true,
-          position: null,
-          duration: 100,
-        },
-      ];
-      expect(findFirstIncompleteItem(items)).toBe("1");
-    });
-
-    it("treats zero position as incomplete", () => {
-      const items = [
-        {
-          id: "1",
-          order: 0,
-          parentId: null,
-          hasPrimaryMedia: true,
-          position: 0,
-          duration: 100,
-        },
-      ];
-      expect(findFirstIncompleteItem(items)).toBe("1");
     });
 
     it("respects order field for sibling ordering", () => {
@@ -477,50 +398,17 @@ describe("progress-utils", () => {
           order: 1,
           parentId: null,
           hasPrimaryMedia: true,
-          position: 50,
-          duration: 100,
+          isWatched: false,
         },
         {
           id: "a",
           order: 0,
           parentId: null,
           hasPrimaryMedia: true,
-          position: 50,
-          duration: 100,
+          isWatched: false,
         },
       ];
-      // Should return "a" because it has order 0, even though "b" appears first in array
       expect(findFirstIncompleteItem(items)).toBe("a");
-    });
-
-    it("treats exactly 90% position as complete (threshold boundary)", () => {
-      const items = [
-        {
-          id: "1",
-          order: 0,
-          parentId: null,
-          hasPrimaryMedia: true,
-          position: 90,
-          duration: 100,
-        },
-      ];
-      // 90 >= 100 * 0.9 → 90 >= 90 → TRUE (complete)
-      expect(findFirstIncompleteItem(items)).toBeNull();
-    });
-
-    it("treats just below 90% as incomplete (threshold boundary)", () => {
-      const items = [
-        {
-          id: "1",
-          order: 0,
-          parentId: null,
-          hasPrimaryMedia: true,
-          position: 89.9,
-          duration: 100,
-        },
-      ];
-      // 89.9 >= 100 * 0.9 → 89.9 >= 90 → FALSE (incomplete)
-      expect(findFirstIncompleteItem(items)).toBe("1");
     });
   });
 });

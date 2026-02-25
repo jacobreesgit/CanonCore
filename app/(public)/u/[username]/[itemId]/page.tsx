@@ -16,6 +16,7 @@ import { getItem, getDescendants, getItemProgress } from "@/lib/item-actions";
 import { getItemFiles } from "@/lib/item-file-actions";
 import { getForkStatus, getForkInfo } from "@/lib/fork-actions";
 import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
+import { getWatchStatus } from "@/lib/watch-actions";
 import { getItemTmdbMetadata, getItemTmdbDetails } from "@/lib/tmdb-client";
 import {
   resolveTmdbForItem,
@@ -168,14 +169,21 @@ export default async function ItemDetailPage({
     });
 
     // All fetches run concurrently — TMDB chain doesn't block other work
-    const [childrenResult, filesResult, itemProgress, driveConnection, tmdb] =
-      await Promise.all([
-        getDescendants(itemId),
-        getItemFiles(itemId),
-        getItemProgress(itemId),
-        getGoogleDriveConnection(),
-        tmdbPromise,
-      ]);
+    const [
+      childrenResult,
+      filesResult,
+      itemProgress,
+      driveConnection,
+      tmdb,
+      watchStatusResult,
+    ] = await Promise.all([
+      getDescendants(itemId),
+      getItemFiles(itemId),
+      getItemProgress(itemId),
+      getGoogleDriveConnection(),
+      tmdbPromise,
+      getWatchStatus(item.id),
+    ]);
 
     const tmdbMetadata = tmdb.metadata;
     const tmdbDetails = tmdb.details;
@@ -189,6 +197,9 @@ export default async function ItemDetailPage({
         : { media: [], artwork: [], subtitles: [] };
     const hasDriveConnection = Boolean(driveConnection);
     const driveNeedsReauth = driveConnection?.needsReauth ?? false;
+    const initialWatchStatus = watchStatusResult.success
+      ? watchStatusResult.data
+      : { isWatched: false, playCount: 0 };
 
     const currentUser = {
       id: profile.id,
@@ -237,6 +248,7 @@ export default async function ItemDetailPage({
             tmdbMetadata={tmdbMetadata}
             tmdbDetails={tmdbDetails}
             tmdbDisplayOptions={tmdbDisplayOptions}
+            initialWatchStatus={initialWatchStatus}
           />
         </div>
       </>

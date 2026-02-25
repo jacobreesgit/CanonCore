@@ -6,6 +6,7 @@
 
 "use client";
 
+import { createContext, useMemo } from "react";
 import dynamic from "next/dynamic";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { Section } from "@/components/ui/section";
@@ -14,6 +15,38 @@ import { ItemContextMenu } from "./item-context-menu";
 import { GridItem } from "@/components/sortable-grid/grid-item";
 import type { ItemWithArtwork } from "@/lib/types";
 import type { CreateItemResult } from "./add-item-dialog";
+import {
+  markAsWatched,
+  markAsUnwatched,
+  markAllWatched,
+  markAllUnwatched,
+} from "@/lib/watch-actions";
+
+/**
+ * Context providing item action callbacks to server-rendered shelf components.
+ * Consumed by ShelfRow to wire up context menus and click handlers.
+ */
+export interface ShelfActionsContextValue {
+  onItemClick: (id: string) => void;
+  onOpenSettings: (id: string) => Promise<void>;
+  onDeleteItem: (id: string) => Promise<void>;
+  onPinItem: (id: string) => Promise<void>;
+  onUnpinItem: (id: string) => Promise<void>;
+  onMarkWatched: (id: string) => Promise<void>;
+  onMarkUnwatched: (id: string) => Promise<void>;
+  onMarkAllWatched: (id: string) => Promise<void>;
+  onMarkAllUnwatched: (id: string) => Promise<void>;
+  onAddChild?: (
+    parentId: string,
+    name: string,
+    description?: string
+  ) => Promise<CreateItemResult>;
+  onAddChildComplete?: () => Promise<void>;
+  hasDriveConnection: boolean;
+}
+
+export const ShelfActionsContext =
+  createContext<ShelfActionsContextValue | null>(null);
 
 /** Loading skeleton for grid view during edit mode chunk load. */
 function GridSkeleton() {
@@ -75,6 +108,8 @@ interface GridViewContentProps {
   onItemSelectChange: (id: string, selected: boolean) => void;
   /** Current user info for owner display in grid items. */
   currentUser?: CurrentUser | null;
+  /** Server-rendered shelves inserted between pinned and library sections. */
+  shelves?: React.ReactNode;
 }
 
 /**
@@ -99,7 +134,41 @@ export function GridViewContent({
   isItemSelected,
   onItemSelectChange,
   currentUser,
+  shelves,
 }: GridViewContentProps) {
+  /** Build watch-related menu props from an item's progress data. */
+  function watchMenuProps(item: ItemWithArtwork) {
+    const hasChildren = (item.childCount ?? 0) > 0;
+    const watched = item.progress?.watchedItems ?? 0;
+    const withMedia = item.progress?.itemsWithMedia ?? 0;
+
+    if (hasChildren) {
+      // Parent: toggle "Mark All as Watched" / "Mark All as Unwatched"
+      const allWatched = withMedia > 0 && watched >= withMedia;
+      return {
+        isAllWatched: allWatched,
+        onMarkAllWatched: async () => {
+          await markAllWatched(item.id);
+        },
+        onMarkAllUnwatched: async () => {
+          await markAllUnwatched(item.id);
+        },
+      };
+    }
+
+    // Leaf: toggle "Mark as Watched" / "Mark as Unwatched"
+    const isWatched = withMedia > 0 && watched >= withMedia;
+    return {
+      isWatched,
+      onMarkWatched: async () => {
+        await markAsWatched(item.id);
+      },
+      onMarkUnwatched: async () => {
+        await markAsUnwatched(item.id);
+      },
+    };
+  }
+
   return (
     <>
       {/* Edit mode: SortableGrid (conditionally rendered — dynamic import) */}
@@ -130,59 +199,63 @@ export function GridViewContent({
               Pinned
             </h2>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
-              {pinnedItems.map((item, index) => (
-                <ItemContextMenu
-                  key={item.id}
-                  itemName={item.name}
-                  driveFileId={item.driveFileId}
-                  showAddChild={true}
-                  isPinned={true}
-                  onSettings={() => onOpenSettings(item.id)}
-                  onDelete={() => onDeleteItem(item.id)}
-                  onAddChild={
-                    onAddChild ? (n, d) => onAddChild(item.id, n, d) : undefined
-                  }
-                  onAddChildComplete={onAddChildComplete}
-                  hasDriveConnection={hasDriveConnection}
-                  onPin={() => onPinItem(item.id)}
-                  onUnpin={() => onUnpinItem(item.id)}
-                >
-                  <GridItem
-                    id={item.id}
-                    name={item.name}
-                    description={item.description}
-                    onClick={() => onItemClick(item.id)}
-                    tmdbPosterPath={item.tmdbPosterPath}
-                    artworkId={item.artworkId}
-                    progressPercentage={item.progress?.percentage ?? null}
-                    watchedCount={item.progress?.watchedItems}
-                    totalMediaCount={item.progress?.itemsWithMedia}
-                    totalItems={item.progress?.totalItems}
-                    showArtwork={true}
-                    showDescription={true}
-                    priority={index < 5}
-                    driveFileId={item.driveFileId}
-                    moreMenuProps={{
-                      itemName: item.name,
-                      driveFileId: item.driveFileId,
-                      hasDriveConnection,
-                      isPinned: true,
-                      showAddChild: true,
-                      onSettings: () => onOpenSettings(item.id),
-                      onDelete: () => onDeleteItem(item.id),
-                      onAddChild: onAddChild
-                        ? (n, d) => onAddChild(item.id, n, d)
-                        : undefined,
-                      onAddChildComplete,
-                      onPin: () => onPinItem(item.id),
-                      onUnpin: () => onUnpinItem(item.id),
-                    }}
-                  />
-                </ItemContextMenu>
-              ))}
+              {pinnedItems.map((item, index) => {
+                const watchProps = watchMenuProps(item);
+                const baseMenuProps = {
+                  itemName: item.name,
+                  driveFileId: item.driveFileId,
+                  hasDriveConnection,
+                  isPinned: true,
+                  showAddChild: true,
+                  onSettings: () => onOpenSettings(item.id),
+                  onDelete: () => onDeleteItem(item.id),
+                  onAddChild: onAddChild
+                    ? (n: string, d?: string) => onAddChild(item.id, n, d)
+                    : undefined,
+                  onAddChildComplete,
+                  onPin: () => onPinItem(item.id),
+                  onUnpin: () => onUnpinItem(item.id),
+                  ...watchProps,
+                };
+                return (
+                  <ItemContextMenu key={item.id} {...baseMenuProps}>
+                    <GridItem
+                      id={item.id}
+                      name={item.name}
+                      description={item.description}
+                      onClick={() => onItemClick(item.id)}
+                      tmdbPosterPath={item.tmdbPosterPath}
+                      artworkId={item.artworkId}
+                      progressPercentage={item.progress?.percentage ?? null}
+                      watchedCount={item.progress?.watchedItems}
+                      totalMediaCount={item.progress?.itemsWithMedia}
+                      totalItems={item.progress?.totalItems}
+                      showArtwork={true}
+                      showDescription={true}
+                      priority={index < 5}
+                      driveFileId={item.driveFileId}
+                      moreMenuProps={baseMenuProps}
+                    />
+                  </ItemContextMenu>
+                );
+              })}
             </div>
           </Section>
         )}
+
+        {/* Shelves (server-rendered, between pinned and library) */}
+        <ShelfActionsContextProvider
+          onItemClick={onItemClick}
+          onOpenSettings={onOpenSettings}
+          onDeleteItem={onDeleteItem}
+          onPinItem={onPinItem}
+          onUnpinItem={onUnpinItem}
+          onAddChild={onAddChild}
+          onAddChildComplete={onAddChildComplete}
+          hasDriveConnection={hasDriveConnection}
+        >
+          {shelves}
+        </ShelfActionsContextProvider>
 
         {/* Library section (items not pinned) */}
         {unpinnedItems.length > 0 && (
@@ -193,60 +266,123 @@ export function GridViewContent({
               </h2>
             )}
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
-              {unpinnedItems.map((item, index) => (
-                <ItemContextMenu
-                  key={item.id}
-                  itemName={item.name}
-                  driveFileId={item.driveFileId}
-                  showAddChild={true}
-                  isPinned={false}
-                  onSettings={() => onOpenSettings(item.id)}
-                  onDelete={() => onDeleteItem(item.id)}
-                  onAddChild={
-                    onAddChild ? (n, d) => onAddChild(item.id, n, d) : undefined
-                  }
-                  onAddChildComplete={onAddChildComplete}
-                  hasDriveConnection={hasDriveConnection}
-                  onPin={() => onPinItem(item.id)}
-                  onUnpin={() => onUnpinItem(item.id)}
-                >
-                  <GridItem
-                    id={item.id}
-                    name={item.name}
-                    description={item.description}
-                    onClick={() => onItemClick(item.id)}
-                    tmdbPosterPath={item.tmdbPosterPath}
-                    artworkId={item.artworkId}
-                    progressPercentage={item.progress?.percentage ?? null}
-                    watchedCount={item.progress?.watchedItems}
-                    totalMediaCount={item.progress?.itemsWithMedia}
-                    totalItems={item.progress?.totalItems}
-                    showArtwork={true}
-                    showDescription={true}
-                    priority={index < 8}
-                    driveFileId={item.driveFileId}
-                    moreMenuProps={{
-                      itemName: item.name,
-                      driveFileId: item.driveFileId,
-                      hasDriveConnection,
-                      isPinned: false,
-                      showAddChild: true,
-                      onSettings: () => onOpenSettings(item.id),
-                      onDelete: () => onDeleteItem(item.id),
-                      onAddChild: onAddChild
-                        ? (n, d) => onAddChild(item.id, n, d)
-                        : undefined,
-                      onAddChildComplete,
-                      onPin: () => onPinItem(item.id),
-                      onUnpin: () => onUnpinItem(item.id),
-                    }}
-                  />
-                </ItemContextMenu>
-              ))}
+              {unpinnedItems.map((item, index) => {
+                const watchProps = watchMenuProps(item);
+                const baseMenuProps = {
+                  itemName: item.name,
+                  driveFileId: item.driveFileId,
+                  hasDriveConnection,
+                  isPinned: false,
+                  showAddChild: true,
+                  onSettings: () => onOpenSettings(item.id),
+                  onDelete: () => onDeleteItem(item.id),
+                  onAddChild: onAddChild
+                    ? (n: string, d?: string) => onAddChild(item.id, n, d)
+                    : undefined,
+                  onAddChildComplete,
+                  onPin: () => onPinItem(item.id),
+                  onUnpin: () => onUnpinItem(item.id),
+                  ...watchProps,
+                };
+                return (
+                  <ItemContextMenu key={item.id} {...baseMenuProps}>
+                    <GridItem
+                      id={item.id}
+                      name={item.name}
+                      description={item.description}
+                      onClick={() => onItemClick(item.id)}
+                      tmdbPosterPath={item.tmdbPosterPath}
+                      artworkId={item.artworkId}
+                      progressPercentage={item.progress?.percentage ?? null}
+                      watchedCount={item.progress?.watchedItems}
+                      totalMediaCount={item.progress?.itemsWithMedia}
+                      totalItems={item.progress?.totalItems}
+                      showArtwork={true}
+                      showDescription={true}
+                      priority={index < 8}
+                      driveFileId={item.driveFileId}
+                      moreMenuProps={baseMenuProps}
+                    />
+                  </ItemContextMenu>
+                );
+              })}
             </div>
           </Section>
         )}
       </div>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Memoised context provider (avoids new object on every GridViewContent render)
+// ---------------------------------------------------------------------------
+
+interface ShelfActionsContextProviderProps {
+  onItemClick: (id: UniqueIdentifier) => void;
+  onOpenSettings: (id: string) => Promise<void>;
+  onDeleteItem: (id: string) => Promise<void>;
+  onPinItem: (id: string) => Promise<void>;
+  onUnpinItem: (id: string) => Promise<void>;
+  onAddChild?: (
+    parentId: string,
+    name: string,
+    description?: string
+  ) => Promise<CreateItemResult>;
+  onAddChildComplete?: () => Promise<void>;
+  hasDriveConnection: boolean;
+  children: React.ReactNode;
+}
+
+function ShelfActionsContextProvider({
+  onItemClick,
+  onOpenSettings,
+  onDeleteItem,
+  onPinItem,
+  onUnpinItem,
+  onAddChild,
+  onAddChildComplete,
+  hasDriveConnection,
+  children,
+}: ShelfActionsContextProviderProps) {
+  const value = useMemo<ShelfActionsContextValue>(
+    () => ({
+      onItemClick: (id) => onItemClick(id),
+      onOpenSettings,
+      onDeleteItem,
+      onPinItem,
+      onUnpinItem,
+      onMarkWatched: async (id) => {
+        await markAsWatched(id);
+      },
+      onMarkUnwatched: async (id) => {
+        await markAsUnwatched(id);
+      },
+      onMarkAllWatched: async (id) => {
+        await markAllWatched(id);
+      },
+      onMarkAllUnwatched: async (id) => {
+        await markAllUnwatched(id);
+      },
+      onAddChild,
+      onAddChildComplete,
+      hasDriveConnection,
+    }),
+    [
+      onItemClick,
+      onOpenSettings,
+      onDeleteItem,
+      onPinItem,
+      onUnpinItem,
+      onAddChild,
+      onAddChildComplete,
+      hasDriveConnection,
+    ]
+  );
+
+  return (
+    <ShelfActionsContext.Provider value={value}>
+      {children}
+    </ShelfActionsContext.Provider>
   );
 }
