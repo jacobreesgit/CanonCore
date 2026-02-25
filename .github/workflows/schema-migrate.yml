@@ -26,6 +26,8 @@ jobs:
     name: Migrate Neon Branches
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
