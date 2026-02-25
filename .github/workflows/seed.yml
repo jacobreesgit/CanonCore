@@ -1,0 +1,177 @@
+name: Seed Database
+
+on:
+  workflow_run:
+    workflows: ["Schema Migration"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Which database to seed"
+        required: true
+        type: choice
+        options:
+          - development
+          - demo
+          - seed
+
+concurrency:
+  group: seed-${{ github.event.workflow_run.head_branch || github.event.inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  resolve-targets:
+    name: Resolve Seed Targets
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    outputs:
+      seed-development: ${{ steps.resolve.outputs.seed-development }}
+      seed-demo: ${{ steps.resolve.outputs.seed-demo }}
+      seed-seed: ${{ steps.resolve.outputs.seed-seed }}
+    steps:
+      - name: Resolve targets
+        id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Manual dispatch — seed the selected target
+            TARGET="${{ github.event.inputs.target }}"
+            echo "seed-development=$( [ "$TARGET" = "development" ] && echo true || echo false )" >> "$GITHUB_OUTPUT"
+            echo "seed-demo=$( [ "$TARGET" = "demo" ] && echo true || echo false )" >> "$GITHUB_OUTPUT"
+            echo "seed-seed=$( [ "$TARGET" = "seed" ] && echo true || echo false )" >> "$GITHUB_OUTPUT"
+          else
+            # Triggered by schema migration — resolve from branch
+            BRANCH="${{ github.event.workflow_run.head_branch }}"
+            echo "Triggered by schema migration on branch: $BRANCH"
+            if [ "$BRANCH" = "development" ]; then
+              echo "seed-development=true" >> "$GITHUB_OUTPUT"
+              echo "seed-demo=false" >> "$GITHUB_OUTPUT"
+              echo "seed-seed=false" >> "$GITHUB_OUTPUT"
+            elif [ "$BRANCH" = "production" ]; then
+              echo "seed-development=false" >> "$GITHUB_OUTPUT"
+              echo "seed-demo=true" >> "$GITHUB_OUTPUT"
+              echo "seed-seed=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "seed-development=false" >> "$GITHUB_OUTPUT"
+              echo "seed-demo=false" >> "$GITHUB_OUTPUT"
+              echo "seed-seed=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+  seed-development:
+    name: Seed Development
+    runs-on: ubuntu-latest
+    needs: resolve-targets
+    if: needs.resolve-targets.outputs.seed-development == 'true'
+    timeout-minutes: 15
+    env:
+      ALLOW_SEEDING: "true"
+      SEED_TARGET: development
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+      GOOGLE_SEED_REFRESH_TOKEN: ${{ secrets.GOOGLE_SEED_REFRESH_TOKEN }}
+      GOOGLE_SEED_ROOT_FOLDER_ID: ${{ secrets.GOOGLE_SEED_ROOT_FOLDER_ID }}
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Seed development
+        run: npx prisma db seed
+
+  seed-demo:
+    name: Seed Demo
+    runs-on: ubuntu-latest
+    needs: resolve-targets
+    if: needs.resolve-targets.outputs.seed-demo == 'true'
+    timeout-minutes: 15
+    env:
+      ALLOW_SEEDING: "true"
+      SEED_TARGET: demo
+      DEMO_DATABASE_URL: ${{ secrets.DEMO_DATABASE_URL }}
+      SEED_DEMO_ROOT_FOLDER_ID: ${{ secrets.SEED_DEMO_ROOT_FOLDER_ID }}
+      TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+      GOOGLE_SEED_REFRESH_TOKEN: ${{ secrets.GOOGLE_SEED_REFRESH_TOKEN }}
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Seed demo
+        run: npx prisma db seed
+
+  # The Neon branch is called "seed" but the seed script target is "screenshots".
+  # GH secret SEED_DATABASE_URL → env var SCREENSHOT_DATABASE_URL (what seed.ts expects)
+  # GH secret SEED_SEED_ROOT_FOLDER_ID → env var SEED_SCREENSHOTS_ROOT_FOLDER_ID
+  seed-seed:
+    name: Seed Screenshots
+    runs-on: ubuntu-latest
+    needs: resolve-targets
+    if: needs.resolve-targets.outputs.seed-seed == 'true'
+    timeout-minutes: 15
+    env:
+      ALLOW_SEEDING: "true"
+      SEED_TARGET: screenshots
+      SCREENSHOT_DATABASE_URL: ${{ secrets.SEED_DATABASE_URL }}
+      SEED_SCREENSHOTS_ROOT_FOLDER_ID: ${{ secrets.SEED_SEED_ROOT_FOLDER_ID }}
+      TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+      GOOGLE_SEED_REFRESH_TOKEN: ${{ secrets.GOOGLE_SEED_REFRESH_TOKEN }}
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Seed screenshots
+        run: npx prisma db seed
