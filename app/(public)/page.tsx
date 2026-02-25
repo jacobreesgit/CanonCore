@@ -20,11 +20,13 @@ export const metadata: Metadata = {
  * Renders the landing page with cinematic hero.
  */
 export default async function LandingPage() {
-  const session = await auth();
-  const driveConnection = session?.user
-    ? await getGoogleDriveConnection()
-    : null;
-  const driveNeedsReauth = driveConnection?.needsReauth ?? false;
+  const [session, driveConnection] = await Promise.all([
+    auth(),
+    getGoogleDriveConnection().catch(() => null),
+  ]);
+  const driveNeedsReauth = session?.user
+    ? (driveConnection?.needsReauth ?? false)
+    : false;
 
   return (
     <>

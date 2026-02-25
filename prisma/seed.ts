@@ -193,6 +193,8 @@ import {
 } from "./seed-config";
 import { assertDriveConfigured } from "@/lib/drive-verification";
 import { withAuditContext } from "@/lib/audit-context";
+import { ensureSystemPlaylists } from "@/lib/system-playlists";
+import { COMPLETION_THRESHOLD } from "@/lib/progress-utils";
 
 // Prisma will be dynamically imported after env vars are loaded
 import type { ExtendedPrismaClient } from "@/lib/prisma";
@@ -962,6 +964,15 @@ async function cleanupSeedUsers(): Promise<void> {
 
   // Delete Playlists
   await prisma.playlist.deleteMany({
+    where: {
+      user: {
+        email: { in: seedEmails },
+      },
+    },
+  });
+
+  // Delete WatchRecords (FK to Item + User)
+  await prisma.watchRecord.deleteMany({
     where: {
       user: {
         email: { in: seedEmails },
@@ -1824,6 +1835,11 @@ async function cleanupOnFailure(userId: string): Promise<void> {
       where: { userId },
     });
 
+    // Delete WatchRecords (FK to Item + User)
+    await prisma.watchRecord.deleteMany({
+      where: { userId },
+    });
+
     // Delete ItemFiles (foreign key constraint)
     const deletedFiles = await prisma.itemFile.deleteMany({
       where: { item: { userId } },
@@ -2026,6 +2042,92 @@ async function generateSyncActivityLogs(userId: string): Promise<void> {
   });
 
   log(`   📊 Created ${syncLogs.length} sync activity log entries`);
+}
+
+/**
+ * Creates WatchRecords for items with completed playback (>= 80% threshold).
+ * Mirrors the auto-scrobble logic so system playlists (Watch Again, Up Next)
+ * are populated after seeding.
+ *
+ * @param userId - User's database ID
+ */
+async function seedWatchRecords(userId: string): Promise<void> {
+  // Find all items with primary media where playback >= completion threshold
+  const completedItems = await prisma.$queryRaw<Array<{ itemId: string }>>`
+    SELECT f."itemId"
+    FROM "ItemFile" f
+    INNER JOIN "Item" i ON i.id = f."itemId"
+    WHERE i."userId" = ${userId}
+      AND f."fileType" = 'MEDIA'
+      AND f."isPrimary" = true
+      AND f."playbackPosition" IS NOT NULL
+      AND f."playbackDuration" IS NOT NULL
+      AND f."playbackDuration" > 0
+      AND f."playbackPosition" >= f."playbackDuration" * ${COMPLETION_THRESHOLD}
+  `;
+
+  if (completedItems.length === 0) return;
+
+  // Spread watchedAt over the past 30 days for realistic ordering
+  const now = Date.now();
+  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+
+  const watchRecords = completedItems.map((item, index) => {
+    // Distribute evenly across 30 days, most recent first
+    const ageMs = (index / completedItems.length) * thirtyDaysMs;
+    const watchedAt = new Date(now - ageMs);
+
+    return {
+      itemId: item.itemId,
+      userId,
+      source: "AUTO" as const,
+      watchedAt,
+    };
+  });
+
+  await prisma.watchRecord.createMany({ data: watchRecords });
+
+  log(`   👁️  Created ${watchRecords.length} WatchRecords`);
+}
+
+/**
+ * Adds unwatched root-level items to the user's Watchlist system playlist.
+ * Picks 3–5 random items that have no WatchRecord.
+ *
+ * @param userId - User's database ID
+ */
+async function seedWatchlistItems(userId: string): Promise<void> {
+  // Find the Watchlist system playlist
+  const watchlist = await prisma.playlist.findFirst({
+    where: { userId, systemType: "WATCHLIST" },
+  });
+  if (!watchlist) return;
+
+  // Find root-level items without any WatchRecord (unwatched)
+  const unwatchedItems = await prisma.$queryRaw<Array<{ id: string }>>`
+    SELECT i.id
+    FROM "Item" i
+    WHERE i."userId" = ${userId}
+      AND i."parentId" IS NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM "WatchRecord" wr
+        WHERE wr."itemId" = i.id AND wr."userId" = ${userId}
+      )
+    ORDER BY RANDOM()
+    LIMIT ${getRandomCount(3, 5)}
+  `;
+
+  if (unwatchedItems.length === 0) return;
+
+  await prisma.playlistItem.createMany({
+    data: unwatchedItems.map((item, index) => ({
+      playlistId: watchlist.id,
+      itemId: item.id,
+      order: index,
+    })),
+  });
+
+  log(`   📋 Added ${unwatchedItems.length} items to Watchlist`);
 }
 
 /** Playlist seed definitions per user. */
@@ -2296,6 +2398,13 @@ async function main(): Promise<void> {
 
         // Seed playlists
         await seedPlaylistsForUser(userId, config.email);
+
+        // Ensure system playlists exist (watchlist, continue watching, etc.)
+        await ensureSystemPlaylists(userId);
+
+        // Create WatchRecords for completed items + populate Watchlist
+        await seedWatchRecords(userId);
+        await seedWatchlistItems(userId);
 
         const totalTime = Math.round((Date.now() - progress.startTime) / 1000);
         log(

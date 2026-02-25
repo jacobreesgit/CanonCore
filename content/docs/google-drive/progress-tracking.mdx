@@ -7,21 +7,40 @@ CanonCore tracks your viewing progress across your entire library. Progress bars
 
 ## How progress works
 
-Progress is calculated based on your primary media files:
+Progress is calculated based on your watch history and primary media files:
 
-- An item counts as "watched" when you've seen 90% or more of its primary media file
+- An item counts as "watched" when you've seen 80% or more of its primary media file — matching the Trakt industry standard
+- When playback crosses the 80% mark, CanonCore automatically records it as watched (called auto-scrobble)
 - Folders show combined progress across all items inside them, including nested folders
-- Progress updates automatically as you watch
+- You can also manually mark items as watched or unwatched at any time
+
+## Watch status
+
+Every item has a watch status based on your watch history. You can manage this from several places:
+
+**From the context menu** — Right-click (or long-press on mobile) any item and choose **Mark as Watched** or **Mark as Unwatched**.
+
+**From the item detail page** — The hero banner shows a watched/unwatched toggle button.
+
+**Batch operations** — Right-click a folder and choose **Mark All as Watched** to mark every item inside it (including nested folders) as watched in one go. **Mark All as Unwatched** does the reverse.
+
+When you mark an item as unwatched, only the most recent watch record is removed — your older play history is preserved.
+
+## Auto-scrobble
+
+When you're watching a video and playback reaches 80%, CanonCore automatically records it as watched. You don't need to do anything — it happens in the background.
+
+A 5-minute deduplication window prevents duplicate entries if you seek back and replay a section, so you won't get multiple watch records from the same viewing session.
 
 ## Where progress appears
 
 You'll see progress indicators in several places:
 
-**Item cards (grid view)** - A thin progress bar at the bottom of each card shows completion percentage. Below the title, you'll see counts like "5/10 watched (of 15 items)".
+**Item cards (grid view)** — A thin progress bar at the bottom of each card shows completion percentage. Below the title, you'll see counts like "5/10 watched (of 15 items)".
 
-**Item list (tree view)** - A small progress bar appears next to each item name.
+**Item list (tree view)** — A small progress bar appears next to each item name.
 
-**Item detail pages** - The hero banner shows a progress bar with your watch count.
+**Item detail pages** — The hero banner shows a progress bar with your watch count.
 
 ## Reading the progress display
 
@@ -58,7 +77,7 @@ The hero banner shows a **Next Up** button when you have unwatched content. Clic
 
 - The button shows "Next Up: [Item Name]" with the name of your next unwatched item
 - CanonCore finds the first incomplete item by going through folders in order, checking children before siblings
-- An item is "incomplete" if you haven't watched 90% of its primary media
+- An item is "incomplete" if it doesn't have a watch record
 
 **Where the Next Up button appears:**
 

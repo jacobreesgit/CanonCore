@@ -116,6 +116,7 @@ export function PublicItemClient({
   useEffect(() => setTabsMounted(true), []);
 
   const [isForking, setIsForking] = useState(false);
+  const [forkedOptimistic, setForkedOptimistic] = useState<string | null>(null);
 
   // Sort/filter/view state (URL + localStorage backup)
   const {
@@ -184,6 +185,9 @@ export function PublicItemClient({
         throw new Error(data.error ?? "Failed to fork item");
       }
 
+      // Optimistic UI: immediately hide fork button and show "In Your Library"
+      setForkedOptimistic(data.itemId);
+
       toast.success("Added to your library!", {
         description: `${item.name} has been forked to your library.`,
         action: currentUserUsername
@@ -208,9 +212,11 @@ export function PublicItemClient({
   const hasTmdb = !!item.tmdbId;
 
   // Fork actions for hero slot
+  const hasForked = forkStatus?.hasForked || forkedOptimistic !== null;
+  const forkedItemId = forkStatus?.forkedItemId ?? forkedOptimistic;
   const forkActions = (
     <>
-      {!isOwnItem && !forkStatus?.hasForked && isAuthenticated && (
+      {!isOwnItem && !hasForked && isAuthenticated && (
         <HeroButton
           onClick={handleFork}
           disabled={isForking}
@@ -233,14 +239,12 @@ export function PublicItemClient({
           Fork to Library
         </HeroButton>
       )}
-      {!isOwnItem && forkStatus?.hasForked && (
+      {!isOwnItem && hasForked && (
         <HeroButton
           variant="secondary"
           onClick={() => {
-            if (currentUserUsername && forkStatus.forkedItemId) {
-              router.push(
-                `/u/${currentUserUsername}/${forkStatus.forkedItemId}`
-              );
+            if (currentUserUsername && forkedItemId) {
+              router.push(`/u/${currentUserUsername}/${forkedItemId}`);
             }
           }}
         >

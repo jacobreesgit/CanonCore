@@ -83,6 +83,7 @@ const mockOwnerPlaylists: PlaylistWithCount[] = [
       { tmdbPosterPath: null, artworkId: null },
     ],
     hasArtwork: false,
+    systemType: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     order: 0,
@@ -100,9 +101,85 @@ const mockOwnerPlaylists: PlaylistWithCount[] = [
       { tmdbPosterPath: null, artworkId: null },
     ],
     hasArtwork: false,
+    systemType: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     order: 1,
+  },
+];
+
+const mockOwnerPlaylistsWithSmart: PlaylistWithCount[] = [
+  {
+    id: "playlist-smart-1",
+    name: "Continue Watching",
+    description: null,
+    isPublic: false,
+    itemCount: 3,
+    previewPosters: [
+      { tmdbPosterPath: null, artworkId: null },
+      { tmdbPosterPath: null, artworkId: null },
+      { tmdbPosterPath: null, artworkId: null },
+      { tmdbPosterPath: null, artworkId: null },
+    ],
+    hasArtwork: false,
+    systemType: "CONTINUE_WATCHING",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    order: 0,
+  },
+  {
+    id: "playlist-smart-2",
+    name: "Watchlist",
+    description: null,
+    isPublic: false,
+    itemCount: 7,
+    previewPosters: [
+      { tmdbPosterPath: null, artworkId: null },
+      { tmdbPosterPath: null, artworkId: null },
+      { tmdbPosterPath: null, artworkId: null },
+      { tmdbPosterPath: null, artworkId: null },
+    ],
+    hasArtwork: false,
+    systemType: "WATCHLIST",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    order: 1,
+  },
+  {
+    id: "playlist-user-1",
+    name: "Favourites",
+    description: "My favourite films",
+    isPublic: true,
+    itemCount: 12,
+    previewPosters: [
+      { tmdbPosterPath: null, artworkId: null },
+      { tmdbPosterPath: null, artworkId: null },
+      { tmdbPosterPath: null, artworkId: null },
+      { tmdbPosterPath: null, artworkId: null },
+    ],
+    hasArtwork: false,
+    systemType: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    order: 2,
+  },
+  {
+    id: "playlist-user-2",
+    name: "Watch Later",
+    description: null,
+    isPublic: false,
+    itemCount: 5,
+    previewPosters: [
+      { tmdbPosterPath: null, artworkId: null },
+      { tmdbPosterPath: null, artworkId: null },
+      { tmdbPosterPath: null, artworkId: null },
+      { tmdbPosterPath: null, artworkId: null },
+    ],
+    hasArtwork: false,
+    systemType: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    order: 3,
   },
 ];
 
@@ -224,6 +301,33 @@ export const OwnerWithDrive: Story = {
       description: {
         story:
           "Owner mode with Google Drive connected and 50% library progress. Sync button visible in toolbar.",
+      },
+    },
+  },
+};
+
+/** Owner mode with smart playlists and user playlists — shows split sections. */
+export const OwnerWithSmartPlaylists: Story = {
+  args: {
+    profile: mockProfile,
+    items: mockItems,
+    isOwner: true,
+    hasDriveConnection: false,
+    ownerPlaylists: mockOwnerPlaylistsWithSmart,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Switch to Playlists tab to see both sections
+    const playlistsTab = canvas.getByRole("tab", { name: "Playlists" });
+    await userEvent.click(playlistsTab);
+    await expect(playlistsTab).toHaveAttribute("aria-selected", "true");
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Owner mode with 2 smart playlists (Continue Watching, Watchlist) and 2 user playlists. Playlists tab shows split sections: Smart Playlists (no context menu) and Playlists (with context menu).",
       },
     },
   },

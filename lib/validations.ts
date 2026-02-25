@@ -253,3 +253,16 @@ export const tmdbDisplayOptionsSchema = z.object({
   showVideos: z.boolean(),
   showRecommendations: z.boolean(),
 });
+
+// =============================================================================
+// Watch Record Validation
+// =============================================================================
+
+/** Validates a single item ID (non-empty string). */
+export const itemIdSchema = z.string().min(1, "Item ID is required");
+
+/** Validates a single playlist ID (non-empty string). */
+export const playlistIdSchema = z.string().min(1, "Playlist ID is required");
+
+/** Ordered list of playlist IDs for shelf reordering. Max 20 shelves. */
+export const shelfOrderSchema = z.array(z.string()).min(1).max(20);

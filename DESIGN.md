@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: February 2026 (v9.4.0)
+Last updated: February 2026 (v10.0.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -165,6 +165,8 @@ Built on PostgreSQL with Prisma ORM. Key tables:
 - Cross-cutting reference list: name, description, order, isPublic
 - Artwork: artworkImage (binary blob), artworkMime
 - Sharing: shareToken (unique, nanoid-generated) for unlisted access
+- System playlists: systemType (nullable SystemPlaylistType), shelfOrder (nullable Int)
+- Unique constraint: @@unique([userId, systemType]) prevents duplicate system playlists per user
 - Indexed: userId, userId+order, isPublic+updatedAt desc, shareToken
 
 **PlaylistItem (join table):**
@@ -173,6 +175,19 @@ Built on PostgreSQL with Prisma ORM. Key tables:
 - Fields: order (for drag-to-reorder), addedAt
 - Unique constraint: playlistId+itemId (no duplicates)
 - Indexed: playlistId+order, itemId
+
+**WatchRecord:**
+
+- Tracks watch events per item per user
+- Fields: itemId, userId, source (WatchSource enum: AUTO/MANUAL), watchedAt
+- AUTO: triggered when playback crosses 80% threshold
+- MANUAL: triggered by explicit user action (mark as watched)
+- Composite indexes: [userId, watchedAt DESC], [itemId, userId, watchedAt DESC]
+
+**Enums:**
+
+- `WatchSource`: AUTO (playback scrobble) | MANUAL (user action)
+- `SystemPlaylistType`: CONTINUE_WATCHING | WATCHLIST | RECENTLY_ADDED | WATCH_AGAIN
 
 **SyncLog:**
 
@@ -246,6 +261,8 @@ Built on PostgreSQL with Prisma ORM. Key tables:
             │ isPublic   │
             │ shareToken │
             │ artwork    │
+            │ systemType │
+            │ shelfOrder │
             └─────┬──────┘
                   │ 1:N
             ┌─────▼────────┐
@@ -253,6 +270,16 @@ Built on PostgreSQL with Prisma ORM. Key tables:
             ├──────────────┤     N:1
             │ order        │────────── Item
             │ addedAt      │
+            └──────────────┘
+
+┌──────────────┐         ┌──────────────┐
+│     User     │──┐ 1:N  │     Item     │
+└──────────────┘  │      └──────┬───────┘
+            ┌─────▼────────┐    │ 1:N
+            │ WatchRecord  │◄───┘
+            ├──────────────┤
+            │ source       │ (AUTO/MANUAL)
+            │ watchedAt    │
             └──────────────┘
 ```
 
@@ -270,11 +297,19 @@ Built on PostgreSQL with Prisma ORM. Key tables:
 - Children inherit parent's public/private setting when true
 - Item is "fully public" only when: item.isPublic && profile.isPublic && all ancestors public
 
-**Progress Tracking (`ItemFile.playbackPosition`):**
+**Progress Tracking (`ItemFile.playbackPosition` + `WatchRecord`):**
 
 - Per-file tracking (needed for TV episodes, multi-file movies)
-- 90% completion threshold counts as "watched" (accounts for credit skipping)
+- 80% completion threshold counts as "watched" (Trakt standard, accounts for credits and post-credits scenes)
+- Watch status tracked via WatchRecord existence, not playbackPosition percentage
 - DFS traversal to find first incomplete item in hierarchy
+
+**Why WatchRecord over Playback Position?**
+
+- Separates "has watched" (WatchRecord) from "current position" (playbackPosition) — two distinct concepts
+- Enables play count tracking (multiple WatchRecords per item)
+- Supports both auto-scrobble (playback crosses 80%) and manual marking (user action)
+- 5-minute deduplication window prevents duplicate scrobbles from rapid playback events
 
 **Incremental Seeding (`User.seedContentHash`):**
 
@@ -298,6 +333,8 @@ All mutations go through server actions in `lib/*-actions.ts`:
 - `lib/auth-actions.ts` - Sign up, forgot password, reset password
 - `lib/user-actions.ts` - Profile updates, image uploads, account deletion, data export
 - `lib/fork-actions.ts` - Forking collections
+- `lib/watch-actions.ts` - Watch status (create, mark, unmark, batch, status query)
+- `lib/shelf-actions.ts` - Home shelf CRUD and data fetching
 
 **Parallel Async Pattern:**
 Every server action runs rate limit + auth checks in parallel:
@@ -402,6 +439,8 @@ Upstash Redis with different thresholds per action:
 - Forgot/reset password: 2 requests/minute
 - Item mutations: 30 requests/minute
 - Playlist mutations: 30 requests/minute
+- Watch actions: 30 requests/minute
+- Shelf mutations: 30 requests/minute
 - Search: 30-60 requests/minute per section
 - Account deletion: 3 requests/hour
 - Data export: 5 requests/hour
@@ -527,7 +566,8 @@ Multi-layer defence against aggressive AI crawlers:
 
 **Progress Tracking:**
 
-- 90% completion threshold for "watched"
+- 80% completion threshold for "watched" (Trakt standard)
+- Watch status tracked via WatchRecord existence (not playbackPosition percentage)
 - DFS traversal to find first incomplete item
 - Folder shows watched/total counts for all descendants
 
@@ -762,6 +802,51 @@ After initial wizard application, individual artwork fields (poster, backdrop, e
 - Spotlight search: Playlists section with artwork thumbnails
 - Sidebar: Playlists section with artwork and item counts
 - CinematicHero: `backgroundElement` prop for mosaic backdrop on playlist detail pages
+
+### Watch Status Tracking
+
+**WatchRecord Model:**
+
+- Two sources: AUTO (playback reaches 80% threshold) and MANUAL (explicit user action)
+- Auto-scrobble: `updatePlaybackPosition` checks threshold, calls `createWatchRecordIfNotRecent`
+- Deduplication: 5-minute window prevents rapid duplicate scrobbles from repeated playback events
+- Manual actions: mark as watched (creates WatchRecord), mark as unwatched (removes most recent record, preserves history)
+- Batch operations: `markAllWatched` / `markAllUnwatched` use recursive CTEs for hierarchy traversal
+- `getWatchStatus`: read-only query, no rate limiting (auth check only)
+- Server actions in `lib/watch-actions.ts`, shared utility in `lib/watch-record-utils.ts`
+
+### Home Shelves
+
+**Configurable Shelf Rows:**
+
+- Horizontal scroll rows on the authenticated home page
+- Any playlist with a non-null `shelfOrder` appears as a shelf
+- System playlists (Continue Watching, Watchlist, Recently Added, Watch Again) are virtual — computed at query time, not stored as PlaylistItem rows
+- System playlists created per user via `ensureSystemPlaylists()` (idempotent, `skipDuplicates`)
+- `SHELF_LIMIT = 10` items per shelf
+
+**Continue Watching Query:**
+
+- Raw SQL merging two sources: (1) resume items — `playbackPosition > 0` with no WatchRecord, (2) up-next items — first unwatched child in series with at least one watched child
+- Deduplicated and sorted by recency
+
+**Shelf Configuration:**
+
+- Add/remove/reorder any playlist as a shelf
+- System playlists can be toggled on/off like user-created playlists
+- `@@unique([userId, systemType])` prevents duplicates; `skipDuplicates` handles race conditions
+
+**Components:**
+
+- `home-shelves.tsx` — Server component, renders shelf sections
+- `shelf-row.tsx` — Client component with horizontal scroll, gradient fades, snap scroll, arrow key navigation
+- `shelf-settings.tsx` — Configuration panel for managing shelf visibility and order
+- Shelf cards use the shared `GridItem` component — not a custom card
+
+**ShelfItem Type:**
+
+- Minimal for server serialisation: `{ id, name, tmdbPosterPath, artworkId, childCount, playbackProgress }`
+- Intentionally lighter than `ItemWithArtwork`
 
 ### Homepage
 
@@ -1425,11 +1510,26 @@ Portfolio screenshots for marketing/documentation using POM patterns and fixture
 - Store hash in `User.seedContentHash`
 - Compare before seeding, skip if unchanged
 
-### Why 90% Completion Threshold?
+### Why 80% Completion Threshold (Trakt Standard)?
 
 **Problem:** Users skip credits, marking items unwatched at 99%
-**Solution:** 90% threshold counts as "watched"
-**Result:** More accurate progress tracking
+**Previous:** 90% threshold — still too high for films with extended credits and post-credits scenes
+**Solution:** 80% threshold, matching Trakt's industry-standard completion threshold
+**Result:** More accurate progress tracking. Better accounts for end credits and post-credits scenes in films, and anime episodes where credits can be 10-15% of runtime
+
+### Why System Playlists over Hardcoded Shelves?
+
+**Chose System Playlists (real Playlist rows with a systemType discriminator) because:**
+
+- Items in system playlists are computed at query time (virtual), not stored as PlaylistItem rows
+- "Continue Watching" always reflects current watch state without needing to maintain a separate data structure
+- Users can toggle system playlists on/off as shelves just like user-created playlists
+- `@@unique([userId, systemType])` prevents duplicates; `skipDuplicates` handles race conditions
+
+**Tradeoff:**
+
+- System playlist queries are more complex (raw SQL for Continue Watching merges two sources)
+- Virtual items require custom query logic per system playlist type rather than a simple join table lookup
 
 ### Why Module-Level Cache for Search?
 

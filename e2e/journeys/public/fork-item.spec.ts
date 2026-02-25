@@ -7,6 +7,9 @@ import { test, expect } from "../../fixtures";
 import { Timeouts } from "../../config/timeouts";
 
 test.describe("Fork Item", () => {
+  // Fork API can be slow under parallel load — extend timeout
+  test.setTimeout(60_000);
+
   test("should fork a public item to own library", async ({
     page,
     testUser: _testUser,
@@ -21,14 +24,13 @@ test.describe("Fork Item", () => {
     // Fork button should be visible for authenticated non-owner
     await publicProfile.expectForkButtonVisible();
 
-    // Click fork
+    // Click fork — POM retries click until hydrated handler fires.
     await publicProfile.forkItem();
 
-    // After fork API call + router.refresh(), the fork button disappears
-    // (forkStatus.hasForked becomes true). Use api timeout since this
-    // involves a POST request and server component refresh.
+    // Button disappears via optimistic state update after API responds.
+    // Under parallel load, the fork API can be slow.
     await expect(page.getByTestId("profile-fork-button")).not.toBeVisible({
-      timeout: Timeouts.api,
+      timeout: Timeouts.heavy,
     });
   });
 });

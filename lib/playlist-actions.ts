@@ -26,6 +26,7 @@ import type {
   PlaylistMembership,
 } from "@/lib/types";
 import { resolveArtworkId } from "@/lib/tmdb-image-utils";
+import { getSystemShelfItems } from "@/lib/shelf-query-utils";
 
 /**
  * Create a new playlist for the current user.
@@ -198,6 +199,7 @@ export async function getUserPlaylists(): Promise<
         order: true,
         isPublic: true,
         artworkMime: true,
+        systemType: true,
         createdAt: true,
         updatedAt: true,
         playlistItems: {
@@ -220,6 +222,39 @@ export async function getUserPlaylists(): Promise<
       },
     });
 
+    // Resolve dynamic items for system playlists (their items are computed,
+    // not stored as PlaylistItem rows — except Watchlist which uses real rows).
+    const systemPlaylists = playlists.filter(
+      (p) => p.systemType && p.systemType !== "WATCHLIST"
+    );
+    const dynamicItemsMap = new Map<
+      string,
+      { tmdbPosterPath: string | null; artworkId: string | null }[]
+    >();
+    const dynamicCountMap = new Map<string, number>();
+
+    if (systemPlaylists.length > 0) {
+      const results = await Promise.all(
+        systemPlaylists.map(async (p) => {
+          const items = await getSystemShelfItems(
+            session.user.id,
+            p.systemType!
+          );
+          return { playlistId: p.id, items };
+        })
+      );
+      for (const { playlistId, items } of results) {
+        dynamicCountMap.set(playlistId, items.length);
+        dynamicItemsMap.set(
+          playlistId,
+          items.slice(0, 4).map((item) => ({
+            tmdbPosterPath: item.tmdbPosterPath,
+            artworkId: item.artworkId,
+          }))
+        );
+      }
+    }
+
     const result: PlaylistWithCount[] = playlists.map((p) => ({
       id: p.id,
       name: p.name,
@@ -227,11 +262,14 @@ export async function getUserPlaylists(): Promise<
       order: p.order,
       isPublic: p.isPublic,
       hasArtwork: !!p.artworkMime,
-      itemCount: p._count.playlistItems,
-      previewPosters: p.playlistItems.map((pi) => ({
-        tmdbPosterPath: pi.item.tmdbPosterPath ?? null,
-        artworkId: resolveArtworkId(pi.item),
-      })),
+      itemCount: dynamicCountMap.get(p.id) ?? p._count.playlistItems,
+      previewPosters:
+        dynamicItemsMap.get(p.id) ??
+        p.playlistItems.map((pi) => ({
+          tmdbPosterPath: pi.item.tmdbPosterPath ?? null,
+          artworkId: resolveArtworkId(pi.item),
+        })),
+      systemType: p.systemType,
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
     }));

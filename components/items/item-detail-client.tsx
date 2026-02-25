@@ -21,6 +21,8 @@ import {
   faPlus,
   faGears,
   faForwardStep,
+  faCircleCheck,
+  faCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import { ItemsView } from "./items-view";
 import { EditModeToggle } from "./edit-mode-toggle";
@@ -45,6 +47,7 @@ import { Button } from "@/components/ui/button";
 import { MediaOverlay } from "@/components/media/media-overlay";
 import { updatePlaybackPosition } from "@/lib/item-file-actions";
 import { getItemFiles } from "@/lib/item-file-actions";
+import { markAsWatched, markAsUnwatched } from "@/lib/watch-actions";
 import { useSyncHandler } from "@/hooks/use-sync-handler";
 import type {
   ItemWithArtwork,
@@ -140,6 +143,11 @@ interface ItemDetailClientProps {
   tmdbDetails?: TmdbItemDetails | null;
   /** Per-item TMDB display preferences. */
   tmdbDisplayOptions?: TmdbDisplayOptions | null;
+  /** Initial watch status from server (avoids client waterfall). */
+  initialWatchStatus?: {
+    isWatched: boolean;
+    playCount: number;
+  };
 }
 
 /**
@@ -158,9 +166,14 @@ export function ItemDetailClient({
   tmdbMetadata,
   tmdbDetails,
   tmdbDisplayOptions,
+  initialWatchStatus,
 }: ItemDetailClientProps) {
   const [isPending, startTransition] = useTransition();
   const [childItems, setChildItems] = useState(initialChildItems);
+  const [watchStatus, setWatchStatus] = useState(
+    initialWatchStatus ?? { isWatched: false, playCount: 0 }
+  );
+  const [isWatchPending, startWatchTransition] = useTransition();
   const [isEditing, setIsEditing] = useState(false);
   const [addItemOpen, setAddItemOpen] = useState(false);
   const [playingFile, setPlayingFile] = useState<SerializedItemFile | null>(
@@ -330,6 +343,40 @@ export function ItemDetailClient({
     []
   );
 
+  const handleWatch = useCallback(() => {
+    setWatchStatus((prev) => ({
+      isWatched: true,
+      playCount: prev.playCount + 1,
+    }));
+    startWatchTransition(async () => {
+      const result = await markAsWatched(item.id);
+      if (!result.success) {
+        // Revert optimistic update
+        setWatchStatus((prev) => ({
+          isWatched: prev.playCount > 1,
+          playCount: Math.max(0, prev.playCount - 1),
+        }));
+      }
+    });
+  }, [item.id, startWatchTransition]);
+
+  const handleUnwatch = useCallback(() => {
+    setWatchStatus((prev) => ({
+      isWatched: prev.playCount > 1,
+      playCount: Math.max(0, prev.playCount - 1),
+    }));
+    startWatchTransition(async () => {
+      const result = await markAsUnwatched(item.id);
+      if (!result.success) {
+        // Revert optimistic update
+        setWatchStatus((prev) => ({
+          isWatched: true,
+          playCount: prev.playCount + 1,
+        }));
+      }
+    });
+  }, [item.id, startWatchTransition]);
+
   // Owner hero action buttons
   const ownerActions = (
     <>
@@ -346,6 +393,27 @@ export function ItemDetailClient({
         </HeroButton>
       )}
       <PlaylistButton itemId={item.id} />
+      {watchStatus.isWatched ? (
+        <HeroButton
+          onClick={handleUnwatch}
+          disabled={isWatchPending}
+          aria-label="Watched"
+          aria-pressed="true"
+        >
+          <FontAwesomeIcon icon={faCircleCheck} className="size-4" />
+          Watched
+        </HeroButton>
+      ) : (
+        <HeroButton
+          onClick={handleWatch}
+          disabled={isWatchPending}
+          aria-label="Mark Watched"
+          aria-pressed="false"
+        >
+          <FontAwesomeIcon icon={faCircle} className="size-4" />
+          Mark Watched
+        </HeroButton>
+      )}
       <HeroButton onClick={handleOpenSettings} aria-label="Settings">
         <FontAwesomeIcon icon={faGears} className="size-4" />
         Settings

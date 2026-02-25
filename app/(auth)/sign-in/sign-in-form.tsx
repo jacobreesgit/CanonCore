@@ -10,15 +10,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn, getSession } from "next-auth/react";
 import { Logo } from "@/components/logo";
-import dynamic from "next/dynamic";
-
-const FloatingPaths = dynamic(
-  () =>
-    import("@/components/floating-paths").then((mod) => ({
-      default: mod.FloatingPaths,
-    })),
-  { ssr: false }
-);
+import { FloatingPaths } from "@/components/floating-paths";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

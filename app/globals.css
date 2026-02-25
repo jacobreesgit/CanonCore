@@ -99,13 +99,13 @@
 }
 
 /*
- * Font Awesome SVG core sets height: 1em and width: 1.25em on .svg-inline--fa,
- * which overrides Tailwind size-* utilities. Reset to auto so Tailwind classes
- * like size-3.5 work without needing !important.
+ * Font Awesome SVG core sets width: 1.25em on .svg-inline--fa, which fights
+ * Tailwind size-* utilities. Keep height at 1em (sensible inline default)
+ * and only reset width so Tailwind classes like size-3.5 can take over.
  */
 .svg-inline--fa {
-  width: auto;
-  height: auto;
+  width: 1em;
+  height: 1em;
 }
 
 @theme inline {
@@ -339,4 +339,13 @@
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
+}
+
+/* Hide scrollbar while preserving scroll behaviour */
+.scrollbar-none {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
 }

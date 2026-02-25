@@ -11,7 +11,7 @@ const FEATURES = [
   {
     title: "Google Drive Native",
     description:
-      "Your media stays in Google Drive — CanonCore reads it directly. No uploads, no migrations, no storage limits. Connect once and your entire library is ready.",
+      "Your media stays in Google Drive. CanonCore reads it directly. No uploads, no migrations, no storage limits. Connect once and your entire library is ready.",
     image: "/images/06-google-drive-sync.webp",
     learnMoreHref: "/docs/google-drive/sync-files",
   },
@@ -52,14 +52,14 @@ export function FeatureAccordion() {
     <section className="relative py-24 md:py-32">
       <div className="px-6 md:px-10 lg:px-16">
         {/* Desktop: proper two-column grid — image left, accordion right */}
-        <div className="hidden lg:grid lg:grid-cols-[1.4fr_1fr] lg:items-start lg:gap-16">
-          {/* Left — sticky image showcase, vertically centered in viewport */}
-          <div className="sticky top-[25vh]">
+        <div className="hidden lg:grid lg:grid-cols-[1.4fr_1fr] lg:items-center lg:gap-16">
+          {/* Left — image showcase */}
+          <div>
             <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/5 p-1.5 shadow-[0_2rem_4rem_-1rem_rgba(0,0,0,0.5)]">
               {/* Top-edge glow */}
               <div
                 className="pointer-events-none absolute -inset-px rounded-xl opacity-30"
-                aria-hidden
+                aria-hidden="true"
                 style={{
                   background:
                     "radial-gradient(ellipse at 50% 0%, rgba(139,92,246,0.2), transparent 60%)",
