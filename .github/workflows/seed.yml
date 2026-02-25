@@ -106,6 +106,7 @@ jobs:
     env:
       ALLOW_SEEDING: "true"
       SEED_TARGET: demo
+      DATABASE_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
       DEMO_DATABASE_URL: ${{ secrets.DEMO_DATABASE_URL }}
       SEED_DEMO_ROOT_FOLDER_ID: ${{ secrets.SEED_DEMO_ROOT_FOLDER_ID }}
       TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
@@ -147,6 +148,7 @@ jobs:
     env:
       ALLOW_SEEDING: "true"
       SEED_TARGET: screenshots
+      DATABASE_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
       SCREENSHOT_DATABASE_URL: ${{ secrets.SEED_DATABASE_URL }}
       SEED_SCREENSHOTS_ROOT_FOLDER_ID: ${{ secrets.SEED_SEED_ROOT_FOLDER_ID }}
       TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
