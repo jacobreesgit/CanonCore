@@ -1,14 +1,14 @@
 /**
  * Utilities for calculating playback progress across item hierarchies.
- * Progress is item-based: an item is "watched" when its primary media is >= 90% complete.
+ * An item is "watched" when it has a WatchRecord (auto-created at 80% playback, or manual).
  */
 
-/** Threshold percentage to consider a file complete (90%). */
-export const COMPLETION_THRESHOLD = 0.9;
+/** Threshold percentage to consider a file complete (80% — Trakt standard). */
+export const COMPLETION_THRESHOLD = 0.8;
 
 /**
  * Determines if a media file is considered complete.
- * Complete = position >= 90% of duration.
+ * Complete = position >= 80% of duration.
  *
  * @param position - Current playback position in seconds
  * @param duration - Total duration in seconds
@@ -29,7 +29,7 @@ export function isFileComplete(
  * Item-based counting: progress tracks items with watched primary media.
  */
 export interface ItemProgress {
-  /** Items with primary media that are >= 90% watched */
+  /** Items with primary media that have a WatchRecord */
   watchedItems: number;
   /** Items that have a primary media file */
   itemsWithMedia: number;
@@ -41,16 +41,18 @@ export interface ItemProgress {
 
 /**
  * Calculates progress from item-level data.
- * Each item counts once based on its primary media file status.
+ * Each item counts once based on its WatchRecord status.
+ * Percentage uses fractional progress: watched items count as 1.0,
+ * partially played items contribute their playback fraction.
  *
- * @param items - Array of items with primary media playback data
+ * @param items - Array of items with primary media, watch status, and optional playback fraction
  * @returns Progress data with percentage and total item count
  */
 export function calculateProgress(
   items: Array<{
     hasPrimaryMedia: boolean;
-    primaryMediaPosition: number | null;
-    primaryMediaDuration: number | null;
+    isWatched: boolean;
+    playbackFraction?: number;
   }>
 ): ItemProgress {
   const totalItems = items.length;
@@ -64,16 +66,18 @@ export function calculateProgress(
     };
   }
 
-  // Single pass to count both itemsWithMedia and watchedItems (js-combine-iterations)
+  // Single pass to count itemsWithMedia, watchedItems, and fractional progress sum
   let itemsWithMedia = 0;
   let watchedItems = 0;
+  let progressSum = 0;
   for (const item of items) {
     if (item.hasPrimaryMedia) {
       itemsWithMedia++;
-      if (
-        isFileComplete(item.primaryMediaPosition, item.primaryMediaDuration)
-      ) {
+      if (item.isWatched) {
         watchedItems++;
+        progressSum += 1.0;
+      } else if (item.playbackFraction !== undefined) {
+        progressSum += Math.min(item.playbackFraction, 1.0);
       }
     }
   }
@@ -83,7 +87,7 @@ export function calculateProgress(
     itemsWithMedia,
     percentage:
       itemsWithMedia > 0
-        ? Math.round((watchedItems / itemsWithMedia) * 100)
+        ? Math.round((progressSum / itemsWithMedia) * 100)
         : null,
     totalItems,
   };
@@ -127,16 +131,16 @@ export interface IncompleteItemInput {
   order: number;
   parentId: string | null;
   hasPrimaryMedia: boolean;
-  position: number | null;
-  duration: number | null;
+  /** Whether this item has been watched (has a WatchRecord). */
+  isWatched: boolean;
 }
 
 /**
  * Finds the first incomplete item in DFS order.
- * An item is incomplete if it has primary media that is < 90% watched.
+ * An item is incomplete if it has primary media and is not watched.
  * Items without media are skipped but their children are still traversed.
  *
- * @param items - Flat array of items with order, parentId, and media info
+ * @param items - Flat array of items with order, parentId, and watch status
  * @param startFromParentId - Optional parent ID to start traversal from (for filtering)
  * @returns ID of first incomplete item, or null if all complete/no media
  */
@@ -164,11 +168,8 @@ export function findFirstIncompleteItem(
     const children = childrenMap.get(parentId) ?? [];
 
     for (const item of children) {
-      // Check if this item is incomplete
-      if (
-        item.hasPrimaryMedia &&
-        !isFileComplete(item.position, item.duration)
-      ) {
+      // An item is incomplete if it has primary media and is not watched
+      if (item.hasPrimaryMedia && !item.isWatched) {
         return item.id;
       }
 

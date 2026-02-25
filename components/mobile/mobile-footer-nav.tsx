@@ -102,7 +102,7 @@ export function MobileFooterNav({
       className={cn(
         "fixed inset-x-0 bottom-0 z-40",
         "flex h-16 items-center justify-around",
-        "border-t border-white/[0.06] bg-white/[0.03] backdrop-blur-xl",
+        "border-sidebar-border bg-sidebar border-t",
         "pb-[env(safe-area-inset-bottom)]",
         // Touch optimizations
         "touch-action-manipulation",
@@ -110,10 +110,6 @@ export function MobileFooterNav({
         "landscape:max-h-[500px]:h-12",
         className
       )}
-      style={{
-        // Fallback for devices without backdrop-blur support
-        WebkitBackdropFilter: "blur(8px)",
-      }}
     >
       {items.map((item) => {
         // Determine active state from pathname or explicit isActive prop
@@ -133,22 +129,30 @@ export function MobileFooterNav({
               aria-current={isActive ? "page" : undefined}
               data-testid={labelToTestId[item.label]}
               className={cn(
-                "flex flex-1 flex-col items-center justify-center gap-0.5",
+                "flex flex-1 flex-col items-center justify-center gap-1",
                 "min-h-[44px] min-w-[44px]",
                 "transition-colors duration-150 ease-out",
                 "active:scale-95",
-                "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+                "focus-visible:ring-sidebar-ring focus-visible:ring-2 focus-visible:outline-none",
                 isActive
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "text-foreground"
+                  : "text-sidebar-foreground/50 hover:text-sidebar-foreground"
               )}
             >
-              <span className="flex h-5 w-5 items-center justify-center">
-                {item.icon}
+              <span
+                className={cn(
+                  "flex h-7 w-7 items-center justify-center rounded-md",
+                  isActive && "bg-foreground text-background"
+                )}
+              >
+                <span className="flex h-4 w-4 items-center justify-center">
+                  {item.icon}
+                </span>
               </span>
               <span
                 className={cn(
-                  "text-[10px] leading-none font-medium",
+                  "text-[10px] leading-none",
+                  isActive ? "font-semibold" : "font-medium",
                   // Hide labels in landscape mode
                   "landscape:max-h-[500px]:hidden"
                 )}
@@ -168,31 +172,46 @@ export function MobileFooterNav({
             data-testid={labelToTestId[item.label]}
             onClick={() => item.sheet && onSheetOpen?.(item.sheet)}
             className={cn(
-              "flex flex-1 flex-col items-center justify-center gap-0.5",
+              "flex flex-1 flex-col items-center justify-center gap-1",
               "min-h-[44px] min-w-[44px]",
               "transition-colors duration-150 ease-out",
               "active:scale-95",
-              "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+              "focus-visible:ring-sidebar-ring focus-visible:ring-2 focus-visible:outline-none",
               isActive
-                ? "text-primary"
-                : "text-muted-foreground hover:text-foreground"
+                ? "text-foreground"
+                : "text-sidebar-foreground/50 hover:text-sidebar-foreground"
             )}
           >
             {item.sheet === "user" && userAvatar ? (
-              <Avatar className="h-5 w-5 grayscale">
-                <AvatarImage src={userAvatar} alt={userName || "User"} />
-                <AvatarFallback className="bg-primary text-primary-foreground text-[8px]">
-                  {userName?.charAt(0)?.toUpperCase() || "U"}
-                </AvatarFallback>
-              </Avatar>
+              <span
+                className={cn(
+                  "flex h-7 w-7 items-center justify-center rounded-md",
+                  isActive && "bg-foreground text-background"
+                )}
+              >
+                <Avatar className="h-5 w-5">
+                  <AvatarImage src={userAvatar} alt={userName || "User"} />
+                  <AvatarFallback className="bg-sidebar-accent text-sidebar-foreground text-[8px]">
+                    {userName?.charAt(0)?.toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </span>
             ) : (
-              <span className="flex h-5 w-5 items-center justify-center">
-                {item.icon}
+              <span
+                className={cn(
+                  "flex h-7 w-7 items-center justify-center rounded-md",
+                  isActive && "bg-foreground text-background"
+                )}
+              >
+                <span className="flex h-4 w-4 items-center justify-center">
+                  {item.icon}
+                </span>
               </span>
             )}
             <span
               className={cn(
-                "text-[10px] leading-none font-medium",
+                "text-[10px] leading-none",
+                isActive ? "font-semibold" : "font-medium",
                 // Hide labels in landscape mode
                 "landscape:max-h-[500px]:hidden"
               )}

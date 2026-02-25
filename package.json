@@ -1,6 +1,6 @@
 {
   "name": "canoncore",
-  "version": "9.4.0",
+  "version": "10.0.0",
   "packageManager": "pnpm@10.15.0",
   "private": true,
   "scripts": {

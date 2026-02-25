@@ -1,7 +1,7 @@
 /**
  * Integration tests for item-based progress calculation.
  * Tests progress aggregation across item hierarchies with real database.
- * Progress tracks items with watched primary media (>= 90% complete).
+ * Progress tracks items with a WatchRecord (created at >= 80% playback or manually).
  */
 
 import {
@@ -51,6 +51,7 @@ beforeAll(async () => {
 
 // Clean up after all describe blocks complete
 afterAll(async () => {
+  await prisma.watchRecord.deleteMany({ where: { userId: TEST_USER_ID } });
   await prisma.itemFile.deleteMany({
     where: { item: { userId: TEST_USER_ID } },
   });
@@ -136,11 +137,16 @@ describe("item progress integration", () => {
             fileType: "MEDIA",
             mimeType: "video/x-matroska",
             playbackDuration: 7200,
-            playbackPosition: 6600, // 91.6% - above 90% threshold
+            playbackPosition: 6600,
             isPrimary: true,
           },
         },
       },
+    });
+
+    // Create WatchRecord to mark as watched
+    await prisma.watchRecord.create({
+      data: { itemId: item.id, userId: TEST_USER_ID, source: "AUTO" },
     });
 
     const result = await getItems(null);
@@ -154,6 +160,7 @@ describe("item progress integration", () => {
     expect(foundItem?.progress?.totalItems).toBe(1);
 
     // Cleanup
+    await prisma.watchRecord.deleteMany({ where: { itemId: item.id } });
     await prisma.itemFile.deleteMany({ where: { itemId: item.id } });
     await prisma.item.delete({ where: { id: item.id } });
   });
@@ -190,6 +197,11 @@ describe("item progress integration", () => {
       },
     });
 
+    // Create WatchRecord for ep1
+    await prisma.watchRecord.create({
+      data: { itemId: ep1.id, userId: TEST_USER_ID, source: "AUTO" },
+    });
+
     // Episode 2 - not watched
     const ep2 = await prisma.item.create({
       data: {
@@ -223,6 +235,9 @@ describe("item progress integration", () => {
     expect(foundShow?.progress?.totalItems).toBe(3); // show + 2 episodes
 
     // Cleanup
+    await prisma.watchRecord.deleteMany({
+      where: { itemId: { in: [ep1.id, ep2.id] } },
+    });
     await prisma.itemFile.deleteMany({
       where: { itemId: { in: [ep1.id, ep2.id] } },
     });
@@ -272,6 +287,11 @@ describe("item progress integration", () => {
       },
     });
 
+    // Create WatchRecord for the episode
+    await prisma.watchRecord.create({
+      data: { itemId: episode.id, userId: TEST_USER_ID, source: "AUTO" },
+    });
+
     const result = await getItems(null);
     expect(result.success).toBe(true);
     if (!result.success || !result.data) throw new Error("Expected success");
@@ -284,6 +304,7 @@ describe("item progress integration", () => {
     expect(foundShow?.progress?.totalItems).toBe(3); // show + season + episode
 
     // Cleanup
+    await prisma.watchRecord.deleteMany({ where: { itemId: episode.id } });
     await prisma.itemFile.deleteMany({ where: { itemId: episode.id } });
     await prisma.item.deleteMany({
       where: { id: { in: [episode.id, season.id, tvShow.id] } },
@@ -330,6 +351,11 @@ describe("item progress integration", () => {
       },
     });
 
+    // Create WatchRecord for the item
+    await prisma.watchRecord.create({
+      data: { itemId: item.id, userId: TEST_USER_ID, source: "AUTO" },
+    });
+
     const result = await getItems(null);
     expect(result.success).toBe(true);
     if (!result.success || !result.data) throw new Error("Expected success");
@@ -342,11 +368,12 @@ describe("item progress integration", () => {
     expect(foundItem?.progress?.percentage).toBe(100);
 
     // Cleanup
+    await prisma.watchRecord.deleteMany({ where: { itemId: item.id } });
     await prisma.itemFile.deleteMany({ where: { itemId: item.id } });
     await prisma.item.delete({ where: { id: item.id } });
   });
 
-  it("handles partially watched primary media (below 90% threshold)", async () => {
+  it("handles partially watched primary media (below 80% threshold)", async () => {
     const item = await prisma.item.create({
       data: {
         name: "Partially Watched",
@@ -359,7 +386,7 @@ describe("item progress integration", () => {
             fileType: "MEDIA",
             mimeType: "video/x-matroska",
             playbackDuration: 7200,
-            playbackPosition: 3600, // 50% - not complete
+            playbackPosition: 3600, // 50% - not complete, no WatchRecord
             isPrimary: true,
           },
         },
@@ -371,7 +398,8 @@ describe("item progress integration", () => {
     if (!result.success || !result.data) throw new Error("Expected success");
 
     const foundItem = result.data.find((i) => i.id === item.id);
-    expect(foundItem?.progress?.percentage).toBe(0);
+    // 50% playback position (3600/7200) yields 50% progress, but item is not "watched"
+    expect(foundItem?.progress?.percentage).toBe(50);
     expect(foundItem?.progress?.watchedItems).toBe(0);
     expect(foundItem?.progress?.itemsWithMedia).toBe(1);
     expect(foundItem?.progress?.totalItems).toBe(1);
@@ -413,6 +441,11 @@ describe("item progress integration", () => {
       },
     });
 
+    // Create WatchRecord for movieItem
+    await prisma.watchRecord.create({
+      data: { itemId: movieItem.id, userId: TEST_USER_ID, source: "AUTO" },
+    });
+
     // Empty folder (no media)
     const emptyFolder = await prisma.item.create({
       data: {
@@ -436,6 +469,7 @@ describe("item progress integration", () => {
     expect(foundFolder?.progress?.percentage).toBe(100);
 
     // Cleanup
+    await prisma.watchRecord.deleteMany({ where: { itemId: movieItem.id } });
     await prisma.itemFile.deleteMany({ where: { itemId: movieItem.id } });
     await prisma.item.deleteMany({
       where: { id: { in: [movieItem.id, emptyFolder.id, folder.id] } },
@@ -446,6 +480,7 @@ describe("item progress integration", () => {
 describe("getLibraryProgress", () => {
   beforeEach(async () => {
     // Clean up any items from previous tests to ensure isolation
+    await prisma.watchRecord.deleteMany({ where: { userId: TEST_USER_ID } });
     await prisma.itemFile.deleteMany({
       where: { item: { userId: TEST_USER_ID } },
     });
@@ -507,6 +542,11 @@ describe("getLibraryProgress", () => {
       },
     });
 
+    // Create WatchRecord for movie1
+    await prisma.watchRecord.create({
+      data: { itemId: movie1.id, userId: TEST_USER_ID, source: "AUTO" },
+    });
+
     const movie2 = await prisma.item.create({
       data: {
         name: "Movie 2",
@@ -534,6 +574,9 @@ describe("getLibraryProgress", () => {
     expect(progress?.percentage).toBe(50);
 
     // Cleanup
+    await prisma.watchRecord.deleteMany({
+      where: { itemId: { in: [movie1.id, movie2.id] } },
+    });
     await prisma.itemFile.deleteMany({
       where: { itemId: { in: [movie1.id, movie2.id] } },
     });
@@ -573,6 +616,11 @@ describe("getLibraryProgress", () => {
       },
     });
 
+    // Create WatchRecord for episode
+    await prisma.watchRecord.create({
+      data: { itemId: episode.id, userId: TEST_USER_ID, source: "AUTO" },
+    });
+
     const progress = await getLibraryProgress();
     expect(progress).not.toBeNull();
     expect(progress?.itemsWithMedia).toBe(1);
@@ -581,6 +629,7 @@ describe("getLibraryProgress", () => {
     expect(progress?.percentage).toBe(100);
 
     // Cleanup
+    await prisma.watchRecord.deleteMany({ where: { itemId: episode.id } });
     await prisma.itemFile.deleteMany({ where: { itemId: episode.id } });
     await prisma.item.deleteMany({
       where: { id: { in: [episode.id, parent.id] } },
@@ -622,12 +671,18 @@ describe("getLibraryProgress", () => {
       },
     });
 
+    // Create WatchRecord for item
+    await prisma.watchRecord.create({
+      data: { itemId: item.id, userId: TEST_USER_ID, source: "AUTO" },
+    });
+
     const progress = await getLibraryProgress();
     expect(progress?.itemsWithMedia).toBe(1); // Only primary media counts
     expect(progress?.watchedItems).toBe(1);
     expect(progress?.totalItems).toBe(1);
 
     // Cleanup
+    await prisma.watchRecord.deleteMany({ where: { itemId: item.id } });
     await prisma.itemFile.deleteMany({ where: { itemId: item.id } });
     await prisma.item.delete({ where: { id: item.id } });
   });
@@ -643,6 +698,7 @@ describe("getLibraryProgress", () => {
 describe("getFirstIncompleteItem", () => {
   beforeEach(async () => {
     // Clean up any items from previous tests to ensure isolation
+    await prisma.watchRecord.deleteMany({ where: { userId: TEST_USER_ID } });
     await prisma.itemFile.deleteMany({
       where: { item: { userId: TEST_USER_ID } },
     });
@@ -682,12 +738,18 @@ describe("getFirstIncompleteItem", () => {
       },
     });
 
+    // Create WatchRecord to mark as watched
+    await prisma.watchRecord.create({
+      data: { itemId: item.id, userId: TEST_USER_ID, source: "AUTO" },
+    });
+
     const result = await getFirstIncompleteItem();
     expect(result.success).toBe(true);
     if (!result.success) throw new Error("Expected success");
     expect(result.data).toBeNull();
 
     // Cleanup
+    await prisma.watchRecord.deleteMany({ where: { itemId: item.id } });
     await prisma.itemFile.deleteMany({ where: { itemId: item.id } });
     await prisma.item.delete({ where: { id: item.id } });
   });
@@ -710,6 +772,11 @@ describe("getFirstIncompleteItem", () => {
           },
         },
       },
+    });
+
+    // Create WatchRecord for complete item
+    await prisma.watchRecord.create({
+      data: { itemId: complete.id, userId: TEST_USER_ID, source: "AUTO" },
     });
 
     // Create incomplete item
@@ -739,6 +806,9 @@ describe("getFirstIncompleteItem", () => {
     expect(result.data?.name).toBe("Incomplete");
 
     // Cleanup
+    await prisma.watchRecord.deleteMany({
+      where: { itemId: { in: [complete.id, incomplete.id] } },
+    });
     await prisma.itemFile.deleteMany({
       where: { itemId: { in: [complete.id, incomplete.id] } },
     });
@@ -775,6 +845,15 @@ describe("getFirstIncompleteItem", () => {
             playbackDuration: 100,
           },
         },
+      },
+    });
+
+    // Create WatchRecord for completeChild
+    await prisma.watchRecord.create({
+      data: {
+        itemId: completeChild.id,
+        userId: TEST_USER_ID,
+        source: "AUTO",
       },
     });
 
@@ -823,6 +902,13 @@ describe("getFirstIncompleteItem", () => {
     expect(result.data?.id).toBe(incompleteChild.id);
 
     // Cleanup
+    await prisma.watchRecord.deleteMany({
+      where: {
+        itemId: {
+          in: [completeChild.id, incompleteChild.id, rootIncomplete.id],
+        },
+      },
+    });
     await prisma.itemFile.deleteMany({
       where: {
         itemId: {

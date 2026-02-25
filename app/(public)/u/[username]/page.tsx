@@ -8,6 +8,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { auth } from "@/lib/auth";
+import { HomeShelves, ShelfSkeleton } from "@/components/homepage/home-shelves";
 import {
   getPublicProfile,
   getProfileByIdOrUsername,
@@ -180,6 +181,13 @@ export default async function ProfilePage({ params }: PageProps) {
           publicPlaylists={publicPlaylists}
           ownerPlaylists={
             ownerPlaylists?.success ? ownerPlaylists.data : undefined
+          }
+          shelves={
+            isOwner ? (
+              <Suspense fallback={<ShelfSkeleton />}>
+                <HomeShelves />
+              </Suspense>
+            ) : undefined
           }
         />
       </div>

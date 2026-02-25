@@ -94,6 +94,20 @@ export const rateLimiters = {
     prefix: "ratelimit:playlist",
   }),
 
+  // Watch record rate limiters
+  watch: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(60, "1 m"),
+    prefix: "ratelimit:watch",
+  }),
+
+  // Shelf configuration rate limiters
+  shelf: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(30, "1 m"),
+    prefix: "ratelimit:shelf",
+  }),
+
   // TMDB rate limiters
   tmdbSearch: new Ratelimit({
     redis,

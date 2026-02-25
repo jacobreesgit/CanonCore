@@ -78,6 +78,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SETTINGS_MESSAGES } from "@/lib/constants/messages";
 import type { GoogleDriveConnection } from "@/lib/types";
+import { ShelfSettings } from "@/components/items/shelf-settings";
 
 /** Steps for settings dialog navigation. */
 type SettingsStep =
@@ -88,7 +89,12 @@ type SettingsStep =
   | "delete-account";
 
 /** Available settings tabs */
-type SettingsTab = "profile" | "account" | "connections" | "activity";
+type SettingsTab =
+  | "profile"
+  | "account"
+  | "connections"
+  | "shelves"
+  | "activity";
 
 interface SettingsDialogProps {
   /** Whether the dialog is open */
@@ -631,7 +637,7 @@ export function SettingsDialog({
                 size="icon"
                 onClick={handleBack}
                 disabled={isPasswordSaving}
-                className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                className="hover:bg-muted/50 size-10 transition-[background-color,transform] active:scale-95"
                 aria-label="Back"
               >
                 <FontAwesomeIcon
@@ -670,7 +676,7 @@ export function SettingsDialog({
                 size="icon"
                 onClick={handleBack}
                 disabled={isEmailSaving}
-                className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                className="hover:bg-muted/50 size-10 transition-[background-color,transform] active:scale-95"
                 aria-label="Back"
               >
                 <FontAwesomeIcon
@@ -709,7 +715,7 @@ export function SettingsDialog({
                 size="icon"
                 onClick={handleBack}
                 disabled={isUsernameSaving}
-                className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                className="hover:bg-muted/50 size-10 transition-[background-color,transform] active:scale-95"
                 aria-label="Back"
               >
                 <FontAwesomeIcon
@@ -748,7 +754,7 @@ export function SettingsDialog({
                 size="icon"
                 onClick={handleBack}
                 disabled={isDeleting}
-                className="hover:bg-muted/50 size-10 transition-all active:scale-95"
+                className="hover:bg-muted/50 size-10 transition-[background-color,transform] active:scale-95"
                 aria-label="Back"
               >
                 <FontAwesomeIcon
@@ -947,7 +953,7 @@ export function SettingsDialog({
       case "main":
         return (
           <Tabs defaultValue={defaultTab} className="w-full">
-            <TabsList className="mb-4 grid w-full grid-cols-4">
+            <TabsList className="mb-4 grid w-full grid-cols-5">
               <TabsTrigger value="profile" data-testid="settings-tab-profile">
                 Profile
               </TabsTrigger>
@@ -959,6 +965,9 @@ export function SettingsDialog({
                 data-testid="settings-tab-connections"
               >
                 Connections
+              </TabsTrigger>
+              <TabsTrigger value="shelves" data-testid="settings-tab-shelves">
+                Shelves
               </TabsTrigger>
               <TabsTrigger value="activity" data-testid="settings-tab-activity">
                 Activity
@@ -1352,6 +1361,10 @@ export function SettingsDialog({
                   </CardContent>
                 </Card>
               </div>
+            </TabsContent>
+
+            <TabsContent value="shelves" className="mt-0">
+              <ShelfSettings />
             </TabsContent>
 
             <TabsContent value="activity" className="mt-0">

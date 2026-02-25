@@ -44,6 +44,9 @@ model User {
 
   // Playlists
   playlists             Playlist[]
+
+  // Watch records
+  watchRecords          WatchRecord[]
 }
 
 model PasswordReset {
@@ -86,6 +89,18 @@ enum SyncStatus {
   PENDING     // Local changes not yet pushed
   SYNCING     // Currently uploading/downloading
   ERROR       // Sync failed
+}
+
+enum WatchSource {
+  AUTO    // Created when playback >= 80%
+  MANUAL  // User clicked "mark as watched"
+}
+
+enum SystemPlaylistType {
+  WATCHLIST
+  CONTINUE_WATCHING
+  RECENTLY_ADDED
+  WATCH_AGAIN
 }
 
 model GoogleDriveConnection {
@@ -192,6 +207,9 @@ model Item {
 
   // Playlist membership
   playlistItems PlaylistItem[]
+
+  // Watch records
+  watchRecords  WatchRecord[]
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -311,17 +329,38 @@ model Playlist {
   isPublic      Boolean        @default(false)
   artworkImage  Bytes?
   artworkMime   String?
-  shareToken    String?        @unique
+  shareToken    String?              @unique
+  systemType    SystemPlaylistType?  // null = user-created playlist
+  shelfOrder    Int?                 // non-null = shown as a shelf on My Items home; lower = higher position
   userId        String
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   playlistItems PlaylistItem[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
+  @@unique([userId, systemType])  // Prevent duplicate system playlists per user
   @@index([userId])
   @@index([userId, order])
   @@index([isPublic, updatedAt(sort: Desc)])
   @@index([shareToken])
+}
+
+model WatchRecord {
+  id        String      @id @default(cuid())
+  itemId    String
+  item      Item        @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  source    WatchSource @default(AUTO)
+
+  watchedAt DateTime    @default(now())
+  createdAt DateTime    @default(now())
+
+  // Composite indexes only — single-column indexes are redundant when covered
+  // by composite indexes (leftmost prefix rule).
+  @@index([userId, watchedAt(sort: Desc)])  // "Watch Again" shelf ordering
+  @@index([itemId, userId, watchedAt(sort: Desc)])  // Dedup checks, watch status lookups + ORDER BY coverage
 }
 
 /// Join table for many-to-many relationship between Playlist and Item.

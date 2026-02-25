@@ -10,6 +10,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { serializeItemFile } from "@/lib/types";
 import { itemNameSchema, itemDescriptionSchema } from "@/lib/validations";
+import { isFileComplete } from "@/lib/progress-utils";
+import { createWatchRecordIfNotRecent } from "@/lib/watch-record-utils";
 import { checkRateLimit } from "@/lib/rate-limit";
 import {
   renameItemInGoogleDrive,
@@ -65,6 +67,14 @@ export async function updatePlaybackPosition(
           duration !== null && { playbackDuration: duration }),
       },
     });
+
+    // Auto-scrobble: create WatchRecord when crossing completion threshold.
+    // The threshold check is in JS (cheap) so we only hit the DB for dedup
+    // when the position is actually past 80%.
+    const effectiveDuration = duration ?? file.playbackDuration;
+    if (isFileComplete(position, effectiveDuration)) {
+      await createWatchRecordIfNotRecent(file.itemId, session.user.id, "AUTO");
+    }
 
     return { success: true };
   } catch {

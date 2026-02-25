@@ -14,6 +14,7 @@ import {
 } from "@/lib/item-file-actions";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { createWatchRecordIfNotRecent } from "@/lib/watch-record-utils";
 import { FileType } from "@prisma/client";
 
 // Mock @/lib/env
@@ -51,6 +52,10 @@ vi.mock("@/lib/prisma", () => ({
       delete: vi.fn(),
       deleteMany: vi.fn(),
     },
+    watchRecord: {
+      findFirst: vi.fn(),
+      create: vi.fn(),
+    },
     $transaction: vi.fn((updates) => Promise.all(updates)),
   },
 }));
@@ -58,6 +63,11 @@ vi.mock("@/lib/prisma", () => ({
 // Mock auth
 vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
+}));
+
+// Mock watch-record-utils (createWatchRecordIfNotRecent is called by auto-scrobble)
+vi.mock("@/lib/watch-record-utils", () => ({
+  createWatchRecordIfNotRecent: vi.fn().mockResolvedValue(true),
 }));
 
 // Mock Google Drive actions
@@ -419,6 +429,46 @@ describe("updatePlaybackPosition", () => {
           playbackDuration: 3600,
         },
       });
+    });
+  });
+
+  describe("auto-scrobble", () => {
+    it("calls createWatchRecordIfNotRecent when position crosses 80% threshold", async () => {
+      mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+      vi.mocked(prisma.itemFile.findUnique).mockResolvedValue({
+        ...mockItemFile({ playbackDuration: 100 }),
+        item: { userId: "user-1", id: "item-1" },
+      } as ReturnType<typeof prisma.itemFile.findUnique> extends Promise<
+        infer T
+      >
+        ? T
+        : never);
+      vi.mocked(prisma.itemFile.update).mockResolvedValue(mockItemFile());
+
+      await updatePlaybackPosition("file-1", 85, 100); // 85% > 80%
+
+      expect(createWatchRecordIfNotRecent).toHaveBeenCalledWith(
+        "item-1",
+        "user-1",
+        "AUTO"
+      );
+    });
+
+    it("does NOT call createWatchRecordIfNotRecent below 80% threshold", async () => {
+      mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+      vi.mocked(prisma.itemFile.findUnique).mockResolvedValue({
+        ...mockItemFile({ playbackDuration: 100 }),
+        item: { userId: "user-1", id: "item-1" },
+      } as ReturnType<typeof prisma.itemFile.findUnique> extends Promise<
+        infer T
+      >
+        ? T
+        : never);
+      vi.mocked(prisma.itemFile.update).mockResolvedValue(mockItemFile());
+
+      await updatePlaybackPosition("file-1", 70, 100); // 70% < 80%
+
+      expect(createWatchRecordIfNotRecent).not.toHaveBeenCalled();
     });
   });
 });

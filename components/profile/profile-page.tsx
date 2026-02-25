@@ -90,6 +90,8 @@ interface ProfilePageProps {
   publicPlaylists?: PublicPlaylistCard[];
   /** Server-fetched owner playlists (avoids client-side flash) */
   ownerPlaylists?: PlaylistWithCount[];
+  /** Server-rendered shelves (inserted between pinned and library) */
+  shelves?: React.ReactNode;
 }
 
 /**
@@ -124,6 +126,7 @@ export function ProfilePage({
   viewerProgress,
   publicPlaylists,
   ownerPlaylists,
+  shelves,
 }: ProfilePageProps) {
   if (isOwner) {
     return (
@@ -133,6 +136,7 @@ export function ProfilePage({
         hasDriveConnection={hasDriveConnection}
         libraryProgress={libraryProgress}
         ownerPlaylists={ownerPlaylists}
+        shelves={shelves}
       />
     );
   }
@@ -162,12 +166,14 @@ function OwnerModeContent({
   hasDriveConnection,
   libraryProgress,
   ownerPlaylists,
+  shelves,
 }: {
   profile: ProfileData;
   items: ItemWithArtwork[];
   hasDriveConnection: boolean;
   libraryProgress?: ItemProgress | null;
   ownerPlaylists?: PlaylistWithCount[];
+  shelves?: React.ReactNode;
 }) {
   const [isPending, startTransition] = useTransition();
   const [items, setItems] = useState(initialItems);
@@ -313,6 +319,7 @@ function OwnerModeContent({
         currentUser={currentUser}
         disableTreeView
         onItemsChange={setItems}
+        shelves={shelves}
       />
     </>
   );
