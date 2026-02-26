@@ -193,7 +193,8 @@ import {
 } from "./seed-config";
 import { assertDriveConfigured } from "@/lib/drive-verification";
 import { withAuditContext } from "@/lib/audit-context";
-import { ensureSystemPlaylists } from "@/lib/system-playlists";
+// ensureSystemPlaylists is dynamically imported after env vars are loaded
+// (static import would trigger lib/prisma.ts which caches DATABASE_URL too early)
 import { COMPLETION_THRESHOLD } from "@/lib/progress-utils";
 
 // Prisma will be dynamically imported after env vars are loaded
@@ -2400,6 +2401,8 @@ async function main(): Promise<void> {
         await seedPlaylistsForUser(userId, config.email);
 
         // Ensure system playlists exist (watchlist, continue watching, etc.)
+        const { ensureSystemPlaylists } =
+          await import("@/lib/system-playlists");
         await ensureSystemPlaylists(userId);
 
         // Create WatchRecords for completed items + populate Watchlist
