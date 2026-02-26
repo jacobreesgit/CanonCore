@@ -45,11 +45,58 @@ jobs:
       - name: Unused code check
         run: pnpm run knip
 
+  migrate:
+    name: Schema Migration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'push'
+    env:
+      DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Migrate development
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx prisma migrate deploy && npx prisma migrate status
+
+      - name: Migrate production
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        run: npx prisma migrate deploy && npx prisma migrate status
+
+      - name: Migrate demo
+        env:
+          DATABASE_URL: ${{ secrets.DEMO_DATABASE_URL }}
+        run: npx prisma migrate deploy && npx prisma migrate status
+
+      - name: Migrate seed
+        env:
+          DATABASE_URL: ${{ secrets.SEED_DATABASE_URL }}
+        run: npx prisma migrate deploy && npx prisma migrate status
+
   test:
     name: Tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: quality
+    needs: [quality, migrate]
+    if: always() && needs.quality.result == 'success' && (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
@@ -83,7 +130,8 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: quality
+    needs: [quality, migrate]
+    if: always() && needs.quality.result == 'success' && (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
