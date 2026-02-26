@@ -1,9 +1,6 @@
 name: Seed Database
 
 on:
-  workflow_run:
-    workflows: ["Schema Migration"]
-    types: [completed]
   workflow_dispatch:
     inputs:
       target:
