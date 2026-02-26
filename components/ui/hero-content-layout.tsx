@@ -37,7 +37,12 @@ export function HeroContentLayout({
   return (
     <div
       data-testid={dataTestId}
-      className={cn("flex flex-col", isPending && "opacity-70", className)}
+      className={cn(
+        "flex flex-col",
+        !hero && "pt-[calc(var(--header-height)+1rem)]",
+        isPending && "opacity-70",
+        className
+      )}
     >
       {hero}
       {children}
