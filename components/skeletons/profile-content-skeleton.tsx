@@ -46,7 +46,7 @@ export function ProfileContentSkeleton() {
       <Section className="py-4">
         <div className="flex w-full items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-white/[0.04] px-3 py-2">
           <div className="flex items-center gap-2">
-            <Skeleton className="h-8 w-20 rounded-md" />
+            <Skeleton className="h-11 w-20 rounded-md lg:h-8" />
             <Skeleton className="h-8 w-16 rounded-md" />
           </div>
           <div className="flex items-center gap-2">
@@ -58,7 +58,7 @@ export function ProfileContentSkeleton() {
       </Section>
 
       <Section className="pb-8">
-        <div className="grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="aspect-[2/3] w-full rounded-lg" />
           ))}

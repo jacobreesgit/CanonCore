@@ -25,7 +25,7 @@ describe("ProfileContentSkeleton", () => {
 
   it("renders poster grid with correct column breakpoints", () => {
     const { container } = render(<ProfileContentSkeleton />);
-    const grid = container.querySelector(".grid-cols-3");
+    const grid = container.querySelector(".grid-cols-2");
     expect(grid).toBeTruthy();
     const posters = grid!.querySelectorAll(
       '[data-slot="skeleton"][class*="aspect-"]'
