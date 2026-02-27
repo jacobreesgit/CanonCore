@@ -73,6 +73,8 @@ interface ItemWithFiles {
   tmdbType: string | null;
   tmdbPosterPath: string | null;
   tmdbBackdropPath: string | null;
+  tmdbLogoPath: string | null;
+  dominantColour: string | null;
   tmdbShowTagline: boolean;
   tmdbShowMetadata: boolean;
   tmdbShowGenres: boolean;
@@ -156,6 +158,8 @@ function toItemWithArtwork(
     tmdbShowRecommendations: item.tmdbShowRecommendations,
     tmdbPosterPath: item.tmdbPosterPath ?? null,
     tmdbBackdropPath: item.tmdbBackdropPath ?? null,
+    tmdbLogoPath: item.tmdbLogoPath ?? null,
+    dominantColour: item.dominantColour ?? null,
     artworkId,
     fileCounts,
     childCount,
@@ -2082,6 +2086,8 @@ export const getItemsForProfile = cache(
         tmdbShowRecommendations: true,
         tmdbPosterPath: item.tmdbPosterPath ?? null,
         tmdbBackdropPath: item.tmdbBackdropPath ?? null,
+        tmdbLogoPath: null,
+        dominantColour: item.dominantColour ?? null,
         fileCounts: item.fileCounts,
         childCount: 0,
         primaryMediaName: null,
@@ -2256,6 +2262,8 @@ export const getItemChildrenForProfile = cache(
         tmdbShowRecommendations: true,
         tmdbPosterPath: item.tmdbPosterPath ?? null,
         tmdbBackdropPath: item.tmdbBackdropPath ?? null,
+        tmdbLogoPath: null,
+        dominantColour: item.dominantColour ?? null,
         fileCounts: item.fileCounts,
         childCount: 0,
         primaryMediaName: null,

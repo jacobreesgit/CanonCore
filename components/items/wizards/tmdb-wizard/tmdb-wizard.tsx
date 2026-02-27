@@ -11,11 +11,13 @@ import {
   getSeasonImagesAction,
   getEpisodeImagesAction,
 } from "@/lib/tmdb-actions";
+import { getBestLogo } from "@/lib/tmdb-client";
 import { WizardStepIndicator } from "@/components/wizards/wizard-step-indicator";
 import { useTMDBWizard } from "./use-tmdb-wizard";
 import { TMDBTextStep } from "./text-step";
 import { TMDBPosterStep } from "./poster-step";
 import { TMDBHeroStep } from "./hero-step";
+import { TMDBLogoStep } from "./logo-step";
 import { TMDBStillStep } from "./still-step";
 import { TMDBSummaryStep } from "./summary-step";
 import type {
@@ -72,6 +74,7 @@ export function TMDBWizard({
   const wizardSeasonImages = wizard.data.seasonImages;
   const wizardPoster = wizard.data.poster;
   const wizardBackdrop = wizard.data.backdrop;
+  const wizardLogo = wizard.data.logo;
   const { setLoadingImages, setImages, setError, setData } = wizard;
 
   // Derive content type from initial data
@@ -205,6 +208,18 @@ export function TMDBWizard({
   const posterSkipped = wizardPoster?.skipped ?? false;
   const backdropValue = wizardBackdrop?.value ?? null;
   const backdropSkipped = wizardBackdrop?.skipped ?? false;
+  const logoValue = wizardLogo?.value ?? null;
+  const logoSkipped = wizardLogo?.skipped ?? false;
+
+  // Compute best logo path from loaded images (English preferred, tie-break by vote_average)
+  const bestLogoPath = useMemo(() => {
+    if (!wizardImages?.logos?.length) return null;
+    return getBestLogo({
+      backdrops: [],
+      posters: [],
+      logos: wizardImages.logos,
+    });
+  }, [wizardImages?.logos]);
 
   useEffect(() => {
     // Auto-select first poster if none selected and not skipped
@@ -236,13 +251,31 @@ export function TMDBWizard({
         },
       });
     }
+
+    // Auto-select best English logo if none selected and not skipped
+    if (
+      bestLogoPath &&
+      (logoValue === null || logoValue === undefined) &&
+      !logoSkipped
+    ) {
+      setData({
+        logo: {
+          value: bestLogoPath,
+          source: "tmdb",
+          skipped: false,
+        },
+      });
+    }
   }, [
     firstPosterPath,
     firstBackdropPath,
+    bestLogoPath,
     posterValue,
     posterSkipped,
     backdropValue,
     backdropSkipped,
+    logoValue,
+    logoSkipped,
     setData,
   ]);
 
@@ -312,6 +345,13 @@ export function TMDBWizard({
   }, [wizard]);
 
   /**
+   * Handles skipping logo step.
+   */
+  const handleSkipLogo = useCallback(() => {
+    wizard.skipLogo();
+  }, [wizard]);
+
+  /**
    * Handles skipping still step (for episodes).
    */
   const handleSkipStill = useCallback(() => {
@@ -330,6 +370,7 @@ export function TMDBWizard({
       const step = visibleSteps[i];
       if (step === "poster") wizard.skipPoster();
       else if (step === "hero") wizard.skipBackdrop();
+      else if (step === "logo") wizard.skipLogo();
       else if (step === "still") wizard.skipStill();
     }
 
@@ -379,6 +420,7 @@ export function TMDBWizard({
   const isArtworkStep =
     wizard.currentStep === "poster" ||
     wizard.currentStep === "hero" ||
+    wizard.currentStep === "logo" ||
     wizard.currentStep === "still";
   const hasMoreSteps = currentIndex < visibleSteps.length - 1;
   const showSkipAll = isArtworkStep && hasMoreSteps;
@@ -480,6 +522,16 @@ export function TMDBWizard({
             onFilesQueue={onHeroQueue}
             existingFiles={existingHero}
             onSkip={handleSkipBackdrop}
+          />
+        );
+
+      case "logo":
+        return (
+          <TMDBLogoStep
+            {...commonProps}
+            uploadMode={uploadMode}
+            hasDriveConnection={hasDriveConnection}
+            onSkip={handleSkipLogo}
           />
         );
 

@@ -199,6 +199,8 @@ export interface TMDBImages {
   backdrops: TMDBImage[];
   /** Poster images (2:3 portrait) */
   posters: TMDBImage[];
+  /** Logo images (transparent title treatments) — optional for backward compat */
+  logos?: TMDBImage[];
 }
 
 /**
@@ -481,6 +483,25 @@ export function getBackdropUrl(
   return `${TMDB_IMAGE_BASE}/${size}${backdropPath}`;
 }
 
+/** Logo sizes available from TMDB. */
+export type LogoSize = "w92" | "w154" | "w185" | "w300" | "w500" | "original";
+
+/**
+ * Constructs full logo image URL from TMDB path.
+ * Logos are transparent title treatment images.
+ *
+ * @param logoPath - TMDB logo path (e.g., "/abc123.png")
+ * @param size - Image size (default: original for crisp hero overlays)
+ * @returns Full image URL or null if invalid path
+ */
+export function getLogoUrl(
+  logoPath: string | null,
+  size: LogoSize = "original"
+): string | null {
+  if (!logoPath || !isValidImagePath(logoPath)) return null;
+  return `${TMDB_IMAGE_BASE}/${size}${logoPath}`;
+}
+
 /**
  * Extracts year from date string.
  *
@@ -526,6 +547,9 @@ export async function getMovieImages(
     posters: (data.posters || [])
       .filter((img) => isValidImagePath(img.file_path))
       .sort((a, b) => b.vote_average - a.vote_average),
+    logos: (data.logos || [])
+      .filter((img) => isValidImagePath(img.file_path))
+      .sort((a, b) => b.vote_average - a.vote_average),
   };
 }
 
@@ -548,6 +572,9 @@ export async function getTVShowImages(
       .filter((img) => isValidImagePath(img.file_path))
       .sort((a, b) => b.vote_average - a.vote_average),
     posters: (data.posters || [])
+      .filter((img) => isValidImagePath(img.file_path))
+      .sort((a, b) => b.vote_average - a.vote_average),
+    logos: (data.logos || [])
       .filter((img) => isValidImagePath(img.file_path))
       .sort((a, b) => b.vote_average - a.vote_average),
   };
@@ -647,6 +674,30 @@ export function getBestTextlessBackdrop(images: TMDBImages): string | null {
 
   // Already sorted by vote_average, so first is best
   return candidates[0]?.file_path || null;
+}
+
+/**
+ * Gets the best logo from an images collection.
+ * Prefers English (iso_639_1: "en") logos, scored with +500 bonus.
+ * Falls back to any valid logo when no English logos exist.
+ *
+ * @param images - TMDB images collection
+ * @returns Best logo path or null if none available
+ */
+export function getBestLogo(images: TMDBImages): string | null {
+  if (!images.logos?.length) return null;
+
+  const valid = images.logos.filter((img) => isValidImagePath(img.file_path));
+  if (!valid.length) return null;
+
+  // Score: +500 for English, then vote_average as tie-breaker
+  const scored = valid.map((img) => ({
+    path: img.file_path,
+    score: (img.iso_639_1 === "en" ? 500 : 0) + img.vote_average,
+  }));
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored[0].path;
 }
 
 // =============================================================================

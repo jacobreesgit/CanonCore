@@ -193,6 +193,7 @@ import {
 } from "./seed-config";
 import { assertDriveConfigured } from "@/lib/drive-verification";
 import { withAuditContext } from "@/lib/audit-context";
+import { extractDominantColour } from "@/lib/colour-extract";
 // ensureSystemPlaylists is dynamically imported after env vars are loaded
 // (static import would trigger lib/prisma.ts which caches DATABASE_URL too early)
 import { COMPLETION_THRESHOLD } from "@/lib/progress-utils";
@@ -245,6 +246,15 @@ interface TMDBEpisode {
   name: string;
   overview?: string;
   still_path?: string | null;
+}
+
+/** TMDB images response (subset used for logo fetching in seed). */
+interface TMDBImagesResponse {
+  logos?: Array<{
+    file_path: string;
+    iso_639_1: string | null;
+    vote_average: number;
+  }>;
 }
 
 interface DriveContext {
@@ -1314,6 +1324,31 @@ async function seedMoviesForUser(
       }
     }
 
+    // Fetch logo from TMDB images endpoint
+    let movieLogo: string | null = null;
+    let movieColour: string | null = null;
+
+    try {
+      const images = await tmdbFetch<TMDBImagesResponse>(
+        `/movie/${movieId}/images`
+      );
+      if (images?.logos?.length) {
+        const englishLogos = images.logos.filter((l) => l.iso_639_1 === "en");
+        const candidates =
+          englishLogos.length > 0 ? englishLogos : images.logos;
+        candidates.sort((a, b) => b.vote_average - a.vote_average);
+        movieLogo = candidates[0]?.file_path ?? null;
+      }
+    } catch {
+      // Non-blocking — logo is optional
+    }
+
+    if (movie.backdrop_path) {
+      movieColour = await extractDominantColour(
+        `https://image.tmdb.org/t/p/w300${movie.backdrop_path}`
+      );
+    }
+
     // Create Item record at root level
     const item = await prisma.item.create({
       data: {
@@ -1329,6 +1364,8 @@ async function seedMoviesForUser(
         tmdbType: "movie",
         tmdbPosterPath: movie.poster_path,
         tmdbBackdropPath: movie.backdrop_path,
+        tmdbLogoPath: movieLogo,
+        dominantColour: movieColour,
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: movieDriveFolderId,
         syncStatus: movieDriveFolderId ? SyncStatus.SYNCED : SyncStatus.PENDING,
@@ -1427,6 +1464,14 @@ async function seedEpisodes(
       }
     }
 
+    // Extract dominant colour from episode still (episodes don't have logos on TMDB)
+    let episodeColour: string | null = null;
+    if (episode.still_path) {
+      episodeColour = await extractDominantColour(
+        `https://image.tmdb.org/t/p/w300${episode.still_path}`
+      );
+    }
+
     // Create episode Item (depth 2: show > season > episode)
     const episodeItem = await prisma.item.create({
       data: {
@@ -1442,6 +1487,7 @@ async function seedEpisodes(
         tmdbType: "episode",
         tmdbPosterPath: episode.still_path ?? null,
         tmdbBackdropPath: episode.still_path ?? null,
+        dominantColour: episodeColour,
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: episodeDriveFolderId,
         syncStatus: episodeDriveFolderId
@@ -1655,6 +1701,14 @@ async function seedSeasons(
       }
     }
 
+    // Extract dominant colour from season poster (seasons don't have logos on TMDB)
+    let seasonColour: string | null = null;
+    if (season.poster_path) {
+      seasonColour = await extractDominantColour(
+        `https://image.tmdb.org/t/p/w300${season.poster_path}`
+      );
+    }
+
     // Create season Item (depth 1: show > season)
     const seasonItem = await prisma.item.create({
       data: {
@@ -1670,6 +1724,7 @@ async function seedSeasons(
         tmdbType: "season",
         tmdbPosterPath: season.poster_path,
         tmdbBackdropPath: season.poster_path,
+        dominantColour: seasonColour,
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: seasonDriveFolderId,
         syncStatus: seasonDriveFolderId
@@ -1765,6 +1820,31 @@ async function seedTVShowsForUser(
       }
     }
 
+    // Fetch logo from TMDB images endpoint
+    let showLogo: string | null = null;
+    let showColour: string | null = null;
+
+    try {
+      const images = await tmdbFetch<TMDBImagesResponse>(
+        `/tv/${showId}/images`
+      );
+      if (images?.logos?.length) {
+        const englishLogos = images.logos.filter((l) => l.iso_639_1 === "en");
+        const candidates =
+          englishLogos.length > 0 ? englishLogos : images.logos;
+        candidates.sort((a, b) => b.vote_average - a.vote_average);
+        showLogo = candidates[0]?.file_path ?? null;
+      }
+    } catch {
+      // Non-blocking — logo is optional
+    }
+
+    if (show.backdrop_path) {
+      showColour = await extractDominantColour(
+        `https://image.tmdb.org/t/p/w300${show.backdrop_path}`
+      );
+    }
+
     // Create Item record (depth 0: root level)
     const item = await prisma.item.create({
       data: {
@@ -1780,6 +1860,8 @@ async function seedTVShowsForUser(
         tmdbType: "tv",
         tmdbPosterPath: show.poster_path,
         tmdbBackdropPath: show.backdrop_path,
+        tmdbLogoPath: showLogo,
+        dominantColour: showColour,
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: showDriveFolderId,
         syncStatus: showDriveFolderId ? SyncStatus.SYNCED : SyncStatus.PENDING,

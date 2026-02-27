@@ -16,6 +16,7 @@ import {
   faFileLines,
   faFilm,
   faGears,
+  faSignature,
   faWandMagicSparkles,
   faChevronLeft,
   faChevronRight,
@@ -248,6 +249,27 @@ export function ItemSettingsDialog({
       />
 
       <FileTypeCombobox
+        label="Logo"
+        description="Transparent logo image displayed over the hero."
+        icon={faSignature}
+        files={files.artwork}
+        selectedId={form.logoArtworkId}
+        onSelect={form.setLogoArtworkId}
+        onUploadComplete={form.handleUploadComplete}
+        onFileDeleted={form.handleFileDeleted}
+        itemId={item.id}
+        fileType="artwork"
+        disabled={!hasDriveConnection}
+        note={
+          item.tmdbLogoPath ? (
+            <Badge variant="destructive">
+              Currently using TMDB logo. Upload to override.
+            </Badge>
+          ) : undefined
+        }
+      />
+
+      <FileTypeCombobox
         label="Default Subtitle"
         description="The subtitle track that loads by default."
         icon={faFileLines}
@@ -272,6 +294,7 @@ export function ItemSettingsDialog({
       onSettingsChange={onSettingsChange ?? (async () => {})}
       hasUploadedPoster={!!form.primaryArtworkId}
       hasUploadedHero={!!form.heroArtworkId}
+      hasUploadedLogo={!!form.logoArtworkId}
     />
   ) : undefined;
 

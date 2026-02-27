@@ -63,6 +63,10 @@ export interface PublicItem {
   tmdbPosterPath: string | null;
   /** TMDB backdrop path for CDN display */
   tmdbBackdropPath: string | null;
+  /** TMDB logo path for transparent title treatment overlay */
+  tmdbLogoPath: string | null;
+  /** Dominant colour extracted from backdrop (hex, e.g. "#1a3a5c") */
+  dominantColour: string | null;
   /** First artwork file ID for thumbnail (fallback when no TMDB path) */
   artworkId: string | null;
   /** TMDB ID for metadata */
@@ -294,6 +298,8 @@ export const getPublicItem = cache(
         tmdbType: true,
         tmdbPosterPath: true,
         tmdbBackdropPath: true,
+        tmdbLogoPath: true,
+        dominantColour: true,
         tmdbShowTagline: true,
         tmdbShowMetadata: true,
         tmdbShowGenres: true,
@@ -327,6 +333,8 @@ export const getPublicItem = cache(
       userId: item.userId,
       tmdbPosterPath: item.tmdbPosterPath ?? null,
       tmdbBackdropPath: item.tmdbBackdropPath ?? null,
+      tmdbLogoPath: item.tmdbLogoPath ?? null,
+      dominantColour: item.dominantColour ?? null,
       artworkId: resolveArtworkId(item),
       tmdbId: item.tmdbId,
       tmdbType: item.tmdbType,
@@ -392,6 +400,8 @@ export async function getPublicItemsForUser(
       tmdbType: true,
       tmdbPosterPath: true,
       tmdbBackdropPath: true,
+      tmdbLogoPath: true,
+      dominantColour: true,
       tmdbShowTagline: true,
       tmdbShowMetadata: true,
       tmdbShowGenres: true,
@@ -492,6 +502,8 @@ export async function getPublicItemsForUser(
       userId: item.userId,
       tmdbPosterPath: item.tmdbPosterPath ?? null,
       tmdbBackdropPath: item.tmdbBackdropPath ?? null,
+      tmdbLogoPath: item.tmdbLogoPath ?? null,
+      dominantColour: item.dominantColour ?? null,
       artworkId: resolveArtworkId(item),
       tmdbId: item.tmdbId,
       tmdbType: item.tmdbType,
@@ -567,6 +579,8 @@ export async function getPublicChildItems(
       tmdbType: true,
       tmdbPosterPath: true,
       tmdbBackdropPath: true,
+      tmdbLogoPath: true,
+      dominantColour: true,
       tmdbShowTagline: true,
       tmdbShowMetadata: true,
       tmdbShowGenres: true,
@@ -600,6 +614,8 @@ export async function getPublicChildItems(
       userId: item.userId,
       tmdbPosterPath: item.tmdbPosterPath ?? null,
       tmdbBackdropPath: item.tmdbBackdropPath ?? null,
+      tmdbLogoPath: item.tmdbLogoPath ?? null,
+      dominantColour: item.dominantColour ?? null,
       artworkId: resolveArtworkId(item),
       tmdbId: item.tmdbId,
       tmdbType: item.tmdbType,
@@ -714,6 +730,8 @@ export const getPublicDescendants = cache(
         tmdbType: true,
         tmdbPosterPath: true,
         tmdbBackdropPath: true,
+        tmdbLogoPath: true,
+        dominantColour: true,
         tmdbShowTagline: true,
         tmdbShowMetadata: true,
         tmdbShowGenres: true,
@@ -745,6 +763,8 @@ export const getPublicDescendants = cache(
         userId: item.userId,
         tmdbPosterPath: item.tmdbPosterPath ?? null,
         tmdbBackdropPath: item.tmdbBackdropPath ?? null,
+        tmdbLogoPath: item.tmdbLogoPath ?? null,
+        dominantColour: item.dominantColour ?? null,
         artworkId: resolveArtworkId(item),
         tmdbId: item.tmdbId,
         tmdbType: item.tmdbType,
@@ -814,6 +834,8 @@ export async function getExploreItems(
       tmdbType: true,
       tmdbPosterPath: true,
       tmdbBackdropPath: true,
+      tmdbLogoPath: true,
+      dominantColour: true,
       tmdbShowTagline: true,
       tmdbShowMetadata: true,
       tmdbShowGenres: true,
@@ -937,6 +959,8 @@ export async function getExploreItems(
         userId: item.userId,
         tmdbPosterPath: item.tmdbPosterPath ?? null,
         tmdbBackdropPath: item.tmdbBackdropPath ?? null,
+        tmdbLogoPath: item.tmdbLogoPath ?? null,
+        dominantColour: item.dominantColour ?? null,
         artworkId: resolveArtworkId(item),
         tmdbId: item.tmdbId,
         tmdbType: item.tmdbType,
@@ -1288,6 +1312,10 @@ export interface FeaturedItem {
   description: string | null;
   /** TMDB backdrop path for CDN hero display (takes precedence over artworkId) */
   tmdbBackdropPath: string | null;
+  /** TMDB logo path for transparent title treatment overlay */
+  tmdbLogoPath: string | null;
+  /** Dominant colour extracted from backdrop (hex, e.g. "#1a3a5c") */
+  dominantColour: string | null;
   /** Artwork file ID for background image (fallback when no TMDB path) */
   artworkId: string | null;
   /** Owner username for attribution */
@@ -1340,6 +1368,8 @@ export const getFeaturedItems = cache(
           tmdbId: true,
           tmdbType: true,
           tmdbBackdropPath: true,
+          tmdbLogoPath: true,
+          dominantColour: true,
           files: {
             where: { fileType: "ARTWORK" },
             select: { id: true },
@@ -1370,6 +1400,8 @@ export const getFeaturedItems = cache(
           name: item.name,
           description: item.description,
           tmdbBackdropPath: item.tmdbBackdropPath ?? null,
+          tmdbLogoPath: item.tmdbLogoPath ?? null,
+          dominantColour: item.dominantColour ?? null,
           artworkId: item.files[0]?.id ?? null,
           ownerUsername: item.user.username as string, // Safe due to filter
           ownerName: item.user.name,

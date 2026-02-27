@@ -42,6 +42,9 @@ export interface Item {
   // TMDB image paths (served directly from TMDB CDN)
   tmdbPosterPath: string | null;
   tmdbBackdropPath: string | null;
+  tmdbLogoPath: string | null;
+  // Dominant colour extracted from backdrop (hex, e.g. "#1a3a5c")
+  dominantColour: string | null;
   // TMDB display preferences
   tmdbShowTagline: boolean;
   tmdbShowMetadata: boolean;
@@ -155,6 +158,7 @@ export interface ItemFile {
   // User overrides
   isPrimary: boolean;
   isHero: boolean;
+  isLogo: boolean;
   playbackPosition: number | null;
   playbackDuration: number | null;
   createdAt: Date;
@@ -180,6 +184,7 @@ export interface SerializedItemFile {
   // User overrides
   isPrimary: boolean;
   isHero: boolean;
+  isLogo: boolean;
   playbackPosition: number | null;
   playbackDuration: number | null;
   createdAt: Date;

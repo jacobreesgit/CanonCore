@@ -48,9 +48,9 @@ Vidstack-powered player streams media directly from Google Drive via HTTP range 
 
 ### One-Click Metadata
 
-You can enrich movies and TV shows with TMDB metadata. A four-step wizard lets you search for a title, review the description, select from multiple poster options, choose a backdrop image, and review everything before applying. For TV shows, an episode picker lets you navigate into seasons and episodes. Per-item display toggles control what metadata appears: tagline, cast, genres, providers, and videos.
+You can enrich movies and TV shows with TMDB metadata. A five-step wizard lets you search for a title, review the description, select from multiple poster options, choose a backdrop image, pick a logo title treatment, and review everything before applying. The wizard auto-extracts the backdrop's dominant colour and selects the best English logo during application. For TV shows, an episode picker lets you navigate into seasons and episodes. Per-item display toggles control what metadata appears: tagline, cast, genres, providers, and videos.
 
-After the initial wizard, per-field artwork editing lets you change an individual poster, backdrop, or episode still without re-applying all metadata. An inline detach flow removes all TMDB data with a single confirmation while preserving the item's name and description. Override badges on the Files tab show when uploaded artwork takes precedence over TMDB artwork. The same settings form powers both the desktop dialog and mobile bottom sheet through a shared hook.
+After the initial wizard, per-field artwork editing lets you change an individual poster, backdrop, logo, or episode still without re-applying all metadata. An inline detach flow removes all TMDB data with a single confirmation while preserving the item's name and description. Override badges on the Files tab show when uploaded artwork takes precedence over TMDB artwork. The same settings form powers both the desktop dialog and mobile bottom sheet through a shared hook.
 
 ### Progress Tracking
 
@@ -82,9 +82,15 @@ Conflict detection compares timestamps bidirectionally: if Drive's modifiedTime 
 
 Press `/` to open Spotlight Search anywhere in the app. Results load in parallel across four sections: Your Items, Playlists, Public Collections, and People. A module-level cache with a 60-second TTL gives you instant responses on repeat searches. Breadcrumb paths reveal each item's full hierarchy.
 
+### Cinematic Visual Pipeline
+
+Every item page adapts its colour palette to the content. When you apply TMDB metadata, the system extracts the dominant colour from the backdrop image using sharp's colour frequency analysis, boosts its saturation to stay vibrant within a dark theme, and generates ten colour shades that propagate through the entire page via CSS custom properties. Hero overlays, gradient fades, and background tones all shift to match the item's mood — a cool blue for ocean scenes, warm amber for desert landscapes. The carousel crossfades smoothly between colours as slides advance, using `@property`-registered CSS variables that enable transitions on custom properties (normally impossible without explicit type registration). All colour math runs client-side with zero external dependencies.
+
+TMDB logos — transparent title treatment images — replace text titles in the hero banner when available. The system auto-selects the best English logo during metadata application, with responsive sizing constraints that adapt from mobile to ultrawide. Manual logo uploads take priority over TMDB logos, with a text title fallback if both fail.
+
 ### Cinematic Hero
 
-The explore page features a cinematic hero carousel that auto-advances through featured collections with rich TMDB metadata — tagline, release year, runtime, genres, and content rating. Item detail pages show a single hero banner with the item's backdrop artwork. Playlist detail pages use a mosaic backdrop composited from the playlist's item artwork. Sync status indicators appear inline in the hero metadata line for the current user's own items — a check icon for synced, animated spinner for syncing, dot for pending, and warning triangle for errors. Sync data is filtered server-side so other users' Drive state is never exposed.
+The explore page features a cinematic hero carousel with Embla fade transitions that crossfades between featured collections with rich TMDB metadata — tagline, release year, runtime, genres, and content rating. Item detail pages show a single hero banner with the item's backdrop artwork and logo overlay. Playlist detail pages use a mosaic backdrop composited from the playlist's item artwork. Sync status indicators appear inline in the hero metadata line for the current user's own items — a check icon for synced, animated spinner for syncing, dot for pending, and warning triangle for errors. Sync data is filtered server-side so other users' Drive state is never exposed.
 
 ### URL State
 
@@ -148,7 +154,11 @@ WCAG 2.1 AA compliant throughout, enforced by automated testing. Every component
 
 ### CI/CD
 
-GitHub Actions pipeline enforces quality on every push and pull request. A quality gate runs format check, lint, type check, and unused code detection. Tests and production build run in parallel after the gate passes. Conventional commits enforced by commitlint with pre-commit hooks running ESLint and Prettier on staged files.
+GitHub Actions pipeline enforces quality on every push and pull request. A quality gate runs format check, lint, type check, and unused code detection. Schema migrations deploy automatically via `prisma migrate deploy` across four Neon database branches — development, production, demo, and seed — scoped by Git branch to prevent advisory lock contention between parallel runs. Tests and production build run in parallel after both the quality gate and migrations pass, with conditional logic so PRs (which skip migrations) still run tests normally.
+
+A separate seed workflow repopulates databases on manual dispatch, targeting development, demo, or screenshot environments independently. An integration test verifies migration idempotency — running `prisma migrate deploy` twice in a row always succeeds.
+
+Conventional commits enforced by commitlint with pre-commit hooks running ESLint and Prettier on staged files.
 
 ### Testing
 
@@ -162,7 +172,7 @@ All custom components are documented in Storybook with stories, accessibility ch
 
 ## Tech Stack
 
-**Front End:** Next.js 16, React 19, TypeScript, Tailwind CSS 4, shadcn/ui, Font Awesome 7, Vidstack, dnd-kit, cmdk, nuqs, Embla Carousel
+**Front End:** Next.js 16, React 19, TypeScript, Tailwind CSS 4, shadcn/ui, Font Awesome 7, Vidstack, dnd-kit, cmdk, nuqs, Embla Carousel (fade transitions)
 
 **Back End:** Prisma 7, NextAuth.js v5, Server Actions
 

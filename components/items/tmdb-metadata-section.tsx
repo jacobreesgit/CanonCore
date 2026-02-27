@@ -9,6 +9,7 @@
 import { useCallback, useState } from "react";
 import {
   faImage,
+  faSignature,
   faWandMagicSparkles,
 } from "@fortawesome/free-solid-svg-icons";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,12 @@ import { TmdbArtworkField } from "@/components/items/tmdb-artwork-field";
 import { TmdbArtworkChangeDialog } from "@/components/items/tmdb-artwork-change-dialog";
 import { TmdbDisplayOptionsEditor } from "@/components/items/tmdb-display-options";
 import { clearTmdbFieldAction } from "@/lib/tmdb-actions";
-import { getPosterUrl, getBackdropUrl, getStillUrl } from "@/lib/tmdb-client";
+import {
+  getPosterUrl,
+  getBackdropUrl,
+  getStillUrl,
+  getLogoUrl,
+} from "@/lib/tmdb-client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { TmdbDisplayOptions } from "@/lib/types";
@@ -30,6 +36,7 @@ interface TmdbMetadataSectionProps {
     tmdbType: string | null;
     tmdbPosterPath: string | null;
     tmdbBackdropPath: string | null;
+    tmdbLogoPath: string | null;
     name: string;
     description: string | null;
   };
@@ -46,6 +53,8 @@ interface TmdbMetadataSectionProps {
   hasUploadedPoster?: boolean;
   /** Whether the item has an uploaded hero file (overrides TMDB backdrop) */
   hasUploadedHero?: boolean;
+  /** Whether the item has an uploaded logo file (overrides TMDB logo) */
+  hasUploadedLogo?: boolean;
 }
 
 export function TmdbMetadataSection({
@@ -58,9 +67,10 @@ export function TmdbMetadataSection({
   onSettingsChange,
   hasUploadedPoster,
   hasUploadedHero,
+  hasUploadedLogo,
 }: TmdbMetadataSectionProps) {
   const [openArtworkDialog, setOpenArtworkDialog] = useState<
-    "poster" | "backdrop" | "still" | null
+    "poster" | "backdrop" | "still" | "logo" | null
   >(null);
   const [isClearing, setIsClearing] = useState(false);
 
@@ -73,14 +83,20 @@ export function TmdbMetadataSection({
     contentType === "show" ||
     contentType === "season";
   const showBackdrop = contentType === "movie" || contentType === "show";
+  const showLogo = contentType === "movie" || contentType === "show";
   const showStill = contentType === "episode";
 
   const handleClear = useCallback(
-    async (field: "poster" | "backdrop") => {
+    async (field: "poster" | "backdrop" | "logo") => {
       setIsClearing(true);
       const result = await clearTmdbFieldAction(item.id, field);
       if (result.success) {
-        toast.success(`${field === "poster" ? "Poster" : "Backdrop"} cleared`);
+        const labelMap = {
+          poster: "Poster",
+          backdrop: "Backdrop",
+          logo: "Logo",
+        } as const;
+        toast.success(`${labelMap[field]} cleared`);
         await onSettingsChange();
       } else {
         toast.error(result.error);
@@ -136,6 +152,27 @@ export function TmdbMetadataSection({
             isLoading={isClearing}
             note={
               hasUploadedHero ? (
+                <Badge variant="destructive">
+                  Overridden by uploaded artwork
+                </Badge>
+              ) : undefined
+            }
+          />
+        )}
+
+        {/* Logo — movies and shows only */}
+        {showLogo && (
+          <TmdbArtworkField
+            label="Logo"
+            icon={faSignature}
+            description="The logo image from TMDB displayed over the hero."
+            imagePath={item.tmdbLogoPath}
+            imageUrl={getLogoUrl(item.tmdbLogoPath, "w300")}
+            onChange={() => setOpenArtworkDialog("logo")}
+            onClear={() => handleClear("logo")}
+            isLoading={isClearing}
+            note={
+              hasUploadedLogo ? (
                 <Badge variant="destructive">
                   Overridden by uploaded artwork
                 </Badge>

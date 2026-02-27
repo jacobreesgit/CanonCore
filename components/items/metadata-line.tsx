@@ -3,6 +3,7 @@
  * Uses tabular-nums for aligned numbers and subtle separator dots.
  */
 
+import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faStar,
@@ -32,6 +33,10 @@ interface MetadataLineProps {
   syncStatus?: SyncStatus;
   /** Google Drive folder ID — shows synced indicator when linked. */
   driveFileId?: string | null;
+  /** Attribution text (e.g., "Shared by @username"). */
+  attribution?: string;
+  /** Link destination for the attribution text. */
+  attributionHref?: string;
   /** Additional CSS classes. */
   className?: string;
 }
@@ -48,6 +53,8 @@ export function MetadataLine({
   maxGenres = 3,
   syncStatus,
   driveFileId,
+  attribution,
+  attributionHref,
   className,
 }: MetadataLineProps) {
   const items: React.ReactNode[] = [];
@@ -136,6 +143,23 @@ export function MetadataLine({
           aria-hidden="true"
         />
         <span>Synced</span>
+      </span>
+    );
+  }
+
+  if (attribution) {
+    items.push(
+      <span key="attribution">
+        {attributionHref ? (
+          <Link
+            href={attributionHref}
+            className="pointer-events-auto underline decoration-white/0 underline-offset-2 transition-[text-decoration-color] hover:decoration-white/50"
+          >
+            {attribution}
+          </Link>
+        ) : (
+          attribution
+        )}
       </span>
     );
   }

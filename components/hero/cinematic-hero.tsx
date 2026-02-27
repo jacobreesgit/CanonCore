@@ -13,12 +13,13 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import useEmblaCarousel from "embla-carousel-react";
+import Fade from "embla-carousel-fade";
 
 import { cn } from "@/lib/utils";
+import { createColourShades } from "@/lib/colour-utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MetadataLine } from "@/components/items/metadata-line";
 
@@ -39,12 +40,17 @@ export function CinematicHero({
   autoAdvanceInterval = 5000,
   enableKenBurns = true,
   backgroundElement,
+  onColourChange,
   className,
 }: CinematicHeroProps) {
-  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
+  const [emblaRef, emblaApi] = useEmblaCarousel(
+    { loop: true, watchDrag: false },
+    [Fade()]
+  );
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [imageLoaded, setImageLoaded] = useState<Record<string, boolean>>({});
+  const [logoErrorIds, setLogoErrorIds] = useState<Set<string>>(new Set());
 
   const isSingleSlide = slides.length === 1;
 
@@ -93,18 +99,33 @@ export function CinematicHero({
     [emblaApi]
   );
 
-  // Track image loading state
-  const handleImageLoad = useCallback((slideId: string) => {
+  // Track image settled state (fires on both load and error)
+  const handleImageSettled = useCallback((slideId: string) => {
     setImageLoaded((prev) => ({ ...prev, [slideId]: true }));
   }, []);
 
+  const activeSlide = slides[activeIndex];
+  const activeDominantColour = activeSlide?.dominantColour ?? null;
+  const colourStyles = useMemo(
+    () =>
+      activeDominantColour
+        ? createColourShades(activeDominantColour)
+        : undefined,
+    [activeDominantColour]
+  );
+
+  // Notify parent of colour changes (for page-level theming)
+  useEffect(() => {
+    onColourChange?.(activeDominantColour);
+  }, [activeDominantColour, onColourChange]);
+
+  // Logo error is tracked per slide — only suppress logo for the slide that failed
+  const logoError = logoErrorIds.has(activeSlide?.id ?? "");
+
   // Don't render anything if no slides
-  if (slides.length === 0) {
+  if (slides.length === 0 || !activeSlide) {
     return null;
   }
-
-  const activeSlide = slides[activeIndex];
-  if (!activeSlide) return null;
 
   const Heading = headingLevel;
 
@@ -114,9 +135,11 @@ export function CinematicHero({
   return (
     <section
       className={cn(
-        "relative h-[calc(55vh+var(--header-height))] w-full overflow-hidden md:h-[calc(65vh+var(--header-height))]",
+        "relative h-[calc(55vh+var(--header-height))] w-full overflow-hidden bg-[var(--dark-900)] md:h-[calc(65vh+var(--header-height))]",
+        activeDominantColour && "transition-colours-pipeline",
         className
       )}
+      style={colourStyles}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       role="region"
@@ -171,8 +194,8 @@ export function CinematicHero({
                       imageLoaded[slide.id] ? "opacity-100" : "opacity-0",
                       enableKenBurns && "ken-burns"
                     )}
-                    onLoad={() => handleImageLoad(slide.id)}
-                    onError={() => handleImageLoad(slide.id)}
+                    onLoad={() => handleImageSettled(slide.id)}
+                    onError={() => handleImageSettled(slide.id)}
                     unoptimized={backgroundSrc.startsWith("/api/")}
                   />
                 ) : (
@@ -186,10 +209,18 @@ export function CinematicHero({
                   />
                 )}
 
-                {/* Cinematic diagonal overlay — strongest at bottom-left content area */}
+                {/* Cinematic diagonal overlay — strongest at bottom-left content area.
+                   Built inline so it resolves --dark-900 from the hero's own
+                   colour scope (inline styles) rather than the :root initial value. */}
                 <div
                   className="absolute inset-0"
-                  style={{ background: "var(--gradient-hero-overlay)" }}
+                  style={{
+                    background: [
+                      "linear-gradient(to top right, color-mix(in srgb, var(--dark-900) 95%, transparent) 0%, color-mix(in srgb, var(--dark-900) 70%, transparent) 25%, color-mix(in srgb, var(--dark-900) 30%, transparent) 50%, transparent 70%)",
+                      "linear-gradient(to top, var(--dark-900) 0%, color-mix(in srgb, var(--dark-900) 70%, transparent) 20%, color-mix(in srgb, var(--dark-900) 30%, transparent) 40%, transparent 55%)",
+                      "linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 25%)",
+                    ].join(", "),
+                  }}
                   aria-hidden="true"
                 />
               </div>
@@ -262,45 +293,51 @@ export function CinematicHero({
           ) : (
             /* Standard item/explore layout */
             <>
-              {/* Attribution */}
-              {activeSlide.attribution && (
-                <p className="mb-2 text-sm text-white/50">
-                  {activeSlide.attributionHref ? (
-                    <Link
-                      href={activeSlide.attributionHref}
-                      className="pointer-events-auto underline decoration-white/0 underline-offset-2 transition-[text-decoration-color] hover:decoration-white/50"
-                    >
-                      {activeSlide.attribution}
-                    </Link>
-                  ) : (
-                    activeSlide.attribution
+              {/* Title — logo image with text fallback on error */}
+              {activeSlide.logoImage && !logoError ? (
+                <div className="relative">
+                  <Image
+                    src={activeSlide.logoImage}
+                    alt={activeSlide.name}
+                    width={400}
+                    height={140}
+                    sizes="(max-width: 640px) 220px, (max-width: 768px) 280px, (max-width: 1024px) 350px, 400px"
+                    className="h-auto max-h-[80px] w-auto max-w-[220px] object-contain object-left drop-shadow-lg sm:max-h-[100px] sm:max-w-[280px] md:max-h-[120px] md:max-w-[350px] lg:max-h-[140px] lg:max-w-[400px]"
+                    unoptimized={activeSlide.logoImage.startsWith("/api/")}
+                    onError={() =>
+                      setLogoErrorIds((prev) =>
+                        new Set(prev).add(activeSlide.id)
+                      )
+                    }
+                  />
+                  {/* sr-only title for accessibility */}
+                  <Heading className="sr-only">{activeSlide.name}</Heading>
+                </div>
+              ) : (
+                <Heading
+                  className={cn(
+                    "font-bold tracking-tight text-balance",
+                    "text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl",
+                    "text-white drop-shadow-lg"
                   )}
-                </p>
+                >
+                  {activeSlide.name}
+                </Heading>
               )}
-
-              {/* Title */}
-              <Heading
-                className={cn(
-                  "font-bold tracking-tight text-balance",
-                  "text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl",
-                  "text-white drop-shadow-lg"
-                )}
-              >
-                {activeSlide.name}
-              </Heading>
 
               {/* Tagline */}
               {activeSlide.tagline && (
-                <p className="mt-2 text-lg text-white/70 italic md:text-xl">
+                <p className="mt-5 text-lg text-white/70 italic md:text-xl">
                   &ldquo;{activeSlide.tagline}&rdquo;
                 </p>
               )}
 
-              {/* Metadata line (includes genres and sync status inline) */}
+              {/* Metadata line (includes genres, sync status, and attribution inline) */}
               {(activeSlide.metadata ||
                 (activeSlide.genres && activeSlide.genres.length > 0) ||
                 activeSlide.syncStatus ||
-                activeSlide.driveFileId) && (
+                activeSlide.driveFileId ||
+                activeSlide.attribution) && (
                 <div className="mt-4">
                   <MetadataLine
                     year={activeSlide.metadata?.year}
@@ -310,6 +347,8 @@ export function CinematicHero({
                     genres={activeSlide.genres}
                     syncStatus={activeSlide.syncStatus}
                     driveFileId={activeSlide.driveFileId}
+                    attribution={activeSlide.attribution}
+                    attributionHref={activeSlide.attributionHref}
                   />
                 </div>
               )}
@@ -323,7 +362,7 @@ export function CinematicHero({
 
               {/* Progress bar */}
               {typeof activeSlide.progress === "number" && (
-                <div className="mt-5">
+                <div className="mt-6">
                   <ProgressBar
                     progress={activeSlide.progress}
                     label={activeSlide.progressLabel}
@@ -335,7 +374,7 @@ export function CinematicHero({
 
           {/* Actions */}
           {resolvedActions && (
-            <div className="pointer-events-auto mt-5 flex flex-wrap gap-3">
+            <div className="pointer-events-auto mt-6 flex flex-wrap gap-3">
               {resolvedActions}
             </div>
           )}

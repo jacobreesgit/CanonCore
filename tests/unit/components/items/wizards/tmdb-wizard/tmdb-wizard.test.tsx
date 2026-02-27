@@ -98,7 +98,7 @@ describe("TMDBWizard", () => {
   });
 
   describe("visible steps based on content type", () => {
-    it("shows text, poster, hero, summary steps for movies with Drive", async () => {
+    it("shows text, poster, hero, logo, summary steps for movies with Drive", async () => {
       const movieData: TMDBWizardInitialData = {
         tmdbResult: { ...mockTmdbResult, mediaType: "movie" },
         preview: mockPreview,
@@ -120,15 +120,16 @@ describe("TMDBWizard", () => {
         />
       );
 
-      // Should show step indicator with all 4 steps (text appears twice: indicator + heading)
+      // Should show step indicator with all 5 steps (text appears twice: indicator + heading)
       expect(screen.getAllByText("Title & Description")).toHaveLength(2);
-      // Poster and Hero appear only in step indicator at text step
+      // Poster, Hero, Logo appear only in step indicator at text step
       expect(screen.getByText("Poster")).toBeInTheDocument();
       expect(screen.getByText("Hero Image")).toBeInTheDocument();
+      expect(screen.getByText("Logo")).toBeInTheDocument();
       expect(screen.getByText("Review")).toBeInTheDocument();
     });
 
-    it("shows text, poster, hero, summary steps for shows with Drive", async () => {
+    it("shows text, poster, hero, logo, summary steps for shows with Drive", async () => {
       const showData: TMDBWizardInitialData = {
         tmdbResult: mockTmdbResult,
         preview: mockPreview,
@@ -150,10 +151,11 @@ describe("TMDBWizard", () => {
         />
       );
 
-      // Should show step indicator with all 4 steps
+      // Should show step indicator with all 5 steps
       expect(screen.getAllByText("Title & Description")).toHaveLength(2);
       expect(screen.getByText("Poster")).toBeInTheDocument();
       expect(screen.getByText("Hero Image")).toBeInTheDocument();
+      expect(screen.getByText("Logo")).toBeInTheDocument();
       expect(screen.getByText("Review")).toBeInTheDocument();
     });
 
@@ -238,10 +240,11 @@ describe("TMDBWizard", () => {
         />
       );
 
-      // Should show all 4 steps — TMDB images served from CDN, no Drive needed
+      // Should show all 5 steps — TMDB images served from CDN, no Drive needed
       expect(screen.getAllByText("Title & Description")).toHaveLength(2);
       expect(screen.getByText("Poster")).toBeInTheDocument();
       expect(screen.getByText("Hero Image")).toBeInTheDocument();
+      expect(screen.getByText("Logo")).toBeInTheDocument();
       expect(screen.getByText("Review")).toBeInTheDocument();
     });
   });

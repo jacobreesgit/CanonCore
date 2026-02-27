@@ -120,6 +120,7 @@ const mockItemFile = (
     syncError: string | null;
     isPrimary: boolean;
     isHero: boolean;
+    isLogo: boolean;
     playbackPosition: number | null;
     playbackDuration: number | null;
     createdAt: Date;
@@ -138,6 +139,7 @@ const mockItemFile = (
   syncError: null,
   isPrimary: false,
   isHero: false,
+  isLogo: false,
   playbackPosition: null,
   playbackDuration: null,
   createdAt: new Date(),

@@ -36,7 +36,7 @@ import { sortItems, filterItems, publicItemsToTree } from "@/lib/item-utils";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCopy, faCheck, faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "sonner";
-import { getTmdbBackdropUrl } from "@/lib/tmdb-image-utils";
+import { getTmdbBackdropUrl, getTmdbLogoUrl } from "@/lib/tmdb-image-utils";
 import type { PublicItem } from "@/lib/public-auth";
 import type { ForkInfo, ForkStatus } from "@/lib/fork-actions";
 import type { TmdbItemMetadata, TmdbItemDetails } from "@/lib/tmdb-client";
@@ -403,6 +403,11 @@ export function PublicItemClient({
           name: item.name,
           backgroundUrl: heroBackgroundUrl,
           artworkId: item.artworkId,
+          // Logo priority: TMDB logo (public items don't expose artwork files)
+          logoImage: item.tmdbLogoPath
+            ? getTmdbLogoUrl(item.tmdbLogoPath)
+            : undefined,
+          dominantColour: item.dominantColour ?? undefined,
           tagline:
             tmdbDisplayOptions?.showTagline !== false
               ? tmdbMetadata?.tagline
@@ -431,7 +436,7 @@ export function PublicItemClient({
   );
 
   return (
-    <HeroContentLayout hero={hero}>
+    <HeroContentLayout hero={hero} dominantColour={item.dominantColour}>
       {/* Tabbed content or simple content */}
       {showTabs && tabsMounted ? (
         isMobile ? (
