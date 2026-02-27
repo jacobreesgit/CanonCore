@@ -240,6 +240,8 @@ interface ItemSettingsChanges {
   primaryArtworkId?: string;
   /** ID of file to set as hero artwork */
   heroArtworkId?: string;
+  /** ID of file to set as logo artwork */
+  logoArtworkId?: string;
   /** ID of file to set as primary subtitle */
   primarySubtitleId?: string;
 }
@@ -304,6 +306,7 @@ export async function updateItemSettings(
       changes.primaryMediaId,
       changes.primaryArtworkId,
       changes.heroArtworkId,
+      changes.logoArtworkId,
       changes.primarySubtitleId,
     ].filter((id): id is string => id !== undefined);
 
@@ -349,6 +352,13 @@ export async function updateItemSettings(
         fileMap.get(changes.heroArtworkId) !== "ARTWORK"
       ) {
         return { success: false, error: "Hero image must be an ARTWORK file" };
+      }
+
+      if (
+        changes.logoArtworkId &&
+        fileMap.get(changes.logoArtworkId) !== "ARTWORK"
+      ) {
+        return { success: false, error: "Logo must be an ARTWORK file" };
       }
 
       if (
@@ -442,6 +452,18 @@ export async function updateItemSettings(
         });
       }
 
+      // Update logo artwork
+      if (changes.logoArtworkId !== undefined) {
+        await tx.itemFile.updateMany({
+          where: { itemId, fileType: "ARTWORK", isLogo: true },
+          data: { isLogo: false },
+        });
+        await tx.itemFile.update({
+          where: { id: changes.logoArtworkId },
+          data: { isLogo: true },
+        });
+      }
+
       // Update primary subtitle
       if (changes.primarySubtitleId !== undefined) {
         await tx.itemFile.updateMany({
@@ -454,6 +476,41 @@ export async function updateItemSettings(
         });
       }
     });
+
+    // Extract dominant colour from the new hero image (after transaction,
+    // since this involves a Google Drive API call that shouldn't block the tx)
+    if (changes.heroArtworkId !== undefined && item.driveConnection) {
+      try {
+        const heroFile = await prisma.itemFile.findUnique({
+          where: { id: changes.heroArtworkId },
+          select: { driveFileId: true },
+        });
+
+        if (heroFile?.driveFileId) {
+          const [{ getDriveClient, downloadFile }, { extractDominantColour }] =
+            await Promise.all([
+              import("@/lib/google-drive-client"),
+              import("@/lib/colour-extract"),
+            ]);
+
+          const drive = await getDriveClient(item.driveConnection);
+          const imageBuffer = await downloadFile(drive, heroFile.driveFileId);
+          const colour = await extractDominantColour(imageBuffer);
+
+          if (colour) {
+            await prisma.item.update({
+              where: { id: itemId },
+              data: { dominantColour: colour },
+            });
+          }
+        }
+      } catch (err) {
+        logger.warn(
+          { err, itemId },
+          "Non-blocking colour extraction failed for hero image"
+        );
+      }
+    }
 
     // Revalidate pages to reflect changes
     revalidatePath("/u", "layout");

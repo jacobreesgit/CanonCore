@@ -42,4 +42,5 @@ export { TMDBWizard } from "./tmdb-wizard";
 export { TMDBTextStep } from "./text-step";
 export { TMDBPosterStep } from "./poster-step";
 export { TMDBHeroStep } from "./hero-step";
+export { TMDBLogoStep } from "./logo-step";
 export { TMDBSummaryStep } from "./summary-step";

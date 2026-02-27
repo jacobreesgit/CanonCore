@@ -21,6 +21,7 @@ import {
 import { AnimatedDialogContent } from "@/components/ui/animated-dialog-content";
 import { Button } from "@/components/ui/button";
 import { ImageSelectionGrid } from "@/components/items/wizards/tmdb-wizard/image-selection-grid";
+import { LogoSelectionGrid } from "@/components/items/logo-selection-grid";
 import {
   getImagesAction,
   getSeasonImagesAction,
@@ -29,7 +30,7 @@ import {
 } from "@/lib/tmdb-actions";
 import type { TMDBImage } from "@/lib/tmdb-client";
 
-type ArtworkType = "poster" | "backdrop" | "still";
+type ArtworkType = "poster" | "backdrop" | "still" | "logo";
 
 interface TmdbArtworkChangeDialogProps {
   open: boolean;
@@ -105,6 +106,8 @@ export function TmdbArtworkChangeDialog({
         if (result.success && result.data) {
           if (artworkType === "poster") {
             setTmdbImages(result.data.posters);
+          } else if (artworkType === "logo") {
+            setTmdbImages(result.data.logos ?? []);
           } else {
             setTmdbImages(result.data.backdrops);
           }
@@ -133,14 +136,25 @@ export function TmdbArtworkChangeDialog({
             updateName: false,
             updateDescription: false,
             updateBackdrop: false,
+            updateLogo: false,
           }
-        : {
-            updateBackdrop: true,
-            backdropPath: selectedPath,
-            updateName: false,
-            updateDescription: false,
-            updatePoster: false,
-          };
+        : artworkType === "logo"
+          ? {
+              updateLogo: true,
+              logoPath: selectedPath,
+              updateName: false,
+              updateDescription: false,
+              updatePoster: false,
+              updateBackdrop: false,
+            }
+          : {
+              updateBackdrop: true,
+              backdropPath: selectedPath,
+              updateName: false,
+              updateDescription: false,
+              updatePoster: false,
+              updateLogo: false,
+            };
 
     const result = await applyMetadataAction(itemId, tmdbId, tmdbType, options);
     setIsLoading(false);
@@ -166,10 +180,13 @@ export function TmdbArtworkChangeDialog({
       ? "Change Poster"
       : artworkType === "backdrop"
         ? "Change Backdrop"
-        : "Change Still";
+        : artworkType === "logo"
+          ? "Change Logo"
+          : "Change Still";
 
   // ImageSelectionGrid type: poster uses "poster" (2:3), backdrop/still uses "backdrop" (16:9)
   const gridType = artworkType === "poster" ? "poster" : "backdrop";
+  const isLogo = artworkType === "logo";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -227,6 +244,12 @@ export function TmdbArtworkChangeDialog({
           <p className="text-destructive py-8 text-center text-sm" role="alert">
             {error}
           </p>
+        ) : isLogo ? (
+          <LogoSelectionGrid
+            logos={tmdbImages}
+            selectedValue={selectedPath}
+            onSelect={(value) => setSelectedPath(value)}
+          />
         ) : (
           <ImageSelectionGrid
             type={gridType}

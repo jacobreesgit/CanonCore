@@ -14,13 +14,14 @@ import {
   faWandMagicSparkles,
   faForwardStep,
   faFont,
+  faSignature,
 } from "@fortawesome/free-solid-svg-icons";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { DEFAULT_TMDB_DISPLAY } from "@/lib/types";
 import { TmdbDisplayOptionsEditor } from "@/components/items/tmdb-display-options";
-import { getPosterUrl, getBackdropUrl } from "@/lib/tmdb-client";
+import { getPosterUrl, getBackdropUrl, getLogoUrl } from "@/lib/tmdb-client";
 import type { TMDBSummaryStepProps } from "./tmdb-wizard-types";
 
 /**
@@ -57,6 +58,7 @@ export function TMDBSummaryStep({
     source: null,
     skipped: false,
   };
+  const logo = data.logo ?? { value: null, source: null, skipped: false };
 
   /**
    * Handles Apply button click.
@@ -88,6 +90,17 @@ export function TMDBSummaryStep({
     }
     return null;
   }, [backdrop.skipped, backdrop.value, backdrop.source]);
+
+  /**
+   * Memoized logo preview URL to avoid recreation on each render.
+   */
+  const logoPreviewUrl = useMemo((): string | null => {
+    if (logo.skipped || !logo.value) return null;
+    if (logo.source === "tmdb") {
+      return getLogoUrl(logo.value, "w300");
+    }
+    return null;
+  }, [logo.skipped, logo.value, logo.source]);
 
   return (
     <div className="space-y-6">
@@ -298,6 +311,65 @@ export function TMDBSummaryStep({
             )}
           </div>
         </SummarySection>
+
+        {/* Logo summary (movies and shows only) */}
+        {data.contentType !== "season" && data.contentType !== "episode" && (
+          <>
+            <Separator />
+            <SummarySection
+              title="Logo"
+              icon={faSignature}
+              onClick={() => onEditStep("logo")}
+            >
+              <div className="flex items-center gap-3">
+                {logo.skipped ? (
+                  <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                    <FontAwesomeIcon
+                      icon={faForwardStep}
+                      className="h-4 w-4"
+                      aria-hidden="true"
+                    />
+                    <span>Skipped</span>
+                  </div>
+                ) : logo.value ? (
+                  <>
+                    {logoPreviewUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- external TMDB URLs
+                      <img
+                        src={logoPreviewUrl}
+                        alt="Selected logo"
+                        className="h-10 w-auto object-contain"
+                      />
+                    ) : (
+                      <div className="bg-muted flex h-10 w-20 items-center justify-center rounded">
+                        <FontAwesomeIcon
+                          icon={faSignature}
+                          className="text-muted-foreground h-5 w-5"
+                          aria-hidden="true"
+                        />
+                      </div>
+                    )}
+                    <div className="text-sm">
+                      <span className="font-medium">Selected</span>
+                      <p className="text-muted-foreground text-xs">
+                        Source: {logo.source}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                    <FontAwesomeIcon
+                      icon={faSignature}
+                      className="h-4 w-4"
+                      aria-hidden="true"
+                    />
+                    <span>No logo selected</span>
+                  </div>
+                )}
+              </div>
+            </SummarySection>
+          </>
+        )}
 
         {/* Display options */}
         {data.tmdbResult && (

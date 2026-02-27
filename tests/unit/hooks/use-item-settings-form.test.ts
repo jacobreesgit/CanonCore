@@ -46,6 +46,7 @@ const mockItem: ItemSettingsFormItem = {
   tmdbType: null,
   tmdbPosterPath: null,
   tmdbBackdropPath: null,
+  tmdbLogoPath: null,
   tmdbShowTagline: true,
   tmdbShowMetadata: true,
   tmdbShowGenres: true,

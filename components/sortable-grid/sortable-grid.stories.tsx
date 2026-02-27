@@ -96,6 +96,8 @@ function createGridItem(
     driveConnectionId: null,
     tmdbPosterPath: null,
     tmdbBackdropPath: null,
+    tmdbLogoPath: null,
+    dominantColour: null,
     artworkId: null,
     fileCounts: { media: 0, artwork: 0, subtitles: 0 },
     childCount: 0,

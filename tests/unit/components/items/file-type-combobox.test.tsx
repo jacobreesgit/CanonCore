@@ -56,6 +56,7 @@ const createMockFile = (
   syncError: null,
   isPrimary: false,
   isHero: false,
+  isLogo: false,
   playbackPosition: null,
   playbackDuration: null,
   createdAt: new Date(),

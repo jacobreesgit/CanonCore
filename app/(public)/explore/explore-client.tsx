@@ -48,7 +48,7 @@ const SwipeableUnderlineTabs = dynamic(
 import { deleteItem, pinItem, unpinItem } from "@/lib/item-actions";
 import { updatePlaylist, deletePlaylist } from "@/lib/playlist-actions";
 import { forkItem } from "@/lib/fork-actions";
-import { getTmdbBackdropUrl } from "@/lib/tmdb-image-utils";
+import { getTmdbBackdropUrl, getTmdbLogoUrl } from "@/lib/tmdb-image-utils";
 import type { PublicItem, FeaturedItem } from "@/lib/public-auth";
 import type { TmdbItemMetadata } from "@/lib/tmdb-client";
 import type { SortOption, SyncStatus } from "@/lib/types";
@@ -121,6 +121,7 @@ export function ExploreClient({
     setTab,
   } = useExploreUrlState();
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  const [activeColour, setActiveColour] = useState<string | null>(null);
   const [localPlaylists, setLocalPlaylists] = useState(playlists);
 
   // Sync local playlist state when server prop changes (e.g. revalidation)
@@ -290,6 +291,11 @@ export function ExploreClient({
           ? getTmdbBackdropUrl(item.tmdbBackdropPath)
           : undefined,
         artworkId: item.artworkId,
+        // Logo priority: TMDB logo (no artwork files in explore query)
+        logoImage: item.tmdbLogoPath
+          ? getTmdbLogoUrl(item.tmdbLogoPath)
+          : undefined,
+        dominantColour: item.dominantColour ?? undefined,
         link: item.link,
         attribution: `Shared by @${item.ownerUsername}`,
         attributionHref: `/u/${item.ownerUsername}`,
@@ -362,6 +368,7 @@ export function ExploreClient({
     <CinematicHero
       slides={carouselSlides}
       autoAdvanceInterval={autoplay ? 5000 : 0}
+      onColourChange={setActiveColour}
       renderActions={(slide) => {
         const item = featuredItems.find((i) => i.id === slide.id);
         if (!item) return null;
@@ -667,7 +674,11 @@ export function ExploreClient({
   ];
 
   return (
-    <HeroContentLayout hero={hero} className={!hasItems ? "flex-1" : undefined}>
+    <HeroContentLayout
+      hero={hero}
+      dominantColour={activeColour}
+      className={!hasItems ? "flex-1" : undefined}
+    >
       {tabsMounted ? (
         isMobile ? (
           <SwipeableUnderlineTabs

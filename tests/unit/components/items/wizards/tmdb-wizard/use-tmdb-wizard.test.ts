@@ -63,6 +63,11 @@ describe("useTMDBWizard", () => {
         source: null,
         skipped: false,
       });
+      expect(result.current.data.logo).toEqual({
+        value: null,
+        source: null,
+        skipped: false,
+      });
     });
 
     it("respects contentType='episode' from initial data", () => {
@@ -372,6 +377,7 @@ describe("useTMDBWizard", () => {
         contentType: "movie",
         poster: { value: "/poster.jpg", source: "tmdb" },
         backdrop: { value: "/backdrop.jpg", source: "existing" },
+        logo: null,
         still: null,
         displayOptions: {
           showTagline: true,

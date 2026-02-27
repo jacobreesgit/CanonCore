@@ -39,6 +39,22 @@ export function getTmdbBackdropUrl(
   return `${TMDB_IMAGE_BASE}/${size}${path}`;
 }
 
+/**
+ * Constructs a full TMDB logo URL from a stored path.
+ * Logos are transparent title treatment images (usually PNG).
+ *
+ * @param path - TMDB logo path (e.g., "/abc123.png")
+ * @param size - Logo size (default: "original" for crisp hero overlays)
+ * @returns Full TMDB CDN URL or null if path is empty
+ */
+export function getTmdbLogoUrl(
+  path: string | null,
+  size = "original"
+): string | null {
+  if (!path) return null;
+  return `${TMDB_IMAGE_BASE}/${size}${path}`;
+}
+
 /** Minimal shape needed for artwork ID resolution. */
 interface ArtworkResolvable {
   tmdbPosterPath?: string | null;

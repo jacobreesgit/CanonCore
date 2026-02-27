@@ -60,7 +60,11 @@ import { getItems } from "@/lib/item-actions";
 import { useGoToItem } from "@/hooks/use-go-to-item";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { formatProgressLabel } from "@/lib/progress-utils";
-import { getTmdbBackdropUrl, getTmdbPosterUrl } from "@/lib/tmdb-image-utils";
+import {
+  getTmdbBackdropUrl,
+  getTmdbPosterUrl,
+  getTmdbLogoUrl,
+} from "@/lib/tmdb-image-utils";
 // Lazy-load MobileItemSheet (mobile-only, heavy with Framer Motion)
 const MobileItemSheet = dynamic(
   () =>
@@ -109,6 +113,7 @@ interface ItemDetailClientProps {
     tmdbType: string | null;
     tmdbPosterPath: string | null;
     tmdbBackdropPath: string | null;
+    tmdbLogoPath: string | null;
     tmdbShowTagline: boolean;
     tmdbShowMetadata: boolean;
     tmdbShowGenres: boolean;
@@ -116,6 +121,7 @@ interface ItemDetailClientProps {
     tmdbShowProviders: boolean;
     tmdbShowVideos: boolean;
     tmdbShowRecommendations: boolean;
+    dominantColour?: string | null;
     syncStatus?: SyncStatus;
     driveFileId?: string | null;
   };
@@ -270,6 +276,14 @@ export function ItemDetailClient({
     }
     return heroFile?.id ?? primaryFile?.id ?? artwork[0]?.id ?? null;
   }, [files, artworkId]);
+
+  // Resolve logo image: manual upload > TMDB logo > text title fallback
+  const logoImage = useMemo(() => {
+    const logoArtwork = files?.artwork.find((f) => f.isLogo);
+    if (logoArtwork) return `/api/artwork/${logoArtwork.id}`;
+    if (item.tmdbLogoPath) return getTmdbLogoUrl(item.tmdbLogoPath);
+    return undefined;
+  }, [files, item.tmdbLogoPath]);
 
   const hasChildren = childItems.length > 0;
   const hasMedia = files && files.media.length > 0;
@@ -435,6 +449,7 @@ export function ItemDetailClient({
       tmdbType: item.tmdbType,
       tmdbPosterPath: item.tmdbPosterPath,
       tmdbBackdropPath: item.tmdbBackdropPath,
+      tmdbLogoPath: item.tmdbLogoPath,
       tmdbShowTagline: item.tmdbShowTagline,
       tmdbShowMetadata: item.tmdbShowMetadata,
       tmdbShowGenres: item.tmdbShowGenres,
@@ -545,6 +560,8 @@ export function ItemDetailClient({
           name: item.name,
           backgroundUrl: heroBackgroundUrl,
           artworkId: heroArtworkId,
+          logoImage,
+          dominantColour: item.dominantColour ?? undefined,
           tagline:
             tmdbDisplayOptions?.showTagline !== false
               ? tmdbMetadata?.tagline
@@ -579,6 +596,7 @@ export function ItemDetailClient({
     <HeroContentLayout
       hero={hero}
       isPending={isPending}
+      dominantColour={item.dominantColour}
       data-testid="item-detail-container"
     >
       {/* Tabbed content or direct toolbar */}

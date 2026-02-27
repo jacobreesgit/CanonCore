@@ -32,11 +32,17 @@ export type {
 /**
  * Wizard step identifiers for the TMDB metadata flow.
  * Flow varies by content type:
- * - Movie/Show: text -> poster -> hero -> summary
- * - Season: text -> poster -> summary (no hero)
+ * - Movie/Show: text -> poster -> hero -> logo -> summary
+ * - Season: text -> poster -> summary (no hero or logo)
  * - Episode: text -> still -> summary (stills instead of poster)
  */
-export type TMDBWizardStep = "text" | "poster" | "hero" | "still" | "summary";
+export type TMDBWizardStep =
+  | "text"
+  | "poster"
+  | "hero"
+  | "logo"
+  | "still"
+  | "summary";
 
 /**
  * Content type determines which wizard steps are shown.
@@ -50,6 +56,7 @@ export const TMDB_WIZARD_STEPS: readonly TMDBWizardStep[] = [
   "text",
   "poster",
   "hero",
+  "logo",
   "summary",
 ] as const;
 
@@ -60,6 +67,7 @@ export const TMDB_WIZARD_STEP_LABELS: Record<TMDBWizardStep, string> = {
   text: "Title & Description",
   poster: "Poster",
   hero: "Hero Image",
+  logo: "Logo",
   still: "Still Image",
   summary: "Review",
 };
@@ -78,15 +86,15 @@ export function getVisibleSteps(
   switch (contentType) {
     case "movie":
     case "show":
-      return ["text", "poster", "hero", "summary"];
+      return ["text", "poster", "hero", "logo", "summary"];
     case "season":
-      // Seasons have posters but no backdrops/heroes
+      // Seasons have posters but no backdrops/heroes or logos
       return ["text", "poster", "summary"];
     case "episode":
-      // Episodes have stills instead of posters
+      // Episodes have stills instead of posters, no logos
       return ["text", "still", "summary"];
     default:
-      return ["text", "poster", "hero", "summary"];
+      return ["text", "poster", "hero", "logo", "summary"];
   }
 }
 
@@ -134,6 +142,9 @@ export interface TMDBWizardData {
 
   /** Hero/backdrop selection state */
   backdrop: ArtworkSelection;
+
+  /** Logo selection state (for movies/shows) */
+  logo: ArtworkSelection;
 
   /** Still selection state (for episodes) */
   still: ArtworkSelection;
@@ -272,6 +283,12 @@ export interface TMDBWizardResult {
 
   /** Backdrop selection (null if skipped or not applicable) */
   backdrop: {
+    value: string | null;
+    source: ArtworkSelectionSource | null;
+  } | null;
+
+  /** Logo selection (null if skipped or not applicable) */
+  logo: {
     value: string | null;
     source: ArtworkSelectionSource | null;
   } | null;
@@ -441,6 +458,11 @@ export function createInitialTMDBWizardData(
       skipped: false,
     },
     backdrop: {
+      value: null,
+      source: null,
+      skipped: false,
+    },
+    logo: {
       value: null,
       source: null,
       skipped: false,

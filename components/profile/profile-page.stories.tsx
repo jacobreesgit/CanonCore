@@ -40,6 +40,8 @@ const createMockItem = (
   tmdbType: null,
   tmdbPosterPath: null,
   tmdbBackdropPath: null,
+  tmdbLogoPath: null,
+  dominantColour: null,
   driveFileId: null,
   driveModifiedAt: null,
   driveThumbnailUrl: null,

@@ -1,6 +1,6 @@
 /**
  * Page object for TMDB wizard interactions.
- * Covers searching TMDB, navigating wizard steps (text, poster, hero, summary),
+ * Covers searching TMDB, navigating wizard steps (text, poster, hero, logo, summary),
  * and creating items with TMDB metadata.
  */
 import type { Page } from "@playwright/test";
@@ -54,9 +54,11 @@ export class TmdbWizardPage {
   /**
    * Wait for the TMDB wizard to appear on a specific step.
    *
-   * @param step - The wizard step to wait for (text, poster, hero, summary)
+   * @param step - The wizard step to wait for (text, poster, hero, logo, summary)
    */
-  async expectWizardStep(step: "text" | "poster" | "hero" | "summary") {
+  async expectWizardStep(
+    step: "text" | "poster" | "hero" | "logo" | "still" | "summary"
+  ) {
     await expect(this.page.getByTestId(`tmdb-wizard-step-${step}`)).toBeVisible(
       { timeout: Timeouts.api }
     );
@@ -75,7 +77,7 @@ export class TmdbWizardPage {
   }
 
   /**
-   * Skip all remaining artwork steps (poster + hero).
+   * Skip all remaining artwork steps (poster + hero + logo).
    * Clicks the "Skip All" button on the poster step.
    */
   async skipArtworkSteps() {
@@ -84,6 +86,44 @@ export class TmdbWizardPage {
     const skipAllButton = this.page.getByTestId("tmdb-wizard-skip-all");
     await skipAllButton.waitFor({ state: "visible", timeout: Timeouts.api });
     await skipAllButton.click();
+  }
+
+  /**
+   * Advance past the current artwork step by clicking Next.
+   * Use this to step through individual artwork steps (poster, hero, logo)
+   * rather than skipping all at once.
+   */
+  async advanceArtworkStep() {
+    const nextButton = this.page.getByTestId("tmdb-wizard-next");
+    await nextButton.waitFor({ state: "visible", timeout: Timeouts.api });
+    await nextButton.click();
+  }
+
+  /**
+   * Select the first logo option on the logo step.
+   * Clicks the first logo thumbnail button in the grid.
+   */
+  async selectFirstLogo() {
+    await this.expectWizardStep("logo");
+
+    // Logo thumbnails are buttons with role="button" containing logo images
+    const logoButton = this.page
+      .getByTestId("tmdb-wizard-step-logo")
+      .getByRole("button")
+      .first();
+    await logoButton.waitFor({ state: "visible", timeout: Timeouts.api });
+    await logoButton.click();
+  }
+
+  /**
+   * Check the "Skip logo selection" checkbox on the logo step.
+   */
+  async skipLogoStep() {
+    await this.expectWizardStep("logo");
+
+    const skipCheckbox = this.page.locator("#skip-logo-selection");
+    await skipCheckbox.waitFor({ state: "visible", timeout: Timeouts.api });
+    await skipCheckbox.click();
   }
 
   /**

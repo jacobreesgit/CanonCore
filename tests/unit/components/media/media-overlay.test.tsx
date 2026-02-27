@@ -62,6 +62,7 @@ const createMockFile = (
   size: 1000000,
   isPrimary: false,
   isHero: false,
+  isLogo: false,
   driveFileId: "drive-123",
   itemId: "item-123",
   syncStatus: "SYNCED",

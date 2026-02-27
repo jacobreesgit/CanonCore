@@ -31,6 +31,7 @@ describe("TmdbMetadataSection", () => {
     tmdbType: "movie",
     tmdbPosterPath: "/poster.jpg",
     tmdbBackdropPath: "/backdrop.jpg",
+    tmdbLogoPath: "/logo.png",
     name: "The Dark Knight",
     description: "When the menace...",
   };

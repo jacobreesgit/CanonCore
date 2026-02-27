@@ -127,7 +127,7 @@ export default async function ExplorePage() {
         titleHref="/explore"
         driveNeedsReauth={driveNeedsReauth}
       />
-      <div className="bg-background text-foreground -mt-(--header-height) flex flex-1 flex-col">
+      <div className="text-foreground -mt-(--header-height) flex flex-1 flex-col">
         <ExploreClient
           items={items}
           featuredItems={enrichedFeaturedItems}
