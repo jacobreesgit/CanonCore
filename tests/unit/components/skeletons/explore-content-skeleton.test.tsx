@@ -1,3 +1,9 @@
+/**
+ * These tests guard CLS-critical dimensions by asserting specific Tailwind
+ * classes (grid columns, hero height, gap values). The skeleton must match
+ * the real page layout exactly to prevent layout shift when Suspense
+ * streams in the actual content. Class-name coupling is intentional.
+ */
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 import { ExploreContentSkeleton } from "@/components/skeletons/explore-content-skeleton";

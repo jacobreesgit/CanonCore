@@ -29,7 +29,7 @@ export class ItemDetailPage {
     await target.waitFor({ state: "visible", timeout: Timeouts.api });
     await target.click();
     await expect(this.page.getByTestId("item-detail-container")).toBeVisible({
-      timeout: Timeouts.navigation,
+      timeout: Timeouts.api,
     });
   }
 
@@ -41,7 +41,7 @@ export class ItemDetailPage {
   async gotoByUrl(itemId: string) {
     await this.page.goto(`/u/${this.username}/${itemId}`);
     await expect(this.page.getByTestId("item-detail-container")).toBeVisible({
-      timeout: Timeouts.navigation,
+      timeout: Timeouts.api,
     });
   }
 
@@ -49,8 +49,10 @@ export class ItemDetailPage {
 
   /** Expect the item detail container to be visible. */
   async expectDetailVisible() {
+    // item-detail-container is inside a Suspense boundary — waits for
+    // server data to stream in, not just a route change
     await expect(this.page.getByTestId("item-detail-container")).toBeVisible({
-      timeout: Timeouts.navigation,
+      timeout: Timeouts.api,
     });
   }
 

@@ -52,6 +52,7 @@ components/
   homepage/         # Landing page sections (hero, feature accordion, manifesto CTA, media stack)
   items/            # Item CRUD, grid, tree, settings, TMDB editing, logo selection components
   playlists/        # Playlist CRUD, detail, grid items, context menus, sortable grid
+  skeletons/        # Layout-matched loading skeletons (explore, profile, item, playlist)
   google-drive/     # Drive connection, sync, storage
   providers/        # Auth, theme, analytics providers
   ui/               # shadcn/ui primitives (includes CardShell shared card base)
@@ -71,7 +72,7 @@ lib/
   watch-record-utils.ts # Shared dedup utility for WatchRecord creation
   system-playlists.ts   # System playlist definitions (Continue Watching, Watchlist, etc.)
   shelf-actions.ts      # Home shelf CRUD and data fetching
-  shelf-query-utils.ts  # Shelf item query functions (system + user playlists)
+  shelf-query-utils.ts  # Shelf item query functions (system + user playlists, React.cache() deduplicated)
   motion-features.ts # LazyMotion async feature bundle (domAnimation)
   source.ts         # Fumadocs source loaders (docs + legal collections)
 hooks/
@@ -205,6 +206,18 @@ The homepage (`components/homepage/`) uses several performance patterns:
 - **`auth()` is deduplicated:** `lib/auth.ts` wraps the NextAuth `auth` function with `React.cache()` to deduplicate per-request JWT decode across layout, page, and server actions.
 - **Lighthouse scores (desktop, localhost):** Performance 96 (+6), LCP 1.3s (-0.7s), SI 0.9s (-0.4s), TBT 0ms, CLS 0, FCP 0.3s, Total bytes 1,161 KiB (-2,183 KiB / -65%).
 
+### Page Load Streaming
+
+Four public pages (Explore, Profile, Item Detail, Playlist Detail) use Suspense boundaries to stream heavy content while rendering a fast shell immediately. Pattern:
+
+- **Shell renders first:** `SiteHeader` + breadcrumbs render synchronously using minimal data (auth session, profile lookup). This gives the user instant visual feedback.
+- **Heavy content streams:** An async server component (e.g., `ExploreContent`, `OwnerItemContent`) wraps all expensive fetches (TMDB enrichment, descendant queries, files, drive connection) inside `<Suspense fallback={<Skeleton />}>`.
+- **Route-level `loading.tsx`:** Each page has a `loading.tsx` that renders the same skeleton during Next.js route transitions (e.g., sidebar navigation).
+- **Layout-matched skeletons:** Four skeleton components in `components/skeletons/` match exact dimensions of their real pages — hero height (`55vh`/`65vh` + header), grid columns (`grid-cols-2/3/4/6`), glassmorphism toolbar, tabs — to prevent CLS.
+- **Skeleton components:** `ExploreContentSkeleton` (hero carousel + dots + 12-card grid), `ProfileContentSkeleton` (avatar ring + grid + shelf), `ItemContentSkeleton` (hero + tabs + 6-card grid), `PlaylistContentSkeleton` (hero + tabs + 6-card grid).
+- **Cache deduplication:** `getSystemShelfItems` in `lib/shelf-query-utils.ts` wrapped with `React.cache()` to deduplicate calls within a single request. Both args are primitives so `Object.is` equality works.
+- **E2E coverage:** `e2e/journeys/navigation/page-transitions.spec.ts` tests loading state visibility and CLS during page transitions.
+
 ### Home Shelves
 
 Configurable horizontal scroll rows on the authenticated home page. Any playlist with a non-null `shelfOrder` appears as a shelf. System playlists (Continue Watching, Watchlist, Recently Added, Watch Again) are virtual — computed at query time, not stored as PlaylistItem rows.
@@ -245,7 +258,7 @@ Explicit watch event tracking via `WatchRecord` model. Replaces playback-positio
 
 - **Unit tests** (`tests/unit/`): Use `pnpm run test`. Config at `tests/unit/vitest.config.ts`. Mocks Prisma, Redis, external APIs.
 - **Integration tests** (`tests/integration/`): Use `pnpm run test:integration`. Config at `tests/integration/vitest.config.ts`. Real PostgreSQL.
-- **E2E tests** (`e2e/`): Use `pnpm run test:e2e`. Playwright with Page Object Model pattern. 16 focused POMs. Dedicated port 3001 and build dir `.next-e2e` to avoid conflicts with dev server. Shared item locator utilities in `e2e/config/item-locators.ts` (`getItemLocator`, `openItemMoreMenu`) used across POMs — hover-then-click pattern for Radix interactability. Radix hydration retry via `expect().toPass()` for server-rendered triggers not yet hydrated.
+- **E2E tests** (`e2e/`): Use `pnpm run test:e2e`. Playwright with Page Object Model pattern. 16 focused POMs. Dedicated port 3001 and build dir `.next-e2e` to avoid conflicts with dev server. Shared item locator utilities in `e2e/config/item-locators.ts` (`getItemLocator`, `openItemMoreMenu`) used across POMs — hover-then-click pattern for Radix interactability. Radix hydration retry via `expect().toPass()` for server-rendered triggers not yet hydrated. Suspense-streamed pages require waiting for content to stream in before interacting — POMs use `waitForContent()` methods or wait for specific selectors rather than `networkidle`.
 - **Storybook** (`*.stories.tsx`): Use `pnpm run storybook`. axe-core a11y testing on every story.
 - Both unit and integration configs inherit from root `vitest.config.ts` via `mergeConfig`.
 - `next-auth` (ESM) requires `test.server.deps.inline: ["next-auth"]` in root vitest config.

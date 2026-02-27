@@ -18,6 +18,10 @@ export class NavPage {
   /** Navigate to the user's items page. */
   async gotoMyItems() {
     await this.page.goto(`/u/${this.username}`);
+    await this.page.waitForLoadState("domcontentloaded");
+    await expect(this.page.getByTestId("hero-carousel")).toBeVisible({
+      timeout: Timeouts.navigation,
+    });
   }
 
   // ── Desktop Sidebar ─────────────────────────────────────
