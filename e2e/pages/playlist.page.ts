@@ -20,6 +20,9 @@ export class PlaylistPage {
   async gotoProfile() {
     await this.page.goto(`/u/${this.username}`);
     await this.page.waitForLoadState("domcontentloaded");
+    await expect(this.page.getByTestId("hero-carousel")).toBeVisible({
+      timeout: Timeouts.navigation,
+    });
   }
 
   /** Switch to the Playlists tab on the profile page. */
@@ -37,6 +40,9 @@ export class PlaylistPage {
   async gotoPlaylist(playlistId: string) {
     await this.page.goto(`/u/${this.username}/playlists/${playlistId}`);
     await this.page.waitForLoadState("domcontentloaded");
+    await expect(this.page.getByTestId("hero-carousel")).toBeVisible({
+      timeout: Timeouts.navigation,
+    });
   }
 
   // ── Add to Playlist Dialog ──────────────────────────────
@@ -149,6 +155,9 @@ export class PlaylistPage {
       .getByRole("link", { name })
       .click();
     await this.page.waitForLoadState("domcontentloaded");
+    await expect(this.page.getByTestId("hero-carousel")).toBeVisible({
+      timeout: Timeouts.navigation,
+    });
   }
 
   // ── Playlist Detail Page ────────────────────────────────
