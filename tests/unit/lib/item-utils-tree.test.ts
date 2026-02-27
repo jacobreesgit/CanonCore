@@ -38,6 +38,8 @@ function createItem(
     tmdbType: null,
     tmdbPosterPath: null,
     tmdbBackdropPath: null,
+    tmdbLogoPath: null,
+    dominantColour: null,
     tmdbShowTagline: true,
     tmdbShowMetadata: true,
     tmdbShowGenres: true,

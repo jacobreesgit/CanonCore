@@ -20,6 +20,7 @@ import {
   faImage,
   faFileLines,
   faFilm,
+  faSignature,
   faWandMagicSparkles,
   faChevronLeft,
   faChevronRight,
@@ -172,6 +173,8 @@ export function MobileItemSheet({
     setPrimaryArtworkId,
     heroArtworkId,
     setHeroArtworkId,
+    logoArtworkId,
+    setLogoArtworkId,
     primarySubtitleId,
     setPrimarySubtitleId,
     isLoadingPreview: _isLoadingPreview,
@@ -419,6 +422,27 @@ export function MobileItemSheet({
       />
 
       <FileTypeCombobox
+        label="Logo"
+        description="Transparent logo image displayed over the hero."
+        icon={faSignature}
+        files={files.artwork}
+        selectedId={logoArtworkId}
+        onSelect={setLogoArtworkId}
+        onUploadComplete={handleUploadComplete}
+        onFileDeleted={handleFileDeleted}
+        itemId={item.id}
+        fileType="artwork"
+        disabled={!hasDriveConnection}
+        note={
+          item.tmdbLogoPath ? (
+            <Badge variant="destructive">
+              Currently using TMDB logo. Upload to override.
+            </Badge>
+          ) : undefined
+        }
+      />
+
+      <FileTypeCombobox
         label="Default Subtitle"
         description="The subtitle track that loads by default."
         icon={faFileLines}
@@ -443,6 +467,7 @@ export function MobileItemSheet({
       onSettingsChange={onSettingsChange ?? (async () => {})}
       hasUploadedPoster={!!primaryArtworkId}
       hasUploadedHero={!!heroArtworkId}
+      hasUploadedLogo={!!logoArtworkId}
     />
   ) : null;
 

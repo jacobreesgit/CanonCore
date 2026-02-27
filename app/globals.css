@@ -5,6 +5,59 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Cinematic visual pipeline — registered custom properties for animated transitions.
+   Initial values match the global dark theme; overridden per-item via inline styles. */
+@property --dark-100 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #d4d4d4;
+}
+@property --dark-200 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #a3a3a3;
+}
+@property --dark-300 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #737373;
+}
+@property --dark-400 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #525252;
+}
+@property --dark-500 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #404040;
+}
+@property --dark-600 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #262626;
+}
+@property --dark-700 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #171717;
+}
+@property --dark-800 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #0f0f0f;
+}
+@property --dark-900 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #0a0a0a;
+}
+@property --dark-1000 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #050505;
+}
+
 :root {
   /* Dark-only cinematic design — no light mode */
   color-scheme: dark;
@@ -75,17 +128,17 @@
     /* Diagonal sweep from bottom-left — protects floating content */
     linear-gradient(
       to top right,
-      rgba(10, 10, 10, 0.95) 0%,
-      rgba(10, 10, 10, 0.7) 25%,
-      rgba(10, 10, 10, 0.3) 50%,
+      color-mix(in srgb, var(--dark-900) 95%, transparent) 0%,
+      color-mix(in srgb, var(--dark-900) 70%, transparent) 25%,
+      color-mix(in srgb, var(--dark-900) 30%, transparent) 50%,
       transparent 70%
     ),
-    /* Bottom edge — seamless blend into page background, extends to protect metadata */
+    /* Bottom edge — seamless blend into page background */
     linear-gradient(
         to top,
-        rgba(10, 10, 10, 1) 0%,
-        rgba(10, 10, 10, 0.7) 20%,
-        rgba(10, 10, 10, 0.3) 40%,
+        var(--dark-900) 0%,
+        color-mix(in srgb, var(--dark-900) 70%, transparent) 20%,
+        color-mix(in srgb, var(--dark-900) 30%, transparent) 40%,
         transparent 55%
       ),
     /* Top edge — subtle darkening for header/nav */
@@ -271,6 +324,21 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    Animation Utility Classes
    ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Cinematic pipeline — smooth colour transitions for carousel crossfade */
+.transition-colours-pipeline {
+  transition:
+    --dark-100 500ms ease,
+    --dark-200 500ms ease,
+    --dark-300 500ms ease,
+    --dark-400 500ms ease,
+    --dark-500 500ms ease,
+    --dark-600 500ms ease,
+    --dark-700 500ms ease,
+    --dark-800 500ms ease,
+    --dark-900 500ms ease,
+    --dark-1000 500ms ease;
+}
 
 /* Ken Burns — respects reduced motion preference */
 @media (prefers-reduced-motion: no-preference) {

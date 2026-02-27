@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: February 2026 (v10.0.0)
+Last updated: February 2026 (v11.0.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -139,7 +139,8 @@ Built on PostgreSQL with Prisma ORM. Key tables:
 - Metadata: name, description, depth, order, pinnedOrder
 - Visibility: isPublic, inheritVisibility
 - Google Drive: driveFileId, syncStatus, driveModifiedAt, driveConnectionId
-- TMDB: tmdbId, tmdbType, tmdbPosterPath, tmdbBackdropPath (CDN image paths)
+- TMDB: tmdbId, tmdbType, tmdbPosterPath, tmdbBackdropPath, tmdbLogoPath (CDN image paths)
+- Visual pipeline: dominantColour (hex string extracted from backdrop for page-level colour theming)
 - TMDB Display: 7 boolean fields (tmdbShowTagline, tmdbShowMetadata, tmdbShowGenres, tmdbShowCast, tmdbShowProviders, tmdbShowVideos, tmdbShowRecommendations) defaulting to true
 - Forking: forkedFromId to track copies
 
@@ -147,7 +148,7 @@ Built on PostgreSQL with Prisma ORM. Key tables:
 
 - File types: MEDIA (video/audio), ARTWORK (images), SUBTITLE (srt/vtt/etc)
 - Google Drive: driveFileId, filename, mimeType, size
-- Playback: playbackPosition (in seconds), isPrimary, isHero
+- Playback: playbackPosition (in seconds), isPrimary, isHero, isLogo
 
 **GoogleDriveConnection:**
 
@@ -236,6 +237,7 @@ Built on PostgreSQL with Prisma ORM. Key tables:
     │ fileType │ (MEDIA/ARTWORK/SUBTITLE)
     │ isPrimary│
     │ isHero   │
+    │ isLogo   │
     │ playback │
     │ Position │
     └──────────┘
@@ -584,13 +586,39 @@ Multi-layer defence against aggressive AI crawlers:
 
 - Multi-mode: carousel (explore page), single-slide (item detail), profile avatar mode, custom backdrop (playlist detail)
 - `backgroundElement` prop accepts custom React node rendered behind gradient overlay (used for mosaic tile backdrops)
+- Embla Carousel fade plugin for smooth crossfade transitions between slides (replaces slide-based animation)
 - Auto-advance every 5 seconds with pause on hover
 - Respects `prefers-reduced-motion` (disables autoplay, ken-burns effect)
 - TMDB metadata display: tagline, year, runtime, genres, content rating, vote average
 - Navigation dots with `role="tablist"` semantics
 - Screen reader `aria-live` slide announcements
-- Attribution text with optional linking via `attributionHref`
+- Attribution moved into `MetadataLine` component (inline with year, runtime, genres, sync status)
 - Sync status indicators inline in metadata line: SYNCED (check icon), SYNCING (animated spinner), PENDING (dot), ERROR (warning triangle). `HeroSlide` type extended with optional `syncStatus` and `driveFileId`. Explore page fetches sync data server-side, filtered to current user's own items only (privacy).
+
+**Cinematic Visual Pipeline:**
+
+Each item can have a dominant colour extracted from its backdrop, used to theme the entire page. The pipeline works in four stages:
+
+1. **Extraction** — `extractDominantColour()` in `lib/colour-extract.ts` uses sharp's `stats()` API for colour frequency analysis (more accurate than 1×1 resize averaging). Accepts a Buffer (uploaded images) or URL string (TMDB images). `boostSaturation()` ensures the result is vibrant enough for theming: minimum 40% saturation with 1.5× boost, lightness clamped to 25% maximum so bright backdrops stay dark.
+
+2. **Shading** — `createColourShades(hex)` in `lib/colour-utils.ts` generates 10 shades from one colour. Shades 100–700 lerp from white towards the input colour. Shades 800–1000 lerp from the input colour towards black. Shade 700 ≈ the input. All pure math, no external dependencies — safe for client bundles.
+
+3. **CSS Registration** — 10 `@property` rules in `globals.css` register `--dark-100` through `--dark-1000` as `<color>` type with `inherits: true`. Without `@property`, CSS custom properties are strings and can't animate — registration gives the browser type information to interpolate between colour values. Initial values match the neutral dark theme so un-themed pages look normal.
+
+4. **Injection** — `CinematicHero` calls `createColourShades()` with the active slide's `dominantColour`, spreads the result as inline `style` on the section element, and adds the `.transition-colours-pipeline` class. This class transitions all 10 properties at 500ms ease, producing a smooth crossfade as the carousel advances. Hero overlay gradients use `color-mix(in srgb, var(--dark-900) N%, transparent)` instead of hardcoded `rgba()` values, resolving from the hero's own colour scope.
+
+`HeroContentLayout` wraps the entire page below the hero, accepting a `dominantColour` prop. Explore page tracks the active colour via `onColourChange` callback and passes it down.
+
+**Logo Overlay:**
+
+TMDB logos are transparent title treatment images (usually PNG) displayed in the hero instead of text titles:
+
+- `TMDBImages` type extended with `logos: TMDBImage[]` array
+- `getBestLogo()` prioritises English logos, then highest vote average
+- `CinematicHero` renders logo with `next/image`, responsive `max-w`/`max-h` constraints, and `object-contain` + `object-left` for left-aligned display
+- Per-slide `logoErrorIds` state tracks failed logo loads — text title fallback only suppresses the logo for the specific slide that errored
+- Logo resolution priority: manual `isLogo` artwork file > `tmdbLogoPath` > text title fallback
+- `LogoThumbnail` shared component renders transparent PNGs on `#0a0a0a` background with selection state, loading placeholder, and badge content via children
 
 ### Google Drive Integration
 
@@ -633,12 +661,13 @@ Multi-layer defence against aggressive AI crawlers:
 
 ### TMDB Metadata
 
-**4-Step Wizard:**
+**5-Step Wizard (movies/shows):**
 
 1. Search by title, review description and metadata
 2. Select poster from multiple options
 3. Choose hero/backdrop image
-4. Review and apply (selective field application)
+4. Pick a logo title treatment (with skip option)
+5. Review and apply (selective field application, auto-extracts dominant colour and selects best logo)
 
 **TV Show Support:**
 
@@ -648,19 +677,20 @@ Multi-layer defence against aggressive AI crawlers:
 
 **Per-Field Artwork Editing:**
 
-After initial wizard application, individual artwork fields (poster, backdrop, episode still) can be changed in isolation:
+After initial wizard application, individual artwork fields (poster, backdrop, logo, episode still) can be changed in isolation:
 
 - `TmdbArtworkChangeDialog` opens an image gallery scoped to a single field
 - Fetches images via `getImagesAction`, `getSeasonImagesAction`, or `getEpisodeImagesAction`
 - `AnimatedDialogContent` slot API provides smooth loading → gallery transitions
-- Content-type-aware: movies show poster + backdrop, TV shows show poster + backdrop, seasons show poster only, episodes show still only
+- Content-type-aware: movies show poster + backdrop + logo, TV shows show poster + backdrop + logo, seasons show poster only, episodes show still only
+- Logo change dialog uses `LogoSelectionGrid` (simplified grid without tabs/skip) instead of `ImageSelectionGrid`
 
 **Inline Detach:**
 
 - `TmdbSourceField` on the Details tab shows the linked TMDB source with an inline trash icon
 - Detach calls `clearTmdbFieldAction(itemId, "all")` which clears tmdbId, tmdbType, all paths, and resets display options to defaults
 - Preserves item name and description
-- Individual field clearing via `clearTmdbFieldAction(itemId, "poster" | "backdrop")` removes a single artwork path
+- Individual field clearing via `clearTmdbFieldAction(itemId, "poster" | "backdrop" | "logo")` removes a single artwork path
 
 **Component Architecture:**
 
@@ -692,10 +722,13 @@ After initial wizard application, individual artwork fields (poster, backdrop, e
 
 **Artwork Handling:**
 
-- TMDB poster/backdrop paths stored directly on items (`tmdbPosterPath`, `tmdbBackdropPath`)
+- TMDB poster/backdrop/logo paths stored directly on items (`tmdbPosterPath`, `tmdbBackdropPath`, `tmdbLogoPath`)
 - CDN-first resolution: TMDB CDN → Drive-hosted artwork → fallback icon
+- Logo resolution: manual `isLogo` artwork file → TMDB logo path → text title fallback
 - Drive artwork used as fallback when no TMDB path available
-- Wizard allows selecting specific poster/backdrop from TMDB image galleries
+- Wizard allows selecting specific poster/backdrop/logo from TMDB image galleries
+- `applyMetadataAction` auto-extracts dominant colour from backdrop and auto-selects best English logo during metadata application
+- Dominant colour stored as hex string on `Item.dominantColour` for page-level colour theming
 
 **Error Handling:**
 
@@ -1218,29 +1251,97 @@ All JSON-LD output sanitised with `replace(/</g, "\\u003c")` to prevent XSS via 
 
 ## CI/CD Pipeline
 
-### GitHub Actions
+Three GitHub Actions workflows handle quality, schema migration, database seeding, and component testing.
 
-Three-job pipeline in `.github/workflows/ci.yml`:
+### CI Pipeline (`ci.yml`)
+
+Four-job pipeline on push to `development`/`production` and PRs targeting those branches:
 
 ```
 ┌──────────────┐
 │ Quality Gate │  Format check, lint, type check, knip
 └──────┬───────┘
-       │ depends on
+       │
+       ▼
+┌─────────────────┐
+│ Schema Migration│  prisma migrate deploy (push only, skipped for PRs)
+└──────┬──────────┘
+       │ depends on both
   ┌────┴────┐
   ▼         ▼
 ┌──────┐ ┌───────┐
-│Tests │ │ Build │  Run in parallel
+│Tests │ │ Build │  Run in parallel after quality + migrate
 └──────┘ └───────┘
 ```
 
-**Quality Gate** — runs format:check, lint, type-check, and knip (unused code detection). Uses a dummy `DATABASE_URL` since no database access needed.
+**Quality Gate** — runs format:check, lint, type-check, and knip (unused code detection). Uses a dummy `DATABASE_URL` since Prisma's postinstall hook runs `prisma generate` during `pnpm install`, which requires the env var even without a real database connection.
 
-**Tests** — unit tests and integration tests against real PostgreSQL via `E2E_DATABASE_URL` secret. Depends on quality gate passing.
+**Schema Migration** — runs `prisma migrate deploy` against Neon database branches, scoped by the Git branch that triggered the push:
 
-**Build** — production build verification. Depends on quality gate passing. Runs in parallel with tests.
+```
+development push           production push
+       │                         │
+       ▼                    ┌────┼────┐
+ ┌───────────┐              ▼    ▼    ▼
+ │    dev    │         ┌──────┐┌────┐┌────┐
+ │  (Neon)   │         │ prod ││demo││seed│
+ └───────────┘         │(Neon)││    ││    │
+                       └──────┘└────┘└────┘
+```
 
-**Triggers:** Push to `development`/`production` branches and all PRs targeting those branches. Concurrency groups cancel in-progress runs for the same ref (except production pushes, which always complete).
+This branch-scoping was a deliberate fix for advisory lock contention. The original design used a separate `schema-migrate.yml` workflow that ran all four Neon migrations on every push regardless of which Git branch triggered it. When development and production pushes happened close together, both workflows tried to acquire Prisma's advisory lock on the same Neon branches simultaneously, causing failures. Merging migration into the CI workflow and scoping each step to the triggering Git branch eliminated the contention entirely.
+
+Only runs on push events (`if: github.event_name == 'push'`), not PRs. Tests and build use `if: always()` with conditional success checks (`needs.migrate.result == 'success' || needs.migrate.result == 'skipped'`) so they run normally when migration is skipped for PRs.
+
+**Tests** — unit and integration tests against real PostgreSQL. Depends on both quality gate and migration passing (or migration being skipped).
+
+**Build** — production build verification. Same dependency pattern as tests, runs in parallel.
+
+**Concurrency:** Groups cancel in-progress runs for the same ref, except production pushes which always run to completion.
+
+### Seed Workflow (`seed.yml`)
+
+Manual-dispatch workflow for populating databases. Three targets, each running independently:
+
+| Target      | Neon Branch | Seed Script Target | Purpose                                       |
+| ----------- | ----------- | ------------------ | --------------------------------------------- |
+| development | development | `development`      | Dev data with TMDB metadata and Drive folders |
+| demo        | demo        | `demo`             | Demo environment for recordings and showcases |
+| seed        | seed        | `screenshots`      | Screenshot data for portfolio automation      |
+
+The "seed" Neon branch maps to the "screenshots" seed target — a naming quirk because the Neon branch was created before the seed script's target naming was finalised. The workflow handles the translation: GitHub secret `SEED_DATABASE_URL` is set as env var `SCREENSHOT_DATABASE_URL` (what `seed.ts` expects).
+
+Concurrency is set to `cancel-in-progress: false` so seed jobs always run to completion, avoiding partially seeded databases.
+
+The seed workflow was originally triggered automatically after successful schema migrations, but this was removed in favour of manual dispatch only. Automatic seeding caused unnecessary re-seeds when schema changes didn't affect data, and the long runtime (~3 minutes per target) blocked other workflows.
+
+### Storybook CI (`storybook.yml`)
+
+Builds Storybook and runs interaction/accessibility tests via Playwright on every push and PR. Serves the static build via `http-server` and runs `test-storybook:ci` against it. Uploads the Storybook build as an artifact (7-day retention).
+
+### Neon Branch Topology
+
+Four Neon database branches serve different environments:
+
+```
+         neon/main (production schema)
+         ├── development  ← dev pushes migrate here
+         ├── demo         ← production pushes migrate here
+         └── seed         ← production pushes migrate here
+```
+
+Each branch has its own connection string stored as a GitHub secret:
+
+| Neon Branch | GitHub Secret             | Used By                           |
+| ----------- | ------------------------- | --------------------------------- |
+| development | `DATABASE_URL`            | CI tests, dev migration, dev seed |
+| production  | `PRODUCTION_DATABASE_URL` | Production migration              |
+| demo        | `DEMO_DATABASE_URL`       | Demo migration, demo seed         |
+| seed        | `SEED_DATABASE_URL`       | Seed migration, screenshot seed   |
+
+### Migration Safety
+
+An integration test (`tests/integration/prisma/schema-migrate.test.ts`) verifies migration idempotency by running `prisma migrate deploy` twice consecutively. The second run confirms "No pending migrations to apply" — this catches cases where a migration might fail on rerun due to non-idempotent SQL statements.
 
 ### Pre-commit Hooks
 
@@ -1415,7 +1516,7 @@ Portfolio screenshots for marketing/documentation using POM patterns and fixture
 
 **Performance:** Vercel Speed Insights — Core Web Vitals monitoring (LCP, FID, CLS, TTFB)
 
-**CI/CD:** GitHub Actions — quality gate, tests, and build verification on every push and PR
+**CI/CD:** GitHub Actions — quality gate, schema migration across 4 Neon branches, tests, build verification, database seeding (manual dispatch), and Storybook interaction testing on every push and PR
 
 ---
 

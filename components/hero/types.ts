@@ -44,6 +44,10 @@ export interface HeroSlide {
   syncStatus?: SyncStatus;
   /** Google Drive folder ID — shows cloud icon when linked and synced. */
   driveFileId?: string | null;
+  /** Logo image URL for display instead of text title. */
+  logoImage?: string | null;
+  /** Dominant colour extracted from backdrop (hex, e.g. "#1a3a5c"). */
+  dominantColour?: string | null;
   /** Profile data — when present, renders avatar layout. */
   profile?: {
     id: string;
@@ -71,6 +75,8 @@ export interface CinematicHeroProps {
   enableKenBurns?: boolean;
   /** Custom background element (e.g., mosaic). Renders instead of Image/video when provided. */
   backgroundElement?: React.ReactNode;
+  /** Callback fired when the active slide's dominant colour changes (for page-level theming). */
+  onColourChange?: (colour: string | null) => void;
   /** Additional CSS classes. */
   className?: string;
 }

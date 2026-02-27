@@ -28,8 +28,16 @@ vi.mock("@/lib/tmdb-client", () => ({
   searchMedia: vi.fn(),
   getMovie: vi.fn(),
   getTVShow: vi.fn(),
+  getMovieImages: vi.fn(),
+  getTVShowImages: vi.fn(),
+  getBestLogo: vi.fn(),
   extractYear: vi.fn(),
   truncateOverview: vi.fn(),
+}));
+
+// Mock colour extraction (required by tmdb-actions module)
+vi.mock("@/lib/colour-extract", () => ({
+  extractDominantColour: vi.fn().mockResolvedValue(null),
 }));
 
 // Mock next/cache
@@ -153,6 +161,63 @@ describe("TMDB clear metadata integration", () => {
     // Name and description preserved
     expect(updated?.name).toBe("The Dark Knight");
     expect(updated?.description).toBe("When the menace known as the Joker...");
+  });
+
+  it("clears tmdbLogoPath when field is 'logo'", async () => {
+    const item = await createItemWithTmdb();
+    // Set a logo path
+    await prisma.item.update({
+      where: { id: item.id },
+      data: { tmdbLogoPath: "/logo.png" },
+    });
+
+    const result = await clearTmdbFieldAction(item.id, "logo");
+    expect(result).toEqual({ success: true });
+
+    const updated = await prisma.item.findUnique({ where: { id: item.id } });
+    expect(updated?.tmdbLogoPath).toBeNull();
+    // Other TMDB fields preserved
+    expect(updated?.tmdbId).toBe(155);
+    expect(updated?.tmdbPosterPath).toBe("/poster.jpg");
+    expect(updated?.tmdbBackdropPath).toBe("/backdrop.jpg");
+  });
+
+  it("clears logo and colour on full detach", async () => {
+    const item = await createItemWithTmdb();
+    await prisma.item.update({
+      where: { id: item.id },
+      data: { tmdbLogoPath: "/logo.png", dominantColour: "#1a3a5c" },
+    });
+
+    const result = await clearTmdbFieldAction(item.id, "all");
+    expect(result).toEqual({ success: true });
+
+    const updated = await prisma.item.findUnique({ where: { id: item.id } });
+    expect(updated?.tmdbLogoPath).toBeNull();
+    expect(updated?.dominantColour).toBeNull();
+    expect(updated?.tmdbId).toBeNull();
+    expect(updated?.tmdbType).toBeNull();
+    // Name and description preserved
+    expect(updated?.name).toBe("The Dark Knight");
+    expect(updated?.description).toBe("When the menace known as the Joker...");
+  });
+
+  it("clears dominantColour when clearing backdrop", async () => {
+    const item = await createItemWithTmdb();
+    await prisma.item.update({
+      where: { id: item.id },
+      data: { dominantColour: "#1a3a5c" },
+    });
+
+    const result = await clearTmdbFieldAction(item.id, "backdrop");
+    expect(result).toEqual({ success: true });
+
+    const updated = await prisma.item.findUnique({ where: { id: item.id } });
+    expect(updated?.tmdbBackdropPath).toBeNull();
+    expect(updated?.dominantColour).toBeNull();
+    // Other fields preserved
+    expect(updated?.tmdbId).toBe(155);
+    expect(updated?.tmdbPosterPath).toBe("/poster.jpg");
   });
 
   it("rejects clearing by non-owner", async () => {

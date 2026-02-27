@@ -237,7 +237,7 @@ export const tmdbEpisodeImagesSchema = z.object({
  */
 export const clearTmdbFieldSchema = z.object({
   itemId: z.string().min(1),
-  field: z.enum(["poster", "backdrop", "all"]),
+  field: z.enum(["poster", "backdrop", "logo", "all"]),
 });
 
 /**

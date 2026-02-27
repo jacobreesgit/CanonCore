@@ -24,6 +24,7 @@ export interface SettingsDialogState {
     tmdbType: string | null;
     tmdbPosterPath: string | null;
     tmdbBackdropPath: string | null;
+    tmdbLogoPath: string | null;
     tmdbShowTagline: boolean;
     tmdbShowMetadata: boolean;
     tmdbShowGenres: boolean;
@@ -95,6 +96,7 @@ export function useSettingsDialog({
           tmdbType: item.tmdbType,
           tmdbPosterPath: item.tmdbPosterPath,
           tmdbBackdropPath: item.tmdbBackdropPath,
+          tmdbLogoPath: item.tmdbLogoPath,
           tmdbShowTagline: item.tmdbShowTagline,
           tmdbShowMetadata: item.tmdbShowMetadata,
           tmdbShowGenres: item.tmdbShowGenres,
@@ -152,6 +154,7 @@ export function useSettingsDialog({
           tmdbType: updatedItem.tmdbType,
           tmdbPosterPath: updatedItem.tmdbPosterPath,
           tmdbBackdropPath: updatedItem.tmdbBackdropPath,
+          tmdbLogoPath: updatedItem.tmdbLogoPath,
           tmdbShowTagline: updatedItem.tmdbShowTagline,
           tmdbShowMetadata: updatedItem.tmdbShowMetadata,
           tmdbShowGenres: updatedItem.tmdbShowGenres,

@@ -129,7 +129,7 @@ describe("AddItemDialog TMDB Wizard Integration", () => {
     // Wait for wizard to appear - AddItemDialog renders its own step progress bar
     // in the dialog header (via onHeaderChange callback), not the inline WizardStepIndicator
     await waitFor(() => {
-      expect(screen.getByRole("status")).toHaveTextContent(/Step 1 of 4/);
+      expect(screen.getByRole("status")).toHaveTextContent(/Step 1 of 5/);
     });
   });
 
@@ -231,10 +231,20 @@ describe("AddItemDialog TMDB Wizard Integration", () => {
       ).toBeInTheDocument();
     });
 
+    // Click Next to go to logo step
+    await user.click(screen.getByRole("button", { name: /next/i }));
+
+    // Step 4: Logo
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /select logo/i })
+      ).toBeInTheDocument();
+    });
+
     // Click Next to go to summary/review step
     await user.click(screen.getByRole("button", { name: /next/i }));
 
-    // Step 4: Review Changes
+    // Step 5: Review Changes
     await waitFor(() => {
       expect(
         screen.getByRole("heading", { name: /review changes/i })
@@ -336,6 +346,14 @@ describe("AddItemDialog TMDB Wizard Integration", () => {
     });
     await user.click(screen.getByRole("button", { name: /next/i }));
 
+    // Logo step
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /select logo/i })
+      ).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole("button", { name: /next/i }));
+
     // Click Apply in review step
     await waitFor(() => {
       expect(
@@ -400,11 +418,11 @@ describe("AddItemDialog TMDB Wizard Integration", () => {
     });
     await user.click(screen.getByText("Fight Club"));
 
-    // Without Drive connection, wizard still shows all 4 steps
+    // Without Drive connection, wizard still shows all 5 steps
     // (TMDB images served from CDN, no Drive needed)
     // AddItemDialog renders step progress in header via onHeaderChange callback
     await waitFor(() => {
-      expect(screen.getByRole("status")).toHaveTextContent(/Step 1 of 4/);
+      expect(screen.getByRole("status")).toHaveTextContent(/Step 1 of 5/);
     });
   });
 });

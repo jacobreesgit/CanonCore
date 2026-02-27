@@ -33,11 +33,13 @@ export class ItemsCrudPage {
    * @param name - The name for the new item
    */
   async createItem(name: string) {
-    await this.page.getByTestId("items-add-button").click();
-
-    // Both desktop dialog and mobile sheet use a role-based name input
+    // Retry click + wait for hydration — on mobile the SSR'd button may not
+    // have its React handler attached yet (Radix hydration race).
     const nameInput = this.page.getByRole("combobox", { name: /item name/i });
-    await nameInput.waitFor({ state: "visible", timeout: Timeouts.api });
+    await expect(async () => {
+      await this.page.getByTestId("items-add-button").click();
+      await expect(nameInput).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: Timeouts.api });
     await nameInput.fill(name);
 
     // Dismiss the TMDB search popover — Escape closes the combobox dropdown

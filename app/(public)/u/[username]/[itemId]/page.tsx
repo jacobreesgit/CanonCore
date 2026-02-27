@@ -229,6 +229,7 @@ export default async function ItemDetailPage({
               tmdbType: item.tmdbType,
               tmdbPosterPath: item.tmdbPosterPath,
               tmdbBackdropPath: item.tmdbBackdropPath,
+              tmdbLogoPath: item.tmdbLogoPath,
               tmdbShowTagline: item.tmdbShowTagline,
               tmdbShowMetadata: item.tmdbShowMetadata,
               tmdbShowGenres: item.tmdbShowGenres,
@@ -236,6 +237,7 @@ export default async function ItemDetailPage({
               tmdbShowProviders: item.tmdbShowProviders,
               tmdbShowVideos: item.tmdbShowVideos,
               tmdbShowRecommendations: item.tmdbShowRecommendations,
+              dominantColour: item.dominantColour,
               syncStatus: item.syncStatus,
               driveFileId: item.driveFileId,
             }}

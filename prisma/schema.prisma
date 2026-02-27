@@ -165,6 +165,8 @@ model Item {
   // TMDB image paths (served directly from TMDB CDN)
   tmdbPosterPath    String?  // e.g., "/abc123.jpg" → https://image.tmdb.org/t/p/w500/abc123.jpg
   tmdbBackdropPath  String?  // e.g., "/xyz789.jpg" → https://image.tmdb.org/t/p/original/xyz789.jpg
+  tmdbLogoPath      String?  // TMDB logo image path (e.g., "/abc123.png")
+  dominantColour    String?  // Hex colour from backdrop (e.g., "#1a3a5c")
 
   // TMDB display preferences (which sections appear on detail page)
   tmdbShowTagline          Boolean @default(true)
@@ -253,6 +255,7 @@ model ItemFile {
   // User overrides
   isPrimary Boolean  @default(false)
   isHero    Boolean  @default(false)
+  isLogo    Boolean  @default(false)
 
   // Playback (for MEDIA files)
   playbackPosition Float?    // Seconds

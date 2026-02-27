@@ -52,6 +52,7 @@ export interface ItemSettingsFormItem {
   tmdbType: string | null;
   tmdbPosterPath: string | null;
   tmdbBackdropPath: string | null;
+  tmdbLogoPath: string | null;
   tmdbShowTagline: boolean;
   tmdbShowMetadata: boolean;
   tmdbShowGenres: boolean;
@@ -86,6 +87,15 @@ function findHeroFile(
   return files.find((f) => f.isHero);
 }
 
+/**
+ * Finds the logo file in an array, or returns undefined.
+ */
+function findLogoFile(
+  files: SerializedItemFile[]
+): SerializedItemFile | undefined {
+  return files.find((f) => f.isLogo);
+}
+
 /** Return type for the useItemSettingsForm hook. */
 export interface UseItemSettingsFormReturn {
   // Form fields
@@ -103,6 +113,8 @@ export interface UseItemSettingsFormReturn {
   setPrimaryArtworkId: (id: string | undefined) => void;
   heroArtworkId: string | undefined;
   setHeroArtworkId: (id: string | undefined) => void;
+  logoArtworkId: string | undefined;
+  setLogoArtworkId: (id: string | undefined) => void;
   primarySubtitleId: string | undefined;
   setPrimarySubtitleId: (id: string | undefined) => void;
 
@@ -210,6 +222,9 @@ export function useItemSettingsForm(
   const [heroArtworkId, setHeroArtworkId] = useState<string | undefined>(
     findHeroFile(files.artwork)?.id ?? findPrimaryFile(files.artwork)?.id
   );
+  const [logoArtworkId, setLogoArtworkId] = useState<string | undefined>(
+    findLogoFile(files.artwork)?.id
+  );
   const [primarySubtitleId, setPrimarySubtitleId] = useState<
     string | undefined
   >(findPrimaryFile(files.subtitles)?.id);
@@ -264,6 +279,10 @@ export function useItemSettingsForm(
     () => findHeroFile(files.artwork)?.id ?? findPrimaryFile(files.artwork)?.id,
     [files.artwork]
   );
+  const initialLogoId = useMemo(
+    () => findLogoFile(files.artwork)?.id,
+    [files.artwork]
+  );
   const initialSubtitleId = useMemo(
     () => findPrimaryFile(files.subtitles)?.id,
     [files.subtitles]
@@ -276,6 +295,7 @@ export function useItemSettingsForm(
     primaryMediaId: initialMediaId,
     primaryArtworkId: initialArtworkId,
     heroArtworkId: initialHeroId,
+    logoArtworkId: initialLogoId,
     primarySubtitleId: initialSubtitleId,
   }));
 
@@ -291,6 +311,7 @@ export function useItemSettingsForm(
       primaryMediaId: initialMediaId,
       primaryArtworkId: initialArtworkId,
       heroArtworkId: initialHeroId,
+      logoArtworkId: initialLogoId,
       primarySubtitleId: initialSubtitleId,
     });
     const currentDisplayOptions = {
@@ -320,6 +341,7 @@ export function useItemSettingsForm(
     initialMediaId,
     initialArtworkId,
     initialHeroId,
+    initialLogoId,
     initialSubtitleId,
   ]);
 
@@ -336,8 +358,15 @@ export function useItemSettingsForm(
     setPrimaryMediaId(initialMediaId);
     setPrimaryArtworkId(initialArtworkId);
     setHeroArtworkId(initialHeroId);
+    setLogoArtworkId(initialLogoId);
     setPrimarySubtitleId(initialSubtitleId);
-  }, [initialMediaId, initialArtworkId, initialHeroId, initialSubtitleId]);
+  }, [
+    initialMediaId,
+    initialArtworkId,
+    initialHeroId,
+    initialLogoId,
+    initialSubtitleId,
+  ]);
 
   // Whether TMDB display options have been changed from their original values
   const displayOptionsDirty = useMemo(
@@ -361,6 +390,7 @@ export function useItemSettingsForm(
       primaryMediaId !== originalValues.primaryMediaId ||
       primaryArtworkId !== originalValues.primaryArtworkId ||
       heroArtworkId !== originalValues.heroArtworkId ||
+      logoArtworkId !== originalValues.logoArtworkId ||
       primarySubtitleId !== originalValues.primarySubtitleId ||
       displayOptionsDirty,
     [
@@ -369,6 +399,7 @@ export function useItemSettingsForm(
       primaryMediaId,
       primaryArtworkId,
       heroArtworkId,
+      logoArtworkId,
       primarySubtitleId,
       originalValues,
       displayOptionsDirty,
@@ -393,6 +424,7 @@ export function useItemSettingsForm(
     setPrimaryMediaId(originalValues.primaryMediaId);
     setPrimaryArtworkId(originalValues.primaryArtworkId);
     setHeroArtworkId(originalValues.heroArtworkId);
+    setLogoArtworkId(originalValues.logoArtworkId);
     setPrimarySubtitleId(originalValues.primarySubtitleId);
     setDisplayOptions(originalDisplayOptions);
     onClose?.();
@@ -415,6 +447,7 @@ export function useItemSettingsForm(
         primaryMediaId?: string;
         primaryArtworkId?: string;
         heroArtworkId?: string;
+        logoArtworkId?: string;
         primarySubtitleId?: string;
       } = {};
 
@@ -435,6 +468,9 @@ export function useItemSettingsForm(
       }
       if (heroArtworkId !== originalValues.heroArtworkId && heroArtworkId) {
         changes.heroArtworkId = heroArtworkId;
+      }
+      if (logoArtworkId !== originalValues.logoArtworkId && logoArtworkId) {
+        changes.logoArtworkId = logoArtworkId;
       }
       if (
         primarySubtitleId !== originalValues.primarySubtitleId &&
@@ -488,6 +524,7 @@ export function useItemSettingsForm(
     primaryMediaId,
     primaryArtworkId,
     heroArtworkId,
+    logoArtworkId,
     primarySubtitleId,
     originalValues,
     displayOptions,
@@ -764,6 +801,8 @@ export function useItemSettingsForm(
     setPrimaryArtworkId,
     heroArtworkId,
     setHeroArtworkId,
+    logoArtworkId,
+    setLogoArtworkId,
     primarySubtitleId,
     setPrimarySubtitleId,
 

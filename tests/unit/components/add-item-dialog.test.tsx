@@ -84,7 +84,7 @@ describe("AddItemDialog", () => {
 
   /**
    * Helper to complete wizard.
-   * With hasDriveConnection=true: 4 steps (text → poster → hero → review/apply)
+   * With hasDriveConnection=true: 5 steps (text → poster → hero → logo → review/apply)
    * With hasDriveConnection=false: 2 steps (text → review/apply)
    */
   // Note: AnimatedDialogContent uses AnimatePresence mode="sync" for crossfade,
@@ -128,16 +128,29 @@ describe("AddItemDialog", () => {
         ).not.toBeInTheDocument();
       });
 
-      // Step 3 → Step 4 (Review Changes)
+      // Step 3 → Step 4 (Logo)
       await user.click(screen.getByRole("button", { name: /next/i }));
 
-      // Wait for step 4 (Review Changes) AND ensure step 3 heading is gone
+      // Wait for step 4 (Logo) AND ensure step 3 heading is gone
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: /select logo/i })
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByRole("heading", { name: /select hero image/i })
+        ).not.toBeInTheDocument();
+      });
+
+      // Step 4 → Step 5 (Review Changes)
+      await user.click(screen.getByRole("button", { name: /next/i }));
+
+      // Wait for step 5 (Review Changes) AND ensure step 4 heading is gone
       await waitFor(() => {
         expect(
           screen.getByRole("heading", { name: /review changes/i })
         ).toBeInTheDocument();
         expect(
-          screen.queryByRole("heading", { name: /select hero image/i })
+          screen.queryByRole("heading", { name: /select logo/i })
         ).not.toBeInTheDocument();
       });
 
@@ -795,7 +808,7 @@ describe("AddItemDialog - Categorized File Uploads", () => {
     });
   });
 
-  /** Helper to complete wizard: text → poster → hero → review → apply */
+  /** Helper to complete wizard: text → poster → hero → logo → review → apply */
   const completeWizard = async (user: ReturnType<typeof userEvent.setup>) => {
     await waitFor(() => {
       expect(screen.getByText("Apply Metadata")).toBeInTheDocument();
@@ -817,6 +830,14 @@ describe("AddItemDialog - Categorized File Uploads", () => {
     await waitFor(() => {
       expect(
         screen.getByRole("heading", { name: /select hero image/i })
+      ).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /next/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /select logo/i })
       ).toBeInTheDocument();
     });
 
@@ -1011,7 +1032,7 @@ describe("AddItemDialog - Summary View Layout", () => {
     });
   });
 
-  /** Helper to complete wizard: text → poster → hero → review → apply */
+  /** Helper to complete wizard: text → poster → hero → logo → review → apply */
   const completeWizard = async (user: ReturnType<typeof userEvent.setup>) => {
     await waitFor(() => {
       expect(screen.getByText("Apply Metadata")).toBeInTheDocument();
@@ -1031,6 +1052,13 @@ describe("AddItemDialog - Summary View Layout", () => {
     await waitFor(() => {
       expect(
         screen.getByRole("heading", { name: /select hero image/i })
+      ).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /next/i }));
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /select logo/i })
       ).toBeInTheDocument();
     });
 

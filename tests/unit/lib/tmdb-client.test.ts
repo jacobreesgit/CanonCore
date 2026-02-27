@@ -9,6 +9,7 @@ import {
   getTVShow,
   getPosterUrl,
   getBackdropUrl,
+  getLogoUrl,
   extractYear,
   truncateOverview,
   isTMDBConfigured,
@@ -16,6 +17,7 @@ import {
   getMovieImages,
   getTVShowImages,
   getBestTextlessBackdrop,
+  getBestLogo,
   getTVSeasons,
   getTVEpisodes,
   getEpisodeDetails,
@@ -411,6 +413,42 @@ describe("tmdb-client", () => {
     });
   });
 
+  describe("getLogoUrl", () => {
+    it("returns full URL for valid path with original size by default", () => {
+      const url = getLogoUrl("/logo123.png");
+      expect(url).toBe("https://image.tmdb.org/t/p/original/logo123.png");
+    });
+
+    it("returns null for null path", () => {
+      expect(getLogoUrl(null)).toBeNull();
+    });
+
+    it("returns null for invalid path", () => {
+      expect(getLogoUrl("invalid")).toBeNull();
+      expect(getLogoUrl("/../malicious.png")).toBeNull();
+    });
+
+    it("supports w300 size", () => {
+      const url = getLogoUrl("/logo.png", "w300");
+      expect(url).toBe("https://image.tmdb.org/t/p/w300/logo.png");
+    });
+
+    it("supports w92 size for small thumbnails", () => {
+      const url = getLogoUrl("/logo.png", "w92");
+      expect(url).toBe("https://image.tmdb.org/t/p/w92/logo.png");
+    });
+
+    it("supports original size", () => {
+      const url = getLogoUrl("/logo.png", "original");
+      expect(url).toBe("https://image.tmdb.org/t/p/original/logo.png");
+    });
+
+    it("works with jpg logos", () => {
+      const url = getLogoUrl("/logo.jpg");
+      expect(url).toBe("https://image.tmdb.org/t/p/original/logo.jpg");
+    });
+  });
+
   describe("getMovieImages", () => {
     const mockImagesResponse: TMDBImages = {
       backdrops: [
@@ -586,6 +624,75 @@ describe("tmdb-client", () => {
 
       expect(result).toBeNull();
     });
+
+    it("returns logos array from API response", async () => {
+      const responseWithLogos = {
+        backdrops: [
+          {
+            file_path: "/back1.jpg",
+            vote_average: 5.5,
+            iso_639_1: "en",
+            width: 1920,
+            height: 1080,
+          },
+        ],
+        posters: [
+          {
+            file_path: "/post1.jpg",
+            vote_average: 7.0,
+            iso_639_1: "en",
+            width: 500,
+            height: 750,
+          },
+        ],
+        logos: [
+          {
+            file_path: "/logo1.png",
+            vote_average: 6.0,
+            iso_639_1: "en",
+            width: 300,
+            height: 100,
+          },
+          {
+            file_path: "/logo2.png",
+            vote_average: 8.0,
+            iso_639_1: null,
+            width: 400,
+            height: 120,
+          },
+        ],
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(responseWithLogos),
+      });
+
+      const result = await getMovieImages(278);
+
+      expect(result).not.toBeNull();
+      expect(result!.logos).toBeDefined();
+      expect(result!.logos).toHaveLength(2);
+      // Sorted by vote_average (highest first)
+      expect(result!.logos![0].vote_average).toBe(8.0);
+      expect(result!.logos![1].vote_average).toBe(6.0);
+    });
+
+    it("returns empty logos array when API response has no logos", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            backdrops: [],
+            posters: [],
+          }),
+      });
+
+      const result = await getMovieImages(278);
+
+      expect(result).not.toBeNull();
+      expect(result!.logos).toHaveLength(0);
+    });
   });
 
   describe("getTVShowImages", () => {
@@ -703,6 +810,34 @@ describe("tmdb-client", () => {
 
       expect(result!.backdrops).toHaveLength(1);
       expect(result!.backdrops[0].file_path).toBe("/valid.jpg");
+    });
+
+    it("returns logos array from API response", async () => {
+      const responseWithLogos = {
+        backdrops: [],
+        posters: [],
+        logos: [
+          {
+            file_path: "/tvlogo1.png",
+            vote_average: 7.5,
+            iso_639_1: "en",
+            width: 400,
+            height: 120,
+          },
+        ],
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(responseWithLogos),
+      });
+
+      const result = await getTVShowImages(1396);
+
+      expect(result).not.toBeNull();
+      expect(result!.logos).toBeDefined();
+      expect(result!.logos).toHaveLength(1);
+      expect(result!.logos![0].file_path).toBe("/tvlogo1.png");
     });
   });
 
@@ -858,6 +993,121 @@ describe("tmdb-client", () => {
       const result = getBestTextlessBackdrop(images);
 
       expect(result).toBe("/withtext.jpg");
+    });
+  });
+
+  describe("getBestLogo", () => {
+    it("returns English logo with highest vote average", () => {
+      const images: TMDBImages = {
+        backdrops: [],
+        posters: [],
+        logos: [
+          {
+            file_path: "/logoDe.png",
+            iso_639_1: "de",
+            vote_average: 9,
+            width: 300,
+            height: 100,
+          },
+          {
+            file_path: "/logoEnLow.png",
+            iso_639_1: "en",
+            vote_average: 3,
+            width: 300,
+            height: 100,
+          },
+          {
+            file_path: "/logoEnHigh.png",
+            iso_639_1: "en",
+            vote_average: 8,
+            width: 300,
+            height: 100,
+          },
+        ],
+      };
+      expect(getBestLogo(images)).toBe("/logoEnHigh.png");
+    });
+
+    it("falls back to any logo when no English logos exist", () => {
+      const images: TMDBImages = {
+        backdrops: [],
+        posters: [],
+        logos: [
+          {
+            file_path: "/logoDe.png",
+            iso_639_1: "de",
+            vote_average: 5,
+            width: 300,
+            height: 100,
+          },
+          {
+            file_path: "/logoFr.png",
+            iso_639_1: "fr",
+            vote_average: 8,
+            width: 300,
+            height: 100,
+          },
+        ],
+      };
+      expect(getBestLogo(images)).toBe("/logoFr.png");
+    });
+
+    it("returns null for empty logos array", () => {
+      const images: TMDBImages = { backdrops: [], posters: [], logos: [] };
+      expect(getBestLogo(images)).toBeNull();
+    });
+
+    it("returns null when logos property is missing", () => {
+      const images: TMDBImages = { backdrops: [], posters: [] };
+      expect(getBestLogo(images)).toBeNull();
+    });
+
+    it("prefers English over textless (null iso_639_1)", () => {
+      const images: TMDBImages = {
+        backdrops: [],
+        posters: [],
+        logos: [
+          {
+            file_path: "/textless.png",
+            iso_639_1: null,
+            vote_average: 9,
+            width: 300,
+            height: 100,
+          },
+          {
+            file_path: "/english.png",
+            iso_639_1: "en",
+            vote_average: 5,
+            width: 300,
+            height: 100,
+          },
+        ],
+      };
+      expect(getBestLogo(images)).toBe("/english.png");
+    });
+
+    it("validates logo image paths", () => {
+      const images: TMDBImages = {
+        backdrops: [],
+        posters: [],
+        logos: [
+          {
+            file_path: "/../evil.png",
+            iso_639_1: "en",
+            vote_average: 9,
+            width: 300,
+            height: 100,
+          },
+          {
+            file_path: "/validLogo.png",
+            iso_639_1: "en",
+            vote_average: 5,
+            width: 300,
+            height: 100,
+          },
+        ],
+      };
+      expect(getBestLogo(images)).toBe("/validLogo.png");
     });
   });
 

@@ -107,16 +107,19 @@ vi.mock("@/components/items/metadata-line", () => ({
     year,
     voteAverage,
     genres,
+    attribution,
   }: {
     year?: string;
     voteAverage?: number;
     genres?: string[];
+    attribution?: string;
   }) => (
     <div aria-label="metadata line">
       {year} {voteAverage}
       {genres && genres.length > 0 && (
         <span aria-label="metadata genres">{genres.join(", ")}</span>
       )}
+      {attribution && <span>{attribution}</span>}
     </div>
   ),
 }));

@@ -56,6 +56,8 @@ export interface UseTMDBWizardReturn {
   skipPoster: () => void;
   setBackdrop: (value: string | null, source: ArtworkSelectionSource) => void;
   skipBackdrop: () => void;
+  setLogo: (value: string | null, source: ArtworkSelectionSource) => void;
+  skipLogo: () => void;
   setStill: (value: string | null, source: ArtworkSelectionSource) => void;
   skipStill: () => void;
   setImages: (images: TMDBImages) => void;
@@ -182,6 +184,27 @@ export function useTMDBWizard(
     actions.setData({ backdrop });
   }, [actions]);
 
+  const setLogo = useCallback(
+    (value: string | null, source: ArtworkSelectionSource) => {
+      const logo: ArtworkSelection = {
+        value,
+        source: value ? source : null,
+        skipped: false,
+      };
+      actions.setData({ logo });
+    },
+    [actions]
+  );
+
+  const skipLogo = useCallback(() => {
+    const logo: ArtworkSelection = {
+      value: null,
+      source: null,
+      skipped: true,
+    };
+    actions.setData({ logo });
+  }, [actions]);
+
   const setStill = useCallback(
     (value: string | null, source: ArtworkSelectionSource) => {
       const still: ArtworkSelection = {
@@ -245,6 +268,7 @@ export function useTMDBWizard(
     const data = state.data;
     const poster = data.poster;
     const backdrop = data.backdrop;
+    const logo = data.logo;
     const still = data.still;
     const contentType = data.contentType ?? "movie";
 
@@ -273,6 +297,11 @@ export function useTMDBWizard(
         ? null
         : backdrop?.value
           ? { value: backdrop.value, source: backdrop.source }
+          : null,
+      logo: logo?.skipped
+        ? null
+        : logo?.value
+          ? { value: logo.value, source: logo.source }
           : null,
       still: still?.skipped
         ? null
@@ -306,6 +335,8 @@ export function useTMDBWizard(
     skipPoster,
     setBackdrop,
     skipBackdrop,
+    setLogo,
+    skipLogo,
     setStill,
     skipStill,
     setImages,

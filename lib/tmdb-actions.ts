@@ -17,6 +17,7 @@ import {
   getTVShow,
   getMovieImages,
   getTVShowImages,
+  getBestLogo,
   getTVSeasons,
   getTVEpisodes,
   getEpisodeDetails,
@@ -36,6 +37,7 @@ import {
   type TMDBEpisodeImages,
   type TMDBEpisode,
 } from "@/lib/tmdb-client";
+import { extractDominantColour } from "@/lib/colour-extract";
 import { handlePrismaError } from "@/lib/errors";
 import {
   clearTmdbFieldSchema,
@@ -55,10 +57,14 @@ export interface ApplyMetadataOptions {
   updatePoster?: boolean;
   /** Whether to store backdrop path from TMDB */
   updateBackdrop?: boolean;
+  /** Whether to store logo path from TMDB */
+  updateLogo?: boolean;
   /** Selected poster path from wizard gallery (e.g., "/abc123.jpg") */
   posterPath?: string | null;
   /** Selected backdrop path from wizard gallery (e.g., "/xyz789.jpg") */
   backdropPath?: string | null;
+  /** Selected logo path from wizard gallery (e.g., "/abc123.png") */
+  logoPath?: string | null;
 }
 
 /** Default options - update all fields */
@@ -67,8 +73,10 @@ const DEFAULT_METADATA_OPTIONS: Required<ApplyMetadataOptions> = {
   updateDescription: true,
   updatePoster: true,
   updateBackdrop: true,
+  updateLogo: true,
   posterPath: null,
   backdropPath: null,
+  logoPath: null,
 };
 
 /**
@@ -232,6 +240,8 @@ export async function applyMetadataAction(
       description?: string | null;
       tmdbPosterPath?: string | null;
       tmdbBackdropPath?: string | null;
+      tmdbLogoPath?: string | null;
+      dominantColour?: string | null;
       tmdbShowTagline?: boolean;
       tmdbShowMetadata?: boolean;
       tmdbShowGenres?: boolean;
@@ -255,6 +265,38 @@ export async function applyMetadataAction(
     if (opts.updateBackdrop) {
       updateData.tmdbBackdropPath = opts.backdropPath ?? backdropPath;
     }
+
+    // Parallel logo fetch + colour extraction (independent I/O operations)
+    const effectiveBackdrop = updateData.tmdbBackdropPath ?? backdropPath;
+
+    const [images, colour] = await Promise.all([
+      // Logo: fetch images for logo selection (only if movies/shows need logos)
+      (mediaType === "movie"
+        ? tmdbCircuitBreaker.execute(() => getMovieImages(tmdbId))
+        : tmdbCircuitBreaker.execute(() => getTVShowImages(tmdbId))
+      ).catch(() => null),
+      // Colour: extract dominant colour from backdrop
+      effectiveBackdrop
+        ? extractDominantColour(
+            `https://image.tmdb.org/t/p/w300${effectiveBackdrop}`
+          )
+        : Promise.resolve(null),
+    ]);
+
+    // Logo: wizard-selected path takes precedence, otherwise auto-select best
+    if (opts.updateLogo !== false) {
+      if (opts.logoPath) {
+        updateData.tmdbLogoPath = opts.logoPath;
+      } else if (images) {
+        const logoPath = getBestLogo(images);
+        if (logoPath) {
+          updateData.tmdbLogoPath = logoPath;
+        }
+      }
+    }
+
+    // Always set dominantColour (null clears old colour when new entry has no backdrop)
+    updateData.dominantColour = colour;
 
     // Persist display preferences if provided
     if (displayOptions) {
@@ -925,8 +967,10 @@ export async function updateTmdbDisplayOptions(
  * Clears individual TMDB fields or fully detaches TMDB metadata from an item.
  *
  * - "poster": nulls tmdbPosterPath only
- * - "backdrop": nulls tmdbBackdropPath only
- * - "all": nulls tmdbId, tmdbType, tmdbPosterPath, tmdbBackdropPath and resets display options
+ * - "backdrop": nulls tmdbBackdropPath and dominantColour
+ * - "logo": nulls tmdbLogoPath only
+ * - "all": nulls tmdbId, tmdbType, tmdbPosterPath, tmdbBackdropPath, tmdbLogoPath,
+ *          dominantColour and resets display options
  *
  * @param itemId - Item to modify
  * @param field - Which field(s) to clear
@@ -934,7 +978,7 @@ export async function updateTmdbDisplayOptions(
  */
 export async function clearTmdbFieldAction(
   itemId: string,
-  field: "poster" | "backdrop" | "all"
+  field: "poster" | "backdrop" | "logo" | "all"
 ): Promise<ActionResult> {
   // Validate input at system boundary (server actions callable via HTTP POST)
   const parsed = clearTmdbFieldSchema.safeParse({ itemId, field });
@@ -975,6 +1019,8 @@ export async function clearTmdbFieldAction(
           tmdbType: null,
           tmdbPosterPath: null,
           tmdbBackdropPath: null,
+          tmdbLogoPath: null,
+          dominantColour: null,
           tmdbShowTagline: true,
           tmdbShowMetadata: true,
           tmdbShowGenres: true,
@@ -985,7 +1031,9 @@ export async function clearTmdbFieldAction(
         }
       : field === "poster"
         ? { tmdbPosterPath: null }
-        : { tmdbBackdropPath: null };
+        : field === "backdrop"
+          ? { tmdbBackdropPath: null, dominantColour: null }
+          : { tmdbLogoPath: null };
 
   try {
     await prisma.item.update({

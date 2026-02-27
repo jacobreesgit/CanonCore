@@ -40,6 +40,7 @@ vi.mock("@/lib/tmdb-client", () => ({
   getTVShowImages: vi.fn(),
   getTVSeasonImages: vi.fn(),
   getEpisodeImages: vi.fn(),
+  getBestLogo: vi.fn(),
   getPosterUrl: vi.fn((p: string | null, size?: string) =>
     p ? `https://image.tmdb.org/t/p/${size || "w342"}${p}` : null
   ),
@@ -52,6 +53,9 @@ vi.mock("@/lib/tmdb-client", () => ({
   extractYear: vi.fn((d: string) => d?.split("-")[0] || ""),
   truncateOverview: vi.fn((t: string) => t?.slice(0, 200) || ""),
   isTMDBConfigured: vi.fn(() => true),
+}));
+vi.mock("@/lib/colour-extract", () => ({
+  extractDominantColour: vi.fn().mockResolvedValue("#1a3a5c"),
 }));
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: vi.fn() }));
 vi.mock("@/lib/circuit-breaker", () => ({
@@ -77,9 +81,11 @@ import {
   getTVShowImages,
   getTVSeasonImages,
   getEpisodeImages,
+  getBestLogo,
   isTMDBConfigured,
 } from "@/lib/tmdb-client";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { extractDominantColour } from "@/lib/colour-extract";
 
 describe("tmdb-actions", () => {
   beforeEach(() => {
@@ -188,6 +194,20 @@ describe("tmdb-actions", () => {
       files: [],
     };
 
+    const mockImagesWithLogo = {
+      posters: [],
+      backdrops: [],
+      logos: [
+        {
+          file_path: "/logo1.png",
+          vote_average: 5.5,
+          iso_639_1: "en",
+          width: 400,
+          height: 150,
+        },
+      ],
+    };
+
     beforeEach(() => {
       vi.mocked(prisma.item.findUnique).mockResolvedValue(mockItem as never);
       vi.mocked(prisma.item.update).mockResolvedValue(mockItem as never);
@@ -208,6 +228,11 @@ describe("tmdb-actions", () => {
         vote_count: 0,
         genres: [],
       });
+      // Default: images endpoint returns logos, getBestLogo selects one
+      vi.mocked(getMovieImages).mockResolvedValue(mockImagesWithLogo);
+      vi.mocked(getTVShowImages).mockResolvedValue(mockImagesWithLogo);
+      vi.mocked(getBestLogo).mockReturnValue("/logo1.png");
+      vi.mocked(extractDominantColour).mockResolvedValue("#1a3a5c");
     });
 
     it("updates item with movie metadata and tmdbId/tmdbType", async () => {
@@ -216,14 +241,14 @@ describe("tmdb-actions", () => {
       expect(result.success).toBe(true);
       expect(prisma.item.update).toHaveBeenCalledWith({
         where: { id: "item-1" },
-        data: {
+        data: expect.objectContaining({
           tmdbId: 278,
           tmdbType: "movie",
           name: "The Shawshank Redemption (1994)",
           description: expect.any(String),
           tmdbPosterPath: "/poster.jpg",
           tmdbBackdropPath: "/backdrop.jpg",
-        },
+        }),
       });
     });
 
@@ -250,13 +275,17 @@ describe("tmdb-actions", () => {
 
       expect(prisma.item.update).toHaveBeenCalledWith({
         where: { id: "item-1" },
-        data: {
+        data: expect.objectContaining({
           tmdbId: 278,
           tmdbType: "movie",
           name: "The Shawshank Redemption (1994)",
           description: expect.any(String),
-        },
+        }),
       });
+      // Verify poster/backdrop are NOT included
+      const updateCall = vi.mocked(prisma.item.update).mock.calls[0][0];
+      expect(updateCall.data).not.toHaveProperty("tmdbPosterPath");
+      expect(updateCall.data).not.toHaveProperty("tmdbBackdropPath");
     });
 
     it("verifies item ownership", async () => {
@@ -293,14 +322,14 @@ describe("tmdb-actions", () => {
       expect(result.success).toBe(true);
       expect(prisma.item.update).toHaveBeenCalledWith({
         where: { id: "item-1" },
-        data: {
+        data: expect.objectContaining({
           tmdbId: 1396,
           tmdbType: "tv",
           name: "Breaking Bad (2008)",
           description: expect.any(String),
           tmdbPosterPath: "/bb.jpg",
           tmdbBackdropPath: "/bb-backdrop.jpg",
-        },
+        }),
       });
     });
 
@@ -366,6 +395,92 @@ describe("tmdb-actions", () => {
           }),
         })
       );
+    });
+
+    it("stores tmdbLogoPath from best logo", async () => {
+      const result = await applyMetadataAction("item-1", 278, "movie");
+
+      expect(result.success).toBe(true);
+      expect(getMovieImages).toHaveBeenCalledWith(278);
+      expect(getBestLogo).toHaveBeenCalledWith(mockImagesWithLogo);
+      expect(prisma.item.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            tmdbLogoPath: "/logo1.png",
+          }),
+        })
+      );
+    });
+
+    it("stores dominantColour extracted from backdrop", async () => {
+      const result = await applyMetadataAction("item-1", 278, "movie");
+
+      expect(result.success).toBe(true);
+      expect(extractDominantColour).toHaveBeenCalledWith(
+        "https://image.tmdb.org/t/p/w300/backdrop.jpg"
+      );
+      expect(prisma.item.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            dominantColour: "#1a3a5c",
+          }),
+        })
+      );
+    });
+
+    it("saves metadata even when colour extraction fails", async () => {
+      vi.mocked(extractDominantColour).mockResolvedValue(null);
+
+      const result = await applyMetadataAction("item-1", 278, "movie");
+
+      expect(result.success).toBe(true);
+      // dominantColour should be explicitly set to null (clears stale colour)
+      const updateCall = vi.mocked(prisma.item.update).mock.calls[0][0];
+      expect(updateCall.data).toHaveProperty("dominantColour", null);
+    });
+
+    it("uses wizard-selected logoPath when provided", async () => {
+      await applyMetadataAction("item-1", 278, "movie", {
+        logoPath: "/custom-logo.png",
+      });
+
+      expect(prisma.item.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            tmdbLogoPath: "/custom-logo.png",
+          }),
+        })
+      );
+      // Should use the provided path, not call getBestLogo for auto-selection
+    });
+
+    it("skips logo when updateLogo is false", async () => {
+      await applyMetadataAction("item-1", 278, "movie", {
+        updateLogo: false,
+      });
+
+      const updateCall = vi.mocked(prisma.item.update).mock.calls[0][0];
+      expect(updateCall.data).not.toHaveProperty("tmdbLogoPath");
+    });
+
+    it("fetches TV show images for logo when mediaType is tv", async () => {
+      vi.mocked(getTVShow).mockResolvedValue({
+        id: 1396,
+        name: "Breaking Bad",
+        overview: "A chemistry teacher...",
+        poster_path: "/bb.jpg",
+        backdrop_path: "/bb-backdrop.jpg",
+        first_air_date: "2008-01-20",
+        number_of_seasons: 5,
+        tagline: "",
+        vote_average: 0,
+        vote_count: 0,
+        genres: [],
+      });
+
+      await applyMetadataAction("item-1", 1396, "tv");
+
+      expect(getTVShowImages).toHaveBeenCalledWith(1396);
     });
   });
 
@@ -1352,7 +1467,7 @@ describe("tmdb-actions", () => {
       });
     });
 
-    it("clears backdrop path only", async () => {
+    it("clears backdrop path and dominant colour", async () => {
       vi.mocked(prisma.item.findUnique).mockResolvedValue(mockItem as never);
       vi.mocked(prisma.item.update).mockResolvedValue(mockItem as never);
 
@@ -1361,7 +1476,7 @@ describe("tmdb-actions", () => {
       expect(result).toEqual({ success: true });
       expect(prisma.item.update).toHaveBeenCalledWith({
         where: { id: "item-123" },
-        data: { tmdbBackdropPath: null },
+        data: { tmdbBackdropPath: null, dominantColour: null },
       });
     });
 
@@ -1379,6 +1494,8 @@ describe("tmdb-actions", () => {
           tmdbType: null,
           tmdbPosterPath: null,
           tmdbBackdropPath: null,
+          tmdbLogoPath: null,
+          dominantColour: null,
           tmdbShowTagline: true,
           tmdbShowMetadata: true,
           tmdbShowGenres: true,
@@ -1387,6 +1504,19 @@ describe("tmdb-actions", () => {
           tmdbShowVideos: true,
           tmdbShowRecommendations: true,
         },
+      });
+    });
+
+    it("clears logo path only", async () => {
+      vi.mocked(prisma.item.findUnique).mockResolvedValue(mockItem as never);
+      vi.mocked(prisma.item.update).mockResolvedValue(mockItem as never);
+
+      const result = await clearTmdbFieldAction("item-123", "logo");
+
+      expect(result).toEqual({ success: true });
+      expect(prisma.item.update).toHaveBeenCalledWith({
+        where: { id: "item-123" },
+        data: { tmdbLogoPath: null },
       });
     });
 

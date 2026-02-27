@@ -32,11 +32,19 @@ vi.mock("@/lib/tmdb-client", () => ({
   searchMedia: vi.fn(),
   getMovie: vi.fn(),
   getTVShow: vi.fn(),
+  getMovieImages: vi.fn(),
+  getTVShowImages: vi.fn(),
+  getBestLogo: vi.fn(),
   extractYear: vi.fn((date: string) => (date ? date.split("-")[0] : "")),
   truncateOverview: vi.fn((text: string) =>
     text && text.length > 200 ? text.slice(0, 197) + "..." : text || ""
   ),
   isTMDBConfigured: vi.fn(() => true),
+}));
+
+// Mock colour extraction (returns a hex colour from backdrop image)
+vi.mock("@/lib/colour-extract", () => ({
+  extractDominantColour: vi.fn().mockResolvedValue("#1a3a5c"),
 }));
 
 // Mock next/cache revalidation
@@ -45,7 +53,13 @@ vi.mock("next/cache", () => ({
 }));
 
 import { auth } from "@/lib/auth";
-import { getMovie, getTVShow } from "@/lib/tmdb-client";
+import {
+  getMovie,
+  getTVShow,
+  getMovieImages,
+  getBestLogo,
+} from "@/lib/tmdb-client";
+import { extractDominantColour } from "@/lib/colour-extract";
 
 // Cast to bypass complex types
 const mockAuth = auth as unknown as ReturnType<
@@ -159,6 +173,62 @@ describe("TMDB apply metadata integration", () => {
 
     expect(getResult.data?.item.name).toBe("Breaking Bad (2008)");
     expect(getResult.data?.item.description).toContain("chemistry teacher");
+  });
+
+  it("persists dominantColour and tmdbLogoPath in DB", async () => {
+    // Create an item
+    const createResult = await createItem(null, "Colour Test Movie");
+    expect(createResult.success).toBe(true);
+    if (!createResult.success) throw new Error("Failed to create item");
+    const itemId = createResult.data!.id;
+
+    // Mock TMDB movie response with backdrop (triggers colour extraction)
+    vi.mocked(getMovie).mockResolvedValue({
+      id: 278,
+      title: "The Shawshank Redemption",
+      overview:
+        "Framed in the 1940s for the double murder of his wife and her lover.",
+      poster_path: "/poster.jpg",
+      backdrop_path: "/backdrop.jpg",
+      release_date: "1994-09-23",
+      tagline: "",
+      runtime: null,
+      vote_average: 0,
+      vote_count: 0,
+      genres: [],
+    });
+
+    // Mock images with a logo
+    vi.mocked(getMovieImages).mockResolvedValue({
+      backdrops: [],
+      posters: [],
+      logos: [
+        {
+          file_path: "/logo.png",
+          iso_639_1: "en",
+          vote_average: 8,
+          width: 300,
+          height: 100,
+        },
+      ],
+    });
+
+    // getBestLogo selects the best logo from images
+    vi.mocked(getBestLogo).mockReturnValue("/logo.png");
+
+    // extractDominantColour is already mocked to return "#1a3a5c"
+
+    await applyMetadataAction(itemId, 278, "movie");
+
+    // Verify persistence in DB
+    const item = await prisma.item.findUnique({ where: { id: itemId } });
+    expect(item?.tmdbLogoPath).toBe("/logo.png");
+    expect(item?.dominantColour).toBe("#1a3a5c");
+
+    // Verify colour extraction was called with backdrop URL
+    expect(extractDominantColour).toHaveBeenCalledWith(
+      "https://image.tmdb.org/t/p/w300/backdrop.jpg"
+    );
   });
 
   it("handles movie not found on TMDB", async () => {
