@@ -148,6 +148,8 @@ Sentry error tracking across client, server, and edge runtimes with source maps 
 
 Google Drive operations batched up to 100 per request, reducing sync time for large folders from ~45s to ~3s. Edit mode separation extracts a view-only Grid from SortableGrid to avoid dnd-kit overhead in browse mode (~40KB saved). TMDB resolution and metadata fetches chained as a single promise running concurrently with other server-side fetches, eliminating sequential await waterfalls. Offline queue persists actions to IndexedDB when offline, replaying on reconnect with exponential backoff and jitter. Homepage performance pass cut total transfer by 65% (3,344 KiB → 1,161 KiB): replaced a 328KB noise texture with a CSS-generated SVG feTurbulence data URI, migrated all images to next/image with CDN support, async-loaded motion features via LazyMotion, and deduplicated `auth()` with `React.cache()` to eliminate redundant JWT decodes per request. The hero section's media stack ships as a server component with CSS-only animations — no client JavaScript for the image stack at all.
 
+The four heaviest pages — Explore, Profile, Item Detail, and Playlist Detail — use React Suspense boundaries to stream content progressively. The header and breadcrumbs render immediately from minimal data (auth session, profile lookup), then heavy content (TMDB enrichment, descendant queries, file lookups, drive connection checks) streams in as it resolves. Route-level `loading.tsx` files show layout-matched skeleton screens during navigation that exactly mirror the real page structure — hero dimensions, grid column counts, glassmorphism toolbar, tab positions — so there's zero cumulative layout shift when content replaces the skeleton. Shelf queries are deduplicated per request via `React.cache()`.
+
 ### Accessibility
 
 WCAG 2.1 AA compliant throughout, enforced by automated testing. Every component has a Storybook story tested against axe-core — any a11y violation fails the build. Semantic roles for tabs, drag-and-drop, and carousel navigation. Live regions announce slide changes and drag operations to screen readers. Skip link, scrollable region focus management, and reduced motion support that disables autoplay and animations.
@@ -162,7 +164,7 @@ Conventional commits enforced by commitlint with pre-commit hooks running ESLint
 
 ### Testing
 
-3,200+ tests across unit, integration, Storybook component, and E2E layers. Unit tests (Vitest) cover auth, items, playlists, watch records, Drive sync, and crypto operations. ~200 integration tests run against real PostgreSQL. 66 Storybook stories with component tests enforce accessibility via axe-core and verify interaction correctness. 34 E2E spec files across desktop and mobile Chrome with Playwright use 16 focused Page Object Models and composable fixtures with per-test user creation.
+3,200+ tests across unit, integration, Storybook component, and E2E layers. Unit tests (Vitest) cover auth, items, playlists, watch records, Drive sync, and crypto operations. ~200 integration tests run against real PostgreSQL. 66 Storybook stories with component tests enforce accessibility via axe-core and verify interaction correctness. 35 E2E spec files across desktop and mobile Chrome with Playwright use 16 focused Page Object Models and composable fixtures with per-test user creation.
 
 ### Component Documentation
 

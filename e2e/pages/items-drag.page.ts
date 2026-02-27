@@ -21,6 +21,9 @@ export class ItemsDragPage {
   async goto() {
     await this.page.goto(`/u/${this.username}`);
     await this.page.waitForLoadState("domcontentloaded");
+    await expect(this.page.getByTestId("hero-carousel")).toBeVisible({
+      timeout: Timeouts.navigation,
+    });
   }
 
   // ── Edit Mode ────────────────────────────────────────────

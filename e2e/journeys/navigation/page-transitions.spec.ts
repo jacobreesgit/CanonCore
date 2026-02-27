@@ -9,8 +9,8 @@ test.describe("Page transition loading states", () => {
   }) => {
     // Start on My Items — wait for content to fully load
     await nav.gotoMyItems();
-    await expect(page.locator("[data-testid='hero-carousel']")).toBeVisible({
-      timeout: Timeouts.heavy,
+    await expect(page.getByTestId("hero-carousel")).toBeVisible({
+      timeout: Timeouts.navigation,
     });
 
     // Navigate to Explore
@@ -21,13 +21,16 @@ test.describe("Page transition loading states", () => {
       await page.getByRole("link", { name: "Explore" }).click();
     }
 
-    // Skeleton should appear during navigation
-    const skeleton = page.locator('[data-slot="skeleton"]').first();
-    await expect(skeleton).toBeVisible({ timeout: Timeouts.navigation });
+    // On desktop, skeleton should appear during navigation.
+    // On mobile, client-side nav can resolve faster than Playwright polls.
+    if (!isMobile) {
+      const skeleton = page.locator('[data-slot="skeleton"]').first();
+      await expect(skeleton).toBeVisible({ timeout: Timeouts.navigation });
+    }
 
     // Content should eventually replace the skeleton
-    await expect(page.locator("[data-testid='hero-carousel']")).toBeVisible({
-      timeout: Timeouts.heavy,
+    await expect(page.getByTestId("hero-carousel")).toBeVisible({
+      timeout: Timeouts.navigation,
     });
   });
 
@@ -38,8 +41,8 @@ test.describe("Page transition loading states", () => {
   }) => {
     // Start on Explore
     await page.goto("/explore");
-    await expect(page.locator("[data-testid='hero-carousel']")).toBeVisible({
-      timeout: Timeouts.heavy,
+    await expect(page.getByTestId("hero-carousel")).toBeVisible({
+      timeout: Timeouts.navigation,
     });
 
     // Navigate to My Items
@@ -50,13 +53,16 @@ test.describe("Page transition loading states", () => {
       await page.getByRole("link", { name: "My Items" }).click();
     }
 
-    // Skeleton visible during transition
-    const skeleton = page.locator('[data-slot="skeleton"]').first();
-    await expect(skeleton).toBeVisible({ timeout: Timeouts.navigation });
+    // On desktop, skeleton should appear during navigation.
+    // On mobile, client-side nav can resolve faster than Playwright polls.
+    if (!isMobile) {
+      const skeleton = page.locator('[data-slot="skeleton"]').first();
+      await expect(skeleton).toBeVisible({ timeout: Timeouts.navigation });
+    }
 
     // Profile content loads
-    await expect(page.locator("[data-testid='hero-carousel']")).toBeVisible({
-      timeout: Timeouts.heavy,
+    await expect(page.getByTestId("hero-carousel")).toBeVisible({
+      timeout: Timeouts.navigation,
     });
   });
 
@@ -69,13 +75,13 @@ test.describe("Page transition loading states", () => {
 
     // Start on Explore, wait for full content
     await page.goto("/explore");
-    await expect(page.locator("[data-testid='hero-carousel']")).toBeVisible({
-      timeout: Timeouts.heavy,
+    await expect(page.getByTestId("hero-carousel")).toBeVisible({
+      timeout: Timeouts.navigation,
     });
 
     // Capture content hero height
     const contentHeroHeight = await page
-      .locator("[data-testid='hero-carousel']")
+      .getByTestId("hero-carousel")
       .boundingBox();
 
     // Navigate to My Items to trigger skeleton
@@ -89,14 +95,16 @@ test.describe("Page transition loading states", () => {
     // Capture skeleton hero height
     const skeletonHeroHeight = await skeletonHero.boundingBox();
 
+    // Ensure both bounding boxes resolved (guards against silent pass)
+    expect(contentHeroHeight).toBeTruthy();
+    expect(skeletonHeroHeight).toBeTruthy();
+
     // Heights should be within 10% (viewport-relative heights may differ slightly
     // between explore multi-slide padding and profile single-slide padding)
-    if (contentHeroHeight && skeletonHeroHeight) {
-      const heightDiff = Math.abs(
-        contentHeroHeight.height - skeletonHeroHeight.height
-      );
-      const tolerance = contentHeroHeight.height * 0.1;
-      expect(heightDiff).toBeLessThan(tolerance);
-    }
+    const heightDiff = Math.abs(
+      contentHeroHeight!.height - skeletonHeroHeight!.height
+    );
+    const tolerance = contentHeroHeight!.height * 0.1;
+    expect(heightDiff).toBeLessThan(tolerance);
   });
 });

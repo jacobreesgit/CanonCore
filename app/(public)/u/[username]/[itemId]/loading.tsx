@@ -4,7 +4,7 @@ import { ItemContentSkeleton } from "@/components/skeletons/item-content-skeleto
 export default function Loading() {
   return (
     <>
-      <SiteHeader title="My Items" />
+      <SiteHeader title="Items" />
       <div className="bg-background text-foreground -mt-(--header-height) flex flex-1 flex-col">
         <ItemContentSkeleton />
       </div>
