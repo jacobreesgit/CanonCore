@@ -2,6 +2,9 @@
  * Unified profile page displaying a user's items.
  * Shows full editing for owners, read-only view for visitors.
  * Features cinematic hero section with poster grid.
+ *
+ * Renders a fast shell (header + skeleton) immediately, then streams
+ * heavy content (items, playlists, shelves) via Suspense.
  */
 
 import { Suspense } from "react";
@@ -22,6 +25,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { SiteHeader } from "@/components/site-header";
 import { ProfilePage as ProfilePageContent } from "@/components/profile";
 import { OAuthToast } from "@/components/google-drive";
+import { ProfileContentSkeleton } from "@/components/skeletons/profile-content-skeleton";
 
 interface PageProps {
   params: Promise<{ username: string }>;
@@ -66,8 +70,80 @@ export async function generateMetadata({
 }
 
 /**
+ * Async server component that fetches all heavy profile data.
+ * Rendered inside a Suspense boundary so the page shell streams first.
+ */
+async function ProfileContent({
+  profileId,
+  currentUserId,
+  isOwner,
+}: {
+  profileId: string;
+  currentUserId: string | null;
+  isOwner: boolean;
+}) {
+  // Fetch items (includes profile hasImage/hasHeroImage)
+  const profileData = await getItemsForProfile(profileId, currentUserId);
+
+  // For owners, fetch Drive connection, library progress, and playlists
+  let hasDriveConnection = false;
+  let libraryProgress = null;
+  let ownerPlaylists: Awaited<ReturnType<typeof getUserPlaylists>> | null =
+    null;
+
+  if (isOwner) {
+    const [driveConnection, progress, playlistsResult] = await Promise.all([
+      getGoogleDriveConnection(),
+      getLibraryProgress(),
+      getUserPlaylists(),
+    ]);
+    hasDriveConnection =
+      driveConnection !== null && !driveConnection.needsReauth;
+    libraryProgress = progress;
+    ownerPlaylists = playlistsResult;
+  }
+
+  // For viewers, fetch public library progress and playlists
+  let viewerProgress = null;
+  let publicPlaylists: Awaited<ReturnType<typeof getPublicPlaylistsForUser>> =
+    [];
+  if (!isOwner) {
+    [viewerProgress, publicPlaylists] = await Promise.all([
+      getPublicLibraryProgress(profileId),
+      getPublicPlaylistsForUser(profileId),
+    ]);
+  }
+
+  return (
+    <ProfilePageContent
+      profile={{
+        id: profileData.profile.id,
+        username: profileData.profile.username,
+        name: profileData.profile.name,
+        hasImage: profileData.profile.hasImage,
+        hasHeroImage: profileData.profile.hasHeroImage,
+      }}
+      items={profileData.items}
+      isOwner={isOwner}
+      hasDriveConnection={hasDriveConnection}
+      libraryProgress={libraryProgress}
+      viewerProgress={viewerProgress}
+      publicPlaylists={publicPlaylists}
+      ownerPlaylists={ownerPlaylists?.success ? ownerPlaylists.data : undefined}
+      shelves={
+        isOwner ? (
+          <Suspense fallback={<ShelfSkeleton />}>
+            <HomeShelves />
+          </Suspense>
+        ) : undefined
+      }
+    />
+  );
+}
+
+/**
  * Unified profile page server component.
- * Fetches profile and items based on viewer/owner mode.
+ * Renders a fast shell (header + skeleton), then streams content via Suspense.
  */
 export default async function ProfilePage({ params }: PageProps) {
   const { username } = await params;
@@ -106,41 +182,6 @@ export default async function ProfilePage({ params }: PageProps) {
   const currentUserId = session?.user?.id ?? null;
   const isOwner = currentUserId === profile.id;
 
-  // Fetch items using unified function (handles owner/viewer mode internally)
-  const profileData = await getItemsForProfile(profile.id, currentUserId);
-
-  // For owners, also fetch Drive connection and library progress
-  let hasDriveConnection = false;
-  let driveNeedsReauth = false;
-  let libraryProgress = null;
-
-  let ownerPlaylists: Awaited<ReturnType<typeof getUserPlaylists>> | null =
-    null;
-
-  if (isOwner) {
-    const [driveConnection, progress, playlistsResult] = await Promise.all([
-      getGoogleDriveConnection(),
-      getLibraryProgress(),
-      getUserPlaylists(),
-    ]);
-    hasDriveConnection =
-      driveConnection !== null && !driveConnection.needsReauth;
-    driveNeedsReauth = driveConnection?.needsReauth ?? false;
-    libraryProgress = progress;
-    ownerPlaylists = playlistsResult;
-  }
-
-  // For viewers, fetch public library progress and playlists
-  let viewerProgress = null;
-  let publicPlaylists: Awaited<ReturnType<typeof getPublicPlaylistsForUser>> =
-    [];
-  if (!isOwner) {
-    [viewerProgress, publicPlaylists] = await Promise.all([
-      getPublicLibraryProgress(profile.id),
-      getPublicPlaylistsForUser(profile.id),
-    ]);
-  }
-
   return (
     <>
       <script
@@ -162,34 +203,16 @@ export default async function ProfilePage({ params }: PageProps) {
       <SiteHeader
         title={isOwner ? "My Items" : `@${profile.username}`}
         titleHref={`/u/${profile.username}`}
-        driveNeedsReauth={driveNeedsReauth}
+        driveNeedsReauth={false}
       />
       <div className="bg-background text-foreground -mt-(--header-height) flex flex-1 flex-col">
-        <ProfilePageContent
-          profile={{
-            id: profileData.profile.id,
-            username: profileData.profile.username,
-            name: profileData.profile.name,
-            hasImage: profileData.profile.hasImage,
-            hasHeroImage: profileData.profile.hasHeroImage,
-          }}
-          items={profileData.items}
-          isOwner={isOwner}
-          hasDriveConnection={hasDriveConnection}
-          libraryProgress={libraryProgress}
-          viewerProgress={viewerProgress}
-          publicPlaylists={publicPlaylists}
-          ownerPlaylists={
-            ownerPlaylists?.success ? ownerPlaylists.data : undefined
-          }
-          shelves={
-            isOwner ? (
-              <Suspense fallback={<ShelfSkeleton />}>
-                <HomeShelves />
-              </Suspense>
-            ) : undefined
-          }
-        />
+        <Suspense fallback={<ProfileContentSkeleton />}>
+          <ProfileContent
+            profileId={profile.id}
+            currentUserId={currentUserId}
+            isOwner={isOwner}
+          />
+        </Suspense>
       </div>
     </>
   );

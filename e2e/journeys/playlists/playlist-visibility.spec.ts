@@ -75,6 +75,9 @@ publicTest.describe("Playlist Visibility", () => {
     async ({ page }) => {
       await page.goto(`/u/${username}`);
       await page.waitForLoadState("domcontentloaded");
+      await expect(page.getByTestId("hero-carousel")).toBeVisible({
+        timeout: Timeouts.navigation,
+      });
 
       // Switch to Playlists tab (viewer profiles now use tabs)
       await page
@@ -100,6 +103,9 @@ publicTest.describe("Playlist Visibility", () => {
     async ({ page }) => {
       await page.goto(`/u/${username}`);
       await page.waitForLoadState("domcontentloaded");
+      await expect(page.getByTestId("hero-carousel")).toBeVisible({
+        timeout: Timeouts.navigation,
+      });
 
       // Switch to Playlists tab (viewer profiles now use tabs)
       await page

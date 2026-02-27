@@ -4,6 +4,8 @@
  * server actions. Imported by both shelf-actions.ts and playlist-actions.ts.
  */
 
+import { cache } from "react";
+
 import { prisma } from "@/lib/prisma";
 import { resolveArtworkId } from "@/lib/tmdb-image-utils";
 import type { ShelfItem } from "@/lib/types";
@@ -12,10 +14,7 @@ import type { SystemPlaylistType } from "@prisma/client";
 /** Max items per shelf. */
 export const SHELF_LIMIT = 10;
 
-/**
- * Dispatches to the correct query function for a system playlist type.
- */
-export async function getSystemShelfItems(
+async function _getSystemShelfItems(
   userId: string,
   systemType: SystemPlaylistType
 ): Promise<ShelfItem[]> {
@@ -34,6 +33,13 @@ export async function getSystemShelfItems(
     }
   }
 }
+
+/**
+ * Dispatches to the correct query function for a system playlist type.
+ * Wrapped with React.cache() to deduplicate calls within a single request.
+ * Both args are primitives (string, string enum) so Object.is equality works.
+ */
+export const getSystemShelfItems = cache(_getSystemShelfItems);
 
 /**
  * Items from a user-created playlist (real PlaylistItem rows).

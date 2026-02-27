@@ -2,8 +2,12 @@
  * Playlist detail page.
  * Shows playlist hero, item grid, and edit controls for owners.
  * Viewers see public items only with visibility filtering.
+ *
+ * Uses Suspense to stream playlist content — SiteHeader renders
+ * immediately while the playlist data loads in the background.
  */
 
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
@@ -12,10 +16,12 @@ import {
   getProfileByIdOrUsername,
   getPublicPlaylist,
 } from "@/lib/public-auth";
+import type { PublicProfile } from "@/lib/public-auth";
 import { getPlaylist } from "@/lib/playlist-actions";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { SiteHeader } from "@/components/site-header";
 import { PlaylistDetailClient } from "@/components/playlists/playlist-detail-client";
+import { PlaylistContentSkeleton } from "@/components/skeletons/playlist-content-skeleton";
 
 interface PageProps {
   params: Promise<{ username: string; playlistId: string }>;
@@ -88,9 +94,105 @@ export async function generateMetadata({
   };
 }
 
+// ---------------------------------------------------------------------------
+// Async server components streamed inside Suspense
+// ---------------------------------------------------------------------------
+
+async function OwnerPlaylistContent({
+  playlistId,
+  username,
+}: {
+  playlistId: string;
+  username: string;
+}) {
+  const result = await getPlaylist(playlistId);
+  if (!result.success || !result.data) notFound();
+
+  return (
+    <PlaylistDetailClient playlist={result.data} username={username} isOwner />
+  );
+}
+
+async function ViewerPlaylistContent({
+  playlistId,
+  username,
+  profile,
+  token,
+}: {
+  playlistId: string;
+  username: string;
+  profile: PublicProfile;
+  token?: string;
+}) {
+  const publicData = await getPublicPlaylist(playlistId, token);
+  if (!publicData) notFound();
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: publicData.playlist.name,
+    description: publicData.playlist.description ?? undefined,
+    author: {
+      "@type": "Person",
+      name: profile.name ?? profile.username,
+      url: `${appUrl}/u/${username}`,
+    },
+    numberOfItems: publicData.items.length,
+    dateCreated: publicData.playlist.createdAt,
+    dateModified: publicData.playlist.updatedAt,
+    image: publicData.playlist.hasArtwork
+      ? `${appUrl}/api/playlist/artwork?playlistId=${playlistId}`
+      : undefined,
+    itemListElement: publicData.items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      url: `${appUrl}/u/${username}/${item.id}`,
+    })),
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
+      <PlaylistDetailClient
+        playlist={{
+          id: publicData.playlist.id,
+          name: publicData.playlist.name,
+          description: publicData.playlist.description,
+          items: publicData.items.map((item, index) => ({
+            playlistItemId: `public-${item.id}`,
+            order: index,
+            addedAt: new Date(),
+            item: {
+              id: item.id,
+              name: item.name,
+              description: item.description,
+              tmdbPosterPath: item.tmdbPosterPath,
+              artworkId: item.artworkId,
+            },
+          })),
+        }}
+        username={username}
+        isOwner={false}
+      />
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Page component — fast shell with Suspense streaming
+// ---------------------------------------------------------------------------
+
 /**
  * Playlist detail page server component.
- * Fetches playlist data based on owner/viewer mode.
+ * Renders the SiteHeader immediately, then streams playlist content
+ * via Suspense while the data loads.
  */
 export default async function PlaylistPage({
   params,
@@ -129,107 +231,30 @@ export default async function PlaylistPage({
   const isOwner = session?.user?.id === profile.id;
 
   if (isOwner) {
-    const result = await getPlaylist(playlistId);
-    if (!result.success || !result.data) {
-      notFound();
-    }
-
     return (
       <>
-        <SiteHeader
-          title="My Playlists"
-          titleHref={`/u/${username}`}
-          breadcrumbs={[
-            {
-              id: result.data.id,
-              name: result.data.name,
-              href: `/u/${username}/playlists/${result.data.id}`,
-            },
-          ]}
-        />
+        <SiteHeader title="My Playlists" titleHref={`/u/${username}`} />
         <div className="bg-background text-foreground flex flex-1 flex-col">
-          <PlaylistDetailClient
-            playlist={result.data}
-            username={username}
-            isOwner
-          />
+          <Suspense fallback={<PlaylistContentSkeleton />}>
+            <OwnerPlaylistContent playlistId={playlistId} username={username} />
+          </Suspense>
         </div>
       </>
     );
   }
 
-  // Viewer mode
-  const publicData = await getPublicPlaylist(playlistId, token);
-  if (!publicData) {
-    notFound();
-  }
-
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    name: publicData.playlist.name,
-    description: publicData.playlist.description ?? undefined,
-    author: {
-      "@type": "Person",
-      name: profile.name ?? profile.username,
-      url: `${appUrl}/u/${username}`,
-    },
-    numberOfItems: publicData.items.length,
-    dateCreated: publicData.playlist.createdAt,
-    dateModified: publicData.playlist.updatedAt,
-    image: publicData.playlist.hasArtwork
-      ? `${appUrl}/api/playlist/artwork?playlistId=${playlistId}`
-      : undefined,
-    itemListElement: publicData.items.map((item, index) => ({
-      "@type": "ListItem",
-      position: index + 1,
-      name: item.name,
-      url: `${appUrl}/u/${username}/${item.id}`,
-    })),
-  };
-
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
-        }}
-      />
-      <SiteHeader
-        title={`@${profile.username}`}
-        titleHref={`/u/${username}`}
-        breadcrumbs={[
-          {
-            id: publicData.playlist.id,
-            name: publicData.playlist.name,
-            href: `/u/${username}/playlists/${publicData.playlist.id}`,
-          },
-        ]}
-      />
+      <SiteHeader title={`@${profile.username}`} titleHref={`/u/${username}`} />
       <div className="bg-background text-foreground flex flex-1 flex-col">
-        <PlaylistDetailClient
-          playlist={{
-            id: publicData.playlist.id,
-            name: publicData.playlist.name,
-            description: publicData.playlist.description,
-            items: publicData.items.map((item, index) => ({
-              playlistItemId: `public-${item.id}`,
-              order: index,
-              addedAt: new Date(),
-              item: {
-                id: item.id,
-                name: item.name,
-                description: item.description,
-                tmdbPosterPath: item.tmdbPosterPath,
-                artworkId: item.artworkId,
-              },
-            })),
-          }}
-          username={username}
-          isOwner={false}
-        />
+        <Suspense fallback={<PlaylistContentSkeleton />}>
+          <ViewerPlaylistContent
+            playlistId={playlistId}
+            username={username}
+            profile={profile}
+            token={token}
+          />
+        </Suspense>
       </div>
     </>
   );

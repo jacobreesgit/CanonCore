@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: February 2026 (v11.0.0)
+Last updated: February 2026 (v11.1.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -1051,7 +1051,35 @@ export const getItems = cache(async function getItems(parentId: string) {
 });
 ```
 
-Multiple Server Components calling `getItems()` in same request = 1 database query.
+Multiple Server Components calling `getItems()` in same request = 1 database query. Also used for `getSystemShelfItems()` in `lib/shelf-query-utils.ts` — both arguments are primitives (string, string enum) so `Object.is` equality works correctly for deduplication.
+
+**Suspense Page Streaming:**
+
+The four heaviest public pages use Suspense boundaries to stream heavy content while rendering a fast shell immediately:
+
+```typescript
+// Pattern: shell renders first, content streams via Suspense
+export default async function ExplorePage() {
+  const session = await auth(); // minimal data for shell
+  return (
+    <>
+      <SiteHeader title="Explore" />
+      <Suspense fallback={<ExploreContentSkeleton />}>
+        <ExploreContent currentUserId={session?.user?.id} />
+      </Suspense>
+    </>
+  );
+}
+```
+
+Pages using this pattern:
+
+- **Explore** — streams featured items, TMDB enrichment, explore grid, playlists
+- **Profile / My Items** — streams items grid, playlists, shelves
+- **Item Detail** — streams TMDB chain, descendants, files, progress, watch status
+- **Playlist Detail** — streams playlist items, TMDB enrichment, fork status
+
+Each page also has a `loading.tsx` that renders the same skeleton during route transitions. Skeleton components in `components/skeletons/` match exact layout dimensions (hero height, grid columns, toolbar glassmorphism) to prevent cumulative layout shift.
 
 **Selective Field Projection:**
 All Prisma queries use minimal `select`:
@@ -1359,7 +1387,7 @@ Husky manages Git hooks:
 ```
           ┌─────────┐
           ┌─────────┐
-          │   E2E   │  34 spec files (Playwright)
+          │   E2E   │  35 spec files (Playwright)
           │  Tests  │  Real browser, real APIs
           └─────────┘
         ┌─────────────┐
@@ -1429,7 +1457,7 @@ Husky manages Git hooks:
 
 ### E2E Tests (Playwright)
 
-**Location:** `e2e/journeys/` (34 spec files)
+**Location:** `e2e/journeys/` (35 spec files)
 
 **Pattern:** Page Object Model with composable fixtures
 

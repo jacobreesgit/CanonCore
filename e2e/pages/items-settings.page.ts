@@ -21,6 +21,9 @@ export class ItemsSettingsPage {
   async goto() {
     await this.page.goto(`/u/${this.username}`);
     await this.page.waitForLoadState("domcontentloaded");
+    await expect(this.page.getByTestId("hero-carousel")).toBeVisible({
+      timeout: Timeouts.navigation,
+    });
   }
 
   // ── Open Settings ──────────────────────────────────────
@@ -67,8 +70,9 @@ export class ItemsSettingsPage {
    * Assert that the settings dialog or sheet is closed.
    */
   async expectSettingsClosed() {
+    // Save involves a server action round-trip + dialog close animation
     await expect(this.page.getByTestId("dialog-item-settings")).not.toBeVisible(
-      { timeout: Timeouts.animation }
+      { timeout: Timeouts.navigation }
     );
   }
 

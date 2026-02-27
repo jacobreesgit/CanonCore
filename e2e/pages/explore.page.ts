@@ -18,6 +18,9 @@ export class ExplorePage {
   /** Navigate to the Explore page. */
   async goto() {
     await this.page.goto("/explore", { waitUntil: "domcontentloaded" });
+    await expect(this.page.getByTestId("hero-carousel")).toBeVisible({
+      timeout: Timeouts.navigation,
+    });
   }
 
   // ── Hero ────────────────────────────────────────────────
@@ -107,6 +110,9 @@ export class ExplorePage {
   async clickItem(name: string) {
     await this.page.getByRole("link", { name }).click();
     await this.page.waitForLoadState("domcontentloaded");
+    await expect(this.page.getByTestId("hero-carousel")).toBeVisible({
+      timeout: Timeouts.navigation,
+    });
   }
 
   // ── Mobile Sheet Helpers ─────────────────────────────────
