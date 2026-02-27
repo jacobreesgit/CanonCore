@@ -45,7 +45,7 @@ export function ItemContentSkeleton() {
       <Section className="py-4">
         <div className="flex w-full items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-white/[0.04] px-3 py-2">
           <div className="flex items-center gap-2">
-            <Skeleton className="h-11 w-20 rounded-md lg:h-8" />
+            <Skeleton className="h-11 w-20 rounded-md lg:h-[34px]" />
             <Skeleton className="h-8 w-16 rounded-md" />
           </div>
           <div className="flex items-center gap-2">
