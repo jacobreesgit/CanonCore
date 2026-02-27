@@ -16,6 +16,7 @@ export default defineConfig({
     // Bypass PgBouncer for CLI operations (migrations, introspection).
     // Neon pooler URLs contain "-pooler" — strip it to get the direct endpoint.
     // For non-pooler URLs this is a no-op (directUrl === url).
+    // @ts-expect-error -- directUrl is valid at runtime but missing from Prisma 7 config types
     directUrl: databaseUrl.replace(/-pooler/g, ""),
   },
 });
