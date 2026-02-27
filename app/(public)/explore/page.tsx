@@ -1,8 +1,13 @@
 /**
  * Public explore page showcasing featured and recent public items.
  * Features a cinematic hero carousel with 5 featured items at the top.
+ *
+ * Renders a fast shell (SiteHeader) immediately, then streams the heavy
+ * content (featured items + TMDB enrichment, explore grid, playlists)
+ * via a Suspense boundary for improved TTFB.
  */
 
+import { Suspense } from "react";
 import { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import {
@@ -16,6 +21,7 @@ import { getItemTmdbMetadata } from "@/lib/tmdb-client";
 import { prisma } from "@/lib/prisma";
 import { SiteHeader } from "@/components/site-header";
 import { ExploreClient } from "./explore-client";
+import { ExploreContentSkeleton } from "@/components/skeletons/explore-content-skeleton";
 import type { SyncStatus } from "@/lib/types";
 
 export const metadata: Metadata = {
@@ -38,11 +44,42 @@ export const metadata: Metadata = {
 
 /**
  * Explore page server component.
- * Fetches featured items for carousel and all public items for grid.
+ * Renders the header shell immediately, then streams heavy content via Suspense.
  */
 export default async function ExplorePage() {
-  // Start auth, profile, and featured items immediately
-  const sessionPromise = auth();
+  // Fast shell: auth + drive connection for SiteHeader
+  const session = await auth();
+  const currentUserId = session?.user?.id ?? null;
+  const driveConnection = currentUserId
+    ? await getGoogleDriveConnection()
+    : null;
+  const driveNeedsReauth = driveConnection?.needsReauth ?? false;
+
+  return (
+    <>
+      <SiteHeader
+        title="Explore"
+        titleHref="/explore"
+        driveNeedsReauth={driveNeedsReauth}
+      />
+      <div className="text-foreground -mt-(--header-height) flex flex-1 flex-col">
+        <Suspense fallback={<ExploreContentSkeleton />}>
+          <ExploreContent currentUserId={currentUserId} />
+        </Suspense>
+      </div>
+    </>
+  );
+}
+
+/**
+ * Streamed explore content — all heavy data fetching lives here so the
+ * page shell can render before these queries resolve.
+ */
+async function ExploreContent({
+  currentUserId,
+}: {
+  currentUserId: string | null;
+}) {
   const profilePromise = getProfile();
 
   // Chain TMDB enrichment on featured items so metadata fetching starts
@@ -63,33 +100,17 @@ export default async function ExplorePage() {
     }
   );
 
-  // Await session first so we can pass the correct userId to getExploreItems
-  const session = await sessionPromise;
-  const currentUserId = session?.user?.id ?? null;
-
-  // Fetch items with correct userId (avoids double-fetch), plus finish parallel work
-  const [
-    profileResult,
-    enrichedFeaturedItems,
-    items,
-    playlists,
-    driveConnection,
-  ] = await Promise.all([
-    profilePromise,
-    enrichedFeaturedPromise,
-    getExploreItems(50, 0, currentUserId),
-    getExplorePlaylists(12, 0),
-    currentUserId ? getGoogleDriveConnection() : Promise.resolve(null),
-  ]);
-  const driveNeedsReauth = driveConnection?.needsReauth ?? false;
+  const [profileResult, enrichedFeaturedItems, items, playlists] =
+    await Promise.all([
+      profilePromise,
+      enrichedFeaturedPromise,
+      getExploreItems(50, 0, currentUserId),
+      getExplorePlaylists(12, 0),
+    ]);
 
   const profile = profileResult.success ? profileResult.data : null;
   const currentUser = profile
-    ? {
-        id: profile.id,
-        username: profile.username,
-        name: profile.name,
-      }
+    ? { id: profile.id, username: profile.username, name: profile.name }
     : null;
 
   // Build sync data map for the current user's own featured items only.
@@ -121,21 +142,12 @@ export default async function ExplorePage() {
   }
 
   return (
-    <>
-      <SiteHeader
-        title="Explore"
-        titleHref="/explore"
-        driveNeedsReauth={driveNeedsReauth}
-      />
-      <div className="text-foreground -mt-(--header-height) flex flex-1 flex-col">
-        <ExploreClient
-          items={items}
-          featuredItems={enrichedFeaturedItems}
-          playlists={playlists}
-          currentUser={currentUser}
-          ownItemSyncData={ownItemSyncData}
-        />
-      </div>
-    </>
+    <ExploreClient
+      items={items}
+      featuredItems={enrichedFeaturedItems}
+      playlists={playlists}
+      currentUser={currentUser}
+      ownItemSyncData={ownItemSyncData}
+    />
   );
 }
