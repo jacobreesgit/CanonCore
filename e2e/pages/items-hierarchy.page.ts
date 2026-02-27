@@ -25,6 +25,9 @@ export class ItemsHierarchyPage {
   async goto() {
     await this.page.goto(`/u/${this.username}`);
     await this.page.waitForLoadState("domcontentloaded");
+    await expect(this.page.getByTestId("hero-carousel")).toBeVisible({
+      timeout: Timeouts.navigation,
+    });
   }
 
   // ── Helpers ─────────────────────────────────────────────
@@ -234,6 +237,9 @@ export class ItemsHierarchyPage {
     await item.waitFor({ state: "visible", timeout: Timeouts.api });
     await item.click();
     await this.page.waitForLoadState("domcontentloaded");
+    await expect(this.page.getByTestId("hero-carousel")).toBeVisible({
+      timeout: Timeouts.navigation,
+    });
   }
 
   // ── Visibility Assertions ────────────────────────────────

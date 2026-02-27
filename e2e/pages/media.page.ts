@@ -25,6 +25,9 @@ export class MediaPage {
   async goto(itemId: string) {
     await this.page.goto(`/u/${this.username}/${itemId}`);
     await this.page.waitForLoadState("domcontentloaded");
+    await expect(this.page.getByTestId("hero-carousel")).toBeVisible({
+      timeout: Timeouts.navigation,
+    });
   }
 
   // ── Player Assertions ────────────────────────────────
