@@ -53,6 +53,7 @@
 import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
+import { execSync } from "child_process";
 dotenv.config({ path: path.resolve(__dirname, "../.env.local") });
 
 /** Valid seed target branches. */
@@ -255,6 +256,26 @@ interface TMDBImagesResponse {
     iso_639_1: string | null;
     vote_average: number;
   }>;
+}
+
+/**
+ * Runs `prisma migrate deploy` to ensure the target database schema is up to date.
+ * Idempotent — skips if no pending migrations. Inherits DATABASE_URL from process.env
+ * (already resolved by resolveSeedTarget).
+ */
+function ensureMigrations(): void {
+  console.log("🔄 Ensuring database migrations are up to date...\n");
+  try {
+    execSync("npx prisma migrate deploy", {
+      stdio: "inherit",
+      cwd: path.resolve(__dirname, ".."),
+      env: process.env as NodeJS.ProcessEnv,
+    });
+    console.log("\n✅ Migrations up to date\n");
+  } catch (error) {
+    console.error("\n❌ Migration failed — cannot proceed with seeding");
+    throw error;
+  }
 }
 
 interface DriveContext {
@@ -2405,6 +2426,9 @@ async function main(): Promise<void> {
 
   // Validate environment (ALLOW_SEEDING, TMDB_API_KEY, etc.)
   validateEnvironment();
+
+  // Apply any pending migrations before seeding (prevents TableDoesNotExist errors)
+  ensureMigrations();
 
   // Dynamic import of prisma after env vars are loaded
   const prismaModule = await import("@/lib/prisma");
