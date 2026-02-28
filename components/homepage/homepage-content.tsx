@@ -8,7 +8,6 @@ const loadFeatures = () =>
 
 import Link from "next/link";
 
-import { BackgroundGrid } from "./background-grid";
 import { BackgroundScanline } from "./background-scanline";
 import { HeroSection } from "./hero-section";
 import { FeatureAccordion } from "./feature-accordion";
@@ -28,7 +27,6 @@ export function HomepageContent() {
               seed: 5,
             }}
           />
-          <BackgroundGrid />
           <BackgroundScanline />
 
           {/* Noise texture — CSS-generated to avoid 328KB image load */}

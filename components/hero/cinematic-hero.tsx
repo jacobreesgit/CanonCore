@@ -300,9 +300,9 @@ export function CinematicHero({
                     src={activeSlide.logoImage}
                     alt={activeSlide.name}
                     width={400}
-                    height={140}
+                    height={180}
                     sizes="(max-width: 640px) 220px, (max-width: 768px) 280px, (max-width: 1024px) 350px, 400px"
-                    className="h-auto max-h-[80px] w-auto max-w-[220px] object-contain object-left drop-shadow-lg sm:max-h-[100px] sm:max-w-[280px] md:max-h-[120px] md:max-w-[350px] lg:max-h-[140px] lg:max-w-[400px]"
+                    className="h-auto max-h-[100px] w-auto max-w-[220px] object-contain object-left drop-shadow-lg sm:max-h-[120px] sm:max-w-[280px] md:max-h-[150px] md:max-w-[350px] lg:max-h-[180px] lg:max-w-[400px]"
                     unoptimized={activeSlide.logoImage.startsWith("/api/")}
                     onError={() =>
                       setLogoErrorIds((prev) =>

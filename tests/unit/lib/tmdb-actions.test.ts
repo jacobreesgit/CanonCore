@@ -482,6 +482,73 @@ describe("tmdb-actions", () => {
 
       expect(getTVShowImages).toHaveBeenCalledWith(1396);
     });
+
+    it("extracts colour from poster path when no backdrop is available (seasons)", async () => {
+      vi.mocked(getMovie).mockResolvedValue({
+        id: 278,
+        title: "Season 1",
+        overview: "Season overview",
+        poster_path: "/season-poster.jpg",
+        backdrop_path: null,
+        release_date: "",
+        tagline: "",
+        runtime: null,
+        vote_average: 0,
+        vote_count: 0,
+        genres: [],
+      });
+      vi.mocked(extractDominantColour).mockResolvedValue("#2b4a6d");
+
+      await applyMetadataAction("item-1", 278, "movie", {
+        updatePoster: true,
+        posterPath: "/season-poster.jpg",
+      });
+
+      // Should extract from poster since no backdrop
+      expect(extractDominantColour).toHaveBeenCalledWith(
+        "https://image.tmdb.org/t/p/w300/season-poster.jpg"
+      );
+      expect(prisma.item.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            dominantColour: "#2b4a6d",
+          }),
+        })
+      );
+    });
+
+    it("prefers backdrop over poster for colour extraction when both exist", async () => {
+      vi.mocked(extractDominantColour).mockResolvedValue("#1a3a5c");
+
+      await applyMetadataAction("item-1", 278, "movie");
+
+      // backdrop.jpg comes from the mock getMovie (has backdrop_path)
+      expect(extractDominantColour).toHaveBeenCalledWith(
+        "https://image.tmdb.org/t/p/w300/backdrop.jpg"
+      );
+    });
+
+    it("skips colour extraction when neither backdrop nor poster exists", async () => {
+      vi.mocked(getMovie).mockResolvedValue({
+        id: 278,
+        title: "No Images",
+        overview: "Overview",
+        poster_path: null,
+        backdrop_path: null,
+        release_date: "",
+        tagline: "",
+        runtime: null,
+        vote_average: 0,
+        vote_count: 0,
+        genres: [],
+      });
+
+      await applyMetadataAction("item-1", 278, "movie", {
+        updatePoster: false,
+      });
+
+      expect(extractDominantColour).not.toHaveBeenCalled();
+    });
   });
 
   describe("getSeasonsAction", () => {

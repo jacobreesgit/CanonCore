@@ -1937,6 +1937,7 @@ export interface ProfileItemsResult {
     name: string | null;
     hasImage: boolean;
     hasHeroImage: boolean;
+    dominantColour: string | null;
   };
 }
 
@@ -1979,6 +1980,7 @@ export const getItemsForProfile = cache(
         name: true,
         image: true,
         heroImage: true,
+        dominantColour: true,
       },
     });
 
@@ -1992,6 +1994,7 @@ export const getItemsForProfile = cache(
       name: profile.name,
       hasImage: !!profile.image,
       hasHeroImage: !!profile.heroImage,
+      dominantColour: profile.dominantColour ?? null,
     };
 
     if (isOwner) {

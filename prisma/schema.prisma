@@ -24,6 +24,7 @@ model User {
   // Hero banner - binary storage
   heroImage       Bytes?           // Hero banner image (max 2MB)
   heroImageMime   String?          // MIME type for hero
+  dominantColour  String?          // Hex colour extracted from hero image
 
   /// Hash of seed configuration for incremental seeding (null for non-seeded users)
   seedContentHash String?
@@ -332,6 +333,7 @@ model Playlist {
   isPublic      Boolean        @default(false)
   artworkImage  Bytes?
   artworkMime   String?
+  dominantColour String?             // Hex colour extracted from artwork image
   shareToken    String?              @unique
   systemType    SystemPlaylistType?  // null = user-created playlist
   shelfOrder    Int?                 // non-null = shown as a shelf on My Items home; lower = higher position

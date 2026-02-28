@@ -122,6 +122,7 @@ async function ProfileContent({
         name: profileData.profile.name,
         hasImage: profileData.profile.hasImage,
         hasHeroImage: profileData.profile.hasHeroImage,
+        dominantColour: profileData.profile.dominantColour,
       }}
       items={profileData.items}
       isOwner={isOwner}
