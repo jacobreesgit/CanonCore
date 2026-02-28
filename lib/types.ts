@@ -676,6 +676,8 @@ export interface PlaylistWithItems {
   hasArtwork: boolean;
   /** Unique token for sharing private playlists (null = not shared) */
   shareToken: string | null;
+  /** Dominant colour extracted from playlist artwork (hex, e.g. "#1a3a5c") */
+  dominantColour: string | null;
 
   /** Owner user ID */
   userId: string;

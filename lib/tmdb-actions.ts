@@ -267,7 +267,10 @@ export async function applyMetadataAction(
     }
 
     // Parallel logo fetch + colour extraction (independent I/O operations)
+    // Colour source priority: backdrop > poster (covers seasons with poster, episodes with still)
     const effectiveBackdrop = updateData.tmdbBackdropPath ?? backdropPath;
+    const effectivePoster = updateData.tmdbPosterPath ?? posterPath;
+    const colourSourcePath = effectiveBackdrop ?? effectivePoster;
 
     const [images, colour] = await Promise.all([
       // Logo: fetch images for logo selection (only if movies/shows need logos)
@@ -275,10 +278,10 @@ export async function applyMetadataAction(
         ? tmdbCircuitBreaker.execute(() => getMovieImages(tmdbId))
         : tmdbCircuitBreaker.execute(() => getTVShowImages(tmdbId))
       ).catch(() => null),
-      // Colour: extract dominant colour from backdrop
-      effectiveBackdrop
+      // Colour: extract dominant colour from backdrop (preferred) or poster (fallback)
+      colourSourcePath
         ? extractDominantColour(
-            `https://image.tmdb.org/t/p/w300${effectiveBackdrop}`
+            `https://image.tmdb.org/t/p/w300${colourSourcePath}`
           )
         : Promise.resolve(null),
     ]);

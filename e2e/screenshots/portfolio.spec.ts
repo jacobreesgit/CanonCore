@@ -56,9 +56,9 @@ test.describe("Portfolio Screenshots", () => {
     await signIn(page, "demo");
     const isMobile = page.viewportSize()!.width < 1024;
 
-    // Navigate to The Sopranos detail page
+    // Navigate to Breaking Bad detail page
     const bbCard = page.getByTestId(
-      `item-card-${slugify("The Sopranos (1999)")}`
+      `item-card-${slugify("Breaking Bad (2008)")}`
     );
     await bbCard.waitFor({ state: "visible", timeout: Timeouts.heavy });
     await bbCard.click();
@@ -100,6 +100,15 @@ test.describe("Portfolio Screenshots", () => {
 
     await collapseSidebar(page);
     await page.evaluate(() => window.scrollTo(0, 0));
+
+    // Click the real Sync button to trigger the actual syncing state
+    const syncBtn = page.getByRole("button", { name: "Sync" });
+    if (await syncBtn.isVisible()) {
+      await syncBtn.click();
+      // Wait briefly for React to re-render into syncing state
+      await page.waitForTimeout(300);
+    }
+
     await captureScreenshot(page, "02-tree-view");
   });
 

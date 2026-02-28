@@ -37,6 +37,8 @@ export interface PublicProfile {
   hasImage: boolean;
   /** Whether user has a hero image */
   hasHeroImage: boolean;
+  /** Dominant colour extracted from hero image */
+  dominantColour: string | null;
   /** Profile creation date */
   createdAt: Date;
 }
@@ -115,6 +117,7 @@ export const getPublicProfile = cache(
         name: true,
         image: true,
         heroImage: true,
+        dominantColour: true,
         createdAt: true,
       },
     });
@@ -129,6 +132,7 @@ export const getPublicProfile = cache(
       name: user.name,
       hasImage: user.image !== null,
       hasHeroImage: user.heroImage !== null,
+      dominantColour: user.dominantColour ?? null,
       createdAt: user.createdAt,
     };
   }
@@ -157,6 +161,7 @@ export const getProfileByIdOrUsername = cache(
         name: true,
         image: true,
         heroImage: true,
+        dominantColour: true,
         createdAt: true,
       },
     });
@@ -171,6 +176,7 @@ export const getProfileByIdOrUsername = cache(
       name: user.name,
       hasImage: user.image !== null,
       hasHeroImage: user.heroImage !== null,
+      dominantColour: user.dominantColour ?? null,
       createdAt: user.createdAt,
     };
   }
@@ -1597,7 +1603,11 @@ export const getPublicPlaylist = cache(
     playlistId: string,
     token?: string | null
   ): Promise<{
-    playlist: PublicPlaylistCard & { userId: string; createdAt: Date };
+    playlist: PublicPlaylistCard & {
+      userId: string;
+      createdAt: Date;
+      dominantColour: string | null;
+    };
     items: Array<{
       id: string;
       name: string;
@@ -1606,6 +1616,7 @@ export const getPublicPlaylist = cache(
       tmdbPosterPath: string | null;
       tmdbId: number | null;
       tmdbType: string | null;
+      dominantColour: string | null;
     }>;
   } | null> => {
     const playlist = await prisma.playlist.findFirst({
@@ -1620,6 +1631,7 @@ export const getPublicPlaylist = cache(
         isPublic: true,
         artworkMime: true,
         shareToken: true,
+        dominantColour: true,
         userId: true,
         createdAt: true,
         updatedAt: true,
@@ -1635,6 +1647,7 @@ export const getPublicPlaylist = cache(
                 tmdbId: true,
                 tmdbType: true,
                 tmdbPosterPath: true,
+                dominantColour: true,
                 files: {
                   where: { fileType: "ARTWORK" },
                   select: { id: true, fileType: true, isPrimary: true },
@@ -1663,6 +1676,7 @@ export const getPublicPlaylist = cache(
         name: playlist.name,
         description: playlist.description,
         hasArtwork: !!playlist.artworkMime,
+        dominantColour: playlist.dominantColour ?? null,
         createdAt: playlist.createdAt,
         userId: playlist.userId,
         itemCount: playlist.playlistItems.length,
@@ -1680,6 +1694,7 @@ export const getPublicPlaylist = cache(
         tmdbPosterPath: pi.item.tmdbPosterPath,
         tmdbId: pi.item.tmdbId,
         tmdbType: pi.item.tmdbType,
+        dominantColour: pi.item.dominantColour ?? null,
       })),
     };
   }

@@ -71,6 +71,8 @@ interface ProfileData {
   hasImage: boolean;
   /** Whether user has a hero image */
   hasHeroImage: boolean;
+  /** Dominant colour extracted from hero image */
+  dominantColour: string | null;
 }
 
 interface ProfilePageProps {
@@ -273,6 +275,7 @@ function OwnerModeContent({
           id: "hero",
           name: profile.name ?? `@${profile.username}`,
           backgroundUrl: heroBackgroundUrl,
+          dominantColour: profile.dominantColour ?? undefined,
           progress: libraryProgress?.percentage ?? undefined,
           progressLabel: libraryProgress
             ? (formatProgressLabel(libraryProgress) ?? undefined)
@@ -339,7 +342,11 @@ function OwnerModeContent({
   ];
 
   return (
-    <HeroContentLayout hero={hero} isPending={isPending}>
+    <HeroContentLayout
+      hero={hero}
+      isPending={isPending}
+      dominantColour={profile.dominantColour}
+    >
       {tabsMounted ? (
         isMobile ? (
           <SwipeableUnderlineTabs
@@ -466,6 +473,7 @@ function ViewerModeContent({
           backgroundUrl: profile.hasHeroImage
             ? `/api/user/hero?userId=${profile.id}`
             : undefined,
+          dominantColour: profile.dominantColour ?? undefined,
           progress: viewerProgress?.percentage,
           progressLabel:
             viewerProgress && viewerProgress.percentage > 0
@@ -596,6 +604,7 @@ function ViewerModeContent({
   return (
     <HeroContentLayout
       hero={hero}
+      dominantColour={profile.dominantColour}
       className={
         !hasItems && publicPlaylists.length === 0 ? "flex-1" : undefined
       }

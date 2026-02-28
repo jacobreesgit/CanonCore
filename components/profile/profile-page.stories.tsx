@@ -19,6 +19,7 @@ const mockProfile = {
   name: "Film Fan",
   hasImage: false,
   hasHeroImage: false,
+  dominantColour: null,
 };
 
 const createMockItem = (

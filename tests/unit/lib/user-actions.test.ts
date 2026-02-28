@@ -58,6 +58,11 @@ vi.mock("sharp", () => ({
   }),
 }));
 
+// Mock colour extraction
+vi.mock("@/lib/colour-extract", () => ({
+  extractDominantColour: vi.fn().mockResolvedValue("#4a7b3c"),
+}));
+
 // Mock bcryptjs for password tests
 vi.mock("bcryptjs", () => ({
   compare: vi.fn((password: string, hash: string) => {
@@ -72,9 +77,10 @@ vi.mock("bcryptjs", () => ({
 // Set BYPASS_RATE_LIMIT for tests
 vi.stubEnv("BYPASS_RATE_LIMIT", "true");
 
-// Import auth and file-type after mocking
+// Import auth, file-type, and colour-extract after mocking
 import { auth } from "@/lib/auth";
 import { fileTypeFromBuffer } from "file-type";
+import { extractDominantColour } from "@/lib/colour-extract";
 
 /**
  * Creates a mock file with arrayBuffer method for testing.
@@ -119,6 +125,7 @@ function createMockUser(overrides = {}) {
     imageMime: null,
     heroImage: null,
     heroImageMime: null,
+    dominantColour: null,
     seedContentHash: null,
     defaultViewMode: null,
     defaultSortBy: null,
@@ -455,13 +462,14 @@ describe("uploadHeroImage", () => {
     vi.mocked(auth).mockResolvedValue({ user: { id: mockUserId } } as never);
   });
 
-  it("uploads valid PNG image", async () => {
+  it("uploads valid PNG image and extracts dominant colour", async () => {
     const imageBuffer = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
     vi.mocked(fileTypeFromBuffer).mockResolvedValue({
       ext: "png",
       mime: "image/png",
     });
     vi.mocked(prisma.user.update).mockResolvedValue(createMockUser());
+    vi.mocked(extractDominantColour).mockResolvedValue("#4a7b3c");
 
     const mockFile = createMockFile(imageBuffer, "hero.png", "image/png");
     const formData = createMockFormData(mockFile);
@@ -469,13 +477,67 @@ describe("uploadHeroImage", () => {
     const result = await uploadHeroImage(formData);
 
     expect(result.success).toBe(true);
+    expect(extractDominantColour).toHaveBeenCalled();
     expect(prisma.user.update).toHaveBeenCalledWith({
       where: { id: mockUserId },
       data: {
         heroImage: expect.any(Uint8Array),
         heroImageMime: "image/png",
+        dominantColour: "#4a7b3c",
       },
     });
+  });
+
+  it("saves hero image with null colour when extraction returns null", async () => {
+    const imageBuffer = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+    vi.mocked(fileTypeFromBuffer).mockResolvedValue({
+      ext: "png",
+      mime: "image/png",
+    });
+    vi.mocked(prisma.user.update).mockResolvedValue(createMockUser());
+    vi.mocked(extractDominantColour).mockResolvedValue(null);
+
+    const mockFile = createMockFile(imageBuffer, "hero.png", "image/png");
+    const formData = createMockFormData(mockFile);
+
+    const result = await uploadHeroImage(formData);
+
+    expect(result.success).toBe(true);
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          dominantColour: null,
+        }),
+      })
+    );
+  });
+
+  it("saves hero image successfully when colour extraction throws", async () => {
+    const imageBuffer = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+    vi.mocked(fileTypeFromBuffer).mockResolvedValue({
+      ext: "png",
+      mime: "image/png",
+    });
+    vi.mocked(prisma.user.update).mockResolvedValue(createMockUser());
+    vi.mocked(extractDominantColour).mockRejectedValue(
+      new Error("sharp processing failed")
+    );
+
+    const mockFile = createMockFile(imageBuffer, "hero.png", "image/png");
+    const formData = createMockFormData(mockFile);
+
+    const result = await uploadHeroImage(formData);
+
+    expect(result.success).toBe(true);
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          heroImage: expect.any(Uint8Array),
+          heroImageMime: "image/png",
+          dominantColour: null,
+        }),
+      })
+    );
   });
 
   it("validates magic bytes for hero images", async () => {
@@ -574,6 +636,7 @@ describe("removeHeroImage", () => {
       data: {
         heroImage: null,
         heroImageMime: null,
+        dominantColour: null,
       },
     });
   });

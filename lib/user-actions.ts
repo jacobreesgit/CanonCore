@@ -15,6 +15,7 @@ import { fileTypeFromBuffer } from "file-type";
 import { after } from "next/server";
 
 import { auth } from "@/lib/auth";
+import { extractDominantColour } from "@/lib/colour-extract";
 import { getDriveClient, withRateLimit } from "@/lib/google-drive-client";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -457,11 +458,22 @@ export async function uploadHeroImage(
     // Strip EXIF metadata
     const processedBuffer = await stripExifMetadata(buffer);
 
+    // Extract dominant colour — non-blocking, failure must not prevent upload
+    let dominantColour: string | null = null;
+    try {
+      dominantColour = await extractDominantColour(
+        Buffer.from(processedBuffer)
+      );
+    } catch {
+      // Non-blocking: colour extraction failure shouldn't prevent upload
+    }
+
     await prisma.user.update({
       where: { id: userId },
       data: {
         heroImage: processedBuffer as Uint8Array<ArrayBuffer>,
         heroImageMime: mimeType,
+        dominantColour,
       },
     });
 
@@ -516,6 +528,7 @@ export async function removeHeroImage(): Promise<ActionResult<void>> {
       data: {
         heroImage: null,
         heroImageMime: null,
+        dominantColour: null,
       },
     });
 
