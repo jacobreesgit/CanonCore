@@ -49,6 +49,10 @@ jobs:
     name: Schema Migration
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Prevent concurrent migrations against the shared development DB
+    concurrency:
+      group: schema-migration
+      cancel-in-progress: false
     if: github.event_name == 'push'
     env:
       DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
@@ -100,6 +104,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [quality, migrate]
+    # Prevent concurrent integration tests against the shared development DB
+    concurrency:
+      group: integration-tests
+      cancel-in-progress: false
     if: always() && needs.quality.result == 'success' && (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
