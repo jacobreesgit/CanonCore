@@ -309,7 +309,7 @@ quality → migrate → test + build (parallel)
 - **Schema Migration** — runs `prisma migrate deploy` against Neon branches. Only runs on push (`if: github.event_name == 'push'`), skipped for PRs. Branch-scoped to prevent advisory lock contention:
   - `development` push → migrates development Neon branch only
   - `production` push → migrates production, demo, and seed Neon branches
-- **Tests** — unit + integration tests. Depends on quality + migrate (uses `if: always()` with conditional success checks so it runs when migrate is skipped on PRs).
+- **Tests** — unit + integration tests. Depends on quality + migrate (uses `if: always()` with conditional success checks so it runs when migrate is skipped on PRs). Job-level `concurrency: integration-tests` prevents concurrent test runs across branches (both development and production CI use the same `DATABASE_URL` for integration tests).
 - **Build** — production build verification. Same dependency pattern as tests.
 
 Concurrency groups cancel in-progress runs for the same ref (except production pushes, which always complete).
@@ -336,6 +336,7 @@ Builds Storybook and runs interaction/a11y tests on push and PRs. Uses dummy `DA
 - **Migration scoping:** The original separate `schema-migrate.yml` ran all 4 Neon migrations on every push regardless of branch, causing advisory lock contention. Now merged into `ci.yml` with branch-conditional steps.
 - **Seed concurrency:** `cancel-in-progress: false` — seed jobs must run to completion to avoid partial data.
 - **Integration test:** `tests/integration/prisma/schema-migrate.test.ts` verifies migration idempotency (running `prisma migrate deploy` twice succeeds).
+- **Shared test DB:** Both `development` and `production` CI runs use the same `DATABASE_URL` (development Neon branch) for integration tests. Job-level concurrency groups (`integration-tests`, `schema-migration`) prevent concurrent runs from corrupting each other's test data.
 
 ## Environment Variables
 
