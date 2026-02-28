@@ -78,6 +78,149 @@ async function reextractColours() {
     }
 
     console.log(`\nDone: ${updated} updated, ${failed} failed`);
+
+    // --- Seasons/Episodes: items with poster but no backdrop and no colour ---
+    const posterItems = await prisma.item.findMany({
+      where: {
+        tmdbPosterPath: { not: null },
+        tmdbBackdropPath: null,
+        dominantColour: null,
+      },
+      select: {
+        id: true,
+        name: true,
+        tmdbPosterPath: true,
+      },
+    });
+
+    console.log(
+      `\nFound ${posterItems.length} items with poster but no backdrop/colour\n`
+    );
+
+    let posterUpdated = 0;
+    let posterFailed = 0;
+
+    for (const item of posterItems) {
+      const url = `https://image.tmdb.org/t/p/w300${item.tmdbPosterPath}`;
+      try {
+        const colour = await extractDominantColour(url);
+        if (colour) {
+          await prisma.item.update({
+            where: { id: item.id },
+            data: { dominantColour: colour },
+          });
+          console.log(`  ${item.name}: (none) -> ${colour}`);
+          posterUpdated++;
+        } else {
+          console.log(`  ${item.name}: extraction returned null, skipping`);
+          posterFailed++;
+        }
+      } catch (err) {
+        console.log(`  ${item.name}: FAILED - ${err}`);
+        posterFailed++;
+      }
+    }
+
+    console.log(
+      `\nPoster items: ${posterUpdated} updated, ${posterFailed} failed`
+    );
+
+    // --- Users: hero images without colour ---
+    // NOTE: This fetches binary heroImage blobs (up to 2MB each). At current scale
+    // this is fine, but for large user bases use cursor-based pagination:
+    // prisma.user.findMany({ take: 50, cursor: { id: lastId }, skip: 1 })
+    const usersWithHero = await prisma.user.findMany({
+      where: {
+        heroImage: { not: null },
+        dominantColour: null,
+      },
+      select: {
+        id: true,
+        name: true,
+        heroImage: true,
+      },
+    });
+
+    console.log(
+      `\nFound ${usersWithHero.length} users with hero image but no colour\n`
+    );
+
+    let userUpdated = 0;
+    let userFailed = 0;
+
+    for (const user of usersWithHero) {
+      try {
+        const colour = await extractDominantColour(
+          Buffer.from(user.heroImage!)
+        );
+        if (colour) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { dominantColour: colour },
+          });
+          console.log(`  User ${user.name ?? user.id}: (none) -> ${colour}`);
+          userUpdated++;
+        } else {
+          console.log(
+            `  User ${user.name ?? user.id}: extraction returned null`
+          );
+          userFailed++;
+        }
+      } catch (err) {
+        console.log(`  User ${user.name ?? user.id}: FAILED - ${err}`);
+        userFailed++;
+      }
+    }
+
+    console.log(`\nUsers: ${userUpdated} updated, ${userFailed} failed`);
+
+    // --- Playlists: artwork without colour ---
+    // NOTE: Same memory consideration as users — binary artworkImage blobs.
+    // Use cursor-based pagination for large datasets.
+    const playlistsWithArtwork = await prisma.playlist.findMany({
+      where: {
+        artworkImage: { not: null },
+        dominantColour: null,
+      },
+      select: {
+        id: true,
+        name: true,
+        artworkImage: true,
+      },
+    });
+
+    console.log(
+      `\nFound ${playlistsWithArtwork.length} playlists with artwork but no colour\n`
+    );
+
+    let playlistUpdated = 0;
+    let playlistFailed = 0;
+
+    for (const playlist of playlistsWithArtwork) {
+      try {
+        const colour = await extractDominantColour(
+          Buffer.from(playlist.artworkImage!)
+        );
+        if (colour) {
+          await prisma.playlist.update({
+            where: { id: playlist.id },
+            data: { dominantColour: colour },
+          });
+          console.log(`  Playlist ${playlist.name}: (none) -> ${colour}`);
+          playlistUpdated++;
+        } else {
+          console.log(`  Playlist ${playlist.name}: extraction returned null`);
+          playlistFailed++;
+        }
+      } catch (err) {
+        console.log(`  Playlist ${playlist.name}: FAILED - ${err}`);
+        playlistFailed++;
+      }
+    }
+
+    console.log(
+      `\nPlaylists: ${playlistUpdated} updated, ${playlistFailed} failed`
+    );
   } catch (error) {
     console.error("Error:", error);
     process.exit(1);

@@ -108,8 +108,19 @@ async function OwnerPlaylistContent({
   const result = await getPlaylist(playlistId);
   if (!result.success || !result.data) notFound();
 
+  // Resolve colour server-side: playlist artwork > first item > null
+  const resolvedColour =
+    result.data.dominantColour ??
+    result.data.items[0]?.item.dominantColour ??
+    null;
+
   return (
-    <PlaylistDetailClient playlist={result.data} username={username} isOwner />
+    <PlaylistDetailClient
+      playlist={result.data}
+      username={username}
+      isOwner
+      dominantColour={resolvedColour}
+    />
   );
 }
 
@@ -126,6 +137,12 @@ async function ViewerPlaylistContent({
 }) {
   const publicData = await getPublicPlaylist(playlistId, token);
   if (!publicData) notFound();
+
+  // Resolve colour server-side: playlist artwork > first item > null
+  const resolvedColour =
+    publicData.playlist.dominantColour ??
+    publicData.items[0]?.dominantColour ??
+    null;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
   const jsonLd = {
@@ -180,6 +197,7 @@ async function ViewerPlaylistContent({
         }}
         username={username}
         isOwner={false}
+        dominantColour={resolvedColour}
       />
     </>
   );

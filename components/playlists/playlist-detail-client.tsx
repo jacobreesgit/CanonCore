@@ -110,6 +110,8 @@ interface PlaylistDetailClientProps {
   username: string;
   /** Whether the current user is the playlist owner. */
   isOwner: boolean;
+  /** Resolved dominant colour (playlist artwork > first item > null). Computed server-side. */
+  dominantColour?: string | null;
 }
 
 /**
@@ -120,6 +122,7 @@ export function PlaylistDetailClient({
   playlist: initialPlaylist,
   username,
   isOwner,
+  dominantColour,
 }: PlaylistDetailClientProps) {
   const router = useRouter();
   const [playlist, setPlaylist] = useState(initialPlaylist);
@@ -495,6 +498,7 @@ export function PlaylistDetailClient({
       <HeroContentLayout
         hero={hero}
         isPending={isPending}
+        dominantColour={dominantColour}
         data-testid="playlist-detail"
       >
         {tabsMounted ? (

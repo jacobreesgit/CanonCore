@@ -26,6 +26,7 @@ import type {
   PlaylistMembership,
 } from "@/lib/types";
 import { resolveArtworkId } from "@/lib/tmdb-image-utils";
+import { extractDominantColour } from "@/lib/colour-extract";
 import { getSystemShelfItems } from "@/lib/shelf-query-utils";
 
 /**
@@ -111,6 +112,7 @@ export const getPlaylist = cache(async function getPlaylist(
         isPublic: true,
         artworkMime: true,
         shareToken: true,
+        dominantColour: true,
         userId: true,
         createdAt: true,
         updatedAt: true,
@@ -161,6 +163,7 @@ export const getPlaylist = cache(async function getPlaylist(
         isPublic: playlist.isPublic,
         hasArtwork: !!playlist.artworkMime,
         shareToken: playlist.shareToken ?? null,
+        dominantColour: playlist.dominantColour ?? null,
         userId: playlist.userId,
         items,
         createdAt: playlist.createdAt,
@@ -452,11 +455,20 @@ export async function updatePlaylistArtwork(
     }
     const processed = await image.rotate().toBuffer();
 
+    // Extract dominant colour — non-blocking, failure must not prevent upload
+    let dominantColour: string | null = null;
+    try {
+      dominantColour = await extractDominantColour(processed);
+    } catch {
+      // Non-blocking: colour extraction failure shouldn't prevent upload
+    }
+
     await prisma.playlist.update({
       where: { id: playlistId, userId: session.user.id },
       data: {
         artworkImage: new Uint8Array(processed),
         artworkMime: detectedMime,
+        dominantColour,
       },
     });
 
@@ -492,7 +504,7 @@ export async function removePlaylistArtwork(
 
     await prisma.playlist.update({
       where: { id: playlistId, userId: session.user.id },
-      data: { artworkImage: null, artworkMime: null },
+      data: { artworkImage: null, artworkMime: null, dominantColour: null },
     });
 
     revalidatePath("/");

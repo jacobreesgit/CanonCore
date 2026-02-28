@@ -97,10 +97,16 @@ vi.mock("sharp", () => ({
   }),
 }));
 
+// Mock colour extraction
+vi.mock("@/lib/colour-extract", () => ({
+  extractDominantColour: vi.fn().mockResolvedValue("#5c3a1a"),
+}));
+
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { resolveArtworkId } from "@/lib/tmdb-image-utils";
+import { extractDominantColour } from "@/lib/colour-extract";
 import {
   createPlaylist,
   deletePlaylist,
@@ -827,6 +833,66 @@ describe("playlist-actions", () => {
         })
       );
     });
+
+    it("extracts dominant colour from uploaded artwork", async () => {
+      mockAuth.mockResolvedValue(mockSession("user1"));
+      vi.mocked(prisma.playlist.update).mockResolvedValue({
+        id: "pl1",
+      } as never);
+
+      const imageBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
+      const formData = new FormData();
+      const file = new File([imageBytes], "cover.jpg", {
+        type: "image/jpeg",
+      });
+      if (!file.arrayBuffer) {
+        file.arrayBuffer = () =>
+          Promise.resolve(imageBytes.buffer as ArrayBuffer);
+      }
+      formData.append("artwork", file);
+
+      const result = await updatePlaylistArtwork("pl1", formData);
+      expect(result.success).toBe(true);
+      expect(extractDominantColour).toHaveBeenCalled();
+      expect(prisma.playlist.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            dominantColour: "#5c3a1a",
+          }),
+        })
+      );
+    });
+
+    it("saves artwork with null colour when extraction throws", async () => {
+      vi.mocked(extractDominantColour).mockRejectedValue(
+        new Error("sharp processing failed")
+      );
+      mockAuth.mockResolvedValue(mockSession("user1"));
+      vi.mocked(prisma.playlist.update).mockResolvedValue({
+        id: "pl1",
+      } as never);
+
+      const imageBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
+      const formData = new FormData();
+      const file = new File([imageBytes], "cover.jpg", {
+        type: "image/jpeg",
+      });
+      if (!file.arrayBuffer) {
+        file.arrayBuffer = () =>
+          Promise.resolve(imageBytes.buffer as ArrayBuffer);
+      }
+      formData.append("artwork", file);
+
+      const result = await updatePlaylistArtwork("pl1", formData);
+      expect(result.success).toBe(true);
+      expect(prisma.playlist.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            dominantColour: null,
+          }),
+        })
+      );
+    });
   });
 
   describe("removePlaylistArtwork", () => {
@@ -849,6 +915,23 @@ describe("playlist-actions", () => {
           data: expect.objectContaining({
             artworkImage: null,
             artworkMime: null,
+          }),
+        })
+      );
+    });
+
+    it("clears dominant colour when artwork is removed", async () => {
+      mockAuth.mockResolvedValue(mockSession("user1"));
+      vi.mocked(prisma.playlist.update).mockResolvedValue({
+        id: "pl1",
+      } as never);
+
+      const result = await removePlaylistArtwork("pl1");
+      expect(result.success).toBe(true);
+      expect(prisma.playlist.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            dominantColour: null,
           }),
         })
       );

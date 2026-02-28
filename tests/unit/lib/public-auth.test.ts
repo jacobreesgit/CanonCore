@@ -44,6 +44,7 @@ function mockUser(
     name: string | null;
     image: Buffer | null;
     heroImage: Buffer | null;
+    dominantColour: string | null;
     isPublic: boolean;
     createdAt: Date;
   }> = {}
@@ -54,6 +55,7 @@ function mockUser(
     name: "Test User",
     image: null,
     heroImage: null,
+    dominantColour: null,
     isPublic: true,
     createdAt: new Date("2024-01-01"),
     ...overrides,
@@ -134,6 +136,7 @@ describe("getPublicProfile", () => {
         name: true,
         image: true,
         heroImage: true,
+        dominantColour: true,
         createdAt: true,
       },
     });
@@ -166,6 +169,7 @@ describe("getPublicProfile", () => {
       name: "John Doe",
       hasImage: true,
       hasHeroImage: true,
+      dominantColour: null,
       createdAt: new Date("2024-01-01"),
     });
   });

@@ -43,6 +43,7 @@ function createMockUser(
     imageMime: string | null;
     heroImage: Uint8Array<ArrayBuffer> | null;
     heroImageMime: string | null;
+    dominantColour: string | null;
     seedContentHash: string | null;
     defaultViewMode: string | null;
     defaultSortBy: string | null;
@@ -62,6 +63,7 @@ function createMockUser(
     imageMime: null,
     heroImage: null,
     heroImageMime: null,
+    dominantColour: null,
     seedContentHash: null,
     defaultViewMode: null,
     defaultSortBy: null,
