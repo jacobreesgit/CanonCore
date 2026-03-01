@@ -16,8 +16,8 @@ import { MobileFooterContainer } from "./mobile-footer-nav";
 import { MobileSearchSheet } from "./mobile-search-sheet";
 import { MobileHelpSheet } from "./mobile-help-sheet";
 import { MobileSettingsSheet } from "@/components/profile/mobile-settings-sheet";
-import { initiateGoogleDriveOAuth } from "@/lib/google-drive-actions";
-import { DRIVE_MESSAGES } from "@/lib/constants/messages";
+import { resendVerificationEmail } from "@/lib/auth-actions";
+import { VERIFICATION_MESSAGES } from "@/lib/messages";
 import type { GoogleDriveConnection } from "@/lib/types";
 
 /** Transition delay for sheet mutual exclusion (ms) */
@@ -41,11 +41,12 @@ export interface MobileNavProviderProps {
     isPublic?: boolean;
     hasImage?: boolean;
     hasHeroImage?: boolean;
+    bio?: string | null;
   } | null;
   /** Google Drive connection (null if not connected) */
   driveConnection?: GoogleDriveConnection | null;
-  /** Whether Google Drive needs reauthentication (shows reconnect banner) */
-  driveNeedsReauth?: boolean;
+  /** Whether user's email is unverified (shows verification nudge banner) */
+  emailUnverified?: boolean;
   /** Children to render */
   children?: React.ReactNode;
 }
@@ -64,7 +65,7 @@ export interface MobileNavProviderProps {
 export function MobileNavProvider({
   user,
   driveConnection,
-  driveNeedsReauth,
+  emailUnverified,
   children,
 }: MobileNavProviderProps) {
   const pathname = usePathname();
@@ -72,16 +73,16 @@ export function MobileNavProvider({
   const [activeSheet, setActiveSheet] = React.useState<SheetType>(null);
   const pendingSheetRef = React.useRef<SheetType>(null);
   const prevPathnameRef = React.useRef(pathname);
-  const [isReconnecting, startReconnectTransition] = React.useTransition();
+  const [isResending, startResendTransition] = React.useTransition();
 
-  /** Initiates Google Drive OAuth flow to reconnect expired tokens. */
-  const handleReconnect = React.useCallback(() => {
-    startReconnectTransition(async () => {
-      const result = await initiateGoogleDriveOAuth();
-      if (result.success && result.url) {
-        window.location.href = result.url;
+  /** Resends email verification to the authenticated user. */
+  const handleResendVerification = React.useCallback(() => {
+    startResendTransition(async () => {
+      const result = await resendVerificationEmail();
+      if (result.success) {
+        toast.success(VERIFICATION_MESSAGES.RESEND_SUCCESS);
       } else {
-        toast.error(result.error || "Failed to start connection");
+        toast.error(result.error || VERIFICATION_MESSAGES.RESEND_FAIL);
       }
     });
   }, []);
@@ -172,11 +173,11 @@ export function MobileNavProvider({
     <>
       {children}
 
-      {/* Drive reconnect banner (sticky top, mobile only) */}
-      {driveNeedsReauth && (
+      {/* Email verification nudge (sticky top, mobile only) */}
+      {emailUnverified && (
         <div
-          role="alert"
-          aria-live="assertive"
+          role="status"
+          aria-live="polite"
           className="fixed inset-x-0 top-0 z-40 flex items-center gap-3 border-b border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 backdrop-blur-md lg:hidden"
         >
           <FontAwesomeIcon
@@ -185,16 +186,16 @@ export function MobileNavProvider({
             aria-hidden="true"
           />
           <p className="flex-1 text-sm text-amber-200">
-            {DRIVE_MESSAGES.DISCONNECTED_BANNER_SHORT}
+            {VERIFICATION_MESSAGES.BANNER_NUDGE}
           </p>
           <Button
             variant="ghost"
             size="sm"
             className="min-h-[44px] shrink-0"
-            disabled={isReconnecting}
-            onClick={handleReconnect}
+            disabled={isResending}
+            onClick={handleResendVerification}
           >
-            {isReconnecting ? "Connecting..." : "Reconnect"}
+            {isResending ? "Sending..." : "Resend"}
           </Button>
         </div>
       )}
@@ -225,6 +226,7 @@ export function MobileNavProvider({
             isPublic: user.isPublic ?? false,
             hasImage: user.hasImage ?? false,
             hasHeroImage: user.hasHeroImage ?? false,
+            bio: user.bio ?? null,
           }}
           googleDriveConnection={driveConnection ?? null}
           onProfileChange={async () => router.refresh()}

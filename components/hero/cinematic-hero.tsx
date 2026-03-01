@@ -267,6 +267,11 @@ export function CinematicHero({
                 <p className="mt-2 truncate text-sm text-white/60 md:text-base">
                   @{activeSlide.profile.username}
                 </p>
+                {activeSlide.profile?.bio && (
+                  <p className="mt-3 line-clamp-2 max-w-2xl text-sm leading-relaxed text-white/70 md:text-base">
+                    {activeSlide.profile.bio}
+                  </p>
+                )}
                 {typeof activeSlide.progress === "number" &&
                   activeSlide.progress > 0 && (
                     <div className="mt-5 flex max-w-xs flex-col gap-2">

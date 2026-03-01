@@ -82,6 +82,12 @@ vi.mock("@/lib/prisma", () => ({
       delete: vi.fn(),
       deleteMany: vi.fn(),
     },
+    emailVerificationToken: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
+    },
     $transaction: vi.fn((updates) => Promise.all(updates)),
     $queryRaw: vi.fn().mockResolvedValue([]),
   },
@@ -90,6 +96,7 @@ vi.mock("@/lib/prisma", () => ({
 // Mock Resend email
 vi.mock("@/lib/email", () => ({
   sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined),
+  sendVerificationEmail: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock Next.js cache

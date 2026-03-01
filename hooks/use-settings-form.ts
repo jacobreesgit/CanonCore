@@ -40,6 +40,7 @@ export interface SettingsFormUser {
   isPublic: boolean;
   hasImage: boolean;
   hasHeroImage: boolean;
+  bio: string | null;
 }
 
 /** Return type for the useSettingsForm hook. */
@@ -79,6 +80,8 @@ export interface UseSettingsFormReturn {
   // Main form
   name: string;
   setName: (value: string) => void;
+  bio: string;
+  setBio: (value: string) => void;
   isPublic: boolean;
   setIsPublic: (value: boolean) => void;
   profileImage: File | null;
@@ -154,6 +157,7 @@ export function useSettingsForm(
 
   // Main step state
   const [name, setName] = useState(user.name ?? "");
+  const [bio, setBio] = useState(user.bio ?? "");
   const [isPublic, setIsPublic] = useState(user.isPublic);
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [heroImage, setHeroImage] = useState<File | null>(null);
@@ -170,25 +174,29 @@ export function useSettingsForm(
   const originalValues = useMemo(
     () => ({
       name: user.name ?? "",
+      bio: user.bio ?? "",
       isPublic: user.isPublic,
     }),
-    [user.name, user.isPublic]
+    [user.name, user.bio, user.isPublic]
   );
 
   // Dirty state detection for main step
   const isDirty = useMemo(() => {
     const nameChanged = name !== originalValues.name;
+    const bioChanged = bio !== originalValues.bio;
     const isPublicChanged = isPublic !== originalValues.isPublic;
     const profileImageChanging = profileImage !== null || removeProfile;
     const heroImageChanging = heroImage !== null || removeHero;
     return (
       nameChanged ||
+      bioChanged ||
       isPublicChanged ||
       profileImageChanging ||
       heroImageChanging
     );
   }, [
     name,
+    bio,
     isPublic,
     profileImage,
     heroImage,
@@ -225,6 +233,7 @@ export function useSettingsForm(
     setIsUsernameSaving(false);
     // Reset main state
     setName(user.name ?? "");
+    setBio(user.bio ?? "");
     setIsPublic(user.isPublic);
     setProfileImage(null);
     setHeroImage(null);
@@ -234,7 +243,7 @@ export function useSettingsForm(
     setRemoveHero(false);
     setIsMainSaving(false);
     setShowPublicConfirm(false);
-  }, [user.name, user.email, user.username, user.isPublic]);
+  }, [user.name, user.bio, user.email, user.username, user.isPublic]);
 
   /**
    * Navigates back to the main step.
@@ -470,6 +479,7 @@ export function useSettingsForm(
    */
   const handleMainCancel = useCallback(() => {
     setName(originalValues.name);
+    setBio(originalValues.bio);
     setIsPublic(originalValues.isPublic);
     setProfileImage(null);
     setHeroImage(null);
@@ -489,17 +499,22 @@ export function useSettingsForm(
       let hasError = false;
 
       const nameChanged = name !== originalValues.name;
+      const bioChanged = bio !== originalValues.bio;
       const isPublicChanged = isPublic !== originalValues.isPublic;
 
       // Update profile fields if any changed
-      if ((nameChanged || isPublicChanged) && !hasError) {
+      if ((nameChanged || bioChanged || isPublicChanged) && !hasError) {
         const updateData: {
           name?: string;
+          bio?: string;
           isPublic?: boolean;
         } = {};
 
         if (nameChanged) {
           updateData.name = name;
+        }
+        if (bioChanged) {
+          updateData.bio = bio;
         }
         if (isPublicChanged) {
           updateData.isPublic = isPublic;
@@ -559,6 +574,7 @@ export function useSettingsForm(
     }
   }, [
     name,
+    bio,
     isPublic,
     profileImage,
     heroImage,
@@ -621,6 +637,8 @@ export function useSettingsForm(
     // Main form
     name,
     setName,
+    bio,
+    setBio,
     isPublic,
     setIsPublic,
     profileImage,

@@ -10,17 +10,32 @@ Your account security matters. Here's how CanonCore protects your data and how y
 ### Password security
 
 - Your password is encrypted and never stored in plain text
-- We use industry-standard hashing (bcrypt) to protect it
-- Even we can't see your actual password
+- CanonCore uses industry-standard hashing (bcrypt) to protect it
+- Even CanonCore can't see your actual password
+
+### Account lockout
+
+If someone tries to guess your password, CanonCore locks the account after 5 failed attempts. The lockout lasts 15 minutes, and the sign-in page shows how long you need to wait.
+
+This protects against automated password guessing without permanently locking you out.
+
+### Email verification
+
+When you create an account, CanonCore sends a verification email. Click the link to confirm your address.
+
+If you change your email in [profile settings](/docs/account/profile-settings), CanonCore sends a verification link to the **new** address. Your email won't change until you verify it — this prevents someone from hijacking your account by changing your email without access to the new inbox.
+
+If you haven't verified your email yet, you'll see a banner at the top of the page with a **Resend** button.
 
 ### Session protection
 
 - Your login session is secured with encrypted tokens
 - Sessions are tied to your browser for extra safety
+- Changing or resetting your password automatically signs out all other sessions, so if someone has access to your account, changing your password locks them out immediately
 
 ### Rate limiting
 
-- Too many failed login attempts? We'll slow down requests to prevent attacks
+- Too many failed login attempts? CanonCore slows down requests to prevent attacks
 - This protects against automated password guessing
 
 ## How you can help
@@ -47,7 +62,7 @@ Your account security matters. Here's how CanonCore protects your data and how y
 
 If you notice anything unusual with your account:
 
-1. [Reset your password](/docs/account/password-reset) immediately
+1. [Reset your password](/docs/account/password-reset) immediately — this signs out all other sessions
 2. Make sure to use a completely new password
 3. Check that your email address is still correct
 

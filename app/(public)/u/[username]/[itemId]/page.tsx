@@ -165,7 +165,7 @@ export default async function ItemDetailPage({
           title="My Items"
           titleHref={`/u/${profile.username}`}
           breadcrumbs={breadcrumbs}
-          driveNeedsReauth={false}
+          emailUnverified={session?.user ? !session.user.emailVerified : false}
         />
         <div className="bg-background text-foreground -mt-(--header-height) flex flex-1 flex-col">
           <Suspense fallback={<ItemContentSkeleton />}>
@@ -218,7 +218,7 @@ export default async function ItemDetailPage({
           title={`@${profile.username}`}
           titleHref={`/u/${profile.username}`}
           breadcrumbs={headerBreadcrumbs}
-          driveNeedsReauth={false}
+          emailUnverified={session?.user ? !session.user.emailVerified : false}
         />
         <div className="bg-background text-foreground -mt-(--header-height) flex flex-1 flex-col">
           <Suspense fallback={<ItemContentSkeleton />}>

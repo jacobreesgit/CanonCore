@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: March 2026 (v11.2.0)
+Last updated: March 2026 (v12.0.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -130,7 +130,8 @@ Built on PostgreSQL with Prisma ORM. Key tables:
 **User:**
 
 - Authentication (email, passwordHash via bcryptjs)
-- Profile (username, isPublic, image/heroImage blobs)
+- Profile (username, isPublic, image/heroImage blobs, bio VARCHAR(300))
+- Security hardening (tokenVersion for JWT invalidation, failedLoginAttempts, lockedUntil for account lockout)
 - Seeding (seedContentHash for incremental updates)
 
 **Item (hierarchical tree):**
@@ -207,22 +208,26 @@ Built on PostgreSQL with Prisma ORM. Key tables:
 ### Entity-Relationship Diagram
 
 ```
-┌──────────────┐
-│     User     │
-├──────────────┤
-│ id           │──┐
-│ email        │  │ 1:1
-│ passwordHash │  ├─────────┐
-│ username     │  │         │
-│ isPublic     │  │         ▼
-│ image (blob) │  │  ┌─────────────────────┐
-└──────────────┘  │  │GoogleDriveConnection│
-                  │  ├─────────────────────┤
-        1:N       │  │ accessToken (enc)   │
-        │         │  │ refreshToken (enc)  │
-    ┌───▼─────┐   │  │ rootFolderId        │
-    │  Item   │◄──┘  │ quotaBytesUsed      │
-    ├─────────┤      └─────────────────────┘
+┌────────────────────┐
+│       User         │
+├────────────────────┤
+│ id                 │──┐
+│ email              │  │ 1:1
+│ passwordHash       │  ├─────────┐
+│ username           │  │         │
+│ isPublic           │  │         ▼
+│ bio                │  │  ┌─────────────────────┐
+│ tokenVersion       │  │  │GoogleDriveConnection│
+│ failedLoginAttempts│  │  ├─────────────────────┤
+│ lockedUntil        │  │  │ accessToken (enc)   │
+│ image (blob)       │  │  │ refreshToken (enc)  │
+└────────────────────┘  │  │ rootFolderId        │
+                        │  │ quotaBytesUsed      │
+              1:N       │  └─────────────────────┘
+              │         │
+          ┌───▼─────┐   │
+    │  Item   │◄──┘
+    ├─────────┤
     │ id      │
     │ parentId│──┐ Self-referential
     │ name    │  │ (tree structure)
@@ -283,6 +288,14 @@ Built on PostgreSQL with Prisma ORM. Key tables:
             │ source       │ (AUTO/MANUAL)
             │ watchedAt    │
             └──────────────┘
+
+┌──────────────┐         ┌───────────────────────────┐
+│     User     │──┐ 1:N  │  EmailVerificationToken   │
+└──────────────┘  │      ├───────────────────────────┤
+                  └─────▶│ token (unique)            │
+                         │ email                     │
+                         │ expires                   │
+                         └───────────────────────────┘
 ```
 
 ### Key Schema Decisions
@@ -332,7 +345,7 @@ All mutations go through server actions in `lib/*-actions.ts`:
 - `lib/playlist-actions.ts` - Playlist CRUD, artwork, share tokens, item membership, reordering
 - `lib/google-drive-actions.ts` - OAuth, sync, connection management
 - `lib/tmdb-actions.ts` - Metadata search, image fetching, per-field clearing, display options
-- `lib/auth-actions.ts` - Sign up, forgot password, reset password
+- `lib/auth-actions.ts` - Sign up, forgot password, reset password, email verification, lockout check
 - `lib/user-actions.ts` - Profile updates, image uploads, account deletion, data export
 - `lib/fork-actions.ts` - Forking collections
 - `lib/watch-actions.ts` - Watch status (create, mark, unmark, batch, status query)
@@ -405,6 +418,11 @@ Server Actions can't stream responses, so these use API Routes:
 - Fumadocs documentation at `/docs` (shared ContentLayout)
 - Legal pages at `/legal` (privacy policy, terms of service, cookie policy)
 
+**`app/verify-email/`:**
+
+- Email verification landing page (outside auth route group — works for both authenticated email changes and unauthenticated signup verification)
+- Validates token from URL params, handles signup verification and email change flows
+
 ---
 
 ## Authentication & Security
@@ -453,11 +471,34 @@ Implementation in `lib/rate-limit.ts` with exponential backoff.
 
 ### Security Features
 
+**Account Lockout:**
+
+- 5 consecutive failed login attempts → 15-minute lockout
+- Pure functions in `lib/lockout-utils.ts`: `isAccountLocked()`, `handleFailedLogin()`, `handleSuccessfulLogin()`
+- Authorize callback checks lockout before password verification
+- Anti-enumeration: `checkSignInStatus()` returns `{ status: "ok" }` for unknown emails
+
+**Email Verification:**
+
+- `EmailVerificationToken` model with 30-minute expiry
+- Signup sends verification email via Resend (non-blocking)
+- Email changes create verification token instead of updating directly
+- Verification landing page at `/verify-email` handles both signup and email change flows
+- Nudge banner in SiteHeader with resend button for unverified users
+
+**JWT Token Version Invalidation:**
+
+- `User.tokenVersion` (Int, default 0) incremented on password reset and change
+- JWT callback stores tokenVersion on sign-in, checks against DB on subsequent requests
+- Version mismatch clears `token.id` → session callback skips user population → forced sign-out
+- Closes the stale-session gap inherent in stateless JWTs
+
 **Password Reset:**
 
 - 30-minute expiry tokens stored in database
 - Sent via Resend transactional email
 - Tokens hashed before storage
+- Now increments `tokenVersion` to invalidate existing sessions
 
 **OAuth Token Encryption:**
 
@@ -1024,7 +1065,7 @@ Hero section and media stack use CSS Modules (`hero-section.module.css`, `media-
 - Requires password verification (bcryptjs compare) and typing "DELETE" to confirm
 - Validated with `deleteAccountSchema` (Zod) in `lib/validations.ts`
 - Best-effort Google Drive folder trash before deletion (logs warning on failure, proceeds)
-- `prisma.user.delete()` triggers cascade deletion: Items, ItemFiles, Playlists, PlaylistItems, Forks, SyncLogs, PasswordResets, GoogleDriveConnection
+- `prisma.user.delete()` triggers cascade deletion: Items, ItemFiles, Playlists, PlaylistItems, Forks, SyncLogs, PasswordResets, EmailVerificationTokens, GoogleDriveConnection
 - Security event logging at each stage via `logSecurityEvent()`: rate limited, wrong password, confirmed, completed
 - Non-blocking completion logging via `after()` from `next/server`
 - Client-side `signOut({ callbackUrl: "/" })` after successful deletion

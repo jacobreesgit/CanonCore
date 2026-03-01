@@ -6,7 +6,6 @@
 import type { Metadata } from "next";
 
 import { auth } from "@/lib/auth";
-import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
 import { SiteHeader } from "@/components/site-header";
 import { HomepageContent } from "@/components/homepage/homepage-content";
 
@@ -20,13 +19,8 @@ export const metadata: Metadata = {
  * Renders the landing page with cinematic hero.
  */
 export default async function LandingPage() {
-  const [session, driveConnection] = await Promise.all([
-    auth(),
-    getGoogleDriveConnection().catch(() => null),
-  ]);
-  const driveNeedsReauth = session?.user
-    ? (driveConnection?.needsReauth ?? false)
-    : false;
+  const session = await auth();
+  const emailUnverified = session?.user ? !session.user.emailVerified : false;
 
   return (
     <>
@@ -47,7 +41,7 @@ export default async function LandingPage() {
       <SiteHeader
         title="Home"
         titleHref="/"
-        driveNeedsReauth={driveNeedsReauth}
+        emailUnverified={emailUnverified}
       />
       {/* Pull homepage up behind the glass header so mesh gradient bleeds through */}
       <div className="-mt-(--header-height)">

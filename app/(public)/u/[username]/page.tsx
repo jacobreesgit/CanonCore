@@ -123,6 +123,7 @@ async function ProfileContent({
         hasImage: profileData.profile.hasImage,
         hasHeroImage: profileData.profile.hasHeroImage,
         dominantColour: profileData.profile.dominantColour,
+        bio: profileData.profile.bio,
       }}
       items={profileData.items}
       isOwner={isOwner}
@@ -204,7 +205,7 @@ export default async function ProfilePage({ params }: PageProps) {
       <SiteHeader
         title={isOwner ? "My Items" : `@${profile.username}`}
         titleHref={`/u/${profile.username}`}
-        driveNeedsReauth={false}
+        emailUnverified={session?.user ? !session.user.emailVerified : false}
       />
       <div className="bg-background text-foreground -mt-(--header-height) flex flex-1 flex-col">
         <Suspense fallback={<ProfileContentSkeleton />}>

@@ -71,6 +71,7 @@ describe("SettingsDialog Upload", () => {
       isPublic: false,
       hasImage: false,
       hasHeroImage: false,
+      bio: null,
     },
     googleDriveConnection: null,
   };

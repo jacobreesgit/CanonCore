@@ -115,6 +115,18 @@ export class SettingsPage {
   }
 
   /**
+   * Fill in the bio textarea on the profile tab.
+   *
+   * @param bio - The bio text to enter
+   */
+  async fillBio(bio: string) {
+    const textarea = this.page.getByLabel(/bio/i);
+    await textarea.waitFor({ state: "visible", timeout: Timeouts.api });
+    await textarea.clear();
+    await textarea.fill(bio);
+  }
+
+  /**
    * Fill in the username field on the profile tab.
    *
    * @param username - The username to enter

@@ -46,6 +46,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { FileUpload, FileUploadTrigger } from "@/components/diceui/file-upload";
 import {
   Card,
@@ -109,6 +110,7 @@ interface SettingsDialogProps {
     isPublic: boolean;
     hasImage: boolean;
     hasHeroImage: boolean;
+    bio: string | null;
   };
   /** Google Drive connection (null if not connected) */
   googleDriveConnection: GoogleDriveConnection | null;
@@ -169,6 +171,7 @@ export function SettingsDialog({
 
   // Main step state
   const [name, setName] = useState(user.name ?? "");
+  const [bio, setBio] = useState(user.bio ?? "");
   const [isPublic, setIsPublic] = useState(user.isPublic);
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [heroImage, setHeroImage] = useState<File | null>(null);
@@ -188,25 +191,29 @@ export function SettingsDialog({
   const originalValues = useMemo(
     () => ({
       name: user.name ?? "",
+      bio: user.bio ?? "",
       isPublic: user.isPublic,
     }),
-    [user.name, user.isPublic]
+    [user.name, user.bio, user.isPublic]
   );
 
   // Dirty state detection for main step
   const isDirty = useMemo(() => {
     const nameChanged = name !== originalValues.name;
+    const bioChanged = bio !== originalValues.bio;
     const isPublicChanged = isPublic !== originalValues.isPublic;
     const profileImageChanging = profileImage !== null || removeProfile;
     const heroImageChanging = heroImage !== null || removeHero;
     return (
       nameChanged ||
+      bioChanged ||
       isPublicChanged ||
       profileImageChanging ||
       heroImageChanging
     );
   }, [
     name,
+    bio,
     isPublic,
     profileImage,
     heroImage,
@@ -234,6 +241,7 @@ export function SettingsDialog({
       setIsUsernameSaving(false);
       // Reset main state
       setName(user.name ?? "");
+      setBio(user.bio ?? "");
       setIsPublic(user.isPublic);
       setProfileImage(null);
       setHeroImage(null);
@@ -248,7 +256,7 @@ export function SettingsDialog({
       setIsDeleting(false);
       setIsExporting(false);
     }
-  }, [open, user.name, user.email, user.username, user.isPublic]);
+  }, [open, user.name, user.bio, user.email, user.username, user.isPublic]);
 
   // Cleanup preview URLs on unmount
   useEffect(() => {
@@ -443,6 +451,7 @@ export function SettingsDialog({
 
   const handleMainCancel = useCallback(() => {
     setName(originalValues.name);
+    setBio(originalValues.bio);
     setIsPublic(originalValues.isPublic);
     setProfileImage(null);
     setHeroImage(null);
@@ -459,17 +468,22 @@ export function SettingsDialog({
       let hasError = false;
 
       const nameChanged = name !== originalValues.name;
+      const bioChanged = bio !== originalValues.bio;
       const isPublicChanged = isPublic !== originalValues.isPublic;
 
       // Update profile fields if any changed
-      if ((nameChanged || isPublicChanged) && !hasError) {
+      if ((nameChanged || bioChanged || isPublicChanged) && !hasError) {
         const updateData: {
           name?: string;
+          bio?: string;
           isPublic?: boolean;
         } = {};
 
         if (nameChanged) {
           updateData.name = name;
+        }
+        if (bioChanged) {
+          updateData.bio = bio;
         }
         if (isPublicChanged) {
           updateData.isPublic = isPublic;
@@ -529,6 +543,7 @@ export function SettingsDialog({
     }
   }, [
     name,
+    bio,
     isPublic,
     profileImage,
     heroImage,
@@ -1116,6 +1131,25 @@ export function SettingsDialog({
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Your name"
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="settings-bio">Bio</Label>
+                      <Textarea
+                        id="settings-bio"
+                        value={bio}
+                        onChange={(e) => setBio(e.target.value)}
+                        placeholder="Tell people about yourself"
+                        maxLength={300}
+                        rows={3}
+                        className="resize-none"
+                      />
+                      <p
+                        className="text-muted-foreground text-right text-xs"
+                        aria-live="polite"
+                        aria-atomic="true"
+                      >
+                        {bio.length}/300
+                      </p>
                     </div>
                   </CardContent>
                 </Card>

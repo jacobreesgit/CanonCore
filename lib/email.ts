@@ -42,3 +42,34 @@ export async function sendPasswordResetEmail(
     throw new Error("Failed to send email");
   }
 }
+
+/**
+ * Sends an email verification email with a secure token link.
+ *
+ * @param email - Recipient email address
+ * @param token - Unique verification token (expires in 30 minutes)
+ * @throws Error if email sending fails
+ */
+export async function sendVerificationEmail(
+  email: string,
+  token: string
+): Promise<void> {
+  const verifyUrl = `${env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/verify-email?token=${token}`;
+
+  const { error } = await resend.emails.send({
+    from: env.EMAIL_FROM,
+    to: email,
+    subject: "Verify your email address",
+    html: `
+      <h1>Verify your email</h1>
+      <p>Click the link below to verify your email address. This link expires in 30 minutes.</p>
+      <a href="${verifyUrl}">Verify Email</a>
+      <p>If you didn't create an account, you can safely ignore this email.</p>
+    `,
+  });
+
+  if (error) {
+    logger.error({ err: error, email }, "Failed to send verification email");
+    throw new Error("Failed to send verification email");
+  }
+}

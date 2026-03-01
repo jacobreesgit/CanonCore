@@ -10,12 +10,13 @@ import { hash } from "bcryptjs";
 import { randomBytes } from "crypto";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { sendPasswordResetEmail } from "@/lib/email";
+import { sendPasswordResetEmail, sendVerificationEmail } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
 import {
   signUpSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  verifyEmailSchema,
 } from "@/lib/validations";
 import { logger } from "@/lib/logger";
 import { handlePrismaError } from "@/lib/errors";
@@ -116,13 +117,35 @@ export async function signUp(
 
     const passwordHash = await hash(password, BCRYPT_ROUNDS);
 
-    await prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         email,
         passwordHash,
         username: username ?? null,
       },
     });
+
+    // Create email verification token and send verification email
+    const verificationToken = randomBytes(32).toString("hex");
+    const verificationExpires = new Date(Date.now() + 30 * 60 * 1000);
+
+    try {
+      await prisma.emailVerificationToken.create({
+        data: {
+          token: verificationToken,
+          userId: user.id,
+          email,
+          expires: verificationExpires,
+        },
+      });
+      await sendVerificationEmail(email, verificationToken);
+    } catch (err) {
+      // Non-blocking — user can resend later, but log the error
+      logger.error(
+        { err, email },
+        "Failed to send verification email during signup"
+      );
+    }
 
     await logSecurityEvent("SIGNUP_SUCCESS", { email, username });
     return { success: true };
@@ -273,13 +296,10 @@ export async function resetPassword(
   const passwordHash = await hash(newPassword, BCRYPT_ROUNDS);
 
   // Parallelize independent DB operations: update password + delete token
-  // NOTE: Existing JWT sessions remain valid after password reset because JWTs are
-  // stateless and not checked against the database on each request. Full session
-  // invalidation would require a server-side session store or token blocklist.
   await Promise.all([
     prisma.user.update({
       where: { id: passwordReset.userId },
-      data: { passwordHash },
+      data: { passwordHash, tokenVersion: { increment: 1 } },
     }),
     prisma.passwordReset.delete({
       where: { id: passwordReset.id },
@@ -291,4 +311,151 @@ export async function resetPassword(
   });
 
   return { success: true };
+}
+
+/**
+ * Verifies an email address using a verification token.
+ * For signup verification: sets emailVerified on the user.
+ * For email change: updates user email and sets emailVerified.
+ *
+ * @param token - Verification token from email link
+ * @returns Success or error result
+ */
+export async function verifyEmail(token: string): Promise<AuthResult> {
+  const rateLimitResult = await checkRateLimit("emailVerification");
+  if (rateLimitResult) return rateLimitResult;
+
+  const validation = verifyEmailSchema.safeParse({ token });
+  if (!validation.success) {
+    return { error: validation.error.issues[0].message };
+  }
+
+  const verificationToken = await prisma.emailVerificationToken.findUnique({
+    where: { token },
+    include: { user: true },
+  });
+
+  if (!verificationToken) {
+    return { error: "Invalid or expired verification link" };
+  }
+
+  if (verificationToken.expires < new Date()) {
+    await prisma.emailVerificationToken.delete({
+      where: { id: verificationToken.id },
+    });
+    return { error: "Verification link has expired" };
+  }
+
+  // Determine if this is a signup verification or email change
+  const isEmailChange =
+    verificationToken.email !== verificationToken.user.email;
+
+  if (isEmailChange) {
+    // Check new email is still available
+    const existing = await prisma.user.findUnique({
+      where: { email: verificationToken.email },
+    });
+    if (existing) {
+      await prisma.emailVerificationToken.delete({
+        where: { id: verificationToken.id },
+      });
+      return { error: "Email address is already in use" };
+    }
+  }
+
+  await Promise.all([
+    prisma.user.update({
+      where: { id: verificationToken.userId },
+      data: {
+        emailVerified: new Date(),
+        ...(isEmailChange && { email: verificationToken.email }),
+      },
+    }),
+    prisma.emailVerificationToken.delete({
+      where: { id: verificationToken.id },
+    }),
+  ]);
+
+  await logSecurityEvent(
+    isEmailChange ? "EMAIL_CHANGE_VERIFIED" : "EMAIL_VERIFIED",
+    { email: verificationToken.email, userId: verificationToken.userId }
+  );
+
+  return { success: true };
+}
+
+/**
+ * Resends verification email to the authenticated user.
+ * Derives userId/email from the session to prevent abuse.
+ * Deletes existing tokens and creates a fresh one.
+ *
+ * @returns Success or error result
+ */
+export async function resendVerificationEmail(): Promise<AuthResult> {
+  const { auth } = await import("@/lib/auth");
+  const session = await auth();
+  if (!session?.user?.id || !session.user.email) {
+    return { error: "Not authenticated" };
+  }
+
+  const userId = session.user.id;
+  const email = session.user.email;
+
+  const rateLimitResult = await checkRateLimit("emailVerification");
+  if (rateLimitResult) return rateLimitResult;
+
+  // Delete existing tokens
+  await prisma.emailVerificationToken.deleteMany({
+    where: { userId },
+  });
+
+  const token = randomBytes(32).toString("hex");
+  const expires = new Date(Date.now() + 30 * 60 * 1000);
+
+  await prisma.emailVerificationToken.create({
+    data: { token, userId, email, expires },
+  });
+
+  await sendVerificationEmail(email, token);
+
+  await logSecurityEvent("VERIFICATION_EMAIL_RESENT", { userId, email });
+
+  return { success: true };
+}
+
+/**
+ * Checks sign-in status for a given email (lockout differentiation).
+ * Called by sign-in form after signIn() returns an error to determine
+ * whether the account is locked vs invalid credentials.
+ *
+ * Anti-enumeration: returns { status: "ok" } for unknown emails.
+ *
+ * @param email - Email address to check
+ * @returns Status with optional remaining lockout minutes
+ */
+export async function checkSignInStatus(
+  email: string
+): Promise<{ status: "ok" | "locked"; remainingMinutes?: number }> {
+  const rateLimitResult = await checkRateLimit("signIn");
+  if (rateLimitResult) return { status: "ok" };
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { lockedUntil: true, failedLoginAttempts: true },
+  });
+
+  if (!user) {
+    return { status: "ok" }; // Don't reveal whether email exists
+  }
+
+  const { isAccountLocked } = await import("@/lib/lockout-utils");
+  const lockoutCheck = isAccountLocked(user);
+  if (lockoutCheck.locked) {
+    return {
+      status: "locked",
+      remainingMinutes: lockoutCheck.remainingMinutes,
+    };
+  }
+
+  return { status: "ok" };
 }

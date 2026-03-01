@@ -50,6 +50,7 @@ describe("SettingsDialog", () => {
       isPublic: false,
       hasImage: false,
       hasHeroImage: false,
+      bio: null,
     },
     googleDriveConnection: null,
   };

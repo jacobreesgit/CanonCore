@@ -48,6 +48,7 @@ interface NavUserProps {
     isPublic?: boolean;
     hasImage?: boolean;
     hasHeroImage?: boolean;
+    bio?: string | null;
   };
   /** Google Drive connection (null if not connected) */
   driveConnection?: GoogleDriveConnection | null;
@@ -171,6 +172,7 @@ export function NavUser({ user, driveConnection }: NavUserProps) {
             isPublic: user.isPublic ?? false,
             hasImage: user.hasImage ?? false,
             hasHeroImage: user.hasHeroImage ?? false,
+            bio: user.bio ?? null,
           }}
           googleDriveConnection={driveConnection ?? null}
           onProfileChange={handleProfileChange}

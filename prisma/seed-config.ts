@@ -82,6 +82,8 @@ export interface SeedUserConfig {
   heroSeed?: string | null;
   /** Direct URL for hero banner (takes precedence over heroSeed). */
   heroUrl?: string | null;
+  /** Short bio for public profile. */
+  bio?: string;
 }
 
 /** Content distribution by user email. */
@@ -133,6 +135,7 @@ export const SEED_USERS: SeedUserConfig[] = [
     // Walking Dead DVD collection - cinematic hero banner
     heroUrl:
       "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1920&h=400&fit=crop",
+    bio: "Film enthusiast and classic cinema collector. Curating the greatest stories ever told.",
   },
   {
     email: "filmfan@canoncore.com",
@@ -141,6 +144,7 @@ export const SEED_USERS: SeedUserConfig[] = [
     isPublic: true,
     avatarSeed: "filmfan-avatar",
     heroSeed: "filmfan-hero",
+    bio: "International cinema lover. Always watching something with subtitles.",
   },
   {
     email: "test@canoncore.com",
