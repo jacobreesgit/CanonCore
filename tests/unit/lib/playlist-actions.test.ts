@@ -46,6 +46,7 @@ vi.mock("@/lib/prisma", () => ({
     },
     item: {
       findFirst: vi.fn(),
+      count: vi.fn(),
     },
     $transaction: vi.fn((updates) => Promise.all(updates)),
   },
@@ -673,8 +674,169 @@ describe("playlist-actions", () => {
     });
   });
 
+  describe("createPlaylist share token and itemIds", () => {
+    it("does not generate shareToken for private playlists", async () => {
+      mockAuth.mockResolvedValue(mockSession("user1"));
+      vi.mocked(prisma.playlist.aggregate).mockResolvedValue({
+        _max: { order: null },
+      } as never);
+      vi.mocked(prisma.playlist.create).mockResolvedValue({
+        id: "pl1",
+        name: "My Playlist",
+        order: 0,
+        userId: "user1",
+        shareToken: null,
+      } as never);
+
+      const result = await createPlaylist("My Playlist");
+      expect(result.success).toBe(true);
+      expect(prisma.playlist.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            shareToken: null,
+          }),
+        })
+      );
+    });
+
+    it("generates shareToken for unlisted playlists", async () => {
+      mockAuth.mockResolvedValue(mockSession("user1"));
+      vi.mocked(prisma.playlist.aggregate).mockResolvedValue({
+        _max: { order: null },
+      } as never);
+      vi.mocked(prisma.playlist.create).mockResolvedValue({
+        id: "pl1",
+        name: "My Playlist",
+        order: 0,
+        userId: "user1",
+        shareToken: "abc123",
+      } as never);
+
+      const result = await createPlaylist("My Playlist", {
+        visibility: "unlisted",
+      });
+      expect(result.success).toBe(true);
+      expect(prisma.playlist.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            shareToken: expect.any(String),
+            isPublic: false,
+          }),
+        })
+      );
+    });
+
+    it("generates shareToken for public playlists", async () => {
+      mockAuth.mockResolvedValue(mockSession("user1"));
+      vi.mocked(prisma.playlist.aggregate).mockResolvedValue({
+        _max: { order: null },
+      } as never);
+      vi.mocked(prisma.playlist.create).mockResolvedValue({
+        id: "pl1",
+        name: "My Playlist",
+        order: 0,
+        userId: "user1",
+        shareToken: "abc123",
+      } as never);
+
+      const result = await createPlaylist("My Playlist", {
+        visibility: "public",
+      });
+      expect(result.success).toBe(true);
+      expect(prisma.playlist.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            shareToken: expect.any(String),
+            isPublic: true,
+          }),
+        })
+      );
+    });
+
+    it("creates PlaylistItem rows when itemIds provided", async () => {
+      mockAuth.mockResolvedValue(mockSession("user1"));
+      vi.mocked(prisma.playlist.aggregate).mockResolvedValue({
+        _max: { order: null },
+      } as never);
+      vi.mocked(prisma.$transaction).mockImplementation(async (fn: unknown) => {
+        if (typeof fn === "function") {
+          return fn(prisma);
+        }
+        return fn;
+      });
+      vi.mocked(prisma.playlist.create).mockResolvedValue({
+        id: "pl1",
+        name: "My Playlist",
+        order: 0,
+        userId: "user1",
+        shareToken: null,
+      } as never);
+      vi.mocked(prisma.item.count).mockResolvedValue(2);
+      vi.mocked(prisma.playlistItem.createMany).mockResolvedValue({
+        count: 2,
+      } as never);
+
+      const result = await createPlaylist("My Playlist", {
+        itemIds: ["item-1", "item-2"],
+      });
+
+      expect(result.success).toBe(true);
+      expect(prisma.playlistItem.createMany).toHaveBeenCalledWith({
+        data: [
+          { playlistId: "pl1", itemId: "item-1", order: 0 },
+          { playlistId: "pl1", itemId: "item-2", order: 1 },
+        ],
+      });
+    });
+
+    it("rejects itemIds not owned by user", async () => {
+      mockAuth.mockResolvedValue(mockSession("user1"));
+      vi.mocked(prisma.playlist.aggregate).mockResolvedValue({
+        _max: { order: null },
+      } as never);
+      vi.mocked(prisma.$transaction).mockImplementation(async (fn: unknown) => {
+        if (typeof fn === "function") {
+          return fn(prisma);
+        }
+        return fn;
+      });
+      vi.mocked(prisma.playlist.create).mockResolvedValue({
+        id: "pl1",
+        name: "My Playlist",
+        order: 0,
+        userId: "user1",
+        shareToken: null,
+      } as never);
+      // Only 1 of 2 items belongs to user
+      vi.mocked(prisma.item.count).mockResolvedValue(1);
+
+      const result = await createPlaylist("My Playlist", {
+        itemIds: ["item-1", "item-2"],
+      });
+
+      expect(result.error).toBeDefined();
+    });
+
+    it("handles empty itemIds array", async () => {
+      mockAuth.mockResolvedValue(mockSession("user1"));
+      vi.mocked(prisma.playlist.aggregate).mockResolvedValue({
+        _max: { order: null },
+      } as never);
+      vi.mocked(prisma.playlist.create).mockResolvedValue({
+        id: "pl1",
+        name: "My Playlist",
+        order: 0,
+        userId: "user1",
+        shareToken: null,
+      } as never);
+
+      const result = await createPlaylist("My Playlist", { itemIds: [] });
+      expect(result.success).toBe(true);
+    });
+  });
+
   describe("createPlaylist with options", () => {
-    it("creates playlist with description and isPublic", async () => {
+    it("creates playlist with description and public visibility", async () => {
       mockAuth.mockResolvedValue(mockSession("user1"));
       vi.mocked(prisma.playlist.aggregate).mockResolvedValue({
         _max: { order: 0 },
@@ -684,11 +846,12 @@ describe("playlist-actions", () => {
         name: "My Playlist",
         order: 1,
         userId: "user1",
+        shareToken: "abc123",
       } as never);
 
       const result = await createPlaylist("My Playlist", {
         description: "A test playlist",
-        isPublic: true,
+        visibility: "public",
       });
       expect(result.success).toBe(true);
       expect(prisma.playlist.create).toHaveBeenCalledWith(
@@ -697,6 +860,7 @@ describe("playlist-actions", () => {
             name: "My Playlist",
             description: "A test playlist",
             isPublic: true,
+            shareToken: expect.any(String),
           }),
         })
       );

@@ -13,6 +13,8 @@ import {
   playlistNameSchema,
   playlistDescriptionSchema,
   playlistArtworkSchema,
+  createPlaylistItemsSchema,
+  playlistVisibilitySchema,
 } from "@/lib/validations";
 import { revalidatePath } from "next/cache";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -38,7 +40,11 @@ import { getSystemShelfItems } from "@/lib/shelf-query-utils";
  */
 export async function createPlaylist(
   name: string,
-  options?: { description?: string; isPublic?: boolean }
+  options?: {
+    description?: string;
+    visibility?: "private" | "unlisted" | "public";
+    itemIds?: string[];
+  }
 ): Promise<ItemResult<{ id: string; name: string }>> {
   try {
     const [session, rateLimitResult] = await Promise.all([
@@ -59,6 +65,25 @@ export async function createPlaylist(
 
     const userId = session.user.id;
 
+    // Validate visibility
+    const visResult = playlistVisibilitySchema.safeParse(options?.visibility);
+    if (!visResult.success) {
+      return {
+        error: visResult.error.issues[0]?.message ?? "Invalid visibility",
+      };
+    }
+    const visibility = visResult.data;
+    const isPublic = visibility === "public";
+
+    // Validate itemIds with schema (enforces max 500, non-empty strings)
+    const itemIdsResult = createPlaylistItemsSchema.safeParse(options?.itemIds);
+    if (!itemIdsResult.success) {
+      return {
+        error: itemIdsResult.error.issues[0]?.message ?? "Invalid item IDs",
+      };
+    }
+    const itemIds = itemIdsResult.data ?? [];
+
     // Get next order value (same aggregate + 1 pattern as createItem)
     const maxOrder = await prisma.playlist.aggregate({
       where: { userId },
@@ -66,19 +91,78 @@ export async function createPlaylist(
     });
     const nextOrder = (maxOrder._max.order ?? -1) + 1;
 
+    // Only generate share token for unlisted/public playlists
+    let shareToken: string | null = null;
+    if (visibility !== "private") {
+      const { nanoid } = await import("nanoid");
+      shareToken = nanoid(21);
+    }
+
+    if (itemIds.length > 0) {
+      // Use transaction when creating playlist with items
+      const playlist = await prisma.$transaction(async (tx) => {
+        const pl = await tx.playlist.create({
+          data: {
+            name: parsed.data,
+            order: nextOrder,
+            userId,
+            description: options?.description ?? null,
+            isPublic,
+            shareToken,
+          },
+        });
+
+        // Verify all items belong to user
+        const ownedCount = await tx.item.count({
+          where: { id: { in: itemIds }, userId },
+        });
+        if (ownedCount !== itemIds.length) {
+          throw new Error("Some items do not belong to you");
+        }
+
+        // Create PlaylistItem rows
+        await tx.playlistItem.createMany({
+          data: itemIds.map((itemId, index) => ({
+            playlistId: pl.id,
+            itemId,
+            order: index,
+          })),
+        });
+
+        return pl;
+      });
+
+      logger.info(
+        { userId, playlistId: playlist.id, itemCount: itemIds.length },
+        "Playlist created with items"
+      );
+      return {
+        success: true,
+        data: { id: playlist.id, name: playlist.name },
+      };
+    }
+
+    // Simple creation without items
     const playlist = await prisma.playlist.create({
       data: {
         name: parsed.data,
         order: nextOrder,
         userId,
         description: options?.description ?? null,
-        isPublic: options?.isPublic ?? false,
+        isPublic,
+        shareToken,
       },
     });
 
     logger.info({ userId, playlistId: playlist.id }, "Playlist created");
     return { success: true, data: { id: playlist.id, name: playlist.name } };
   } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "Some items do not belong to you"
+    ) {
+      return { error: error.message };
+    }
     logger.error({ error }, "Failed to create playlist");
     const prismaError = handlePrismaError(error);
     return prismaError ?? { error: "Failed to create playlist" };

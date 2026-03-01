@@ -72,6 +72,15 @@ export const itemDescriptionSchema = z
   .transform((val) => val.trim())
   .pipe(z.string().max(1000, "Description must be 1000 characters or less"));
 
+/**
+ * Options for item creation visibility.
+ * Both default to false for backward compatibility.
+ */
+export const createItemOptionsSchema = z.object({
+  isPublic: z.boolean().optional().default(false),
+  inheritVisibility: z.boolean().optional().default(false),
+});
+
 // =============================================================================
 // Playlist Validation
 // =============================================================================
@@ -112,6 +121,18 @@ export const playlistArtworkSchema = z.object({
     message: "Only JPEG, PNG, and WebP images are allowed",
   }),
 });
+
+/** Validates item IDs for playlist creation. Max 500 items. */
+export const createPlaylistItemsSchema = z
+  .array(z.string().min(1))
+  .max(500)
+  .optional();
+
+/** Playlist visibility: private (default), unlisted (share link), public (explore). */
+export const playlistVisibilitySchema = z
+  .enum(["private", "unlisted", "public"])
+  .optional()
+  .default("private");
 
 // =============================================================================
 // Public Profile Validation
