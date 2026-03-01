@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { signUp, forgotPassword, resetPassword } from "@/lib/auth-actions";
+import {
+  signUp,
+  forgotPassword,
+  resetPassword,
+  verifyEmail,
+  resendVerificationEmail,
+} from "@/lib/auth-actions";
 import { prisma } from "@/lib/prisma";
-import { sendPasswordResetEmail } from "@/lib/email";
+import { sendPasswordResetEmail, sendVerificationEmail } from "@/lib/email";
 
 // Mock @/lib/env to avoid validation errors in unit tests
 vi.mock("@/lib/env", () => ({
@@ -21,6 +27,13 @@ vi.mock("@/lib/env", () => ({
 vi.mock("next/headers", () => ({
   headers: vi.fn().mockResolvedValue({
     get: vi.fn().mockReturnValue("127.0.0.1"),
+  }),
+}));
+
+// Mock @/lib/auth for resendVerificationEmail session check
+vi.mock("@/lib/auth", () => ({
+  auth: vi.fn().mockResolvedValue({
+    user: { id: "1", email: "test@example.com" },
   }),
 }));
 
@@ -44,6 +57,10 @@ function createMockUser(
     heroImage: Uint8Array<ArrayBuffer> | null;
     heroImageMime: string | null;
     dominantColour: string | null;
+    bio: string | null;
+    tokenVersion: number;
+    failedLoginAttempts: number;
+    lockedUntil: Date | null;
     seedContentHash: string | null;
     defaultViewMode: string | null;
     defaultSortBy: string | null;
@@ -64,6 +81,10 @@ function createMockUser(
     heroImage: null,
     heroImageMime: null,
     dominantColour: null,
+    bio: null,
+    tokenVersion: 0,
+    failedLoginAttempts: 0,
+    lockedUntil: null,
     seedContentHash: null,
     defaultViewMode: null,
     defaultSortBy: null,
@@ -81,6 +102,9 @@ describe("signUp", () => {
   it("creates user with hashed password when email is new", async () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
     vi.mocked(prisma.user.create).mockResolvedValue(createMockUser());
+    vi.mocked(prisma.emailVerificationToken.create).mockResolvedValue(
+      {} as never
+    );
 
     const result = await signUp("test@example.com", "Password123!");
 
@@ -94,6 +118,26 @@ describe("signUp", () => {
         passwordHash: expect.any(String),
       }),
     });
+  });
+
+  it("creates email verification token on successful signup", async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.user.create).mockResolvedValue(
+      createMockUser({ id: "new-1" })
+    );
+    vi.mocked(prisma.emailVerificationToken.create).mockResolvedValue(
+      {} as never
+    );
+    vi.mocked(sendVerificationEmail).mockResolvedValue(undefined);
+
+    const result = await signUp("new@example.com", "Password1");
+
+    expect(result.success).toBe(true);
+    expect(prisma.emailVerificationToken.create).toHaveBeenCalled();
+    expect(sendVerificationEmail).toHaveBeenCalledWith(
+      "new@example.com",
+      expect.any(String)
+    );
   });
 
   it("returns error when email already exists", async () => {
@@ -110,6 +154,9 @@ describe("signUp", () => {
   it("hashes password before storing", async () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
     vi.mocked(prisma.user.create).mockResolvedValue(createMockUser());
+    vi.mocked(prisma.emailVerificationToken.create).mockResolvedValue(
+      {} as never
+    );
 
     await signUp("test@example.com", "Password1");
 
@@ -139,6 +186,9 @@ describe("signUp", () => {
       vi.mocked(prisma.user.create).mockResolvedValue(
         createMockUser({ username: "johndoe" })
       );
+      vi.mocked(prisma.emailVerificationToken.create).mockResolvedValue(
+        {} as never
+      );
 
       const result = await signUp(
         "test@example.com",
@@ -158,6 +208,9 @@ describe("signUp", () => {
     it("creates user with null username when not provided", async () => {
       vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
       vi.mocked(prisma.user.create).mockResolvedValue(createMockUser());
+      vi.mocked(prisma.emailVerificationToken.create).mockResolvedValue(
+        {} as never
+      );
 
       await signUp("test@example.com", "Password123!");
 
@@ -242,6 +295,9 @@ describe("signUp", () => {
       vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
       vi.mocked(prisma.user.create).mockResolvedValue(
         createMockUser({ username: "testuser" })
+      );
+      vi.mocked(prisma.emailVerificationToken.create).mockResolvedValue(
+        {} as never
       );
 
       await signUp("test@example.com", "Password123!", "testuser");
@@ -377,7 +433,10 @@ describe("resetPassword", () => {
     expect(result.success).toBe(true);
     expect(prisma.user.update).toHaveBeenCalledWith({
       where: { id: "user-1" },
-      data: { passwordHash: expect.any(String) },
+      data: {
+        passwordHash: expect.any(String),
+        tokenVersion: { increment: 1 },
+      },
     });
     expect(prisma.passwordReset.delete).toHaveBeenCalledWith({
       where: { id: "reset-1" },
@@ -389,5 +448,90 @@ describe("resetPassword", () => {
 
     expect(result.error).toBeDefined();
     expect(prisma.passwordReset.findUnique).not.toHaveBeenCalled();
+  });
+});
+
+describe("verifyEmail", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("sets emailVerified on valid token", async () => {
+    vi.mocked(prisma.emailVerificationToken.findUnique).mockResolvedValue({
+      id: "evt-1",
+      token: "valid-token",
+      userId: "1",
+      email: "test@example.com",
+      expires: new Date(Date.now() + 30 * 60 * 1000),
+      createdAt: new Date(),
+      user: createMockUser(),
+    } as never);
+    vi.mocked(prisma.user.update).mockResolvedValue({} as never);
+    vi.mocked(prisma.emailVerificationToken.delete).mockResolvedValue(
+      {} as never
+    );
+
+    const result = await verifyEmail("valid-token");
+
+    expect(result.success).toBe(true);
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          emailVerified: expect.any(Date),
+        }),
+      })
+    );
+  });
+
+  it("rejects expired token", async () => {
+    vi.mocked(prisma.emailVerificationToken.findUnique).mockResolvedValue({
+      id: "evt-2",
+      token: "expired-token",
+      userId: "1",
+      email: "test@example.com",
+      expires: new Date(Date.now() - 60 * 1000), // expired
+      createdAt: new Date(),
+      user: createMockUser(),
+    } as never);
+    vi.mocked(prisma.emailVerificationToken.delete).mockResolvedValue(
+      {} as never
+    );
+
+    const result = await verifyEmail("expired-token");
+
+    expect(result.error).toBe("Verification link has expired");
+  });
+
+  it("rejects invalid token", async () => {
+    vi.mocked(prisma.emailVerificationToken.findUnique).mockResolvedValue(null);
+
+    const result = await verifyEmail("invalid-token");
+
+    expect(result.error).toBe("Invalid or expired verification link");
+  });
+});
+
+describe("resendVerificationEmail", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("deletes old tokens and creates new one", async () => {
+    vi.mocked(prisma.emailVerificationToken.deleteMany).mockResolvedValue({
+      count: 1,
+    } as never);
+    vi.mocked(prisma.emailVerificationToken.create).mockResolvedValue(
+      {} as never
+    );
+    vi.mocked(sendVerificationEmail).mockResolvedValue(undefined);
+
+    const result = await resendVerificationEmail();
+
+    expect(result.success).toBe(true);
+    expect(prisma.emailVerificationToken.deleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: "1" } })
+    );
+    expect(prisma.emailVerificationToken.create).toHaveBeenCalled();
+    expect(sendVerificationEmail).toHaveBeenCalled();
   });
 });

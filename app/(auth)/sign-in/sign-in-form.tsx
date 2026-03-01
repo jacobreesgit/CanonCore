@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
+import { checkSignInStatus } from "@/lib/auth-actions";
+import { LOCKOUT_MESSAGES } from "@/lib/messages";
 
 /**
  * Renders sign-in form with email/password fields and error handling.
@@ -40,7 +42,13 @@ export function SignInForm() {
       });
 
       if (result?.error) {
-        setError("Invalid email or password");
+        // Check if account is locked vs invalid credentials
+        const status = await checkSignInStatus(email);
+        if (status.status === "locked") {
+          setError(LOCKOUT_MESSAGES.lockedOut(status.remainingMinutes ?? 15));
+        } else {
+          setError(LOCKOUT_MESSAGES.INVALID_CREDENTIALS);
+        }
       } else {
         // Get session to retrieve username for profile redirect
         const session = await getSession();

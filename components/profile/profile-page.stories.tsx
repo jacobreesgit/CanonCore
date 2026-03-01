@@ -20,6 +20,7 @@ const mockProfile = {
   hasImage: false,
   hasHeroImage: false,
   dominantColour: null,
+  bio: null,
 };
 
 const createMockItem = (

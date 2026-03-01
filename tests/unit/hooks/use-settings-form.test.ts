@@ -58,6 +58,7 @@ const mockUser: SettingsFormUser = {
   isPublic: false,
   hasImage: false,
   hasHeroImage: false,
+  bio: null,
 };
 
 async function importHook() {

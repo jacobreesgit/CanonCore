@@ -16,6 +16,7 @@ export interface SidebarUser {
   isPublic?: boolean;
   hasImage?: boolean;
   hasHeroImage?: boolean;
+  bio?: string | null;
 }
 
 /**

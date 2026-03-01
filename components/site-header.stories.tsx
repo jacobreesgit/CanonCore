@@ -53,10 +53,10 @@ const meta = {
       control: "text",
       description: "Current item ID (enables context menu)",
     },
-    driveNeedsReauth: {
+    emailUnverified: {
       control: "boolean",
       description:
-        "Whether Google Drive needs reauthentication (shows reconnect banner)",
+        "Whether the user's email is unverified (shows verification banner)",
     },
     onRename: {
       description: "Callback when rename action is triggered",
@@ -185,54 +185,51 @@ export const WithContextMenu: Story = {
 };
 
 /**
- * Drive reconnect banner visible.
- * Amber warning banner appears above breadcrumb row when Drive needs reauthentication.
+ * Email verification banner visible.
+ * Warning banner appears above breadcrumb row when user's email is unverified.
  */
-export const DriveReconnectBanner: Story = {
+export const EmailVerificationBanner: Story = {
   args: {
     title: "My Items",
     titleHref: "/u/johndoe",
     breadcrumbs: [{ id: "1", name: "Movies", href: "/u/johndoe/1" }],
-    driveNeedsReauth: true,
+    emailUnverified: true,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const banner = canvas.getByRole("alert");
+    const banner = canvas.getByRole("status");
     await expect(banner).toBeInTheDocument();
-    await expect(
-      canvas.getByRole("button", { name: /reconnect/i })
-    ).toBeInTheDocument();
   },
   parameters: {
     docs: {
       description: {
         story:
-          "When Google Drive authentication expires, a glass-styled banner with amber icon appears above the breadcrumb row. The banner includes a Reconnect button that initiates the OAuth flow.",
+          "When the user's email is unverified, a glass-styled banner appears above the breadcrumb row prompting the user to verify their email address.",
       },
     },
   },
 };
 
 /**
- * Drive reconnect banner not shown.
- * Header renders normally when Drive is connected or not configured.
+ * No verification banner shown.
+ * Header renders normally when email is verified.
  */
-export const NoDriveReconnectBanner: Story = {
+export const NoVerificationBanner: Story = {
   args: {
     title: "My Items",
     titleHref: "/u/johndoe",
     breadcrumbs: [{ id: "1", name: "Movies", href: "/u/johndoe/1" }],
-    driveNeedsReauth: false,
+    emailUnverified: false,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("status")).not.toBeInTheDocument();
   },
   parameters: {
     docs: {
       description: {
         story:
-          "When Drive is connected normally or not configured, no banner is shown. The header renders with only the breadcrumb row.",
+          "When the user's email is verified, no banner is shown. The header renders with only the breadcrumb row.",
       },
     },
   },

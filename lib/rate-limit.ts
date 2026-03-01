@@ -34,6 +34,11 @@ export const rateLimiters = {
     limiter: Ratelimit.slidingWindow(2, "1 m"),
     prefix: "ratelimit:forgot",
   }),
+  emailVerification: new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(3, "1 m"),
+    prefix: "ratelimit:email-verification",
+  }),
   passwordChange: new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(5, "1 h"),

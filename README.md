@@ -120,6 +120,10 @@ Route-level error boundaries catch failures gracefully with styled recovery page
 
 You own your data. Download a complete export of your account as JSON — profile, items with file metadata and TMDB fields, playlists with memberships, and fork records — from Settings at any time. If you want to leave, permanent account deletion removes everything: items, playlists, files, forks, and audit records. Deletion requires your password and typing "DELETE" to confirm. If Google Drive is connected, the CanonCore folder is moved to trash before the account is removed. Prisma cascade relations handle all dependent records in a single operation. Both data export and account deletion work on mobile through the settings bottom sheet, matching full desktop parity.
 
+### Auth Security Hardening
+
+Account lockout after 5 consecutive failed login attempts with a 15-minute cooldown — the sign-in form shows remaining lockout time. Anti-enumeration: the lockout check returns the same response for unknown emails so attackers can't discover which accounts exist. Email verification on signup and email changes — changing your email now sends a verification link to the new address rather than updating it directly, preventing account takeover via email hijack. JWT token version invalidation: password resets and changes increment a version counter; on each request, the JWT callback checks the token's version against the database and forces sign-out on mismatch, closing the stale-session gap that stateless JWTs normally have. User bios (300 characters) editable in settings and displayed on the public profile hero.
+
 ### Audit Logging
 
 Every database mutation is automatically logged via a Prisma extension. Context includes user, action, model, and record ID. Sensitive fields are redacted. 90-day retention in production.
@@ -132,13 +136,13 @@ Every database mutation is automatically logged via a Prisma extension. Context 
 
 **Google Drive migration:** I originally built this on SFTP, but path-based matching meant every rename or move created duplicates. No stable IDs, no change detection API, read-only from the web. Google Drive solved all of it: permanent file IDs survive renames and moves, Changes API for incremental sync, full read/write access so users can create folders directly from CanonCore. Should have started here.
 
-**Stack Auth → NextAuth.js v5:** I started with managed auth, then migrated to self-hosted JWT sessions after hitting rate limits. I added 15+ rate limiters via Upstash Redis with different thresholds per action (strict for auth, generous for browsing).
+**Stack Auth → NextAuth.js v5:** I started with managed auth, then migrated to self-hosted JWT sessions after hitting rate limits. I added 15+ rate limiters via Upstash Redis with different thresholds per action (strict for auth, generous for browsing). I later hardened the auth layer with account lockout, email verification, and JWT token version invalidation to close the gaps that stateless JWTs leave open.
 
 **Lucide → Font Awesome:** I migrated the entire icon system from lucide-react to Font Awesome 7 across 50+ components. Font Awesome's explicit icon imports give better control over bundle size, and the broader icon library covers every UI need without compromise. FOUC prevention handled via manual CSS import with `autoAddCss = false`.
 
 ### Security & Resilience
 
-AES-256-GCM encryption for OAuth tokens with random IVs, HMAC-SHA256 signed upload tokens with timing-safe comparison, and OWASP-compliant security headers (HSTS with preload, CSP, X-Frame-Options: DENY). TMDB and Google Drive calls wrapped in a custom circuit breaker that opens after consecutive failures and tests recovery in half-open state. Multi-layer bot protection blocks 35+ AI scrapers at the edge while rate-limiting beneficial search engines.
+AES-256-GCM encryption for OAuth tokens with random IVs, HMAC-SHA256 signed upload tokens with timing-safe comparison, and OWASP-compliant security headers (HSTS with preload, CSP, X-Frame-Options: DENY). Account lockout (5 attempts, 15-minute cooldown) with anti-enumeration protection. Email verification for signup and email changes with token-based verification flow. JWT token version invalidation forces sign-out on password reset or change, closing the stateless JWT stale-session gap. TMDB and Google Drive calls wrapped in a custom circuit breaker that opens after consecutive failures and tests recovery in half-open state. Multi-layer bot protection blocks 35+ AI scrapers at the edge while rate-limiting beneficial search engines.
 
 ### Observability & Monitoring
 

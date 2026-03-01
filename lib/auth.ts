@@ -8,6 +8,11 @@ import NextAuth, { type Session } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import {
+  isAccountLocked,
+  handleFailedLogin,
+  handleSuccessfulLogin,
+} from "@/lib/lockout-utils";
 
 /**
  * User data for sidebar display.
@@ -27,6 +32,8 @@ export interface SidebarUser {
   hasImage?: boolean;
   /** Whether user has a hero image */
   hasHeroImage?: boolean;
+  /** User bio for public profile */
+  bio?: string | null;
 }
 
 /**
@@ -73,6 +80,7 @@ export async function getExtendedSidebarUser(
       isPublic: true,
       image: true,
       heroImage: true,
+      bio: true,
     },
   });
 
@@ -88,6 +96,7 @@ export async function getExtendedSidebarUser(
     isPublic: user.isPublic,
     hasImage: user.image !== null,
     hasHeroImage: user.heroImage !== null,
+    bio: user.bio ?? null,
   };
 }
 
@@ -120,26 +129,57 @@ export const { handlers, auth: uncachedAuth } = NextAuth({
 
         const user = await prisma.user.findUnique({
           where: { email },
+          select: {
+            id: true,
+            email: true,
+            passwordHash: true,
+            name: true,
+            username: true,
+            image: true,
+            emailVerified: true,
+            tokenVersion: true,
+            failedLoginAttempts: true,
+            lockedUntil: true,
+          },
         });
 
         if (!user) {
           return null;
         }
 
+        // Check account lockout
+        const lockoutCheck = isAccountLocked(user);
+        if (lockoutCheck.locked) {
+          return null;
+        }
+
         const isPasswordValid = await compare(password, user.passwordHash);
 
         if (!isPasswordValid) {
+          // Increment failed attempts, lock if threshold reached
+          await prisma.user.update({
+            where: { id: user.id },
+            data: handleFailedLogin(user),
+          });
           return null;
+        }
+
+        // Successful login — reset lockout counters (including expired locks)
+        if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: handleSuccessfulLogin(),
+          });
         }
 
         return {
           id: user.id,
           email: user.email,
           name: user.name,
-          // Return avatar URL if user has image, otherwise null
           image: user.image ? "/api/user/avatar" : null,
-          // Include username for profile redirect
           username: user.username,
+          tokenVersion: user.tokenVersion,
+          emailVerified: user.emailVerified,
         };
       },
     }),
@@ -149,13 +189,29 @@ export const { handlers, auth: uncachedAuth } = NextAuth({
       if (user?.id) {
         token.id = user.id;
         token.username = user.username;
+        token.tokenVersion = user.tokenVersion;
+        token.emailVerified = user.emailVerified;
       }
+
+      // On subsequent requests, check if tokenVersion is stale
+      if (token.id && !user) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { tokenVersion: true },
+        });
+        if (!dbUser || dbUser.tokenVersion !== token.tokenVersion) {
+          // Token version mismatch — force sign-out
+          return { ...token, id: undefined };
+        }
+      }
+
       return token;
     },
-    async session({ session, token }) {
-      if (token && session.user) {
+    session({ session, token }) {
+      if (token.id) {
         session.user.id = token.id as string;
-        session.user.username = token.username as string | null;
+        session.user.username = (token.username as string) ?? null;
+        session.user.emailVerified = token.emailVerified as Date | null;
       }
       return session;
     },
