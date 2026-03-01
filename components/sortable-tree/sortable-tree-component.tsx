@@ -46,7 +46,12 @@ import {
   removeChildrenOf,
   setProperty,
 } from "./utilities";
-import type { FlattenedItem, SensorContext, TreeItems } from "@/lib/types";
+import type {
+  FlattenedItem,
+  ItemVisibilityOptions,
+  SensorContext,
+  TreeItems,
+} from "@/lib/types";
 import type { CreateItemResult } from "@/components/items/add-item-dialog";
 import { sortableTreeKeyboardCoordinates } from "./keyboardCoordinates";
 import { SortableTreeItem, TreeItem } from "./components";
@@ -105,7 +110,8 @@ interface SortableTreeProps {
   onAddChild?(
     parentId: string,
     name: string,
-    description?: string
+    description?: string,
+    visibilityOptions?: ItemVisibilityOptions
   ): Promise<CreateItemResult>;
   /** Callback to refresh data after child item is created */
   onAddChildComplete?(): Promise<void>;
@@ -349,8 +355,13 @@ export function SortableTree({
                 }
                 onAddChild={
                   onAddChild
-                    ? (childName, childDescription) =>
-                        onAddChild(String(id), childName, childDescription)
+                    ? (childName, childDescription, childVisibility) =>
+                        onAddChild(
+                          String(id),
+                          childName,
+                          childDescription,
+                          childVisibility
+                        )
                     : undefined
                 }
                 onAddChildComplete={onAddChildComplete}

@@ -86,4 +86,31 @@ test.describe("Playlist CRUD", () => {
     });
     await playlist.expectPlaylistCardNotVisible(playlistName);
   });
+
+  test("should create a public playlist visible on profile", async ({
+    itemsCrud,
+    playlist,
+  }) => {
+    const itemName = testId("movie");
+    const playlistName = testId("playlist");
+
+    await itemsCrud.goto();
+    await itemsCrud.createItem(itemName);
+    await itemsCrud.clickItem(itemName);
+
+    await playlist.openAddToPlaylistDialog();
+    // Use enhanced creation with public visibility
+    const createFirst = playlist["page"].getByTestId("create-first-playlist");
+    const createNew = playlist["page"].getByTestId("create-new-playlist");
+    await createFirst.or(createNew).click();
+
+    await playlist.createPlaylistWithOptions(playlistName, {
+      visibility: "public",
+    });
+    await playlist.closeAddToPlaylistDialog();
+
+    await playlist.gotoProfile();
+    await playlist.switchToPlaylistsTab();
+    await playlist.expectPlaylistCardVisible(playlistName);
+  });
 });

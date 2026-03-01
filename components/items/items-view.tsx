@@ -80,6 +80,7 @@ import {
 } from "@/components/ui/dialog";
 import { useBulkSelection } from "@/hooks/use-bulk-selection";
 import type {
+  ItemVisibilityOptions,
   ItemWithArtwork,
   TreeItems,
   TMDBMetadataSelection,
@@ -287,7 +288,8 @@ export function ItemsView({
     async (
       name: string,
       description?: string,
-      tmdbSelection?: TMDBMetadataSelection
+      tmdbSelection?: TMDBMetadataSelection,
+      visibilityOptions?: ItemVisibilityOptions
     ): Promise<{ itemId?: string; error?: string }> => {
       try {
         // Use createItemWithMetadata if TMDB selection provided, otherwise basic createItem
@@ -298,7 +300,7 @@ export function ItemsView({
               options: tmdbSelection.options,
               displayOptions: tmdbSelection.displayOptions,
             })
-          : await createItem(parentId, name, description);
+          : await createItem(parentId, name, description, visibilityOptions);
 
         if (result.success && result.data) {
           const newItem: ItemWithArtwork = {
@@ -344,10 +346,16 @@ export function ItemsView({
     async (
       parentItemId: string,
       name: string,
-      description?: string
+      description?: string,
+      visibilityOptions?: ItemVisibilityOptions
     ): Promise<{ itemId?: string; error?: string }> => {
       try {
-        const result = await createItem(parentItemId, name, description);
+        const result = await createItem(
+          parentItemId,
+          name,
+          description,
+          visibilityOptions
+        );
         if (result.success && result.data) {
           const newItem: ItemWithArtwork = {
             ...result.data,

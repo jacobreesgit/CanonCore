@@ -469,6 +469,8 @@ describe("createItem", () => {
         order: 0,
         depth: 0,
         userId: "user-1",
+        isPublic: false,
+        inheritVisibility: false,
       },
     });
   });
@@ -523,6 +525,8 @@ describe("createItem", () => {
         order: 0,
         depth: 0,
         userId: "user-1",
+        isPublic: false,
+        inheritVisibility: false,
       },
     });
   });
@@ -554,6 +558,8 @@ describe("createItem", () => {
         order: 0,
         depth: 0,
         userId: "user-1",
+        isPublic: false,
+        inheritVisibility: false,
       },
     });
   });
@@ -564,6 +570,108 @@ describe("createItem", () => {
     const result = await createItem(null, "Folder", "a".repeat(1001));
 
     expect(result.error).toContain("1000");
+  });
+
+  it("creates item with isPublic true when option provided", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.aggregate).mockResolvedValue({
+      _max: { order: null },
+    } as never);
+    vi.mocked(prisma.item.create).mockResolvedValue(
+      mockItem({
+        id: "new-item",
+        name: "Public Folder",
+        parentId: null,
+        order: 0,
+        depth: 0,
+        userId: "user-1",
+        isPublic: true,
+      })
+    );
+
+    const result = await createItem(null, "Public Folder", undefined, {
+      isPublic: true,
+    });
+
+    expect(result.success).toBe(true);
+    expect(prisma.item.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        name: "Public Folder",
+        isPublic: true,
+        inheritVisibility: false,
+      }),
+    });
+  });
+
+  it("creates child item with inheritVisibility true", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findUnique).mockResolvedValue({
+      id: "parent-1",
+      depth: 0,
+      userId: "user-1",
+    } as never);
+    vi.mocked(prisma.item.aggregate).mockResolvedValue({
+      _max: { order: null },
+    } as never);
+    vi.mocked(prisma.item.create).mockResolvedValue(
+      mockItem({
+        id: "child-1",
+        name: "Child",
+        parentId: "parent-1",
+        order: 0,
+        depth: 1,
+        userId: "user-1",
+        inheritVisibility: true,
+      })
+    );
+
+    const result = await createItem("parent-1", "Child", undefined, {
+      inheritVisibility: true,
+    });
+
+    expect(result.success).toBe(true);
+    expect(prisma.item.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        inheritVisibility: true,
+      }),
+    });
+  });
+
+  it("rejects inheritVisibility on root item", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+
+    const result = await createItem(null, "Root", undefined, {
+      inheritVisibility: true,
+    });
+
+    expect(result.error).toBe("Root items cannot inherit visibility");
+  });
+
+  it("defaults to private and no inherit when options omitted", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.aggregate).mockResolvedValue({
+      _max: { order: null },
+    } as never);
+    vi.mocked(prisma.item.create).mockResolvedValue(
+      mockItem({
+        id: "new-item",
+        name: "Default",
+        parentId: null,
+        order: 0,
+        depth: 0,
+        userId: "user-1",
+      })
+    );
+
+    const result = await createItem(null, "Default");
+
+    expect(result.success).toBe(true);
+    expect(prisma.item.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        isPublic: false,
+        inheritVisibility: false,
+      }),
+    });
   });
 });
 

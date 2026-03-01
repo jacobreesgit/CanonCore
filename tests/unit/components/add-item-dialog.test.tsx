@@ -274,7 +274,10 @@ describe("AddItemDialog", () => {
 
     await waitFor(() => {
       // onAdd now takes (name, description, tmdbSelection) - 3 args, not 4
-      expect(onAdd).toHaveBeenCalledWith("New Item", undefined, undefined);
+      expect(onAdd).toHaveBeenCalledWith("New Item", undefined, undefined, {
+        isPublic: false,
+        inheritVisibility: false,
+      });
     });
   });
 
@@ -339,7 +342,8 @@ describe("AddItemDialog", () => {
       expect(onAdd).toHaveBeenCalledWith(
         "Custom Item Name",
         undefined,
-        undefined
+        undefined,
+        { isPublic: false, inheritVisibility: false }
       );
     });
   });
@@ -494,7 +498,8 @@ describe("AddItemDialog", () => {
       expect(onAdd).toHaveBeenCalledWith(
         "New Item",
         "My item description",
-        undefined
+        undefined,
+        { isPublic: false, inheritVisibility: false }
       );
     });
   });
@@ -521,7 +526,8 @@ describe("AddItemDialog", () => {
       expect(onAdd).toHaveBeenCalledWith(
         "New Item",
         "Trimmed description",
-        undefined
+        undefined,
+        { isPublic: false, inheritVisibility: false }
       );
     });
   });
@@ -682,14 +688,14 @@ describe("AddItemDialog", () => {
     await user.click(screen.getByRole("button", { name: /^create$/i }));
 
     await waitFor(() => {
-      // onAdd now takes (name, description, tmdbSelection) - 3 args, not 4
       expect(onAdd).toHaveBeenCalledWith(
         "The Shawshank Redemption (1994)",
         "Two imprisoned men bond over a number of years.",
         expect.objectContaining({
           tmdbId: 278,
           mediaType: "movie",
-        })
+        }),
+        { isPublic: false, inheritVisibility: false }
       );
     });
   });
@@ -766,6 +772,110 @@ describe("AddItemDialog", () => {
       expect(
         screen.getByPlaceholderText(/enter name manually/i)
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("visibility controls", () => {
+    it("renders public toggle for root items", async () => {
+      render(
+        <AddItemDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          onAdd={vi.fn().mockResolvedValue({ itemId: "test-id" })}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("combobox")).toBeInTheDocument();
+      });
+
+      expect(screen.getByLabelText(/make public/i)).toBeInTheDocument();
+    });
+
+    it("does not render inherit toggle for root items", async () => {
+      render(
+        <AddItemDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          onAdd={vi.fn().mockResolvedValue({ itemId: "test-id" })}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("combobox")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByLabelText(/inherit/i)).not.toBeInTheDocument();
+    });
+
+    it("renders inherit toggle when parentName provided", async () => {
+      render(
+        <AddItemDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          onAdd={vi.fn().mockResolvedValue({ itemId: "test-id" })}
+          parentName="Marvel Series"
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("combobox")).toBeInTheDocument();
+      });
+
+      expect(screen.getByLabelText(/inherit/i)).toBeInTheDocument();
+    });
+
+    it("disables public toggle when inherit is on", async () => {
+      render(
+        <AddItemDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          onAdd={vi.fn().mockResolvedValue({ itemId: "test-id" })}
+          parentName="Marvel Series"
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("combobox")).toBeInTheDocument();
+      });
+
+      // Inherit defaults to on for child items
+      const publicToggle = screen.getByLabelText(/make public/i);
+      expect(publicToggle).toBeDisabled();
+    });
+
+    it("passes visibility options to onAdd", async () => {
+      const user = userEvent.setup();
+      const onAdd = vi.fn().mockResolvedValue({ itemId: "new-1" });
+      render(
+        <AddItemDialog open={true} onOpenChange={vi.fn()} onAdd={onAdd} />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("combobox")).toBeInTheDocument();
+      });
+
+      // Type a name
+      const nameInput = screen.getByRole("combobox");
+      await user.type(nameInput, "My Movie");
+
+      // Close the combobox dropdown so the form is accessible
+      await user.keyboard("{Escape}");
+
+      // Toggle public on
+      await user.click(screen.getByLabelText(/make public/i));
+
+      // Submit
+      await user.click(screen.getByRole("button", { name: /^create$/i }));
+
+      await waitFor(() => {
+        expect(onAdd).toHaveBeenCalledWith(
+          "My Movie",
+          undefined,
+          undefined,
+          expect.objectContaining({ isPublic: true, inheritVisibility: false })
+        );
+      });
     });
   });
 });
@@ -970,7 +1080,10 @@ describe("AddItemDialog - Categorized File Uploads", () => {
 
     await waitFor(() => {
       // onAdd now takes (name, description, tmdbSelection) - 3 args, not 4
-      expect(onAdd).toHaveBeenCalledWith("Test Item", undefined, undefined);
+      expect(onAdd).toHaveBeenCalledWith("Test Item", undefined, undefined, {
+        isPublic: false,
+        inheritVisibility: false,
+      });
     });
   });
 });

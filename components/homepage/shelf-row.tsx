@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { GridItem } from "@/components/sortable-grid/grid-item";
 import { ItemContextMenu } from "@/components/items/item-context-menu";
 import { ShelfActionsContext } from "@/components/items/grid-view-content";
-import type { ShelfItem } from "@/lib/types";
+import type { ItemVisibilityOptions, ShelfItem } from "@/lib/types";
 
 interface ShelfRowProps {
   items: ShelfItem[];
@@ -117,7 +117,8 @@ export function ShelfRow({ items, playlistId }: ShelfRowProps) {
               onMarkUnwatched: () => actions.onMarkUnwatched(item.id),
             }),
         onAddChild: actions.onAddChild
-          ? (n: string, d?: string) => actions.onAddChild!(item.id, n, d)
+          ? (n: string, d?: string, v?: ItemVisibilityOptions) =>
+              actions.onAddChild!(item.id, n, d, v)
           : undefined,
         onAddChildComplete: actions.onAddChildComplete,
       };

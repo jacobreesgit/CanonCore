@@ -30,13 +30,13 @@ On mobile, bottom sheets replace desktop dialogues for sort, filter, view switch
 
 Cross-cutting collections that reference items from anywhere in your library without moving or duplicating them. Create themed lists — "Best Horror Films", "Weekend Watchlist" — and each item can belong to multiple playlists while staying in its original tree position.
 
-Three visibility levels: private (default), public (discoverable on the Explore page), or unlisted (accessible only via a share link). Unlisted share tokens are generated with nanoid. Playlist cards show a poster collage mosaic of up to four item artworks, or a custom uploaded artwork image. Drag-to-reorder lets you arrange items within a playlist. Right-click context menus provide quick actions: edit, delete, toggle visibility, copy share link.
+Three visibility levels chosen at creation time via an icon-labelled radio group: private (default), public (discoverable on the Explore page), or unlisted (accessible only via a share link). Share tokens are generated eagerly at creation so playlists are immediately shareable when switched to unlisted. You can also pre-select items from your library during creation using a virtualised tree picker with search filtering — no need to create first and add items later. Playlist cards show a poster collage mosaic of up to four item artworks, or a custom uploaded artwork image. Drag-to-reorder lets you arrange items within a playlist. Right-click context menus provide quick actions: edit, delete, toggle visibility, copy share link.
 
 ### Public Sharing
 
 Make items and playlists public to share them. Your profile page shows your public items and playlists. The explore page has two tabs — **Collections** and **Playlists** — showing public content from everyone with a featured banner carousel.
 
-Visibility inherits through the item hierarchy. Items can be public, private, or inherit from a parent. A public item with a private ancestor stays inaccessible. Moving a public item into a private folder triggers a confirmation dialogue. Playlists have their own independent visibility (private, public, or unlisted via share link).
+Visibility is set at creation time, not just after the fact. When creating an item, a "Make public" switch lets you go public immediately. Child items default to inheriting their parent's visibility, keeping your hierarchy consistent without manual per-item configuration. Playlists offer a three-option radio picker — private, unlisted (share link only), or public — right in the creation dialog. A public item with a private ancestor stays inaccessible. Moving a public item into a private folder triggers a confirmation dialogue. Playlists have their own independent visibility (private, public, or unlisted via share link).
 
 ### Forking
 

@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { MediaSearchCombobox } from "./media-search-combobox";
@@ -76,6 +77,7 @@ import {
   type TMDBImages,
 } from "@/lib/tmdb-client";
 import type {
+  ItemVisibilityOptions,
   QueuedFile,
   QueuedFilesByCategory,
   TMDBMetadataSelection,
@@ -123,7 +125,8 @@ interface AddItemDialogProps {
   onAdd: (
     name: string,
     description?: string,
-    tmdbSelection?: TMDBMetadataSelection
+    tmdbSelection?: TMDBMetadataSelection,
+    visibilityOptions?: ItemVisibilityOptions
   ) => Promise<CreateItemResult>;
   /** Callback after item and files are fully created (for refreshing data) */
   onComplete?: () => Promise<void>;
@@ -201,6 +204,8 @@ export function AddItemDialog({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isPublic, setIsPublic] = useState(false);
+  const [inheritVisibility, setInheritVisibility] = useState(!!parentName);
 
   // Upload state
   const [uploadState, setUploadState] = useState<UploadState | null>(null);
@@ -286,6 +291,8 @@ export function AddItemDialog({
       setName("");
       setDescription("");
       setIsLoading(false);
+      setIsPublic(false);
+      setInheritVisibility(!!parentName);
       setQueuedFiles(initialQueuedFiles);
       setPendingTmdbResult(null);
       setTmdbPreview(null);
@@ -299,7 +306,7 @@ export function AddItemDialog({
       uploadManagerRef.current = null;
       resetWizardState();
     }
-  }, [open, resetWizardState]);
+  }, [open, parentName, resetWizardState]);
 
   // Pre-select first poster and backdrop when images load
   // Extract primitive values to avoid object reference changes triggering effect
@@ -816,7 +823,10 @@ export function AddItemDialog({
       }
 
       // Create the item (without files)
-      const result = await onAdd(name.trim(), desc, tmdbOptions);
+      const result = await onAdd(name.trim(), desc, tmdbOptions, {
+        isPublic,
+        inheritVisibility,
+      });
 
       if (result.error || !result.itemId) {
         toast.error(result.error || "Failed to create item");
@@ -1465,6 +1475,44 @@ export function AddItemDialog({
         <p className="text-muted-foreground text-xs tabular-nums">
           {description.length}/1000 characters
         </p>
+      </div>
+      {/* Visibility */}
+      <div className="space-y-3">
+        {parentName && (
+          <div className="flex items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <Label htmlFor="add-item-inherit">Inherit from parent</Label>
+              <p className="text-muted-foreground text-xs">
+                Visibility inherited from {parentName}
+              </p>
+            </div>
+            <Switch
+              id="add-item-inherit"
+              checked={inheritVisibility}
+              onCheckedChange={(checked) => {
+                setInheritVisibility(checked);
+                if (checked) setIsPublic(false);
+              }}
+              disabled={isLoading}
+            />
+          </div>
+        )}
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <Label htmlFor="add-item-public">Make public</Label>
+            <p className="text-muted-foreground text-xs">
+              {inheritVisibility
+                ? `Inherited from ${parentName}`
+                : "Visible on your public profile"}
+            </p>
+          </div>
+          <Switch
+            id="add-item-public"
+            checked={isPublic}
+            onCheckedChange={setIsPublic}
+            disabled={isLoading || inheritVisibility}
+          />
+        </div>
       </div>
     </div>
   );

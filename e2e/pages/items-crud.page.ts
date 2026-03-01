@@ -57,6 +57,45 @@ export class ItemsCrudPage {
     await this.expectItemVisible(name);
   }
 
+  /**
+   * Create a new item with visibility options.
+   *
+   * @param name - The name for the new item
+   * @param options - Visibility options
+   */
+  async createItemWithVisibility(
+    name: string,
+    options: { isPublic?: boolean; inherit?: boolean }
+  ) {
+    const nameInput = this.page.getByRole("combobox", { name: /item name/i });
+    await expect(async () => {
+      await this.page.getByTestId("items-add-button").click();
+      await expect(nameInput).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: Timeouts.api });
+    await nameInput.fill(name);
+    await nameInput.press("Escape");
+
+    // Set visibility (switches may not be visible on mobile bottom sheet)
+    if (options.isPublic) {
+      const publicSwitch = this.page.getByLabel(/make public/i);
+      if (await publicSwitch.isVisible({ timeout: 1_000 }).catch(() => false)) {
+        await publicSwitch.click();
+      }
+    }
+    if (options.inherit === false) {
+      const inheritSwitch = this.page.getByLabel(/inherit/i);
+      if (
+        await inheritSwitch.isVisible({ timeout: 1_000 }).catch(() => false)
+      ) {
+        await inheritSwitch.click();
+      }
+    }
+
+    const submitButton = this.page.getByRole("button", { name: /create/i });
+    await submitButton.click();
+    await this.expectItemVisible(name);
+  }
+
   // ── Item Visibility Assertions ─────────────────────────
 
   /**

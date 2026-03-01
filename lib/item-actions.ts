@@ -8,7 +8,11 @@
 import { cache } from "react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { itemNameSchema, itemDescriptionSchema } from "@/lib/validations";
+import {
+  itemNameSchema,
+  itemDescriptionSchema,
+  createItemOptionsSchema,
+} from "@/lib/validations";
 import { checkRateLimit } from "@/lib/rate-limit";
 import {
   createDriveFolderOnly,
@@ -772,7 +776,8 @@ export async function getItem(
 export async function createItem(
   parentId: string | null,
   name: string,
-  description?: string
+  description?: string,
+  options?: { isPublic?: boolean; inheritVisibility?: boolean }
 ): Promise<ItemResult<Item>> {
   // Run rate limit and auth in parallel (async-parallel pattern)
   const [rateLimitResult, session] = await Promise.all([
@@ -802,6 +807,25 @@ export async function createItem(
       return { error: descValidation.error.issues[0].message };
     }
     validatedDescription = descValidation.data || null;
+  }
+
+  // Validate visibility options
+  const visibilityDefaults = { isPublic: false, inheritVisibility: false };
+  let visibilityOptions = visibilityDefaults;
+  if (options) {
+    const visResult = createItemOptionsSchema.safeParse(options);
+    if (!visResult.success) {
+      return {
+        error:
+          visResult.error.issues[0]?.message ?? "Invalid visibility options",
+      };
+    }
+    visibilityOptions = visResult.data;
+  }
+
+  // Reject inheritVisibility on root items
+  if (visibilityOptions.inheritVisibility && !parentId) {
+    return { error: "Root items cannot inherit visibility" };
   }
 
   let depth = 0;
@@ -845,6 +869,8 @@ export async function createItem(
         order,
         depth,
         userId: session.user.id,
+        isPublic: visibilityOptions.isPublic,
+        inheritVisibility: visibilityOptions.inheritVisibility,
       },
     });
   } catch (error) {
