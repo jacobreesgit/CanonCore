@@ -63,7 +63,7 @@ function PickerItemRow({
     <button
       onClick={onSelect}
       aria-pressed={multiSelect ? isSelected : undefined}
-      aria-selected={!multiSelect ? isSelected : undefined}
+      aria-current={!multiSelect && isSelected ? "true" : undefined}
       className={cn(
         "flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left",
         "transition-colors duration-150",
