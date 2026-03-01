@@ -15,6 +15,7 @@ import type { AnimateLayoutChanges } from "@dnd-kit/sortable";
 import { TreeItem, TreeItemProps } from "./tree-item";
 import { ItemContextMenu } from "@/components/items/item-context-menu";
 import type { CreateItemResult } from "@/components/items/add-item-dialog";
+import type { ItemVisibilityOptions } from "@/lib/types";
 
 interface SortableTreeItemProps extends Omit<TreeItemProps, "handleProps"> {
   id: UniqueIdentifier;
@@ -25,7 +26,11 @@ interface SortableTreeItemProps extends Omit<TreeItemProps, "handleProps"> {
   /** Opens the item settings dialog */
   onSettings?(): void;
   onDelete?(): Promise<void>;
-  onAddChild?(name: string, description?: string): Promise<CreateItemResult>;
+  onAddChild?(
+    name: string,
+    description?: string,
+    visibilityOptions?: ItemVisibilityOptions
+  ): Promise<CreateItemResult>;
   /** Callback to refresh data after child item is created */
   onAddChildComplete?(): Promise<void>;
   /** Whether user has Google Drive connected (for Add Child dialog) */

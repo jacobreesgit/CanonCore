@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: February 2026 (v11.1.0)
+Last updated: March 2026 (v11.2.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -527,6 +527,14 @@ Multi-layer defence against aggressive AI crawlers:
 - Max 10 levels deep (UI performance limit)
 - Drag-and-drop reordering with dnd-kit
 
+**Visibility at Creation:**
+
+- `AddItemDialog` includes "Make public" switch (all items) and "Inherit from parent" switch (child items only, defaults ON)
+- When inherit is ON, the public toggle is disabled — the child follows its parent's visibility
+- `createItem` server action accepts optional `{ isPublic, inheritVisibility }`, validated via `createItemOptionsSchema`
+- Root items cannot have `inheritVisibility: true` (server-side validation rejection)
+- Visibility options flow through `onAddChild` callback across `ItemContextMenu`, `GridViewContent`, `SortableTree`, `ShelfRow`, and `ItemsView`
+
 **View Modes:**
 
 - Grid: Movie poster cards with progress bars (Netflix-style). Cards stay elevated (`z-10`, `scale-105`, shadow) while Radix dropdown is open via `has-[[data-state=open]]` CSS selectors. More-options button appears on hover/focus-within.
@@ -796,8 +804,16 @@ After initial wizard application, individual artwork fields (poster, backdrop, l
 - Private (default) — only visible to the owner
 - Public — discoverable on the Explore page's Playlists tab
 - Unlisted — accessible only via share token URL (`?token=[nanoid]`)
-- Share tokens generated with `nanoid` (21 chars), stored as unique index on `Playlist.shareToken`
+- Share tokens generated eagerly with `nanoid(21)` at playlist creation time — playlists are immediately shareable via link when switched to unlisted
 - Regenerating a share token invalidates the previous link
+
+**Creation Flow:**
+
+- `CreatePlaylistDialog` uses a 3-option RadioGroup (Private/Unlisted/Public) with icon labels, replacing the earlier binary public Switch
+- Optional item pre-selection via `ItemTreePicker` (multi-select, virtualised, searchable)
+- `createPlaylist` accepts optional `itemIds` — uses Prisma `$transaction` for ownership verification + `PlaylistItem` row creation
+- Validated via `createPlaylistItemsSchema` (max 500 items)
+- `ItemTreePicker` shared with `ForkDestinationDialog` (single-select mode) — extracted from inline virtualisation code
 
 **Artwork:**
 
@@ -819,7 +835,8 @@ After initial wizard application, individual artwork fields (poster, backdrop, l
 - `PlaylistSection` — reusable grid section with responsive columns
 - `PlaylistSortableGrid` — dnd-kit drag-to-reorder for playlist items
 - `PlaylistContextMenu` — right-click actions (edit, delete, visibility, share link)
-- `CreatePlaylistDialog` / `EditPlaylistDialog` / `AddToPlaylistDialog` — CRUD dialogs
+- `CreatePlaylistDialog` / `EditPlaylistDialog` / `AddToPlaylistDialog` — CRUD dialogs (CreatePlaylistDialog includes visibility RadioGroup and ItemTreePicker for item pre-selection)
+- `ItemTreePicker` — shared virtualised tree picker (`@tanstack/react-virtual`), supports single-select (fork) and multi-select (playlist) modes with search filtering
 
 **URL State:**
 
@@ -1685,6 +1702,27 @@ Portfolio screenshots for marketing/documentation using POM patterns and fixture
 - Join table (PlaylistItem) adds complexity vs simple parent-child
 - Need separate reordering logic for playlist item order vs tree order
 - Artwork resolution falls back through: custom upload → 4-poster collage → empty state
+
+### Why Visibility at Creation Time?
+
+**Problem:** Visibility could only be set after item/playlist creation via edit dialogs. Creating a public playlist required: create → open edit → toggle public → save. Extra steps for a common action.
+
+**Solution:** Embedded visibility controls directly in creation dialogs. Items get a "Make public" switch with optional parent inheritance. Playlists get a 3-option RadioGroup (Private/Unlisted/Public). Share tokens generated eagerly so playlists are immediately shareable.
+
+**Tradeoff:**
+
+- Creation dialogs are slightly more complex (more form fields)
+- Acceptable because visibility is a fundamental property users want to set upfront, not an afterthought
+
+### Why a Shared ItemTreePicker?
+
+**Problem:** ForkDestinationDialog and CreatePlaylistDialog both needed a virtualised item selection tree. ForkDestinationDialog had inline virtualisation code (~270 lines) that would be duplicated.
+
+**Solution:** Extracted `ItemTreePicker` component supporting both single-select (fork) and multi-select (playlist) modes. `ForkDestinationDialog` reduced by ~270 lines. Same virtualisation performance, consistent UX.
+
+**Tradeoff:**
+
+- Multi-select mode is a prop but visual differentiation (checkbox vs radio indicators) is not yet implemented — both modes use the same glassmorphism highlight
 
 ### Why Font Awesome over Lucide?
 

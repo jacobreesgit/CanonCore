@@ -39,6 +39,7 @@ import {
   faEyeSlash,
   faCheckDouble,
 } from "@fortawesome/free-solid-svg-icons";
+import type { ItemVisibilityOptions } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /** Shared action props for item menus (context menu and dropdown menu). */
@@ -54,7 +55,11 @@ export interface ItemMenuActions {
   /** Opens the unified settings dialog */
   onSettings?(): void;
   onDelete?(): Promise<void>;
-  onAddChild?(name: string, description?: string): Promise<CreateItemResult>;
+  onAddChild?(
+    name: string,
+    description?: string,
+    visibilityOptions?: ItemVisibilityOptions
+  ): Promise<CreateItemResult>;
   /** Callback to refresh data after child item is created (for AddItemDialog) */
   onAddChildComplete?(): Promise<void>;
   /** Callback to pin the item to the sidebar */
@@ -375,9 +380,9 @@ export function ItemContextMenu({
       <AddItemDialog
         open={addChildOpen}
         onOpenChange={setAddChildOpen}
-        onAdd={async (name, description) => {
+        onAdd={async (name, description, _tmdbSelection, visibilityOptions) => {
           if (!onAddChild) return { error: "No handler" };
-          return onAddChild(name, description);
+          return onAddChild(name, description, visibilityOptions);
         }}
         onComplete={onAddChildComplete}
         parentName={itemName}

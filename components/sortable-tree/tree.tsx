@@ -13,7 +13,7 @@ import { ItemContextMenu } from "@/components/items/item-context-menu";
 import type { CreateItemResult } from "@/components/items/add-item-dialog";
 import { useTreeCollapse } from "@/hooks/use-tree-collapse";
 import { flattenTree, removeChildrenOf } from "./utilities";
-import type { TreeItems } from "@/lib/types";
+import type { ItemVisibilityOptions, TreeItems } from "@/lib/types";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 
 interface TreeProps {
@@ -29,7 +29,8 @@ interface TreeProps {
   onAddChild?(
     parentId: string,
     name: string,
-    description?: string
+    description?: string,
+    visibilityOptions?: ItemVisibilityOptions
   ): Promise<CreateItemResult>;
   /** Callback to refresh data after child item is created. */
   onAddChildComplete?(): Promise<void>;
@@ -108,8 +109,13 @@ export function Tree({
             onDelete={onDeleteItem ? () => onDeleteItem(String(id)) : undefined}
             onAddChild={
               onAddChild
-                ? (childName, childDescription) =>
-                    onAddChild(String(id), childName, childDescription)
+                ? (childName, childDescription, childVisibility) =>
+                    onAddChild(
+                      String(id),
+                      childName,
+                      childDescription,
+                      childVisibility
+                    )
                 : undefined
             }
             onAddChildComplete={onAddChildComplete}
@@ -152,7 +158,7 @@ export function Tree({
                   ? () => onDeleteItem(String(id))
                   : undefined,
                 onAddChild: onAddChild
-                  ? (n, d) => onAddChild(String(id), n, d)
+                  ? (n, d, v) => onAddChild(String(id), n, d, v)
                   : undefined,
                 onAddChildComplete,
                 onPin: onPinItem ? () => onPinItem(String(id)) : undefined,

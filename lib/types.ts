@@ -16,6 +16,12 @@ export type { ItemProgress } from "./progress-utils";
  */
 export type ItemId = string | number;
 
+/** Options for controlling item visibility during creation. */
+export interface ItemVisibilityOptions {
+  isPublic: boolean;
+  inheritVisibility: boolean;
+}
+
 /**
  * Database Item type (from Prisma).
  * Represents a container in the item hierarchy.

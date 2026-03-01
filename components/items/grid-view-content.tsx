@@ -13,7 +13,7 @@ import { Section } from "@/components/ui/section";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ItemContextMenu } from "./item-context-menu";
 import { GridItem } from "@/components/sortable-grid/grid-item";
-import type { ItemWithArtwork } from "@/lib/types";
+import type { ItemVisibilityOptions, ItemWithArtwork } from "@/lib/types";
 import type { CreateItemResult } from "./add-item-dialog";
 import {
   markAsWatched,
@@ -39,7 +39,8 @@ export interface ShelfActionsContextValue {
   onAddChild?: (
     parentId: string,
     name: string,
-    description?: string
+    description?: string,
+    visibilityOptions?: ItemVisibilityOptions
   ) => Promise<CreateItemResult>;
   onAddChildComplete?: () => Promise<void>;
   hasDriveConnection: boolean;
@@ -96,7 +97,8 @@ interface GridViewContentProps {
   onAddChild?(
     parentId: string,
     name: string,
-    description?: string
+    description?: string,
+    visibilityOptions?: ItemVisibilityOptions
   ): Promise<CreateItemResult>;
   /** Callback to refresh data after child item is created. */
   onAddChildComplete?(): Promise<void>;
@@ -210,7 +212,8 @@ export function GridViewContent({
                   onSettings: () => onOpenSettings(item.id),
                   onDelete: () => onDeleteItem(item.id),
                   onAddChild: onAddChild
-                    ? (n: string, d?: string) => onAddChild(item.id, n, d)
+                    ? (n: string, d?: string, v?: ItemVisibilityOptions) =>
+                        onAddChild(item.id, n, d, v)
                     : undefined,
                   onAddChildComplete,
                   onPin: () => onPinItem(item.id),
@@ -277,7 +280,8 @@ export function GridViewContent({
                   onSettings: () => onOpenSettings(item.id),
                   onDelete: () => onDeleteItem(item.id),
                   onAddChild: onAddChild
-                    ? (n: string, d?: string) => onAddChild(item.id, n, d)
+                    ? (n: string, d?: string, v?: ItemVisibilityOptions) =>
+                        onAddChild(item.id, n, d, v)
                     : undefined,
                   onAddChildComplete,
                   onPin: () => onPinItem(item.id),
@@ -327,7 +331,8 @@ interface ShelfActionsContextProviderProps {
   onAddChild?: (
     parentId: string,
     name: string,
-    description?: string
+    description?: string,
+    visibilityOptions?: ItemVisibilityOptions
   ) => Promise<CreateItemResult>;
   onAddChildComplete?: () => Promise<void>;
   hasDriveConnection: boolean;

@@ -1,14 +1,20 @@
 /**
  * Dialog for creating a new playlist.
- * Simple form with name input, loading state, and inline validation error.
- * Follows existing dialog patterns (AddItemDialog, ItemSettingsDialog).
+ * Form with name, description, visibility radio group, and optional item
+ * selection via ItemTreePicker. Follows existing dialog patterns.
  */
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSpinner, faMusic } from "@fortawesome/free-solid-svg-icons";
+import {
+  faSpinner,
+  faMusic,
+  faLock,
+  faLink,
+  faGlobe,
+} from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@/components/ui/dialog";
 import { AnimatedDialogContent } from "@/components/ui/animated-dialog-content";
 import {
@@ -21,9 +27,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  ItemTreePicker,
+  type PickerItem,
+} from "@/components/items/item-tree-picker";
 import { cn } from "@/lib/utils";
 import { createPlaylist } from "@/lib/playlist-actions";
+import { getAllItems } from "@/lib/item-actions";
 import { toast } from "sonner";
 
 interface CreatePlaylistDialogProps {
@@ -50,17 +61,78 @@ export function CreatePlaylistDialog({
 }: CreatePlaylistDialogProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [isPublic, setIsPublic] = useState(false);
+  const [visibility, setVisibility] = useState<
+    "private" | "unlisted" | "public"
+  >("private");
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [pickerItems, setPickerItems] = useState<PickerItem[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const resetForm = useCallback(() => {
     setName("");
     setDescription("");
-    setIsPublic(false);
+    setVisibility("private");
+    setSelectedItemIds(new Set());
+    setPickerItems([]);
     setError(null);
     setIsSubmitting(false);
   }, []);
+
+  const handleItemToggle = useCallback((id: string) => {
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  // Set loading synchronously during render (avoids set-state-in-effect lint rule)
+  const [prevOpen, setPrevOpen] = useState(false);
+  if (open && !prevOpen) {
+    setLoadingItems(true);
+  }
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+  }
+
+  // Fetch user items when dialog opens
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    getAllItems()
+      .then((result) => {
+        if (cancelled) return;
+        if (result.success && result.data) {
+          const parentIds = new Set(
+            result.data.map((i) => i.parentId).filter(Boolean)
+          );
+          setPickerItems(
+            result.data.map((item) => ({
+              id: item.id,
+              name: item.name,
+              depth: item.depth,
+              hasChildren: parentIds.has(item.id),
+            }))
+          );
+        }
+        setLoadingItems(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLoadingItems(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
@@ -88,7 +160,9 @@ export function CreatePlaylistDialog({
       try {
         const result = await createPlaylist(trimmed, {
           description: description.trim() || undefined,
-          isPublic,
+          visibility,
+          itemIds:
+            selectedItemIds.size > 0 ? Array.from(selectedItemIds) : undefined,
         });
 
         if (result.error) {
@@ -107,7 +181,14 @@ export function CreatePlaylistDialog({
         setIsSubmitting(false);
       }
     },
-    [name, description, isPublic, onCreated, handleOpenChange]
+    [
+      name,
+      description,
+      visibility,
+      selectedItemIds,
+      onCreated,
+      handleOpenChange,
+    ]
   );
 
   const header = (
@@ -212,19 +293,88 @@ export function CreatePlaylistDialog({
             />
           </div>
 
-          <div className="flex items-center justify-between gap-3">
-            <div className="space-y-0.5">
-              <Label htmlFor="create-playlist-public">Public</Label>
-              <p className="text-muted-foreground text-xs">
-                Visible on your public profile
+          {/* Visibility */}
+          <fieldset className="space-y-2" disabled={isSubmitting}>
+            <Label asChild>
+              <legend>Visibility</legend>
+            </Label>
+            <RadioGroup
+              value={visibility}
+              onValueChange={(v) =>
+                setVisibility(v as "private" | "unlisted" | "public")
+              }
+              className="grid gap-2"
+            >
+              {(
+                [
+                  {
+                    value: "private",
+                    icon: faLock,
+                    label: "Private",
+                    note: "Only you can see this playlist",
+                  },
+                  {
+                    value: "unlisted",
+                    icon: faLink,
+                    label: "Unlisted",
+                    note: "Accessible via share link",
+                  },
+                  {
+                    value: "public",
+                    icon: faGlobe,
+                    label: "Public",
+                    note: "Visible on explore page",
+                  },
+                ] as const
+              ).map((opt) => (
+                <label
+                  key={opt.value}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors",
+                    "focus-within:ring-2 focus-within:ring-white/30",
+                    visibility === opt.value
+                      ? "border-white/30 bg-white/20"
+                      : "border-white/10 bg-white/5 hover:bg-white/10"
+                  )}
+                >
+                  <RadioGroupItem value={opt.value} className="sr-only" />
+                  <FontAwesomeIcon
+                    icon={opt.icon}
+                    className="text-muted-foreground size-4"
+                  />
+                  <div className="min-w-0">
+                    <span className="text-sm font-medium">{opt.label}</span>
+                    <p className="text-muted-foreground text-xs">{opt.note}</p>
+                  </div>
+                </label>
+              ))}
+            </RadioGroup>
+          </fieldset>
+
+          {/* Item selection */}
+          <div className="space-y-2">
+            <Label>Add Items (optional)</Label>
+            {loadingItems ? (
+              <div className="flex items-center justify-center py-6">
+                <FontAwesomeIcon
+                  icon={faSpinner}
+                  spin
+                  className="text-muted-foreground size-4"
+                />
+              </div>
+            ) : pickerItems.length > 0 ? (
+              <ItemTreePicker
+                items={pickerItems}
+                selectedIds={selectedItemIds}
+                onToggle={handleItemToggle}
+                multiSelect
+                disabled={isSubmitting}
+              />
+            ) : (
+              <p className="text-muted-foreground py-4 text-center text-sm">
+                No items in your library yet.
               </p>
-            </div>
-            <Switch
-              id="create-playlist-public"
-              checked={isPublic}
-              onCheckedChange={setIsPublic}
-              disabled={isSubmitting}
-            />
+            )}
           </div>
 
           {error && (

@@ -85,6 +85,70 @@ export class PlaylistPage {
   }
 
   /**
+   * Open the create playlist dialog from the playlists tab.
+   * Clicks the "Create Playlist" or "New Playlist" button.
+   */
+  async openCreatePlaylistDialog() {
+    const createButton = this.page.getByRole("button", {
+      name: /create.*playlist|new.*playlist/i,
+    });
+    await createButton.click();
+    await expect(this.page.getByTestId("dialog-create-playlist")).toBeVisible({
+      timeout: Timeouts.animation,
+    });
+  }
+
+  /**
+   * Create a playlist with visibility and pre-selected items.
+   * Uses the enhanced create dialog directly (not from Add to Playlist).
+   *
+   * @param name - Playlist name
+   * @param options - Optional visibility and items
+   */
+  async createPlaylistWithOptions(
+    name: string,
+    options?: {
+      visibility?: "private" | "unlisted" | "public";
+      itemNames?: string[];
+    }
+  ) {
+    // Fill the name
+    await expect(this.page.getByTestId("dialog-create-playlist")).toBeVisible({
+      timeout: Timeouts.animation,
+    });
+    await this.page.getByTestId("create-playlist-name-input").fill(name);
+
+    // Set visibility if specified — click the visible label wrapper,
+    // not the sr-only RadioGroupItem (Playwright can't click hidden elements)
+    if (options?.visibility) {
+      await this.page
+        .getByTestId("dialog-create-playlist")
+        .locator("label", {
+          has: this.page.getByRole("radio", {
+            name: new RegExp(options.visibility, "i"),
+          }),
+        })
+        .click();
+    }
+
+    // Select items if specified
+    if (options?.itemNames) {
+      for (const itemName of options.itemNames) {
+        await this.page
+          .getByTestId("dialog-create-playlist")
+          .getByText(itemName)
+          .click();
+      }
+    }
+
+    await this.page.getByTestId("create-playlist-submit").click();
+
+    await expect(
+      this.page.getByTestId("dialog-create-playlist")
+    ).not.toBeVisible({ timeout: Timeouts.api });
+  }
+
+  /**
    * Toggle a playlist checkbox in the "Add to Playlist" dialog.
    *
    * @param playlistName - The visible name of the playlist to toggle
@@ -154,8 +218,11 @@ export class PlaylistPage {
       .getByTestId("playlist-section")
       .getByRole("link", { name })
       .click();
-    await this.page.waitForLoadState("domcontentloaded");
-    await expect(this.page.getByTestId("hero-carousel")).toBeVisible({
+    // Wait for playlist detail page to load (URL changes to /playlists/)
+    await this.page.waitForURL(/\/playlists\//, {
+      timeout: Timeouts.navigation,
+    });
+    await expect(this.page.getByTestId("playlist-detail")).toBeVisible({
       timeout: Timeouts.navigation,
     });
   }

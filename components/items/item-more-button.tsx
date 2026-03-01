@@ -165,9 +165,9 @@ export function ItemMoreButton({ className, ...actions }: ItemMoreButtonProps) {
       <AddItemDialog
         open={addChildOpen}
         onOpenChange={setAddChildOpen}
-        onAdd={async (name, description) => {
+        onAdd={async (name, description, _tmdbSelection, visibilityOptions) => {
           if (!onAddChild) return { error: "No handler" };
-          return onAddChild(name, description);
+          return onAddChild(name, description, visibilityOptions);
         }}
         onComplete={onAddChildComplete}
         parentName={itemName}

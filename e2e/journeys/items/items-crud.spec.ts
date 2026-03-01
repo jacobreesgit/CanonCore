@@ -40,4 +40,11 @@ test.describe("Items CRUD", () => {
 
     await itemsCrud.expectItemCount(3);
   });
+
+  test("should create a public item", async ({ itemsCrud }) => {
+    const name = testId("movie");
+    await itemsCrud.goto();
+    await itemsCrud.createItemWithVisibility(name, { isPublic: true });
+    await itemsCrud.expectItemVisible(name);
+  });
 });
