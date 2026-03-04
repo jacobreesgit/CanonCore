@@ -1,6 +1,6 @@
 {
   "name": "canoncore",
-  "version": "12.0.0",
+  "version": "12.1.0",
   "packageManager": "pnpm@10.15.0",
   "private": true,
   "scripts": {
@@ -40,7 +40,8 @@
     "prepare": "husky",
     "analyze": "ANALYZE=true next build",
     "changelog": "changelogen",
-    "release": "changelogen --release"
+    "release": "changelogen --release",
+    "mockups": "playwright test --config=e2e/mockups/playwright.config.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

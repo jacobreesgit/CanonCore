@@ -677,6 +677,7 @@ export function ExploreClient({
     <HeroContentLayout
       hero={hero}
       dominantColour={activeColour}
+      animateColour
       className={!hasItems ? "flex-1" : undefined}
     >
       {tabsMounted ? (

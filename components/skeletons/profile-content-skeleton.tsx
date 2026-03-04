@@ -8,7 +8,7 @@ export function ProfileContentSkeleton() {
       {/* Hero — exact match to CinematicHero single-slide profile mode */}
       <div
         data-testid="skeleton-hero"
-        className="relative h-[calc(55vh+var(--header-height))] w-full overflow-hidden bg-[var(--dark-900)] md:h-[calc(65vh+var(--header-height))]"
+        className="relative flex min-h-[calc(55vh+var(--header-height))] w-full flex-col bg-[var(--dark-900)] md:min-h-[calc(65vh+var(--header-height))] lg:block lg:h-[calc(65vh+var(--header-height))] lg:min-h-0 lg:overflow-hidden"
       >
         <div
           className="absolute inset-0"
@@ -19,7 +19,7 @@ export function ProfileContentSkeleton() {
           aria-hidden="true"
         />
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10">
+        <div className="pointer-events-none relative z-10 mt-auto pt-[30vh] md:pt-[40vh] lg:absolute lg:inset-x-0 lg:bottom-0 lg:mt-0 lg:pt-0">
           <div className="px-[var(--section-px-mobile)] pb-8 sm:px-[var(--section-px-sm)] md:px-[var(--section-px-md)] md:pb-12 lg:px-[var(--section-px-lg)] xl:px-[var(--section-px-xl)] 2xl:px-[var(--section-px-2xl)]">
             <div className="flex items-end gap-5 md:gap-8">
               <div className="relative shrink-0">

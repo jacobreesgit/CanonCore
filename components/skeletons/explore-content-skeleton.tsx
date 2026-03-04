@@ -7,7 +7,7 @@ export function ExploreContentSkeleton() {
       {/* Hero carousel area — exact match to CinematicHero multi-slide mode */}
       <div
         data-testid="skeleton-hero"
-        className="relative h-[calc(55vh+var(--header-height))] w-full overflow-hidden bg-[var(--dark-900)] md:h-[calc(65vh+var(--header-height))]"
+        className="relative flex min-h-[calc(55vh+var(--header-height))] w-full flex-col bg-[var(--dark-900)] md:min-h-[calc(65vh+var(--header-height))] lg:block lg:h-[calc(65vh+var(--header-height))] lg:min-h-0 lg:overflow-hidden"
       >
         <div
           className="absolute inset-0"
@@ -19,7 +19,7 @@ export function ExploreContentSkeleton() {
         />
 
         {/* Content at bottom — multi-slide uses pb-16 md:pb-20 */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10">
+        <div className="pointer-events-none relative z-10 mt-auto pt-[30vh] md:pt-[40vh] lg:absolute lg:inset-x-0 lg:bottom-0 lg:mt-0 lg:pt-0">
           <div className="px-[var(--section-px-mobile)] pb-16 sm:px-[var(--section-px-sm)] md:px-[var(--section-px-md)] md:pb-20 lg:px-[var(--section-px-lg)] xl:px-[var(--section-px-xl)] 2xl:px-[var(--section-px-2xl)]">
             <Skeleton className="h-[80px] w-[220px] rounded-md sm:h-[100px] sm:w-[280px] md:h-[120px] md:w-[350px] lg:h-[140px] lg:w-[400px]" />
             <Skeleton className="mt-4 h-4 w-48 md:w-64" />

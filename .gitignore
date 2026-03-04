@@ -39,6 +39,9 @@ playwright-report/
 test-results/
 e2e/.auth/
 e2e/demo/demo-report/
+e2e/mockups/.auth-state.json
+e2e/mockups/.downloads/
+e2e/output/
 .playwright-mcp/
 
 # Test coverage reports
