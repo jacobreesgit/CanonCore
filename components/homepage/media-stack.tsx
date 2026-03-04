@@ -2,8 +2,8 @@ import Image from "next/image";
 
 import styles from "./media-stack.module.css";
 
-const IMAGE_1 = "/images/google-drive-sync-laptop.webp";
-const IMAGE_2 = "/images/explore.webp";
+const IMAGE_1 = "/images/03-item-detail.webp";
+const IMAGE_2 = "/images/07-explore-page.webp";
 
 export function MediaStack() {
   return (

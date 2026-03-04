@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: March 2026 (v12.0.0)
+Last updated: March 2026 (v12.1.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -634,6 +634,7 @@ Multi-layer defence against aggressive AI crawlers:
 **CinematicHero Component:**
 
 - Multi-mode: carousel (explore page), single-slide (item detail), profile avatar mode, custom backdrop (playlist detail)
+- **Responsive layout**: Mobile uses flex layout with `min-height` — content flows naturally below the backdrop via `mt-auto`, growing the hero to fit. Desktop keeps the fixed-height overlay (`lg:absolute lg:bottom-0`). Carousel backdrop is `absolute inset-0` on all viewports
 - `backgroundElement` prop accepts custom React node rendered behind gradient overlay (used for mosaic tile backdrops)
 - Embla Carousel fade plugin for smooth crossfade transitions between slides (replaces slide-based animation)
 - Auto-advance every 5 seconds with pause on hover
@@ -656,7 +657,7 @@ Each item can have a dominant colour extracted from its backdrop, used to theme 
 
 4. **Injection** — `CinematicHero` calls `createColourShades()` with the active slide's `dominantColour`, spreads the result as inline `style` on the section element, and adds the `.transition-colours-pipeline` class. This class transitions all 10 properties at 500ms ease, producing a smooth crossfade as the carousel advances. Hero overlay gradients use `color-mix(in srgb, var(--dark-900) N%, transparent)` instead of hardcoded `rgba()` values, resolving from the hero's own colour scope.
 
-`HeroContentLayout` wraps the entire page below the hero, accepting a `dominantColour` prop. Explore page tracks the active colour via `onColourChange` callback and passes it down.
+`HeroContentLayout` wraps the entire page below the hero, accepting a `dominantColour` prop and an `animateColour` boolean that conditionally enables the 500ms colour crossfade (only used by the explore page's multi-slide carousel — single-slide pages apply colour instantly). Explore page tracks the active colour via `onColourChange` callback and passes it down.
 
 **Logo Overlay:**
 
@@ -1580,9 +1581,19 @@ Husky manages Git hooks:
 - `slugify()` utility for deterministic item testids: `item-card-${slug}`, `item-tree-${slug}`
 - Unit tests use role-based and text-based selectors (Testing Library best practices)
 
-### Screenshot Automation
+### Screenshot & Mockup Pipeline
 
-Portfolio screenshots for marketing/documentation using POM patterns and fixtures. Outputs to `public/portfolio/*.png`.
+A unified Playwright pipeline (`pnpm run mockups`) captures app screenshots and generates device mockups in a single command. Three Playwright projects run in sequence:
+
+1. **laptop** (1152×745 @3x) and **mobile** (390×844 @3x) — capture 10 app scenarios each, outputting PNGs to a gitignored `e2e/output/screenshots/` directory. Media-stack images (item detail, explore page) are converted inline to webp via sharp during capture
+2. **mockups** (depends on laptop + mobile) — uploads screenshots to LS Graphics mockup templates (MacBook and iPhone scenes), downloads the rendered frames, converts to webp (quality 82), and deletes the intermediate PNGs
+
+Outputs:
+
+- `public/images/*.webp` — 5 accordion mockups + 2 media-stack screenshots for the homepage
+- `public/portfolio/*.webp` — 16 device mockups (8 features × MacBook + iPhone) for the portfolio
+
+The pipeline must run headed (`headless: false`) because LS Graphics uses canvas/WebGL compositing that fails silently in headless Chrome. Configuration lives in `e2e/mockups/mockup-config.ts` with scene-to-screenshot mappings.
 
 ---
 

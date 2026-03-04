@@ -135,7 +135,7 @@ export function CinematicHero({
   return (
     <section
       className={cn(
-        "relative h-[calc(55vh+var(--header-height))] w-full overflow-hidden bg-[var(--dark-900)] md:h-[calc(65vh+var(--header-height))]",
+        "relative flex min-h-[calc(55vh+var(--header-height))] w-full flex-col bg-[var(--dark-900)] md:min-h-[calc(65vh+var(--header-height))] lg:block lg:h-[calc(65vh+var(--header-height))] lg:min-h-0 lg:overflow-hidden",
         activeDominantColour && "transition-colours-pipeline",
         className
       )}
@@ -156,7 +156,7 @@ export function CinematicHero({
       {/* Embla Carousel Container — skip ref for single slide to avoid unnecessary init */}
       <div
         ref={isSingleSlide ? undefined : emblaRef}
-        className="h-full overflow-hidden"
+        className="absolute inset-0 overflow-hidden"
       >
         <div className="flex h-full">
           {slides.map((slide, index) => {
@@ -229,8 +229,8 @@ export function CinematicHero({
         </div>
       </div>
 
-      {/* Content (positioned over carousel) */}
-      <div className="animate-slide-up pointer-events-none absolute inset-x-0 bottom-0 z-10">
+      {/* Content — mobile: relative flow (grows hero). Desktop: absolute bottom. */}
+      <div className="animate-slide-up pointer-events-none relative z-10 mt-auto pt-[30vh] md:pt-[40vh] lg:absolute lg:inset-x-0 lg:bottom-0 lg:mt-0 lg:pt-0">
         <div
           className={cn(
             "px-[var(--section-px-mobile)]",
