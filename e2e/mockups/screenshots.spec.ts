@@ -1,6 +1,6 @@
 /**
  * App screenshot capture for the unified mockup pipeline.
- * Captures 10 scenarios × 2 viewports (laptop + mobile) = 20 output PNGs.
+ * Captures 11 screenshots across 10 test scenarios × 2 viewports.
  * Output: e2e/output/screenshots/{name}-{laptop|mobile}.png
  *
  * Media-stack images (03-item-detail, 07-explore-page) are also converted
@@ -52,7 +52,7 @@ test.describe("Screenshots", () => {
 
   // ── 02: Tree View ──────────────────────────────────────────
 
-  test("02 — Tree view with expanded season", async ({ page }) => {
+  test("02 — Tree view + 05 — Grid view (Breaking Bad)", async ({ page }) => {
     await signIn(page, "demo");
     const isMobile = page.viewportSize()!.width < 1024;
 
@@ -94,11 +94,14 @@ test.describe("Screenshots", () => {
 
     await collapseSidebar(page);
 
-    if (isMobile) {
-      await page.evaluate(() => window.scrollTo(0, 500));
-    } else {
-      await page.evaluate(() => window.scrollTo(0, 0));
+    // Scroll progress label to top of viewport for consistent framing
+    const progressLabel = page.getByText(/watched \(of/).first();
+    if (await progressLabel.isVisible()) {
+      await progressLabel.evaluate((el) => {
+        el.scrollIntoView({ block: "start" });
+      });
     }
+    await page.waitForTimeout(300);
 
     const syncBtn = page.getByRole("button", { name: "Sync" });
     if (await syncBtn.isVisible()) {
@@ -107,6 +110,31 @@ test.describe("Screenshots", () => {
     }
 
     await captureScreenshot(page, "02-tree-view");
+
+    // ── 05: Switch to grid view from same position ──
+    const currentUrl = new URL(page.url());
+    currentUrl.searchParams.set("view", "grid");
+    await page.goto(currentUrl.toString(), { waitUntil: "domcontentloaded" });
+    await collapseSidebar(page);
+
+    await page
+      .getByTestId(/^item-card-/)
+      .first()
+      .waitFor({
+        state: "visible",
+        timeout: Timeouts.heavy,
+      });
+
+    // Scroll to same anchor point as 02
+    const progressLabel05 = page.getByText(/watched \(of/).first();
+    if (await progressLabel05.isVisible()) {
+      await progressLabel05.evaluate((el) => {
+        el.scrollIntoView({ block: "start" });
+      });
+    }
+    await page.waitForTimeout(300);
+
+    await captureScreenshot(page, "05-item-grid");
   });
 
   // ── 03: Item Detail ─────────────────────────────────────────

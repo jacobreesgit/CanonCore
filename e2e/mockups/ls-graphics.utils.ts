@@ -14,7 +14,7 @@
  */
 import type { Page, Download } from "@playwright/test";
 import { expect } from "@playwright/test";
-import type { MockupEntry } from "./mockup-config";
+import type { MockupEntry, MultiScreenMockupEntry } from "./mockup-config";
 import sharp from "sharp";
 import fs from "node:fs";
 import path from "node:path";
@@ -119,6 +119,66 @@ export async function dismissTutorial(page: Page): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /**
+ * Navigate to an LS Graphics scene and open the editor.
+ * Shared setup for single- and multi-screen uploads.
+ */
+async function navigateToEditor(page: Page, sceneSlug: string): Promise<void> {
+  await page.goto(`${LS_GRAPHICS_BASE}/assets/${sceneSlug}`, {
+    waitUntil: "load",
+  });
+
+  if (page.url().includes("/login") || page.url() === `${LS_GRAPHICS_BASE}/`) {
+    throw new Error(
+      `Session expired — redirected to ${page.url()} instead of scene page`
+    );
+  }
+
+  const editBtn = page.getByRole("button", { name: "Edit Online" });
+  if (await editBtn.isVisible()) {
+    await editBtn.click();
+  }
+
+  // Wait for the editor canvas to load (may take several seconds for large scenes)
+  const scene = page.locator("#scene");
+  await scene.waitFor({ state: "visible", timeout: 30_000 });
+
+  // Give the tutorial overlay time to render after the canvas loads
+  await page.waitForTimeout(2000);
+  await dismissTutorial(page);
+}
+
+/**
+ * Click a position on the scene canvas and upload a screenshot.
+ *
+ * @param relativeX - Relative X position (0–1) within the scene
+ * @param relativeY - Relative Y position (0–1) within the scene
+ */
+async function uploadAtPosition(
+  page: Page,
+  screenshotPath: string,
+  relativeX: number,
+  relativeY: number
+): Promise<void> {
+  const scene = page.locator("#scene");
+  await scene.waitFor({ state: "visible", timeout: 15_000 });
+  const box = await scene.boundingBox();
+  if (!box) throw new Error("Could not find #scene bounding box");
+  await page.mouse.click(
+    box.x + box.width * relativeX,
+    box.y + box.height * relativeY
+  );
+
+  const browseBtn = page.getByRole("button", { name: "Browse" });
+  await browseBtn.waitFor({ state: "visible", timeout: 10_000 });
+
+  const [fileChooser] = await Promise.all([
+    page.waitForEvent("filechooser", { timeout: 15_000 }),
+    browseBtn.click(),
+  ]);
+  await fileChooser.setFiles(screenshotPath);
+}
+
+/**
  * Navigate to an LS Graphics scene and upload a screenshot into the mockup.
  *
  * @param page - Playwright page with active LS Graphics session
@@ -130,50 +190,8 @@ export async function uploadToScene(
   sceneSlug: string,
   screenshotPath: string
 ): Promise<void> {
-  // Navigate to scene page
-  await page.goto(`${LS_GRAPHICS_BASE}/assets/${sceneSlug}`, {
-    waitUntil: "load",
-  });
-
-  // Check for session redirect (if logged out mid-run)
-  if (page.url().includes("/login") || page.url() === `${LS_GRAPHICS_BASE}/`) {
-    throw new Error(
-      `Session expired — redirected to ${page.url()} instead of scene page`
-    );
-  }
-
-  // Click "Edit Online" to open the inline mockup editor if it hasn't
-  // auto-loaded. The editor renders a canvas with a green screen area.
-  const editBtn = page.getByRole("button", { name: "Edit Online" });
-  if (await editBtn.isVisible()) {
-    await editBtn.click();
-    await page.waitForTimeout(2000);
-  }
-
-  // Dismiss tutorial overlay BEFORE clicking the green screen.
-  // The tutorial intercepts pointer events and prevents the editor from
-  // registering which smart object was clicked — the upload modal opens
-  // but the image won't be composited into the correct canvas layer.
-  await dismissTutorial(page);
-
-  // Click the green screen / mockup canvas area to open the upload modal.
-  // The editor renders inside #editor > #scene.
-  const scene = page.locator("#scene");
-  await scene.waitFor({ state: "visible", timeout: 15_000 });
-  const box = await scene.boundingBox();
-  if (!box) throw new Error("Could not find #scene bounding box");
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-
-  // Wait for upload modal to appear
-  const browseBtn = page.getByRole("button", { name: "Browse" });
-  await browseBtn.waitFor({ state: "visible", timeout: 10_000 });
-
-  // Upload via Browse button + file chooser
-  const [fileChooser] = await Promise.all([
-    page.waitForEvent("filechooser", { timeout: 15_000 }),
-    browseBtn.click(),
-  ]);
-  await fileChooser.setFiles(screenshotPath);
+  await navigateToEditor(page, sceneSlug);
+  await uploadAtPosition(page, screenshotPath, 0.5, 0.5);
 }
 
 /**
@@ -200,7 +218,8 @@ export async function acceptCropAndContinue(page: Page): Promise<void> {
  */
 export async function downloadMockup(
   page: Page,
-  savePath: string
+  savePath: string,
+  resize?: { width: number; height: number }
 ): Promise<Download> {
   // Dismiss tutorial step 2 if shown (appears after crop)
   await dismissTutorial(page);
@@ -228,7 +247,11 @@ export async function downloadMockup(
   const tmpPngPath = savePath.replace(/\.webp$/, ".png");
   await download.saveAs(tmpPngPath);
 
-  await sharp(tmpPngPath).webp({ quality: 82 }).toFile(savePath);
+  let pipeline = sharp(tmpPngPath);
+  if (resize) {
+    pipeline = pipeline.resize(resize.width, resize.height);
+  }
+  await pipeline.webp({ quality: 82 }).toFile(savePath);
   fs.unlinkSync(tmpPngPath);
   console.log(`  WEBP → ${path.relative(process.cwd(), savePath)}`);
 
@@ -249,23 +272,63 @@ export async function generateMockup(
   page: Page,
   entry: MockupEntry
 ): Promise<void> {
-  // Verify source screenshot exists
   if (!fs.existsSync(entry.screenshotPath)) {
     throw new Error(`Source screenshot not found: ${entry.screenshotPath}`);
   }
 
-  // Ensure output directory exists
   const outputDir = path.dirname(entry.outputPath);
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
   }
 
-  // Upload screenshot to scene
   await uploadToScene(page, entry.scene.slug, entry.screenshotPath);
-
-  // Accept default crop
   await acceptCropAndContinue(page);
-
-  // Download rendered mockup
   await downloadMockup(page, entry.outputPath);
+}
+
+/**
+ * Generate a multi-screen mockup: navigate → upload each screen → download.
+ *
+ * For scenes with multiple device screens (e.g., two laptops), this uploads
+ * a different screenshot to each green screen area by clicking at the
+ * configured relative positions within the scene canvas.
+ *
+ * @param page - Authenticated Playwright page
+ * @param entry - Multi-screen mockup configuration entry
+ */
+export async function generateMultiScreenMockup(
+  page: Page,
+  entry: MultiScreenMockupEntry
+): Promise<void> {
+  for (const screen of entry.screens) {
+    if (!fs.existsSync(screen.screenshotPath)) {
+      throw new Error(`Source screenshot not found: ${screen.screenshotPath}`);
+    }
+  }
+
+  const outputDir = path.dirname(entry.outputPath);
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  await navigateToEditor(page, entry.scene.slug);
+
+  for (let i = 0; i < entry.screens.length; i++) {
+    const screen = entry.screens[i];
+
+    // After compositing the previous screen, wait for the canvas to settle
+    if (i > 0) {
+      await page.waitForTimeout(2000);
+    }
+
+    await uploadAtPosition(
+      page,
+      screen.screenshotPath,
+      screen.clickX,
+      screen.clickY
+    );
+    await acceptCropAndContinue(page);
+  }
+
+  await downloadMockup(page, entry.outputPath, entry.resize);
 }

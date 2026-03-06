@@ -8,8 +8,12 @@
  * Single mockup: pnpm run mockups -- --grep "04-tmdb-wizard"
  */
 import { test, type BrowserContext, type Page } from "@playwright/test";
-import { ALL_MOCKUPS } from "./mockup-config";
-import { loginToLsGraphics, generateMockup } from "./ls-graphics.utils";
+import { ALL_MOCKUPS, MULTI_SCREEN_MOCKUPS } from "./mockup-config";
+import {
+  loginToLsGraphics,
+  generateMockup,
+  generateMultiScreenMockup,
+} from "./ls-graphics.utils";
 import fs from "node:fs";
 
 // Shared context — LS Graphics auth doesn't survive storageState round-trips,
@@ -40,13 +44,33 @@ test.describe("LS Graphics Mockups", () => {
 
   for (const entry of ALL_MOCKUPS) {
     test(`generate mockup: ${entry.id}`, async () => {
-      // Verify source screenshot exists before starting
       if (!fs.existsSync(entry.screenshotPath)) {
         test.skip(true, `Source screenshot not found: ${entry.screenshotPath}`);
         return;
       }
 
       await generateMockup(sharedPage, entry);
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Multi-screen mockups (scenes with multiple device screens)
+  // -------------------------------------------------------------------------
+
+  for (const entry of MULTI_SCREEN_MOCKUPS) {
+    test(`generate multi-screen mockup: ${entry.id}`, async () => {
+      const missing = entry.screens.filter(
+        (s) => !fs.existsSync(s.screenshotPath)
+      );
+      if (missing.length > 0) {
+        test.skip(
+          true,
+          `Source screenshots not found: ${missing.map((s) => s.screenshotPath).join(", ")}`
+        );
+        return;
+      }
+
+      await generateMultiScreenMockup(sharedPage, entry);
     });
   }
 });

@@ -3,7 +3,7 @@
  *
  * Two use cases:
  * A. Feature Accordion — 5 laptop screenshots → unique MacBook scenes → public/images/*.webp
- * B. Portfolio Website  — 16 screenshots (laptop + mobile) → 2 scenes each → public/portfolio/*.webp
+ * B. Portfolio Website  — 18 screenshots (laptop + mobile) → 2 scenes each → public/portfolio/*.webp
  *
  * Media-stack images (03-item-detail, 07-explore-page) are converted inline
  * during screenshot capture (no mockup needed) — see screenshot.utils.ts.
@@ -36,6 +36,28 @@ export interface MockupEntry {
   outputPath: string;
 }
 
+export interface ScreenPosition {
+  /** Path to the source screenshot PNG */
+  screenshotPath: string;
+  /** Relative X position within the scene to click (0–1) */
+  clickX: number;
+  /** Relative Y position within the scene to click (0–1) */
+  clickY: number;
+}
+
+export interface MultiScreenMockupEntry {
+  /** Unique identifier for the mockup */
+  id: string;
+  /** Screens to upload, in click order (left-to-right) */
+  screens: ScreenPosition[];
+  /** LS Graphics scene to use */
+  scene: SceneConfig;
+  /** Where to save the final webp */
+  outputPath: string;
+  /** Optional resize dimensions for the final output */
+  resize?: { width: number; height: number };
+}
+
 // ---------------------------------------------------------------------------
 // Scenes
 // ---------------------------------------------------------------------------
@@ -55,6 +77,11 @@ const SCENES = {
   "iphone-16e-22": {
     slug: "iphone-16e-mockup-scene-22",
     label: "iPhone 16e Scene 22",
+  },
+  // Multi-device scenes
+  "macbook-air-12": {
+    slug: "e-mockups-macbook-air-scene-12",
+    label: "MacBook Air Scene 12 (Two Laptops)",
   },
 } as const satisfies Record<string, SceneConfig>;
 
@@ -99,12 +126,13 @@ export const ACCORDION_MOCKUPS: MockupEntry[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Portfolio Mockups (16 entries — 8 features × 2 devices → public/portfolio/)
+// Portfolio Mockups (18 entries — 9 features × 2 devices → public/portfolio/)
 // ---------------------------------------------------------------------------
 
 const PORTFOLIO_FEATURES = [
   "01-library-grid",
   "02-tree-view",
+  "05-item-grid",
   "04-tmdb-wizard",
   "06-google-drive-sync",
   "07-explore-page",
@@ -129,6 +157,36 @@ export const PORTFOLIO_MOCKUPS: MockupEntry[] = PORTFOLIO_FEATURES.flatMap(
     },
   ]
 );
+
+// ---------------------------------------------------------------------------
+// Multi-Screen Mockups (scenes with multiple device screens)
+// ---------------------------------------------------------------------------
+
+export const MULTI_SCREEN_MOCKUPS: MultiScreenMockupEntry[] = [
+  {
+    id: "duo-spotlight-item-detail",
+    screens: [
+      {
+        // Left laptop — spotlight search
+        screenshotPath: path.join(
+          SCREENSHOTS_DIR,
+          "08-spotlight-search-laptop.png"
+        ),
+        clickX: 0.3,
+        clickY: 0.5,
+      },
+      {
+        // Right laptop — item detail page
+        screenshotPath: path.join(SCREENSHOTS_DIR, "03-item-detail-laptop.png"),
+        clickX: 0.75,
+        clickY: 0.35,
+      },
+    ],
+    scene: SCENES["macbook-air-12"],
+    outputPath: path.join(IMAGES_DIR, "duo-spotlight-item-detail.webp"),
+    resize: { width: 2560, height: 1664 },
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Combined
