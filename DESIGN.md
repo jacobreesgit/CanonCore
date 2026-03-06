@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: March 2026 (v12.1.0)
+Last updated: March 2026 (v12.2.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -1585,13 +1585,15 @@ Husky manages Git hooks:
 
 A unified Playwright pipeline (`pnpm run mockups`) captures app screenshots and generates device mockups in a single command. Three Playwright projects run in sequence:
 
-1. **laptop** (1152×745 @3x) and **mobile** (390×844 @3x) — capture 10 app scenarios each, outputting PNGs to a gitignored `e2e/output/screenshots/` directory. Media-stack images (item detail, explore page) are converted inline to webp via sharp during capture
-2. **mockups** (depends on laptop + mobile) — uploads screenshots to LS Graphics mockup templates (MacBook and iPhone scenes), downloads the rendered frames, converts to webp (quality 82), and deletes the intermediate PNGs
+1. **laptop** (1152×745 @3x) and **mobile** (390×844 @3x) — capture 11 screenshots across 10 test scenarios per viewport, outputting PNGs to a gitignored `e2e/output/screenshots/` directory. Media-stack images (item detail, explore page) are converted inline to webp via sharp during capture
+2. **mockups** (depends on laptop + mobile) — uploads screenshots to LS Graphics mockup templates (MacBook and iPhone scenes), downloads the rendered frames, converts to webp (quality 82), and deletes the intermediate PNGs. Supports both single-screen and multi-screen scenes
+
+Multi-screen mockups (`MultiScreenMockupEntry`) handle scenes with multiple device screens (e.g., two side-by-side laptops). Each screen is configured with a source screenshot and relative click coordinates (0–1) within the scene canvas. The pipeline navigates to the editor once, then uploads each screenshot at its configured position before downloading the composited result. An optional resize step can scale the final output.
 
 Outputs:
 
-- `public/images/*.webp` — 5 accordion mockups + 2 media-stack screenshots for the homepage
-- `public/portfolio/*.webp` — 16 device mockups (8 features × MacBook + iPhone) for the portfolio
+- `public/images/*.webp` — 5 accordion mockups + 2 media-stack screenshots + 1 multi-screen mockup for the homepage (8 total)
+- `public/portfolio/*.webp` — 18 device mockups (9 features × MacBook + iPhone) for the portfolio
 
 The pipeline must run headed (`headless: false`) because LS Graphics uses canvas/WebGL compositing that fails silently in headless Chrome. Configuration lives in `e2e/mockups/mockup-config.ts` with scene-to-screenshot mappings.
 

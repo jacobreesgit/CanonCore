@@ -28,6 +28,7 @@ type ScreenshotName =
   | "02-tree-view"
   | "03-item-detail"
   | "04-tmdb-wizard"
+  | "05-item-grid"
   | "06-google-drive-sync"
   | "07-explore-page"
   | "08-spotlight-search"

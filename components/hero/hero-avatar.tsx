@@ -55,8 +55,8 @@ export function HeroAvatar({
         {/* Inner avatar */}
         <div
           className={cn(
-            "relative size-28 overflow-hidden rounded-full",
-            "sm:size-32 md:size-44 lg:size-48",
+            "relative size-32 overflow-hidden rounded-full",
+            "md:size-44 lg:size-48",
             "ring-1 ring-white/10"
           )}
         >
@@ -69,7 +69,7 @@ export function HeroAvatar({
                 src={`/api/user/avatar?userId=${userId}`}
                 alt={displayName}
                 fill
-                sizes="(max-width: 640px) 112px, (max-width: 768px) 128px, (max-width: 1024px) 176px, 192px"
+                sizes="(max-width: 768px) 128px, (max-width: 1024px) 176px, 192px"
                 className={cn(
                   "object-cover transition-opacity duration-300",
                   loaded ? "opacity-100" : "opacity-0"

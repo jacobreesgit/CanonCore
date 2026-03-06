@@ -23,7 +23,7 @@
   position: relative;
   display: block;
   width: calc(var(--column) * 8);
-  height: calc(var(--column) * 5);
+  height: calc(var(--column) * 6);
 }
 
 @container (min-width: 1024px) {
