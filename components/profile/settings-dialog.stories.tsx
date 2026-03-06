@@ -75,6 +75,7 @@ const defaultUser = {
   isPublic: true,
   hasImage: false,
   hasHeroImage: false,
+  bio: null,
 };
 
 // Base date for deterministic mock data (avoids snapshot flakiness)

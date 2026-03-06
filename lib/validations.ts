@@ -205,6 +205,25 @@ export const deleteAccountSchema = z.object({
 });
 
 // =============================================================================
+// Email Verification
+// =============================================================================
+
+/** Schema for verifying an email token. */
+export const verifyEmailSchema = z.object({
+  token: z.string().min(1, "Token is required"),
+});
+
+// =============================================================================
+// User Bio
+// =============================================================================
+
+/** User bio validation (max 300 characters, trimmed). */
+export const bioSchema = z
+  .string()
+  .transform((val) => val.trim())
+  .pipe(z.string().max(300, "Bio must be 300 characters or less"));
+
+// =============================================================================
 // TMDB Response Validation
 // =============================================================================
 

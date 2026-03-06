@@ -39,8 +39,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { initiateGoogleDriveOAuth } from "@/lib/google-drive-actions";
-import { DRIVE_MESSAGES } from "@/lib/constants/messages";
+import { resendVerificationEmail } from "@/lib/auth-actions";
+import { VERIFICATION_MESSAGES } from "@/lib/messages";
 import { cn } from "@/lib/utils";
 
 /** Breadcrumb item representing a navigation ancestor */
@@ -62,8 +62,8 @@ interface SiteHeaderProps {
   breadcrumbs?: BreadcrumbItem[];
   /** Current item ID when viewing item detail (enables context menu) */
   currentItemId?: string;
-  /** Whether Google Drive needs reauthentication (shows reconnect banner) */
-  driveNeedsReauth?: boolean;
+  /** Whether user's email is unverified (shows verification nudge banner) */
+  emailUnverified?: boolean;
   /** Callback when rename action is triggered */
   onRename?: () => void;
   /** Callback when delete action is triggered */
@@ -84,21 +84,21 @@ export function SiteHeader({
   titleHref = "/",
   breadcrumbs = [],
   currentItemId,
-  driveNeedsReauth,
+  emailUnverified,
   onRename,
   onDelete,
 }: SiteHeaderProps) {
   const showContextMenu = currentItemId && (onRename || onDelete);
-  const [isReconnecting, startReconnectTransition] = useTransition();
+  const [isResending, startResendTransition] = useTransition();
 
-  /** Initiates Google Drive OAuth flow to reconnect expired tokens. */
-  const handleReconnect = useCallback(() => {
-    startReconnectTransition(async () => {
-      const result = await initiateGoogleDriveOAuth();
-      if (result.success && result.url) {
-        window.location.href = result.url;
+  /** Resends email verification to the authenticated user. */
+  const handleResendVerification = useCallback(() => {
+    startResendTransition(async () => {
+      const result = await resendVerificationEmail();
+      if (result.success) {
+        toast.success(VERIFICATION_MESSAGES.RESEND_SUCCESS);
       } else {
-        toast.error(result.error || "Failed to start connection");
+        toast.error(result.error || VERIFICATION_MESSAGES.RESEND_FAIL);
       }
     });
   }, []);
@@ -277,11 +277,11 @@ export function SiteHeader({
         )}
       </div>
 
-      {/* Drive reconnect banner (below breadcrumb row) */}
-      {driveNeedsReauth && (
+      {/* Email verification nudge (below breadcrumb row) */}
+      {emailUnverified && (
         <div
-          role="alert"
-          aria-live="assertive"
+          role="status"
+          aria-live="polite"
           className="flex items-center gap-3 border-t border-white/[0.06] bg-white/[0.03] px-4 py-2 backdrop-blur-xl lg:px-6"
         >
           <FontAwesomeIcon
@@ -290,16 +290,16 @@ export function SiteHeader({
             aria-hidden="true"
           />
           <p className="flex-1 text-sm text-amber-200">
-            {DRIVE_MESSAGES.DISCONNECTED_BANNER}
+            {VERIFICATION_MESSAGES.BANNER_NUDGE}
           </p>
           <Button
             variant="ghost"
             size="sm"
             className="shrink-0"
-            disabled={isReconnecting}
-            onClick={handleReconnect}
+            disabled={isResending}
+            onClick={handleResendVerification}
           >
-            {isReconnecting ? "Connecting..." : "Reconnect"}
+            {isResending ? "Sending..." : "Resend"}
           </Button>
         </div>
       )}

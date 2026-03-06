@@ -73,6 +73,8 @@ interface ProfileData {
   hasHeroImage: boolean;
   /** Dominant colour extracted from hero image */
   dominantColour: string | null;
+  /** User bio for public display */
+  bio: string | null;
 }
 
 interface ProfilePageProps {
@@ -285,6 +287,7 @@ function OwnerModeContent({
             username: profile.username,
             name: profile.name,
             hasImage: profile.hasImage,
+            bio: profile.bio,
           },
         } satisfies HeroSlide,
       ]}
@@ -484,6 +487,7 @@ function ViewerModeContent({
             username: profile.username,
             name: profile.name,
             hasImage: profile.hasImage,
+            bio: profile.bio,
           },
         } satisfies HeroSlide,
       ]}

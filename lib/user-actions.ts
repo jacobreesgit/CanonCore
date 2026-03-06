@@ -124,7 +124,8 @@ export async function updateProfile(data: {
   username?: string | null;
   isPublic?: boolean;
   currentPassword?: string;
-}): Promise<ActionResult<void>> {
+  bio?: string;
+}): Promise<ActionResult<{ pendingEmail?: string }>> {
   // Run auth and rate limit in parallel (async-parallel pattern)
   const [userId, rateLimitResult] = await Promise.all([
     getAuthUserId(),
@@ -149,6 +150,18 @@ export async function updateProfile(data: {
         return {
           success: false,
           error: nameValidation.error.issues[0].message,
+        };
+      }
+    }
+
+    // Validate bio if provided
+    if (data.bio !== undefined) {
+      const { bioSchema } = await import("@/lib/validations");
+      const bioValidation = bioSchema.safeParse(data.bio);
+      if (!bioValidation.success) {
+        return {
+          success: false,
+          error: bioValidation.error.issues[0].message,
         };
       }
     }
@@ -223,13 +236,41 @@ export async function updateProfile(data: {
         if (existingUser) {
           return { success: false, error: "Email already in use" };
         }
-      }
 
-      await logSecurityEvent("EMAIL_CHANGE", {
-        userId,
-        oldEmail: user.email,
-        newEmail: data.email,
-      });
+        // Don't update email directly — send verification to new address
+        const { randomBytes } = await import("crypto");
+        const { sendVerificationEmail } = await import("@/lib/email");
+        const verificationToken = randomBytes(32).toString("hex");
+        const expires = new Date(Date.now() + 30 * 60 * 1000);
+
+        // Delete existing verification tokens
+        await prisma.emailVerificationToken.deleteMany({
+          where: { userId },
+        });
+
+        await prisma.emailVerificationToken.create({
+          data: {
+            token: verificationToken,
+            userId,
+            email: data.email,
+            expires,
+          },
+        });
+
+        await sendVerificationEmail(data.email, verificationToken);
+
+        await logSecurityEvent("EMAIL_CHANGE_REQUESTED", {
+          userId,
+          oldEmail: user.email,
+          newEmail: data.email,
+        });
+
+        // Return success with pendingEmail info so the UI can show feedback
+        return {
+          success: true,
+          data: { pendingEmail: data.email },
+        };
+      }
     }
 
     // Fetch current values for change detection before updating
@@ -241,14 +282,14 @@ export async function updateProfile(data: {
           })
         : null;
 
-    // Update profile
+    // Update profile (email changes go through verification flow above)
     await prisma.user.update({
       where: { id: userId },
       data: {
         ...(data.name !== undefined && { name: data.name }),
-        ...(data.email !== undefined && { email: data.email }),
         ...(data.username !== undefined && { username: data.username }),
         ...(data.isPublic !== undefined && { isPublic: data.isPublic }),
+        ...(data.bio !== undefined && { bio: data.bio }),
       },
     });
 
@@ -343,7 +384,7 @@ export async function changePassword(data: {
 
     await prisma.user.update({
       where: { id: userId },
-      data: { passwordHash: newPasswordHash },
+      data: { passwordHash: newPasswordHash, tokenVersion: { increment: 1 } },
     });
 
     await logSecurityEvent("PASSWORD_CHANGE_SUCCESS", { userId });

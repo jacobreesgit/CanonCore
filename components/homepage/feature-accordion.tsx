@@ -12,7 +12,7 @@ const FEATURES = [
     title: "Google Drive Native",
     description:
       "Your media stays in Google Drive. CanonCore reads it directly. No uploads, no migrations, no storage limits. Connect once and your entire library is ready.",
-    image: "/images/06-google-drive-sync.webp",
+    image: "/images/02-tree-view.webp",
     learnMoreHref: "/docs/google-drive/sync-files",
   },
   {

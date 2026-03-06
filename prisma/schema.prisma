@@ -26,6 +26,12 @@ model User {
   heroImageMime   String?          // MIME type for hero
   dominantColour  String?          // Hex colour extracted from hero image
 
+  // Auth & security hardening fields
+  bio                 String?          @db.VarChar(300)  // Public profile bio
+  tokenVersion        Int              @default(0)       // Incremented on password reset/change to invalidate JWTs
+  failedLoginAttempts Int              @default(0)       // Consecutive failed sign-in attempts
+  lockedUntil         DateTime?                          // Account lockout expiry (null = not locked)
+
   /// Hash of seed configuration for incremental seeding (null for non-seeded users)
   seedContentHash String?
 
@@ -48,12 +54,27 @@ model User {
 
   // Watch records
   watchRecords          WatchRecord[]
+
+  // Email verification tokens
+  emailVerificationTokens EmailVerificationToken[]
 }
 
 model PasswordReset {
   id        String   @id @default(cuid())
   token     String   @unique
   userId    String
+  expires   DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expires])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  email     String   // Email being verified (current signup or pending new email)
   expires   DateTime
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

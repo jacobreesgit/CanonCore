@@ -16,7 +16,6 @@ import {
   getFeaturedItems,
 } from "@/lib/public-auth";
 import { getProfile } from "@/lib/user-actions";
-import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
 import { getItemTmdbMetadata } from "@/lib/tmdb-client";
 import { prisma } from "@/lib/prisma";
 import { SiteHeader } from "@/components/site-header";
@@ -47,20 +46,17 @@ export const metadata: Metadata = {
  * Renders the header shell immediately, then streams heavy content via Suspense.
  */
 export default async function ExplorePage() {
-  // Fast shell: auth + drive connection for SiteHeader
+  // Fast shell: auth for SiteHeader
   const session = await auth();
   const currentUserId = session?.user?.id ?? null;
-  const driveConnection = currentUserId
-    ? await getGoogleDriveConnection()
-    : null;
-  const driveNeedsReauth = driveConnection?.needsReauth ?? false;
+  const emailUnverified = session?.user ? !session.user.emailVerified : false;
 
   return (
     <>
       <SiteHeader
         title="Explore"
         titleHref="/explore"
-        driveNeedsReauth={driveNeedsReauth}
+        emailUnverified={emailUnverified}
       />
       <div className="text-foreground -mt-(--header-height) flex flex-1 flex-col">
         <Suspense fallback={<ExploreContentSkeleton />}>

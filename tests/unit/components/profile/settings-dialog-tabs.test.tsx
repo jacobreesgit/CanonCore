@@ -24,6 +24,7 @@ const mockUser = {
   isPublic: false,
   hasImage: false,
   hasHeroImage: false,
+  bio: null,
 };
 
 describe("SettingsDialog Tabs", () => {

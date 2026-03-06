@@ -1127,6 +1127,8 @@ async function createSeedUsers(): Promise<
         heroImage: heroData?.data ?? null,
         heroImageMime: heroData?.mime ?? null,
         passwordHash,
+        bio: userData.bio ?? null,
+        emailVerified: new Date(),
       },
     });
 

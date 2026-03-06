@@ -24,6 +24,11 @@ vi.mock("next/headers", () => ({
   }),
 }));
 
+// Mock email sending (email changes now send verification)
+vi.mock("@/lib/email", () => ({
+  sendVerificationEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Mock file-type for image validation
 vi.mock("file-type", () => ({
   fileTypeFromBuffer: vi.fn().mockResolvedValue({
@@ -91,7 +96,7 @@ describe("updateProfile integration", () => {
     expect(updated?.name).toBe("New Name");
   });
 
-  it("persists email change to database", async () => {
+  it("creates verification token for email change (no direct update)", async () => {
     const { user } = await createTestUser("email");
     const newEmail = `updated-${Date.now()}@test.example.com`;
 
@@ -101,8 +106,20 @@ describe("updateProfile integration", () => {
     });
     expect(result.success).toBe(true);
 
+    // Email should NOT be updated directly
     const updated = await prisma.user.findUnique({ where: { id: user.id } });
-    expect(updated?.email).toBe(newEmail);
+    expect(updated?.email).not.toBe(newEmail);
+
+    // Verification token should have been created
+    const token = await prisma.emailVerificationToken.findFirst({
+      where: { userId: user.id, email: newEmail },
+    });
+    expect(token).not.toBeNull();
+
+    // Cleanup
+    await prisma.emailVerificationToken.deleteMany({
+      where: { userId: user.id },
+    });
   });
 
   it("requires correct password for email change", async () => {

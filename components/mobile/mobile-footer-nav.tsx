@@ -101,7 +101,7 @@ export function MobileFooterNav({
       data-testid="nav-mobile-footer"
       className={cn(
         "fixed inset-x-0 bottom-0 z-40",
-        "flex h-16 items-center justify-around",
+        "flex h-12 items-center justify-around",
         "border-sidebar-border bg-sidebar border-t",
         "pb-[env(safe-area-inset-bottom)]",
         // Touch optimizations

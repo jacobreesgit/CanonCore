@@ -19,6 +19,8 @@ interface HeroContentLayoutProps {
   isPending?: boolean;
   /** Dominant colour for full-page theming (hex, e.g. "#1a3a5c"). */
   dominantColour?: string | null;
+  /** Enable 500ms colour transition (only for multi-slide carousels). */
+  animateColour?: boolean;
   /** Additional CSS classes. */
   className?: string;
   /** Test ID for E2E testing. */
@@ -40,6 +42,7 @@ export function HeroContentLayout({
   hero,
   isPending,
   dominantColour,
+  animateColour,
   className,
   "data-testid": dataTestId,
   children,
@@ -52,10 +55,10 @@ export function HeroContentLayout({
     <div
       data-testid={dataTestId}
       className={cn(
-        "flex flex-col bg-[var(--dark-900)]",
+        "flex flex-1 flex-col bg-[var(--dark-900)]",
         !hero && "pt-[calc(var(--header-height)+1rem)]",
         isPending && "opacity-70",
-        dominantColour && "transition-colours-pipeline",
+        animateColour && dominantColour && "transition-colours-pipeline",
         className
       )}
       style={colourStyles}

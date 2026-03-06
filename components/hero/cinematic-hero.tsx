@@ -135,7 +135,7 @@ export function CinematicHero({
   return (
     <section
       className={cn(
-        "relative h-[calc(55vh+var(--header-height))] w-full overflow-hidden bg-[var(--dark-900)] md:h-[calc(65vh+var(--header-height))]",
+        "relative flex min-h-[calc(55vh+var(--header-height))] w-full flex-col bg-[var(--dark-900)] md:min-h-[calc(65vh+var(--header-height))] lg:block lg:h-[calc(65vh+var(--header-height))] lg:min-h-0 lg:overflow-hidden",
         activeDominantColour && "transition-colours-pipeline",
         className
       )}
@@ -156,7 +156,7 @@ export function CinematicHero({
       {/* Embla Carousel Container — skip ref for single slide to avoid unnecessary init */}
       <div
         ref={isSingleSlide ? undefined : emblaRef}
-        className="h-full overflow-hidden"
+        className="absolute inset-0 overflow-hidden"
       >
         <div className="flex h-full">
           {slides.map((slide, index) => {
@@ -229,8 +229,8 @@ export function CinematicHero({
         </div>
       </div>
 
-      {/* Content (positioned over carousel) */}
-      <div className="animate-slide-up pointer-events-none absolute inset-x-0 bottom-0 z-10">
+      {/* Content — mobile: relative flow (grows hero). Desktop: absolute bottom. */}
+      <div className="animate-slide-up pointer-events-none relative z-10 mt-auto pt-[30vh] md:pt-[40vh] lg:absolute lg:inset-x-0 lg:bottom-0 lg:mt-0 lg:pt-0">
         <div
           className={cn(
             "px-[var(--section-px-mobile)]",
@@ -245,7 +245,7 @@ export function CinematicHero({
         >
           {/* Profile avatar mode */}
           {activeSlide.profile ? (
-            <div className="flex items-end gap-5 md:gap-8">
+            <div className="flex flex-col items-center gap-4 md:flex-row md:items-end md:gap-8">
               <HeroAvatar
                 userId={activeSlide.profile.id}
                 name={activeSlide.profile.name}
@@ -254,7 +254,7 @@ export function CinematicHero({
               />
 
               {/* Name and username */}
-              <div className="min-w-0 flex-1 pb-1">
+              <div className="min-w-0 text-center md:flex-1 md:pb-1 md:text-left">
                 <Heading
                   className={cn(
                     "text-3xl font-bold tracking-tight text-balance",
@@ -267,9 +267,14 @@ export function CinematicHero({
                 <p className="mt-2 truncate text-sm text-white/60 md:text-base">
                   @{activeSlide.profile.username}
                 </p>
+                {activeSlide.profile?.bio && (
+                  <p className="mx-auto mt-3 line-clamp-2 max-w-2xl text-sm leading-relaxed text-white/70 md:mx-0 md:text-base">
+                    {activeSlide.profile.bio}
+                  </p>
+                )}
                 {typeof activeSlide.progress === "number" &&
                   activeSlide.progress > 0 && (
-                    <div className="mt-5 flex max-w-xs flex-col gap-2">
+                    <div className="mx-auto mt-5 flex max-w-xs flex-col gap-2 md:mx-0">
                       <div className="relative h-1 w-full max-w-[400px] overflow-hidden rounded-full bg-white/10 backdrop-blur-sm">
                         <div
                           className="bg-primary absolute inset-y-0 left-0 rounded-full transition-[width] duration-300 ease-out"

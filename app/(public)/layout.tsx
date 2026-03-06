@@ -33,7 +33,7 @@ export default async function PublicLayout({
       : Promise.resolve({ success: true as const, data: [] }),
   ]);
   const pinnedItems = "data" in pinnedResult ? (pinnedResult.data ?? []) : [];
-  const driveNeedsReauth = driveConnection?.needsReauth ?? false;
+  const emailUnverified = session?.user ? !session.user.emailVerified : false;
 
   // Prepare user data for mobile nav (null-safe)
   const mobileNavUser = user
@@ -45,6 +45,7 @@ export default async function PublicLayout({
         isPublic: user.isPublic,
         hasImage: user.hasImage,
         hasHeroImage: user.hasHeroImage,
+        bio: user.bio,
       }
     : null;
 
@@ -78,7 +79,7 @@ export default async function PublicLayout({
       <MobileNavProvider
         user={mobileNavUser}
         driveConnection={driveConnection}
-        driveNeedsReauth={driveNeedsReauth}
+        emailUnverified={emailUnverified}
       />
     </SidebarProvider>
   );

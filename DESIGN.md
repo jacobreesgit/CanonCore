@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: March 2026 (v11.2.0)
+Last updated: March 2026 (v12.2.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -130,7 +130,8 @@ Built on PostgreSQL with Prisma ORM. Key tables:
 **User:**
 
 - Authentication (email, passwordHash via bcryptjs)
-- Profile (username, isPublic, image/heroImage blobs)
+- Profile (username, isPublic, image/heroImage blobs, bio VARCHAR(300))
+- Security hardening (tokenVersion for JWT invalidation, failedLoginAttempts, lockedUntil for account lockout)
 - Seeding (seedContentHash for incremental updates)
 
 **Item (hierarchical tree):**
@@ -207,22 +208,26 @@ Built on PostgreSQL with Prisma ORM. Key tables:
 ### Entity-Relationship Diagram
 
 ```
-┌──────────────┐
-│     User     │
-├──────────────┤
-│ id           │──┐
-│ email        │  │ 1:1
-│ passwordHash │  ├─────────┐
-│ username     │  │         │
-│ isPublic     │  │         ▼
-│ image (blob) │  │  ┌─────────────────────┐
-└──────────────┘  │  │GoogleDriveConnection│
-                  │  ├─────────────────────┤
-        1:N       │  │ accessToken (enc)   │
-        │         │  │ refreshToken (enc)  │
-    ┌───▼─────┐   │  │ rootFolderId        │
-    │  Item   │◄──┘  │ quotaBytesUsed      │
-    ├─────────┤      └─────────────────────┘
+┌────────────────────┐
+│       User         │
+├────────────────────┤
+│ id                 │──┐
+│ email              │  │ 1:1
+│ passwordHash       │  ├─────────┐
+│ username           │  │         │
+│ isPublic           │  │         ▼
+│ bio                │  │  ┌─────────────────────┐
+│ tokenVersion       │  │  │GoogleDriveConnection│
+│ failedLoginAttempts│  │  ├─────────────────────┤
+│ lockedUntil        │  │  │ accessToken (enc)   │
+│ image (blob)       │  │  │ refreshToken (enc)  │
+└────────────────────┘  │  │ rootFolderId        │
+                        │  │ quotaBytesUsed      │
+              1:N       │  └─────────────────────┘
+              │         │
+          ┌───▼─────┐   │
+    │  Item   │◄──┘
+    ├─────────┤
     │ id      │
     │ parentId│──┐ Self-referential
     │ name    │  │ (tree structure)
@@ -283,6 +288,14 @@ Built on PostgreSQL with Prisma ORM. Key tables:
             │ source       │ (AUTO/MANUAL)
             │ watchedAt    │
             └──────────────┘
+
+┌──────────────┐         ┌───────────────────────────┐
+│     User     │──┐ 1:N  │  EmailVerificationToken   │
+└──────────────┘  │      ├───────────────────────────┤
+                  └─────▶│ token (unique)            │
+                         │ email                     │
+                         │ expires                   │
+                         └───────────────────────────┘
 ```
 
 ### Key Schema Decisions
@@ -332,7 +345,7 @@ All mutations go through server actions in `lib/*-actions.ts`:
 - `lib/playlist-actions.ts` - Playlist CRUD, artwork, share tokens, item membership, reordering
 - `lib/google-drive-actions.ts` - OAuth, sync, connection management
 - `lib/tmdb-actions.ts` - Metadata search, image fetching, per-field clearing, display options
-- `lib/auth-actions.ts` - Sign up, forgot password, reset password
+- `lib/auth-actions.ts` - Sign up, forgot password, reset password, email verification, lockout check
 - `lib/user-actions.ts` - Profile updates, image uploads, account deletion, data export
 - `lib/fork-actions.ts` - Forking collections
 - `lib/watch-actions.ts` - Watch status (create, mark, unmark, batch, status query)
@@ -405,6 +418,11 @@ Server Actions can't stream responses, so these use API Routes:
 - Fumadocs documentation at `/docs` (shared ContentLayout)
 - Legal pages at `/legal` (privacy policy, terms of service, cookie policy)
 
+**`app/verify-email/`:**
+
+- Email verification landing page (outside auth route group — works for both authenticated email changes and unauthenticated signup verification)
+- Validates token from URL params, handles signup verification and email change flows
+
 ---
 
 ## Authentication & Security
@@ -453,11 +471,34 @@ Implementation in `lib/rate-limit.ts` with exponential backoff.
 
 ### Security Features
 
+**Account Lockout:**
+
+- 5 consecutive failed login attempts → 15-minute lockout
+- Pure functions in `lib/lockout-utils.ts`: `isAccountLocked()`, `handleFailedLogin()`, `handleSuccessfulLogin()`
+- Authorize callback checks lockout before password verification
+- Anti-enumeration: `checkSignInStatus()` returns `{ status: "ok" }` for unknown emails
+
+**Email Verification:**
+
+- `EmailVerificationToken` model with 30-minute expiry
+- Signup sends verification email via Resend (non-blocking)
+- Email changes create verification token instead of updating directly
+- Verification landing page at `/verify-email` handles both signup and email change flows
+- Nudge banner in SiteHeader with resend button for unverified users
+
+**JWT Token Version Invalidation:**
+
+- `User.tokenVersion` (Int, default 0) incremented on password reset and change
+- JWT callback stores tokenVersion on sign-in, checks against DB on subsequent requests
+- Version mismatch clears `token.id` → session callback skips user population → forced sign-out
+- Closes the stale-session gap inherent in stateless JWTs
+
 **Password Reset:**
 
 - 30-minute expiry tokens stored in database
 - Sent via Resend transactional email
 - Tokens hashed before storage
+- Now increments `tokenVersion` to invalidate existing sessions
 
 **OAuth Token Encryption:**
 
@@ -593,6 +634,7 @@ Multi-layer defence against aggressive AI crawlers:
 **CinematicHero Component:**
 
 - Multi-mode: carousel (explore page), single-slide (item detail), profile avatar mode, custom backdrop (playlist detail)
+- **Responsive layout**: Mobile uses flex layout with `min-height` — content flows naturally below the backdrop via `mt-auto`, growing the hero to fit. Desktop keeps the fixed-height overlay (`lg:absolute lg:bottom-0`). Carousel backdrop is `absolute inset-0` on all viewports
 - `backgroundElement` prop accepts custom React node rendered behind gradient overlay (used for mosaic tile backdrops)
 - Embla Carousel fade plugin for smooth crossfade transitions between slides (replaces slide-based animation)
 - Auto-advance every 5 seconds with pause on hover
@@ -615,7 +657,7 @@ Each item can have a dominant colour extracted from its backdrop, used to theme 
 
 4. **Injection** — `CinematicHero` calls `createColourShades()` with the active slide's `dominantColour`, spreads the result as inline `style` on the section element, and adds the `.transition-colours-pipeline` class. This class transitions all 10 properties at 500ms ease, producing a smooth crossfade as the carousel advances. Hero overlay gradients use `color-mix(in srgb, var(--dark-900) N%, transparent)` instead of hardcoded `rgba()` values, resolving from the hero's own colour scope.
 
-`HeroContentLayout` wraps the entire page below the hero, accepting a `dominantColour` prop. Explore page tracks the active colour via `onColourChange` callback and passes it down.
+`HeroContentLayout` wraps the entire page below the hero, accepting a `dominantColour` prop and an `animateColour` boolean that conditionally enables the 500ms colour crossfade (only used by the explore page's multi-slide carousel — single-slide pages apply colour instantly). Explore page tracks the active colour via `onColourChange` callback and passes it down.
 
 **Logo Overlay:**
 
@@ -1024,7 +1066,7 @@ Hero section and media stack use CSS Modules (`hero-section.module.css`, `media-
 - Requires password verification (bcryptjs compare) and typing "DELETE" to confirm
 - Validated with `deleteAccountSchema` (Zod) in `lib/validations.ts`
 - Best-effort Google Drive folder trash before deletion (logs warning on failure, proceeds)
-- `prisma.user.delete()` triggers cascade deletion: Items, ItemFiles, Playlists, PlaylistItems, Forks, SyncLogs, PasswordResets, GoogleDriveConnection
+- `prisma.user.delete()` triggers cascade deletion: Items, ItemFiles, Playlists, PlaylistItems, Forks, SyncLogs, PasswordResets, EmailVerificationTokens, GoogleDriveConnection
 - Security event logging at each stage via `logSecurityEvent()`: rate limited, wrong password, confirmed, completed
 - Non-blocking completion logging via `after()` from `next/server`
 - Client-side `signOut({ callbackUrl: "/" })` after successful deletion
@@ -1539,9 +1581,21 @@ Husky manages Git hooks:
 - `slugify()` utility for deterministic item testids: `item-card-${slug}`, `item-tree-${slug}`
 - Unit tests use role-based and text-based selectors (Testing Library best practices)
 
-### Screenshot Automation
+### Screenshot & Mockup Pipeline
 
-Portfolio screenshots for marketing/documentation using POM patterns and fixtures. Outputs to `public/portfolio/*.png`.
+A unified Playwright pipeline (`pnpm run mockups`) captures app screenshots and generates device mockups in a single command. Three Playwright projects run in sequence:
+
+1. **laptop** (1152×745 @3x) and **mobile** (390×844 @3x) — capture 11 screenshots across 10 test scenarios per viewport, outputting PNGs to a gitignored `e2e/output/screenshots/` directory. Media-stack images (item detail, explore page) are converted inline to webp via sharp during capture
+2. **mockups** (depends on laptop + mobile) — uploads screenshots to LS Graphics mockup templates (MacBook and iPhone scenes), downloads the rendered frames, converts to webp (quality 82), and deletes the intermediate PNGs. Supports both single-screen and multi-screen scenes
+
+Multi-screen mockups (`MultiScreenMockupEntry`) handle scenes with multiple device screens (e.g., two side-by-side laptops). Each screen is configured with a source screenshot and relative click coordinates (0–1) within the scene canvas. The pipeline navigates to the editor once, then uploads each screenshot at its configured position before downloading the composited result. An optional resize step can scale the final output.
+
+Outputs:
+
+- `public/images/*.webp` — 5 accordion mockups + 2 media-stack screenshots + 1 multi-screen mockup for the homepage (8 total)
+- `public/portfolio/*.webp` — 18 device mockups (9 features × MacBook + iPhone) for the portfolio
+
+The pipeline must run headed (`headless: false`) because LS Graphics uses canvas/WebGL compositing that fails silently in headless Chrome. Configuration lives in `e2e/mockups/mockup-config.ts` with scene-to-screenshot mappings.
 
 ---
 

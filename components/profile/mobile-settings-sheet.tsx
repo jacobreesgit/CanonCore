@@ -57,6 +57,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { FileUpload, FileUploadTrigger } from "@/components/diceui/file-upload";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Switch } from "@/components/ui/switch";
@@ -1013,6 +1014,27 @@ export function MobileSettingsSheet({
           onChange={(e) => form.setName(e.target.value)}
           placeholder="Your name"
         />
+      </div>
+
+      {/* Bio */}
+      <div className="space-y-2">
+        <Label htmlFor="mobile-settings-bio">Bio</Label>
+        <Textarea
+          id="mobile-settings-bio"
+          value={form.bio}
+          onChange={(e) => form.setBio(e.target.value)}
+          placeholder="Tell people about yourself"
+          maxLength={300}
+          rows={3}
+          className="resize-none"
+        />
+        <p
+          className="text-muted-foreground text-right text-xs"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {form.bio.length}/300
+        </p>
       </div>
 
       {/* Public toggle */}

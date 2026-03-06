@@ -54,6 +54,7 @@ export interface HeroSlide {
     username: string;
     name: string | null;
     hasImage: boolean;
+    bio?: string | null;
   };
 }
 

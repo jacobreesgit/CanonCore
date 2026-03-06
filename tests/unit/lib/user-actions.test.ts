@@ -126,6 +126,10 @@ function createMockUser(overrides = {}) {
     heroImage: null,
     heroImageMime: null,
     dominantColour: null,
+    bio: null,
+    tokenVersion: 0,
+    failedLoginAttempts: 0,
+    lockedUntil: null,
     seedContentHash: null,
     defaultViewMode: null,
     defaultSortBy: null,
@@ -155,12 +159,15 @@ describe("updateProfile", () => {
     });
   });
 
-  it("updates email with correct password", async () => {
+  it("creates verification token instead of updating email directly", async () => {
     vi.mocked(prisma.user.findUnique)
       .mockResolvedValueOnce(createMockUser()) // For password check
       .mockResolvedValueOnce(null); // For email uniqueness check
-    vi.mocked(prisma.user.update).mockResolvedValue(
-      createMockUser({ email: "new@example.com" })
+    vi.mocked(prisma.emailVerificationToken.deleteMany).mockResolvedValue({
+      count: 0,
+    } as never);
+    vi.mocked(prisma.emailVerificationToken.create).mockResolvedValue(
+      {} as never
     );
 
     const result = await updateProfile({
@@ -169,10 +176,9 @@ describe("updateProfile", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(prisma.user.update).toHaveBeenCalledWith({
-      where: { id: mockUserId },
-      data: { email: "new@example.com" },
-    });
+    expect(prisma.emailVerificationToken.create).toHaveBeenCalled();
+    // Email should NOT be updated directly
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
   it("rejects email change without password", async () => {
@@ -259,7 +265,10 @@ describe("changePassword", () => {
     expect(result.success).toBe(true);
     expect(prisma.user.update).toHaveBeenCalledWith({
       where: { id: mockUserId },
-      data: { passwordHash: expect.any(String) },
+      data: {
+        passwordHash: expect.any(String),
+        tokenVersion: { increment: 1 },
+      },
     });
   });
 
