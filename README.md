@@ -76,7 +76,7 @@ Every watch event is logged with a timestamp and source (auto or manual), buildi
 
 All your media files stay in your Drive. I use Google's Changes API for incremental syncs, fetching only changed items since the last update. If incremental sync returns no results, a verification step triggers a full sync.
 
-Conflict detection compares timestamps bidirectionally: if Drive's modifiedTime is newer than our stored value, local changes are rejected with a notification. Errors are isolated per file, so individual failures don't interrupt the overall process. If your Drive connection expires, a persistent banner appears across the app prompting you to reconnect.
+Conflict detection compares timestamps bidirectionally: if Drive's modifiedTime is newer than our stored value, local changes are rejected with a notification. Errors are isolated per file, so individual failures don't interrupt the overall process — and failed syncs surface an inline retry button alongside a toast notification with a retry action. A pre-upload quota check blocks file uploads when Google Drive storage exceeds 95%, preventing uploads that would silently fail. Token refreshes use a per-connection mutex to prevent concurrent refresh races from invalidating each other's tokens. If your Drive connection expires, a persistent banner appears across the app prompting you to reconnect. Disconnecting permanently deletes the CanonCore folder from Google Drive and revokes the OAuth token at Google's end.
 
 ### Spotlight Search
 
@@ -118,7 +118,7 @@ Route-level error boundaries catch failures gracefully with styled recovery page
 
 ### Account Management
 
-You own your data. Download a complete export of your account as JSON — profile, items with file metadata and TMDB fields, playlists with memberships, and fork records — from Settings at any time. If you want to leave, permanent account deletion removes everything: items, playlists, files, forks, and audit records. Deletion requires your password and typing "DELETE" to confirm. If Google Drive is connected, the CanonCore folder is moved to trash before the account is removed. Prisma cascade relations handle all dependent records in a single operation. Both data export and account deletion work on mobile through the settings bottom sheet, matching full desktop parity.
+You own your data. Download a complete export of your account as JSON — profile, items with file metadata and TMDB fields, playlists with memberships, and fork records — from Settings at any time. If you want to leave, permanent account deletion removes everything: items, playlists, files, forks, and audit records. Deletion requires your password and typing "DELETE" to confirm. If Google Drive is connected, the CanonCore folder and all its contents are permanently deleted from Google Drive and the OAuth token is revoked before the account is removed. Prisma cascade relations handle all dependent records in a single operation. Both data export and account deletion work on mobile through the settings bottom sheet, matching full desktop parity.
 
 ### Auth Security Hardening
 

@@ -58,7 +58,9 @@ To disconnect:
 2. Click the trash icon next to your connected account
 3. Confirm the disconnection
 
-Disconnecting removes your content from CanonCore but keeps your files safe in Google Drive.
+**Important:** Disconnecting permanently deletes the CanonCore folder and all its contents from your Google Drive. This can't be undone. If you want to keep your files, move them out of the CanonCore folder in Google Drive before disconnecting.
+
+Your CanonCore access token is also revoked at Google's end, so CanonCore no longer has any access to your Drive after disconnecting.
 
 ## Reconnect if needed
 
@@ -79,6 +81,8 @@ The storage bar in Settings shows your Google Drive quota:
 - **Red bar with warning** - Almost full (95%+)
 
 This helps you know when to clean up old files or upgrade your Drive storage. The storage bar updates after each sync.
+
+When your storage reaches 95% or more, CanonCore blocks new file uploads before they start. You'll see an error message asking you to free up space or upgrade your Google Drive plan before uploading.
 
 ## What's next?
 

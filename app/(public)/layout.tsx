@@ -10,7 +10,7 @@ import { ErrorBoundary } from "@/components/providers/error-boundary";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { MobileNavProvider } from "@/components/mobile";
 import { auth, getExtendedSidebarUser } from "@/lib/auth";
-import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
+import { getCachedGoogleDriveConnection } from "@/lib/google-drive-data";
 import { getPinnedItems } from "@/lib/item-actions";
 import { MyItemsProviders } from "@/components/items/my-items-providers";
 
@@ -27,13 +27,14 @@ export default async function PublicLayout({
   const session = await auth();
   const [user, driveConnection, pinnedResult] = await Promise.all([
     getExtendedSidebarUser(session),
-    session?.user ? getGoogleDriveConnection() : Promise.resolve(null),
+    getCachedGoogleDriveConnection(),
     session?.user
       ? getPinnedItems()
       : Promise.resolve({ success: true as const, data: [] }),
   ]);
   const pinnedItems = "data" in pinnedResult ? (pinnedResult.data ?? []) : [];
   const emailUnverified = session?.user ? !session.user.emailVerified : false;
+  const driveNeedsReauth = driveConnection?.needsReauth ?? false;
 
   // Prepare user data for mobile nav (null-safe)
   const mobileNavUser = user
@@ -80,6 +81,7 @@ export default async function PublicLayout({
         user={mobileNavUser}
         driveConnection={driveConnection}
         emailUnverified={emailUnverified}
+        driveNeedsReauth={driveNeedsReauth}
       />
     </SidebarProvider>
   );

@@ -9,6 +9,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import {
@@ -20,7 +21,9 @@ import {
   deleteFile,
   renameFile,
   moveFile,
+  revokeToken,
 } from "@/lib/google-drive-client";
+import { decryptCredential } from "@/lib/crypto";
 import { SyncStatus } from "@prisma/client";
 import { logger } from "@/lib/logger";
 import { logSyncOperation } from "@/lib/sync-log";
@@ -75,23 +78,28 @@ export async function disconnectGoogleDrive(): Promise<{
     return { success: false, error: "No connection to disconnect" };
   }
 
+  // Schedule non-blocking token revocation after the response
+  const refreshToken = decryptCredential(connection.encryptedRefreshToken);
+  after(async () => {
+    await revokeToken(refreshToken);
+  });
+
   try {
-    // Try to trash the CanonCore folder in Drive
+    // Permanently delete the CanonCore folder (and all contents) from Drive
     const drive = await getDriveClient(connection);
     await withRateLimit(() =>
-      drive.files.update({
+      drive.files.delete({
         fileId: connection.rootFolderId,
-        requestBody: { trashed: true },
       })
     ).catch((err) => {
-      logger.warn({ err }, "[GoogleDrive] Failed to trash Drive folder");
-      // Continue with deletion even if trashing fails
+      logger.warn({ err }, "[GoogleDrive] Failed to delete Drive folder");
+      // Continue with disconnection even if deletion fails
     });
   } catch (err) {
     // Token might be invalid, proceed with local deletion
     logger.warn(
       { err },
-      "[GoogleDrive] Could not trash folder, proceeding with disconnect"
+      "[GoogleDrive] Could not clean up Drive folder, proceeding with disconnect"
     );
   }
 

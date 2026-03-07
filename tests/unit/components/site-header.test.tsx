@@ -1,11 +1,19 @@
 /**
  * Unit tests for SiteHeader component.
- * Tests breadcrumb rendering and navigation.
+ * Tests breadcrumb rendering, navigation, and banners.
  */
 
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { SiteHeader } from "@/components/site-header";
+import { DRIVE_MESSAGES } from "@/lib/constants/messages";
+
+vi.mock("@/hooks/use-google-drive-reconnect", () => ({
+  useGoogleDriveReconnect: () => ({
+    isReconnecting: false,
+    handleReconnect: vi.fn(),
+  }),
+}));
 
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
@@ -127,5 +135,50 @@ describe("SiteHeader", () => {
     const svgs = nav.querySelectorAll("svg");
     // 2 breadcrumb items = 2 chevrons
     expect(svgs.length).toBe(2);
+  });
+
+  describe("Drive Reconnect Banner", () => {
+    it("should render reconnect banner when driveNeedsReauth is true", () => {
+      render(<SiteHeader driveNeedsReauth={true} />);
+
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+      expect(
+        screen.getByText(DRIVE_MESSAGES.DISCONNECTED_BANNER)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /reconnect/i })
+      ).toBeInTheDocument();
+    });
+
+    it("should NOT render reconnect banner when driveNeedsReauth is false", () => {
+      render(<SiteHeader driveNeedsReauth={false} />);
+
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("should NOT render reconnect banner when driveNeedsReauth is undefined", () => {
+      render(<SiteHeader />);
+
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("banner should have correct accessibility attributes", () => {
+      render(<SiteHeader driveNeedsReauth={true} />);
+
+      const banner = screen.getByRole("alert");
+      expect(banner).toHaveAttribute("aria-live", "assertive");
+    });
+
+    it("should prioritise drive banner over email banner when both are true", () => {
+      render(<SiteHeader driveNeedsReauth={true} emailUnverified={true} />);
+
+      // Drive banner shown
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+      expect(
+        screen.getByText(DRIVE_MESSAGES.DISCONNECTED_BANNER)
+      ).toBeInTheDocument();
+      // Email banner NOT shown (only one at a time)
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
   });
 });

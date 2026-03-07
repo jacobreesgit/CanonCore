@@ -7,6 +7,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MobileNavProvider } from "@/components/mobile/mobile-nav-provider";
+import { DRIVE_MESSAGES } from "@/lib/constants/messages";
+
+vi.mock("@/hooks/use-google-drive-reconnect", () => ({
+  useGoogleDriveReconnect: () => ({
+    isReconnecting: false,
+    handleReconnect: vi.fn(),
+  }),
+}));
 
 // Mock next/navigation
 const mockPathname = vi.fn();
@@ -261,6 +269,72 @@ describe("MobileNavProvider", () => {
 
       // Sheet dialog should be open
       expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+  });
+
+  describe("Drive Reconnect Banner (Mobile)", () => {
+    it("should render mobile reconnect banner when driveNeedsReauth is true", () => {
+      render(
+        <MobileNavProvider user={null} driveNeedsReauth={true}>
+          <div>Content</div>
+        </MobileNavProvider>
+      );
+
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+      expect(
+        screen.getByText(DRIVE_MESSAGES.DISCONNECTED_BANNER)
+      ).toBeInTheDocument();
+    });
+
+    it("should NOT render mobile reconnect banner when driveNeedsReauth is false", () => {
+      render(
+        <MobileNavProvider user={null} driveNeedsReauth={false}>
+          <div>Content</div>
+        </MobileNavProvider>
+      );
+
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("should NOT render mobile reconnect banner when driveNeedsReauth is undefined", () => {
+      render(
+        <MobileNavProvider user={null}>
+          <div>Content</div>
+        </MobileNavProvider>
+      );
+
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("mobile reconnect button should be present and enabled", () => {
+      render(
+        <MobileNavProvider user={null} driveNeedsReauth={true}>
+          <div>Content</div>
+        </MobileNavProvider>
+      );
+
+      const button = screen.getByRole("button", { name: /reconnect/i });
+      expect(button).toBeEnabled();
+    });
+
+    it("should prioritise drive banner over email banner when both are true", () => {
+      render(
+        <MobileNavProvider
+          user={null}
+          driveNeedsReauth={true}
+          emailUnverified={true}
+        >
+          <div>Content</div>
+        </MobileNavProvider>
+      );
+
+      // Drive banner shown
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+      expect(
+        screen.getByText(DRIVE_MESSAGES.DISCONNECTED_BANNER)
+      ).toBeInTheDocument();
+      // Email banner NOT shown (only one at a time)
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
   });
 

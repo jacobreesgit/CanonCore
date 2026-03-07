@@ -16,8 +16,10 @@ import { MobileFooterContainer } from "./mobile-footer-nav";
 import { MobileSearchSheet } from "./mobile-search-sheet";
 import { MobileHelpSheet } from "./mobile-help-sheet";
 import { MobileSettingsSheet } from "@/components/profile/mobile-settings-sheet";
+import { useGoogleDriveReconnect } from "@/hooks/use-google-drive-reconnect";
 import { resendVerificationEmail } from "@/lib/auth-actions";
 import { VERIFICATION_MESSAGES } from "@/lib/messages";
+import { DRIVE_MESSAGES } from "@/lib/constants/messages";
 import type { GoogleDriveConnection } from "@/lib/types";
 
 /** Transition delay for sheet mutual exclusion (ms) */
@@ -47,6 +49,8 @@ export interface MobileNavProviderProps {
   driveConnection?: GoogleDriveConnection | null;
   /** Whether user's email is unverified (shows verification nudge banner) */
   emailUnverified?: boolean;
+  /** Whether Google Drive needs re-authentication (shows reconnect banner) */
+  driveNeedsReauth?: boolean;
   /** Children to render */
   children?: React.ReactNode;
 }
@@ -66,6 +70,7 @@ export function MobileNavProvider({
   user,
   driveConnection,
   emailUnverified,
+  driveNeedsReauth,
   children,
 }: MobileNavProviderProps) {
   const pathname = usePathname();
@@ -74,6 +79,7 @@ export function MobileNavProvider({
   const pendingSheetRef = React.useRef<SheetType>(null);
   const prevPathnameRef = React.useRef(pathname);
   const [isResending, startResendTransition] = React.useTransition();
+  const { isReconnecting, handleReconnect } = useGoogleDriveReconnect();
 
   /** Resends email verification to the authenticated user. */
   const handleResendVerification = React.useCallback(() => {
@@ -173,8 +179,32 @@ export function MobileNavProvider({
     <>
       {children}
 
-      {/* Email verification nudge (sticky top, mobile only) */}
-      {emailUnverified && (
+      {/* Drive reconnect banner takes priority over email verification (mobile only) */}
+      {driveNeedsReauth ? (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="fixed inset-x-0 top-0 z-40 flex items-center gap-3 border-b border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 backdrop-blur-md lg:hidden"
+        >
+          <FontAwesomeIcon
+            icon={faTriangleExclamation}
+            className="size-4 shrink-0 text-amber-400"
+            aria-hidden="true"
+          />
+          <p className="flex-1 text-sm text-amber-200">
+            {DRIVE_MESSAGES.DISCONNECTED_BANNER}
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="min-h-[44px] shrink-0"
+            disabled={isReconnecting}
+            onClick={handleReconnect}
+          >
+            {isReconnecting ? "Connecting..." : "Reconnect"}
+          </Button>
+        </div>
+      ) : emailUnverified ? (
         <div
           role="status"
           aria-live="polite"
@@ -198,7 +228,7 @@ export function MobileNavProvider({
             {isResending ? "Sending..." : "Resend"}
           </Button>
         </div>
-      )}
+      ) : null}
 
       {/* Footer Navigation */}
       <MobileFooterContainer
