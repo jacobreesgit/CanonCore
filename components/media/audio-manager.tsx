@@ -19,7 +19,9 @@ import {
   setCurrentTime,
   setDuration,
   skipNext,
+  skipPrevious,
   pause,
+  resume,
   clearSeekTarget,
 } from "@/lib/store/playback-slice";
 import {
@@ -192,6 +194,35 @@ export function AudioManager({
       audio.removeEventListener("error", handleError);
     };
   }, [dispatch, handleTimeUpdate]);
+
+  // MediaSession API — OS-level media controls
+  useEffect(() => {
+    if (!("mediaSession" in navigator) || !currentTrack) return;
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentTrack.filename,
+      artist: currentTrack.itemName,
+      ...(currentTrack.posterUrl && {
+        artwork: [{ src: currentTrack.posterUrl, sizes: "512x512" }],
+      }),
+    });
+
+    navigator.mediaSession.setActionHandler("play", () => dispatch(resume()));
+    navigator.mediaSession.setActionHandler("pause", () => dispatch(pause()));
+    navigator.mediaSession.setActionHandler("previoustrack", () =>
+      dispatch(skipPrevious())
+    );
+    navigator.mediaSession.setActionHandler("nexttrack", () =>
+      dispatch(skipNext())
+    );
+
+    return () => {
+      navigator.mediaSession.setActionHandler("play", null);
+      navigator.mediaSession.setActionHandler("pause", null);
+      navigator.mediaSession.setActionHandler("previoustrack", null);
+      navigator.mediaSession.setActionHandler("nexttrack", null);
+    };
+  }, [currentTrack, dispatch]);
 
   // Save position when tab becomes hidden
   useEffect(() => {

@@ -19,6 +19,24 @@ vi.mock("@/lib/item-file-actions", () => ({
   updatePlaybackPosition: vi.fn(),
 }));
 
+// MediaMetadata is not available in jsdom
+globalThis.MediaMetadata =
+  globalThis.MediaMetadata ??
+  (class MediaMetadata {
+    title: string;
+    artist: string;
+    artwork: { src: string; sizes: string }[];
+    constructor(init: {
+      title?: string;
+      artist?: string;
+      artwork?: { src: string; sizes: string }[];
+    }) {
+      this.title = init.title ?? "";
+      this.artist = init.artist ?? "";
+      this.artwork = init.artwork ?? [];
+    }
+  } as unknown as typeof globalThis.MediaMetadata);
+
 const mockTrack: QueueTrack = {
   fileId: "file-1",
   itemId: "item-1",
@@ -193,6 +211,32 @@ describe("AudioManager", () => {
       audio.fire("error");
     });
     expect(store.getState().playback.isPlaying).toBe(false);
+  });
+
+  it("should set MediaSession metadata when track changes", () => {
+    const audio = createMockAudio();
+    const store = makeTestStore();
+
+    // Mock navigator.mediaSession
+    const mockMediaSession = {
+      metadata: null as MediaMetadata | null,
+      setActionHandler: vi.fn(),
+    };
+    Object.defineProperty(navigator, "mediaSession", {
+      value: mockMediaSession,
+      writable: true,
+      configurable: true,
+    });
+
+    renderWithStore(store, audio);
+
+    act(() => {
+      store.dispatch(playTrack(mockTrack));
+    });
+
+    expect(mockMediaSession.metadata).not.toBeNull();
+    expect(mockMediaSession.metadata?.title).toBe("test.mp4");
+    expect(mockMediaSession.metadata?.artist).toBe("Test");
   });
 
   it("should seek audio element when seekTarget is set", () => {
