@@ -71,8 +71,8 @@ describe("playlist visibility integration", () => {
       data: { playlistId: playlist.id, itemId: publicItemId, order: 0 },
     });
 
-    const result = await getPublicPlaylistsForUser(testUserId);
-    expect(result.some((p) => p.id === playlist.id)).toBe(true);
+    const result = await getPublicPlaylistsForUser({ userId: testUserId });
+    expect(result.items.some((p) => p.id === playlist.id)).toBe(true);
 
     const detail = await getPublicPlaylist(playlist.id);
     expect(detail).not.toBeNull();
@@ -115,8 +115,8 @@ describe("playlist visibility integration", () => {
       data: { playlistId: playlist.id, itemId: privateItemId, order: 0 },
     });
 
-    const result = await getPublicPlaylistsForUser(testUserId);
-    expect(result.some((p) => p.id === playlist.id)).toBe(false);
+    const result = await getPublicPlaylistsForUser({ userId: testUserId });
+    expect(result.items.some((p) => p.id === playlist.id)).toBe(false);
 
     const detail = await getPublicPlaylist(playlist.id);
     expect(detail).toBeNull();
@@ -135,8 +135,8 @@ describe("playlist visibility integration", () => {
       data: { playlistId: playlist.id, itemId: publicItemId, order: 0 },
     });
 
-    const result = await getPublicPlaylistsForUser(testUserId);
-    expect(result.some((p) => p.id === playlist.id)).toBe(false);
+    const result = await getPublicPlaylistsForUser({ userId: testUserId });
+    expect(result.items.some((p) => p.id === playlist.id)).toBe(false);
   });
 
   it("hides playlist when owner profile is private", async () => {

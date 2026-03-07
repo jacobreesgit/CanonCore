@@ -17,18 +17,24 @@ import {
   getProfileByIdOrUsername,
   getPublicLibraryProgress,
   getPublicPlaylistsForUser,
+  getPublicItemsForUser,
 } from "@/lib/public-auth";
 import { getItemsForProfile, getLibraryProgress } from "@/lib/item-actions";
 import { getUserPlaylists } from "@/lib/playlist-actions";
 import { getCachedGoogleDriveConnection } from "@/lib/google-drive-data";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { prisma } from "@/lib/prisma";
+import { buildBreadcrumbJsonLd } from "@/lib/breadcrumb-jsonld";
 import { SiteHeader } from "@/components/site-header";
+import { PrivateResourceNotice } from "@/components/ui/private-resource-notice";
 import { ProfilePage as ProfilePageContent } from "@/components/profile";
 import { OAuthToast } from "@/components/google-drive";
 import { ProfileContentSkeleton } from "@/components/skeletons/profile-content-skeleton";
+import { profileSearchParamsCache } from "./search-params";
 
 interface PageProps {
   params: Promise<{ username: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 /**
@@ -77,68 +83,91 @@ async function ProfileContent({
   profileId,
   currentUserId,
   isOwner,
+  profile,
+  searchParams,
 }: {
   profileId: string;
   currentUserId: string | null;
   isOwner: boolean;
+  profile: {
+    id: string;
+    username: string;
+    name: string | null;
+    hasImage: boolean;
+    hasHeroImage: boolean;
+    dominantColour: string | null;
+    bio: string | null;
+  };
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  // Fetch items (includes profile hasImage/hasHeroImage)
-  const profileData = await getItemsForProfile(profileId, currentUserId);
-
-  // For owners, fetch Drive connection, library progress, and playlists
-  let hasDriveConnection = false;
-  let libraryProgress = null;
-  let ownerPlaylists: Awaited<ReturnType<typeof getUserPlaylists>> | null =
-    null;
-
   if (isOwner) {
-    const [driveConnection, progress, playlistsResult] = await Promise.all([
-      getCachedGoogleDriveConnection(),
-      getLibraryProgress(),
-      getUserPlaylists(),
-    ]);
-    hasDriveConnection =
-      driveConnection !== null && !driveConnection.needsReauth;
-    libraryProgress = progress;
-    ownerPlaylists = playlistsResult;
+    // Owner path — unpaginated (needs all items for tree/drag-drop)
+    const [profileData, driveConnection, progress, playlistsResult] =
+      await Promise.all([
+        getItemsForProfile(profileId, currentUserId),
+        getCachedGoogleDriveConnection(),
+        getLibraryProgress(),
+        getUserPlaylists(),
+      ]);
+
+    return (
+      <ProfilePageContent
+        profile={{
+          id: profileData.profile.id,
+          username: profileData.profile.username,
+          name: profileData.profile.name,
+          hasImage: profileData.profile.hasImage,
+          hasHeroImage: profileData.profile.hasHeroImage,
+          dominantColour: profileData.profile.dominantColour,
+          bio: profileData.profile.bio,
+        }}
+        items={profileData.items}
+        isOwner={true}
+        hasDriveConnection={
+          driveConnection !== null && !driveConnection.needsReauth
+        }
+        libraryProgress={progress}
+        ownerPlaylists={
+          playlistsResult?.success ? playlistsResult.data : undefined
+        }
+        shelves={
+          <Suspense fallback={<ShelfSkeleton />}>
+            <HomeShelves />
+          </Suspense>
+        }
+      />
+    );
   }
 
-  // For viewers, fetch public library progress and playlists
-  let viewerProgress = null;
-  let publicPlaylists: Awaited<ReturnType<typeof getPublicPlaylistsForUser>> =
-    [];
-  if (!isOwner) {
-    [viewerProgress, publicPlaylists] = await Promise.all([
-      getPublicLibraryProgress(profileId),
-      getPublicPlaylistsForUser(profileId),
-    ]);
-  }
+  // Viewer path — paginated with search
+  const { q } = await profileSearchParamsCache.parse(searchParams);
+  const search = q || undefined;
+
+  const [viewerProgress, publicItems, publicPlaylists] = await Promise.all([
+    getPublicLibraryProgress(profileId),
+    getPublicItemsForUser({ userId: profileId, search, currentUserId }),
+    getPublicPlaylistsForUser({ userId: profileId, search }),
+  ]);
 
   return (
     <ProfilePageContent
       profile={{
-        id: profileData.profile.id,
-        username: profileData.profile.username,
-        name: profileData.profile.name,
-        hasImage: profileData.profile.hasImage,
-        hasHeroImage: profileData.profile.hasHeroImage,
-        dominantColour: profileData.profile.dominantColour,
-        bio: profileData.profile.bio,
+        id: profile.id,
+        username: profile.username,
+        name: profile.name,
+        hasImage: profile.hasImage,
+        hasHeroImage: profile.hasHeroImage,
+        dominantColour: profile.dominantColour,
+        bio: profile.bio,
       }}
-      items={profileData.items}
-      isOwner={isOwner}
-      hasDriveConnection={hasDriveConnection}
-      libraryProgress={libraryProgress}
+      items={[]}
+      isOwner={false}
       viewerProgress={viewerProgress}
-      publicPlaylists={publicPlaylists}
-      ownerPlaylists={ownerPlaylists?.success ? ownerPlaylists.data : undefined}
-      shelves={
-        isOwner ? (
-          <Suspense fallback={<ShelfSkeleton />}>
-            <HomeShelves />
-          </Suspense>
-        ) : undefined
-      }
+      initialViewerItems={publicItems}
+      initialViewerPlaylists={publicPlaylists}
+      initialSearch={q}
+      publicPlaylists={publicPlaylists.items}
+      currentUserId={currentUserId}
     />
   );
 }
@@ -147,7 +176,7 @@ async function ProfileContent({
  * Unified profile page server component.
  * Renders a fast shell (header + skeleton), then streams content via Suspense.
  */
-export default async function ProfilePage({ params }: PageProps) {
+export default async function ProfilePage({ params, searchParams }: PageProps) {
   const { username } = await params;
 
   // Parallelize rate limit + auth check
@@ -177,15 +206,33 @@ export default async function ProfilePage({ params }: PageProps) {
     ? await getProfileByIdOrUsername(username)
     : await getPublicProfile(username);
 
+  const currentUserId = session?.user?.id ?? null;
+
   if (!profile) {
+    // Lightweight ownership check: show hint if owner views their own private profile
+    if (currentUserId) {
+      const privateProfile = await prisma.user.findFirst({
+        where: { username: { equals: username, mode: "insensitive" } },
+        select: { id: true },
+      });
+      if (privateProfile?.id === currentUserId) {
+        return (
+          <>
+            <SiteHeader title={`@${username}`} titleHref={`/u/${username}`} />
+            <PrivateResourceNotice resourceType="profile" />
+          </>
+        );
+      }
+    }
     notFound();
   }
 
-  const currentUserId = session?.user?.id ?? null;
   const isOwner = currentUserId === profile.id;
   const driveConnection = isOwner
     ? await getCachedGoogleDriveConnection()
     : null;
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://canoncore.com";
 
   return (
     <>
@@ -196,8 +243,22 @@ export default async function ProfilePage({ params }: PageProps) {
             "@context": "https://schema.org",
             "@type": "Person",
             name: profile.name ?? profile.username,
-            url: `${process.env.NEXT_PUBLIC_APP_URL || "https://canoncore.com"}/u/${profile.username}`,
+            url: `${appUrl}/u/${profile.username}`,
           }).replace(/</g, "\\u003c"),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(
+            buildBreadcrumbJsonLd([
+              { name: "Home", url: appUrl },
+              {
+                name: profile.name ?? `@${profile.username}`,
+                url: `${appUrl}/u/${profile.username}`,
+              },
+            ])
+          ).replace(/</g, "\\u003c"),
         }}
       />
       {isOwner && (
@@ -217,6 +278,16 @@ export default async function ProfilePage({ params }: PageProps) {
             profileId={profile.id}
             currentUserId={currentUserId}
             isOwner={isOwner}
+            profile={{
+              id: profile.id,
+              username: profile.username!,
+              name: profile.name,
+              hasImage: profile.hasImage,
+              hasHeroImage: profile.hasHeroImage,
+              dominantColour: profile.dominantColour,
+              bio: profile.bio,
+            }}
+            searchParams={searchParams}
           />
         </Suspense>
       </div>

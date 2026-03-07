@@ -312,9 +312,9 @@ function FileTypeComboboxUploadMode({
           />
         </div>
         <label className="text-sm font-medium">{label}</label>
-        {note}
       </div>
       <p className="text-muted-foreground text-xs">{description}</p>
+      {note && <p className="text-destructive text-xs">{note}</p>}
 
       {/* Disabled state - no Drive connection */}
       {disabled ? (
@@ -738,9 +738,9 @@ function FileTypeComboboxSelectMode({
           />
         </div>
         <label className="text-sm font-medium">{label}</label>
-        {note}
       </div>
       <p className="text-muted-foreground text-xs">{description}</p>
+      {note && <p className="text-destructive text-xs">{note}</p>}
 
       {/* Combobox with Popover */}
       <Popover open={isOpen} onOpenChange={handleOpenChange}>

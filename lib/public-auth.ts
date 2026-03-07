@@ -14,8 +14,17 @@ import { checkRateLimit } from "@/lib/rate-limit";
 
 import { logger } from "@/lib/logger";
 import { resolveArtworkId } from "@/lib/tmdb-image-utils";
+import {
+  decodeCursor,
+  decodeOrderCursor,
+  encodeCursor,
+  encodeOrderCursor,
+  escapeILike,
+  PAGE_SIZE,
+} from "@/lib/cursor";
 import type {
   ItemResult,
+  PaginatedResult,
   SearchableUser,
   SearchablePublicItem,
   SearchablePlaylist,
@@ -39,6 +48,8 @@ export interface PublicProfile {
   hasHeroImage: boolean;
   /** Dominant colour extracted from hero image */
   dominantColour: string | null;
+  /** Public bio text */
+  bio: string | null;
   /** Profile creation date */
   createdAt: Date;
 }
@@ -118,6 +129,7 @@ export const getPublicProfile = cache(
         image: true,
         heroImage: true,
         dominantColour: true,
+        bio: true,
         createdAt: true,
       },
     });
@@ -133,6 +145,7 @@ export const getPublicProfile = cache(
       hasImage: user.image !== null,
       hasHeroImage: user.heroImage !== null,
       dominantColour: user.dominantColour ?? null,
+      bio: user.bio ?? null,
       createdAt: user.createdAt,
     };
   }
@@ -162,6 +175,7 @@ export const getProfileByIdOrUsername = cache(
         image: true,
         heroImage: true,
         dominantColour: true,
+        bio: true,
         createdAt: true,
       },
     });
@@ -177,6 +191,7 @@ export const getProfileByIdOrUsername = cache(
       hasImage: user.image !== null,
       hasHeroImage: user.heroImage !== null,
       dominantColour: user.dominantColour ?? null,
+      bio: user.bio ?? null,
       createdAt: user.createdAt,
     };
   }
@@ -374,25 +389,49 @@ export const getPublicItem = cache(
  * @param currentUserId - Current viewer's user ID (for progress calculation)
  * @returns Array of public items with optional progress data
  */
-export async function getPublicItemsForUser(
-  userId: string,
-  limit = 50,
-  offset = 0,
-  currentUserId?: string | null
-): Promise<
-  (PublicItem & {
-    progressPercentage?: number | null;
-    watchedCount?: number;
-    totalMediaCount?: number;
-    totalItems?: number;
-  })[]
-> {
+/** Return type for public profile items. */
+export type PublicProfileItem = PublicItem & {
+  progressPercentage?: number | null;
+  watchedCount?: number;
+  totalMediaCount?: number;
+  totalItems?: number;
+  isForkedByCurrentUser: boolean;
+};
+
+/**
+ * Fetches public root-level items for a user's profile.
+ * Uses cursor-based pagination (updatedAt|id).
+ *
+ * @param options - userId, cursor, search, and currentUserId
+ * @returns Paginated result with items and nextCursor
+ */
+export async function getPublicItemsForUser(options: {
+  userId: string;
+  cursor?: string | null;
+  search?: string;
+  currentUserId?: string | null;
+}): Promise<PaginatedResult<PublicProfileItem>> {
+  const { userId, cursor, search, currentUserId } = options;
+  const decoded = decodeCursor(cursor);
+
   const items = await prisma.item.findMany({
     where: {
       userId,
       parentId: null, // Only root-level items for profile display
       isPublic: true,
       inheritVisibility: false, // Only explicitly public items (consistent with Explore)
+      ...(search && {
+        name: { contains: escapeILike(search), mode: "insensitive" as const },
+      }),
+      ...(decoded && {
+        OR: [
+          { updatedAt: { lt: decoded.updatedAt } },
+          {
+            updatedAt: decoded.updatedAt,
+            id: { lt: decoded.id },
+          },
+        ],
+      }),
     },
     select: {
       id: true,
@@ -425,10 +464,13 @@ export async function getPublicItemsForUser(
         select: { sourceForks: true },
       },
     },
-    orderBy: { updatedAt: "desc" },
-    take: limit,
-    skip: offset,
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    take: PAGE_SIZE + 1,
   });
+
+  // Determine if there's a next page
+  const hasMore = items.length > PAGE_SIZE;
+  const pageItems = hasMore ? items.slice(0, PAGE_SIZE) : items;
 
   // Only calculate progress when viewing own profile
   const isOwnProfile = currentUserId && currentUserId === userId;
@@ -440,8 +482,8 @@ export async function getPublicItemsForUser(
   }
   const progressMap = new Map<string, ProgressData>();
 
-  if (isOwnProfile && items.length > 0) {
-    const itemIds = items.map((i) => i.id);
+  if (isOwnProfile && pageItems.length > 0) {
+    const itemIds = pageItems.map((i) => i.id);
     const progressData = await prisma.$queryRaw<
       Array<{
         rootItemId: string;
@@ -496,7 +538,24 @@ export async function getPublicItemsForUser(
     }
   }
 
-  return items.map((item) => {
+  // Check fork status for authenticated viewers of other profiles
+  const shouldCheckForks = currentUserId && !isOwnProfile;
+  const forkedItemIds = new Set<string>();
+  if (shouldCheckForks && pageItems.length > 0) {
+    const itemIds = pageItems.map((i) => i.id);
+    const forkResults = await prisma.fork.findMany({
+      where: {
+        userId: currentUserId,
+        sourceItemId: { in: itemIds },
+      },
+      select: { sourceItemId: true },
+    });
+    for (const f of forkResults) {
+      forkedItemIds.add(f.sourceItemId);
+    }
+  }
+
+  const mappedItems = pageItems.map((item) => {
     const progress = isOwnProfile ? progressMap.get(item.id) : undefined;
     return {
       id: item.id,
@@ -535,8 +594,15 @@ export async function getPublicItemsForUser(
         totalMediaCount: progress?.itemsWithMedia ?? 0,
         totalItems: progress?.totalItems ?? 0,
       }),
+      isForkedByCurrentUser: forkedItemIds.has(item.id),
     };
   });
+
+  const lastItem = pageItems[pageItems.length - 1];
+  const nextCursor =
+    hasMore && lastItem ? encodeCursor(lastItem.updatedAt, lastItem.id) : null;
+
+  return { items: mappedItems, nextCursor };
 }
 
 /**
@@ -794,31 +860,34 @@ export const getPublicDescendants = cache(
   }
 );
 
+/** Return type for explore items (public item + owner info + progress). */
+export type ExploreItem = PublicItem & {
+  ownerUsername: string;
+  ownerName: string | null;
+  progressPercentage?: number | null;
+  watchedCount?: number;
+  totalMediaCount?: number;
+  totalItems?: number;
+  isForkedByCurrentUser?: boolean;
+};
+
 /**
  * Fetches recently updated public items for the explore page.
  * Returns items from all users, sorted by update time.
  * For the current user's items, includes progress data.
+ * Uses cursor-based pagination (updatedAt|id).
  *
- * @param limit - Maximum items to return (default 50)
- * @param offset - Pagination offset (default 0)
- * @param currentUserId - Current user ID to calculate progress for own items
- * @returns Array of public items with owner info and progress for own items
+ * @param options - Pagination, search, and user options
+ * @returns Paginated result with items and nextCursor
  */
-export async function getExploreItems(
-  limit = 50,
-  offset = 0,
-  currentUserId?: string | null
-): Promise<
-  (PublicItem & {
-    ownerUsername: string;
-    ownerName: string | null;
-    progressPercentage?: number | null;
-    watchedCount?: number;
-    totalMediaCount?: number;
-    totalItems?: number;
-    isForkedByCurrentUser?: boolean;
-  })[]
-> {
+export async function getExploreItems(options?: {
+  cursor?: string | null;
+  search?: string;
+  currentUserId?: string | null;
+}): Promise<PaginatedResult<ExploreItem>> {
+  const { cursor, search, currentUserId } = options ?? {};
+  const decoded = decodeCursor(cursor);
+
   const items = await prisma.item.findMany({
     where: {
       isPublic: true,
@@ -827,6 +896,18 @@ export async function getExploreItems(
         isPublic: true,
         username: { not: null },
       },
+      ...(search && {
+        name: { contains: escapeILike(search), mode: "insensitive" as const },
+      }),
+      ...(decoded && {
+        OR: [
+          { updatedAt: { lt: decoded.updatedAt } },
+          {
+            updatedAt: decoded.updatedAt,
+            id: { lt: decoded.id },
+          },
+        ],
+      }),
     },
     select: {
       id: true,
@@ -862,14 +943,17 @@ export async function getExploreItems(
         select: { username: true, name: true, id: true },
       },
     },
-    orderBy: { updatedAt: "desc" },
-    take: limit,
-    skip: offset,
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    take: PAGE_SIZE + 1,
   });
+
+  // Determine if there's a next page
+  const hasMore = items.length > PAGE_SIZE;
+  const pageItems = hasMore ? items.slice(0, PAGE_SIZE) : items;
 
   // Get IDs of current user's items to calculate progress
   const ownItemIds = currentUserId
-    ? items.filter((i) => i.userId === currentUserId).map((i) => i.id)
+    ? pageItems.filter((i) => i.userId === currentUserId).map((i) => i.id)
     : [];
 
   // Calculate progress for own items using recursive CTE (same pattern as item-actions.ts)
@@ -941,7 +1025,7 @@ export async function getExploreItems(
     const forks = await prisma.fork.findMany({
       where: {
         userId: currentUserId,
-        sourceItemId: { in: items.map((i) => i.id) },
+        sourceItemId: { in: pageItems.map((i) => i.id) },
       },
       select: { sourceItemId: true },
     });
@@ -950,7 +1034,7 @@ export async function getExploreItems(
     }
   }
 
-  return items
+  const mappedItems = pageItems
     .filter((item) => item.user && item.user.username != null)
     .map((item) => {
       const isOwnItem = currentUserId && item.userId === currentUserId;
@@ -997,6 +1081,12 @@ export async function getExploreItems(
         isForkedByCurrentUser: forkedSourceIds.has(item.id),
       };
     });
+
+  const lastItem = pageItems[pageItems.length - 1];
+  const nextCursor =
+    hasMore && lastItem ? encodeCursor(lastItem.updatedAt, lastItem.id) : null;
+
+  return { items: mappedItems, nextCursor };
 }
 
 /**
@@ -1426,60 +1516,197 @@ export const getFeaturedItems = cache(
 );
 
 /**
- * Get public playlists for a user's profile.
- * Only returns playlists that are public AND contain at least one public item.
- * Cached per-request to deduplicate calls from generateMetadata and page.
+ * Fetches public playlists for a specific user's profile.
+ * Uses cursor-based pagination (order|id) to preserve the owner's custom ordering.
  *
- * @param userId - User ID whose public playlists to fetch
- * @returns Array of public playlist cards with preview artwork
+ * @param options - userId, cursor, and search
+ * @returns Paginated result with playlists and nextCursor
  */
-export const getPublicPlaylistsForUser = cache(
-  async (userId: string): Promise<PublicPlaylistCard[]> => {
-    const playlists = await prisma.playlist.findMany({
-      where: {
-        userId,
-        isPublic: true,
-        playlistItems: {
-          some: {
-            item: { isPublic: true },
-          },
+export async function getPublicPlaylistsForUser(options: {
+  userId: string;
+  cursor?: string | null;
+  search?: string;
+}): Promise<PaginatedResult<PublicPlaylistCard>> {
+  const { userId, cursor, search } = options;
+  const decoded = decodeOrderCursor(cursor);
+
+  const playlists = await prisma.playlist.findMany({
+    where: {
+      userId,
+      isPublic: true,
+      playlistItems: {
+        some: {
+          item: { isPublic: true },
         },
       },
-      orderBy: { order: "asc" },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        artworkMime: true,
-        updatedAt: true,
-        playlistItems: {
-          where: { item: { isPublic: true } },
-          orderBy: { order: "asc" },
-          take: 4,
-          include: {
-            item: {
-              select: {
-                id: true,
-                tmdbPosterPath: true,
-                files: {
-                  where: { fileType: "ARTWORK" },
-                  select: { id: true, fileType: true, isPrimary: true },
-                },
+      ...(search && {
+        name: { contains: escapeILike(search), mode: "insensitive" as const },
+      }),
+      ...(decoded && {
+        OR: [
+          { order: { gt: decoded.order } },
+          {
+            order: decoded.order,
+            id: { gt: decoded.id },
+          },
+        ],
+      }),
+    },
+    orderBy: [{ order: "asc" }, { id: "asc" }],
+    take: PAGE_SIZE + 1,
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      order: true,
+      artworkMime: true,
+      updatedAt: true,
+      playlistItems: {
+        where: { item: { isPublic: true } },
+        orderBy: { order: "asc" },
+        take: 4,
+        include: {
+          item: {
+            select: {
+              id: true,
+              tmdbPosterPath: true,
+              files: {
+                where: { fileType: "ARTWORK" },
+                select: { id: true, fileType: true, isPrimary: true },
               },
             },
           },
         },
-        _count: {
-          select: {
-            playlistItems: {
-              where: { item: { isPublic: true } },
+      },
+      _count: {
+        select: {
+          playlistItems: {
+            where: { item: { isPublic: true } },
+          },
+        },
+      },
+    },
+  });
+
+  const hasMore = playlists.length > PAGE_SIZE;
+  const pagePlaylists = hasMore ? playlists.slice(0, PAGE_SIZE) : playlists;
+
+  const mappedPlaylists = pagePlaylists.map((p) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description,
+    hasArtwork: !!p.artworkMime,
+    itemCount: p._count.playlistItems,
+    previewPosters: p.playlistItems.map((pi) => ({
+      tmdbPosterPath: pi.item.tmdbPosterPath ?? null,
+      artworkId: resolveArtworkId(pi.item),
+    })),
+    updatedAt: p.updatedAt,
+  }));
+
+  const lastPlaylist = pagePlaylists[pagePlaylists.length - 1];
+  const nextCursor =
+    hasMore && lastPlaylist
+      ? encodeOrderCursor(lastPlaylist.order, lastPlaylist.id)
+      : null;
+
+  return { items: mappedPlaylists, nextCursor };
+}
+
+/** Return type for explore playlists. */
+export type ExplorePlaylistItem = PublicPlaylistCard & {
+  ownerUsername: string;
+  ownerName: string | null;
+};
+
+/**
+ * Fetches public playlists across all users for the Explore page.
+ * Returns playlists that are public, from public users with usernames,
+ * and contain at least one public playlist item.
+ * Uses cursor-based pagination (updatedAt|id).
+ *
+ * @param options - Pagination and search options
+ * @returns Paginated result with playlists and nextCursor
+ */
+export async function getExplorePlaylists(options?: {
+  cursor?: string | null;
+  search?: string;
+}): Promise<PaginatedResult<ExplorePlaylistItem>> {
+  const { cursor, search } = options ?? {};
+  const decoded = decodeCursor(cursor);
+
+  const playlists = await prisma.playlist.findMany({
+    where: {
+      isPublic: true,
+      user: {
+        isPublic: true,
+        username: { not: null },
+      },
+      playlistItems: {
+        some: {
+          item: { isPublic: true },
+        },
+      },
+      ...(search && {
+        name: { contains: escapeILike(search), mode: "insensitive" as const },
+      }),
+      ...(decoded && {
+        OR: [
+          { updatedAt: { lt: decoded.updatedAt } },
+          {
+            updatedAt: decoded.updatedAt,
+            id: { lt: decoded.id },
+          },
+        ],
+      }),
+    },
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    take: PAGE_SIZE + 1,
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      artworkMime: true,
+      updatedAt: true,
+      user: {
+        select: {
+          username: true,
+          name: true,
+        },
+      },
+      playlistItems: {
+        where: { item: { isPublic: true } },
+        orderBy: { order: "asc" },
+        take: 4,
+        include: {
+          item: {
+            select: {
+              id: true,
+              tmdbPosterPath: true,
+              files: {
+                where: { fileType: "ARTWORK" },
+                select: { id: true, fileType: true, isPrimary: true },
+              },
             },
           },
         },
       },
-    });
+      _count: {
+        select: {
+          playlistItems: {
+            where: { item: { isPublic: true } },
+          },
+        },
+      },
+    },
+  });
 
-    return playlists.map((p) => ({
+  const hasMore = playlists.length > PAGE_SIZE;
+  const pagePlaylists = hasMore ? playlists.slice(0, PAGE_SIZE) : playlists;
+
+  const mappedPlaylists = pagePlaylists
+    .filter((p) => p.user.username != null)
+    .map((p) => ({
       id: p.id,
       name: p.name,
       description: p.description,
@@ -1490,103 +1717,18 @@ export const getPublicPlaylistsForUser = cache(
         artworkId: resolveArtworkId(pi.item),
       })),
       updatedAt: p.updatedAt,
+      ownerUsername: p.user.username as string,
+      ownerName: p.user.name,
     }));
-  }
-);
 
-/**
- * Fetches public playlists across all users for the Explore page.
- * Returns playlists that are public, from public users with usernames,
- * and contain at least one public playlist item.
- * Cached per-request to deduplicate calls from generateMetadata and page.
- *
- * @param limit - Maximum playlists to return (default 12)
- * @param offset - Pagination offset (default 0)
- * @returns Array of public playlist cards with owner info and preview artwork
- */
-export const getExplorePlaylists = cache(
-  async (
-    limit = 12,
-    offset = 0
-  ): Promise<
-    (PublicPlaylistCard & {
-      ownerUsername: string;
-      ownerName: string | null;
-    })[]
-  > => {
-    const playlists = await prisma.playlist.findMany({
-      where: {
-        isPublic: true,
-        user: {
-          isPublic: true,
-          username: { not: null },
-        },
-        playlistItems: {
-          some: {
-            item: { isPublic: true },
-          },
-        },
-      },
-      orderBy: { updatedAt: "desc" },
-      take: limit,
-      skip: offset,
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        artworkMime: true,
-        updatedAt: true,
-        user: {
-          select: {
-            username: true,
-            name: true,
-          },
-        },
-        playlistItems: {
-          where: { item: { isPublic: true } },
-          orderBy: { order: "asc" },
-          take: 4,
-          include: {
-            item: {
-              select: {
-                id: true,
-                tmdbPosterPath: true,
-                files: {
-                  where: { fileType: "ARTWORK" },
-                  select: { id: true, fileType: true, isPrimary: true },
-                },
-              },
-            },
-          },
-        },
-        _count: {
-          select: {
-            playlistItems: {
-              where: { item: { isPublic: true } },
-            },
-          },
-        },
-      },
-    });
+  const lastPlaylist = pagePlaylists[pagePlaylists.length - 1];
+  const nextCursor =
+    hasMore && lastPlaylist
+      ? encodeCursor(lastPlaylist.updatedAt, lastPlaylist.id)
+      : null;
 
-    return playlists
-      .filter((p) => p.user.username != null)
-      .map((p) => ({
-        id: p.id,
-        name: p.name,
-        description: p.description,
-        hasArtwork: !!p.artworkMime,
-        itemCount: p._count.playlistItems,
-        previewPosters: p.playlistItems.map((pi) => ({
-          tmdbPosterPath: pi.item.tmdbPosterPath ?? null,
-          artworkId: resolveArtworkId(pi.item),
-        })),
-        updatedAt: p.updatedAt,
-        ownerUsername: p.user.username as string,
-        ownerName: p.user.name,
-      }));
-  }
-);
+  return { items: mappedPlaylists, nextCursor };
+}
 
 /**
  * Get a public or unlisted playlist with only its public items.

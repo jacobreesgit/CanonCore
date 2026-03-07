@@ -112,6 +112,8 @@ interface GridViewContentProps {
   currentUser?: CurrentUser | null;
   /** Server-rendered shelves inserted between pinned and library sections. */
   shelves?: React.ReactNode;
+  /** Callback when mouse enters a grid item (for prefetch). */
+  onItemMouseEnter?: (id: string) => void;
 }
 
 /**
@@ -137,6 +139,7 @@ export function GridViewContent({
   onItemSelectChange,
   currentUser,
   shelves,
+  onItemMouseEnter,
 }: GridViewContentProps) {
   /** Build watch-related menu props from an item's progress data. */
   function watchMenuProps(item: ItemWithArtwork) {
@@ -227,6 +230,11 @@ export function GridViewContent({
                       name={item.name}
                       description={item.description}
                       onClick={() => onItemClick(item.id)}
+                      onMouseEnter={
+                        onItemMouseEnter
+                          ? () => onItemMouseEnter(item.id)
+                          : undefined
+                      }
                       tmdbPosterPath={item.tmdbPosterPath}
                       artworkId={item.artworkId}
                       progressPercentage={item.progress?.percentage ?? null}
@@ -295,6 +303,11 @@ export function GridViewContent({
                       name={item.name}
                       description={item.description}
                       onClick={() => onItemClick(item.id)}
+                      onMouseEnter={
+                        onItemMouseEnter
+                          ? () => onItemMouseEnter(item.id)
+                          : undefined
+                      }
                       tmdbPosterPath={item.tmdbPosterPath}
                       artworkId={item.artworkId}
                       progressPercentage={item.progress?.percentage ?? null}

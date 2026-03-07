@@ -12,7 +12,6 @@ import {
   faSignature,
   faWandMagicSparkles,
 } from "@fortawesome/free-solid-svg-icons";
-import { Badge } from "@/components/ui/badge";
 import { TmdbArtworkField } from "@/components/items/tmdb-artwork-field";
 import { TmdbArtworkChangeDialog } from "@/components/items/tmdb-artwork-change-dialog";
 import { TmdbDisplayOptionsEditor } from "@/components/items/tmdb-display-options";
@@ -131,11 +130,7 @@ export function TmdbMetadataSection({
             onClear={() => handleClear("poster")}
             isLoading={isClearing}
             note={
-              hasUploadedPoster ? (
-                <Badge variant="destructive">
-                  Overridden by uploaded artwork
-                </Badge>
-              ) : undefined
+              hasUploadedPoster ? "Overridden by uploaded artwork" : undefined
             }
           />
         )}
@@ -151,11 +146,7 @@ export function TmdbMetadataSection({
             onClear={() => handleClear("backdrop")}
             isLoading={isClearing}
             note={
-              hasUploadedHero ? (
-                <Badge variant="destructive">
-                  Overridden by uploaded artwork
-                </Badge>
-              ) : undefined
+              hasUploadedHero ? "Overridden by uploaded artwork" : undefined
             }
           />
         )}
@@ -172,11 +163,7 @@ export function TmdbMetadataSection({
             onClear={() => handleClear("logo")}
             isLoading={isClearing}
             note={
-              hasUploadedLogo ? (
-                <Badge variant="destructive">
-                  Overridden by uploaded artwork
-                </Badge>
-              ) : undefined
+              hasUploadedLogo ? "Overridden by uploaded artwork" : undefined
             }
           />
         )}

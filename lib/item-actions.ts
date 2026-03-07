@@ -2078,15 +2078,13 @@ export const getItemsForProfile = cache(
       };
     } else {
       // Viewer: fetch only public items
-      const publicItems = await getPublicItemsForUser(
-        profileUserId,
-        200,
-        0,
-        viewerUserId
-      );
+      const publicResult = await getPublicItemsForUser({
+        userId: profileUserId,
+        currentUserId: viewerUserId,
+      });
 
       // Transform PublicItem to ItemWithArtwork shape
-      const items: ItemWithArtwork[] = publicItems.map((item) => ({
+      const items: ItemWithArtwork[] = publicResult.items.map((item) => ({
         id: item.id,
         name: item.name,
         description: item.description,

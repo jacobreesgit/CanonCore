@@ -19,9 +19,12 @@ import { getProfile } from "@/lib/user-actions";
 import { getItemTmdbMetadata } from "@/lib/tmdb-client";
 import { prisma } from "@/lib/prisma";
 import { getCachedGoogleDriveConnection } from "@/lib/google-drive-data";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { SiteHeader } from "@/components/site-header";
+import { Section } from "@/components/ui/section";
 import { ExploreClient } from "./explore-client";
 import { ExploreContentSkeleton } from "@/components/skeletons/explore-content-skeleton";
+import { exploreSearchParamsCache } from "./search-params";
 import type { SyncStatus } from "@/lib/types";
 
 export const metadata: Metadata = {
@@ -46,7 +49,11 @@ export const metadata: Metadata = {
  * Explore page server component.
  * Renders the header shell immediately, then streams heavy content via Suspense.
  */
-export default async function ExplorePage() {
+export default async function ExplorePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   // Fast shell: auth for SiteHeader
   const [session, driveConnection] = await Promise.all([
     auth(),
@@ -66,7 +73,10 @@ export default async function ExplorePage() {
       />
       <div className="text-foreground -mt-(--header-height) flex flex-1 flex-col">
         <Suspense fallback={<ExploreContentSkeleton />}>
-          <ExploreContent currentUserId={currentUserId} />
+          <ExploreContent
+            currentUserId={currentUserId}
+            searchParams={searchParams}
+          />
         </Suspense>
       </div>
     </>
@@ -79,9 +89,27 @@ export default async function ExplorePage() {
  */
 async function ExploreContent({
   currentUserId,
+  searchParams,
 }: {
   currentUserId: string | null;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const rateLimitResult = await checkRateLimit("explore");
+  if (rateLimitResult) {
+    return (
+      <Section className="py-16">
+        <div className="rounded-xl border border-dashed border-[var(--glass-border)] p-8 text-center">
+          <p className="text-muted-foreground text-sm">
+            {rateLimitResult.error}
+          </p>
+        </div>
+      </Section>
+    );
+  }
+
+  const { q } = await exploreSearchParamsCache.parse(searchParams);
+  const search = q || undefined;
+
   const profilePromise = getProfile();
 
   // Chain TMDB enrichment on featured items so metadata fetching starts
@@ -106,8 +134,8 @@ async function ExploreContent({
     await Promise.all([
       profilePromise,
       enrichedFeaturedPromise,
-      getExploreItems(50, 0, currentUserId),
-      getExplorePlaylists(12, 0),
+      getExploreItems({ search, currentUserId }),
+      getExplorePlaylists({ search }),
     ]);
 
   const profile = profileResult.success ? profileResult.data : null;
@@ -145,9 +173,10 @@ async function ExploreContent({
 
   return (
     <ExploreClient
-      items={items}
+      initialItems={items}
+      initialPlaylists={playlists}
+      initialSearch={q}
       featuredItems={enrichedFeaturedItems}
-      playlists={playlists}
       currentUser={currentUser}
       ownItemSyncData={ownItemSyncData}
     />

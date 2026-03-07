@@ -92,6 +92,7 @@ import {
   treeToItemUpdates,
   sortItems,
   filterItems,
+  filterItemsBySearch,
 } from "@/lib/item-utils";
 import {
   createItem,
@@ -143,6 +144,10 @@ interface ItemsViewProps {
   disableTreeView?: boolean;
   /** Server-rendered shelves inserted between pinned and library sections. */
   shelves?: React.ReactNode;
+  /** Client-side text search query (filters items by name/description). */
+  searchQuery?: string;
+  /** Callback to clear the search query (for empty state action). */
+  onSearchClear?: () => void;
 }
 
 /**
@@ -176,6 +181,8 @@ export function ItemsView({
   currentUser,
   disableTreeView = false,
   shelves,
+  searchQuery,
+  onSearchClear,
 }: ItemsViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -280,6 +287,17 @@ export function ItemsView({
       }
     },
     [router, currentUser?.username]
+  );
+
+  // Prefetch on hover for faster navigation (primitive dependency)
+  const username = currentUser?.username;
+  const handleItemMouseEnter = useCallback(
+    (itemId: string) => {
+      if (username) {
+        router.prefetch(`/u/${username}/${itemId}`);
+      }
+    },
+    [router, username]
   );
 
   // Handle creating new item at root level
@@ -503,18 +521,24 @@ export function ItemsView({
     [sortedItems, filters]
   );
 
+  // Apply client-side text search filter (after sort + content filter)
+  const searchFilteredItems = useMemo(
+    () => filterItemsBySearch(processedItems, searchQuery ?? ""),
+    [processedItems, searchQuery]
+  );
+
   // Convert flat items to tree structure for SortableTree (uses processed items)
   // Memoized to avoid rebuilding tree on every render
   const treeItemsProcessed = useMemo(
-    () => itemsToTree(processedItems),
-    [processedItems]
+    () => itemsToTree(searchFilteredItems),
+    [searchFilteredItems]
   );
 
   // Filter items for current level (grid view shows only current level)
   // Memoized to avoid refiltering on every render
   const currentLevelItems = useMemo(
-    () => processedItems.filter((item) => item.parentId === parentId),
-    [processedItems, parentId]
+    () => searchFilteredItems.filter((item) => item.parentId === parentId),
+    [searchFilteredItems, parentId]
   );
 
   // Split current level items into pinned and unpinned (for grid view sections)
@@ -535,7 +559,7 @@ export function ItemsView({
   // Bulk selection for edit mode operations
   // In tree view, include all items for cascading selection; in grid view, only current level
   const selectionItems =
-    viewMode === "tree" ? processedItems : currentLevelItems;
+    viewMode === "tree" ? searchFilteredItems : currentLevelItems;
   const bulkSelection = useBulkSelection(selectionItems);
 
   // Clear selection when exiting edit mode
@@ -553,14 +577,14 @@ export function ItemsView({
   const getDescendantIds = useCallback(
     (itemId: string): string[] => {
       const descendants: string[] = [];
-      const children = processedItems.filter((i) => i.parentId === itemId);
+      const children = searchFilteredItems.filter((i) => i.parentId === itemId);
       for (const child of children) {
         descendants.push(child.id);
         descendants.push(...getDescendantIds(child.id));
       }
       return descendants;
     },
-    [processedItems]
+    [searchFilteredItems]
   );
 
   /**
@@ -625,21 +649,24 @@ export function ItemsView({
    * Priority: filter-empty > no-children > first-time
    */
   const emptyStateVariant: EmptyStateVariant = useMemo(() => {
+    if (searchQuery) return "search-empty";
     if (hasActiveFilter) return "filter-empty";
     if (parentId) return "no-children";
     return "first-time";
-  }, [hasActiveFilter, parentId]);
+  }, [searchQuery, hasActiveFilter, parentId]);
 
   /**
    * Handles empty state action based on variant (memoized callback).
    */
   const handleEmptyStateAction = useCallback(() => {
-    if (emptyStateVariant === "filter-empty") {
+    if (emptyStateVariant === "search-empty" && onSearchClear) {
+      onSearchClear();
+    } else if (emptyStateVariant === "filter-empty") {
       clearFilters();
     } else {
       setAddItemOpen(true);
     }
-  }, [emptyStateVariant, clearFilters, setAddItemOpen]);
+  }, [emptyStateVariant, onSearchClear, clearFilters, setAddItemOpen]);
 
   return (
     <div
@@ -664,11 +691,12 @@ export function ItemsView({
       {/* Items display — grid/tree toggled via CSS display, SortableTree always mounted with disabled DnD in view mode */}
       {currentLevelItems.length === 0 ? (
         <Section
-          className="flex flex-1 flex-col"
+          className="flex flex-1 flex-col pt-6"
           data-testid="items-empty-state"
         >
           <EmptyState
             variant={emptyStateVariant}
+            searchQuery={searchQuery}
             onAction={handleEmptyStateAction}
           />
         </Section>
@@ -693,6 +721,7 @@ export function ItemsView({
               onItemSelectChange={handleItemSelectionChange}
               currentUser={currentUser}
               shelves={shelves}
+              onItemMouseEnter={handleItemMouseEnter}
             />
           </div>
           <div style={{ display: viewMode === "tree" ? "contents" : "none" }}>

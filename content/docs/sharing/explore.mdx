@@ -26,9 +26,9 @@ When items have TMDB metadata, the carousel displays rich details — tagline, r
 
 ## Browse collections and playlists
 
-The Explore page has two tabs: **Collections** and **Playlists**.
+The Explore page has two tabs: **Items** and **Playlists**.
 
-### Collections tab
+### Items tab
 
 A grid displays all explicitly public items from the community. Items that inherit visibility from their parent don't appear here (see [Item Visibility](/docs/sharing/item-visibility)).
 
@@ -46,13 +46,23 @@ A grid displays public playlists from all users. Each card shows the playlist's 
 
 Click any playlist to view its contents. To learn more about playlists, see [Create and Manage Playlists](/docs/playlists/create-playlist).
 
-## Sort and filter collections
+## Search for content
 
-Use the toolbar to control which collections you see and how they're ordered.
+Both the Items and Playlists tabs include a search bar below the toolbar. Type to filter results — the search updates as you type with a short delay, and your query is saved in the URL so you can bookmark or share a filtered view.
+
+If no results match your search, an empty state appears with the option to clear the search and start again.
+
+## Infinite scroll
+
+Items and playlists load progressively as you scroll down the page. When you reach the bottom, more items appear automatically. There's no need to click through pages — just keep scrolling.
+
+## Sort and filter items
+
+Use the toolbar to control which items you see and how they're ordered.
 
 ### Sort
 
-Use the sort dropdown to change how collections appear:
+Use the sort dropdown to change how items appear:
 
 - **Recently Updated** - Most recently modified (default)
 - **Name A-Z** - Alphabetical order
@@ -66,6 +76,24 @@ When signed in, an **Exclude Mine** toggle button appears in the toolbar. Click 
 
 Your sort preference and exclude setting are saved in the URL, so you can bookmark a filtered view.
 
+## Right-click actions on items
+
+When signed in, you can right-click (or long-press on mobile) any item on the Explore grid for quick actions.
+
+**On your own items**, the context menu includes:
+
+- **Settings** - Open the item settings
+- **Pin / Unpin** - Toggle sidebar pinning
+- **Add to Playlist** - Save the item to one of your playlists
+- **Delete** - Remove the item
+
+**On other people's items**, the context menu includes:
+
+- **Fork to Library** - Copy the item to your library (see [Fork Items](/docs/sharing/forking))
+- **Add to Playlist** - Save the item to one of your playlists
+
+If you've already forked an item, the option shows as "In Your Library" instead.
+
 ## View a public profile
 
 To view someone's full public profile:
@@ -75,7 +103,7 @@ To view someone's full public profile:
 
 You can also visit any public profile directly at `/u/username`.
 
-## Search for public content
+## Search with Spotlight
 
 **On desktop:** Press **/** to open spotlight search.
 
@@ -83,7 +111,8 @@ You can also visit any public profile directly at `/u/username`.
 
 Along with your own items (if signed in), you'll see:
 
-- **Public Collections** - Public items shared by other users
+- **Public Items** - Public items shared by other users
+- **Playlists** - Public playlists from the community
 - **People** - Public profiles matching your search
 
 Search is the fastest way to find specific public content or discover new users to follow.
@@ -94,7 +123,8 @@ On public profiles and items, you can:
 
 - Browse their public collection hierarchy
 - View item details and descriptions
-- Fork items to your own library (see [Forking Items](/docs/sharing/forking))
+- Fork items to your own library (see [Fork Items](/docs/sharing/forking))
+- Add items to your playlists
 
 You cannot:
 

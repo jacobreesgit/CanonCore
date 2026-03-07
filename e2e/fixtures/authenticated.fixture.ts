@@ -48,6 +48,62 @@ export interface PublicUserInfo {
  * Creates a public user with a public item in the DB.
  * Used by tests that need a public profile/item without relying on seed data.
  */
+export interface PublicUserWithItemsInfo extends PublicUserInfo {
+  itemIds: string[];
+  itemNames: string[];
+}
+
+/**
+ * Creates a public user with multiple public items in the DB.
+ * Used by tests that need pagination (PAGE_SIZE = 24).
+ *
+ * @param count - Number of items to create (default 26 for pagination)
+ */
+export async function createPublicUserWithItems(
+  count = 26
+): Promise<PublicUserWithItemsInfo> {
+  const userData = generateTestUser();
+  const passwordHash = await hash(userData.password, 10);
+  const user = await prisma.user.create({
+    data: {
+      email: userData.email,
+      passwordHash,
+      username: userData.username,
+      isPublic: true,
+    },
+  });
+
+  const itemIds: string[] = [];
+  const itemNames: string[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const name = `item-${String(i).padStart(3, "0")}-${userData.username}`;
+    const item = await prisma.item.create({
+      data: {
+        name,
+        userId: user.id,
+        isPublic: true,
+        inheritVisibility: false,
+      },
+    });
+    itemIds.push(item.id);
+    itemNames.push(name);
+  }
+
+  return {
+    id: user.id,
+    username: userData.username,
+    itemId: itemIds[0],
+    itemName: itemNames[0],
+    itemIds,
+    itemNames,
+  };
+}
+
+/**
+ * Creates a public user with a public item in the DB.
+ * Used by tests that need a public profile/item without relying on seed data.
+ */
 export async function createPublicUser(): Promise<PublicUserInfo> {
   const userData = generateTestUser();
   const passwordHash = await hash(userData.password, 10);

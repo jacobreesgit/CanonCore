@@ -88,6 +88,9 @@ vi.mock("@/lib/prisma", () => ({
       delete: vi.fn(),
       deleteMany: vi.fn(),
     },
+    fork: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
     $transaction: vi.fn((updates) => Promise.all(updates)),
     $queryRaw: vi.fn().mockResolvedValue([]),
   },

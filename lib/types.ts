@@ -11,6 +11,15 @@ export { SyncStatus } from "@prisma/client";
 export type { ItemProgress } from "./progress-utils";
 
 /**
+ * Generic paginated response for cursor-based infinite scroll.
+ * nextCursor is null when there are no more pages.
+ */
+export type PaginatedResult<T> = {
+  items: T[];
+  nextCursor: string | null;
+};
+
+/**
  * Lightweight item identifier type for public pages that don't need dnd-kit.
  * Equivalent to UniqueIdentifier from @dnd-kit/core.
  */

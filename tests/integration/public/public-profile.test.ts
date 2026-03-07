@@ -579,11 +579,11 @@ describe("Public Profile Integration", () => {
           },
         });
 
-        const items = await getPublicItemsForUser(user.id);
+        const result = await getPublicItemsForUser({ userId: user.id });
 
-        expect(items).toHaveLength(1);
-        expect(items[0].name).toBe("Public Root");
-        expect(items[0].depth).toBe(0);
+        expect(result.items).toHaveLength(1);
+        expect(result.items[0].name).toBe("Public Root");
+        expect(result.items[0].depth).toBe(0);
       } finally {
         await cleanupUser(user.id);
       }
@@ -622,10 +622,10 @@ describe("Public Profile Integration", () => {
           },
         });
 
-        const items = await getPublicItemsForUser(user.id);
+        const result = await getPublicItemsForUser({ userId: user.id });
 
-        expect(items).toHaveLength(1);
-        expect(items[0].name).toBe("Explicit Public");
+        expect(result.items).toHaveLength(1);
+        expect(result.items[0].name).toBe("Explicit Public");
       } finally {
         await cleanupUser(user.id);
       }
@@ -646,8 +646,8 @@ describe("Public Profile Integration", () => {
           },
         });
 
-        const items = await getPublicItemsForUser(user.id);
-        expect(items).toHaveLength(0);
+        const result = await getPublicItemsForUser({ userId: user.id });
+        expect(result.items).toHaveLength(0);
       } finally {
         await cleanupUser(user.id);
       }

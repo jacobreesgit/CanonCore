@@ -66,9 +66,9 @@ export function TmdbArtworkField({
         <label htmlFor={triggerId} className="text-sm font-medium">
           {label}
         </label>
-        {note}
       </div>
       <p className="text-muted-foreground text-xs">{description}</p>
+      {note && <p className="text-destructive text-xs">{note}</p>}
 
       {/* Trigger — mirrors FileTypeCombobox select-mode Button */}
       <Button
