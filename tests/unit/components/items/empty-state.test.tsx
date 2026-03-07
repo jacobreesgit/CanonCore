@@ -71,4 +71,38 @@ describe("EmptyState", () => {
     expect(screen.getByText("No items yet")).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
+
+  describe("search-empty variant", () => {
+    it("shows the search query in the message", () => {
+      render(
+        <EmptyState
+          variant="search-empty"
+          searchQuery="test query"
+          onAction={() => {}}
+        />
+      );
+      expect(screen.getByText(/test query/)).toBeInTheDocument();
+    });
+
+    it("calls onAction when Clear search is clicked", async () => {
+      const onAction = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <EmptyState
+          variant="search-empty"
+          searchQuery="test"
+          onAction={onAction}
+        />
+      );
+      await user.click(screen.getByRole("button", { name: /clear search/i }));
+      expect(onAction).toHaveBeenCalledOnce();
+    });
+
+    it("does not show Clear search button without onAction", () => {
+      render(<EmptyState variant="search-empty" searchQuery="test" />);
+      expect(
+        screen.queryByRole("button", { name: /clear search/i })
+      ).not.toBeInTheDocument();
+    });
+  });
 });

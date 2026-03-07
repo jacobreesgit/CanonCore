@@ -5,19 +5,14 @@
  * Features HeroCarousel for featured items and grid for all public items.
  */
 
-import {
-  useMemo,
-  useCallback,
-  useState,
-  useEffect,
-  useRef,
-  useSyncExternalStore,
-} from "react";
+import { useMemo, useCallback, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCopy, faUserXmark } from "@fortawesome/free-solid-svg-icons";
+import { emptySubscribe } from "@/lib/empty-subscribe";
+import { useForkDialog } from "@/hooks/use-fork-dialog";
 import { CinematicHero, type HeroSlide } from "@/components/hero";
 import { HeroButton } from "@/components/items/hero-button";
 import { PlaylistButton } from "@/components/items/playlist-button";
@@ -25,15 +20,21 @@ import { PlaylistGridItem } from "@/components/playlists/playlist-grid-item";
 import { PlaylistContextMenu } from "@/components/playlists/playlist-context-menu";
 import { GridItem } from "@/components/sortable-grid/grid-item";
 import { ItemContextMenu } from "@/components/items/item-context-menu";
+import { ViewerItemContextMenu } from "@/components/items/viewer-item-context-menu";
 import { EmptyState } from "@/components/items/empty-state";
 import { ForkDestinationDialog } from "@/components/items/fork-destination-dialog";
 import { Section } from "@/components/ui/section";
 import { HeroContentLayout } from "@/components/ui/hero-content-layout";
 import { UnderlineTabs } from "@/components/ui/underline-tabs";
 import { ContentToolbar } from "@/components/ui/content-toolbar";
+import { SearchInput } from "@/components/ui/search-input";
+import { InfiniteScrollTrigger } from "@/components/ui/infinite-scroll-trigger";
 import { cn } from "@/lib/utils";
 import { useExploreUrlState } from "@/hooks/use-explore-url-state";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useInfiniteItems } from "@/hooks/use-infinite-items";
+import { useSearchParam } from "@/hooks/use-search-param";
+import { getExploreItems, getExplorePlaylists } from "@/lib/public-auth";
 import { EXPLORE_SORT_OPTIONS, sortPublicItems } from "@/lib/item-utils";
 
 // Lazy-load swipeable tabs (mobile-only, keeps Embla out of desktop bundle)
@@ -47,11 +48,14 @@ const SwipeableUnderlineTabs = dynamic(
 
 import { deleteItem, pinItem, unpinItem } from "@/lib/item-actions";
 import { updatePlaylist, deletePlaylist } from "@/lib/playlist-actions";
-import { forkItem } from "@/lib/fork-actions";
 import { getTmdbBackdropUrl, getTmdbLogoUrl } from "@/lib/tmdb-image-utils";
-import type { PublicItem, FeaturedItem } from "@/lib/public-auth";
+import type {
+  ExploreItem,
+  ExplorePlaylistItem,
+  FeaturedItem,
+} from "@/lib/public-auth";
 import type { TmdbItemMetadata } from "@/lib/tmdb-client";
-import type { SortOption, SyncStatus } from "@/lib/types";
+import type { PaginatedResult, SortOption, SyncStatus } from "@/lib/types";
 
 /** Sync data for the current user's own featured items (passed from server). */
 interface OwnItemSyncData {
@@ -59,40 +63,17 @@ interface OwnItemSyncData {
   driveFileId: string | null;
 }
 
-/** No-op subscribe for useSyncExternalStore (value never changes). */
-const emptySubscribe = () => () => {};
-
 interface CurrentUser {
   id: string;
   username: string | null;
   name: string | null;
 }
 
-interface ExplorePlaylist {
-  id: string;
-  name: string;
-  description: string | null;
-  hasArtwork?: boolean;
-  itemCount: number;
-  previewPosters: { tmdbPosterPath: string | null; artworkId: string | null }[];
-  updatedAt: Date;
-  ownerUsername: string;
-  ownerName: string | null;
-}
-
 interface ExploreClientProps {
-  items: (PublicItem & {
-    ownerUsername: string;
-    ownerName: string | null;
-    progressPercentage?: number | null;
-    watchedCount?: number;
-    totalMediaCount?: number;
-    totalItems?: number;
-    pinnedOrder?: number | null;
-    isForkedByCurrentUser?: boolean;
-  })[];
+  initialItems: PaginatedResult<ExploreItem>;
+  initialPlaylists: PaginatedResult<ExplorePlaylistItem>;
+  initialSearch: string;
   featuredItems: (FeaturedItem & { tmdbMetadata?: TmdbItemMetadata | null })[];
-  playlists?: ExplorePlaylist[];
   currentUser: CurrentUser | null;
   /** Sync data for the current user's own featured items, keyed by item ID. */
   ownItemSyncData?: Record<string, OwnItemSyncData>;
@@ -104,9 +85,10 @@ interface ExploreClientProps {
  * Shows "You" for own items, clickable @username for others.
  */
 export function ExploreClient({
-  items,
+  initialItems,
+  initialPlaylists,
+  initialSearch,
   featuredItems,
-  playlists,
   currentUser,
   ownItemSyncData,
 }: ExploreClientProps) {
@@ -120,18 +102,56 @@ export function ExploreClient({
     tab,
     setTab,
   } = useExploreUrlState();
+
+  // Search state: debounced URL sync via nuqs ?q= param
+  const {
+    inputValue,
+    committedValue,
+    setInputValue,
+    clear: clearSearch,
+  } = useSearchParam();
+
+  // Infinite scroll for items — queryKey includes search so refetch on search change
+  const {
+    items: allItems,
+    fetchNextPage: fetchNextItems,
+    hasNextPage: hasNextItems,
+    isFetchingNextPage: isFetchingNextItems,
+    isPlaceholderData: isItemsPlaceholder,
+  } = useInfiniteItems<ExploreItem>({
+    queryKey: ["explore-items", committedValue],
+    fetchAction: (cursor) =>
+      getExploreItems({
+        cursor,
+        search: committedValue || undefined,
+        currentUserId: currentUser?.id,
+      }),
+    initialData: initialSearch === committedValue ? initialItems : undefined,
+  });
+
+  // Infinite scroll for playlists
+  const {
+    items: allPlaylists,
+    fetchNextPage: fetchNextPlaylists,
+    hasNextPage: hasNextPlaylists,
+    isFetchingNextPage: isFetchingNextPlaylists,
+    isPlaceholderData: isPlaylistsPlaceholder,
+  } = useInfiniteItems<ExplorePlaylistItem>({
+    queryKey: ["explore-playlists", committedValue],
+    fetchAction: (cursor) =>
+      getExplorePlaylists({
+        cursor,
+        search: committedValue || undefined,
+      }),
+    initialData:
+      initialSearch === committedValue ? initialPlaylists : undefined,
+  });
+
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  const [hiddenPlaylistIds, setHiddenPlaylistIds] = useState<Set<string>>(
+    new Set()
+  );
   const [activeColour, setActiveColour] = useState<string | null>(null);
-  const [localPlaylists, setLocalPlaylists] = useState(playlists);
-
-  // Sync local playlist state when server prop changes (e.g. revalidation)
-  useEffect(() => {
-    setLocalPlaylists(playlists);
-  }, [playlists]);
-
-  // Ref for snapshot-based optimistic revert (avoids stale closure)
-  const playlistsRef = useRef(localPlaylists);
-  playlistsRef.current = localPlaylists;
 
   // Viewport detection for responsive tab rendering
   const isMobile = useIsMobile();
@@ -146,14 +166,30 @@ export function ExploreClient({
   // Active tab — URL-backed, defaults to "items"
   const activeTab = tab ?? "items";
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(
-    () => new Set(items.filter((i) => i.pinnedOrder != null).map((i) => i.id))
+    () =>
+      new Set(
+        initialItems.items.filter((i) => i.pinnedOrder != null).map((i) => i.id)
+      )
   );
 
-  // Fork dialog state
-  const [forkDialogOpen, setForkDialogOpen] = useState(false);
-  const [forkingItemId, setForkingItemId] = useState<string | null>(null);
-  const [forkingItemName, setForkingItemName] = useState<string>("");
-  const [isForking, setIsForking] = useState(false);
+  // Fork dialog (shared hook with custom toast for "View" action)
+  const fork = useForkDialog({
+    suppressToast: true,
+    onSuccess: (result) => {
+      toast.success("Added to your library!", {
+        description: `${fork.itemName} has been forked to your library.`,
+        action:
+          currentUser?.username && result
+            ? {
+                label: "View",
+                onClick: () =>
+                  router.push(`/u/${currentUser.username}/${result.itemId}`),
+              }
+            : undefined,
+      });
+      router.refresh();
+    },
+  });
 
   // Handle delete for own items
   const handleDelete = useCallback(async (itemId: string) => {
@@ -205,11 +241,14 @@ export function ExploreClient({
   // Handle making own playlist private (removes from explore)
   const handlePlaylistToggleVisibility = useCallback(
     async (playlistId: string) => {
-      const snapshot = playlistsRef.current;
-      setLocalPlaylists((prev) => prev?.filter((p) => p.id !== playlistId));
+      setHiddenPlaylistIds((prev) => new Set(prev).add(playlistId));
       const result = await updatePlaylist(playlistId, { isPublic: false });
       if (result.error) {
-        setLocalPlaylists(snapshot);
+        setHiddenPlaylistIds((prev) => {
+          const next = new Set(prev);
+          next.delete(playlistId);
+          return next;
+        });
         toast.error(result.error);
       } else {
         toast.success("Playlist set to private");
@@ -220,11 +259,14 @@ export function ExploreClient({
 
   // Handle deleting own playlist
   const handlePlaylistDelete = useCallback(async (playlistId: string) => {
-    const snapshot = playlistsRef.current;
-    setLocalPlaylists((prev) => prev?.filter((p) => p.id !== playlistId));
+    setHiddenPlaylistIds((prev) => new Set(prev).add(playlistId));
     const result = await deletePlaylist(playlistId);
     if (result.error) {
-      setLocalPlaylists(snapshot);
+      setHiddenPlaylistIds((prev) => {
+        const next = new Set(prev);
+        next.delete(playlistId);
+        return next;
+      });
       toast.error(result.error);
     } else {
       toast.success("Playlist deleted");
@@ -236,48 +278,10 @@ export function ExploreClient({
     (slideId: string) => {
       const item = featuredItems.find((i) => i.id === slideId);
       if (item) {
-        setForkingItemId(slideId);
-        setForkingItemName(item.name);
-        setForkDialogOpen(true);
+        fork.openDialog(slideId, item.name);
       }
     },
-    [featuredItems]
-  );
-
-  // Execute fork with destination
-  const handleForkConfirm = useCallback(
-    async (parentId: string | null) => {
-      if (!forkingItemId) return;
-
-      setIsForking(true);
-      try {
-        const result = await forkItem(forkingItemId, parentId);
-        if (result.success) {
-          toast.success("Added to your library!", {
-            description: `${forkingItemName} has been forked to your library.`,
-            action:
-              currentUser?.username && result.data
-                ? {
-                    label: "View",
-                    onClick: () =>
-                      router.push(
-                        `/u/${currentUser.username}/${result.data?.itemId}`
-                      ),
-                  }
-                : undefined,
-          });
-          setForkDialogOpen(false);
-          router.refresh();
-        } else {
-          toast.error(result.error ?? "Failed to fork item");
-        }
-      } catch {
-        toast.error("Failed to fork item");
-      } finally {
-        setIsForking(false);
-      }
-    },
-    [forkingItemId, forkingItemName, currentUser, router]
+    [featuredItems, fork]
   );
 
   // Convert featured items to carousel slides with TMDB data
@@ -321,13 +325,13 @@ export function ExploreClient({
   // Use shared sort utility (DRY - no duplicate sort function)
   // Filter out deleted items, then apply exclude-mine toggle and sort
   const sortedItems = useMemo(() => {
-    const activeItems = items.filter((i) => !deletedIds.has(i.id));
+    const activeItems = allItems.filter((i) => !deletedIds.has(i.id));
     const filtered =
       excludeMine && currentUser
         ? activeItems.filter((i) => i.userId !== currentUser.id)
         : activeItems;
     return sortPublicItems(filtered, sortBy);
-  }, [items, sortBy, excludeMine, deletedIds, currentUser]);
+  }, [allItems, sortBy, excludeMine, deletedIds, currentUser]);
 
   // Split into pinned (current user's only) and unpinned for section rendering
   const pinnedExploreItems = useMemo(
@@ -347,20 +351,21 @@ export function ExploreClient({
 
   // Preload on hover for faster perceived navigation
   const handleMouseEnter = useCallback(
-    (item: ExploreClientProps["items"][number]) => {
+    (item: ExploreItem) => {
       router.prefetch(`/u/${item.ownerUsername}/${item.id}`);
     },
     [router]
   );
 
   const handleItemClick = useCallback(
-    (item: ExploreClientProps["items"][number]) => {
+    (item: ExploreItem) => {
       router.push(`/u/${item.ownerUsername}/${item.id}`);
     },
     [router]
   );
 
-  const hasItems = items.length > 0;
+  const hasItems = allItems.length > 0;
+  const isSearching = committedValue.length > 0;
   const hasFeatured = carouselSlides.length > 0;
 
   // Hero element
@@ -426,7 +431,7 @@ export function ExploreClient({
       <ContentToolbar
         sortBy={sortBy}
         onSortChange={setSortBy as (value: SortOption) => void}
-        disabled={!hasItems}
+        disabled={!hasItems && !isSearching}
         sortOptions={EXPLORE_SORT_OPTIONS}
         defaultSort="updated-desc"
         sortTestId="explore-sort-dropdown"
@@ -457,9 +462,23 @@ export function ExploreClient({
         }
       />
 
+      <Section className="pt-2 pb-0">
+        <SearchInput
+          value={inputValue}
+          onChange={setInputValue}
+          onClear={clearSearch}
+          testId="explore-items-search"
+        />
+      </Section>
+
       {/* Items grid or empty state */}
       {hasItems ? (
-        <div className="flex flex-col">
+        <div
+          className={cn(
+            "flex flex-col transition-opacity duration-200",
+            isItemsPlaceholder && "opacity-60"
+          )}
+        >
           {/* Pinned section (current user's pinned items only) */}
           {pinnedExploreItems.length > 0 && (
             <Section className="py-8" aria-label="Pinned items">
@@ -495,7 +514,9 @@ export function ExploreClient({
                       isOwn
                       moreMenuProps={{
                         itemName: item.name,
+                        itemId: item.id,
                         showAddChild: false,
+                        showAddToPlaylist: true,
                         isPinned: true,
                         onSettings: () => handleOpenSettings(item.id),
                         onDelete: () => handleDelete(item.id),
@@ -509,7 +530,9 @@ export function ExploreClient({
                     <ItemContextMenu
                       key={item.id}
                       itemName={item.name}
+                      itemId={item.id}
                       showAddChild={false}
+                      showAddToPlaylist
                       isPinned={true}
                       onSettings={() => handleOpenSettings(item.id)}
                       onDelete={() => handleDelete(item.id)}
@@ -570,12 +593,28 @@ export function ExploreClient({
                       isOwnItem
                         ? {
                             itemName: item.name,
+                            itemId: item.id,
                             showAddChild: false,
+                            showAddToPlaylist: true,
                             isPinned: pinnedIds.has(item.id),
                             onSettings: () => handleOpenSettings(item.id),
                             onDelete: () => handleDelete(item.id),
                             onPin: () => handlePin(item.id),
                             onUnpin: () => handleUnpin(item.id),
+                          }
+                        : undefined
+                    }
+                    viewerMenuProps={
+                      !isOwnItem
+                        ? {
+                            itemId: item.id,
+                            itemName: item.name,
+                            isForked: item.isForkedByCurrentUser,
+                            isGuest: !currentUser,
+                            showAddToPlaylist: !!currentUser,
+                            onFork: currentUser
+                              ? () => fork.openDialog(item.id, item.name)
+                              : undefined,
                           }
                         : undefined
                     }
@@ -587,7 +626,9 @@ export function ExploreClient({
                     <ItemContextMenu
                       key={item.id}
                       itemName={item.name}
+                      itemId={item.id}
                       showAddChild={false}
+                      showAddToPlaylist
                       isPinned={pinnedIds.has(item.id)}
                       onSettings={() => handleOpenSettings(item.id)}
                       onDelete={() => handleDelete(item.id)}
@@ -599,74 +640,145 @@ export function ExploreClient({
                   );
                 }
 
-                return <div key={item.id}>{gridItem}</div>;
+                return (
+                  <ViewerItemContextMenu
+                    key={item.id}
+                    itemId={item.id}
+                    itemName={item.name}
+                    isForked={item.isForkedByCurrentUser}
+                    isGuest={!currentUser}
+                    showAddToPlaylist={!!currentUser}
+                    onFork={
+                      currentUser
+                        ? () => fork.openDialog(item.id, item.name)
+                        : undefined
+                    }
+                  >
+                    {gridItem}
+                  </ViewerItemContextMenu>
+                );
               })}
             </div>
           </Section>
+
+          {/* Infinite scroll trigger for items */}
+          <InfiniteScrollTrigger
+            hasNextPage={hasNextItems}
+            isFetchingNextPage={isFetchingNextItems}
+            fetchNextPage={fetchNextItems}
+          />
         </div>
+      ) : isSearching ? (
+        <Section className="flex flex-1 flex-col pt-6">
+          <EmptyState
+            variant="search-empty"
+            searchQuery={committedValue}
+            onAction={clearSearch}
+          />
+        </Section>
       ) : (
-        <Section className="flex flex-1 flex-col">
+        <Section className="flex flex-1 flex-col pt-6">
           <EmptyState variant="explore-empty" />
         </Section>
       )}
     </>
   );
 
+  // Filter out optimistically hidden playlists
+  const visiblePlaylists = useMemo(
+    () => allPlaylists.filter((p) => !hiddenPlaylistIds.has(p.id)),
+    [allPlaylists, hiddenPlaylistIds]
+  );
+
   // Playlists tab content
-  const playlistsContent =
-    localPlaylists && localPlaylists.length > 0 ? (
-      <Section className="py-8" aria-label="Playlists">
-        <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
-          Public Playlists
-        </h2>
-        <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
-          {localPlaylists.map((playlist) => {
-            const isOwn = currentUser?.username === playlist.ownerUsername;
+  const playlistsContent = (
+    <>
+      <Section className="pt-2 pb-0">
+        <SearchInput
+          value={inputValue}
+          onChange={setInputValue}
+          onClear={clearSearch}
+          testId="explore-playlists-search"
+        />
+      </Section>
 
-            const card = (
-              <PlaylistGridItem
-                playlist={playlist}
-                username={playlist.ownerUsername}
-                isOwner={isOwn}
-              />
-            );
+      {visiblePlaylists.length > 0 ? (
+        <div
+          className={cn(
+            "transition-opacity duration-200",
+            isPlaylistsPlaceholder && "opacity-60"
+          )}
+        >
+          <Section className="py-8" aria-label="Playlists">
+            <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
+              Public Playlists
+            </h2>
+            <div className="stagger-grid grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
+              {visiblePlaylists.map((playlist) => {
+                const isOwn = currentUser?.username === playlist.ownerUsername;
 
-            if (isOwn) {
-              return (
-                <PlaylistContextMenu
-                  key={playlist.id}
-                  playlistName={playlist.name}
-                  isPublic={true}
-                  onRename={() =>
-                    router.push(
-                      `/u/${playlist.ownerUsername}/playlists/${playlist.id}`
-                    )
-                  }
-                  onToggleVisibility={() =>
-                    handlePlaylistToggleVisibility(playlist.id)
-                  }
-                  onDelete={() => handlePlaylistDelete(playlist.id)}
-                >
-                  {card}
-                </PlaylistContextMenu>
-              );
-            }
+                const card = (
+                  <PlaylistGridItem
+                    playlist={playlist}
+                    username={playlist.ownerUsername}
+                    isOwner={isOwn}
+                  />
+                );
 
-            return (
-              <PlaylistGridItem
-                key={playlist.id}
-                playlist={playlist}
-                username={playlist.ownerUsername}
-              />
-            );
-          })}
+                if (isOwn) {
+                  return (
+                    <PlaylistContextMenu
+                      key={playlist.id}
+                      playlistName={playlist.name}
+                      isPublic={true}
+                      onRename={() =>
+                        router.push(
+                          `/u/${playlist.ownerUsername}/playlists/${playlist.id}`
+                        )
+                      }
+                      onToggleVisibility={() =>
+                        handlePlaylistToggleVisibility(playlist.id)
+                      }
+                      onDelete={() => handlePlaylistDelete(playlist.id)}
+                    >
+                      {card}
+                    </PlaylistContextMenu>
+                  );
+                }
+
+                return (
+                  <PlaylistGridItem
+                    key={playlist.id}
+                    playlist={playlist}
+                    username={playlist.ownerUsername}
+                  />
+                );
+              })}
+            </div>
+          </Section>
+
+          {/* Infinite scroll trigger for playlists */}
+          <InfiniteScrollTrigger
+            hasNextPage={hasNextPlaylists}
+            isFetchingNextPage={isFetchingNextPlaylists}
+            fetchNextPage={fetchNextPlaylists}
+          />
         </div>
-      </Section>
-    ) : (
-      <Section className="flex flex-1 flex-col">
-        <EmptyState variant="explore-empty" />
-      </Section>
-    );
+      ) : isSearching ? (
+        <Section className="flex flex-1 flex-col pt-6">
+          <EmptyState
+            variant="search-empty"
+            searchQuery={committedValue}
+            onAction={clearSearch}
+          />
+        </Section>
+      ) : (
+        <Section className="flex flex-1 flex-col pt-6">
+          <EmptyState variant="explore-empty" />
+        </Section>
+      )}
+    </>
+  );
 
   const tabs = [
     { id: "items", label: "Items", content: itemsContent },
@@ -678,7 +790,7 @@ export function ExploreClient({
       hero={hero}
       dominantColour={activeColour}
       animateColour
-      className={!hasItems ? "flex-1" : undefined}
+      className={!hasItems && !isSearching ? "flex-1" : undefined}
     >
       {tabsMounted ? (
         isMobile ? (
@@ -700,11 +812,11 @@ export function ExploreClient({
 
       {/* Fork destination dialog */}
       <ForkDestinationDialog
-        open={forkDialogOpen}
-        onOpenChange={setForkDialogOpen}
-        itemName={forkingItemName}
-        onConfirm={handleForkConfirm}
-        isForking={isForking}
+        open={fork.open}
+        onOpenChange={fork.setOpen}
+        itemName={fork.itemName}
+        onConfirm={fork.handleConfirm}
+        isForking={fork.isForking}
       />
     </HeroContentLayout>
   );

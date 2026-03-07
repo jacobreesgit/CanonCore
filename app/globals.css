@@ -397,6 +397,12 @@
   animation-delay: 440ms;
 }
 
+/* Skip rendering off-screen grid items after infinite scroll loads many pages */
+.stagger-grid > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 300px;
+}
+
 /* Skeleton shimmer loading state */
 .skeleton-shimmer {
   background: linear-gradient(

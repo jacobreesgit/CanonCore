@@ -8,6 +8,7 @@
 "use client";
 
 import { ComponentType, ReactNode, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -41,6 +42,17 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import type { ItemVisibilityOptions } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { MENU_ITEM_CLASSES } from "./menu-styles";
+
+export { MENU_ITEM_CLASSES };
+
+const AddToPlaylistDialog = dynamic(
+  () =>
+    import("@/components/playlists/add-to-playlist-dialog").then((mod) => ({
+      default: mod.AddToPlaylistDialog,
+    })),
+  { ssr: false }
+);
 
 /** Shared action props for item menus (context menu and dropdown menu). */
 export interface ItemMenuActions {
@@ -78,17 +90,11 @@ export interface ItemMenuActions {
   onMarkAllWatched?(): Promise<void>;
   /** Callback to mark all descendants as unwatched (parent items) */
   onMarkAllUnwatched?(): Promise<void>;
+  /** Whether to show the "Add to Playlist" option. */
+  showAddToPlaylist?: boolean;
+  /** Item ID — needed for Add to Playlist dialog. */
+  itemId?: string;
 }
-
-/** Glassmorphism menu item styling shared by context menu and dropdown menu. */
-export const MENU_ITEM_CLASSES = cn(
-  "gap-2 rounded-lg px-3 py-2",
-  "text-sm",
-  "text-muted-foreground",
-  "hover:bg-white/10 hover:text-foreground",
-  "focus:bg-white/10 focus:text-foreground",
-  "cursor-pointer"
-);
 
 /** Destructive (delete) menu item styling. */
 const DELETE_ITEM_CLASSES = cn(
@@ -116,6 +122,7 @@ export function renderMenuItems({
   MenuSeparator,
   onDeleteClick,
   onAddChildClick,
+  onPlaylistClick,
 }: {
   actions: ItemMenuActions;
   MenuItem: ComponentType<{
@@ -127,9 +134,11 @@ export function renderMenuItems({
   MenuSeparator: ComponentType<{ className?: string }>;
   onDeleteClick: () => void;
   onAddChildClick: () => void;
+  onPlaylistClick?: () => void;
 }) {
   const {
     showAddChild = true,
+    showAddToPlaylist = false,
     driveFileId,
     isPinned = false,
     isWatched = false,
@@ -165,6 +174,16 @@ export function renderMenuItems({
             className="size-4"
           />
           <span>Settings</span>
+        </MenuItem>
+      )}
+      {showAddToPlaylist && onPlaylistClick && (
+        <MenuItem onClick={onPlaylistClick} className={MENU_ITEM_CLASSES}>
+          <FontAwesomeIcon
+            icon={faPlus}
+            aria-hidden="true"
+            className="size-4"
+          />
+          <span>Add to Playlist</span>
         </MenuItem>
       )}
       {isPinned && onUnpin && (
@@ -284,6 +303,8 @@ export function ItemContextMenu({
 }: ItemContextMenuProps) {
   const {
     itemName,
+    itemId,
+    showAddToPlaylist = false,
     onDelete,
     onAddChild,
     onAddChildComplete,
@@ -291,6 +312,7 @@ export function ItemContextMenu({
   } = actions;
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [addChildOpen, setAddChildOpen] = useState(false);
+  const [playlistOpen, setPlaylistOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleDelete() {
@@ -323,6 +345,9 @@ export function ItemContextMenu({
             MenuSeparator: ContextMenuSeparator,
             onDeleteClick: () => setDeleteOpen(true),
             onAddChildClick: () => setAddChildOpen(true),
+            onPlaylistClick: showAddToPlaylist
+              ? () => setPlaylistOpen(true)
+              : undefined,
           })}
         </ContextMenuContent>
       </ContextMenu>
@@ -388,6 +413,15 @@ export function ItemContextMenu({
         parentName={itemName}
         hasDriveConnection={hasDriveConnection}
       />
+
+      {/* Add to Playlist Dialog */}
+      {playlistOpen && itemId && (
+        <AddToPlaylistDialog
+          open={playlistOpen}
+          onOpenChange={setPlaylistOpen}
+          itemId={itemId}
+        />
+      )}
     </>
   );
 }

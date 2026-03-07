@@ -60,6 +60,11 @@ export function ExploreContentSkeleton() {
         </div>
       </Section>
 
+      {/* Search input skeleton — below toolbar, full width */}
+      <Section className="pt-2 pb-0">
+        <Skeleton className="h-9 w-full rounded-md" />
+      </Section>
+
       {/* Poster grid (12 cards) */}
       <Section className="pb-8">
         <div className="grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6">

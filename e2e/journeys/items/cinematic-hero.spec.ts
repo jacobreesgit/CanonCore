@@ -48,14 +48,6 @@ test.describe("Cinematic Hero", () => {
     expect(style).toContain("--dark-900");
   });
 
-  test.skip("should apply colour theming on profile page when hero image has colour", async () => {
-    // TODO: Requires SettingsPage POM to support hero image upload
-    // Once available:
-    // 1. Upload hero image via settings (triggers colour extraction)
-    // 2. Navigate to profile page
-    // 3. Assert [style*='--dark-'] wrapper has --dark-700 and --dark-900
-  });
-
   test("should apply colour theming on playlist detail page via item fallback", async ({
     itemsCrud,
     itemDetail,

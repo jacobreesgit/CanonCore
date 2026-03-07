@@ -10,6 +10,7 @@ import {
   faFolder,
   faFolderOpen,
   faFilterCircleXmark,
+  faMagnifyingGlass,
   faMusic,
   faPlus,
   faXmark,
@@ -22,6 +23,7 @@ export type EmptyStateVariant =
   | "first-time"
   | "no-children"
   | "filter-empty"
+  | "search-empty"
   | "public-profile-empty"
   | "public-item-empty"
   | "explore-empty"
@@ -57,6 +59,13 @@ const EMPTY_STATE_CONFIG: Record<EmptyStateVariant, EmptyStateConfig> = {
     description:
       "No items match your current filter. Try adjusting your filter criteria.",
     actionLabel: "Clear Filter",
+    actionIcon: faXmark,
+  },
+  "search-empty": {
+    icon: faMagnifyingGlass,
+    title: "No results found",
+    description: "",
+    actionLabel: "Clear search",
     actionIcon: faXmark,
   },
   "public-profile-empty": {
@@ -96,6 +105,8 @@ interface EmptyStateProps {
   variant: EmptyStateVariant;
   /** Optional callback for the action button */
   onAction?: () => void;
+  /** Search query to display in the search-empty variant */
+  searchQuery?: string;
   /** Optional custom class name */
   className?: string;
 }
@@ -115,8 +126,26 @@ interface EmptyStateProps {
  * // Filter yielded no results
  * <EmptyState variant="filter-empty" onAction={() => setFilterBy("all")} />
  */
-export function EmptyState({ variant, onAction, className }: EmptyStateProps) {
+export function EmptyState({
+  variant,
+  onAction,
+  searchQuery,
+  className,
+}: EmptyStateProps) {
   const config = EMPTY_STATE_CONFIG[variant];
+
+  const description =
+    variant === "search-empty" && searchQuery ? (
+      <>
+        No results for &ldquo;
+        <span className="text-foreground inline-block max-w-[20ch] truncate align-bottom font-medium">
+          {searchQuery}
+        </span>
+        &rdquo;
+      </>
+    ) : (
+      config.description
+    );
 
   return (
     <div
@@ -150,7 +179,7 @@ export function EmptyState({ variant, onAction, className }: EmptyStateProps) {
           {config.title}
         </h3>
         <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed">
-          {config.description}
+          {description}
         </p>
       </div>
 

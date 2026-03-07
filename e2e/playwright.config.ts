@@ -37,6 +37,8 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    stdout: "pipe",
+    stderr: "pipe",
     env: {
       PORT: String(E2E_PORT),
       NEXT_DIST_DIR: ".next-e2e",

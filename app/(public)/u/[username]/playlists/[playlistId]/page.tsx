@@ -20,9 +20,12 @@ import type { PublicProfile } from "@/lib/public-auth";
 import { getPlaylist } from "@/lib/playlist-actions";
 import { getCachedGoogleDriveConnection } from "@/lib/google-drive-data";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { prisma } from "@/lib/prisma";
+import { buildBreadcrumbJsonLd } from "@/lib/breadcrumb-jsonld";
 import { SiteHeader } from "@/components/site-header";
 import { PlaylistDetailClient } from "@/components/playlists/playlist-detail-client";
 import { PlaylistContentSkeleton } from "@/components/skeletons/playlist-content-skeleton";
+import { PrivateResourceNotice } from "@/components/ui/private-resource-notice";
 
 interface PageProps {
   params: Promise<{ username: string; playlistId: string }>;
@@ -130,14 +133,33 @@ async function ViewerPlaylistContent({
   username,
   profile,
   token,
+  currentUserId,
 }: {
   playlistId: string;
   username: string;
   profile: PublicProfile;
   token?: string;
+  currentUserId: string | null;
 }) {
   const publicData = await getPublicPlaylist(playlistId, token);
-  if (!publicData) notFound();
+  if (!publicData) {
+    // Lightweight ownership check: show hint if owner views their own private playlist
+    if (currentUserId) {
+      const privatePlaylist = await prisma.playlist.findUnique({
+        where: { id: playlistId },
+        select: { userId: true },
+      });
+      if (privatePlaylist?.userId === currentUserId) {
+        return (
+          <PrivateResourceNotice
+            resourceType="playlist"
+            settingsUrl={`/u/${username}/playlists/${playlistId}`}
+          />
+        );
+      }
+    }
+    notFound();
+  }
 
   // Resolve colour server-side: playlist artwork > first item > null
   const resolvedColour =
@@ -146,6 +168,18 @@ async function ViewerPlaylistContent({
     null;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "Home", url: appUrl },
+    {
+      name: profile.name ?? `@${profile.username}`,
+      url: `${appUrl}/u/${username}`,
+    },
+    { name: "Playlists", url: `${appUrl}/u/${username}` },
+    {
+      name: publicData.playlist.name,
+      url: `${appUrl}/u/${username}/playlists/${playlistId}`,
+    },
+  ]);
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
@@ -176,6 +210,12 @@ async function ViewerPlaylistContent({
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c"),
         }}
       />
       <PlaylistDetailClient
@@ -278,6 +318,7 @@ export default async function PlaylistPage({
             username={username}
             profile={profile}
             token={token}
+            currentUserId={session?.user?.id ?? null}
           />
         </Suspense>
       </div>

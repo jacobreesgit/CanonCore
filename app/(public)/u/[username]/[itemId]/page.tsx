@@ -30,10 +30,12 @@ import {
 import { checkRateLimit } from "@/lib/rate-limit";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { buildBreadcrumbJsonLd } from "@/lib/breadcrumb-jsonld";
 import { SiteHeader } from "@/components/site-header";
 import { ItemDetailClient } from "@/components/items";
 import { PublicItemClient } from "./public-item-detail-client";
 import { ItemContentSkeleton } from "@/components/skeletons/item-content-skeleton";
+import { PrivateResourceNotice } from "@/components/ui/private-resource-notice";
 import type { Item } from "@/lib/types";
 
 interface PageProps {
@@ -201,6 +203,30 @@ export default async function ItemDetailPage({
     ]);
 
     if (!item) {
+      // Lightweight ownership check: show hint if owner is viewing their own private item
+      if (currentUserId) {
+        const privateItem = await prisma.item.findUnique({
+          where: { id: itemId },
+          select: { userId: true },
+        });
+        if (privateItem?.userId === currentUserId) {
+          return (
+            <>
+              <SiteHeader
+                title={`@${profile.username}`}
+                titleHref={`/u/${profile.username}`}
+                emailUnverified={
+                  session?.user ? !session.user.emailVerified : false
+                }
+              />
+              <PrivateResourceNotice
+                resourceType="item"
+                settingsUrl={`/u/${username}/${itemId}?settings=true`}
+              />
+            </>
+          );
+        }
+      }
       notFound();
     }
 
@@ -216,8 +242,29 @@ export default async function ItemDetailPage({
       href: `/u/${profile.username}/${crumb.id}`,
     }));
 
+    // BreadcrumbList JSON-LD: Home > Username > [ancestors...] > Item
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://canoncore.com";
+    const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+      { name: "Home", url: appUrl },
+      {
+        name: profile.name ?? `@${profile.username}`,
+        url: `${appUrl}/u/${profile.username}`,
+      },
+      ...(breadcrumb ?? []).map((crumb) => ({
+        name: crumb.name,
+        url: `${appUrl}/u/${profile.username}/${crumb.id}`,
+      })),
+      { name: item.name, url: `${appUrl}/u/${profile.username}/${item.id}` },
+    ]);
+
     return (
       <>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c"),
+          }}
+        />
         <SiteHeader
           title={`@${profile.username}`}
           titleHref={`/u/${profile.username}`}

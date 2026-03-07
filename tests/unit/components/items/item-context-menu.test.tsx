@@ -164,4 +164,22 @@ describe("ItemContextMenu", () => {
       expect(onUnpin).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("Add to Playlist", () => {
+    it("shows Add to Playlist when showAddToPlaylist is true", () => {
+      render(
+        <ItemContextMenu {...defaultProps} showAddToPlaylist itemId="item-1">
+          <button>Trigger</button>
+        </ItemContextMenu>
+      );
+      fireEvent.contextMenu(screen.getByText("Trigger"));
+      expect(screen.getByText("Add to Playlist")).toBeInTheDocument();
+    });
+
+    it("hides Add to Playlist when showAddToPlaylist is false", () => {
+      render(<ItemContextMenu {...defaultProps} />);
+      fireEvent.contextMenu(screen.getByRole("button", { name: /trigger/i }));
+      expect(screen.queryByText("Add to Playlist")).not.toBeInTheDocument();
+    });
+  });
 });

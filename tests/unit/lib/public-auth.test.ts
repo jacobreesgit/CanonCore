@@ -27,6 +27,9 @@ vi.mock("@/lib/prisma", () => ({
       findUnique: vi.fn(),
       findMany: vi.fn(),
     },
+    fork: {
+      findMany: vi.fn(),
+    },
     $queryRaw: vi.fn(),
   },
 }));
@@ -45,6 +48,7 @@ function mockUser(
     image: Buffer | null;
     heroImage: Buffer | null;
     dominantColour: string | null;
+    bio: string | null;
     isPublic: boolean;
     createdAt: Date;
   }> = {}
@@ -56,6 +60,7 @@ function mockUser(
     image: null,
     heroImage: null,
     dominantColour: null,
+    bio: null,
     isPublic: true,
     createdAt: new Date("2024-01-01"),
     ...overrides,
@@ -137,6 +142,7 @@ describe("getPublicProfile", () => {
         image: true,
         heroImage: true,
         dominantColour: true,
+        bio: true,
         createdAt: true,
       },
     });
@@ -170,6 +176,7 @@ describe("getPublicProfile", () => {
       hasImage: true,
       hasHeroImage: true,
       dominantColour: null,
+      bio: null,
       createdAt: new Date("2024-01-01"),
     });
   });
@@ -415,18 +422,18 @@ describe("getPublicItemsForUser", () => {
     vi.clearAllMocks();
   });
 
-  it("returns empty array when user has no public items", async () => {
+  it("returns empty items when user has no public items", async () => {
     mockItemFindMany.mockResolvedValue([]);
 
-    const result = await getPublicItemsForUser("user-1");
+    const result = await getPublicItemsForUser({ userId: "user-1" });
 
-    expect(result).toEqual([]);
+    expect(result).toEqual({ items: [], nextCursor: null });
   });
 
   it("queries only root-level explicitly public items", async () => {
     mockItemFindMany.mockResolvedValue([]);
 
-    await getPublicItemsForUser("user-1");
+    await getPublicItemsForUser({ userId: "user-1" });
 
     expect(mockItemFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -450,7 +457,7 @@ describe("getPublicItemsForUser", () => {
       }),
     ] as never);
 
-    await getPublicItemsForUser("user-1");
+    await getPublicItemsForUser({ userId: "user-1" });
 
     expect(mockItemFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -478,38 +485,24 @@ describe("getPublicItemsForUser", () => {
       }),
     ] as never);
 
-    const result = await getPublicItemsForUser("user-1");
+    const result = await getPublicItemsForUser({ userId: "user-1" });
 
-    expect(result).toHaveLength(2);
-    expect(result[0].name).toBe("Movie 1");
-    expect(result[0].artworkId).toBe("art-1");
-    expect(result[0].forkCount).toBe(3);
-    expect(result[1].artworkId).toBeNull();
-    expect(result[1].forkCount).toBe(0);
+    expect(result.items).toHaveLength(2);
+    expect(result.items[0].name).toBe("Movie 1");
+    expect(result.items[0].artworkId).toBe("art-1");
+    expect(result.items[0].forkCount).toBe(3);
+    expect(result.items[1].artworkId).toBeNull();
+    expect(result.items[1].forkCount).toBe(0);
   });
 
-  it("applies pagination parameters", async () => {
+  it("uses PAGE_SIZE + 1 for cursor pagination", async () => {
     mockItemFindMany.mockResolvedValue([]);
 
-    await getPublicItemsForUser("user-1", 20, 10);
+    await getPublicItemsForUser({ userId: "user-1" });
 
     expect(mockItemFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        take: 20,
-        skip: 10,
-      })
-    );
-  });
-
-  it("uses default pagination values", async () => {
-    mockItemFindMany.mockResolvedValue([]);
-
-    await getPublicItemsForUser("user-1");
-
-    expect(mockItemFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        take: 50,
-        skip: 0,
+        take: 25, // PAGE_SIZE (24) + 1
       })
     );
   });
@@ -519,12 +512,12 @@ describe("getPublicItemsForUser", () => {
       mockItem({ id: "item-1", name: "Movie 1" }),
     ] as never);
 
-    const result = await getPublicItemsForUser("user-1");
+    const result = await getPublicItemsForUser({ userId: "user-1" });
 
-    expect(result[0]).not.toHaveProperty("progressPercentage");
-    expect(result[0]).not.toHaveProperty("watchedCount");
-    expect(result[0]).not.toHaveProperty("totalMediaCount");
-    expect(result[0]).not.toHaveProperty("totalItems");
+    expect(result.items[0]).not.toHaveProperty("progressPercentage");
+    expect(result.items[0]).not.toHaveProperty("watchedCount");
+    expect(result.items[0]).not.toHaveProperty("totalMediaCount");
+    expect(result.items[0]).not.toHaveProperty("totalItems");
     // Should not query for progress data
     expect(mockQueryRaw).not.toHaveBeenCalled();
   });
@@ -533,11 +526,17 @@ describe("getPublicItemsForUser", () => {
     mockItemFindMany.mockResolvedValue([
       mockItem({ id: "item-1", name: "Movie 1", userId: "owner-1" }),
     ] as never);
+    // Mock fork query (viewer checking which items they've forked)
+    vi.mocked(prisma.fork.findMany).mockResolvedValue([] as never);
 
-    const result = await getPublicItemsForUser("owner-1", 50, 0, "viewer-2");
+    const result = await getPublicItemsForUser({
+      userId: "owner-1",
+      currentUserId: "viewer-2",
+    });
 
-    expect(result[0]).not.toHaveProperty("progressPercentage");
-    expect(result[0]).not.toHaveProperty("watchedCount");
+    expect(result.items[0]).not.toHaveProperty("progressPercentage");
+    expect(result.items[0]).not.toHaveProperty("watchedCount");
+    expect(result.items[0].isForkedByCurrentUser).toBe(false);
     // Should not query for progress data
     expect(mockQueryRaw).not.toHaveBeenCalled();
   });
@@ -556,12 +555,15 @@ describe("getPublicItemsForUser", () => {
       },
     ]);
 
-    const result = await getPublicItemsForUser("user-1", 50, 0, "user-1");
+    const result = await getPublicItemsForUser({
+      userId: "user-1",
+      currentUserId: "user-1",
+    });
 
-    expect(result[0]).toHaveProperty("progressPercentage", 67); // 2/3 = 67%
-    expect(result[0]).toHaveProperty("watchedCount", 2);
-    expect(result[0]).toHaveProperty("totalMediaCount", 3);
-    expect(result[0]).toHaveProperty("totalItems", 5);
+    expect(result.items[0]).toHaveProperty("progressPercentage", 67); // 2/3 = 67%
+    expect(result.items[0]).toHaveProperty("watchedCount", 2);
+    expect(result.items[0]).toHaveProperty("totalMediaCount", 3);
+    expect(result.items[0]).toHaveProperty("totalItems", 5);
     expect(mockQueryRaw).toHaveBeenCalled();
   });
 
@@ -578,12 +580,15 @@ describe("getPublicItemsForUser", () => {
       },
     ]);
 
-    const result = await getPublicItemsForUser("user-1", 50, 0, "user-1");
+    const result = await getPublicItemsForUser({
+      userId: "user-1",
+      currentUserId: "user-1",
+    });
 
-    expect(result[0]).toHaveProperty("progressPercentage", null);
-    expect(result[0]).toHaveProperty("watchedCount", 0);
-    expect(result[0]).toHaveProperty("totalMediaCount", 0);
-    expect(result[0]).toHaveProperty("totalItems", 1);
+    expect(result.items[0]).toHaveProperty("progressPercentage", null);
+    expect(result.items[0]).toHaveProperty("watchedCount", 0);
+    expect(result.items[0]).toHaveProperty("totalMediaCount", 0);
+    expect(result.items[0]).toHaveProperty("totalItems", 1);
   });
 });
 
@@ -736,12 +741,12 @@ describe("getExploreItems", () => {
     vi.clearAllMocks();
   });
 
-  it("returns empty array when no public items exist", async () => {
+  it("returns empty items array when no public items exist", async () => {
     mockItemFindMany.mockResolvedValue([]);
 
     const result = await getExploreItems();
 
-    expect(result).toEqual([]);
+    expect(result).toEqual({ items: [], nextCursor: null });
   });
 
   it("queries explicitly public items from public users with usernames", async () => {
@@ -777,18 +782,18 @@ describe("getExploreItems", () => {
 
     const result = await getExploreItems();
 
-    expect(result).toHaveLength(1);
-    expect(result[0].name).toBe("Explicit Public");
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].name).toBe("Explicit Public");
   });
 
-  it("orders by updatedAt descending", async () => {
+  it("orders by updatedAt descending then id descending", async () => {
     mockItemFindMany.mockResolvedValue([]);
 
     await getExploreItems();
 
     expect(mockItemFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        orderBy: { updatedAt: "desc" },
+        orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       })
     );
   });
@@ -804,9 +809,9 @@ describe("getExploreItems", () => {
 
     const result = await getExploreItems();
 
-    expect(result).toHaveLength(1);
-    expect(result[0].name).toBe("Public Movie");
-    expect(result[0].ownerUsername).toBe("johndoe");
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].name).toBe("Public Movie");
+    expect(result.items[0].ownerUsername).toBe("johndoe");
   });
 
   it("filters out items with null username", async () => {
@@ -825,19 +830,18 @@ describe("getExploreItems", () => {
 
     const result = await getExploreItems();
 
-    expect(result).toHaveLength(1);
-    expect(result[0].name).toBe("Valid Item");
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].name).toBe("Valid Item");
   });
 
-  it("applies pagination parameters", async () => {
+  it("uses PAGE_SIZE + 1 for cursor pagination", async () => {
     mockItemFindMany.mockResolvedValue([]);
 
-    await getExploreItems(30, 15);
+    await getExploreItems();
 
     expect(mockItemFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        take: 30,
-        skip: 15,
+        take: 25, // PAGE_SIZE (24) + 1
       })
     );
   });

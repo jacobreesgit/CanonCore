@@ -190,6 +190,7 @@ import {
   getMovieIdsForUser,
   getTVShowIdsForUser,
   DEMO_USER_EMAIL,
+  PRIVATE_ITEM_TMDB_IDS,
   type SeedUserConfig,
 } from "./seed-config";
 import { assertDriveConfigured } from "@/lib/drive-verification";
@@ -1115,6 +1116,18 @@ async function createSeedUsers(): Promise<
       heroData = await downloadProfileImage(heroUrl);
     }
 
+    // Extract dominant colour from hero image for colour pipeline
+    let heroDominantColour: string | null = null;
+    if (heroData?.data) {
+      try {
+        heroDominantColour = await extractDominantColour(
+          Buffer.from(heroData.data)
+        );
+      } catch {
+        // Non-blocking: colour extraction failure shouldn't prevent seeding
+      }
+    }
+
     const user = await prisma.user.create({
       data: {
         email: userData.email,
@@ -1126,6 +1139,7 @@ async function createSeedUsers(): Promise<
         imageMime: avatarData?.mime ?? null,
         heroImage: heroData?.data ?? null,
         heroImageMime: heroData?.mime ?? null,
+        dominantColour: heroDominantColour,
         passwordHash,
         bio: userData.bio ?? null,
         emailVerified: new Date(),
@@ -2278,6 +2292,84 @@ const PLAYLIST_DEFINITIONS: Record<
       ],
     },
     {
+      name: "Mind-Bending Thrillers",
+      description: "Films that twist your brain into knots.",
+      isPublic: true,
+      itemCount: { min: 3, max: 5 },
+    },
+    {
+      name: "Oscar Winners",
+      description: "Best Picture winners from my collection.",
+      isPublic: true,
+      itemCount: { min: 4, max: 6 },
+    },
+    {
+      name: "90s Nostalgia",
+      description: "The decade that defined modern cinema.",
+      isPublic: true,
+      itemCount: { min: 3, max: 5 },
+    },
+    {
+      name: "Director's Cut",
+      description: "Films that showcase masterful direction.",
+      isPublic: true,
+      itemCount: { min: 3, max: 5 },
+    },
+    {
+      name: "Crime Epics",
+      description: "Sprawling crime sagas and gangster masterpieces.",
+      isPublic: true,
+      itemCount: { min: 3, max: 5 },
+    },
+    {
+      name: "Sci-Fi Essentials",
+      description: "The best of science fiction cinema.",
+      isPublic: true,
+      itemCount: { min: 3, max: 5 },
+    },
+    {
+      name: "Action Blockbusters",
+      description: "High-octane thrills and explosive set pieces.",
+      isPublic: true,
+      itemCount: { min: 4, max: 6 },
+    },
+    {
+      name: "War Films",
+      description: "Powerful stories from the battlefield.",
+      isPublic: true,
+      itemCount: { min: 2, max: 4 },
+    },
+    {
+      name: "Christopher Nolan Collection",
+      description: "Every Nolan film in my library.",
+      isPublic: true,
+      itemCount: { min: 3, max: 5 },
+    },
+    {
+      name: "Comfort Movies",
+      description: "Films I can watch any time, any mood.",
+      isPublic: true,
+      itemCount: { min: 3, max: 5 },
+    },
+    {
+      name: "Courtroom Dramas",
+      description: "Justice, truth, and great performances.",
+      isPublic: true,
+      itemCount: { min: 2, max: 3 },
+    },
+    {
+      name: "Slow Burns",
+      description: "Patient storytelling that builds to unforgettable endings.",
+      isPublic: true,
+      itemCount: { min: 3, max: 5 },
+    },
+    {
+      name: "Stephen King Adaptations",
+      description: "The King of horror on screen.",
+      isPublic: true,
+      itemCount: { min: 2, max: 3 },
+    },
+    {
       name: "Watch Later",
       description: "Saved for later viewing.",
       isPublic: false,
@@ -2297,6 +2389,84 @@ const PLAYLIST_DEFINITIONS: Record<
       description: "Films that changed my perspective.",
       isPublic: true,
       artworkSeed: "filmfan-favourites",
+      itemCount: { min: 3, max: 5 },
+    },
+    {
+      name: "Asian Cinema",
+      description: "The best of East Asian filmmaking.",
+      isPublic: true,
+      itemCount: { min: 4, max: 6 },
+    },
+    {
+      name: "European Gems",
+      description: "Hidden treasures from across Europe.",
+      isPublic: true,
+      itemCount: { min: 3, max: 5 },
+    },
+    {
+      name: "Award-Winning Foreign Films",
+      description: "International films recognised by major festivals.",
+      isPublic: true,
+      itemCount: { min: 4, max: 6 },
+    },
+    {
+      name: "Visual Masterpieces",
+      description: "Stunning cinematography from around the world.",
+      isPublic: true,
+      itemCount: { min: 3, max: 5 },
+    },
+    {
+      name: "Animated Wonders",
+      description: "Animation beyond borders.",
+      isPublic: true,
+      itemCount: { min: 2, max: 3 },
+    },
+    {
+      name: "Korean New Wave",
+      description: "The renaissance of Korean cinema.",
+      isPublic: true,
+      itemCount: { min: 2, max: 4 },
+    },
+    {
+      name: "Japanese Masters",
+      description: "Kurosawa, Miyazaki, and beyond.",
+      isPublic: true,
+      itemCount: { min: 3, max: 5 },
+    },
+    {
+      name: "Latin American Cinema",
+      description: "Vibrant stories from Central and South America.",
+      isPublic: true,
+      itemCount: { min: 2, max: 4 },
+    },
+    {
+      name: "Family Drama",
+      description: "Intimate family stories that resonate universally.",
+      isPublic: true,
+      itemCount: { min: 3, max: 5 },
+    },
+    {
+      name: "Romantic Masterpieces",
+      description: "Love stories told with exquisite craft.",
+      isPublic: true,
+      itemCount: { min: 2, max: 4 },
+    },
+    {
+      name: "Palme d'Or Winners",
+      description: "The highest honour at Cannes.",
+      isPublic: true,
+      itemCount: { min: 3, max: 5 },
+    },
+    {
+      name: "Slow Cinema",
+      description: "Meditative pacing, profound beauty.",
+      isPublic: true,
+      itemCount: { min: 2, max: 4 },
+    },
+    {
+      name: "Thriller & Suspense",
+      description: "International thrillers that keep you guessing.",
+      isPublic: true,
       itemCount: { min: 3, max: 5 },
     },
     {
@@ -2504,6 +2674,16 @@ async function main(): Promise<void> {
 
         // Pin specific items
         await pinItemsForUser(userId, config.email);
+
+        // Mark specific items as private (negative testing)
+        const privateTmdbIds = PRIVATE_ITEM_TMDB_IDS[config.email];
+        if (privateTmdbIds?.length) {
+          await prisma.item.updateMany({
+            where: { userId, tmdbId: { in: privateTmdbIds } },
+            data: { isPublic: false },
+          });
+          log(`   🔒 Marked ${privateTmdbIds.length} items as private`);
+        }
 
         // Seed playlists
         await seedPlaylistsForUser(userId, config.email);

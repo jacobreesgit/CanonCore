@@ -27,6 +27,10 @@ import { getTmdbPosterUrl } from "@/lib/tmdb-image-utils";
 import type { SyncStatus } from "@/lib/types";
 import type { ItemMenuActions } from "@/components/items/item-context-menu";
 import { ItemMoreButton } from "@/components/items/item-more-button";
+import {
+  ViewerItemMoreButton,
+  type ViewerMenuActions,
+} from "@/components/items/viewer-item-more-button";
 
 export interface GridItemProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -80,6 +84,8 @@ export interface GridItemProps extends Omit<
   driveFileId?: string | null;
   /** Props for the more options dropdown menu (view mode only). */
   moreMenuProps?: ItemMenuActions;
+  /** Props for the viewer more options dropdown (non-owner items). */
+  viewerMenuProps?: ViewerMenuActions;
 }
 
 export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
@@ -114,6 +120,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       isForked,
       driveFileId,
       moreMenuProps,
+      viewerMenuProps,
       ...props
     },
     ref
@@ -472,6 +479,20 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
           >
             <ItemMoreButton
               {...moreMenuProps}
+              className="border-white/[0.08] bg-black/55 hover:bg-black/70"
+            />
+          </div>
+        )}
+        {!isEditMode && !moreMenuProps && viewerMenuProps && (
+          <div
+            className={cn(
+              "absolute top-2 right-2 z-30",
+              "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 group-has-[[data-state=open]]:opacity-100",
+              "transition-opacity duration-150"
+            )}
+          >
+            <ViewerItemMoreButton
+              {...viewerMenuProps}
               className="border-white/[0.08] bg-black/55 hover:bg-black/70"
             />
           </div>

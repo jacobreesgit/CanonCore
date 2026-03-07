@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: March 2026 (v12.3.0)
+Last updated: March 2026 (v12.4.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -36,6 +36,7 @@ This doc covers architecture, implementation patterns, and design decisions for 
 - dnd-kit for drag-and-drop
 - Vidstack for media playback
 - nuqs for URL state management
+- @tanstack/react-query for infinite scroll pagination
 - Embla Carousel for swipeable tabs
 - cmdk for spotlight search
 - nanoid for share token generation
@@ -412,7 +413,7 @@ Server Actions can't stream responses, so these use API Routes:
 
 **`app/(public)/`:**
 
-- Landing page, explore (tabbed: Collections/Playlists), user profiles (`/u/[username]`)
+- Landing page, explore (tabbed: Collections/Playlists with search + infinite scroll), user profiles (`/u/[username]` with viewer search + pagination)
 - Item detail pages (`/u/[username]/[itemId]`)
 - Playlist detail pages (`/u/[username]/playlists/[playlistId]`) with share token support
 - Fumadocs documentation at `/docs` (shared ContentLayout)
@@ -849,6 +850,60 @@ After initial wizard application, individual artwork fields (poster, backdrop, l
 - Copies structure, metadata, artwork (not media files)
 - Cannot fork own items, cannot fork same item twice
 - Forked items start private with `inheritVisibility: false`
+- `isForkedByCurrentUser` flag on explore/profile items prevents double-forking, prefetched on hover via `router.prefetch()`
+
+### Explore & Public Pages
+
+**Infinite Scroll Pagination:**
+
+- Cursor-based pagination via `lib/cursor.ts` — `encodeCursor()`/`decodeCursor()` encode `updatedAt` + `id` as base64 for keyset pagination
+- `PaginatedResult<T>` type in `lib/types.ts`: `{ items: T[], nextCursor: string | null }`
+- `useInfiniteItems<T>` hook in `hooks/use-infinite-items.ts` wraps React Query's `useInfiniteQuery` with server action integration
+- `InfiniteScrollTrigger` component uses Intersection Observer to fetch the next page when the sentinel enters the viewport
+- `QueryProvider` in `components/providers/query-provider.tsx` wraps the app with React Query's `QueryClientProvider`
+- Server-side: `getExploreItems()`, `getExplorePlaylists()`, `getPublicItemsForUser()`, `getPublicPlaylistsForUser()` in `lib/public-auth.ts` accept optional `cursor` and `search` params, default page size 24
+- Initial page rendered server-side (SSR), subsequent pages fetched client-side — `initialData` prop bridges SSR to React Query
+
+**Client-Side Search:**
+
+- `useSearchParam` hook in `hooks/use-search-param.ts` — debounced URL sync via nuqs `?q=` param (300ms debounce)
+- `SearchInput` component in `components/ui/search-input.tsx` — controlled input with clear button, skeleton placeholder in loading states
+- `exploreSearchParamsCache` and `profileSearchParamsCache` in route-level `search-params.ts` files — nuqs server-side cache for `?q=` param
+- Search query passed to server-side data fetching functions, which apply case-insensitive `contains` filtering on item/playlist names
+- React Query `queryKey` includes committed search value — changing the search triggers a new query with loading transition (`isPlaceholderData` opacity fade)
+
+**Viewer Context Menu:**
+
+- `ViewerItemContextMenu` in `components/items/viewer-item-context-menu.tsx` — right-click context menu for items the current user doesn't own
+- Actions: Fork (opens `ForkDestinationDialog`), Add to Playlist (opens `AddToPlaylistDialog`)
+- Guest users see a disabled "Sign in to fork" hint
+- Shared menu styles in `components/items/menu-styles.ts` ensure visual consistency with `ItemContextMenu`
+- Owner `ItemContextMenu` also gains "Add to Playlist" action via new `showAddToPlaylist` and `itemId` props
+
+**Private Resource Notices:**
+
+- `PrivateResourceNotice` in `components/ui/private-resource-notice.tsx` — shown when an owner visits their own private resource via a public URL
+- Supports `resourceType`: "item", "profile", "playlist" — each with tailored messaging
+- Includes a link to change visibility settings (for items/playlists) or generic guidance (for profiles)
+- Prevents owners from seeing a confusing 404 for their own content
+- Lightweight ownership check: only queries `userId` from the item/playlist, no full data fetch
+
+**BreadcrumbList JSON-LD:**
+
+- `buildBreadcrumbJsonLd()` in `lib/breadcrumb-jsonld.ts` — generates Schema.org BreadcrumbList structured data
+- Applied to: profile pages (Home > Username), item detail pages (Home > Username > [ancestors...] > Item), playlist detail pages (Home > Username > Playlists > Playlist)
+- Output sanitised with `replace(/</g, "\\u003c")` to prevent XSS via script injection
+- Injected as `<script type="application/ld+json">` alongside existing Person/Movie/TVSeries schemas
+
+**Rate Limiting:**
+
+- Explore page protected by `checkRateLimit("explore")` — returns a styled rate limit notice instead of the explore grid when exceeded
+- Explore rate limit threshold defined in `lib/rate-limit.ts`
+
+**Empty States:**
+
+- `EmptyState` component in `components/items/empty-state.tsx` gains `search-empty` variant with search query display and "Clear search" action
+- Unified empty state replaces the previously separate `EmptySearchState` component
 
 ### Playlists
 
@@ -1338,12 +1393,14 @@ Server-side generated OG images using Next.js `ImageResponse` (Satori):
 
 ### JSON-LD Structured Data
 
-Schema.org markup on three page types:
+Schema.org markup on multiple page types:
 
 - **Landing page** — `WebApplication` schema with name, URL, category
-- **Profile pages** — `Person` schema with name and profile URL
-- **Item detail pages** — `Movie` or `TVSeries` schema (based on `tmdbType`) with genre, poster image, and `AggregateRating` from TMDB vote data
-- **Playlist detail pages** — `CollectionPage` schema with playlist name, description, and item count
+- **Profile pages** — `Person` schema with name and profile URL + `BreadcrumbList` (Home > Username)
+- **Item detail pages** — `Movie` or `TVSeries` schema (based on `tmdbType`) with genre, poster image, and `AggregateRating` from TMDB vote data + `BreadcrumbList` (Home > Username > [ancestors...] > Item)
+- **Playlist detail pages** — `CollectionPage` schema with playlist name, description, and item count + `BreadcrumbList` (Home > Username > Playlists > Playlist)
+
+`buildBreadcrumbJsonLd()` in `lib/breadcrumb-jsonld.ts` generates the BreadcrumbList markup from an array of `{ name, url }` crumbs.
 
 All JSON-LD output sanitised with `replace(/</g, "\\u003c")` to prevent XSS via script injection.
 
@@ -1463,7 +1520,7 @@ Husky manages Git hooks:
 ```
           ┌─────────┐
           ┌─────────┐
-          │   E2E   │  35 spec files (Playwright)
+          │   E2E   │  41 spec files (Playwright)
           │  Tests  │  Real browser, real APIs
           └─────────┘
         ┌─────────────┐
@@ -1475,7 +1532,7 @@ Husky manages Git hooks:
       │     Tests       │  Real database
       └─────────────────┘
     ┌─────────────────────┐
-    │     Unit Tests      │  ~2800 tests (Vitest)
+    │     Unit Tests      │  ~3000 tests (Vitest)
     │    (Mocked deps)    │  Fast, isolated
     └─────────────────────┘
 ```
@@ -1533,7 +1590,7 @@ Husky manages Git hooks:
 
 ### E2E Tests (Playwright)
 
-**Location:** `e2e/journeys/` (35 spec files)
+**Location:** `e2e/journeys/` (41 spec files)
 
 **Pattern:** Page Object Model with composable fixtures
 
@@ -1551,10 +1608,10 @@ Husky manages Git hooks:
 
 **Fixtures:**
 
-- `e2e/fixtures/authenticated.fixture.ts` - Per-test user creation, browser auth injection, cleanup
+- `e2e/fixtures/authenticated.fixture.ts` - Per-test user creation, browser auth injection, cleanup. Supports optional `publicProfile` flag to create users with public profiles and seeded public items for viewer tests
 - `e2e/fixtures/public.fixture.ts` - Unauthenticated tests (landing, explore, sign-in/up)
 - `e2e/fixtures/drive.fixture.ts` - Drive-specific test fixture
-- `e2e/fixtures/index.ts` - Composed fixture wiring all POMs as fixture properties
+- `e2e/fixtures/index.ts` - Composed fixture wiring all POMs as fixture properties, includes `authenticatedWithPublic` fixture for two-user tests
 
 **Page Objects (16 focused POMs):**
 

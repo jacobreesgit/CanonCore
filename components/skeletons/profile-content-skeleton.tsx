@@ -57,6 +57,11 @@ export function ProfileContentSkeleton() {
         </div>
       </Section>
 
+      {/* Search input skeleton — below toolbar, full width */}
+      <Section className="pt-2 pb-0">
+        <Skeleton className="h-9 w-full rounded-md" />
+      </Section>
+
       <Section className="pb-8">
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
           {Array.from({ length: 8 }).map((_, i) => (

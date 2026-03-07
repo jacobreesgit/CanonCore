@@ -6,8 +6,10 @@ import { expect } from "@playwright/test";
 import {
   authenticatedFixture,
   createPublicUser,
+  createPublicUserWithItems,
   deletePublicUser,
   type PublicUserInfo,
+  type PublicUserWithItemsInfo,
 } from "./authenticated.fixture";
 import { publicFixture } from "./public.fixture";
 import { driveFixture } from "./drive.fixture";
@@ -122,6 +124,7 @@ export const test = authenticatedFixture.extend<{
 // Public test (no auth) with relevant POMs
 export const publicTest = publicFixture.extend<{
   publicUser: PublicUserInfo;
+  paginationUser: PublicUserWithItemsInfo;
   explore: ExplorePage;
   publicProfile: PublicProfilePage;
   auth: AuthPage;
@@ -130,6 +133,11 @@ export const publicTest = publicFixture.extend<{
 }>({
   publicUser: async ({}, use) => {
     const user = await createPublicUser();
+    await use(user);
+    await deletePublicUser(user.id);
+  },
+  paginationUser: async ({}, use) => {
+    const user = await createPublicUserWithItems(26);
     await use(user);
     await deletePublicUser(user.id);
   },
@@ -155,3 +163,4 @@ export const driveTest = driveFixture;
 
 export { expect };
 export { prisma } from "./authenticated.fixture";
+export type { PublicUserWithItemsInfo };
