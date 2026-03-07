@@ -15,6 +15,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { StoreProvider } from "@/components/providers/store-provider";
 import { AudioManager } from "@/components/media/audio-manager";
+import { PlaybackKeyboardHandler } from "@/components/media/playback-keyboard-handler";
 import { MiniPlayer } from "@/components/media/mini-player";
 import { ExpandedPlayer } from "@/components/media/expanded-player";
 import { DeferredAnalytics } from "@/components/providers/deferred-analytics";
@@ -92,6 +93,7 @@ export default function RootLayout({
               <QueryProvider>
                 <StoreProvider>
                   <AudioManager />
+                  <PlaybackKeyboardHandler />
                   {children}
                   <MiniPlayer />
                   <ExpandedPlayer />
