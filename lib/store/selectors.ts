@@ -20,6 +20,7 @@ export const selectIsExpanded = (state: RootState) => state.playback.isExpanded;
 export const selectCurrentTime = (state: RootState) =>
   state.playback.currentTime;
 export const selectDuration = (state: RootState) => state.playback.duration;
+export const selectSeekTarget = (state: RootState) => state.playback.seekTarget;
 
 /** Progress as a percentage (0-100). Returns 0 if no duration. */
 export const selectProgress = (state: RootState): number => {

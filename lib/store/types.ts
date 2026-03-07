@@ -49,6 +49,8 @@ export interface PlaybackState {
   repeat: RepeatMode;
   /** Whether the expanded (fullscreen) player view is open */
   isExpanded: boolean;
+  /** Target time in seconds when user initiates a seek, null otherwise */
+  seekTarget: number | null;
 }
 
 /** UI preferences state shape. */

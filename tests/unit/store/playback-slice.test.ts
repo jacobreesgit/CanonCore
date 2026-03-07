@@ -11,6 +11,8 @@ import playbackReducer, {
   setRepeat,
   toggleExpanded,
   stop,
+  seekTo,
+  clearSeekTarget,
   playQueue,
   addToQueue,
   playNext,
@@ -378,6 +380,37 @@ describe("playbackSlice", () => {
       expect(state.isPlaying).toBe(false);
       expect(state.isExpanded).toBe(false);
       expect(state.queueIndex).toBe(-1);
+    });
+  });
+
+  describe("seekTo / clearSeekTarget", () => {
+    it("should set seekTarget and update currentTime", () => {
+      let state = playbackReducer(initialState, playTrack(mockTrack));
+      state = playbackReducer(state, seekTo(42));
+      expect(state.seekTarget).toBe(42);
+      expect(state.currentTime).toBe(42);
+    });
+
+    it("should clear seekTarget", () => {
+      let state = playbackReducer(initialState, seekTo(42));
+      state = playbackReducer(state, clearSeekTarget());
+      expect(state.seekTarget).toBeNull();
+    });
+
+    it("should clear seekTarget on playTrack", () => {
+      let state = playbackReducer(initialState, seekTo(42));
+      state = playbackReducer(state, playTrack(mockTrack));
+      expect(state.seekTarget).toBeNull();
+    });
+
+    it("should clear seekTarget on skipNext", () => {
+      let state = playbackReducer(
+        initialState,
+        playQueue({ tracks: [mockTrack, mockTrack2] })
+      );
+      state = playbackReducer(state, seekTo(42));
+      state = playbackReducer(state, skipNext());
+      expect(state.seekTarget).toBeNull();
     });
   });
 });

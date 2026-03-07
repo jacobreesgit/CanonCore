@@ -19,6 +19,7 @@ export const initialState: PlaybackState = {
   shuffle: false,
   repeat: "off",
   isExpanded: false,
+  seekTarget: null,
 };
 
 const playbackSlice = createSlice({
@@ -32,6 +33,7 @@ const playbackSlice = createSlice({
       state.currentTime = 0;
       state.duration = 0;
       state.queueIndex = -1;
+      state.seekTarget = null;
     },
 
     /** Pause playback. */
@@ -86,6 +88,17 @@ const playbackSlice = createSlice({
       state.isExpanded = false;
     },
 
+    /** User-initiated seek — sets target for AudioManager to sync. */
+    seekTo(state, action: PayloadAction<number>) {
+      state.seekTarget = action.payload;
+      state.currentTime = action.payload;
+    },
+
+    /** AudioManager clears target after syncing to audio element. */
+    clearSeekTarget(state) {
+      state.seekTarget = null;
+    },
+
     /** Stop playback entirely and clear current track. */
     stop(state) {
       state.currentTrack = null;
@@ -94,6 +107,7 @@ const playbackSlice = createSlice({
       state.duration = 0;
       state.queueIndex = -1;
       state.isExpanded = false;
+      state.seekTarget = null;
     },
 
     // --- Queue management ---
@@ -110,6 +124,7 @@ const playbackSlice = createSlice({
       state.isPlaying = !!state.currentTrack;
       state.currentTime = 0;
       state.duration = 0;
+      state.seekTarget = null;
     },
 
     /** Add a track to the end of the queue. */
@@ -184,6 +199,7 @@ const playbackSlice = createSlice({
     /** Skip to the next track in the queue. */
     skipNext(state) {
       if (state.queue.length === 0) return;
+      state.seekTarget = null;
 
       if (state.repeat === "one") {
         // Repeat one: restart current track
@@ -215,6 +231,7 @@ const playbackSlice = createSlice({
     /** Skip to the previous track in the queue (or restart if >3s in). */
     skipPrevious(state) {
       if (state.queue.length === 0) return;
+      state.seekTarget = null;
 
       // If more than 3 seconds in, restart current track
       if (state.currentTime > 3) {
@@ -249,6 +266,7 @@ const playbackSlice = createSlice({
       const index = action.payload;
       if (index < 0 || index >= state.queue.length) return;
 
+      state.seekTarget = null;
       state.queueIndex = index;
       state.currentTrack = state.queue[index];
       state.currentTime = 0;
@@ -270,6 +288,8 @@ export const {
   setRepeat,
   toggleExpanded,
   closeExpanded,
+  seekTo,
+  clearSeekTarget,
   stop,
   playQueue,
   addToQueue,
