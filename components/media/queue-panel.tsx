@@ -1,19 +1,42 @@
 /**
  * Slide-out queue panel showing now playing and upcoming tracks.
  * Uses shadcn Sheet for the slide-out panel.
+ * Up Next list supports drag-to-reorder via dnd-kit.
  */
 
 "use client";
 
-import { useCallback } from "react";
+import { memo, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMusic, faPlay, faXmark } from "@fortawesome/free-solid-svg-icons";
+import {
+  faMusic,
+  faPlay,
+  faXmark,
+  faGripVertical,
+} from "@fortawesome/free-solid-svg-icons";
 import { toast } from "sonner";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { useAppSelector, useAppDispatch } from "@/lib/store/hooks";
 import {
   clearQueue,
   playQueue,
   removeFromQueue,
+  reorderQueue,
   skipToIndex,
 } from "@/lib/store/playback-slice";
 import {
@@ -29,6 +52,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 
 interface QueuePanelProps {
   open: boolean;
@@ -41,6 +65,11 @@ export function QueuePanel({ open, onOpenChange }: QueuePanelProps) {
   const queue = useAppSelector(selectQueue);
   const queueIndex = useAppSelector(selectQueueIndex);
   const upNext = useAppSelector(selectUpNext);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
+  );
 
   const handleClear = useCallback(() => {
     const prevQueue = [...queue];
@@ -65,6 +94,18 @@ export function QueuePanel({ open, onOpenChange }: QueuePanelProps) {
   const handleRemove = useCallback(
     (index: number) => {
       dispatch(removeFromQueue(index));
+    },
+    [dispatch]
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      const fromIndex = Number(active.id);
+      const toIndex = Number(over.id);
+      dispatch(reorderQueue({ fromIndex, toIndex }));
     },
     [dispatch]
   );
@@ -106,19 +147,32 @@ export function QueuePanel({ open, onOpenChange }: QueuePanelProps) {
               <p className="mb-2 text-xs font-medium tracking-wider text-white/40 uppercase">
                 Up Next
               </p>
-              <div className="space-y-1">
-                {upNext.map((track, i) => {
-                  const absoluteIndex = queueIndex + 1 + i;
-                  return (
-                    <QueueTrackItem
-                      key={`${track.fileId}-${absoluteIndex}`}
-                      track={track}
-                      onPlay={() => handlePlayIndex(absoluteIndex)}
-                      onRemove={() => handleRemove(absoluteIndex)}
-                    />
-                  );
-                })}
-              </div>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                modifiers={[restrictToVerticalAxis]}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={upNext.map((_, i) => queueIndex + 1 + i)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-1">
+                    {upNext.map((track, i) => {
+                      const absoluteIndex = queueIndex + 1 + i;
+                      return (
+                        <SortableQueueTrackItem
+                          key={`${track.fileId}-${absoluteIndex}`}
+                          id={absoluteIndex}
+                          track={track}
+                          onPlay={() => handlePlayIndex(absoluteIndex)}
+                          onRemove={() => handleRemove(absoluteIndex)}
+                        />
+                      );
+                    })}
+                  </div>
+                </SortableContext>
+              </DndContext>
             </div>
           )}
 
@@ -135,17 +189,13 @@ export function QueuePanel({ open, onOpenChange }: QueuePanelProps) {
   );
 }
 
-/** Single track row in the queue. */
+/** Now Playing track row (no drag handle). */
 function QueueTrackItem({
   track,
   isActive,
-  onPlay,
-  onRemove,
 }: {
   track: { filename: string; itemName: string; posterUrl?: string };
   isActive?: boolean;
-  onPlay?: () => void;
-  onRemove?: () => void;
 }) {
   return (
     <div
@@ -170,8 +220,71 @@ function QueueTrackItem({
         <p className="truncate text-sm text-white">{track.filename}</p>
         <p className="truncate text-xs text-white/50">{track.itemName}</p>
       </div>
+    </div>
+  );
+}
 
-      {!isActive && (
+/** Sortable track row in the Up Next list with drag handle. */
+const SortableQueueTrackItem = memo(function SortableQueueTrackItem({
+  id,
+  track,
+  onPlay,
+  onRemove,
+}: {
+  id: number;
+  track: { filename: string; itemName: string; posterUrl?: string };
+  onPlay?: () => void;
+  onRemove?: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes}>
+      <div
+        className={cn(
+          "group flex items-center gap-3 rounded-md px-2 py-2 hover:bg-white/5",
+          isDragging && "select-none"
+        )}
+      >
+        <button
+          {...listeners}
+          className="shrink-0 cursor-grab touch-none text-white/20 hover:text-white/50 active:cursor-grabbing"
+          aria-label="Drag to reorder"
+        >
+          <FontAwesomeIcon icon={faGripVertical} className="size-3" />
+        </button>
+
+        {track.posterUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={track.posterUrl}
+            alt=""
+            className="size-8 shrink-0 rounded object-cover"
+          />
+        ) : (
+          <div className="flex size-8 shrink-0 items-center justify-center rounded bg-white/10">
+            <FontAwesomeIcon icon={faMusic} className="size-3 text-white/40" />
+          </div>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm text-white">{track.filename}</p>
+          <p className="truncate text-xs text-white/50">{track.itemName}</p>
+        </div>
+
         <div className="flex shrink-0 gap-1 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
           {onPlay && (
             <Button
@@ -196,7 +309,7 @@ function QueueTrackItem({
             </Button>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
-}
+});
