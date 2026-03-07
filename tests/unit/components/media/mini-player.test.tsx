@@ -3,7 +3,11 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
-import playbackReducer, { playTrack } from "@/lib/store/playback-slice";
+import playbackReducer, {
+  playTrack,
+  setDuration,
+  setCurrentTime,
+} from "@/lib/store/playback-slice";
 import uiPrefsReducer from "@/lib/store/ui-prefs-slice";
 import { MiniPlayer } from "@/components/media/mini-player";
 import type { QueueTrack } from "@/lib/store/types";
@@ -121,5 +125,15 @@ describe("MiniPlayer", () => {
     store.dispatch(playTrack(mockTrack));
     renderWithStore(store);
     expect(screen.getByRole("button", { name: /repeat/i })).toBeInTheDocument();
+  });
+
+  it("should display time when playing", () => {
+    const store = makeTestStore();
+    store.dispatch(playTrack(mockTrack));
+    store.dispatch(setDuration(185));
+    store.dispatch(setCurrentTime(65));
+    renderWithStore(store);
+    expect(screen.getByText("1:05")).toBeInTheDocument();
+    expect(screen.getByText("3:05")).toBeInTheDocument();
   });
 });

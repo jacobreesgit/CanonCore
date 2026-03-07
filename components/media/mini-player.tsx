@@ -35,6 +35,7 @@ import {
   setVolume,
   toggleShuffle,
   setRepeat,
+  seekTo,
 } from "@/lib/store/playback-slice";
 import {
   selectCurrentTrack,
@@ -46,6 +47,8 @@ import {
   selectIsMuted,
   selectShuffle,
   selectRepeat,
+  selectCurrentTime,
+  selectDuration,
 } from "@/lib/store/selectors";
 import type { RootState } from "@/lib/store";
 import type { RepeatMode } from "@/lib/store/types";
@@ -53,27 +56,51 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { QueuePanel } from "./queue-panel";
 import { cn } from "@/lib/utils";
+import { formatTime } from "@/lib/format-time";
 
 /**
- * Extracted progress bar — subscribes to selectProgress independently
+ * Extracted seek bar — subscribes to progress/time independently
  * so the parent MiniPlayer doesn't re-render every second.
  */
 function MiniPlayerProgress() {
+  const dispatch = useAppDispatch();
   const progress = useAppSelector(selectProgress);
+  const currentTime = useAppSelector(selectCurrentTime);
+  const duration = useAppSelector(selectDuration);
+
+  const handleSeek = useCallback(
+    ([value]: number[]) => {
+      if (duration <= 0) return;
+      dispatch(seekTo((value / 100) * duration));
+    },
+    [dispatch, duration]
+  );
 
   return (
-    <div
-      className="h-0.5 w-full bg-white/10"
-      role="progressbar"
-      aria-valuenow={Math.round(progress)}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-label="Playback progress"
-    >
-      <div
-        className="h-full bg-white/70 transition-[width] duration-1000 ease-linear"
-        style={{ width: `${progress}%` }}
+    <div className="flex items-center gap-2 px-4">
+      {duration > 0 && (
+        <span className="hidden w-10 text-right text-[10px] text-white/40 tabular-nums sm:inline">
+          {formatTime(currentTime)}
+        </span>
+      )}
+      <Slider
+        value={[progress]}
+        max={100}
+        step={0.1}
+        onValueChange={handleSeek}
+        aria-label="Seek"
+        aria-valuetext={
+          duration > 0
+            ? `${formatTime(currentTime)} of ${formatTime(duration)}`
+            : undefined
+        }
+        className="h-1 w-full"
       />
+      {duration > 0 && (
+        <span className="hidden w-10 text-[10px] text-white/40 tabular-nums sm:inline">
+          {formatTime(duration)}
+        </span>
+      )}
     </div>
   );
 }
