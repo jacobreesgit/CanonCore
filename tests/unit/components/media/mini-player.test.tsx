@@ -85,4 +85,41 @@ describe("MiniPlayer", () => {
     // MiniPlayer should unmount when no track is loaded
     expect(screen.queryByTestId("mini-player")).not.toBeInTheDocument();
   });
+
+  it("should render queue button", () => {
+    const store = makeTestStore();
+    store.dispatch(playTrack(mockTrack));
+    renderWithStore(store);
+    expect(screen.getByRole("button", { name: "Queue" })).toBeInTheDocument();
+  });
+
+  it("should render mute button", () => {
+    const store = makeTestStore();
+    store.dispatch(playTrack(mockTrack));
+    renderWithStore(store);
+    expect(screen.getByRole("button", { name: "Mute" })).toBeInTheDocument();
+  });
+
+  it("should toggle mute on click", async () => {
+    const user = userEvent.setup();
+    const store = makeTestStore();
+    store.dispatch(playTrack(mockTrack));
+    renderWithStore(store);
+    await user.click(screen.getByRole("button", { name: "Mute" }));
+    expect(screen.getByRole("button", { name: "Unmute" })).toBeInTheDocument();
+  });
+
+  it("should render shuffle button", () => {
+    const store = makeTestStore();
+    store.dispatch(playTrack(mockTrack));
+    renderWithStore(store);
+    expect(screen.getByRole("button", { name: "Shuffle" })).toBeInTheDocument();
+  });
+
+  it("should render repeat button", () => {
+    const store = makeTestStore();
+    store.dispatch(playTrack(mockTrack));
+    renderWithStore(store);
+    expect(screen.getByRole("button", { name: /repeat/i })).toBeInTheDocument();
+  });
 });

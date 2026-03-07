@@ -6,7 +6,8 @@
 
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
+import { useStore } from "react-redux";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faPlay,
@@ -15,6 +16,12 @@ import {
   faBackwardStep,
   faXmark,
   faChevronUp,
+  faListOl,
+  faVolumeHigh,
+  faVolumeLow,
+  faVolumeXmark,
+  faShuffle,
+  faRepeat,
 } from "@fortawesome/free-solid-svg-icons";
 import { useAppSelector, useAppDispatch } from "@/lib/store/hooks";
 import {
@@ -24,6 +31,10 @@ import {
   skipNext,
   skipPrevious,
   toggleExpanded,
+  toggleMute,
+  setVolume,
+  toggleShuffle,
+  setRepeat,
 } from "@/lib/store/playback-slice";
 import {
   selectCurrentTrack,
@@ -31,8 +42,17 @@ import {
   selectProgress,
   selectHasNext,
   selectHasPrevious,
+  selectVolume,
+  selectIsMuted,
+  selectShuffle,
+  selectRepeat,
 } from "@/lib/store/selectors";
+import type { RootState } from "@/lib/store";
+import type { RepeatMode } from "@/lib/store/types";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { QueuePanel } from "./queue-panel";
+import { cn } from "@/lib/utils";
 
 /**
  * Extracted progress bar — subscribes to selectProgress independently
@@ -58,12 +78,31 @@ function MiniPlayerProgress() {
   );
 }
 
+function volumeIcon(volume: number, isMuted: boolean) {
+  if (isMuted || volume === 0) return faVolumeXmark;
+  if (volume < 0.5) return faVolumeLow;
+  return faVolumeHigh;
+}
+
+function repeatLabel(mode: RepeatMode): string {
+  if (mode === "one") return "Repeat one";
+  if (mode === "all") return "Repeat all";
+  return "Repeat";
+}
+
 export function MiniPlayer() {
   const dispatch = useAppDispatch();
+  const store = useStore<RootState>();
   const currentTrack = useAppSelector(selectCurrentTrack);
   const isPlaying = useAppSelector(selectIsPlaying);
   const hasNext = useAppSelector(selectHasNext);
   const hasPrevious = useAppSelector(selectHasPrevious);
+  const volume = useAppSelector(selectVolume);
+  const isMuted = useAppSelector(selectIsMuted);
+  const shuffle = useAppSelector(selectShuffle);
+  const repeat = useAppSelector(selectRepeat);
+
+  const [queueOpen, setQueueOpen] = useState(false);
 
   const handlePlayPause = useCallback(() => {
     dispatch(isPlaying ? pause() : resume());
@@ -72,6 +111,13 @@ export function MiniPlayer() {
   const handleClose = useCallback(() => {
     dispatch(stop());
   }, [dispatch]);
+
+  const cycleRepeat = useCallback(() => {
+    const modes: RepeatMode[] = ["off", "all", "one"];
+    const currentRepeat = store.getState().playback.repeat;
+    const next = modes[(modes.indexOf(currentRepeat) + 1) % modes.length];
+    dispatch(setRepeat(next));
+  }, [dispatch, store]);
 
   if (!currentTrack) return null;
 
@@ -113,6 +159,19 @@ export function MiniPlayer() {
           <Button
             variant="ghost"
             size="icon"
+            onClick={() => dispatch(toggleShuffle())}
+            className={cn(
+              "hidden size-8 sm:inline-flex",
+              shuffle ? "text-white" : "text-white/30 hover:text-white/60"
+            )}
+            aria-label="Shuffle"
+          >
+            <FontAwesomeIcon icon={faShuffle} className="size-3" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => dispatch(skipPrevious())}
             disabled={!hasPrevious}
             className="size-8 text-white/70 hover:text-white disabled:opacity-30"
@@ -144,10 +203,64 @@ export function MiniPlayer() {
           >
             <FontAwesomeIcon icon={faForwardStep} className="size-3.5" />
           </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={cycleRepeat}
+            className={cn(
+              "relative hidden size-8 sm:inline-flex",
+              repeat !== "off"
+                ? "text-white"
+                : "text-white/30 hover:text-white/60"
+            )}
+            aria-label={repeatLabel(repeat)}
+          >
+            <FontAwesomeIcon icon={faRepeat} className="size-3" />
+            {repeat === "one" && (
+              <span className="absolute -top-0.5 -right-0.5 text-[8px] font-bold text-white">
+                1
+              </span>
+            )}
+          </Button>
         </div>
 
-        {/* Expand + Close */}
+        {/* Volume — desktop only */}
+        <div className="hidden items-center gap-1.5 sm:flex">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => dispatch(toggleMute())}
+            className="size-8 text-white/50 hover:text-white"
+            aria-label={isMuted ? "Unmute" : "Mute"}
+          >
+            <FontAwesomeIcon
+              icon={volumeIcon(volume, isMuted)}
+              className="size-3.5"
+            />
+          </Button>
+          <Slider
+            value={[isMuted ? 0 : volume]}
+            max={1}
+            step={0.01}
+            onValueChange={([v]) => dispatch(setVolume(v))}
+            className="w-20"
+            aria-label="Volume"
+          />
+        </div>
+
+        {/* Queue + Expand + Close */}
         <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setQueueOpen(true)}
+            className="size-8 text-white/50 hover:text-white"
+            aria-label="Queue"
+          >
+            <FontAwesomeIcon icon={faListOl} className="size-3.5" />
+          </Button>
+
           <Button
             variant="ghost"
             size="icon"
@@ -169,6 +282,8 @@ export function MiniPlayer() {
           </Button>
         </div>
       </div>
+
+      <QueuePanel open={queueOpen} onOpenChange={setQueueOpen} />
     </div>
   );
 }
