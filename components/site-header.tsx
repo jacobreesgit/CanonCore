@@ -20,6 +20,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useTransition, useCallback } from "react";
+import { useGoogleDriveReconnect } from "@/hooks/use-google-drive-reconnect";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -41,6 +42,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { resendVerificationEmail } from "@/lib/auth-actions";
 import { VERIFICATION_MESSAGES } from "@/lib/messages";
+import { DRIVE_MESSAGES } from "@/lib/constants/messages";
 import { cn } from "@/lib/utils";
 
 /** Breadcrumb item representing a navigation ancestor */
@@ -64,6 +66,8 @@ interface SiteHeaderProps {
   currentItemId?: string;
   /** Whether user's email is unverified (shows verification nudge banner) */
   emailUnverified?: boolean;
+  /** Whether Google Drive needs re-authentication (shows reconnect banner) */
+  driveNeedsReauth?: boolean;
   /** Callback when rename action is triggered */
   onRename?: () => void;
   /** Callback when delete action is triggered */
@@ -85,11 +89,13 @@ export function SiteHeader({
   breadcrumbs = [],
   currentItemId,
   emailUnverified,
+  driveNeedsReauth,
   onRename,
   onDelete,
 }: SiteHeaderProps) {
   const showContextMenu = currentItemId && (onRename || onDelete);
   const [isResending, startResendTransition] = useTransition();
+  const { isReconnecting, handleReconnect } = useGoogleDriveReconnect();
 
   /** Resends email verification to the authenticated user. */
   const handleResendVerification = useCallback(() => {
@@ -277,12 +283,36 @@ export function SiteHeader({
         )}
       </div>
 
-      {/* Email verification nudge (below breadcrumb row) */}
-      {emailUnverified && (
+      {/* Single banner slot — drive reconnect takes priority over email verification */}
+      {driveNeedsReauth ? (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="flex items-center gap-3 border-t border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 backdrop-blur-xl lg:px-6"
+        >
+          <FontAwesomeIcon
+            icon={faTriangleExclamation}
+            className="size-4 shrink-0 text-amber-400"
+            aria-hidden="true"
+          />
+          <p className="flex-1 text-sm text-amber-200">
+            {DRIVE_MESSAGES.DISCONNECTED_BANNER}
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="shrink-0"
+            disabled={isReconnecting}
+            onClick={handleReconnect}
+          >
+            {isReconnecting ? "Connecting..." : "Reconnect"}
+          </Button>
+        </div>
+      ) : emailUnverified ? (
         <div
           role="status"
           aria-live="polite"
-          className="flex items-center gap-3 border-t border-white/[0.06] bg-white/[0.03] px-4 py-2 backdrop-blur-xl lg:px-6"
+          className="flex items-center gap-3 border-t border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2 backdrop-blur-xl lg:px-6"
         >
           <FontAwesomeIcon
             icon={faTriangleExclamation}
@@ -302,7 +332,7 @@ export function SiteHeader({
             {isResending ? "Sending..." : "Resend"}
           </Button>
         </div>
-      )}
+      ) : null}
     </header>
   );
 }

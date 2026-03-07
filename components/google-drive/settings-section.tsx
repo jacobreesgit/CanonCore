@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useEffect, useTransition, useCallback } from "react";
+import { useState, useEffect, useTransition, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -111,6 +111,7 @@ export function GoogleDriveSettingsSection({
   /**
    * Triggers a sync from Google Drive.
    */
+  const handleSyncRef = useRef<(() => void) | null>(null);
   const handleSync = useCallback(() => {
     startSyncTransition(async () => {
       const result = await syncFromGoogleDrive();
@@ -136,12 +137,20 @@ export function GoogleDriveSettingsSection({
             "Sync paused: CanonCore folder was deleted. Disconnect and reconnect."
           );
         } else {
-          toast.error(result.error || "Sync failed");
+          toast.error(result.error || "Sync failed", {
+            action: {
+              label: "Retry",
+              onClick: () => handleSyncRef.current?.(),
+            },
+          });
         }
         onConnectionChange?.();
       }
     });
   }, [onConnectionChange]);
+  useEffect(() => {
+    handleSyncRef.current = handleSync;
+  }, [handleSync]);
 
   // Determine if sync should be disabled
   // Note: ROOT_FOLDER_TRASHED is NOT disabled - user can retry after restoring folder
@@ -210,9 +219,34 @@ export function GoogleDriveSettingsSection({
               {/* Show generic errors (not ROOT_FOLDER_* which have dedicated UI) */}
               {connection.lastError &&
                 !connection.lastError.startsWith("ROOT_FOLDER_") && (
-                  <p className="text-destructive text-xs">
-                    {connection.lastError}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-destructive flex-1 text-xs">
+                      {connection.lastError}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleSync}
+                      disabled={isSyncing}
+                      className="text-destructive hover:text-destructive h-6 shrink-0 px-2 text-xs"
+                    >
+                      {isSyncing ? (
+                        <FontAwesomeIcon
+                          icon={faSpinner}
+                          spin
+                          aria-hidden="true"
+                          className="mr-1 size-3"
+                        />
+                      ) : (
+                        <FontAwesomeIcon
+                          icon={faRotate}
+                          aria-hidden="true"
+                          className="mr-1 size-3"
+                        />
+                      )}
+                      Retry
+                    </Button>
+                  </div>
                 )}
             </div>
 
@@ -346,8 +380,9 @@ export function GoogleDriveSettingsSection({
                       Disconnect Google Drive?
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will remove access to your Google Drive and delete
-                      all synced items. Your files will remain in Google Drive.
+                      This will permanently delete the CanonCore folder and all
+                      its contents from Google Drive, and remove all synced
+                      items locally.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>

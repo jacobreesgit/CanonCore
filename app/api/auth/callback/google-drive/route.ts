@@ -88,11 +88,30 @@ export async function GET(request: NextRequest) {
     tempAuth.setCredentials({ access_token: accessToken });
     const drive = google.drive({ version: "v3", auth: tempAuth });
 
-    // Get email and create root folder in parallel (async-parallel pattern)
-    const [email, rootFolder] = await Promise.all([
+    // Get email, create root folder, and fetch quota in parallel
+    const [email, rootFolder, quotaData] = await Promise.all([
       getUserEmail(accessToken),
       createRootFolder(drive),
+      drive.about
+        .get({ fields: "storageQuota" })
+        .then((res) => res.data.storageQuota)
+        .catch((err) => {
+          logger.warn(
+            { err },
+            "[GoogleDrive] Failed to fetch quota on connect"
+          );
+          return null;
+        }),
     ]);
+
+    // Build quota fields (only if available)
+    const quotaFields =
+      quotaData?.usage != null && quotaData?.limit != null
+        ? {
+            quotaBytesUsed: BigInt(quotaData.usage),
+            quotaBytesTotal: BigInt(quotaData.limit),
+          }
+        : {};
 
     // Upsert connection (single per user)
     await prisma.googleDriveConnection.upsert({
@@ -109,6 +128,7 @@ export async function GET(request: NextRequest) {
         rootFolderId: rootFolder.id,
         isActive: true,
         needsReauth: false,
+        ...quotaFields,
       },
       update: {
         email,
@@ -118,6 +138,7 @@ export async function GET(request: NextRequest) {
         rootFolderId: rootFolder.id,
         needsReauth: false,
         lastError: null,
+        ...quotaFields,
       },
     });
 

@@ -20,7 +20,7 @@ import type { PublicItem, PublicProfile } from "@/lib/public-auth";
 import { getItem, getDescendants, getItemProgress } from "@/lib/item-actions";
 import { getItemFiles } from "@/lib/item-file-actions";
 import { getForkStatus, getForkInfo } from "@/lib/fork-actions";
-import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
+import { getCachedGoogleDriveConnection } from "@/lib/google-drive-data";
 import { getWatchStatus } from "@/lib/watch-actions";
 import { getItemTmdbMetadata, getItemTmdbDetails } from "@/lib/tmdb-client";
 import {
@@ -137,7 +137,10 @@ export default async function ItemDetailPage({
 
   if (isOwner) {
     // Owner: keep getItem for breadcrumbs + 404
-    const itemResult = await getItem(itemId);
+    const [itemResult, driveConnection] = await Promise.all([
+      getItem(itemId),
+      getCachedGoogleDriveConnection(),
+    ]);
 
     if (!itemResult.success || !itemResult.data) {
       notFound();
@@ -166,6 +169,7 @@ export default async function ItemDetailPage({
           titleHref={`/u/${profile.username}`}
           breadcrumbs={breadcrumbs}
           emailUnverified={session?.user ? !session.user.emailVerified : false}
+          driveNeedsReauth={driveConnection?.needsReauth ?? false}
         />
         <div className="bg-background text-foreground -mt-(--header-height) flex flex-1 flex-col">
           <Suspense fallback={<ItemContentSkeleton />}>
@@ -278,7 +282,7 @@ async function OwnerItemContent({
     getDescendants(item.id),
     getItemFiles(item.id),
     getItemProgress(item.id),
-    getGoogleDriveConnection(),
+    getCachedGoogleDriveConnection(),
     tmdbPromise,
     getWatchStatus(item.id),
   ]);

@@ -18,6 +18,7 @@ import {
 import { getProfile } from "@/lib/user-actions";
 import { getItemTmdbMetadata } from "@/lib/tmdb-client";
 import { prisma } from "@/lib/prisma";
+import { getCachedGoogleDriveConnection } from "@/lib/google-drive-data";
 import { SiteHeader } from "@/components/site-header";
 import { ExploreClient } from "./explore-client";
 import { ExploreContentSkeleton } from "@/components/skeletons/explore-content-skeleton";
@@ -47,9 +48,13 @@ export const metadata: Metadata = {
  */
 export default async function ExplorePage() {
   // Fast shell: auth for SiteHeader
-  const session = await auth();
+  const [session, driveConnection] = await Promise.all([
+    auth(),
+    getCachedGoogleDriveConnection(),
+  ]);
   const currentUserId = session?.user?.id ?? null;
   const emailUnverified = session?.user ? !session.user.emailVerified : false;
+  const driveNeedsReauth = driveConnection?.needsReauth ?? false;
 
   return (
     <>
@@ -57,6 +62,7 @@ export default async function ExplorePage() {
         title="Explore"
         titleHref="/explore"
         emailUnverified={emailUnverified}
+        driveNeedsReauth={driveNeedsReauth}
       />
       <div className="text-foreground -mt-(--header-height) flex flex-1 flex-col">
         <Suspense fallback={<ExploreContentSkeleton />}>
