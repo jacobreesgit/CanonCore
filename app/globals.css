@@ -415,6 +415,11 @@
   animation: shimmer 1.5s infinite;
 }
 
+/* Bottom padding when mini-player is visible */
+body:has([data-player-active]) main {
+  padding-bottom: 5rem;
+}
+
 /* Hide scrollbar while preserving scroll behaviour */
 .scrollbar-none {
   scrollbar-width: none; /* Firefox */
