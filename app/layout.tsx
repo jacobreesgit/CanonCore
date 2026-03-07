@@ -14,6 +14,7 @@ import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { StoreProvider } from "@/components/providers/store-provider";
+import { AudioManager } from "@/components/media/audio-manager";
 import { DeferredAnalytics } from "@/components/providers/deferred-analytics";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -87,7 +88,10 @@ export default function RootLayout({
           <ThemeProvider>
             <SessionProvider>
               <QueryProvider>
-                <StoreProvider>{children}</StoreProvider>
+                <StoreProvider>
+                  <AudioManager />
+                  {children}
+                </StoreProvider>
               </QueryProvider>
             </SessionProvider>
             <Toaster />
