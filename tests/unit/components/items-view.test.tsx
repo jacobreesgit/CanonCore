@@ -78,6 +78,12 @@ vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: vi.fn() })),
 }));
 
+// Mock Redux dispatch (GridViewContent uses useAppDispatch for queue actions)
+vi.mock("@/lib/store/hooks", () => ({
+  useAppDispatch: () => vi.fn(),
+  useAppSelector: (sel: (s: unknown) => unknown) => sel({}),
+}));
+
 // Mock tree/grid components
 vi.mock("@/components/sortable-tree", () => ({
   SortableTree: ({ items }: { items: unknown[] }) => (

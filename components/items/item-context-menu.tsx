@@ -39,8 +39,12 @@ import {
   faEye,
   faEyeSlash,
   faCheckDouble,
+  faForwardStep,
+  faListOl,
 } from "@fortawesome/free-solid-svg-icons";
+import { toast } from "sonner";
 import type { ItemVisibilityOptions } from "@/lib/types";
+import type { QueueTrack } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
 import { MENU_ITEM_CLASSES } from "./menu-styles";
 
@@ -94,6 +98,14 @@ export interface ItemMenuActions {
   showAddToPlaylist?: boolean;
   /** Item ID — needed for Add to Playlist dialog. */
   itemId?: string;
+  /** Whether this item has media files (enables queue actions). */
+  hasMedia?: boolean;
+  /** Callback to fetch files and return QueueTracks. */
+  onGetTracks?: () => Promise<QueueTrack[] | null>;
+  /** Callback dispatched when user clicks "Play Next". */
+  onPlayNext?: (track: QueueTrack) => void;
+  /** Callback dispatched when user clicks "Add to Queue". */
+  onAddToQueue?: (track: QueueTrack) => void;
 }
 
 /** Destructive (delete) menu item styling. */
@@ -143,6 +155,7 @@ export function renderMenuItems({
     isPinned = false,
     isWatched = false,
     isAllWatched = false,
+    hasMedia = false,
     onSettings,
     onDelete,
     onAddChild,
@@ -152,6 +165,9 @@ export function renderMenuItems({
     onMarkUnwatched,
     onMarkAllWatched,
     onMarkAllUnwatched,
+    onGetTracks,
+    onPlayNext,
+    onAddToQueue,
   } = actions;
 
   return (
@@ -185,6 +201,47 @@ export function renderMenuItems({
           />
           <span>Add to Playlist</span>
         </MenuItem>
+      )}
+      {hasMedia && onGetTracks && (
+        <>
+          <MenuSeparator className="bg-white/[0.08]" />
+          <MenuItem
+            onClick={async () => {
+              try {
+                const tracks = await onGetTracks();
+                if (tracks?.[0]) onPlayNext?.(tracks[0]);
+              } catch {
+                toast.error("Couldn't load track");
+              }
+            }}
+            className={MENU_ITEM_CLASSES}
+          >
+            <FontAwesomeIcon
+              icon={faForwardStep}
+              aria-hidden="true"
+              className="size-4"
+            />
+            <span>Play Next</span>
+          </MenuItem>
+          <MenuItem
+            onClick={async () => {
+              try {
+                const tracks = await onGetTracks();
+                tracks?.forEach((t) => onAddToQueue?.(t));
+              } catch {
+                toast.error("Couldn't load tracks");
+              }
+            }}
+            className={MENU_ITEM_CLASSES}
+          >
+            <FontAwesomeIcon
+              icon={faListOl}
+              aria-hidden="true"
+              className="size-4"
+            />
+            <span>Add to Queue</span>
+          </MenuItem>
+        </>
       )}
       {isPinned && onUnpin && (
         <MenuItem onClick={onUnpin} className={MENU_ITEM_CLASSES}>
