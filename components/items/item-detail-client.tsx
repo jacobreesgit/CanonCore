@@ -47,7 +47,7 @@ import { Button } from "@/components/ui/button";
 import { getItemFiles } from "@/lib/item-file-actions";
 import { useAppDispatch } from "@/lib/store/hooks";
 import { playTrack, playQueue } from "@/lib/store/playback-slice";
-import type { QueueTrack } from "@/lib/store/types";
+import { buildQueueTrack } from "@/lib/store/track-helpers";
 import { markAsWatched, markAsUnwatched } from "@/lib/watch-actions";
 import { useSyncHandler } from "@/hooks/use-sync-handler";
 import type {
@@ -62,11 +62,7 @@ import { useGoToItem } from "@/hooks/use-go-to-item";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { emptySubscribe } from "@/lib/empty-subscribe";
 import { formatProgressLabel } from "@/lib/progress-utils";
-import {
-  getTmdbBackdropUrl,
-  getTmdbPosterUrl,
-  getTmdbLogoUrl,
-} from "@/lib/tmdb-image-utils";
+import { getTmdbBackdropUrl, getTmdbLogoUrl } from "@/lib/tmdb-image-utils";
 // Lazy-load MobileItemSheet (mobile-only, heavy with Framer Motion)
 const MobileItemSheet = dynamic(
   () =>
@@ -341,25 +337,23 @@ export function ItemDetailClient({
   const handlePlay = useCallback(() => {
     if (!files || files.media.length === 0) return;
 
-    const tracks: QueueTrack[] = files.media.map((f) => ({
-      fileId: f.id,
-      itemId: item.id,
-      filename: f.filename,
-      mimeType: f.mimeType || "video/mp4",
-      itemName: item.name,
-      posterUrl: item.tmdbPosterPath
-        ? (getTmdbPosterUrl(item.tmdbPosterPath) ?? undefined)
-        : heroArtworkId
-          ? `/api/artwork/${heroArtworkId}`
-          : undefined,
-      duration: f.playbackDuration ?? undefined,
-      playbackPosition: f.playbackPosition ?? undefined,
-    }));
+    const tracks = files.media.map((f) =>
+      buildQueueTrack({
+        fileId: f.id,
+        itemId: item.id,
+        filename: f.filename,
+        mimeType: f.mimeType,
+        itemName: item.name,
+        tmdbPosterPath: item.tmdbPosterPath,
+        heroArtworkId,
+        playbackDuration: f.playbackDuration,
+        playbackPosition: f.playbackPosition,
+      })
+    );
 
     if (tracks.length === 1) {
       dispatch(playTrack(tracks[0]));
     } else {
-      // Find index of primary media, default to 0
       const primaryIndex = files.media.findIndex((f) => f.isPrimary);
       dispatch(playQueue({ tracks, startIndex: Math.max(0, primaryIndex) }));
     }
