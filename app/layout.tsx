@@ -15,6 +15,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { StoreProvider } from "@/components/providers/store-provider";
 import { AudioManager } from "@/components/media/audio-manager";
+import { MiniPlayer } from "@/components/media/mini-player";
 import { DeferredAnalytics } from "@/components/providers/deferred-analytics";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -91,6 +92,7 @@ export default function RootLayout({
                 <StoreProvider>
                   <AudioManager />
                   {children}
+                  <MiniPlayer />
                 </StoreProvider>
               </QueryProvider>
             </SessionProvider>
