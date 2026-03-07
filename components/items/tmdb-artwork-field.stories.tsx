@@ -11,7 +11,6 @@ import {
   faWandMagicSparkles,
 } from "@fortawesome/free-solid-svg-icons";
 
-import { Badge } from "@/components/ui/badge";
 import { TmdbArtworkField } from "./tmdb-artwork-field";
 
 const meta: Meta<typeof TmdbArtworkField> = {
@@ -163,14 +162,14 @@ export const WithOverrideNote: Story = {
       imageUrl="https://image.tmdb.org/t/p/w500/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg"
       onChange={fn()}
       onClear={fn()}
-      note={<Badge variant="destructive">Overridden by uploaded artwork</Badge>}
+      note="Overridden by uploaded artwork"
     />
   ),
   parameters: {
     docs: {
       description: {
         story:
-          "Shows a destructive badge when uploaded artwork overrides this TMDB image.",
+          "Shows a warning when uploaded artwork overrides this TMDB image.",
       },
     },
   },
@@ -186,7 +185,7 @@ export const EmptyWithOverrideNote: Story = {
       imageUrl={null}
       onChange={fn()}
       onClear={fn()}
-      note={<Badge variant="destructive">Overridden by uploaded artwork</Badge>}
+      note="Overridden by uploaded artwork"
     />
   ),
   parameters: {

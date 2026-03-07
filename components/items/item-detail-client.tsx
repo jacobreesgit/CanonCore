@@ -59,6 +59,7 @@ import type { TmdbDisplayOptions, SyncStatus } from "@/lib/types";
 import { getItems } from "@/lib/item-actions";
 import { useGoToItem } from "@/hooks/use-go-to-item";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { emptySubscribe } from "@/lib/empty-subscribe";
 import { formatProgressLabel } from "@/lib/progress-utils";
 import {
   getTmdbBackdropUrl,
@@ -82,9 +83,6 @@ const ItemSettingsDialog = dynamic(
     })),
   { ssr: false }
 );
-
-/** No-op subscribe for useSyncExternalStore (value never changes) */
-const emptySubscribe = () => () => {};
 
 /** Empty files state for initial dialog load */
 const emptyFiles = {

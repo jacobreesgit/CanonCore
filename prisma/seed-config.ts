@@ -50,6 +50,23 @@ export const MOVIE_IDS = [
   566525, // Shang-Chi and the Legend of the Ten Rings
   634649, // Spider-Man: No Way Home
 
+  // demo - Additional classics (pagination testing)
+  155, // The Dark Knight
+  27205, // Inception
+  157336, // Interstellar
+  550, // Fight Club
+  1422, // The Departed
+  769, // Goodfellas
+  1124, // The Prestige
+  98, // Gladiator
+  857, // Saving Private Ryan
+  497, // The Green Mile
+  807, // Se7en
+  274, // The Silence of the Lambs
+  348, // Alien
+  78, // Blade Runner
+  6977, // No Country for Old Men
+
   // filmfan - International Film
   129, // Spirited Away
   496243, // Parasite
@@ -57,6 +74,23 @@ export const MOVIE_IDS = [
   194, // Amélie
   598, // City of God
   1417, // Pan's Labyrinth
+
+  // filmfan - Additional international (pagination testing)
+  11216, // Cinema Paradiso
+  843, // In the Mood for Love
+  548, // Rashomon
+  346, // Seven Samurai
+  316029, // The Handmaiden
+  670, // Oldboy
+  7549, // Y Tu Mamá También
+  395992, // Roma
+  146, // Crouching Tiger, Hidden Dragon
+  1865, // Hero
+  153919, // A Separation
+  12124, // The Secret in Their Eyes
+  505192, // Shoplifters
+  728328, // Drive My Car
+  522444, // Another Round
 ];
 
 /** TV Show TMDB IDs to seed (superset of all user shows). */
@@ -168,13 +202,20 @@ export const USER_CONTENT_DISTRIBUTION: Record<string, UserContentConfig> = {
       // MCU Marathon
       1726, 24428, 100402, 118340, 271110, 284052, 315635, 284054, 299536,
       299534, 566525, 634649,
+      // Additional classics (pagination testing — 35 movies total)
+      155, 27205, 157336, 550, 1422, 769, 1124, 98, 857, 497, 807, 274, 348, 78,
+      6977,
     ],
     showIds: [1396, 1398], // Breaking Bad, The Sopranos
   },
   "filmfan@canoncore.com": {
     // International Film Lover - foreign language masterpieces
-    movieIds: [129, 496243, 637, 194, 598, 1417],
-    // Spirited Away, Parasite, Life Is Beautiful, Amélie, City of God, Pan's Labyrinth
+    movieIds: [
+      129, 496243, 637, 194, 598, 1417,
+      // Additional international (pagination testing — 21 movies total)
+      11216, 843, 548, 346, 316029, 670, 7549, 395992, 146, 1865, 153919, 12124,
+      505192, 728328, 522444,
+    ],
     showIds: [93405, 70523], // Squid Game, Dark
   },
   "test@canoncore.com": {
@@ -199,6 +240,14 @@ export const USER_PINNED_ITEMS: Record<string, number[]> = {
   "demo@canoncore.com": [1396, 603, 238], // Breaking Bad, The Matrix, The Godfather
   "filmfan@canoncore.com": [129, 496243], // Spirited Away, Parasite
   "test@canoncore.com": [],
+};
+
+/**
+ * TMDB IDs of items to mark as private after seeding (negative testing).
+ * These items should NOT appear in explore or visitor profile views.
+ */
+export const PRIVATE_ITEM_TMDB_IDS: Record<string, number[]> = {
+  "demo@canoncore.com": [348, 78], // Alien, Blade Runner
 };
 
 /** Default password for seed users. */

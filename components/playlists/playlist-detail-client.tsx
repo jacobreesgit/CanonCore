@@ -58,6 +58,7 @@ import {
   reorderPlaylistItems,
 } from "@/lib/playlist-actions";
 import { getTmdbBackdropUrl } from "@/lib/tmdb-image-utils";
+import { emptySubscribe } from "@/lib/empty-subscribe";
 
 const SwipeableUnderlineTabs = dynamic(
   () =>
@@ -74,8 +75,6 @@ const PlaylistSortableGrid = dynamic(
     })),
   { ssr: false }
 );
-
-const emptySubscribe = () => () => {};
 
 /** Minimal playlist item shape needed by the detail client. */
 interface PlaylistDetailItem {

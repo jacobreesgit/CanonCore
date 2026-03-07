@@ -44,7 +44,6 @@ import { resendVerificationEmail } from "@/lib/auth-actions";
 import { VERIFICATION_MESSAGES } from "@/lib/messages";
 import { DRIVE_MESSAGES } from "@/lib/constants/messages";
 import { cn } from "@/lib/utils";
-
 /** Breadcrumb item representing a navigation ancestor */
 interface BreadcrumbItem {
   /** Unique identifier for the item */
@@ -96,7 +95,6 @@ export function SiteHeader({
   const showContextMenu = currentItemId && (onRename || onDelete);
   const [isResending, startResendTransition] = useTransition();
   const { isReconnecting, handleReconnect } = useGoogleDriveReconnect();
-
   /** Resends email verification to the authenticated user. */
   const handleResendVerification = useCallback(() => {
     startResendTransition(async () => {

@@ -370,6 +370,23 @@ export function toggleContentFilter(
   return [...current, filter];
 }
 
+/**
+ * Client-side text search filter for items.
+ * Matches against name and description (case-insensitive).
+ * Returns all items when query is empty or whitespace-only.
+ */
+export function filterItemsBySearch<
+  T extends { name: string; description?: string | null },
+>(items: T[], query: string): T[] {
+  if (!query.trim()) return items;
+  const lower = query.toLowerCase();
+  return items.filter(
+    (item) =>
+      item.name.toLowerCase().includes(lower) ||
+      (item.description && item.description.toLowerCase().includes(lower))
+  );
+}
+
 /** Sort options for explore page (no custom ordering, no created-* since PublicItem lacks createdAt). */
 export const EXPLORE_SORT_OPTIONS: SortOptionConfig[] = [
   { value: "updated-desc", label: "Recently Updated" },

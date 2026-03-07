@@ -30,7 +30,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -102,12 +101,10 @@ export function ItemSettingsDialog({
   const detailsContent = (
     <div className="space-y-4">
       <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Label htmlFor="item-name">Item name</Label>
-          {item.tmdbId !== null && (
-            <Badge variant="destructive">Managed by TMDB</Badge>
-          )}
-        </div>
+        <Label htmlFor="item-name">Item name</Label>
+        {item.tmdbId !== null && (
+          <p className="text-destructive text-xs">Managed by TMDB</p>
+        )}
         <div className="relative">
           <Input
             id="item-name"
@@ -219,11 +216,9 @@ export function ItemSettingsDialog({
         fileType="artwork"
         disabled={!hasDriveConnection}
         note={
-          item.tmdbPosterPath ? (
-            <Badge variant="destructive">
-              Currently using TMDB poster. Upload to override.
-            </Badge>
-          ) : undefined
+          item.tmdbPosterPath
+            ? "Using TMDB poster — upload to override"
+            : undefined
         }
       />
 
@@ -240,11 +235,9 @@ export function ItemSettingsDialog({
         fileType="artwork"
         disabled={!hasDriveConnection}
         note={
-          item.tmdbBackdropPath ? (
-            <Badge variant="destructive">
-              Currently using TMDB backdrop. Upload to override.
-            </Badge>
-          ) : undefined
+          item.tmdbBackdropPath
+            ? "Using TMDB backdrop — upload to override"
+            : undefined
         }
       />
 
@@ -261,11 +254,7 @@ export function ItemSettingsDialog({
         fileType="artwork"
         disabled={!hasDriveConnection}
         note={
-          item.tmdbLogoPath ? (
-            <Badge variant="destructive">
-              Currently using TMDB logo. Upload to override.
-            </Badge>
-          ) : undefined
+          item.tmdbLogoPath ? "Using TMDB logo — upload to override" : undefined
         }
       />
 

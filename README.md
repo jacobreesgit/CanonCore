@@ -34,13 +34,17 @@ Three visibility levels chosen at creation time via an icon-labelled radio group
 
 ### Public Sharing
 
-Make items and playlists public to share them. Your profile page shows your public items and playlists. The explore page has two tabs — **Collections** and **Playlists** — showing public content from everyone with a featured banner carousel.
+Make items and playlists public to share them. Your profile page shows your public items and playlists. The explore page has two tabs — **Collections** and **Playlists** — showing public content from everyone with a featured banner carousel. Both tabs support client-side search with debounced URL sync and cursor-based infinite scroll pagination, so you can browse thousands of public items without loading them all at once.
+
+Right-clicking any item you don't own opens a viewer context menu with quick actions: **Fork** copies it to your library, **Add to Playlist** saves it to one of your playlists. Owners see their own familiar context menu with settings, delete, pin, and the new **Add to Playlist** action. If an owner visits their own private item or profile via a public URL, they see a helpful notice explaining why the content isn't visible publicly, with a link to change visibility — instead of a generic 404.
 
 Visibility is set at creation time, not just after the fact. When creating an item, a "Make public" switch lets you go public immediately. Child items default to inheriting their parent's visibility, keeping your hierarchy consistent without manual per-item configuration. Playlists offer a three-option radio picker — private, unlisted (share link only), or public — right in the creation dialog. A public item with a private ancestor stays inaccessible. Moving a public item into a private folder triggers a confirmation dialogue. Playlists have their own independent visibility (private, public, or unlisted via share link).
 
+Profile pages for viewers also support search and infinite scroll pagination, making it easy to browse large public libraries.
+
 ### Forking
 
-Other users can fork your collections into their own library. Forking copies names, descriptions, artwork, and hierarchy. Media files and subtitles stay private. Think of it like sharing a Spotify playlist: the structure is public, the files aren't.
+Other users can fork your collections into their own library — from the hero carousel, from item detail pages, or by right-clicking any item on the explore page or a public profile. An `isForkedByCurrentUser` flag prevents double-forking and updates on hover via route prefetching. Forking copies names, descriptions, artwork, and hierarchy. Media files and subtitles stay private. Think of it like sharing a Spotify playlist: the structure is public, the files aren't.
 
 ### Media Playback
 
@@ -102,7 +106,7 @@ Two filter groups — File Status (Has Files, No Files) and Sync Status (Synced,
 
 ### SEO & Social Sharing
 
-Dynamic OpenGraph images generated server-side for every public profile, item, and playlist page. When someone shares a link on Twitter, Discord, or Slack, the preview card shows the item's TMDB backdrop, name, and description. Profile links show a branded card with the user's display name and item count. Playlist links show the playlist artwork and item count. JSON-LD structured data (Movie, TVSeries, Person, WebApplication schemas) helps search engines understand the content. A dynamic sitemap keeps all public profiles, items, and playlists indexed.
+Dynamic OpenGraph images generated server-side for every public profile, item, and playlist page. When someone shares a link on Twitter, Discord, or Slack, the preview card shows the item's TMDB backdrop, name, and description. Profile links show a branded card with the user's display name and item count. Playlist links show the playlist artwork and item count. JSON-LD structured data (Movie, TVSeries, Person, WebApplication, BreadcrumbList schemas) helps search engines understand the content — every public profile, item detail, and playlist page includes BreadcrumbList markup for rich search result navigation. A dynamic sitemap keeps all public profiles, items, and playlists indexed.
 
 ### Legal Pages
 
@@ -152,7 +156,7 @@ Sentry error tracking across client, server, and edge runtimes with source maps 
 
 Google Drive operations batched up to 100 per request, reducing sync time for large folders from ~45s to ~3s. Edit mode separation extracts a view-only Grid from SortableGrid to avoid dnd-kit overhead in browse mode (~40KB saved). TMDB resolution and metadata fetches chained as a single promise running concurrently with other server-side fetches, eliminating sequential await waterfalls. Offline queue persists actions to IndexedDB when offline, replaying on reconnect with exponential backoff and jitter. Homepage performance pass cut total transfer by 65% (3,344 KiB → 1,161 KiB): replaced a 328KB noise texture with a CSS-generated SVG feTurbulence data URI, migrated all images to next/image with CDN support, async-loaded motion features via LazyMotion, and deduplicated `auth()` with `React.cache()` to eliminate redundant JWT decodes per request. The hero section's media stack ships as a server component with CSS-only animations — no client JavaScript for the image stack at all.
 
-The four heaviest pages — Explore, Profile, Item Detail, and Playlist Detail — use React Suspense boundaries to stream content progressively. The header and breadcrumbs render immediately from minimal data (auth session, profile lookup), then heavy content (TMDB enrichment, descendant queries, file lookups, drive connection checks) streams in as it resolves. Route-level `loading.tsx` files show layout-matched skeleton screens during navigation that exactly mirror the real page structure — hero dimensions, grid column counts, glassmorphism toolbar, tab positions — so there's zero cumulative layout shift when content replaces the skeleton. Shelf queries are deduplicated per request via `React.cache()`.
+The four heaviest pages — Explore, Profile, Item Detail, and Playlist Detail — use React Suspense boundaries to stream content progressively. The header and breadcrumbs render immediately from minimal data (auth session, profile lookup), then heavy content (TMDB enrichment, descendant queries, file lookups, drive connection checks) streams in as it resolves. Route-level `loading.tsx` files show layout-matched skeleton screens during navigation that exactly mirror the real page structure — hero dimensions, grid column counts, glassmorphism toolbar, tab positions — so there's zero cumulative layout shift when content replaces the skeleton. Shelf queries are deduplicated per request via `React.cache()`. Public-facing pages use cursor-based infinite scroll powered by React Query, loading additional pages via Intersection Observer as you scroll — the server renders the first page and the client seamlessly fetches more, with server-side rate limiting protecting against abuse.
 
 ### Accessibility
 
@@ -178,7 +182,7 @@ All custom components are documented in Storybook with stories, accessibility ch
 
 ## Tech Stack
 
-**Front End:** Next.js 16, React 19, TypeScript, Tailwind CSS 4, shadcn/ui, Font Awesome 7, Vidstack, dnd-kit, cmdk, nuqs, Embla Carousel (fade transitions)
+**Front End:** Next.js 16, React 19, TypeScript, Tailwind CSS 4, shadcn/ui, Font Awesome 7, Vidstack, dnd-kit, cmdk, nuqs, React Query, Embla Carousel (fade transitions)
 
 **Back End:** Prisma 7, NextAuth.js v5, Server Actions
 

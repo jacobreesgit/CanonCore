@@ -10,6 +10,7 @@ import {
   useMemo,
   useCallback,
   useState,
+  useDeferredValue,
   useTransition,
   useSyncExternalStore,
 } from "react";
@@ -22,16 +23,32 @@ import { ItemsView } from "@/components/items";
 import { EditModeToggle } from "@/components/items/edit-mode-toggle";
 import { CinematicHero, type HeroSlide } from "@/components/hero";
 import { GridItem } from "@/components/sortable-grid/grid-item";
+import { ViewerItemContextMenu } from "@/components/items/viewer-item-context-menu";
+import { ForkDestinationDialog } from "@/components/items/fork-destination-dialog";
 import { EmptyState } from "@/components/items/empty-state";
 import { Section } from "@/components/ui/section";
 import { HeroContentLayout } from "@/components/ui/hero-content-layout";
 import { UnderlineTabs } from "@/components/ui/underline-tabs";
 import { ContentToolbar } from "@/components/ui/content-toolbar";
+import {
+  SearchInput,
+  DebouncedSearchInput,
+} from "@/components/ui/search-input";
+import { InfiniteScrollTrigger } from "@/components/ui/infinite-scroll-trigger";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useItemsUrlState } from "@/hooks/use-items-url-state";
 import { useViewerUrlState } from "@/hooks/use-viewer-url-state";
 import { useSyncHandler } from "@/hooks/use-sync-handler";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useInfiniteItems } from "@/hooks/use-infinite-items";
+import { useSearchParam } from "@/hooks/use-search-param";
+import { useForkDialog } from "@/hooks/use-fork-dialog";
+import { emptySubscribe } from "@/lib/empty-subscribe";
+import {
+  getPublicItemsForUser,
+  getPublicPlaylistsForUser,
+} from "@/lib/public-auth";
 
 // Lazy-load swipeable tabs (mobile-only, keeps Embla out of desktop bundle)
 const SwipeableUnderlineTabs = dynamic(
@@ -41,20 +58,18 @@ const SwipeableUnderlineTabs = dynamic(
     })),
   { ssr: false }
 );
-import {
-  EXPLORE_SORT_OPTIONS,
-  sortPublicItems,
-  filterItems,
-} from "@/lib/item-utils";
+import { EXPLORE_SORT_OPTIONS, sortPublicItems } from "@/lib/item-utils";
 import { formatProgressLabel } from "@/lib/progress-utils";
 import { PlaylistSection } from "@/components/playlists/playlist-section";
 import type {
   ItemWithArtwork,
   ItemProgress,
+  PaginatedResult,
   SortOption,
   PublicPlaylistCard,
   PlaylistWithCount,
 } from "@/lib/types";
+import type { PublicProfileItem } from "@/lib/public-auth";
 
 /**
  * Profile data for unified display.
@@ -96,6 +111,14 @@ interface ProfilePageProps {
   ownerPlaylists?: PlaylistWithCount[];
   /** Server-rendered shelves (inserted between pinned and library) */
   shelves?: React.ReactNode;
+  /** Paginated initial items for viewer mode infinite scroll */
+  initialViewerItems?: PaginatedResult<PublicProfileItem>;
+  /** Paginated initial playlists for viewer mode infinite scroll */
+  initialViewerPlaylists?: PaginatedResult<PublicPlaylistCard>;
+  /** Initial search query from URL for viewer mode */
+  initialSearch?: string;
+  /** Current user ID for viewer context menu (null = guest). */
+  currentUserId?: string | null;
 }
 
 /**
@@ -131,6 +154,10 @@ export function ProfilePage({
   publicPlaylists,
   ownerPlaylists,
   shelves,
+  initialViewerItems,
+  initialViewerPlaylists,
+  initialSearch,
+  currentUserId,
 }: ProfilePageProps) {
   if (isOwner) {
     return (
@@ -148,15 +175,15 @@ export function ProfilePage({
   return (
     <ViewerModeContent
       profile={profile}
-      items={items}
       viewerProgress={viewerProgress}
       publicPlaylists={publicPlaylists ?? []}
+      initialItems={initialViewerItems}
+      initialPlaylists={initialViewerPlaylists}
+      initialSearch={initialSearch ?? ""}
+      currentUserId={currentUserId ?? null}
     />
   );
 }
-
-/** No-op subscribe for useSyncExternalStore (value never changes). */
-const emptySubscribe = () => () => {};
 
 /**
  * Owner mode content component.
@@ -207,6 +234,12 @@ function OwnerModeContent({
 
   // Active tab — URL-backed, defaults to "items"
   const activeTab = tab ?? "items";
+
+  // Client-side search state (NOT URL-backed — tree-view compat, no server round-trips)
+  // useDeferredValue keeps input responsive while ItemsView re-render is interruptible
+  const [searchQuery, setSearchQuery] = useState("");
+  const deferredSearch = useDeferredValue(searchQuery);
+  const clearSearch = useCallback(() => setSearchQuery(""), []);
 
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -294,7 +327,7 @@ function OwnerModeContent({
     />
   );
 
-  // Items tab content (toolbar + items grid)
+  // Items tab content (toolbar + search + items grid)
   const itemsContent = (
     <>
       <ContentToolbar
@@ -310,6 +343,13 @@ function OwnerModeContent({
         disabled={items.length === 0}
         actions={toolbarActions}
       />
+      <Section className="pt-2 pb-0">
+        <DebouncedSearchInput
+          value={searchQuery}
+          onValueCommit={setSearchQuery}
+          placeholder="Search your library…"
+        />
+      </Section>
       <ItemsView
         items={items}
         hideToolbar
@@ -326,6 +366,8 @@ function OwnerModeContent({
         disableTreeView
         onItemsChange={setItems}
         shelves={shelves}
+        searchQuery={deferredSearch}
+        onSearchClear={clearSearch}
       />
     </>
   );
@@ -378,25 +420,71 @@ function OwnerModeContent({
  */
 function ViewerModeContent({
   profile,
-  items,
   viewerProgress,
   publicPlaylists,
+  initialItems,
+  initialPlaylists,
+  initialSearch,
+  currentUserId,
 }: {
   profile: ProfileData;
-  items: ItemWithArtwork[];
   viewerProgress?: { percentage: number } | null;
   publicPlaylists: PublicPlaylistCard[];
+  initialItems?: PaginatedResult<PublicProfileItem>;
+  initialPlaylists?: PaginatedResult<PublicPlaylistCard>;
+  initialSearch: string;
+  currentUserId: string | null;
 }) {
   const router = useRouter();
+  const { sortBy, setSortBy, tab, setTab } = useViewerUrlState();
+
+  // Fork dialog (shared hook)
+  const fork = useForkDialog();
+
+  // Search state: debounced URL sync via nuqs ?q= param
   const {
-    sortBy,
-    setSortBy,
-    filters,
-    toggleFilter,
-    clearFilters,
-    tab,
-    setTab,
-  } = useViewerUrlState();
+    inputValue,
+    committedValue,
+    setInputValue,
+    clear: clearSearch,
+  } = useSearchParam();
+
+  // Infinite scroll for items
+  const {
+    items: allItems,
+    fetchNextPage: fetchNextItems,
+    hasNextPage: hasNextItems,
+    isFetchingNextPage: isFetchingNextItems,
+    isPlaceholderData: isItemsPlaceholder,
+  } = useInfiniteItems<PublicProfileItem>({
+    queryKey: ["profile-items", profile.id, committedValue],
+    fetchAction: (cursor) =>
+      getPublicItemsForUser({
+        userId: profile.id,
+        cursor,
+        search: committedValue || undefined,
+      }),
+    initialData: initialSearch === committedValue ? initialItems : undefined,
+  });
+
+  // Infinite scroll for playlists
+  const {
+    items: allViewerPlaylists,
+    fetchNextPage: fetchNextPlaylists,
+    hasNextPage: hasNextPlaylists,
+    isFetchingNextPage: isFetchingNextPlaylists,
+    isPlaceholderData: isPlaylistsPlaceholder,
+  } = useInfiniteItems<PublicPlaylistCard>({
+    queryKey: ["profile-playlists", profile.id, committedValue],
+    fetchAction: (cursor) =>
+      getPublicPlaylistsForUser({
+        userId: profile.id,
+        cursor,
+        search: committedValue || undefined,
+      }),
+    initialData:
+      initialSearch === committedValue ? initialPlaylists : undefined,
+  });
 
   const isMobile = useIsMobile();
   const tabsMounted = useSyncExternalStore(
@@ -406,47 +494,21 @@ function ViewerModeContent({
   );
 
   const activeTab = tab ?? "items";
+  const isSearching = committedValue.length > 0;
 
-  // Create O(1) lookup map for original items (avoids O(n²) find in render loop)
-  const itemsById = useMemo(
-    () => new Map(items.map((item) => [item.id, item])),
-    [items]
-  );
-
-  // Split items into pinned and unpinned
+  // Split items into pinned and unpinned, then sort unpinned
   const pinnedItems = useMemo(
     () =>
-      items
+      allItems
         .filter((item) => item.pinnedOrder !== null)
         .sort((a, b) => (a.pinnedOrder ?? 0) - (b.pinnedOrder ?? 0)),
-    [items]
+    [allItems]
   );
 
-  const unpinnedItems = useMemo(
-    () => items.filter((item) => item.pinnedOrder === null),
-    [items]
-  );
-
-  // Filter unpinned items, then transform to sortable format and sort
-  const sortableItems = useMemo(() => {
-    const filtered = filterItems(unpinnedItems, filters);
-    const publicItems = filtered.map((item) => ({
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      artworkId: item.artworkId,
-      updatedAt: item.updatedAt,
-      // These fields are needed by sortPublicItems but may not be present
-      parentId: item.parentId,
-      depth: item.depth,
-      order: item.order,
-      userId: item.userId,
-      tmdbId: null,
-      tmdbType: null,
-      forkCount: 0,
-    }));
-    return sortPublicItems(publicItems, sortBy);
-  }, [unpinnedItems, sortBy, filters]);
+  const sortedUnpinnedItems = useMemo(() => {
+    const unpinned = allItems.filter((item) => item.pinnedOrder === null);
+    return sortPublicItems(unpinned, sortBy);
+  }, [allItems, sortBy]);
 
   // Preload on hover for faster navigation
   const handleMouseEnter = useCallback(
@@ -463,7 +525,7 @@ function ViewerModeContent({
     [router, profile.username]
   );
 
-  const hasItems = items.length > 0;
+  const hasItems = allItems.length > 0;
 
   // Hero element
   const hero = (
@@ -500,16 +562,26 @@ function ViewerModeContent({
       <ContentToolbar
         sortBy={sortBy}
         onSortChange={setSortBy as (value: SortOption) => void}
-        filters={filters}
-        toggleFilter={toggleFilter}
-        clearFilters={clearFilters}
-        disabled={!hasItems}
+        disabled={!hasItems && !isSearching}
         sortOptions={EXPLORE_SORT_OPTIONS}
         defaultSort="updated-desc"
       />
 
+      <Section className="pt-2 pb-0">
+        <SearchInput
+          value={inputValue}
+          onChange={setInputValue}
+          onClear={clearSearch}
+        />
+      </Section>
+
       {hasItems ? (
-        <>
+        <div
+          className={cn(
+            "flex flex-col transition-opacity duration-200",
+            isItemsPlaceholder && "opacity-60"
+          )}
+        >
           {/* Pinned items section */}
           {pinnedItems.length > 0 && (
             <Section className="py-8" aria-label="Pinned items">
@@ -518,30 +590,54 @@ function ViewerModeContent({
               </h2>
               <div className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6">
                 {pinnedItems.map((item, index) => (
-                  <GridItem
+                  <ViewerItemContextMenu
                     key={item.id}
-                    id={item.id}
-                    name={item.name}
-                    description={item.description}
-                    tmdbPosterPath={item.tmdbPosterPath}
-                    artworkId={item.artworkId}
-                    onClick={() => handleItemClick(item.id)}
-                    onMouseEnter={() => handleMouseEnter(item.id)}
-                    showArtwork={true}
-                    showDescription={true}
-                    priority={index < 5}
-                    ownerLabel={`@${profile.username}`}
-                    ownerHref={`/u/${profile.username}`}
-                    ownerUserId={profile.id}
-                    ownerName={profile.name}
-                  />
+                    itemId={item.id}
+                    itemName={item.name}
+                    isForked={item.isForkedByCurrentUser}
+                    isGuest={!currentUserId}
+                    showAddToPlaylist={!!currentUserId}
+                    onFork={
+                      currentUserId
+                        ? () => fork.openDialog(item.id, item.name)
+                        : undefined
+                    }
+                  >
+                    <GridItem
+                      id={item.id}
+                      name={item.name}
+                      description={item.description}
+                      tmdbPosterPath={item.tmdbPosterPath}
+                      artworkId={item.artworkId}
+                      onClick={() => handleItemClick(item.id)}
+                      onMouseEnter={() => handleMouseEnter(item.id)}
+                      showArtwork={true}
+                      showDescription={true}
+                      priority={index < 5}
+                      ownerLabel={`@${profile.username}`}
+                      ownerHref={`/u/${profile.username}`}
+                      ownerUserId={profile.id}
+                      ownerName={profile.name}
+                      isForked={item.isForkedByCurrentUser}
+                      viewerMenuProps={{
+                        itemId: item.id,
+                        itemName: item.name,
+                        isForked: item.isForkedByCurrentUser,
+                        isGuest: !currentUserId,
+                        showAddToPlaylist: !!currentUserId,
+                        onFork: currentUserId
+                          ? () => fork.openDialog(item.id, item.name)
+                          : undefined,
+                      }}
+                    />
+                  </ViewerItemContextMenu>
                 ))}
               </div>
             </Section>
           )}
 
           {/* Library section */}
-          {sortableItems.length > 0 && (
+          {sortedUnpinnedItems.length > 0 && (
             <Section className="py-8" aria-label="Library">
               {pinnedItems.length > 0 && (
                 <h2 className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
@@ -549,16 +645,26 @@ function ViewerModeContent({
                 </h2>
               )}
               <div className="stagger-grid grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6">
-                {sortableItems.map((item, index) => {
-                  const originalItem = itemsById.get(item.id);
-                  return (
+                {sortedUnpinnedItems.map((item, index) => (
+                  <ViewerItemContextMenu
+                    key={item.id}
+                    itemId={item.id}
+                    itemName={item.name}
+                    isForked={item.isForkedByCurrentUser}
+                    isGuest={!currentUserId}
+                    showAddToPlaylist={!!currentUserId}
+                    onFork={
+                      currentUserId
+                        ? () => fork.openDialog(item.id, item.name)
+                        : undefined
+                    }
+                  >
                     <GridItem
-                      key={item.id}
                       id={item.id}
                       name={item.name}
                       description={item.description}
-                      tmdbPosterPath={originalItem?.tmdbPosterPath ?? null}
-                      artworkId={originalItem?.artworkId ?? item.artworkId}
+                      tmdbPosterPath={item.tmdbPosterPath}
+                      artworkId={item.artworkId}
                       onClick={() => handleItemClick(item.id)}
                       onMouseEnter={() => handleMouseEnter(item.id)}
                       showArtwork={true}
@@ -568,15 +674,41 @@ function ViewerModeContent({
                       ownerHref={`/u/${profile.username}`}
                       ownerUserId={profile.id}
                       ownerName={profile.name}
+                      isForked={item.isForkedByCurrentUser}
+                      viewerMenuProps={{
+                        itemId: item.id,
+                        itemName: item.name,
+                        isForked: item.isForkedByCurrentUser,
+                        isGuest: !currentUserId,
+                        showAddToPlaylist: !!currentUserId,
+                        onFork: currentUserId
+                          ? () => fork.openDialog(item.id, item.name)
+                          : undefined,
+                      }}
                     />
-                  );
-                })}
+                  </ViewerItemContextMenu>
+                ))}
               </div>
             </Section>
           )}
-        </>
+
+          {/* Infinite scroll trigger */}
+          <InfiniteScrollTrigger
+            hasNextPage={hasNextItems}
+            isFetchingNextPage={isFetchingNextItems}
+            fetchNextPage={fetchNextItems}
+          />
+        </div>
+      ) : isSearching ? (
+        <Section className="flex flex-1 flex-col pt-6">
+          <EmptyState
+            variant="search-empty"
+            searchQuery={committedValue}
+            onAction={clearSearch}
+          />
+        </Section>
       ) : (
-        <Section className="flex flex-1 flex-col">
+        <Section className="flex flex-1 flex-col pt-6">
           <EmptyState variant="public-profile-empty" />
         </Section>
       )}
@@ -584,21 +716,52 @@ function ViewerModeContent({
   );
 
   // Playlists tab content
-  // NOTE: Cannot delegate to <PlaylistSection mode="viewer"> alone because
-  // ViewerPlaylistSection returns null when playlists are empty (line 68 of
-  // playlist-section.tsx), which would leave the tab completely blank.
-  const playlistsContent =
-    publicPlaylists.length > 0 ? (
-      <PlaylistSection
-        mode="viewer"
-        username={profile.username}
-        playlists={publicPlaylists}
-      />
-    ) : (
-      <Section className="flex flex-1 flex-col items-center justify-center py-16">
-        <p className="text-muted-foreground text-sm">No public playlists yet</p>
+  const playlistsContent = (
+    <>
+      <Section className="pt-2 pb-0">
+        <SearchInput
+          value={inputValue}
+          onChange={setInputValue}
+          onClear={clearSearch}
+        />
       </Section>
-    );
+
+      {allViewerPlaylists.length > 0 ? (
+        <div
+          className={cn(
+            "transition-opacity duration-200",
+            isPlaylistsPlaceholder && "opacity-60"
+          )}
+        >
+          <PlaylistSection
+            mode="viewer"
+            username={profile.username}
+            playlists={allViewerPlaylists}
+          />
+
+          <InfiniteScrollTrigger
+            hasNextPage={hasNextPlaylists}
+            isFetchingNextPage={isFetchingNextPlaylists}
+            fetchNextPage={fetchNextPlaylists}
+          />
+        </div>
+      ) : isSearching ? (
+        <Section className="flex flex-1 flex-col pt-6">
+          <EmptyState
+            variant="search-empty"
+            searchQuery={committedValue}
+            onAction={clearSearch}
+          />
+        </Section>
+      ) : (
+        <Section className="flex flex-1 flex-col items-center justify-center py-16">
+          <p className="text-muted-foreground text-sm">
+            No public playlists yet
+          </p>
+        </Section>
+      )}
+    </>
+  );
 
   const tabs = [
     { id: "items", label: "Items", content: itemsContent },
@@ -610,7 +773,9 @@ function ViewerModeContent({
       hero={hero}
       dominantColour={profile.dominantColour}
       className={
-        !hasItems && publicPlaylists.length === 0 ? "flex-1" : undefined
+        !hasItems && !isSearching && publicPlaylists.length === 0
+          ? "flex-1"
+          : undefined
       }
     >
       {tabsMounted ? (
@@ -630,6 +795,14 @@ function ViewerModeContent({
       ) : (
         itemsContent
       )}
+
+      <ForkDestinationDialog
+        open={fork.open}
+        onOpenChange={fork.setOpen}
+        onConfirm={fork.handleConfirm}
+        isForking={fork.isForking}
+        itemName={fork.itemName}
+      />
     </HeroContentLayout>
   );
 }

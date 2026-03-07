@@ -7,6 +7,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +32,14 @@ import { cn } from "@/lib/utils";
 import { slugify } from "@/lib/slugify";
 import { renderMenuItems, type ItemMenuActions } from "./item-context-menu";
 
+const AddToPlaylistDialog = dynamic(
+  () =>
+    import("@/components/playlists/add-to-playlist-dialog").then((mod) => ({
+      default: mod.AddToPlaylistDialog,
+    })),
+  { ssr: false }
+);
+
 interface ItemMoreButtonProps extends ItemMenuActions {
   className?: string;
 }
@@ -45,6 +54,8 @@ interface ItemMoreButtonProps extends ItemMenuActions {
 export function ItemMoreButton({ className, ...actions }: ItemMoreButtonProps) {
   const {
     itemName,
+    itemId,
+    showAddToPlaylist = false,
     onDelete,
     onAddChild,
     onAddChildComplete,
@@ -52,6 +63,7 @@ export function ItemMoreButton({ className, ...actions }: ItemMoreButtonProps) {
   } = actions;
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [addChildOpen, setAddChildOpen] = useState(false);
+  const [playlistOpen, setPlaylistOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleDelete() {
@@ -108,6 +120,9 @@ export function ItemMoreButton({ className, ...actions }: ItemMoreButtonProps) {
             MenuSeparator: DropdownMenuSeparator,
             onDeleteClick: () => setDeleteOpen(true),
             onAddChildClick: () => setAddChildOpen(true),
+            onPlaylistClick: showAddToPlaylist
+              ? () => setPlaylistOpen(true)
+              : undefined,
           })}
         </DropdownMenuContent>
       </DropdownMenu>
@@ -173,6 +188,14 @@ export function ItemMoreButton({ className, ...actions }: ItemMoreButtonProps) {
         parentName={itemName}
         hasDriveConnection={hasDriveConnection}
       />
+
+      {playlistOpen && itemId && (
+        <AddToPlaylistDialog
+          open={playlistOpen}
+          onOpenChange={setPlaylistOpen}
+          itemId={itemId}
+        />
+      )}
     </>
   );
 }
