@@ -33,6 +33,7 @@ vi.mock("@/lib/google-drive-client", () => ({
   verifyOAuthState: vi.fn(),
 }));
 
+const mockAboutGet = vi.fn();
 vi.mock("googleapis", () => {
   class MockOAuth2 {
     setCredentials = vi.fn();
@@ -42,7 +43,9 @@ vi.mock("googleapis", () => {
       auth: {
         OAuth2: MockOAuth2,
       },
-      drive: vi.fn(() => ({})),
+      drive: vi.fn(() => ({
+        about: { get: mockAboutGet },
+      })),
     },
   };
 });
@@ -88,6 +91,10 @@ describe("GET /api/auth/callback/google-drive", () => {
     vi.clearAllMocks();
     // Default: user has a username
     mockUserFindUnique.mockResolvedValue({ username: "testuser" } as never);
+    // Default: quota fetch returns null (no quota data)
+    mockAboutGet.mockResolvedValue({
+      data: { storageQuota: null },
+    });
   });
 
   it("redirects to sign-in when not authenticated", async () => {
@@ -305,5 +312,77 @@ describe("GET /api/auth/callback/google-drive", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toContain("/?error=access_denied");
+  });
+
+  it("should fetch and store quota during OAuth callback", async () => {
+    mockAuth.mockResolvedValue({ user: { id: "user-1" } } as never);
+    mockVerifyState.mockReturnValue({
+      userId: "user-1",
+      timestamp: Date.now(),
+    });
+    mockExchangeCode.mockResolvedValue({
+      accessToken: "access-token",
+      refreshToken: "refresh-token",
+      expiresIn: 3600,
+    });
+    mockGetUserEmail.mockResolvedValue("user@example.com");
+    mockCreateRootFolder.mockResolvedValue({
+      id: "root-folder-id",
+      wasExisting: false,
+    });
+    mockAboutGet.mockResolvedValue({
+      data: {
+        storageQuota: {
+          usage: "5368709120",
+          limit: "16106127360",
+        },
+      },
+    });
+    mockUpsert.mockResolvedValue({} as never);
+
+    await GET(createRequest({ code: "test-code", state: "valid-state" }));
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          quotaBytesUsed: BigInt("5368709120"),
+          quotaBytesTotal: BigInt("16106127360"),
+        }),
+        update: expect.objectContaining({
+          quotaBytesUsed: BigInt("5368709120"),
+          quotaBytesTotal: BigInt("16106127360"),
+        }),
+      })
+    );
+  });
+
+  it("should not fail connection if quota fetch fails", async () => {
+    mockAuth.mockResolvedValue({ user: { id: "user-1" } } as never);
+    mockVerifyState.mockReturnValue({
+      userId: "user-1",
+      timestamp: Date.now(),
+    });
+    mockExchangeCode.mockResolvedValue({
+      accessToken: "access-token",
+      refreshToken: "refresh-token",
+      expiresIn: 3600,
+    });
+    mockGetUserEmail.mockResolvedValue("user@example.com");
+    mockCreateRootFolder.mockResolvedValue({
+      id: "root-folder-id",
+      wasExisting: false,
+    });
+    mockAboutGet.mockRejectedValue(new Error("Quota unavailable"));
+    mockUpsert.mockResolvedValue({} as never);
+
+    const response = await GET(
+      createRequest({ code: "test-code", state: "valid-state" })
+    );
+
+    // Connection still created
+    expect(mockUpsert).toHaveBeenCalled();
+    // Response should be a redirect (not error)
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toContain("drive=connected");
   });
 });

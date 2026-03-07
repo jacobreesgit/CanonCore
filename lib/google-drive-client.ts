@@ -154,13 +154,49 @@ export async function withRateLimit<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 /**
+ * In-flight refresh promises keyed by connectionId.
+ * Prevents concurrent token refreshes for the same connection from
+ * racing against each other and invalidating tokens.
+ */
+const inflightRefreshes = new Map<string, Promise<string>>();
+
+/**
  * Refreshes an expired access token using the refresh token.
+ * Uses a mutex to deduplicate concurrent refreshes for the same connection.
  *
  * @param connectionId - The GoogleDriveConnection ID
  * @param encryptedRefreshToken - The encrypted refresh token
  * @returns The new access token
  */
 export async function refreshAccessToken(
+  connectionId: string,
+  encryptedRefreshToken: string
+): Promise<string> {
+  const existing = inflightRefreshes.get(connectionId);
+  if (existing) {
+    return existing;
+  }
+
+  const promise = refreshAccessTokenInternal(
+    connectionId,
+    encryptedRefreshToken
+  );
+
+  inflightRefreshes.set(connectionId, promise);
+
+  try {
+    const result = await promise;
+    return result;
+  } finally {
+    inflightRefreshes.delete(connectionId);
+  }
+}
+
+/**
+ * Internal token refresh logic. Called at most once per connection
+ * for concurrent requests due to the mutex in refreshAccessToken().
+ */
+async function refreshAccessTokenInternal(
   connectionId: string,
   encryptedRefreshToken: string
 ): Promise<string> {
@@ -206,6 +242,32 @@ export async function refreshAccessToken(
   });
 
   return access_token;
+}
+
+/**
+ * Revokes a Google OAuth token (best-effort).
+ * Called on disconnect to invalidate tokens at Google's end.
+ * Non-throwing — revocation failure should not block disconnect.
+ *
+ * @param token - The refresh or access token to revoke
+ */
+export async function revokeToken(token: string): Promise<void> {
+  try {
+    const response = await fetch("https://oauth2.googleapis.com/revoke", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ token }),
+    });
+
+    if (!response.ok) {
+      logger.warn(
+        { status: response.status },
+        "[GoogleDrive] Token revocation returned non-OK (best-effort)"
+      );
+    }
+  } catch (err) {
+    logger.warn({ err }, "[GoogleDrive] Token revocation failed (best-effort)");
+  }
 }
 
 /**

@@ -285,6 +285,50 @@ describe("GoogleDriveSettingsSection", () => {
     });
   });
 
+  describe("Sync Retry", () => {
+    it("should show retry button in sync error display", () => {
+      render(
+        <GoogleDriveSettingsSection
+          connection={{
+            ...mockConnection,
+            lastError: "3 files failed",
+          }}
+          onConnectionChange={vi.fn()}
+        />
+      );
+
+      expect(
+        screen.getByRole("button", { name: /retry/i })
+      ).toBeInTheDocument();
+    });
+
+    it("should not show retry button when no error", () => {
+      render(
+        <GoogleDriveSettingsSection
+          connection={mockConnection}
+          onConnectionChange={vi.fn()}
+        />
+      );
+
+      expect(
+        screen.queryByRole("button", { name: /retry/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not show retry button for root folder errors", () => {
+      render(
+        <GoogleDriveSettingsSection
+          connection={{ ...mockConnection, lastError: "ROOT_FOLDER_TRASHED" }}
+          onConnectionChange={vi.fn()}
+        />
+      );
+
+      expect(
+        screen.queryByRole("button", { name: /retry/i })
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("Storage Quota Display", () => {
     const mockConnectionWithQuota = {
       email: "test@gmail.com",

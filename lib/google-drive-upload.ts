@@ -181,6 +181,24 @@ export async function createUploadSessions(
       return { success: false, error: "Please reconnect your Google Drive" };
     }
 
+    // Pre-upload quota check
+    const QUOTA_CRITICAL_THRESHOLD = 0.95;
+    if (
+      connection.quotaBytesUsed !== null &&
+      connection.quotaBytesTotal !== null &&
+      connection.quotaBytesTotal > BigInt(0)
+    ) {
+      const usageRatio =
+        Number(connection.quotaBytesUsed) / Number(connection.quotaBytesTotal);
+      if (usageRatio >= QUOTA_CRITICAL_THRESHOLD) {
+        return {
+          success: false,
+          error:
+            "Google Drive storage is almost full. Free up space or upgrade your plan before uploading.",
+        };
+      }
+    }
+
     if (!item) {
       return { success: false, error: "Item not found" };
     }

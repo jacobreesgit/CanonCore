@@ -75,7 +75,11 @@ vi.mock("@/lib/google-drive-client", () => ({
   deleteFile: vi.fn(),
   renameFile: vi.fn(),
   moveFile: vi.fn(),
+  revokeToken: vi.fn(),
 }));
+
+// Mock next/server after()
+vi.mock("next/server", () => ({ after: vi.fn((fn: () => void) => fn()) }));
 
 // Mock crypto module
 vi.mock("@/lib/crypto", () => ({
@@ -165,6 +169,84 @@ describe("google-drive-actions", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe("No connection to disconnect");
+    });
+
+    it("should revoke the Google token before deleting the connection", async () => {
+      vi.mocked(auth).mockResolvedValue({
+        user: { id: "user-1" },
+        expires: new Date().toISOString(),
+      } as never);
+
+      vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue({
+        id: "conn-1",
+        userId: "user-1",
+        rootFolderId: "root-1",
+        encryptedRefreshToken: "encrypted:refresh-token",
+        encryptedAccessToken: "encrypted:access-token",
+        accessTokenExpiry: new Date(Date.now() + 3600000),
+        needsReauth: false,
+      } as never);
+
+      const mockDrive = {
+        files: {
+          update: vi.fn().mockResolvedValue({}),
+          delete: vi.fn().mockResolvedValue({}),
+        },
+      };
+      const { getDriveClient, revokeToken } =
+        await import("@/lib/google-drive-client");
+      vi.mocked(getDriveClient).mockResolvedValue(mockDrive as never);
+
+      vi.mocked(prisma.googleDriveConnection.delete).mockResolvedValue(
+        {} as never
+      );
+
+      const { disconnectGoogleDrive } =
+        await import("@/lib/google-drive-actions");
+      await disconnectGoogleDrive();
+
+      expect(revokeToken).toHaveBeenCalledWith("refresh-token");
+    });
+
+    it("should permanently delete the root folder instead of trashing it on disconnect", async () => {
+      vi.mocked(auth).mockResolvedValue({
+        user: { id: "user-1" },
+        expires: new Date().toISOString(),
+      } as never);
+
+      vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue({
+        id: "conn-1",
+        userId: "user-1",
+        rootFolderId: "root-1",
+        encryptedRefreshToken: "encrypted:refresh-token",
+        encryptedAccessToken: "encrypted:access-token",
+        accessTokenExpiry: new Date(Date.now() + 3600000),
+        needsReauth: false,
+      } as never);
+
+      const mockDrive = {
+        files: {
+          update: vi.fn().mockResolvedValue({}),
+          delete: vi.fn().mockResolvedValue({}),
+        },
+      };
+      const { getDriveClient } = await import("@/lib/google-drive-client");
+      vi.mocked(getDriveClient).mockResolvedValue(mockDrive as never);
+
+      vi.mocked(prisma.googleDriveConnection.delete).mockResolvedValue(
+        {} as never
+      );
+
+      const { disconnectGoogleDrive } =
+        await import("@/lib/google-drive-actions");
+      await disconnectGoogleDrive();
+
+      // Should permanently delete, not just trash
+      expect(mockDrive.files.delete).toHaveBeenCalledWith({
+        fileId: "root-1",
+      });
+      // Should NOT use files.update (trash)
+      expect(mockDrive.files.update).not.toHaveBeenCalled();
     });
   });
 

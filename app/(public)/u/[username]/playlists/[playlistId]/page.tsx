@@ -18,6 +18,7 @@ import {
 } from "@/lib/public-auth";
 import type { PublicProfile } from "@/lib/public-auth";
 import { getPlaylist } from "@/lib/playlist-actions";
+import { getCachedGoogleDriveConnection } from "@/lib/google-drive-data";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { SiteHeader } from "@/components/site-header";
 import { PlaylistDetailClient } from "@/components/playlists/playlist-detail-client";
@@ -249,9 +250,15 @@ export default async function PlaylistPage({
   const isOwner = session?.user?.id === profile.id;
 
   if (isOwner) {
+    const driveConnection = await getCachedGoogleDriveConnection();
+
     return (
       <>
-        <SiteHeader title="My Playlists" titleHref={`/u/${username}`} />
+        <SiteHeader
+          title="My Playlists"
+          titleHref={`/u/${username}`}
+          driveNeedsReauth={driveConnection?.needsReauth ?? false}
+        />
         <div className="bg-background text-foreground flex flex-1 flex-col">
           <Suspense fallback={<PlaylistContentSkeleton />}>
             <OwnerPlaylistContent playlistId={playlistId} username={username} />

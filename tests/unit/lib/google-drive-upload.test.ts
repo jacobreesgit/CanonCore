@@ -304,6 +304,115 @@ describe("google-drive-upload", () => {
       expect(result.sessions![0].sessionToken).toBeDefined();
       expect(result.sessions![1].fileName).toBe("poster.jpg");
     });
+
+    describe("pre-upload quota check", () => {
+      it("should return error when storage quota is exceeded (95%+ used)", async () => {
+        vi.mocked(auth).mockResolvedValue({
+          user: { id: "user-1" },
+          expires: new Date().toISOString(),
+        } as never);
+
+        vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue({
+          id: "conn-1",
+          userId: "user-1",
+          rootFolderId: "root-1",
+          needsReauth: false,
+          encryptedAccessToken: "encrypted:token",
+          accessTokenExpiry: new Date(Date.now() + 3600000),
+          // 14.5 GB of 15 GB used (96.7%)
+          quotaBytesUsed: BigInt("15569256448"),
+          quotaBytesTotal: BigInt("16106127360"),
+        } as never);
+
+        vi.mocked(prisma.item.findFirst).mockResolvedValue({
+          id: "item-1",
+          driveFileId: "drive-folder-1",
+        } as never);
+
+        const { createUploadSessions } =
+          await import("@/lib/google-drive-upload");
+        const result = await createUploadSessions(
+          "item-1",
+          [{ name: "video.mp4", mimeType: "video/mp4" }],
+          "https://localhost:3000"
+        );
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain("storage");
+      });
+
+      it("should block upload at exactly 95% usage (boundary)", async () => {
+        vi.mocked(auth).mockResolvedValue({
+          user: { id: "user-1" },
+          expires: new Date().toISOString(),
+        } as never);
+
+        vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue({
+          id: "conn-1",
+          userId: "user-1",
+          rootFolderId: "root-1",
+          needsReauth: false,
+          encryptedAccessToken: "encrypted:token",
+          accessTokenExpiry: new Date(Date.now() + 3600000),
+          // Exactly 95% of 100 GB
+          quotaBytesUsed: BigInt("102005473280"),
+          quotaBytesTotal: BigInt("107374182400"),
+        } as never);
+
+        vi.mocked(prisma.item.findFirst).mockResolvedValue({
+          id: "item-1",
+          driveFileId: "drive-folder-1",
+        } as never);
+
+        const { createUploadSessions } =
+          await import("@/lib/google-drive-upload");
+        const result = await createUploadSessions(
+          "item-1",
+          [{ name: "video.mp4", mimeType: "video/mp4" }],
+          "https://localhost:3000"
+        );
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain("storage");
+      });
+
+      it("should skip quota check when quota data is not available", async () => {
+        vi.mocked(auth).mockResolvedValue({
+          user: { id: "user-1" },
+          expires: new Date().toISOString(),
+        } as never);
+
+        vi.mocked(prisma.googleDriveConnection.findUnique).mockResolvedValue({
+          id: "conn-1",
+          userId: "user-1",
+          rootFolderId: "root-1",
+          needsReauth: false,
+          encryptedAccessToken: "encrypted:token",
+          encryptedRefreshToken: "encrypted:refresh",
+          accessTokenExpiry: new Date(Date.now() + 3600000),
+          quotaBytesUsed: null,
+          quotaBytesTotal: null,
+        } as never);
+
+        vi.mocked(prisma.item.findFirst).mockResolvedValue({
+          id: "item-1",
+          driveFileId: "drive-folder-1",
+        } as never);
+
+        const { createUploadSessions } =
+          await import("@/lib/google-drive-upload");
+        const result = await createUploadSessions(
+          "item-1",
+          [{ name: "video.mp4", mimeType: "video/mp4" }],
+          "https://localhost:3000"
+        );
+
+        // Should not fail with quota error (might fail for other reasons)
+        if (!result.success) {
+          expect(result.error).not.toContain("storage");
+        }
+      });
+    });
   });
 
   describe("confirmUpload", () => {

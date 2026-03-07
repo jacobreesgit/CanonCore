@@ -20,7 +20,7 @@ import {
 } from "@/lib/public-auth";
 import { getItemsForProfile, getLibraryProgress } from "@/lib/item-actions";
 import { getUserPlaylists } from "@/lib/playlist-actions";
-import { getGoogleDriveConnection } from "@/lib/google-drive-actions";
+import { getCachedGoogleDriveConnection } from "@/lib/google-drive-data";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { SiteHeader } from "@/components/site-header";
 import { ProfilePage as ProfilePageContent } from "@/components/profile";
@@ -93,7 +93,7 @@ async function ProfileContent({
 
   if (isOwner) {
     const [driveConnection, progress, playlistsResult] = await Promise.all([
-      getGoogleDriveConnection(),
+      getCachedGoogleDriveConnection(),
       getLibraryProgress(),
       getUserPlaylists(),
     ]);
@@ -183,6 +183,9 @@ export default async function ProfilePage({ params }: PageProps) {
 
   const currentUserId = session?.user?.id ?? null;
   const isOwner = currentUserId === profile.id;
+  const driveConnection = isOwner
+    ? await getCachedGoogleDriveConnection()
+    : null;
 
   return (
     <>
@@ -206,6 +209,7 @@ export default async function ProfilePage({ params }: PageProps) {
         title={isOwner ? "My Items" : `@${profile.username}`}
         titleHref={`/u/${profile.username}`}
         emailUnverified={session?.user ? !session.user.emailVerified : false}
+        driveNeedsReauth={driveConnection?.needsReauth ?? false}
       />
       <div className="bg-background text-foreground -mt-(--header-height) flex flex-1 flex-col">
         <Suspense fallback={<ProfileContentSkeleton />}>

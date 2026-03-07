@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: March 2026 (v12.2.0)
+Last updated: March 2026 (v12.3.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -694,8 +694,10 @@ TMDB logos are transparent title treatment images (usually PNG) displayed in the
 
 **Storage Monitoring:**
 
+- Quota fetched on initial OAuth connect (parallel with email + root folder creation)
 - Quota display in settings
 - Warning at 80% (yellow), critical at 95% (red)
+- Pre-upload quota check blocks file uploads at 95% usage (`QUOTA_CRITICAL_THRESHOLD` in `google-drive-upload.ts`)
 
 **Reconnect Banner:**
 
@@ -703,6 +705,21 @@ TMDB logos are transparent title treatment images (usually PNG) displayed in the
 - Desktop: rendered in site header below breadcrumbs
 - Mobile: fixed banner at top of viewport
 - `role="alert"` and `aria-live="assertive"` for screen reader announcement
+
+**Token Refresh Mutex:**
+
+- `inflightRefreshes` Map in `google-drive-client.ts` deduplicates concurrent refreshes per connection
+- Concurrent callers share a single in-flight promise; mutex clears on completion or failure
+
+**Disconnect Cleanup:**
+
+- Permanent deletion of CanonCore folder via `drive.files.delete()` (not trash)
+- OAuth token revocation via POST to Google's revoke endpoint (best-effort, non-blocking via `after()`)
+
+**Sync Retry:**
+
+- Inline retry button next to error messages in settings panel
+- Toast error notifications include a retry action button
 
 **Special Cases:**
 
@@ -1065,7 +1082,7 @@ Hero section and media stack use CSS Modules (`hero-section.module.css`, `media-
 - Accessible from Settings > Account > Danger Zone
 - Requires password verification (bcryptjs compare) and typing "DELETE" to confirm
 - Validated with `deleteAccountSchema` (Zod) in `lib/validations.ts`
-- Best-effort Google Drive folder trash before deletion (logs warning on failure, proceeds)
+- Best-effort Google Drive folder permanent deletion and token revocation before account removal (logs warning on failure, proceeds)
 - `prisma.user.delete()` triggers cascade deletion: Items, ItemFiles, Playlists, PlaylistItems, Forks, SyncLogs, PasswordResets, EmailVerificationTokens, GoogleDriveConnection
 - Security event logging at each stage via `logSecurityEvent()`: rate limited, wrong password, confirmed, completed
 - Non-blocking completion logging via `after()` from `next/server`

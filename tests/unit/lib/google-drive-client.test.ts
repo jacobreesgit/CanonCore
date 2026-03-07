@@ -4,6 +4,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { drive_v3 } from "googleapis";
+import { prisma } from "@/lib/prisma";
 
 /**
  * Creates a mock batch response for testing.
@@ -939,6 +940,182 @@ Content-Type: application/json
       await emptyTrash(mockDrive);
 
       expect(mockDrive.files.emptyTrash).toHaveBeenCalledWith({});
+    });
+  });
+
+  describe("refreshAccessToken mutex", () => {
+    beforeEach(() => {
+      vi.resetModules();
+    });
+
+    it("should not call Google token endpoint twice for concurrent refreshes on the same connection", async () => {
+      const tokenResponse = {
+        access_token: "new-token",
+        expires_in: 3600,
+      };
+      const fetchSpy = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(tokenResponse),
+      });
+      vi.stubGlobal("fetch", fetchSpy);
+
+      vi.mocked(prisma.googleDriveConnection.update).mockResolvedValue(
+        {} as never
+      );
+
+      const { refreshAccessToken } = await import("@/lib/google-drive-client");
+
+      const [result1, result2] = await Promise.all([
+        refreshAccessToken("conn-1", "encrypted_refresh-token-1"),
+        refreshAccessToken("conn-1", "encrypted_refresh-token-1"),
+      ]);
+
+      const tokenCalls = fetchSpy.mock.calls.filter(
+        (call) => call[0] === "https://oauth2.googleapis.com/token"
+      );
+      expect(tokenCalls).toHaveLength(1);
+
+      expect(result1).toBe("new-token");
+      expect(result2).toBe("new-token");
+    });
+
+    it("should allow separate refreshes for different connections", async () => {
+      const tokenResponse = {
+        access_token: "new-token",
+        expires_in: 3600,
+      };
+      const fetchSpy = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(tokenResponse),
+      });
+      vi.stubGlobal("fetch", fetchSpy);
+
+      vi.mocked(prisma.googleDriveConnection.update).mockResolvedValue(
+        {} as never
+      );
+
+      const { refreshAccessToken } = await import("@/lib/google-drive-client");
+
+      await Promise.all([
+        refreshAccessToken("conn-1", "encrypted_refresh-token-1"),
+        refreshAccessToken("conn-2", "encrypted_refresh-token-2"),
+      ]);
+
+      const tokenCalls = fetchSpy.mock.calls.filter(
+        (call) => call[0] === "https://oauth2.googleapis.com/token"
+      );
+      expect(tokenCalls).toHaveLength(2);
+    });
+
+    it("should clear mutex entry after refresh completes so future refreshes work", async () => {
+      const tokenResponse = {
+        access_token: "new-token",
+        expires_in: 3600,
+      };
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve(tokenResponse),
+        })
+      );
+
+      vi.mocked(prisma.googleDriveConnection.update).mockResolvedValue(
+        {} as never
+      );
+
+      const { refreshAccessToken } = await import("@/lib/google-drive-client");
+
+      await refreshAccessToken("conn-1", "encrypted_refresh-token-1");
+
+      const fetchSpy = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({ access_token: "newer-token", expires_in: 3600 }),
+      });
+      vi.stubGlobal("fetch", fetchSpy);
+
+      const result = await refreshAccessToken(
+        "conn-1",
+        "encrypted_refresh-token-1"
+      );
+
+      expect(result).toBe("newer-token");
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("should clear mutex entry on refresh failure so retries work", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: false,
+          json: () => Promise.resolve({ error: "invalid_grant" }),
+        })
+      );
+
+      vi.mocked(prisma.googleDriveConnection.update).mockResolvedValue(
+        {} as never
+      );
+
+      const { refreshAccessToken } = await import("@/lib/google-drive-client");
+
+      await expect(
+        refreshAccessToken("conn-1", "encrypted_refresh-token-1")
+      ).rejects.toThrow();
+
+      const fetchSpy2 = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({ access_token: "recovered", expires_in: 3600 }),
+      });
+      vi.stubGlobal("fetch", fetchSpy2);
+
+      const result = await refreshAccessToken(
+        "conn-1",
+        "encrypted_refresh-token-1"
+      );
+      expect(result).toBe("recovered");
+    });
+  });
+
+  describe("revokeToken", () => {
+    it("should POST to Google revoke endpoint with the token in the body", async () => {
+      const fetchSpy = vi.fn().mockResolvedValue({ ok: true });
+      vi.stubGlobal("fetch", fetchSpy);
+
+      const { revokeToken } = await import("@/lib/google-drive-client");
+      await revokeToken("test-refresh-token");
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "https://oauth2.googleapis.com/revoke",
+        expect.objectContaining({
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ token: "test-refresh-token" }),
+        })
+      );
+    });
+
+    it("should not throw when revocation fails (best-effort)", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockRejectedValue(new Error("Network error"))
+      );
+
+      const { revokeToken } = await import("@/lib/google-drive-client");
+
+      await expect(revokeToken("test-token")).resolves.toBeUndefined();
+    });
+
+    it("should not throw when Google returns non-OK response", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({ ok: false, status: 400 })
+      );
+
+      const { revokeToken } = await import("@/lib/google-drive-client");
+
+      await expect(revokeToken("test-token")).resolves.toBeUndefined();
     });
   });
 
