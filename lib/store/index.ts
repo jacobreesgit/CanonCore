@@ -7,13 +7,26 @@
 
 import { configureStore } from "@reduxjs/toolkit";
 import playbackReducer from "./playback-slice";
+import { initialState as playbackInitialState } from "./playback-slice";
 import uiPrefsReducer from "./ui-prefs-slice";
+import {
+  persistenceMiddleware,
+  loadPersistedState,
+} from "./persistence-middleware";
 
 export function makeStore() {
+  const persisted = loadPersistedState();
+
   return configureStore({
     reducer: {
       playback: playbackReducer,
       uiPrefs: uiPrefsReducer,
+    },
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware().prepend(persistenceMiddleware.middleware),
+    preloadedState: {
+      playback: { ...playbackInitialState, ...persisted.playback },
+      uiPrefs: { ...persisted.uiPrefs },
     },
   });
 }
