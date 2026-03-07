@@ -44,9 +44,10 @@ const SwipeableUnderlineTabs = dynamic(
 );
 import { ContentToolbar } from "@/components/ui/content-toolbar";
 import { Button } from "@/components/ui/button";
-import { MediaOverlay } from "@/components/media/media-overlay";
-import { updatePlaybackPosition } from "@/lib/item-file-actions";
 import { getItemFiles } from "@/lib/item-file-actions";
+import { useAppDispatch } from "@/lib/store/hooks";
+import { playTrack, playQueue } from "@/lib/store/playback-slice";
+import type { QueueTrack } from "@/lib/store/types";
 import { markAsWatched, markAsUnwatched } from "@/lib/watch-actions";
 import { useSyncHandler } from "@/hooks/use-sync-handler";
 import type {
@@ -180,9 +181,7 @@ export function ItemDetailClient({
   const [isWatchPending, startWatchTransition] = useTransition();
   const [isEditing, setIsEditing] = useState(false);
   const [addItemOpen, setAddItemOpen] = useState(false);
-  const [playingFile, setPlayingFile] = useState<SerializedItemFile | null>(
-    null
-  );
+  const dispatch = useAppDispatch();
 
   // Viewport detection for portal-based components (dialogs render to <body>,
   // bypassing CSS hidden wrappers — must use JS to prevent dual portals)
@@ -337,23 +336,34 @@ export function ItemDetailClient({
   }, [item.id]);
 
   /**
-   * Handles play button click from hero.
+   * Handles play button click from hero — dispatches to Redux store.
    */
   const handlePlay = useCallback(() => {
-    if (primaryMedia) {
-      setPlayingFile(primaryMedia);
-    }
-  }, [primaryMedia]);
+    if (!files || files.media.length === 0) return;
 
-  /**
-   * Handles playback position updates from media player.
-   */
-  const handlePositionUpdate = useCallback(
-    async (fileId: string, position: number, duration: number | null) => {
-      await updatePlaybackPosition(fileId, position, duration);
-    },
-    []
-  );
+    const tracks: QueueTrack[] = files.media.map((f) => ({
+      fileId: f.id,
+      itemId: item.id,
+      filename: f.filename,
+      mimeType: f.mimeType || "video/mp4",
+      itemName: item.name,
+      posterUrl: item.tmdbPosterPath
+        ? (getTmdbPosterUrl(item.tmdbPosterPath) ?? undefined)
+        : heroArtworkId
+          ? `/api/artwork/${heroArtworkId}`
+          : undefined,
+      duration: f.playbackDuration ?? undefined,
+      playbackPosition: f.playbackPosition ?? undefined,
+    }));
+
+    if (tracks.length === 1) {
+      dispatch(playTrack(tracks[0]));
+    } else {
+      // Find index of primary media, default to 0
+      const primaryIndex = files.media.findIndex((f) => f.isPrimary);
+      dispatch(playQueue({ tracks, startIndex: Math.max(0, primaryIndex) }));
+    }
+  }, [dispatch, files, item, heroArtworkId]);
 
   const handleWatch = useCallback(() => {
     setWatchStatus((prev) => ({
@@ -652,23 +662,6 @@ export function ItemDetailClient({
           files={settingsFiles}
           hasDriveConnection={hasDriveConnection}
           onSettingsChange={handleSettingsChange}
-        />
-      )}
-
-      {/* Media player overlay */}
-      {playingFile && files && (
-        <MediaOverlay
-          file={playingFile}
-          subtitles={files.subtitles}
-          posterUrl={
-            item.tmdbPosterPath
-              ? (getTmdbPosterUrl(item.tmdbPosterPath) ?? undefined)
-              : heroArtworkId
-                ? `/api/artwork/${heroArtworkId}`
-                : undefined
-          }
-          onClose={() => setPlayingFile(null)}
-          onPositionUpdate={handlePositionUpdate}
         />
       )}
     </HeroContentLayout>

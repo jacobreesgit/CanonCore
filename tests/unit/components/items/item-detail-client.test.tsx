@@ -4,7 +4,21 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
+import { Provider } from "react-redux";
+import { configureStore } from "@reduxjs/toolkit";
+import playbackReducer from "@/lib/store/playback-slice";
+import uiPrefsReducer from "@/lib/store/ui-prefs-slice";
 import { ItemDetailClient } from "@/components/items/item-detail-client";
+
+function makeTestStore() {
+  return configureStore({
+    reducer: { playback: playbackReducer, uiPrefs: uiPrefsReducer },
+  });
+}
+
+function renderWithStore(ui: React.ReactElement) {
+  return render(<Provider store={makeTestStore()}>{ui}</Provider>);
+}
 
 // Mock next/navigation
 const mockRefresh = vi.fn();
@@ -199,7 +213,7 @@ describe("ItemDetailClient", () => {
 
   describe("rendering", () => {
     it("should render hero, toolbar, and items view", async () => {
-      render(<ItemDetailClient item={defaultItem} childItems={[]} />);
+      renderWithStore(<ItemDetailClient item={defaultItem} childItems={[]} />);
       await waitForLoading();
 
       expect(screen.getByLabelText("hero carousel")).toBeInTheDocument();
@@ -208,13 +222,13 @@ describe("ItemDetailClient", () => {
     });
 
     it("should always render hero regardless of files/children", async () => {
-      render(<ItemDetailClient item={defaultItem} childItems={[]} />);
+      renderWithStore(<ItemDetailClient item={defaultItem} childItems={[]} />);
       await waitForLoading();
       expect(screen.getByLabelText("hero carousel")).toBeInTheDocument();
     });
 
     it("should pass item name to hero", async () => {
-      render(<ItemDetailClient item={defaultItem} childItems={[]} />);
+      renderWithStore(<ItemDetailClient item={defaultItem} childItems={[]} />);
       await waitForLoading();
       expect(screen.getByLabelText("hero carousel")).toHaveAttribute(
         "data-name",
@@ -223,7 +237,7 @@ describe("ItemDetailClient", () => {
     });
 
     it("should pass childItems to items view", async () => {
-      render(
+      renderWithStore(
         <ItemDetailClient item={defaultItem} childItems={defaultChildItems} />
       );
       await waitForLoading();
@@ -232,7 +246,7 @@ describe("ItemDetailClient", () => {
     });
 
     it("should disable toolbar when no children", async () => {
-      render(<ItemDetailClient item={defaultItem} childItems={[]} />);
+      renderWithStore(<ItemDetailClient item={defaultItem} childItems={[]} />);
       await waitForLoading();
 
       expect(screen.getByLabelText("content toolbar")).toHaveAttribute(
@@ -269,7 +283,7 @@ describe("ItemDetailClient", () => {
     };
 
     it("should render Play button in hero when media files exist", async () => {
-      render(
+      renderWithStore(
         <ItemDetailClient
           item={defaultItem}
           childItems={[]}
@@ -283,7 +297,7 @@ describe("ItemDetailClient", () => {
     });
 
     it("should show hero without file cards (MediaOverlay only when playing)", async () => {
-      render(
+      renderWithStore(
         <ItemDetailClient
           item={defaultItem}
           childItems={[]}
@@ -298,7 +312,7 @@ describe("ItemDetailClient", () => {
     });
 
     it("should show Contents/About tabs when children exist", async () => {
-      render(
+      renderWithStore(
         <ItemDetailClient
           item={defaultItem}
           childItems={defaultChildItems}
@@ -320,7 +334,7 @@ describe("ItemDetailClient", () => {
         driveFileId: "drive-file-456",
       };
 
-      render(<ItemDetailClient item={driveItem} childItems={[]} />);
+      renderWithStore(<ItemDetailClient item={driveItem} childItems={[]} />);
       await waitForLoading();
 
       // Component should render without error
@@ -330,7 +344,7 @@ describe("ItemDetailClient", () => {
 
   describe("render order", () => {
     it("should render toolbar after hero", async () => {
-      render(<ItemDetailClient item={defaultItem} childItems={[]} />);
+      renderWithStore(<ItemDetailClient item={defaultItem} childItems={[]} />);
       await waitForLoading();
 
       const toolbar = screen.getByLabelText("content toolbar");
