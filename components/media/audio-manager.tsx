@@ -20,12 +20,14 @@ import {
   setDuration,
   skipNext,
   pause,
+  clearSeekTarget,
 } from "@/lib/store/playback-slice";
 import {
   selectCurrentTrack,
   selectIsPlaying,
   selectVolume,
   selectIsMuted,
+  selectSeekTarget,
 } from "@/lib/store/selectors";
 import { updatePlaybackPosition } from "@/lib/item-file-actions";
 
@@ -42,6 +44,7 @@ export function AudioManager({
   const isPlaying = useAppSelector(selectIsPlaying);
   const volume = useAppSelector(selectVolume);
   const isMuted = useAppSelector(selectIsMuted);
+  const seekTarget = useAppSelector(selectSeekTarget);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastUpdateRef = useRef<number>(0);
@@ -124,6 +127,15 @@ export function AudioManager({
       audioRef.current.muted = isMuted;
     }
   }, [isMuted]);
+
+  // Sync user seeks to the audio element — only fires on actual seeks, not periodic timeupdate
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (seekTarget === null || !audio || !audio.src) return;
+
+    audio.currentTime = seekTarget;
+    dispatch(clearSeekTarget());
+  }, [seekTarget, dispatch]);
 
   // Throttled time update handler — also saves position to server every 30s
   const handleTimeUpdate = useCallback(() => {

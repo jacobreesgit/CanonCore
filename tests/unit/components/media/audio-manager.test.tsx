@@ -9,6 +9,7 @@ import playbackReducer, {
   setVolume,
   toggleMute,
   stop,
+  seekTo,
 } from "@/lib/store/playback-slice";
 import uiPrefsReducer from "@/lib/store/ui-prefs-slice";
 import { AudioManager } from "@/components/media/audio-manager";
@@ -192,5 +193,28 @@ describe("AudioManager", () => {
       audio.fire("error");
     });
     expect(store.getState().playback.isPlaying).toBe(false);
+  });
+
+  it("should seek audio element when seekTarget is set", () => {
+    const audio = createMockAudio();
+    const store = makeTestStore();
+    renderWithStore(store, audio);
+
+    act(() => {
+      store.dispatch(playTrack(mockTrack));
+    });
+
+    // Simulate audio playing at 10s
+    audio.element.currentTime = 10;
+
+    // User seeks to 60s via seekTo action
+    act(() => {
+      store.dispatch(seekTo(60));
+    });
+
+    // AudioManager should sync the seek to the audio element
+    expect(audio.element.currentTime).toBe(60);
+    // seekTarget should be cleared after sync
+    expect(store.getState().playback.seekTarget).toBeNull();
   });
 });
