@@ -196,6 +196,76 @@ export function VideoPlayer({
   );
 }
 
+interface StreamPlayerProps {
+  /** Streaming URL (e.g. /api/stream/{fileId}) */
+  src: string;
+  /** MIME type for the media element */
+  mimeType: string;
+  /** Poster/artwork URL */
+  posterUrl?: string;
+  /** Ended callback */
+  onEnded?: () => void;
+  className?: string;
+}
+
+/**
+ * Lean media player accepting a direct src URL.
+ * Used by ExpandedPlayer where we don't have a full SerializedItemFile.
+ */
+export function StreamPlayer({
+  src,
+  mimeType,
+  posterUrl,
+  onEnded,
+  className,
+}: StreamPlayerProps) {
+  const isAudio = mimeType.startsWith("audio/");
+  const showShaderBackground = isAudio && !posterUrl;
+
+  return (
+    <MediaPlayer
+      src={{ src, type: mimeType } as PlayerSrc}
+      poster={posterUrl}
+      viewType="video"
+      load="eager"
+      crossOrigin
+      playsInline
+      onEnded={onEnded}
+      className={cn("h-full w-full", className)}
+    >
+      <MediaProvider />
+
+      {isAudio && posterUrl && (
+        <Poster
+          className="absolute inset-0 block h-full w-full object-cover"
+          src={posterUrl}
+          alt="Album artwork"
+        />
+      )}
+
+      {showShaderBackground && (
+        <div className="absolute inset-0 z-0">
+          <MeshGradient
+            className="absolute inset-0 h-full w-full"
+            options={{
+              colors: ["#0d0d0d", "#1a0a1e", "#0a1628", "#1e1e2e"],
+              animationSpeed: 0.15,
+              seed: 19,
+            }}
+          />
+        </div>
+      )}
+
+      <DefaultVideoLayout
+        icons={mediaPlayerIcons}
+        colorScheme="dark"
+        noScrubGesture={false}
+        smallLayoutWhen={false}
+      />
+    </MediaPlayer>
+  );
+}
+
 /**
  * Extracts language code from subtitle filename.
  * Examples: "movie.en.srt" → "en", "movie.english.vtt" → "en"
