@@ -15,7 +15,6 @@ import { closeExpanded } from "@/lib/store/playback-slice";
 import { selectCurrentTrack, selectIsExpanded } from "@/lib/store/selectors";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 function VideoPlayerSkeleton() {
   return (
@@ -59,9 +58,9 @@ export function ExpandedPlayer() {
         className="fixed inset-0 max-w-none translate-x-0 translate-y-0 border-none bg-black p-0 data-[state=open]:animate-none"
         showCloseButton={false}
       >
-        <VisuallyHidden>
-          <DialogTitle>Playing {currentTrack?.filename}</DialogTitle>
-        </VisuallyHidden>
+        <DialogTitle className="sr-only">
+          Playing {currentTrack?.filename}
+        </DialogTitle>
 
         <Button
           variant="ghost"
