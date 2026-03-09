@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { MeshGradient } from "@mesh-gradient/react";
 import { LazyMotion } from "motion/react";
 
@@ -13,20 +14,96 @@ import { HeroSection } from "./hero-section";
 import { FeatureAccordion } from "./feature-accordion";
 import { ManifestoCta } from "./manifesto-cta";
 
+const PALETTES = [
+  ["#0f0c29", "#302b63", "#24243e", "#6b21a8"], // purple
+  ["#0a1628", "#0c2d48", "#1a3a5c", "#0891b2"], // ocean
+  ["#0a1f0a", "#064e3b", "#115e59", "#10b981"], // emerald
+  ["#1c1004", "#422006", "#78350f", "#d97706"], // amber
+  ["#1a0a12", "#4c0519", "#881337", "#e11d48"], // rose
+  ["#0c0a29", "#1e1b4b", "#312e81", "#4f46e5"], // indigo
+];
+
+const TEXT_PALETTES = [
+  ["#a78bfa", "#c084fc", "#e879f9", "#818cf8"], // purple
+  ["#67e8f9", "#22d3ee", "#06b6d4", "#38bdf8"], // ocean
+  ["#6ee7b7", "#34d399", "#10b981", "#2dd4bf"], // emerald
+  ["#fcd34d", "#fbbf24", "#f59e0b", "#fb923c"], // amber
+  ["#fda4af", "#fb7185", "#f43f5e", "#e879f9"], // rose
+  ["#a5b4fc", "#818cf8", "#6366f1", "#93c5fd"], // indigo
+];
+
 export function HomepageContent() {
+  const [state, setState] = useState({
+    layerA: PALETTES[0],
+    layerB: PALETTES[1],
+    textA: TEXT_PALETTES[0],
+    textB: TEXT_PALETTES[1],
+    active: "a" as "a" | "b",
+    index: 0,
+  });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setState((prev) => {
+        const nextIndex = (prev.index + 1) % PALETTES.length;
+        if (prev.active === "a") {
+          return {
+            ...prev,
+            layerB: PALETTES[nextIndex],
+            textB: TEXT_PALETTES[nextIndex],
+            active: "b",
+            index: nextIndex,
+          };
+        }
+        return {
+          ...prev,
+          layerA: PALETTES[nextIndex],
+          textA: TEXT_PALETTES[nextIndex],
+          active: "a",
+          index: nextIndex,
+        };
+      });
+    }, 8000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <LazyMotion features={loadFeatures} strict>
       <div>
         {/* Sticky background — stays pinned at top of scroll container */}
         <div className="sticky top-0 z-0 h-svh overflow-hidden">
-          <MeshGradient
-            className="absolute inset-0 h-full w-full"
-            options={{
-              colors: ["#0f0c29", "#302b63", "#24243e", "#6b21a8"],
-              animationSpeed: 0.4,
-              seed: 5,
+          <div
+            className="absolute inset-0"
+            style={{
+              opacity: state.active === "a" ? 1 : 0,
+              transition: "opacity 3s ease-in-out",
             }}
-          />
+          >
+            <MeshGradient
+              className="h-full w-full"
+              options={{
+                colors: state.layerA,
+                animationSpeed: 0.4,
+                seed: 5,
+              }}
+            />
+          </div>
+          <div
+            className="absolute inset-0"
+            style={{
+              opacity: state.active === "b" ? 1 : 0,
+              transition: "opacity 3s ease-in-out",
+            }}
+          >
+            <MeshGradient
+              className="h-full w-full"
+              options={{
+                colors: state.layerB,
+                animationSpeed: 0.4,
+                seed: 5,
+              }}
+            />
+          </div>
           <BackgroundScanline />
 
           {/* Noise texture — CSS-generated to avoid 328KB image load */}
@@ -53,7 +130,11 @@ export function HomepageContent() {
 
         {/* Content — pulls up over sticky bg, then scrolls past */}
         <div className="relative z-10 -mt-[100svh]">
-          <HeroSection />
+          <HeroSection
+            textColorsA={state.textA}
+            textColorsB={state.textB}
+            activeLayer={state.active}
+          />
           <div>
             <FeatureAccordion />
             <ManifestoCta />
