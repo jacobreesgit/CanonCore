@@ -14,7 +14,9 @@ import { HeroSection } from "./hero-section";
 import { FeatureAccordion } from "./feature-accordion";
 import { ManifestoCta } from "./manifesto-cta";
 
-const PALETTES = [
+type ColorTuple = [string, string, string, string];
+
+const PALETTES: ColorTuple[] = [
   ["#0f0c29", "#302b63", "#24243e", "#6b21a8"], // purple
   ["#0a1628", "#0c2d48", "#1a3a5c", "#0891b2"], // ocean
   ["#0a1f0a", "#064e3b", "#115e59", "#10b981"], // emerald
