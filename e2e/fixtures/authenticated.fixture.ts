@@ -11,7 +11,7 @@ import { config } from "dotenv";
 import { testUser as generateTestUser } from "../config/test-data";
 import { Timeouts } from "../config/timeouts";
 
-config({ path: ".env.local" });
+config({ path: ".env.local", quiet: true });
 
 const globalForPrisma = globalThis as unknown as {
   e2ePrisma: PrismaClient | undefined;

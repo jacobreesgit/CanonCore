@@ -1,6 +1,6 @@
 /**
  * Unit tests for SiteHeader component.
- * Tests breadcrumb rendering, navigation, and banners.
+ * Tests breadcrumb rendering, navigation, and notification banners.
  */
 
 import { describe, it, expect, vi } from "vitest";

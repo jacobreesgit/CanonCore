@@ -89,6 +89,7 @@ const nextConfig = {
       "date-fns",
       "motion",
       "@fortawesome/free-solid-svg-icons",
+      "@vidstack/react",
     ],
   },
   /**

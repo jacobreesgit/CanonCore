@@ -56,7 +56,7 @@ export const AllOptions: Story = {
     await userEvent.click(trigger);
     const body = within(document.body);
     await expect(await body.findByText("Add Child Item")).toBeInTheDocument();
-    await expect(await body.findByText("Settings")).toBeInTheDocument();
+    await expect(await body.findByText("Edit Item")).toBeInTheDocument();
     await expect(await body.findByText("Delete")).toBeInTheDocument();
   },
 };

@@ -27,10 +27,12 @@ test.describe("Fork Item", () => {
     // Click fork — POM retries click until hydrated handler fires.
     await publicProfile.forkItem();
 
-    // Button disappears via optimistic state update after API responds.
-    // Under parallel load, the fork API can be slow.
-    await expect(page.getByTestId("profile-fork-button")).not.toBeVisible({
-      timeout: Timeouts.heavy,
-    });
+    // After forking, open the settings menu and check "In Your Library" appears
+    const menuInLibrary = page.getByTestId("menu-in-library");
+    await expect(async () => {
+      await page.getByTestId("viewer-detail-settings-button").click();
+      await expect(menuInLibrary).toBeVisible({ timeout: 1_000 });
+    }).toPass({ timeout: Timeouts.heavy });
+    await page.keyboard.press("Escape");
   });
 });

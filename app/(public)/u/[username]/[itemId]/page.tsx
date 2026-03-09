@@ -40,7 +40,7 @@ import type { Item } from "@/lib/types";
 
 interface PageProps {
   params: Promise<{ username: string; itemId: string }>;
-  searchParams: Promise<{ settings?: string }>;
+  searchParams: Promise<{ settings?: string; skeleton?: string }>;
 }
 
 /**
@@ -113,8 +113,24 @@ export default async function ItemDetailPage({
   searchParams,
 }: PageProps) {
   const { username, itemId } = await params;
-  const { settings } = await searchParams;
+  const resolvedSearchParams = await searchParams;
+  const { settings } = resolvedSearchParams;
   const defaultSettingsOpen = settings === "true";
+
+  // Dev-only: ?skeleton=true freezes the skeleton for visual comparison
+  if (
+    process.env.NODE_ENV === "development" &&
+    resolvedSearchParams.skeleton === "true"
+  ) {
+    return (
+      <>
+        <SiteHeader title="My Items" titleHref={`/u/${username}`} />
+        <div className="bg-background text-foreground -mt-(--header-height) flex flex-1 flex-col">
+          <ItemContentSkeleton />
+        </div>
+      </>
+    );
+  }
 
   // Get auth first to determine ownership
   const session = await auth();

@@ -258,31 +258,54 @@ test.describe("Screenshots", () => {
     await captureScreenshot(page, "09-playlist-detail");
   });
 
-  // ── 32: Fork Dialog ────────────────────────────────────────
+  // ── 10: Mini-Player (Squid Game S1) ──────────────────────
 
-  test("32 — Fork destination dialog", async ({ page }) => {
-    await signIn(page, "demo");
-    await page.goto("/explore?autoplay=false");
-    await page.waitForLoadState("domcontentloaded");
+  test("10 — Mini-player with Squid Game S1", async ({ page }) => {
+    await signIn(page, "filmfan");
+
+    // Navigate to Squid Game → Season 1
+    const sgCard = page
+      .getByTestId(`item-card-${slugify("Squid Game (2021)")}`)
+      .first();
+    await sgCard.waitFor({ state: "visible", timeout: Timeouts.heavy });
+    await sgCard.click();
+    await page.waitForURL(/\/u\/filmfan\/[a-z0-9]+/, {
+      timeout: Timeouts.heavy,
+    });
+
+    const s1Card = page.getByTestId(`item-card-${slugify("Season 1")}`);
+    await s1Card.waitFor({ state: "visible", timeout: Timeouts.heavy });
+    await s1Card.click();
+    await page.waitForURL(/\/u\/filmfan\/[a-z0-9]+/, {
+      timeout: Timeouts.heavy,
+    });
+
+    // Navigate to E01 and click play
+    const e01Card = page.getByTestId(
+      `item-card-${slugify("E01 - Red Light, Green Light")}`
+    );
+    await e01Card.waitFor({ state: "visible", timeout: Timeouts.heavy });
+    await e01Card.click();
+    await page.waitForURL(/\/u\/filmfan\/[a-z0-9]+/, {
+      timeout: Timeouts.heavy,
+    });
     await waitForHero(page);
+
+    // Click the play button to activate the mini-player
+    const playBtn = page.getByRole("button", { name: /^Play$|^Resume / });
+    await playBtn.waitFor({ state: "visible", timeout: Timeouts.heavy });
+    await playBtn.click();
+
+    // Wait for expanded viewport to appear, then close it
+    const expandedView = page.getByTestId("media-provider-container");
+    await expandedView.waitFor({ state: "visible", timeout: Timeouts.heavy });
+    await page.keyboard.press("Escape");
+    await expandedView.waitFor({ state: "hidden", timeout: Timeouts.heavy });
+
+    // Stay on episode detail page with mini-player bar visible
     await collapseSidebar(page);
 
-    const dotCount = await page
-      .locator('[role="tab"][data-testid^="hero-dot"]')
-      .count();
-    for (let i = 0; i < dotCount; i++) {
-      await page.locator(`[data-testid="hero-dot-${i + 1}"]`).click();
-      await page.waitForTimeout(500);
-      const forkBtn = page.getByTestId("hero-fork-button");
-      if (await forkBtn.isVisible()) {
-        await forkBtn.click();
-        break;
-      }
-    }
-
-    await page.waitForSelector('[role="dialog"]', { timeout: Timeouts.api });
-
-    await captureScreenshot(page, "32-fork-dialog");
+    await captureScreenshot(page, "10-mini-player");
   });
 
   // ── 36: Docs Page ──────────────────────────────────────────

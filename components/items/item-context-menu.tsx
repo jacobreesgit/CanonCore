@@ -39,8 +39,12 @@ import {
   faEye,
   faEyeSlash,
   faCheckDouble,
+  faForwardStep,
+  faListOl,
 } from "@fortawesome/free-solid-svg-icons";
+import { toast } from "sonner";
 import type { ItemVisibilityOptions } from "@/lib/types";
+import type { QueueTrack } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
 import { MENU_ITEM_CLASSES } from "./menu-styles";
 
@@ -94,6 +98,14 @@ export interface ItemMenuActions {
   showAddToPlaylist?: boolean;
   /** Item ID — needed for Add to Playlist dialog. */
   itemId?: string;
+  /** Whether this item has media files (enables queue actions). */
+  hasMedia?: boolean;
+  /** Callback to fetch files and return QueueTracks. */
+  onGetTracks?: () => Promise<QueueTrack[] | null>;
+  /** Callback dispatched when user clicks "Play Next". */
+  onPlayNext?: (track: QueueTrack) => void;
+  /** Callback dispatched when user clicks "Add to Queue". */
+  onAddToQueue?: (track: QueueTrack) => void;
 }
 
 /** Destructive (delete) menu item styling. */
@@ -130,6 +142,7 @@ export function renderMenuItems({
     className?: string;
     children: ReactNode;
     asChild?: boolean;
+    "data-testid"?: string;
   }>;
   MenuSeparator: ComponentType<{ className?: string }>;
   onDeleteClick: () => void;
@@ -143,6 +156,7 @@ export function renderMenuItems({
     isPinned = false,
     isWatched = false,
     isAllWatched = false,
+    hasMedia = false,
     onSettings,
     onDelete,
     onAddChild,
@@ -152,12 +166,19 @@ export function renderMenuItems({
     onMarkUnwatched,
     onMarkAllWatched,
     onMarkAllUnwatched,
+    onGetTracks,
+    onPlayNext,
+    onAddToQueue,
   } = actions;
 
   return (
     <>
       {showAddChild && onAddChild && (
-        <MenuItem onClick={onAddChildClick} className={MENU_ITEM_CLASSES}>
+        <MenuItem
+          onClick={onAddChildClick}
+          className={MENU_ITEM_CLASSES}
+          data-testid="menu-add-child"
+        >
           <FontAwesomeIcon
             icon={faPlus}
             aria-hidden="true"
@@ -167,17 +188,25 @@ export function renderMenuItems({
         </MenuItem>
       )}
       {onSettings && (
-        <MenuItem onClick={onSettings} className={MENU_ITEM_CLASSES}>
+        <MenuItem
+          onClick={onSettings}
+          className={MENU_ITEM_CLASSES}
+          data-testid="menu-edit-item"
+        >
           <FontAwesomeIcon
             icon={faGear}
             aria-hidden="true"
             className="size-4"
           />
-          <span>Settings</span>
+          <span>Edit Item</span>
         </MenuItem>
       )}
       {showAddToPlaylist && onPlaylistClick && (
-        <MenuItem onClick={onPlaylistClick} className={MENU_ITEM_CLASSES}>
+        <MenuItem
+          onClick={onPlaylistClick}
+          className={MENU_ITEM_CLASSES}
+          data-testid="menu-add-to-playlist"
+        >
           <FontAwesomeIcon
             icon={faPlus}
             aria-hidden="true"
@@ -186,8 +215,55 @@ export function renderMenuItems({
           <span>Add to Playlist</span>
         </MenuItem>
       )}
+      {hasMedia && onGetTracks && (
+        <>
+          <MenuSeparator className="bg-white/[0.08]" />
+          <MenuItem
+            onClick={async () => {
+              try {
+                const tracks = await onGetTracks();
+                if (tracks?.[0]) onPlayNext?.(tracks[0]);
+              } catch {
+                toast.error("Couldn't load track");
+              }
+            }}
+            className={MENU_ITEM_CLASSES}
+            data-testid="menu-play-next"
+          >
+            <FontAwesomeIcon
+              icon={faForwardStep}
+              aria-hidden="true"
+              className="size-4"
+            />
+            <span>Play Next</span>
+          </MenuItem>
+          <MenuItem
+            onClick={async () => {
+              try {
+                const tracks = await onGetTracks();
+                tracks?.forEach((t) => onAddToQueue?.(t));
+              } catch {
+                toast.error("Couldn't load tracks");
+              }
+            }}
+            className={MENU_ITEM_CLASSES}
+            data-testid="menu-add-to-queue"
+          >
+            <FontAwesomeIcon
+              icon={faListOl}
+              aria-hidden="true"
+              className="size-4"
+            />
+            <span>Add to Queue</span>
+          </MenuItem>
+        </>
+      )}
       {isPinned && onUnpin && (
-        <MenuItem onClick={onUnpin} className={MENU_ITEM_CLASSES}>
+        <MenuItem
+          onClick={onUnpin}
+          className={MENU_ITEM_CLASSES}
+          data-testid="menu-unpin"
+        >
           <FontAwesomeIcon
             icon={faThumbtackSlash}
             aria-hidden="true"
@@ -197,7 +273,11 @@ export function renderMenuItems({
         </MenuItem>
       )}
       {!isPinned && onPin && (
-        <MenuItem onClick={onPin} className={MENU_ITEM_CLASSES}>
+        <MenuItem
+          onClick={onPin}
+          className={MENU_ITEM_CLASSES}
+          data-testid="menu-pin"
+        >
           <FontAwesomeIcon
             icon={faThumbtack}
             aria-hidden="true"
@@ -208,7 +288,11 @@ export function renderMenuItems({
       )}
       {/* Leaf items: toggle watched/unwatched */}
       {isWatched && onMarkUnwatched && (
-        <MenuItem onClick={onMarkUnwatched} className={MENU_ITEM_CLASSES}>
+        <MenuItem
+          onClick={onMarkUnwatched}
+          className={MENU_ITEM_CLASSES}
+          data-testid="menu-mark-unwatched"
+        >
           <FontAwesomeIcon
             icon={faEyeSlash}
             aria-hidden="true"
@@ -218,14 +302,22 @@ export function renderMenuItems({
         </MenuItem>
       )}
       {!isWatched && onMarkWatched && (
-        <MenuItem onClick={onMarkWatched} className={MENU_ITEM_CLASSES}>
+        <MenuItem
+          onClick={onMarkWatched}
+          className={MENU_ITEM_CLASSES}
+          data-testid="menu-mark-watched"
+        >
           <FontAwesomeIcon icon={faEye} aria-hidden="true" className="size-4" />
           <span>Mark as Watched</span>
         </MenuItem>
       )}
       {/* Parent items: toggle all watched/unwatched */}
       {isAllWatched && onMarkAllUnwatched && (
-        <MenuItem onClick={onMarkAllUnwatched} className={MENU_ITEM_CLASSES}>
+        <MenuItem
+          onClick={onMarkAllUnwatched}
+          className={MENU_ITEM_CLASSES}
+          data-testid="menu-mark-all-unwatched"
+        >
           <FontAwesomeIcon
             icon={faEyeSlash}
             aria-hidden="true"
@@ -235,7 +327,11 @@ export function renderMenuItems({
         </MenuItem>
       )}
       {!isAllWatched && onMarkAllWatched && (
-        <MenuItem onClick={onMarkAllWatched} className={MENU_ITEM_CLASSES}>
+        <MenuItem
+          onClick={onMarkAllWatched}
+          className={MENU_ITEM_CLASSES}
+          data-testid="menu-mark-all-watched"
+        >
           <FontAwesomeIcon
             icon={faCheckDouble}
             aria-hidden="true"
@@ -250,6 +346,8 @@ export function renderMenuItems({
             href={`https://drive.google.com/drive/folders/${driveFileId}`}
             target="_blank"
             rel="noopener noreferrer"
+            className="flex items-center gap-2"
+            data-testid="menu-open-in-drive"
           >
             <FontAwesomeIcon
               icon={faArrowUpRightFromSquare}
@@ -263,7 +361,11 @@ export function renderMenuItems({
       {onDelete && (
         <>
           <MenuSeparator className="bg-white/[0.08]" />
-          <MenuItem onClick={onDeleteClick} className={DELETE_ITEM_CLASSES}>
+          <MenuItem
+            onClick={onDeleteClick}
+            className={DELETE_ITEM_CLASSES}
+            data-testid="menu-delete"
+          >
             <FontAwesomeIcon
               icon={faTrashCan}
               aria-hidden="true"

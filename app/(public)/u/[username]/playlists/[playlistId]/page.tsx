@@ -29,7 +29,7 @@ import { PrivateResourceNotice } from "@/components/ui/private-resource-notice";
 
 interface PageProps {
   params: Promise<{ username: string; playlistId: string }>;
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ token?: string; skeleton?: string }>;
 }
 
 /**
@@ -258,7 +258,23 @@ export default async function PlaylistPage({
   searchParams,
 }: PageProps) {
   const { username, playlistId } = await params;
-  const { token } = await searchParams;
+  const resolvedSearchParams = await searchParams;
+  const { token } = resolvedSearchParams;
+
+  // Dev-only: ?skeleton=true freezes the skeleton for visual comparison
+  if (
+    process.env.NODE_ENV === "development" &&
+    resolvedSearchParams.skeleton === "true"
+  ) {
+    return (
+      <>
+        <SiteHeader title="Playlists" titleHref={`/u/${username}`} />
+        <div className="bg-background text-foreground flex flex-1 flex-col">
+          <PlaylistContentSkeleton />
+        </div>
+      </>
+    );
+  }
 
   const [rateLimitResult, session] = await Promise.all([
     checkRateLimit("publicProfile"),

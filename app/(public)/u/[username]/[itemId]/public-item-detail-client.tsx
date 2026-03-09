@@ -11,8 +11,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { CinematicHero } from "@/components/hero";
-import { HeroButton } from "@/components/items/hero-button";
-import { PlaylistButton } from "@/components/items/playlist-button";
+import { ViewerDetailSettingsMenu } from "@/components/items/viewer-detail-settings-menu";
 import { AboutTabContent } from "@/components/items/about-tab-content";
 import { GridItem } from "@/components/sortable-grid/grid-item";
 import { Tree } from "@/components/sortable-tree";
@@ -34,7 +33,7 @@ import { HeroContentLayout } from "@/components/ui/hero-content-layout";
 import { ContentToolbar } from "@/components/ui/content-toolbar";
 import { sortItems, filterItems, publicItemsToTree } from "@/lib/item-utils";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCopy, faCheck, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { faCopy } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "sonner";
 import { getTmdbBackdropUrl, getTmdbLogoUrl } from "@/lib/tmdb-image-utils";
 import type { PublicItem } from "@/lib/public-auth";
@@ -115,7 +114,6 @@ export function PublicItemClient({
   const [tabsMounted, setTabsMounted] = useState(false);
   useEffect(() => setTabsMounted(true), []);
 
-  const [isForking, setIsForking] = useState(false);
   const [forkedOptimistic, setForkedOptimistic] = useState<string | null>(null);
 
   // Sort/filter/view state (URL + localStorage backup)
@@ -176,7 +174,6 @@ export function PublicItemClient({
   );
 
   const handleFork = async () => {
-    setIsForking(true);
     try {
       const response = await fetch(`/api/fork/${item.id}`, { method: "POST" });
       const data = await response.json();
@@ -203,8 +200,6 @@ export function PublicItemClient({
     } catch (error) {
       // Sanitize error message to avoid leaking internal details
       toast.error(getSafeErrorMessage(error));
-    } finally {
-      setIsForking(false);
     }
   };
 
@@ -213,61 +208,17 @@ export function PublicItemClient({
 
   // Fork actions for hero slot
   const hasForked = forkStatus?.hasForked || forkedOptimistic !== null;
-  const forkedItemId = forkStatus?.forkedItemId ?? forkedOptimistic;
   const forkActions = (
-    <>
-      {!isOwnItem && !hasForked && isAuthenticated && (
-        <HeroButton
-          onClick={handleFork}
-          disabled={isForking}
-          data-testid="profile-fork-button"
-        >
-          {isForking ? (
-            <FontAwesomeIcon
-              icon={faSpinner}
-              className="size-4"
-              spin
-              aria-hidden="true"
-            />
-          ) : (
-            <FontAwesomeIcon
-              icon={faCopy}
-              className="size-4"
-              aria-hidden="true"
-            />
-          )}
-          Fork to Library
-        </HeroButton>
-      )}
-      {!isOwnItem && hasForked && (
-        <HeroButton
-          variant="secondary"
-          onClick={() => {
-            if (currentUserUsername && forkedItemId) {
-              router.push(`/u/${currentUserUsername}/${forkedItemId}`);
-            }
-          }}
-        >
-          <FontAwesomeIcon
-            icon={faCheck}
-            className="size-4 text-green-400"
-            aria-hidden="true"
-          />
-          In Your Library
-        </HeroButton>
-      )}
-      {!isOwnItem && !isAuthenticated && (
-        <HeroButton onClick={() => router.push("/sign-in")}>
-          <FontAwesomeIcon
-            icon={faCopy}
-            className="size-4"
-            aria-hidden="true"
-          />
-          Sign in to Fork
-        </HeroButton>
-      )}
-      <PlaylistButton itemId={item.id} />
-    </>
+    <ViewerDetailSettingsMenu
+      itemId={item.id}
+      itemName={item.name}
+      onFork={
+        !isOwnItem && !hasForked && isAuthenticated ? handleFork : undefined
+      }
+      showAddToPlaylist={isAuthenticated}
+      isForked={hasForked}
+      isGuest={!isAuthenticated}
+    />
   );
 
   // Contents toolbar right actions

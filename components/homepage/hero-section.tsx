@@ -9,7 +9,17 @@ import { MediaStack } from "./media-stack";
 import { GradientText } from "./gradient-text";
 import styles from "./hero-section.module.css";
 
-export function HeroSection() {
+interface HeroSectionProps {
+  textColorsA: string[];
+  textColorsB: string[];
+  activeLayer: "a" | "b";
+}
+
+export function HeroSection({
+  textColorsA,
+  textColorsB,
+  activeLayer,
+}: HeroSectionProps) {
   return (
     <section className={styles.heroWrapper}>
       <div className={styles.heroContentWrapper}>
@@ -19,12 +29,29 @@ export function HeroSection() {
             <h1 className="text-4xl font-semibold tracking-tight text-white md:text-5xl lg:text-6xl">
               Your media library.
               <br />
-              <GradientText
-                colors={["#a78bfa", "#c084fc", "#e879f9", "#818cf8"]}
-                animationSpeed={6}
-              >
-                Elevated.
-              </GradientText>
+              <span className="relative inline-block">
+                <span
+                  style={{
+                    opacity: activeLayer === "a" ? 1 : 0,
+                    transition: "opacity 3s ease-in-out",
+                  }}
+                >
+                  <GradientText colors={textColorsA} animationSpeed={6}>
+                    Elevated.
+                  </GradientText>
+                </span>
+                <span
+                  className="absolute inset-0"
+                  style={{
+                    opacity: activeLayer === "b" ? 1 : 0,
+                    transition: "opacity 3s ease-in-out",
+                  }}
+                >
+                  <GradientText colors={textColorsB} animationSpeed={6}>
+                    Elevated.
+                  </GradientText>
+                </span>
+              </span>
             </h1>
 
             <p className="text-muted-foreground max-w-sm text-lg leading-relaxed">

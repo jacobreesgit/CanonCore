@@ -54,6 +54,20 @@ export default async function ExplorePage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const params = await searchParams;
+
+  // Dev-only: ?skeleton=true freezes the skeleton for visual comparison
+  if (process.env.NODE_ENV === "development" && params.skeleton === "true") {
+    return (
+      <>
+        <SiteHeader title="Explore" titleHref="/explore" />
+        <div className="text-foreground -mt-(--header-height) flex flex-1 flex-col">
+          <ExploreContentSkeleton />
+        </div>
+      </>
+    );
+  }
+
   // Fast shell: auth for SiteHeader
   const [session, driveConnection] = await Promise.all([
     auth(),

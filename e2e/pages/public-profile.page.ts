@@ -85,33 +85,42 @@ export class PublicProfilePage {
   // ── Fork ────────────────────────────────────────────────
 
   /**
-   * Click the "Fork to Library" button on a public item detail page.
-   * Retries click until React's onClick handler fires (hydration may be
-   * delayed under heavy parallel load). The handler sets isForking=true
-   * which disables the button — we use that as the hydration signal.
+   * Fork a public item via the viewer settings dropdown menu.
+   * Opens the gear menu, clicks "Fork to Library", and waits for
+   * the fork to complete.
    */
   async forkItem() {
-    const button = this.page.getByTestId("profile-fork-button");
+    const menuFork = this.page.getByTestId("menu-fork");
+    // Retry clicking Settings until the dropdown opens (handles hydration delay)
     await expect(async () => {
-      if ((await button.isVisible()) && (await button.isEnabled())) {
-        await button.click();
-      }
-      // Handler fires → setIsForking(true) → button becomes disabled
-      await expect(button).toBeDisabled({ timeout: 2_000 });
-    }).toPass({ timeout: Timeouts.upload });
+      await this.page.getByTestId("viewer-detail-settings-button").click();
+      await expect(menuFork).toBeVisible({ timeout: 1_000 });
+    }).toPass({ timeout: Timeouts.api });
+    // Click Fork to Library
+    await menuFork.click();
+    // Wait for the fork API to complete — toast confirms success
+    await expect(this.page.getByText("Added to your library!")).toBeVisible({
+      timeout: Timeouts.heavy,
+    });
   }
 
-  /** Expect the fork button to be visible. */
+  /** Expect the viewer settings button to be visible (contains fork action). */
   async expectForkButtonVisible() {
-    await expect(this.page.getByTestId("profile-fork-button")).toBeVisible({
+    await expect(
+      this.page.getByTestId("viewer-detail-settings-button")
+    ).toBeVisible({
       timeout: Timeouts.api,
     });
   }
 
-  /** Expect the fork button to not exist on the page. */
+  /** Expect the fork option to not be available in the settings menu. */
   async expectForkButtonNotVisible() {
-    await expect(this.page.getByTestId("profile-fork-button")).not.toBeVisible({
+    // Open the settings menu to check Fork is gone
+    await this.page.getByTestId("viewer-detail-settings-button").click();
+    await expect(this.page.getByTestId("menu-fork")).not.toBeVisible({
       timeout: Timeouts.animation,
     });
+    // Close the menu by pressing Escape
+    await this.page.keyboard.press("Escape");
   }
 }

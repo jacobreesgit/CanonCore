@@ -8,7 +8,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import { config } from "dotenv";
 
-config({ path: ".env.local" });
+config({ path: ".env.local", quiet: true });
 
 const E2E_PORT = 3001;
 const baseURL = process.env.CI
@@ -33,11 +33,12 @@ export default defineConfig({
     video: "on-first-retry",
   },
   webServer: {
-    command: "pnpm run dev",
+    command:
+      "bash -c 'pnpm run dev 2> >(grep -vE \"upstream image response|\\[auth\\]\\[error\\]|CredentialsSignin|at Module\\.callback|at process\\.processTicksAndRejections|at async Auth|at async AppRouteRouteModule\" >&2)'",
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
-    stdout: "pipe",
+    stdout: "ignore",
     stderr: "pipe",
     env: {
       PORT: String(E2E_PORT),

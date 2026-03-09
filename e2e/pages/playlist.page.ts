@@ -48,11 +48,19 @@ export class PlaylistPage {
   // ── Add to Playlist Dialog ──────────────────────────────
 
   /**
-   * Open the "Add to Playlist" dialog by clicking the playlist button
+   * Open the "Add to Playlist" dialog via the detail settings dropdown
    * on the current item detail page.
    */
   async openAddToPlaylistDialog() {
-    await this.page.getByTestId("playlist-button").click();
+    const menuItem = this.page.getByTestId("menu-add-to-playlist");
+    // Retry clicking Settings until the dropdown opens (handles hydration delay)
+    await expect(async () => {
+      await this.page.getByTestId("detail-settings-button").click();
+      await expect(menuItem).toBeVisible({ timeout: 1_000 });
+    }).toPass({ timeout: Timeouts.api });
+    // Click "Add to Playlist" menu item
+    await menuItem.click();
+    // Wait for the dialog to open
     await expect(this.page.getByTestId("dialog-add-to-playlist")).toBeVisible({
       timeout: Timeouts.api,
     });
@@ -210,14 +218,20 @@ export class PlaylistPage {
 
   /**
    * Click a playlist card to navigate to its detail page.
+   * Uses .first() because CardShell renders the name in both default and
+   * overlay views — even though the overlay is aria-hidden, Playwright
+   * may resolve multiple link matches via text content.
    *
    * @param name - The playlist name to click
    */
   async clickPlaylistCard(name: string) {
-    await this.page
+    const link = this.page
       .getByTestId("playlist-section")
       .getByRole("link", { name })
-      .click();
+      .first();
+    // Wait for the playlist card to be visible before clicking
+    await expect(link).toBeVisible({ timeout: Timeouts.api });
+    await link.click();
     // Wait for playlist detail page to load (URL changes to /playlists/)
     await this.page.waitForURL(/\/playlists\//, {
       timeout: Timeouts.navigation,
@@ -269,9 +283,23 @@ export class PlaylistPage {
     ).not.toBeVisible({ timeout: Timeouts.api });
   }
 
-  /** Click the Delete button on the playlist detail hero. */
+  /** Delete playlist via the settings gear menu on the detail hero. */
   async deletePlaylistFromDetail() {
-    await this.page.getByRole("button", { name: /delete/i }).click();
+    const deleteItem = this.page.getByTestId("menu-delete-playlist");
+    // Retry clicking Settings until the dropdown opens (handles hydration delay)
+    await expect(async () => {
+      await this.page.getByTestId("playlist-settings-button").click();
+      await expect(deleteItem).toBeVisible({ timeout: 1_000 });
+    }).toPass({ timeout: Timeouts.api });
+    // Click the Delete menu item
+    await deleteItem.click();
+    // Confirm deletion in the alert dialog
+    const confirmButton = this.page.getByRole("button", { name: /delete/i });
+    await confirmButton.waitFor({
+      state: "visible",
+      timeout: Timeouts.animation,
+    });
+    await confirmButton.click();
   }
 
   /** Click the Share button on the playlist detail hero. */

@@ -6,7 +6,7 @@
 
 "use client";
 
-import { createContext, useMemo } from "react";
+import { createContext, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { Section } from "@/components/ui/section";
@@ -21,6 +21,11 @@ import {
   markAllWatched,
   markAllUnwatched,
 } from "@/lib/watch-actions";
+import { useAppDispatch } from "@/lib/store/hooks";
+import { playNext, addToQueue } from "@/lib/store/playback-slice";
+import { buildQueueTrack } from "@/lib/store/track-helpers";
+import { getItemFiles } from "@/lib/item-file-actions";
+import type { QueueTrack } from "@/lib/store/types";
 
 /**
  * Context providing item action callbacks to server-rendered shelf components.
@@ -141,6 +146,29 @@ export function GridViewContent({
   shelves,
   onItemMouseEnter,
 }: GridViewContentProps) {
+  const dispatch = useAppDispatch();
+
+  const getTracksForItem = useCallback(
+    async (item: ItemWithArtwork): Promise<QueueTrack[] | null> => {
+      const result = await getItemFiles(item.id);
+      if (!result.success || !result.data?.media.length) return null;
+      return result.data.media.map((f) =>
+        buildQueueTrack({
+          fileId: f.id,
+          itemId: item.id,
+          filename: f.filename,
+          mimeType: f.mimeType,
+          itemName: item.name,
+          tmdbPosterPath: item.tmdbPosterPath,
+          heroArtworkId: item.artworkId,
+          playbackDuration: f.playbackDuration,
+          playbackPosition: f.playbackPosition,
+        })
+      );
+    },
+    []
+  );
+
   /** Build watch-related menu props from an item's progress data. */
   function watchMenuProps(item: ItemWithArtwork) {
     const hasChildren = (item.childCount ?? 0) > 0;
@@ -221,6 +249,11 @@ export function GridViewContent({
                   onAddChildComplete,
                   onPin: () => onPinItem(item.id),
                   onUnpin: () => onUnpinItem(item.id),
+                  hasMedia: (item.fileCounts?.media ?? 0) > 0,
+                  onGetTracks: () => getTracksForItem(item),
+                  onPlayNext: (track: QueueTrack) => dispatch(playNext(track)),
+                  onAddToQueue: (track: QueueTrack) =>
+                    dispatch(addToQueue(track)),
                   ...watchProps,
                 };
                 return (
@@ -294,6 +327,11 @@ export function GridViewContent({
                   onAddChildComplete,
                   onPin: () => onPinItem(item.id),
                   onUnpin: () => onUnpinItem(item.id),
+                  hasMedia: (item.fileCounts?.media ?? 0) > 0,
+                  onGetTracks: () => getTracksForItem(item),
+                  onPlayNext: (track: QueueTrack) => dispatch(playNext(track)),
+                  onAddToQueue: (track: QueueTrack) =>
+                    dispatch(addToQueue(track)),
                   ...watchProps,
                 };
                 return (

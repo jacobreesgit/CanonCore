@@ -7,12 +7,22 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 // Mock Vidstack components before imports
-// Note: onClick/onDoubleClick are used to trigger callback simulations in tests:
+// Note: DOM events are used to trigger callback simulations in tests:
 // - click() triggers onTimeUpdate with currentTime: 100
 // - dblclick() triggers onEnded
+// - mousedown() triggers onPlay
+// - mouseup() triggers onPause
 vi.mock("@vidstack/react", () => ({
   MediaPlayer: vi.fn(
-    ({ children, className, title, onEnded, onTimeUpdate }) => (
+    ({
+      children,
+      className,
+      title,
+      onEnded,
+      onTimeUpdate,
+      onPlay,
+      onPause,
+    }) => (
       <div
         role="application"
         aria-label="media player"
@@ -20,6 +30,8 @@ vi.mock("@vidstack/react", () => ({
         data-title={title}
         onClick={() => onTimeUpdate?.({ currentTime: 100 })}
         onDoubleClick={() => onEnded?.()}
+        onMouseDown={() => onPlay?.()}
+        onMouseUp={() => onPause?.()}
       >
         {children}
       </div>

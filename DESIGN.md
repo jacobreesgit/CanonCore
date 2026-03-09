@@ -34,7 +34,8 @@ This doc covers architecture, implementation patterns, and design decisions for 
 - shadcn/ui (radix-ui primitives)
 - Font Awesome 7 for icons (`@fortawesome/react-fontawesome`)
 - dnd-kit for drag-and-drop
-- Vidstack for media playback
+- Vidstack for media playback (root-level persistent player)
+- Redux Toolkit + react-redux for queue state management
 - nuqs for URL state management
 - @tanstack/react-query for infinite scroll pagination
 - Embla Carousel for swipeable tabs
@@ -1095,21 +1096,77 @@ Hero section and media stack use CSS Modules (`hero-section.module.css`, `media-
 
 ### Media Playback
 
-**Vidstack Player:**
+**Architecture — Vidstack-native with Redux queue:**
 
-- HTML5 video/audio with custom controls
-- HTTP Range header support for seeking
-- Subtitle tracks: SRT, VTT, SUB, ASS
+The media system uses a single `<MediaPlayer>` (Vidstack) at the root layout level that never unmounts during navigation. Playback transport (play/pause, currentTime, volume, seeking) is owned entirely by Vidstack. Redux Toolkit manages queue lifecycle, shuffle/repeat mode, and expanded view state — never 60fps transport state.
 
-**Resume Playback:**
+- `MediaPlayerShell` wraps the app in `app/layout.tsx` — conditionally renders `<MediaPlayer>` when a track is loaded
+- `<MediaProvider>` (the actual `<video>`/`<audio>` element) is always mounted and CSS-repositioned between collapsed (off-screen) and expanded (visible) states — no remount means no playback interruption
+- `MediaPlayerInner` (inside MediaPlayer context) handles auto-play on track change, MediaSession API integration, position persistence (30s interval + visibilitychange), and idle timer for auto-hiding controls
 
-- Auto-save position every 5 seconds
-- Resumes where you left off on next play
+**Redux store (`lib/store/`):**
 
-**Full-Screen Overlay:**
+- `playback-slice.ts` — 16 actions: playTrack, playQueue, addToQueue, playNext, removeFromQueue, clearQueue, reorderQueue, skipNext, skipPrevious, skipToIndex, toggleShuffle, setRepeat, toggleExpanded, closeExpanded, setExpanded, stop
+- `selectors.ts` — memoised selectors via `createSelector`: selectCurrentTrack, selectQueue, selectUpNext, selectHasNext, selectHasPrevious, selectIsVideoFile
+- `track-helpers.ts` — `buildQueueTrack()` factory constructs a `QueueTrack` from item + file data, resolving poster URL from TMDB poster path or hero artwork ID
+- `persistence-middleware.ts` — listener middleware persists repeat mode, sidebar state, and default view mode to localStorage
 
-- Tabbed navigation for multiple files
-- Keyboard shortcuts (Space = play/pause, F = fullscreen)
+**Mini-player bar (`components/media/mini-player.tsx`):**
+
+- Fixed bottom bar with track info (artwork, title, artist), play/pause, skip forward/back, volume slider with mute toggle, shuffle/repeat toggles, queue trigger, expand/collapse, fullscreen
+- `MiniPlayerProgress` component subscribes to Vidstack's `currentTime`/`duration` independently via `useMediaState` — prevents re-rendering the entire mini-player at 60fps
+- Spring animation for expand/collapse via motion library
+- Focus trap in expanded mode via `focus-trap-react`
+- `body:has([data-player-active])` CSS rule adds bottom padding to page content
+
+**Queue panel (`components/media/queue-panel.tsx`):**
+
+- Side sheet with now-playing card and up-next list
+- Drag-to-reorder via dnd-kit with restrictToVerticalAxis and restrictToParentElement modifiers
+- Clear queue with undo toast
+- Animated EQ bars CSS animation for now-playing indicator
+
+**Expanded viewport (`components/media/expanded-viewport.tsx`):**
+
+- Three modes: video (empty container — MediaProvider is CSS-repositioned by MediaPlayerInner), audio with artwork (poster image + blurred backdrop), audio without artwork (animated MeshGradient)
+- CSS overlay hides sidebar margin and mobile footer nav
+- Integrates with Vidstack's native fullscreen API (hides mini bar during fullscreen)
+
+**Keyboard shortcuts (`components/media/playback-keyboard-handler.tsx`):**
+
+- Renders null (no DOM output)
+- Space = play/pause, M = mute toggle, ArrowLeft/Right = seek ±10s, ArrowUp/Down = volume ±0.1, F = fullscreen (expanded only)
+- Skips when focus is on interactive elements (INPUT, TEXTAREA, SELECT, BUTTON, contentEditable, role="button")
+
+**MediaSession API:**
+
+- OS-level media controls: lock screen, notification centre, Touch Bar
+- Sets metadata: title, artist, album, artwork URL
+- Handles hardware media key events (play, pause, next, previous)
+
+**Resume playback:**
+
+- Position auto-saves every 30 seconds and on `visibilitychange` (tab switch)
+- Resumes from saved position on next play
+- HTTP Range header support for seeking within large files
+
+**Subtitle support:**
+
+- SRT, VTT, SUB, ASS formats
+- Subtitle tracks attached as ItemFile records and rendered via Vidstack's track system
+
+**Detail settings menus:**
+
+Hero action buttons (Mark Watched, Fork, Playlist, Delete) consolidated into gear-icon dropdown menus:
+
+- `DetailSettingsMenu` — owner: edit, pin, add child item, Drive link, add to playlist, watch status, delete with confirmation
+- `ViewerDetailSettingsMenu` — viewer: fork to library, add to playlist, sign-in prompt for guests
+- `PlaylistDetailSettingsMenu` — playlist owner: edit, share link, delete with confirmation
+
+**Context menu media actions:**
+
+- Item context menu gained "Play Next" and "Add to Queue" for items with media files
+- Grid view cards wired to dispatch Redux queue actions via `buildQueueTrack`
 
 ### Audit Logging
 
@@ -1524,7 +1581,7 @@ Husky manages Git hooks:
           │  Tests  │  Real browser, real APIs
           └─────────┘
         ┌─────────────┐
-        │  Storybook  │  66 stories
+        │  Storybook  │  77 stories
         │  Component  │  axe a11y + interactions
         └─────────────┘
       ┌─────────────────┐
@@ -1532,7 +1589,7 @@ Husky manages Git hooks:
       │     Tests       │  Real database
       └─────────────────┘
     ┌─────────────────────┐
-    │     Unit Tests      │  ~3000 tests (Vitest)
+    │     Unit Tests      │  ~3,100 tests (Vitest)
     │    (Mocked deps)    │  Fast, isolated
     └─────────────────────┘
 ```
@@ -1893,6 +1950,20 @@ await page.getByRole("button", { name: /create/i }).click();
 // Use this:
 await itemsPage.createItem("Movies");
 ```
+
+### Why Redux for Queue State but Vidstack for Transport?
+
+**Problem:** Media playback needs two kinds of state — transport state (currentTime, playing, volume) that updates at 60fps, and queue state (track list, shuffle mode, repeat mode, expanded view) that updates on user action. Putting everything in Redux would cause thousands of unnecessary re-renders per second. Putting everything in Vidstack would require fighting against its internal state model for queue management.
+
+**Solution:** Split ownership. Vidstack owns transport (it already manages a `<video>`/`<audio>` element internally). Redux owns queue lifecycle. The `MediaPlayerShell` bridges them: Redux dispatches tell Vidstack which track to load, and Vidstack events (like `onEnded`) dispatch Redux actions to advance the queue.
+
+**Key constraint:** `currentTime` is never stored in or subscribed to via Redux. The `MiniPlayerProgress` component subscribes to Vidstack's `useMediaState("currentTime")` in isolation — only that small component re-renders at 60fps, not the entire mini-player or any parent.
+
+**Tradeoff:**
+
+- Two state systems to reason about (Redux + Vidstack)
+- Bridge logic in `MediaPlayerShell` must carefully coordinate both
+- Worth it: queue management gets Redux DevTools, time-travel debugging, and middleware (persistence), while transport gets Vidstack's battle-tested media handling with zero performance overhead
 
 ---
 

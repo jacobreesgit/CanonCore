@@ -22,9 +22,16 @@ export function ItemContentSkeleton() {
         <div className="pointer-events-none relative z-10 mt-auto pt-[30vh] md:pt-[40vh] lg:absolute lg:inset-x-0 lg:bottom-0 lg:mt-0 lg:pt-0">
           <div className="px-[var(--section-px-mobile)] pb-8 sm:px-[var(--section-px-sm)] md:px-[var(--section-px-md)] md:pb-12 lg:px-[var(--section-px-lg)] xl:px-[var(--section-px-xl)] 2xl:px-[var(--section-px-2xl)]">
             <Skeleton className="h-10 w-64 md:h-14 md:w-96" />
-            <Skeleton className="mt-5 h-5 w-80 max-w-full md:w-[28rem]" />
-            <Skeleton className="mt-4 h-4 w-48 md:w-64" />
-            <div className="mt-6 flex gap-3">
+            <Skeleton className="mt-5 h-6 w-80 max-w-full md:w-[28rem]" />
+            {/* MetadataLine — year, runtime, rating, genres (wraps on mobile) */}
+            <Skeleton className="mt-4 h-4 w-full md:w-80" />
+            <Skeleton className="mt-1 h-4 w-40 md:hidden" />
+            {/* Description — line-clamp-2 text-sm leading-relaxed */}
+            <Skeleton className="mt-3 h-5 w-full max-w-2xl" />
+            <Skeleton className="mt-1.5 h-5 w-3/4 max-w-md" />
+            {/* Progress bar — matches mt-6 ProgressBar */}
+            <Skeleton className="mt-6 h-4 w-48" />
+            <div className="mt-6 flex flex-wrap gap-3">
               <Skeleton className="h-9 w-24 rounded-full" />
               <Skeleton className="h-9 w-24 rounded-full" />
               <Skeleton className="h-9 w-20 rounded-full" />
@@ -43,12 +50,12 @@ export function ItemContentSkeleton() {
 
       {/* ContentToolbar — glassmorphism container */}
       <Section className="py-4">
-        <div className="flex w-full items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-white/[0.04] px-3 py-2">
-          <div className="flex items-center gap-2">
+        <div className="flex w-full items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-white/[0.04] px-3 py-2 lg:gap-3">
+          <div className="flex items-center gap-2 lg:gap-3">
             <Skeleton className="h-11 w-20 rounded-md lg:h-[34px]" />
             <Skeleton className="h-8 w-16 rounded-md" />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 lg:gap-3">
             <Skeleton className="size-8 rounded-md" />
             <Skeleton className="size-8 rounded-md" />
           </div>

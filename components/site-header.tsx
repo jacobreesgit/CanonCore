@@ -1,6 +1,6 @@
 /**
  * Top header bar component for the protected layout.
- * Contains sidebar toggle, breadcrumb navigation, and context menu.
+ * Contains sidebar toggle, breadcrumb navigation, and notification banners.
  *
  * @example
  * ```tsx
@@ -10,9 +10,6 @@
  *   breadcrumbs={[
  *     { id: "1", name: "Projects", href: "/u/johndoe/1" },
  *   ]}
- *   currentItemId="1"
- *   onRename={() => openRenameDialog()}
- *   onDelete={() => openDeleteDialog()}
  * />
  * ```
  */
@@ -26,20 +23,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faTriangleExclamation,
   faChevronRight,
-  faEllipsisVertical,
-  faPencil,
-  faTrashCan,
 } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { resendVerificationEmail } from "@/lib/auth-actions";
 import { VERIFICATION_MESSAGES } from "@/lib/messages";
 import { DRIVE_MESSAGES } from "@/lib/constants/messages";
@@ -61,38 +49,26 @@ interface SiteHeaderProps {
   titleHref?: string;
   /** Array of breadcrumb items for navigation hierarchy */
   breadcrumbs?: BreadcrumbItem[];
-  /** Current item ID when viewing item detail (enables context menu) */
-  currentItemId?: string;
   /** Whether user's email is unverified (shows verification nudge banner) */
   emailUnverified?: boolean;
   /** Whether Google Drive needs re-authentication (shows reconnect banner) */
   driveNeedsReauth?: boolean;
-  /** Callback when rename action is triggered */
-  onRename?: () => void;
-  /** Callback when delete action is triggered */
-  onDelete?: () => void;
 }
 
 /**
- * Renders the sticky header with sidebar trigger, breadcrumb navigation,
- * and optional context menu for item actions.
+ * Renders the sticky header with sidebar trigger and breadcrumb navigation.
  *
  * Features refined utility aesthetic with:
  * - Smooth hover transitions on all interactive elements
  * - Muted ancestors with emphasized current location
- * - Subtle context menu with destructive delete styling
  */
 export function SiteHeader({
   title = "My Items",
   titleHref = "/",
   breadcrumbs = [],
-  currentItemId,
   emailUnverified,
   driveNeedsReauth,
-  onRename,
-  onDelete,
 }: SiteHeaderProps) {
-  const showContextMenu = currentItemId && (onRename || onDelete);
   const [isResending, startResendTransition] = useTransition();
   const { isReconnecting, handleReconnect } = useGoogleDriveReconnect();
   /** Resends email verification to the authenticated user. */
@@ -233,52 +209,6 @@ export function SiteHeader({
             );
           })}
         </nav>
-
-        {/* Context Menu for current item actions */}
-        {showContextMenu && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring ml-auto rounded-md p-1.5 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-                aria-label="Item actions"
-              >
-                <FontAwesomeIcon
-                  icon={faEllipsisVertical}
-                  className="size-4"
-                  aria-hidden="true"
-                />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              {onRename && (
-                <DropdownMenuItem
-                  onClick={onRename}
-                  className="cursor-pointer gap-2"
-                >
-                  <FontAwesomeIcon
-                    icon={faPencil}
-                    className="size-4"
-                    aria-hidden="true"
-                  />
-                  Rename
-                </DropdownMenuItem>
-              )}
-              {onDelete && (
-                <DropdownMenuItem
-                  onClick={onDelete}
-                  className="text-destructive focus:text-destructive cursor-pointer gap-2"
-                >
-                  <FontAwesomeIcon
-                    icon={faTrashCan}
-                    className="size-4"
-                    aria-hidden="true"
-                  />
-                  Delete
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
       </div>
 
       {/* Single banner slot — drive reconnect takes priority over email verification */}

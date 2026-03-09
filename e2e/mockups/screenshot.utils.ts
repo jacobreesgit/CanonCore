@@ -33,7 +33,7 @@ type ScreenshotName =
   | "07-explore-page"
   | "08-spotlight-search"
   | "09-playlist-detail"
-  | "32-fork-dialog"
+  | "10-mini-player"
   | "36-docs";
 
 type SeedUser = keyof typeof SEED_USERS;
@@ -179,7 +179,8 @@ export async function collapseSidebar(page: Page): Promise<void> {
   const sidebarWrapper = page.locator('[data-slot="sidebar"]');
   const state = await sidebarWrapper.getAttribute("data-state");
   if (state === "expanded") {
-    await page.getByTestId("sidebar-trigger").click();
+    // Use Ctrl+B — Meta+B doesn't propagate in headless Chromium
+    await page.keyboard.press("Control+b");
     await expect(sidebarWrapper).toHaveAttribute("data-state", "collapsed", {
       timeout: Timeouts.animation,
     });

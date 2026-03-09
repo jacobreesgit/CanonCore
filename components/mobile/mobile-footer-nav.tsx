@@ -101,13 +101,13 @@ export function MobileFooterNav({
       data-testid="nav-mobile-footer"
       className={cn(
         "fixed inset-x-0 bottom-0 z-40",
-        "flex h-14 items-center justify-around",
+        "flex h-16 items-center justify-around",
         "border-sidebar-border bg-sidebar border-t",
         "pb-[env(safe-area-inset-bottom)]",
         // Touch optimizations
-        "touch-action-manipulation",
+        "touch-manipulation",
         // Landscape phones: reduced height
-        "landscape:max-h-[500px]:h-12",
+        "landscape:h-12",
         className
       )}
     >
@@ -154,7 +154,7 @@ export function MobileFooterNav({
                   "text-[10px] leading-none",
                   isActive ? "font-semibold" : "font-medium",
                   // Hide labels in landscape mode
-                  "landscape:max-h-[500px]:hidden"
+                  "landscape:hidden"
                 )}
               >
                 {item.label}
@@ -213,7 +213,7 @@ export function MobileFooterNav({
                 "text-[10px] leading-none",
                 isActive ? "font-semibold" : "font-medium",
                 // Hide labels in landscape mode
-                "landscape:max-h-[500px]:hidden"
+                "landscape:hidden"
               )}
             >
               {item.label}

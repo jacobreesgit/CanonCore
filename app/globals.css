@@ -321,6 +321,26 @@
   }
 }
 
+/* Queue panel — animated equaliser bars */
+@keyframes eq-bar {
+  0%,
+  100% {
+    height: 3px;
+  }
+  50% {
+    height: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[eq-bar_0\.8s_ease-in-out_infinite\],
+  .animate-\[eq-bar_0\.8s_ease-in-out_0\.2s_infinite\],
+  .animate-\[eq-bar_0\.8s_ease-in-out_0\.4s_infinite\] {
+    animation: none;
+    height: 8px;
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    Animation Utility Classes
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -413,6 +433,66 @@
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
+}
+
+/* Bottom spacing when mini-player is visible — extra margin reveals
+   sidebar-inset's rounded bottom corners above the fixed player */
+body:has([data-player-active]) [data-slot="sidebar-inset"] {
+  margin-bottom: 69px;
+}
+
+@media (min-width: 1024px) {
+  body:has([data-player-active]) [data-slot="sidebar-inset"] {
+    margin-bottom: 76px;
+  }
+}
+
+/* Subtle fade at bottom of content when mini-player is visible */
+body:has([data-player-active]) [data-slot="sidebar-inset"]::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 3rem;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in srgb, var(--dark-900, var(--background)) 30%, transparent) 40%,
+    color-mix(in srgb, var(--dark-900, var(--background)) 70%, transparent) 80%,
+    var(--dark-900, var(--background)) 100%
+  );
+  pointer-events: none;
+  z-index: 10;
+  border-radius: inherit;
+}
+
+/* When player is expanded, hide the sidebar-inset margin and fade
+   since the viewport covers the entire screen */
+body:has([data-player-expanded]) [data-slot="sidebar-inset"] {
+  margin-bottom: 0;
+}
+
+body:has([data-player-expanded]) [data-slot="sidebar-inset"]::after {
+  display: none;
+}
+
+/* Hide mobile footer nav when player is expanded — the expanded viewport
+   IS the full-screen experience */
+body:has([data-player-expanded]) [data-testid="nav-mobile-footer"] {
+  display: none;
+}
+
+/* ── Vidstack fullscreen: override display:contents so the element has a box ─── */
+media-player:fullscreen,
+media-player:-webkit-full-screen {
+  display: block !important;
+  background: black;
+}
+
+/* Hide cursor in fullscreen when controls are hidden */
+body.hide-cursor,
+body.hide-cursor * {
+  cursor: none !important;
 }
 
 /* Hide scrollbar while preserving scroll behaviour */

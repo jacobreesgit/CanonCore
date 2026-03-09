@@ -48,7 +48,9 @@ Other users can fork your collections into their own library — from the hero c
 
 ### Media Playback
 
-Vidstack-powered player streams media directly from Google Drive via HTTP range requests. Playback position auto-saves and resumes where you left off. Supports SRT, VTT, SUB, and ASS subtitle tracks. I always want to use subtitles. I watch a lot of anime.
+A persistent media player powered by Vidstack and Redux Toolkit. A single `<MediaPlayer>` wraps the entire app at the root layout level — it never unmounts during navigation, so playback continues as you browse. A mini-player bar sticks to the bottom of the screen with play/pause, skip, seek, volume, shuffle, and repeat controls. Click expand to open a full viewport: video shows the Vidstack player, audio shows album artwork with a blurred backdrop (or an animated MeshGradient when there's no artwork).
+
+Queue management lets you build a playlist on the fly — right-click any item to "Play Next" or "Add to Queue", then drag to reorder in the queue panel. The queue panel slides in from the side with the current track, up-next list, and a clear button with an undo toast. Global keyboard shortcuts work anywhere: Space for play/pause, M to mute, arrow keys to seek and adjust volume, F for fullscreen. The MediaSession API surfaces track metadata on your OS lock screen, notification centre, and Touch Bar. Playback position auto-saves every 30 seconds and on tab switch, so you always resume where you left off. Supports SRT, VTT, SUB, and ASS subtitle tracks. I always want to use subtitles. I watch a lot of anime.
 
 ### One-Click Metadata
 
@@ -172,7 +174,7 @@ Conventional commits enforced by commitlint with pre-commit hooks running ESLint
 
 ### Testing
 
-3,200+ tests across unit, integration, Storybook component, and E2E layers. Unit tests (Vitest) cover auth, items, playlists, watch records, Drive sync, and crypto operations. ~200 integration tests run against real PostgreSQL. 66 Storybook stories with component tests enforce accessibility via axe-core and verify interaction correctness. 35 E2E spec files across desktop and mobile Chrome with Playwright use 16 focused Page Object Models and composable fixtures with per-test user creation.
+3,500+ tests across unit, integration, Storybook component, and E2E layers. Unit tests (Vitest) cover auth, items, playlists, watch records, Drive sync, media playback, and crypto operations. ~200 integration tests run against real PostgreSQL. 77 Storybook stories with component tests enforce accessibility via axe-core and verify interaction correctness. 41 E2E spec files across desktop and mobile Chrome with Playwright use 16 focused Page Object Models and composable fixtures with per-test user creation.
 
 ### Component Documentation
 
@@ -182,7 +184,7 @@ All custom components are documented in Storybook with stories, accessibility ch
 
 ## Tech Stack
 
-**Front End:** Next.js 16, React 19, TypeScript, Tailwind CSS 4, shadcn/ui, Font Awesome 7, Vidstack, dnd-kit, cmdk, nuqs, React Query, Embla Carousel (fade transitions)
+**Front End:** Next.js 16, React 19, TypeScript, Tailwind CSS 4, shadcn/ui, Font Awesome 7, Vidstack, Redux Toolkit, dnd-kit, cmdk, nuqs, React Query, Embla Carousel (fade transitions)
 
 **Back End:** Prisma 7, NextAuth.js v5, Server Actions
 

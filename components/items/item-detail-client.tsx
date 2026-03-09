@@ -15,14 +15,13 @@ import {
   useSyncExternalStore,
 } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faPlay,
   faPlus,
-  faGears,
   faForwardStep,
-  faCircleCheck,
-  faCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import { ItemsView } from "./items-view";
 import { EditModeToggle } from "./edit-mode-toggle";
@@ -30,7 +29,7 @@ import { useItemsUrlState } from "@/hooks/use-items-url-state";
 import { AboutTabContent } from "./about-tab-content";
 import { CinematicHero } from "@/components/hero";
 import { HeroButton } from "@/components/items/hero-button";
-import { PlaylistButton } from "@/components/items/playlist-button";
+import { DetailSettingsMenu } from "./detail-settings-menu";
 import { UnderlineTabs } from "@/components/ui/underline-tabs";
 import { HeroContentLayout } from "@/components/ui/hero-content-layout";
 
@@ -44,9 +43,16 @@ const SwipeableUnderlineTabs = dynamic(
 );
 import { ContentToolbar } from "@/components/ui/content-toolbar";
 import { Button } from "@/components/ui/button";
-import { MediaOverlay } from "@/components/media/media-overlay";
-import { updatePlaybackPosition } from "@/lib/item-file-actions";
 import { getItemFiles } from "@/lib/item-file-actions";
+import { useAppDispatch } from "@/lib/store/hooks";
+import {
+  playTrack,
+  playQueue,
+  playNext,
+  addToQueue,
+  setExpanded,
+} from "@/lib/store/playback-slice";
+import { buildQueueTrack } from "@/lib/store/track-helpers";
 import { markAsWatched, markAsUnwatched } from "@/lib/watch-actions";
 import { useSyncHandler } from "@/hooks/use-sync-handler";
 import type {
@@ -56,16 +62,12 @@ import type {
 } from "@/lib/types";
 import type { TmdbItemMetadata, TmdbItemDetails } from "@/lib/tmdb-client";
 import type { TmdbDisplayOptions, SyncStatus } from "@/lib/types";
-import { getItems } from "@/lib/item-actions";
+import { getItems, deleteItem, createItem } from "@/lib/item-actions";
 import { useGoToItem } from "@/hooks/use-go-to-item";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { emptySubscribe } from "@/lib/empty-subscribe";
 import { formatProgressLabel } from "@/lib/progress-utils";
-import {
-  getTmdbBackdropUrl,
-  getTmdbPosterUrl,
-  getTmdbLogoUrl,
-} from "@/lib/tmdb-image-utils";
+import { getTmdbBackdropUrl, getTmdbLogoUrl } from "@/lib/tmdb-image-utils";
 // Lazy-load MobileItemSheet (mobile-only, heavy with Framer Motion)
 const MobileItemSheet = dynamic(
   () =>
@@ -172,17 +174,16 @@ export function ItemDetailClient({
   tmdbDisplayOptions,
   initialWatchStatus,
 }: ItemDetailClientProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [childItems, setChildItems] = useState(initialChildItems);
   const [watchStatus, setWatchStatus] = useState(
     initialWatchStatus ?? { isWatched: false, playCount: 0 }
   );
-  const [isWatchPending, startWatchTransition] = useTransition();
+  const [_isWatchPending, startWatchTransition] = useTransition();
   const [isEditing, setIsEditing] = useState(false);
   const [addItemOpen, setAddItemOpen] = useState(false);
-  const [playingFile, setPlayingFile] = useState<SerializedItemFile | null>(
-    null
-  );
+  const dispatch = useAppDispatch();
 
   // Viewport detection for portal-based components (dialogs render to <body>,
   // bypassing CSS hidden wrappers — must use JS to prevent dual portals)
@@ -337,23 +338,35 @@ export function ItemDetailClient({
   }, [item.id]);
 
   /**
-   * Handles play button click from hero.
+   * Handles play button click from hero — dispatches to Redux store.
    */
   const handlePlay = useCallback(() => {
-    if (primaryMedia) {
-      setPlayingFile(primaryMedia);
-    }
-  }, [primaryMedia]);
+    if (!files || files.media.length === 0) return;
 
-  /**
-   * Handles playback position updates from media player.
-   */
-  const handlePositionUpdate = useCallback(
-    async (fileId: string, position: number, duration: number | null) => {
-      await updatePlaybackPosition(fileId, position, duration);
-    },
-    []
-  );
+    const tracks = files.media.map((f) =>
+      buildQueueTrack({
+        fileId: f.id,
+        itemId: item.id,
+        filename: f.filename,
+        mimeType: f.mimeType,
+        itemName: item.name,
+        tmdbPosterPath: item.tmdbPosterPath,
+        heroArtworkId,
+        playbackDuration: f.playbackDuration,
+        playbackPosition: f.playbackPosition,
+      })
+    );
+
+    if (tracks.length === 1) {
+      dispatch(playTrack(tracks[0]));
+    } else {
+      const primaryIndex = files.media.findIndex((f) => f.isPrimary);
+      dispatch(playQueue({ tracks, startIndex: Math.max(0, primaryIndex) }));
+    }
+
+    // Auto-expand into full viewport when playing from item detail
+    dispatch(setExpanded(true));
+  }, [dispatch, files, item, heroArtworkId]);
 
   const handleWatch = useCallback(() => {
     setWatchStatus((prev) => ({
@@ -404,32 +417,68 @@ export function ItemDetailClient({
           Next Up: {nextItem.name}
         </HeroButton>
       )}
-      <PlaylistButton itemId={item.id} />
-      {watchStatus.isWatched ? (
-        <HeroButton
-          onClick={handleUnwatch}
-          disabled={isWatchPending}
-          aria-label="Watched"
-          aria-pressed="true"
-        >
-          <FontAwesomeIcon icon={faCircleCheck} className="size-4" />
-          Watched
-        </HeroButton>
-      ) : (
-        <HeroButton
-          onClick={handleWatch}
-          disabled={isWatchPending}
-          aria-label="Mark Watched"
-          aria-pressed="false"
-        >
-          <FontAwesomeIcon icon={faCircle} className="size-4" />
-          Mark Watched
-        </HeroButton>
-      )}
-      <HeroButton onClick={handleOpenSettings} aria-label="Settings">
-        <FontAwesomeIcon icon={faGears} className="size-4" />
-        Settings
-      </HeroButton>
+      <DetailSettingsMenu
+        itemName={item.name}
+        itemId={item.id}
+        onSettings={handleOpenSettings}
+        onDelete={async () => {
+          const result = await deleteItem(item.id);
+          if (result.success) {
+            toast.success("Deleted successfully");
+            router.push(
+              item.parentId
+                ? `/u/${currentUser?.username}/${item.parentId}`
+                : `/u/${currentUser?.username}`
+            );
+          } else {
+            toast.error(result.error || "Failed to delete");
+          }
+        }}
+        onAddChild={async (name, description, visibilityOptions) => {
+          const result = await createItem(
+            item.id,
+            name,
+            description,
+            visibilityOptions
+          );
+          if (result.success && result.data) {
+            return { itemId: result.data.id };
+          }
+          return { error: result.error || "Failed to create item" };
+        }}
+        onAddChildComplete={async () => {
+          router.refresh();
+        }}
+        showAddChild={true}
+        showAddToPlaylist={true}
+        hasDriveConnection={hasDriveConnection}
+        driveFileId={item.driveFileId}
+        isWatched={watchStatus.isWatched}
+        onMarkWatched={async () => handleWatch()}
+        onMarkUnwatched={async () => handleUnwatch()}
+        hasMedia={hasMedia}
+        onGetTracks={async () => {
+          const filesResult = await getItemFiles(item.id);
+          if (!filesResult.success || !filesResult.data) return null;
+          return filesResult.data.media
+            .filter((f) => f.driveFileId)
+            .map((f) =>
+              buildQueueTrack({
+                fileId: f.id,
+                itemId: item.id,
+                filename: f.filename,
+                mimeType: f.mimeType,
+                itemName: item.name,
+                tmdbPosterPath: item.tmdbPosterPath,
+                heroArtworkId,
+                playbackDuration: f.playbackDuration,
+                playbackPosition: f.playbackPosition,
+              })
+            );
+        }}
+        onPlayNext={(track) => dispatch(playNext(track))}
+        onAddToQueue={(track) => dispatch(addToQueue(track))}
+      />
     </>
   );
 
@@ -652,23 +701,6 @@ export function ItemDetailClient({
           files={settingsFiles}
           hasDriveConnection={hasDriveConnection}
           onSettingsChange={handleSettingsChange}
-        />
-      )}
-
-      {/* Media player overlay */}
-      {playingFile && files && (
-        <MediaOverlay
-          file={playingFile}
-          subtitles={files.subtitles}
-          posterUrl={
-            item.tmdbPosterPath
-              ? (getTmdbPosterUrl(item.tmdbPosterPath) ?? undefined)
-              : heroArtworkId
-                ? `/api/artwork/${heroArtworkId}`
-                : undefined
-          }
-          onClose={() => setPlayingFile(null)}
-          onPositionUpdate={handlePositionUpdate}
         />
       )}
     </HeroContentLayout>
