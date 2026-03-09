@@ -39,9 +39,9 @@ export class ItemsSettingsPage {
   async openSettings(itemName: string) {
     await openItemMoreMenu(this.page, itemName);
 
-    // Click the "Settings" menu item in the dropdown
+    // Click the "Edit Item" menu item in the dropdown
     const settingsOption = this.page.getByRole("menuitem", {
-      name: /settings/i,
+      name: /edit item/i,
     });
     await settingsOption.waitFor({
       state: "visible",

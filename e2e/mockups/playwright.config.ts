@@ -53,7 +53,7 @@ export default defineConfig({
     {
       name: "mockups",
       testMatch: "mockups.spec.ts",
-      dependencies: ["laptop", "mobile"],
+      dependencies: process.env.MOCKUP_ONLY ? [] : ["laptop", "mobile"],
       use: {
         ...devices["Desktop Chrome"],
         headless: false,

@@ -70,7 +70,7 @@ export default async function PublicLayout({
         <main
           id="main-content"
           tabIndex={-1}
-          className="@container/main flex min-h-full flex-col overflow-y-auto pb-16 outline-none lg:pb-0"
+          className="@container/main flex min-h-full flex-col overflow-y-auto overscroll-none pb-16 outline-none lg:pb-0"
         >
           <ErrorBoundary>{children}</ErrorBoundary>
         </main>

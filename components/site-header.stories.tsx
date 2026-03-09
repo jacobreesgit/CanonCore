@@ -1,21 +1,20 @@
 /**
  * Storybook stories for the SiteHeader component.
- * Covers breadcrumb navigation, context menu, and header states.
+ * Covers breadcrumb navigation and notification banners.
  */
 import type { Meta, StoryObj } from "@storybook/nextjs";
-import { fn, userEvent, within, expect } from "storybook/test";
+import { within, expect } from "storybook/test";
 import { SiteHeader } from "./site-header";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
 /**
- * Sticky header bar with breadcrumb navigation and context actions.
+ * Sticky header bar with breadcrumb navigation and notification banners.
  *
  * ## Features
  * - Sidebar toggle button
  * - Breadcrumb navigation with truncation
- * - Theme toggle button
- * - Context menu for current item (rename, delete)
  * - Active state styling for current location
+ * - Email verification and Drive reconnect banners
  *
  * ## Breadcrumb Hierarchy
  * Root title → Parent items → Current item (bold)
@@ -33,7 +32,7 @@ const meta = {
       story: { iframeHeight: "120px" },
       description: {
         component:
-          "Sticky header bar with breadcrumb navigation and context actions. Supports sidebar toggle, theme switching, and item-specific actions via kebab menu.",
+          "Sticky header bar with breadcrumb navigation and notification banners. Supports sidebar toggle and breadcrumb hierarchy.",
       },
     },
   },
@@ -49,25 +48,11 @@ const meta = {
     breadcrumbs: {
       description: "Array of breadcrumb items for navigation hierarchy",
     },
-    currentItemId: {
-      control: "text",
-      description: "Current item ID (enables context menu)",
-    },
     emailUnverified: {
       control: "boolean",
       description:
         "Whether the user's email is unverified (shows verification banner)",
     },
-    onRename: {
-      description: "Callback when rename action is triggered",
-    },
-    onDelete: {
-      description: "Callback when delete action is triggered",
-    },
-  },
-  args: {
-    onRename: fn(),
-    onDelete: fn(),
   },
   decorators: [
     (Story) => (
@@ -110,7 +95,6 @@ export const SingleBreadcrumb: Story = {
     title: "My Items",
     titleHref: "/u/johndoe",
     breadcrumbs: [{ id: "1", name: "Movies", href: "/u/johndoe/1" }],
-    currentItemId: "1",
   },
 };
 
@@ -127,7 +111,6 @@ export const MultipleBreadcrumbs: Story = {
       { id: "2", name: "Action", href: "/u/johndoe/2" },
       { id: "3", name: "Die Hard Collection", href: "/u/johndoe/3" },
     ],
-    currentItemId: "3",
   },
 };
 
@@ -156,31 +139,6 @@ export const LongBreadcrumbNames: Story = {
         href: "/u/johndoe/3",
       },
     ],
-    currentItemId: "3",
-  },
-};
-
-/**
- * With context menu open.
- * Shows kebab menu expanded with item actions.
- */
-export const WithContextMenu: Story = {
-  args: {
-    title: "My Items",
-    titleHref: "/u/johndoe",
-    breadcrumbs: [{ id: "1", name: "Movies", href: "/u/johndoe/1" }],
-    currentItemId: "1",
-    onRename: fn(),
-    onDelete: fn(),
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const menuButton = canvas.getByRole("button", { name: "Item actions" });
-    await userEvent.click(menuButton);
-  },
-  parameters: {
-    // Disable a11y checks - Radix dropdown menu portal renders outside main content
-    a11y: { disable: true },
   },
 };
 

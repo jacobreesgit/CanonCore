@@ -22,6 +22,7 @@ export const TMDB_API_DELAY_MS = 100;
 export const PLAYBACK_DURATIONS = {
   movie: { min: 5400, max: 10800 }, // 1.5-3 hours
   episode: { min: 1800, max: 4200 }, // 30-70 minutes
+  track: { min: 120, max: 420 }, // 2-7 minutes
 };
 
 /** Movie TMDB IDs to seed (superset of all user movies). */
@@ -190,9 +191,6 @@ export const SEED_USERS: SeedUserConfig[] = [
   },
 ];
 
-/** Demo user email - first user in SEED_USERS, used for special handling like real video upload. */
-export const DEMO_USER_EMAIL = SEED_USERS[0].email;
-
 /** Content distribution per user for visual variety (zero overlap). */
 export const USER_CONTENT_DISTRIBUTION: Record<string, UserContentConfig> = {
   "demo@canoncore.com": {
@@ -249,6 +247,126 @@ export const USER_PINNED_ITEMS: Record<string, number[]> = {
 export const PRIVATE_ITEM_TMDB_IDS: Record<string, number[]> = {
   "demo@canoncore.com": [348, 78], // Alien, Blade Runner
 };
+
+/** Audio album definition (no TMDB — manual metadata). */
+export interface AudioAlbum {
+  name: string;
+  artist: string;
+  tracks: string[];
+  description?: string;
+  /** URL to download album cover art (uploaded to Drive as ARTWORK, isPrimary). */
+  coverUrl: string;
+  /** URL to download hero banner image (uploaded to Drive as ARTWORK, isHero). */
+  heroUrl: string;
+}
+
+/** Audio albums to seed (no TMDB metadata). */
+export const AUDIO_ALBUMS: AudioAlbum[] = [
+  {
+    name: "Abbey Road",
+    artist: "The Beatles",
+    tracks: [
+      "Come Together",
+      "Something",
+      "Maxwell's Silver Hammer",
+      "Oh! Darling",
+      "Octopus's Garden",
+      "I Want You (She's So Heavy)",
+      "Here Comes the Sun",
+      "Because",
+      "You Never Give Me Your Money",
+      "Sun King",
+      "Mean Mr. Mustard",
+      "Polythene Pam",
+      "She Came In Through the Bathroom Window",
+      "Golden Slumbers",
+      "Carry That Weight",
+      "The End",
+      "Her Majesty",
+    ],
+    description: "The Beatles' iconic 1969 album featuring the famous medley.",
+    coverUrl:
+      "https://upload.wikimedia.org/wikipedia/commons/a/a4/The_Beatles_Abbey_Road_album_cover.jpg",
+    heroUrl:
+      "https://images.unsplash.com/photo-1770172482899-7546f101118d?w=1920&h=400&fit=crop",
+  },
+  {
+    name: "OK Computer",
+    artist: "Radiohead",
+    tracks: [
+      "Airbag",
+      "Paranoid Android",
+      "Subterranean Homesick Alien",
+      "Exit Music (For a Film)",
+      "Let Down",
+      "Karma Police",
+      "Fitter Happier",
+      "Electioneering",
+      "Climbing Up the Walls",
+      "No Surprises",
+      "Lucky",
+      "The Tourist",
+    ],
+    description:
+      "Radiohead's landmark 1997 album exploring themes of modern alienation.",
+    coverUrl:
+      "https://upload.wikimedia.org/wikipedia/en/b/ba/Radioheadokcomputer.png",
+    heroUrl:
+      "https://images.unsplash.com/photo-1762700315913-1a1e43da23b8?w=1920&h=400&fit=crop",
+  },
+  {
+    name: "Kind of Blue",
+    artist: "Miles Davis",
+    tracks: [
+      "So What",
+      "Freddie Freeloader",
+      "Blue in Green",
+      "All Blues",
+      "Flamenco Sketches",
+    ],
+    description: "The best-selling jazz album of all time, recorded in 1959.",
+    coverUrl:
+      "https://upload.wikimedia.org/wikipedia/en/1/10/Miles_Davis_-_Kind_of_Blue_album_cover.jpg",
+    heroUrl:
+      "https://images.unsplash.com/photo-1766360884068-b83757593c2f?w=1920&h=400&fit=crop",
+  },
+  {
+    name: "Rumours",
+    artist: "Fleetwood Mac",
+    tracks: [
+      "Second Hand News",
+      "Dreams",
+      "Never Going Back Again",
+      "Don't Stop",
+      "Go Your Own Way",
+      "Songbird",
+      "The Chain",
+      "You Make Loving Fun",
+      "I Don't Want to Know",
+      "Oh Daddy",
+      "Gold Dust Woman",
+    ],
+    description: "Fleetwood Mac's 1977 masterpiece born from personal turmoil.",
+    coverUrl: "https://upload.wikimedia.org/wikipedia/en/f/fb/FMacRumours.PNG",
+    heroUrl:
+      "https://images.unsplash.com/photo-1767681774612-a3062667f6ac?w=1920&h=400&fit=crop",
+  },
+];
+
+/** Audio album distribution per user. */
+export const USER_AUDIO_DISTRIBUTION: Record<string, number[]> = {
+  "demo@canoncore.com": [0, 1, 2, 3], // All four albums
+  "filmfan@canoncore.com": [2, 3], // Kind of Blue, Rumours
+  "test@canoncore.com": [],
+};
+
+/**
+ * Returns audio album indices for a specific user.
+ */
+export function getAudioAlbumsForUser(email: string): AudioAlbum[] {
+  const indices = USER_AUDIO_DISTRIBUTION[email] ?? [];
+  return indices.map((i) => AUDIO_ALBUMS[i]);
+}
 
 /** Default password for seed users. */
 export const DEFAULT_SEED_PASSWORD = "SeedPassword123!";

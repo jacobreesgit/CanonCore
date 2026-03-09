@@ -165,6 +165,38 @@ describe("ItemContextMenu", () => {
     });
   });
 
+  describe("Edit Item option", () => {
+    it("should show Edit Item when onSettings is provided", () => {
+      render(<ItemContextMenu {...defaultProps} />);
+
+      fireEvent.contextMenu(screen.getByRole("button", { name: /trigger/i }));
+
+      expect(
+        screen.getByRole("menuitem", { name: /edit item/i })
+      ).toBeInTheDocument();
+    });
+
+    it("should not show Edit Item when onSettings is not provided", () => {
+      const { onSettings: _onSettings, ...propsWithoutSettings } = defaultProps;
+      render(<ItemContextMenu {...propsWithoutSettings} />);
+
+      fireEvent.contextMenu(screen.getByRole("button", { name: /trigger/i }));
+
+      expect(
+        screen.queryByRole("menuitem", { name: /edit item/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it("should call onSettings when Edit Item is clicked", () => {
+      render(<ItemContextMenu {...defaultProps} />);
+
+      fireEvent.contextMenu(screen.getByRole("button", { name: /trigger/i }));
+      fireEvent.click(screen.getByRole("menuitem", { name: /edit item/i }));
+
+      expect(defaultProps.onSettings).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("Add to Playlist", () => {
     it("shows Add to Playlist when showAddToPlaylist is true", () => {
       render(

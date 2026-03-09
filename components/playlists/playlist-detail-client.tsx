@@ -20,15 +20,10 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faPencil,
-  faTrashCan,
-  faPlus,
-} from "@fortawesome/free-solid-svg-icons";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { CinematicHero, type HeroSlide } from "@/components/hero";
-import { HeroButton } from "@/components/items/hero-button";
 import { HeroContentLayout } from "@/components/ui/hero-content-layout";
 import { ContentToolbar } from "@/components/ui/content-toolbar";
 import { GridItem } from "@/components/sortable-grid/grid-item";
@@ -37,18 +32,9 @@ import { Section } from "@/components/ui/section";
 import { UnderlineTabs } from "@/components/ui/underline-tabs";
 import { EditModeToggle } from "@/components/items/edit-mode-toggle";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { PlaylistItemContextMenu } from "@/components/playlists/playlist-context-menu";
 import { EditPlaylistDialog } from "@/components/playlists/edit-playlist-dialog";
+import { PlaylistDetailSettingsMenu } from "./playlist-detail-settings-menu";
 import { usePlaylistUrlState } from "@/hooks/use-playlist-url-state";
 import { PLAYLIST_SORT_OPTIONS } from "@/hooks/playlist-search-params";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -125,7 +111,6 @@ export function PlaylistDetailClient({
 }: PlaylistDetailClientProps) {
   const router = useRouter();
   const [playlist, setPlaylist] = useState(initialPlaylist);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -328,28 +313,13 @@ export function PlaylistDetailClient({
   };
 
   // Hero actions
-  const heroActions = (
-    <>
-      {isOwner && (
-        <HeroButton
-          onClick={() => setShowEdit(true)}
-          data-testid="playlist-edit-button"
-        >
-          <FontAwesomeIcon icon={faPencil} className="size-4" />
-          Edit
-        </HeroButton>
-      )}
-      {isOwner && (
-        <HeroButton
-          onClick={() => setShowDeleteConfirm(true)}
-          data-testid="playlist-delete-button"
-        >
-          <FontAwesomeIcon icon={faTrashCan} className="size-4" />
-          Delete
-        </HeroButton>
-      )}
-    </>
-  );
+  const heroActions = isOwner ? (
+    <PlaylistDetailSettingsMenu
+      playlistName={playlist.name}
+      onEdit={() => setShowEdit(true)}
+      onDelete={handleDelete}
+    />
+  ) : null;
 
   const hero = (
     <CinematicHero
@@ -538,28 +508,6 @@ export function PlaylistDetailClient({
           }}
         />
       )}
-
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete playlist</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete &ldquo;{playlist.name}&rdquo;?
-              This action cannot be undone. Items in the playlist will not be
-              deleted.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

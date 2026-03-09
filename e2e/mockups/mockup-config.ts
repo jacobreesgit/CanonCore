@@ -114,14 +114,14 @@ export const ACCORDION_MOCKUPS: MockupEntry[] = [
       SCREENSHOTS_DIR,
       "08-spotlight-search-laptop.png"
     ),
-    scene: SCENES["ab-scene-10"],
+    scene: SCENES["ab-scene-03"],
     outputPath: path.join(IMAGES_DIR, "08-spotlight-search.webp"),
   },
   {
-    id: "32-fork-dialog-accordion",
-    screenshotPath: path.join(SCREENSHOTS_DIR, "32-fork-dialog-laptop.png"),
-    scene: SCENES["ab-scene-03"],
-    outputPath: path.join(IMAGES_DIR, "32-fork-dialog.webp"),
+    id: "10-mini-player-accordion",
+    screenshotPath: path.join(SCREENSHOTS_DIR, "10-mini-player-laptop.png"),
+    scene: SCENES["ab-scene-10"],
+    outputPath: path.join(IMAGES_DIR, "10-mini-player.webp"),
   },
 ];
 
@@ -137,7 +137,7 @@ const PORTFOLIO_FEATURES = [
   "06-google-drive-sync",
   "07-explore-page",
   "08-spotlight-search",
-  "32-fork-dialog",
+  "10-mini-player",
   "36-docs",
 ] as const;
 

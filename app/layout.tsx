@@ -13,6 +13,8 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { StoreProvider } from "@/components/providers/store-provider";
+import { MediaPlayerShell } from "@/components/media/media-player-shell";
 import { DeferredAnalytics } from "@/components/providers/deferred-analytics";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -85,7 +87,11 @@ export default function RootLayout({
         <NuqsAdapter>
           <ThemeProvider>
             <SessionProvider>
-              <QueryProvider>{children}</QueryProvider>
+              <QueryProvider>
+                <StoreProvider>
+                  <MediaPlayerShell>{children}</MediaPlayerShell>
+                </StoreProvider>
+              </QueryProvider>
             </SessionProvider>
             <Toaster />
           </ThemeProvider>

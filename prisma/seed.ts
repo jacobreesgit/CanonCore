@@ -189,9 +189,10 @@ import {
   validateContentDistribution,
   getMovieIdsForUser,
   getTVShowIdsForUser,
-  DEMO_USER_EMAIL,
+  getAudioAlbumsForUser,
   PRIVATE_ITEM_TMDB_IDS,
   type SeedUserConfig,
+  type AudioAlbum,
 } from "./seed-config";
 import { assertDriveConfigured } from "@/lib/drive-verification";
 import { withAuditContext } from "@/lib/audit-context";
@@ -209,10 +210,9 @@ let prisma: ExtendedPrismaClient;
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_TIMEOUT_MS = 10000;
 
-// Local media files for Breaking Bad S1E1 (optional - for video player screenshots)
-const BREAKING_BAD_TMDB_ID = 1396;
+// Local media files for seeding (optional - uploaded once per user, reused across all items)
 const LOCAL_VIDEO_PATH = path.resolve(__dirname, "../video.mp4");
-const LOCAL_SUBTITLE_PATH = path.resolve(__dirname, "../3_English.srt");
+const LOCAL_AUDIO_PATH = path.resolve(__dirname, "../audio.mp3");
 
 interface TMDBMovie {
   id: number;
@@ -526,7 +526,7 @@ function logProgress(progress: SeedProgress, currentItem: string): void {
 }
 
 /** Item level for determining file types to attach. */
-type ItemLevel = "movie" | "show" | "season" | "episode";
+type ItemLevel = "movie" | "show" | "season" | "episode" | "album" | "track";
 
 /**
  * Generates a placeholder SRT subtitle file.
@@ -741,16 +741,13 @@ function calculateWatchPoint(
 
 /**
  * Attaches files to an item.
- * - Subtitles: Generated placeholder SRT files
- * - Media: Placeholder entries with null driveFileId (episodes/movies only)
+ * - Subtitles: Generated placeholder SRT files uploaded to Drive
+ * - Media: Uses shared Drive file ID if available, otherwise placeholder with null driveFileId
  *
  * Note: Poster and backdrop images are stored as TMDB paths directly on the item
  * (tmdbPosterPath, tmdbBackdropPath) rather than downloaded and uploaded to Drive.
  *
- * @param progressRange - Optional progress range for playback simulation (0-1).
- *                        If provided, uses range to determine completion percentage.
- * @param orderedProgress - Optional context for ordered TV show progress simulation.
- *                          When provided, uses realistic watch order logic.
+ * @param sharedMedia - Optional shared media file IDs (uploaded once per user, reused across items)
  */
 async function attachRandomFiles(
   itemId: string,
@@ -759,11 +756,10 @@ async function attachRandomFiles(
   ctx: DriveContext | null,
   driveFolderId: string | null,
   progressRange?: ProgressRangeParam,
-  orderedProgress?: OrderedProgressContext
+  orderedProgress?: OrderedProgressContext,
+  sharedMedia?: SharedMediaIds | null
 ): Promise<void> {
   const subtitleCount = getRandomCount(1, 2);
-  const mediaCount =
-    level === "episode" || level === "movie" ? getRandomCount(1, 2) : 0;
 
   // --- SUBTITLES (skip if no Drive) ---
   if (ctx && driveFolderId) {
@@ -807,22 +803,20 @@ async function attachRandomFiles(
     }
   }
 
-  // --- MEDIA PLACEHOLDERS ---
-  // Note: driveFileId is null - app must handle this gracefully
-  for (let i = 0; i < mediaCount; i++) {
-    const filename =
-      i === 0
-        ? level === "movie"
-          ? "movie.mp4"
-          : "episode.mp4"
-        : `media-${i + 1}.mp4`;
+  // --- MEDIA FILES ---
+  // Use shared video/audio file if available, otherwise placeholder with null driveFileId
+  if (level === "episode" || level === "movie" || level === "track") {
+    const isAudio = level === "track";
 
-    // Generate realistic playback data for progress bar testing
+    // Calculate playback data
     let playbackDuration: number | null = null;
     let playbackPosition: number | null = null;
 
-    const durationRange =
-      level === "movie" ? PLAYBACK_DURATIONS.movie : PLAYBACK_DURATIONS.episode;
+    const durationRange = isAudio
+      ? PLAYBACK_DURATIONS.track
+      : level === "movie"
+        ? PLAYBACK_DURATIONS.movie
+        : PLAYBACK_DURATIONS.episode;
 
     playbackDuration = Math.floor(
       durationRange.min +
@@ -834,65 +828,61 @@ async function attachRandomFiles(
       const { episodeIndex, watchPoint, watchPointProgress } = orderedProgress;
 
       if (watchPoint < 0) {
-        // Show is unwatched
         playbackPosition = null;
       } else if (episodeIndex < watchPoint) {
-        // Episodes before current: fully watched (95-100%)
         playbackPosition = Math.floor(
           playbackDuration * (0.95 + Math.random() * 0.05)
         );
       } else if (episodeIndex === watchPoint) {
-        // Current episode: partial progress based on user's range
         playbackPosition = Math.floor(playbackDuration * watchPointProgress);
       } else {
-        // Episodes after current: unwatched
         playbackPosition = null;
       }
     } else if (progressRange) {
-      // Per-user progress range for movies: generate random progress within the range
       if (progressRange.min === 0 && progressRange.max === 0) {
-        // Special case: 0-0 means unwatched
         playbackPosition = null;
       } else {
-        // Generate progress within user's range
         const progressPercent =
           progressRange.min +
           Math.random() * (progressRange.max - progressRange.min);
         playbackPosition = Math.floor(playbackDuration * progressPercent);
       }
     } else {
-      // Default: simulate varying watch states
       const watchState = Math.random();
       if (watchState < 0.25) {
-        // Unwatched (25%)
         playbackPosition = null;
       } else if (watchState < 0.5) {
-        // Partially watched 30-50% (25%)
         playbackPosition = Math.floor(
           playbackDuration * (0.3 + Math.random() * 0.2)
         );
       } else if (watchState < 0.75) {
-        // Almost done 70-85%, below 90% threshold (25%)
         playbackPosition = Math.floor(
           playbackDuration * (0.7 + Math.random() * 0.15)
         );
       } else {
-        // Complete 91-100% (25%)
         playbackPosition = Math.floor(
           playbackDuration * (0.91 + Math.random() * 0.09)
         );
       }
     }
 
+    // Use shared audio for tracks, shared video for movies/episodes
+    const sharedFileId = isAudio
+      ? sharedMedia?.audioFileId
+      : sharedMedia?.videoFileId;
+    const sharedFileSize = isAudio
+      ? (sharedMedia?.audioFileSize ?? 0)
+      : (sharedMedia?.videoFileSize ?? 0);
+
     await prisma.itemFile.create({
       data: {
         itemId,
-        filename,
-        driveFileId: null, // No actual file - placeholder only
+        filename: isAudio ? "audio.mp3" : "video.mp4",
+        driveFileId: sharedFileId ?? null,
         fileType: FileType.MEDIA,
-        mimeType: "video/mp4",
-        size: BigInt(0),
-        isPrimary: i === 0,
+        mimeType: isAudio ? "audio/mpeg" : "video/mp4",
+        size: sharedFileId ? BigInt(sharedFileSize) : BigInt(0),
+        isPrimary: true,
         isHero: false,
         syncStatus: SyncStatus.SYNCED,
         playbackDuration,
@@ -1215,99 +1205,93 @@ async function uploadToDrive(
   return uploadFile(ctx.drive, filename, content, mimeType, parentId);
 }
 
-/**
- * Checks if local Breaking Bad media files exist for seeding.
- *
- * @returns Object with video and subtitle availability
- */
-function checkLocalMediaFiles(): { hasVideo: boolean; hasSubtitle: boolean } {
-  const hasVideo = fs.existsSync(LOCAL_VIDEO_PATH);
-  const hasSubtitle = fs.existsSync(LOCAL_SUBTITLE_PATH);
-
-  console.log("🔍 Checking for local Breaking Bad S1E1 media files:");
-  console.log(
-    `   Video: ${hasVideo ? "✅ FOUND" : "❌ NOT FOUND"} at ${LOCAL_VIDEO_PATH}`
-  );
-  console.log(
-    `   Subtitle: ${hasSubtitle ? "✅ FOUND" : "❌ NOT FOUND"} at ${LOCAL_SUBTITLE_PATH}`
-  );
-
-  return { hasVideo, hasSubtitle };
+/** IDs of shared media files uploaded once per user and reused across all items. */
+interface SharedMediaIds {
+  videoFileId: string | null;
+  videoFileSize: number;
+  audioFileId: string | null;
+  audioFileSize: number;
 }
 
 /**
- * Uploads local Breaking Bad S1E1 video to Google Drive.
- * Used for demo user to enable video player screenshots.
+ * Uploads local media files (video.mp4, audio.mp3) once to a user's Drive root folder.
+ * Returns the Drive file IDs so they can be reused across all ItemFile records.
+ *
+ * Files are uploaded in parallel since they are independent operations.
  *
  * @param ctx - Google Drive context
- * @param parentId - Parent folder ID in Drive
- * @returns Upload result with file ID, or null on failure
+ * @param rootFolderId - User's root Drive folder ID (from ctx.rootFolderId)
+ * @returns Shared media file IDs (null if file doesn't exist or upload fails)
  */
-async function uploadLocalVideo(
+async function uploadSharedMediaFiles(
   ctx: DriveContext,
-  parentId: string
-): Promise<{ id: string; size: number } | null> {
-  if (!fs.existsSync(LOCAL_VIDEO_PATH)) {
-    return null;
+  rootFolderId: string
+): Promise<SharedMediaIds> {
+  const result: SharedMediaIds = {
+    videoFileId: null,
+    videoFileSize: 0,
+    audioFileId: null,
+    audioFileSize: 0,
+  };
+
+  // Upload video and audio in parallel (independent operations)
+  const [videoResult, audioResult] = await Promise.all([
+    // Upload video.mp4 if it exists
+    (async () => {
+      if (!fs.existsSync(LOCAL_VIDEO_PATH)) return null;
+      try {
+        log("  📹 Uploading shared video.mp4 (once per user)...");
+        const buffer = fs.readFileSync(LOCAL_VIDEO_PATH);
+        const uploaded = await uploadToDrive(
+          ctx,
+          "video.mp4",
+          buffer,
+          "video/mp4",
+          rootFolderId
+        );
+        log(
+          `  ✅ Shared video uploaded (${(buffer.length / 1024 / 1024).toFixed(1)} MB)`
+        );
+        return { id: uploaded.id, size: buffer.length };
+      } catch (error) {
+        log(`  ❌ Failed to upload shared video: ${error}`);
+        return null;
+      }
+    })(),
+    // Upload audio.mp3 if it exists
+    (async () => {
+      if (!fs.existsSync(LOCAL_AUDIO_PATH)) return null;
+      try {
+        log("  🎵 Uploading shared audio.mp3 (once per user)...");
+        const buffer = fs.readFileSync(LOCAL_AUDIO_PATH);
+        const uploaded = await uploadToDrive(
+          ctx,
+          "audio.mp3",
+          buffer,
+          "audio/mpeg",
+          rootFolderId
+        );
+        log(
+          `  ✅ Shared audio uploaded (${(buffer.length / 1024 / 1024).toFixed(1)} MB)`
+        );
+        return { id: uploaded.id, size: buffer.length };
+      } catch (error) {
+        log(`  ❌ Failed to upload shared audio: ${error}`);
+        return null;
+      }
+    })(),
+  ]);
+
+  if (videoResult) {
+    result.videoFileId = videoResult.id;
+    result.videoFileSize = videoResult.size;
+  }
+  if (audioResult) {
+    result.audioFileId = audioResult.id;
+    result.audioFileSize = audioResult.size;
   }
 
-  try {
-    log(
-      "      📹 Uploading Breaking Bad S1E1 video (this may take a while)..."
-    );
-    const videoBuffer = fs.readFileSync(LOCAL_VIDEO_PATH);
-    const filename = path.basename(LOCAL_VIDEO_PATH);
-
-    const result = await uploadToDrive(
-      ctx,
-      filename,
-      videoBuffer,
-      "video/mp4",
-      parentId
-    );
-
-    log(
-      `      ✅ Video uploaded: ${filename} (${(videoBuffer.length / 1024 / 1024).toFixed(1)} MB)`
-    );
-    return { id: result.id, size: videoBuffer.length };
-  } catch (error) {
-    console.error("      ❌ Failed to upload video:", error);
-    return null;
-  }
-}
-
-/**
- * Uploads local Breaking Bad S1E1 subtitle to Google Drive.
- *
- * @param ctx - Google Drive context
- * @param parentId - Parent folder ID in Drive
- * @returns Upload result with file ID, or null on failure
- */
-async function uploadLocalSubtitle(
-  ctx: DriveContext,
-  parentId: string
-): Promise<{ id: string; size: number } | null> {
-  if (!fs.existsSync(LOCAL_SUBTITLE_PATH)) {
-    return null;
-  }
-
-  try {
-    log("      📄 Uploading Breaking Bad S1E1 subtitle...");
-    const subtitleBuffer = fs.readFileSync(LOCAL_SUBTITLE_PATH);
-    const result = await uploadToDrive(
-      ctx,
-      "English.srt",
-      subtitleBuffer,
-      "application/x-subrip",
-      parentId
-    );
-
-    log("      ✅ Subtitle uploaded: English.srt");
-    return { id: result.id, size: subtitleBuffer.length };
-  } catch (error) {
-    console.error("      ❌ Failed to upload subtitle:", error);
-    return null;
-  }
+  return result;
 }
 
 /**
@@ -1323,7 +1307,8 @@ async function seedMoviesForUser(
   progress: SeedProgress,
   movieIds: number[],
   progressRange?: ProgressRangeParam,
-  isPublic = false
+  isPublic = false,
+  sharedMedia?: SharedMediaIds | null
 ): Promise<number> {
   let count = 0;
 
@@ -1416,7 +1401,9 @@ async function seedMoviesForUser(
       "movie",
       ctx,
       movieDriveFolderId,
-      progressRange
+      progressRange,
+      undefined,
+      sharedMedia
     );
 
     count++;
@@ -1430,16 +1417,11 @@ async function seedMoviesForUser(
 /**
  * Seeds all episodes for a season.
  *
- * For Breaking Bad S1E1 with demo user, uploads actual video file if available locally.
- * This enables video player screenshots for portfolio.
- *
  * @param progressRange - Progress range for playback simulation (0-1)
  * @param isPublic - Whether items should be public (for public profiles)
- * @param showTmdbId - TMDB ID of the parent show (for Breaking Bad detection)
- * @param seasonNumber - Season number (for S1 detection)
- * @param userEmail - User email (for demo user detection)
  * @param episodeStartIndex - Starting index for ordered progress tracking
  * @param orderedProgressBase - Base context for ordered progress (totalEpisodes, watchPoint)
+ * @param sharedMedia - Shared Drive media file IDs to reference instead of uploading per-item
  * @returns Object with count of items created and next episode index
  */
 async function seedEpisodes(
@@ -1450,15 +1432,13 @@ async function seedEpisodes(
   ctx: DriveContext | null,
   progressRange?: ProgressRangeParam,
   isPublic = false,
-  showTmdbId?: number,
-  seasonNumber?: number,
-  userEmail?: string,
   episodeStartIndex = 0,
   orderedProgressBase?: {
     totalEpisodes: number;
     watchPoint: number;
     watchPointProgress: number;
-  }
+  },
+  sharedMedia?: SharedMediaIds | null
 ): Promise<{ count: number; nextIndex: number }> {
   let count = 0;
   let currentEpisodeIndex = episodeStartIndex;
@@ -1533,112 +1513,17 @@ async function seedEpisodes(
       },
     });
 
-    // Check if this is Breaking Bad S1E1 for demo user - upload real video if available
-    const isBreakingBadS1E1 =
-      showTmdbId === BREAKING_BAD_TMDB_ID &&
-      seasonNumber === 1 &&
-      episode.episode_number === 1 &&
-      userEmail === DEMO_USER_EMAIL;
-
-    if (isBreakingBadS1E1) {
-      console.log(`\n🎯 Breaking Bad S1E1 detected for demo user!`);
-      console.log(
-        `   Show TMDB ID: ${showTmdbId} (expected: ${BREAKING_BAD_TMDB_ID})`
-      );
-      console.log(
-        `   Season: ${seasonNumber}, Episode: ${episode.episode_number}`
-      );
-      console.log(`   User: ${userEmail} (expected: ${DEMO_USER_EMAIL})`);
-      console.log(`   Drive context: ${ctx ? "✅ Available" : "❌ Missing"}`);
-      console.log(
-        `   Episode folder ID: ${episodeDriveFolderId || "❌ Missing"}\n`
-      );
-    }
-
-    if (isBreakingBadS1E1 && ctx && episodeDriveFolderId) {
-      const localMedia = checkLocalMediaFiles();
-
-      if (localMedia.hasVideo || localMedia.hasSubtitle) {
-        log(
-          "    🎬 Breaking Bad S1E1 detected - uploading real media files..."
-        );
-
-        // Upload real subtitle if available
-        if (localMedia.hasSubtitle) {
-          const subtitleResult = await uploadLocalSubtitle(
-            ctx,
-            episodeDriveFolderId
-          );
-          if (subtitleResult) {
-            await prisma.itemFile.create({
-              data: {
-                itemId: episodeItem.id,
-                filename: "English.srt",
-                driveFileId: subtitleResult.id,
-                fileType: FileType.SUBTITLE,
-                mimeType: "application/x-subrip",
-                size: BigInt(subtitleResult.size),
-                isPrimary: true,
-                isHero: false,
-                syncStatus: SyncStatus.SYNCED,
-              },
-            });
-            log(`      ✅ Subtitle file attached to episode`);
-          }
-        }
-
-        // Upload real video if available
-        if (localMedia.hasVideo) {
-          const videoResult = await uploadLocalVideo(ctx, episodeDriveFolderId);
-          if (videoResult) {
-            // Get video duration (approximate - 58 minutes for pilot)
-            const playbackDuration = 58 * 60; // 58 minutes in seconds
-            const playbackPosition = Math.floor(playbackDuration * 0.99); // 99% watched
-
-            await prisma.itemFile.create({
-              data: {
-                itemId: episodeItem.id,
-                filename: path.basename(LOCAL_VIDEO_PATH),
-                driveFileId: videoResult.id,
-                fileType: FileType.MEDIA,
-                mimeType: "video/mp4",
-                size: BigInt(videoResult.size),
-                isPrimary: true,
-                isHero: false,
-                syncStatus: SyncStatus.SYNCED,
-                playbackDuration,
-                playbackPosition,
-              },
-            });
-            log(
-              `      ✅ Video file attached to episode (duration: ${Math.floor(playbackDuration / 60)}min, position: ${Math.floor((playbackPosition / playbackDuration) * 100)}%)`
-            );
-          }
-        }
-      } else {
-        // No local files, fall back to placeholders
-        await attachRandomFiles(
-          episodeItem.id,
-          episodeName,
-          "episode",
-          ctx,
-          episodeDriveFolderId,
-          progressRange,
-          orderedProgress
-        );
-      }
-    } else {
-      // Regular episode - use placeholder files
-      await attachRandomFiles(
-        episodeItem.id,
-        episodeName,
-        "episode",
-        ctx,
-        episodeDriveFolderId,
-        progressRange,
-        orderedProgress
-      );
-    }
+    // Attach files (subtitles + media using shared Drive file)
+    await attachRandomFiles(
+      episodeItem.id,
+      episodeName,
+      "episode",
+      ctx,
+      episodeDriveFolderId,
+      progressRange,
+      orderedProgress,
+      sharedMedia
+    );
 
     count++;
     currentEpisodeIndex++;
@@ -1656,7 +1541,7 @@ async function seedEpisodes(
  *
  * @param progressRange - Progress range for playback simulation (0-1)
  * @param isPublic - Whether items should be public (for public profiles)
- * @param userEmail - User email (passed to seedEpisodes for demo user detection)
+ * @param sharedMedia - Shared Drive media file IDs to reference instead of uploading per-item
  * @returns Object with total items created and next episode index
  */
 async function seedSeasons(
@@ -1668,7 +1553,7 @@ async function seedSeasons(
   ctx: DriveContext | null,
   progressRange?: ProgressRangeParam,
   isPublic = false,
-  userEmail?: string
+  sharedMedia?: SharedMediaIds | null
 ): Promise<{ totalItems: number; nextIndex: number }> {
   let totalItems = 0;
   let currentEpisodeIndex = 0;
@@ -1777,7 +1662,9 @@ async function seedSeasons(
       "season",
       ctx,
       seasonDriveFolderId,
-      progressRange
+      progressRange,
+      undefined,
+      sharedMedia
     );
 
     // Seed episodes with ordered progress tracking
@@ -1789,11 +1676,9 @@ async function seedSeasons(
       ctx,
       progressRange,
       isPublic,
-      tvId,
-      seasonNum,
-      userEmail,
       currentEpisodeIndex,
-      orderedProgressBase
+      orderedProgressBase,
+      sharedMedia
     );
 
     totalItems += 1 + episodeResult.count;
@@ -1809,7 +1694,7 @@ async function seedSeasons(
  *
  * @param progressRange - Progress range for playback simulation (0-1)
  * @param isPublic - Whether items should be public (for public profiles)
- * @param userEmail - User email (for demo user detection in Breaking Bad S1E1)
+ * @param sharedMedia - Shared Drive media file IDs to reference instead of uploading per-item
  */
 async function seedTVShowsForUser(
   userId: string,
@@ -1819,7 +1704,7 @@ async function seedTVShowsForUser(
   tvShowIds: number[],
   progressRange?: ProgressRangeParam,
   isPublic = false,
-  userEmail?: string
+  sharedMedia?: SharedMediaIds | null
 ): Promise<number> {
   let count = 0;
 
@@ -1912,7 +1797,9 @@ async function seedTVShowsForUser(
       "show",
       ctx,
       showDriveFolderId,
-      progressRange
+      progressRange,
+      undefined,
+      sharedMedia
     );
 
     // Seed seasons and episodes
@@ -1925,12 +1812,222 @@ async function seedTVShowsForUser(
       ctx,
       progressRange,
       isPublic,
-      userEmail
+      sharedMedia
     );
 
     count += 1 + result.totalItems;
     progress.completedShows++;
     logProgress(progress, name);
+  }
+
+  return count;
+}
+
+/**
+ * Seeds audio albums for a user. Albums are plain items (no TMDB metadata)
+ * with child track items that reference the shared audio.mp3 file.
+ *
+ * @param startOrder - Starting order index for root-level items
+ * @param sharedMedia - Shared media file IDs for reuse
+ * @returns Number of total items created (albums + tracks)
+ */
+async function seedAudioForUser(
+  userId: string,
+  ctx: DriveContext | null,
+  startOrder: number,
+  albums: AudioAlbum[],
+  progressRange?: ProgressRangeParam,
+  isPublic = false,
+  sharedMedia?: SharedMediaIds | null
+): Promise<number> {
+  let count = 0;
+
+  for (let i = 0; i < albums.length; i++) {
+    const album = albums[i];
+    const albumName = `${album.artist} - ${album.name}`;
+
+    // Create Drive folder for album
+    let albumDriveFolderId: string | null = null;
+    if (ctx) {
+      try {
+        albumDriveFolderId = await createDriveFolder(
+          ctx,
+          albumName,
+          ctx.rootFolderId
+        );
+      } catch (error) {
+        log(`  ❌ Failed to create Drive folder for ${albumName}: ${error}`);
+        continue;
+      }
+    }
+
+    // Download cover + hero in parallel (independent network ops)
+    // Cover is downloaded once and reused for both colour extraction and Drive upload
+    const [coverData, heroData] = await Promise.all([
+      downloadProfileImage(album.coverUrl),
+      downloadProfileImage(album.heroUrl),
+    ]);
+
+    // Extract dominant colour from already-downloaded cover image (no redundant fetch)
+    let dominantColour: string | null = null;
+    if (coverData) {
+      try {
+        dominantColour = await extractDominantColour(
+          Buffer.from(coverData.data)
+        );
+      } catch {
+        // Continue without colour — not critical
+      }
+    }
+
+    // Create album item (depth 0, root level — no TMDB)
+    const albumItem = await prisma.item.create({
+      data: {
+        name: albumName,
+        description: album.description || "",
+        userId,
+        parentId: null,
+        order: startOrder + i,
+        depth: 0,
+        isPublic,
+        inheritVisibility: false,
+        dominantColour,
+        driveConnectionId: ctx?.connectionId || null,
+        driveFileId: albumDriveFolderId,
+        syncStatus: albumDriveFolderId ? SyncStatus.SYNCED : SyncStatus.PENDING,
+      },
+    });
+
+    // Upload cover art and hero banner as ARTWORK ItemFiles to Drive
+    // Uses already-downloaded data from above (no redundant network requests)
+    if (ctx && albumDriveFolderId) {
+      // Cover art (isPrimary)
+      if (coverData) {
+        try {
+          const coverBuffer = Buffer.from(coverData.data);
+          const coverExt = coverData.mime.includes("png") ? "png" : "jpg";
+          const uploaded = await uploadToDrive(
+            ctx,
+            `cover.${coverExt}`,
+            coverBuffer,
+            coverData.mime,
+            albumDriveFolderId
+          );
+          await prisma.itemFile.create({
+            data: {
+              itemId: albumItem.id,
+              filename: `cover.${coverExt}`,
+              driveFileId: uploaded.id,
+              fileType: FileType.ARTWORK,
+              mimeType: coverData.mime,
+              size: BigInt(coverBuffer.length),
+              isPrimary: true,
+              isHero: false,
+              syncStatus: SyncStatus.SYNCED,
+            },
+          });
+        } catch (error) {
+          log(`  ⚠️ Failed to upload cover art for ${albumName}: ${error}`);
+        }
+      }
+
+      // Hero banner (isHero)
+      if (heroData) {
+        try {
+          const heroBuffer = Buffer.from(heroData.data);
+          const uploaded = await uploadToDrive(
+            ctx,
+            "hero.jpg",
+            heroBuffer,
+            heroData.mime,
+            albumDriveFolderId
+          );
+          await prisma.itemFile.create({
+            data: {
+              itemId: albumItem.id,
+              filename: "hero.jpg",
+              driveFileId: uploaded.id,
+              fileType: FileType.ARTWORK,
+              mimeType: heroData.mime,
+              size: BigInt(heroBuffer.length),
+              isPrimary: false,
+              isHero: true,
+              syncStatus: SyncStatus.SYNCED,
+            },
+          });
+        } catch (error) {
+          log(`  ⚠️ Failed to upload hero banner for ${albumName}: ${error}`);
+        }
+      }
+    }
+
+    // Attach subtitles to album (reuses existing subtitle logic)
+    await attachRandomFiles(
+      albumItem.id,
+      albumName,
+      "album",
+      ctx,
+      albumDriveFolderId,
+      progressRange,
+      undefined,
+      sharedMedia
+    );
+
+    count++;
+
+    // Seed tracks as child items
+    for (let t = 0; t < album.tracks.length; t++) {
+      const trackName = `${String(t + 1).padStart(2, "0")} - ${album.tracks[t]}`;
+
+      // Create Drive folder for track
+      let trackDriveFolderId: string | null = null;
+      if (ctx && albumDriveFolderId) {
+        try {
+          trackDriveFolderId = await createDriveFolder(
+            ctx,
+            trackName,
+            albumDriveFolderId
+          );
+        } catch {
+          continue;
+        }
+      }
+
+      // Create track item (depth 1, child of album — no TMDB)
+      const trackItem = await prisma.item.create({
+        data: {
+          name: trackName,
+          description: "",
+          userId,
+          parentId: albumItem.id,
+          order: t,
+          depth: 1,
+          isPublic,
+          inheritVisibility: true,
+          driveConnectionId: ctx?.connectionId || null,
+          driveFileId: trackDriveFolderId,
+          syncStatus: trackDriveFolderId
+            ? SyncStatus.SYNCED
+            : SyncStatus.PENDING,
+        },
+      });
+
+      // Attach audio file to track
+      await attachRandomFiles(
+        trackItem.id,
+        trackName,
+        "track",
+        ctx,
+        trackDriveFolderId,
+        progressRange,
+        undefined,
+        sharedMedia
+      );
+
+      count++;
+    }
+
+    log(`  🎵 Seeded album: ${albumName} (${album.tracks.length} tracks)`);
   }
 
   return count;
@@ -2626,9 +2723,14 @@ async function main(): Promise<void> {
       // Get per-user content distribution
       const userMovieIds = getMovieIdsForUser(email);
       const userShowIds = getTVShowIdsForUser(email);
+      const userAudioAlbums = getAudioAlbumsForUser(email);
 
       // Skip users with no content
-      if (userMovieIds.length === 0 && userShowIds.length === 0) {
+      if (
+        userMovieIds.length === 0 &&
+        userShowIds.length === 0 &&
+        userAudioAlbums.length === 0
+      ) {
         log(`\n⏭️  Skipping ${email} (no content configured)`);
         continue;
       }
@@ -2638,6 +2740,12 @@ async function main(): Promise<void> {
       try {
         // Create Drive connection (null for E2E — no Drive needed)
         const ctx = usesDrive ? await createDriveConnection(userId) : null;
+
+        // Upload shared media files once per user (reused across all items)
+        // DriveContext.rootFolderId is set during createDriveConnection()
+        const sharedMedia = ctx
+          ? await uploadSharedMediaFiles(ctx, ctx.rootFolderId)
+          : null;
 
         // Initialize progress tracking with user-specific IDs
         const progress: SeedProgress = {
@@ -2659,7 +2767,8 @@ async function main(): Promise<void> {
           progress,
           userMovieIds,
           progressRange,
-          config.isPublic ?? false
+          config.isPublic ?? false,
+          sharedMedia
         );
         const tvCount = await seedTVShowsForUser(
           userId,
@@ -2669,7 +2778,18 @@ async function main(): Promise<void> {
           userShowIds,
           progressRange,
           config.isPublic ?? false,
-          config.email
+          sharedMedia
+        );
+
+        // Seed audio albums (no TMDB)
+        const audioCount = await seedAudioForUser(
+          userId,
+          ctx,
+          movieCount + tvCount,
+          userAudioAlbums,
+          progressRange,
+          config.isPublic ?? false,
+          sharedMedia
         );
 
         // Pin specific items
@@ -2699,7 +2819,7 @@ async function main(): Promise<void> {
 
         const totalTime = Math.round((Date.now() - progress.startTime) / 1000);
         log(
-          `\n✅ Seeded ${movieCount} movies and ${tvCount} TV show items in ${totalTime}s`
+          `\n✅ Seeded ${movieCount} movies, ${tvCount} TV show items, and ${audioCount} audio items in ${totalTime}s`
         );
 
         if (isFirstUser && usesDrive) {

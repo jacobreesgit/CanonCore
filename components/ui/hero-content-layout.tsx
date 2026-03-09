@@ -53,6 +53,7 @@ export function HeroContentLayout({
 
   return (
     <div
+      data-content-layout
       data-testid={dataTestId}
       className={cn(
         "flex flex-1 flex-col bg-[var(--dark-900)]",

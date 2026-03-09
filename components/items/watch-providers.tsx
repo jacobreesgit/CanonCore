@@ -94,19 +94,6 @@ export function WatchProviders({
           </div>
         ))}
       </div>
-
-      {/* Attribution */}
-      <p className="mt-3 text-xs text-[var(--tertiary-foreground)]">
-        Streaming data from{" "}
-        <a
-          href="https://www.justwatch.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:text-muted-foreground underline"
-        >
-          JustWatch
-        </a>
-      </p>
     </section>
   );
 }

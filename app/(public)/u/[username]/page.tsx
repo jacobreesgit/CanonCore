@@ -178,6 +178,22 @@ async function ProfileContent({
  */
 export default async function ProfilePage({ params, searchParams }: PageProps) {
   const { username } = await params;
+  const resolvedSearchParams = await searchParams;
+
+  // Dev-only: ?skeleton=true freezes the skeleton for visual comparison
+  if (
+    process.env.NODE_ENV === "development" &&
+    resolvedSearchParams.skeleton === "true"
+  ) {
+    return (
+      <>
+        <SiteHeader title="My Items" titleHref={`/u/${username}`} />
+        <div className="bg-background text-foreground -mt-(--header-height) flex flex-1 flex-col">
+          <ProfileContentSkeleton />
+        </div>
+      </>
+    );
+  }
 
   // Parallelize rate limit + auth check
   const [rateLimitResult, session] = await Promise.all([

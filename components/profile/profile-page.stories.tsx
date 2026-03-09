@@ -5,10 +5,15 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/nextjs";
+import { Provider } from "react-redux";
+import { configureStore } from "@reduxjs/toolkit";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { userEvent, within, expect } from "storybook/test";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 
 import { ProfilePage } from "./profile-page";
+import playbackReducer from "@/lib/store/playback-slice";
+import uiPrefsReducer from "@/lib/store/ui-prefs-slice";
 import type { ItemWithArtwork, PlaylistWithCount } from "@/lib/types";
 
 // --- Mock data ---
@@ -215,13 +220,28 @@ Profile page content component with responsive tabbed layout.
     },
   },
   decorators: [
-    (Story) => (
-      <NuqsTestingAdapter>
-        <div className="bg-background flex min-h-screen flex-col">
-          <Story />
-        </div>
-      </NuqsTestingAdapter>
-    ),
+    (Story) => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const store = configureStore({
+        reducer: {
+          playback: playbackReducer,
+          uiPrefs: uiPrefsReducer,
+        },
+      });
+      return (
+        <Provider store={store}>
+          <QueryClientProvider client={queryClient}>
+            <NuqsTestingAdapter>
+              <div className="bg-background flex min-h-screen flex-col">
+                <Story />
+              </div>
+            </NuqsTestingAdapter>
+          </QueryClientProvider>
+        </Provider>
+      );
+    },
   ],
 } satisfies Meta<typeof ProfilePage>;
 

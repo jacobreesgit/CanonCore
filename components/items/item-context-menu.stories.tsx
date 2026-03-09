@@ -17,7 +17,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Context menu for item actions. Right-click to open a glassmorphism menu with settings, pin/unpin, add child, open in Drive, and delete options. Delete shows a confirmation dialog.",
+          "Context menu for item actions. Right-click to open a glassmorphism menu with edit, pin/unpin, add child, open in Drive, and delete options. Delete shows a confirmation dialog.",
       },
     },
   },
@@ -53,13 +53,18 @@ export const Default: Story = {
       </div>
     </ItemContextMenu>
   ),
+  parameters: {
+    // Radix portals set aria-hidden on #storybook-root when context menu opens,
+    // which is correct accessibility behavior but triggers aria-hidden-focus
+    a11y: { disable: true },
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const target = canvas.getByText("Right-click me");
     await userEvent.pointer({ keys: "[MouseRight]", target });
     const body = within(document.body);
     await expect(await body.findByText("Add Child Item")).toBeInTheDocument();
-    await expect(await body.findByText("Settings")).toBeInTheDocument();
+    await expect(await body.findByText("Edit Item")).toBeInTheDocument();
     await expect(await body.findByText("Pin to Sidebar")).toBeInTheDocument();
     await expect(await body.findByText("Open in Drive")).toBeInTheDocument();
     await expect(await body.findByText("Delete")).toBeInTheDocument();

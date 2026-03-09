@@ -16,18 +16,18 @@ const FEATURES = [
     learnMoreHref: "/docs/google-drive/sync-files",
   },
   {
+    title: "Always On Playback",
+    description:
+      "Audio and video play through a persistent player bar that stays with you as you browse. Build a queue on the fly, drag to reorder what's next, and control everything from your keyboard.",
+    image: "/images/10-mini-player.webp",
+    learnMoreHref: "/docs/files-and-folders/navigation",
+  },
+  {
     title: "Cinema-Grade Metadata",
     description:
       "One click pulls posters, backdrops, cast, genres, and ratings from TMDB. Every item in your library gets the treatment it deserves.",
     image: "/images/04-tmdb-wizard.webp",
     learnMoreHref: "/docs/files-and-folders/item-settings",
-  },
-  {
-    title: "Curate with Playlists",
-    description:
-      "Group items into themed playlists \u2014 weekend watchlists, all-time favourites, or anything you like. Drag to reorder, add custom artwork, and share publicly or via private link.",
-    image: "/images/09-playlist-detail.webp",
-    learnMoreHref: "/docs/playlists/create-playlist",
   },
   {
     title: "Instant Spotlight Search",
@@ -37,11 +37,11 @@ const FEATURES = [
     learnMoreHref: "/docs/files-and-folders/navigation",
   },
   {
-    title: "Built to Share",
+    title: "Curate and Share",
     description:
-      "Go public with your profile, curate playlists, and let others fork your collections. Forking copies an entire library structure into someone else\u2019s account \u2014 they get their own editable version while yours stays untouched.",
-    image: "/images/32-fork-dialog.webp",
-    learnMoreHref: "/docs/sharing/public-profile",
+      "Group items into playlists, drag to reorder, and add custom artwork. Go public with your profile and let others fork entire collections into their own account \u2014 their own editable copy, yours untouched.",
+    image: "/images/09-playlist-detail.webp",
+    learnMoreHref: "/docs/playlists/create-playlist",
   },
 ];
 
