@@ -590,13 +590,13 @@ export function MobileItemSheet({
               <div
                 className={cn(
                   "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                  "bg-blue-500/10 ring-1 ring-blue-500/20"
+                  "bg-primary/10 ring-primary/20 ring-1"
                 )}
               >
                 <FontAwesomeIcon
                   icon={faTv}
                   aria-hidden="true"
-                  className="size-5 text-blue-500"
+                  className="text-primary size-5"
                 />
               </div>
               <div className="min-w-0 flex-1">
@@ -812,9 +812,28 @@ export function MobileItemSheet({
         )}
       >
         <MobileBottomSheetHeader>
-          <MobileBottomSheetTitle className="text-foreground">
-            Item Options
-          </MobileBottomSheetTitle>
+          <div className="flex items-center gap-3">
+            <div
+              className={cn(
+                "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                "bg-primary/10 ring-primary/20 ring-1"
+              )}
+            >
+              <FontAwesomeIcon
+                icon={faGears}
+                aria-hidden="true"
+                className="text-primary size-5"
+              />
+            </div>
+            <div className="min-w-0">
+              <MobileBottomSheetTitle className="text-foreground">
+                Item Options
+              </MobileBottomSheetTitle>
+              <p className="text-muted-foreground text-sm">
+                Sort, filter, and configure your item.
+              </p>
+            </div>
+          </div>
         </MobileBottomSheetHeader>
 
         <MobileBottomSheetContent className="flex flex-col gap-6 overflow-hidden pb-0">

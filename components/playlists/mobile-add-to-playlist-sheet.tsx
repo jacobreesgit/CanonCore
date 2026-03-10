@@ -263,6 +263,9 @@ export function MobileAddToPlaylistSheet({
             </Button>
           )}
         </div>
+
+        {/* Safe area padding for iPhone */}
+        <div className="h-[env(safe-area-inset-bottom)]" />
       </MobileBottomSheetContent>
     </MobileBottomSheet>
   );

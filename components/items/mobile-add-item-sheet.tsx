@@ -487,13 +487,13 @@ export function MobileAddItemSheet({
               <div
                 className={cn(
                   "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                  "bg-blue-500/10 ring-1 ring-blue-500/20"
+                  "bg-primary/10 ring-primary/20 ring-1"
                 )}
               >
                 <FontAwesomeIcon
                   icon={faTv}
                   aria-hidden="true"
-                  className="size-5 text-blue-500"
+                  className="text-primary size-5"
                 />
               </div>
               <div className="min-w-0 flex-1">

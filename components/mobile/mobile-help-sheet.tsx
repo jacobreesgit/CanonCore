@@ -103,7 +103,7 @@ export function MobileHelpSheet({ open, onOpenChange }: MobileHelpSheetProps) {
       title="Get Help"
       description="Documentation and guides"
     >
-      <div className="max-h-[70vh] overflow-y-auto px-4 pt-2 pb-6">
+      <div className="max-h-[70vh] overflow-y-auto px-4 pt-2 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
         {/* Header */}
         <div className="flex items-center gap-3 py-3">
           <div className="bg-primary/10 flex size-12 items-center justify-center rounded-full">

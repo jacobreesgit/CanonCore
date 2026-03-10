@@ -182,9 +182,28 @@ export function MobileOptionsSheet({
         )}
       >
         <MobileBottomSheetHeader>
-          <MobileBottomSheetTitle className="text-foreground">
-            View Options
-          </MobileBottomSheetTitle>
+          <div className="flex items-center gap-3">
+            <div
+              className={cn(
+                "flex size-10 shrink-0 items-center justify-center rounded-xl",
+                "bg-primary/10 ring-primary/20 ring-1"
+              )}
+            >
+              <FontAwesomeIcon
+                icon={faSliders}
+                aria-hidden="true"
+                className="text-primary size-5"
+              />
+            </div>
+            <div className="min-w-0">
+              <MobileBottomSheetTitle className="text-foreground">
+                View Options
+              </MobileBottomSheetTitle>
+              <p className="text-muted-foreground text-sm">
+                Sort and filter your items.
+              </p>
+            </div>
+          </div>
         </MobileBottomSheetHeader>
 
         <MobileBottomSheetContent className="space-y-6 pb-8">
