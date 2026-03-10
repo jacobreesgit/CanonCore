@@ -59,7 +59,6 @@ function Button({
       <Slot
         data-slot="button"
         className={cn(buttonVariants({ variant, size, className }))}
-        disabled={disabled}
         {...props}
       >
         {children}
