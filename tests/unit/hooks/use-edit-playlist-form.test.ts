@@ -50,7 +50,7 @@ describe("useEditPlaylistForm", () => {
 
     expect(result.current.name).toBe("Test Playlist");
     expect(result.current.description).toBe("A description");
-    expect(result.current.isPublic).toBe(true);
+    expect(result.current.visibility).toBe("public");
     expect(result.current.error).toBeNull();
     expect(result.current.isSubmitting).toBe(false);
     expect(result.current.artworkFile).toBeNull();
@@ -81,10 +81,10 @@ describe("useEditPlaylistForm", () => {
     const { result } = renderHook(() => useEditPlaylistForm(mockPlaylist));
 
     act(() => {
-      result.current.setIsPublic(false);
+      result.current.setVisibility("private");
     });
 
-    expect(result.current.isPublic).toBe(false);
+    expect(result.current.visibility).toBe("private");
   });
 
   it("sets error when name is empty on submit", async () => {
@@ -116,7 +116,10 @@ describe("useEditPlaylistForm", () => {
     act(() => {
       result.current.setName("Updated");
       result.current.setDescription("New desc");
-      result.current.setIsPublic(false);
+    });
+
+    await act(async () => {
+      await result.current.setVisibility("private");
     });
 
     await act(async () => {
@@ -155,13 +158,13 @@ describe("useEditPlaylistForm", () => {
     expect(result.current.isSubmitting).toBe(false);
   });
 
-  it("resets form state to playlist values", () => {
+  it("resets form state to playlist values", async () => {
     const { result } = renderHook(() => useEditPlaylistForm(mockPlaylist));
 
-    act(() => {
+    await act(async () => {
       result.current.setName("Changed");
       result.current.setDescription("Changed");
-      result.current.setIsPublic(false);
+      await result.current.setVisibility("private");
       result.current.setError("Some error");
     });
 
@@ -171,7 +174,7 @@ describe("useEditPlaylistForm", () => {
 
     expect(result.current.name).toBe("Test Playlist");
     expect(result.current.description).toBe("A description");
-    expect(result.current.isPublic).toBe(true);
+    expect(result.current.visibility).toBe("public");
     expect(result.current.error).toBeNull();
     expect(result.current.isSubmitting).toBe(false);
   });
@@ -277,7 +280,7 @@ describe("useEditPlaylistForm", () => {
       expect(result.current.shareToken).toBe("abc123");
     });
 
-    it("enables sharing via handleShareToggle", async () => {
+    it("generates share token when switching to unlisted", async () => {
       mockRegenerateToken.mockResolvedValue({
         success: true,
         data: { shareToken: "new-token" },
@@ -286,13 +289,13 @@ describe("useEditPlaylistForm", () => {
       const { result } = renderHook(() => useEditPlaylistForm(mockPlaylist));
 
       await act(async () => {
-        await result.current.handleShareToggle(true);
+        await result.current.setVisibility("unlisted");
       });
 
       expect(result.current.shareToken).toBe("new-token");
     });
 
-    it("disables sharing via handleShareToggle", async () => {
+    it("disables sharing when switching to private", async () => {
       mockUpdatePlaylist.mockResolvedValue({ success: true });
 
       const { result } = renderHook(() =>
@@ -300,7 +303,7 @@ describe("useEditPlaylistForm", () => {
       );
 
       await act(async () => {
-        await result.current.handleShareToggle(false);
+        await result.current.setVisibility("private");
       });
 
       expect(result.current.shareToken).toBeNull();
