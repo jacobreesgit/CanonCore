@@ -112,7 +112,7 @@ export function QueuedFileThumbnail({
         onClick={onClick}
         disabled={disabled || isSkipped}
         className={cn(
-          "relative w-full overflow-hidden rounded-lg transition-[transform,opacity,box-shadow] duration-200",
+          "relative w-full overflow-hidden rounded-lg transition-[transform,opacity,box-shadow] duration-300",
           aspectClass,
           "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
           isSelected &&
@@ -124,7 +124,7 @@ export function QueuedFileThumbnail({
             !isSkipped &&
             !disabled && [
               "hover:ring-muted-foreground/30 hover:ring-offset-background hover:ring-2 hover:ring-offset-2",
-              "hover:scale-[1.02]",
+              "hover:scale-105",
             ],
           isSkipped && "opacity-40",
           disabled && "cursor-not-allowed opacity-50"
