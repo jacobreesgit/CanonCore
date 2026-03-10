@@ -37,17 +37,10 @@ import {
   faArrowRight,
 } from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/lib/utils";
-import { MENU_ITEM_CLASSES } from "@/components/items/item-context-menu";
-
-/** Destructive menu item styling. */
-const DELETE_ITEM_CLASSES = cn(
-  "gap-2 rounded-lg px-3 py-2",
-  "text-sm",
-  "text-red-400",
-  "hover:bg-red-500/10 hover:text-red-300",
-  "focus:bg-red-500/10 focus:text-red-300",
-  "cursor-pointer"
-);
+import {
+  MENU_ITEM_CLASSES,
+  DELETE_ITEM_CLASSES,
+} from "@/components/items/item-context-menu";
 
 /** Action callbacks for playlist card context menus. */
 export interface PlaylistMenuActions {

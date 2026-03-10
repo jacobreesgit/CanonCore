@@ -49,9 +49,9 @@ import { toast } from "sonner";
 import type { ItemVisibilityOptions } from "@/lib/types";
 import type { QueueTrack } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
-import { MENU_ITEM_CLASSES } from "./menu-styles";
+import { MENU_ITEM_CLASSES, DELETE_ITEM_CLASSES } from "./menu-styles";
 
-export { MENU_ITEM_CLASSES };
+export { MENU_ITEM_CLASSES, DELETE_ITEM_CLASSES };
 
 const AddToPlaylistDialog = dynamic(
   () =>
@@ -116,16 +116,6 @@ export interface ItemMenuActions {
   /** Callback to open Move To dialog. */
   onMoveToOpen?: () => void;
 }
-
-/** Destructive (delete) menu item styling. */
-const DELETE_ITEM_CLASSES = cn(
-  "gap-2 rounded-lg px-3 py-2",
-  "text-sm",
-  "text-red-400",
-  "hover:bg-red-500/10 hover:text-red-300",
-  "focus:bg-red-500/10 focus:text-red-300",
-  "cursor-pointer"
-);
 
 /**
  * Renders menu items for item actions.
