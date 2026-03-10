@@ -285,9 +285,10 @@ export function SignUpForm() {
               data-testid="sign-up-submit-button"
               className="w-full"
               size="lg"
-              disabled={loading}
+              loading={loading}
+              loadingText="Creating account..."
             >
-              {loading ? "Creating account..." : "Create account"}
+              Create account
             </Button>
           </form>
 

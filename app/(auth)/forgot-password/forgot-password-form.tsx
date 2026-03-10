@@ -153,9 +153,10 @@ export function ForgotPasswordForm() {
                   data-testid="forgot-password-submit-button"
                   className="w-full"
                   size="lg"
-                  disabled={loading}
+                  loading={loading}
+                  loadingText="Sending..."
                 >
-                  {loading ? "Sending..." : "Send reset link"}
+                  Send reset link
                 </Button>
 
                 <Button asChild variant="ghost" className="w-full">

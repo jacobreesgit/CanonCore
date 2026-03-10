@@ -166,10 +166,11 @@ export function SignInForm() {
               type="submit"
               className="w-full"
               size="lg"
-              disabled={loading}
+              loading={loading}
+              loadingText="Signing in..."
               data-testid="sign-in-submit-button"
             >
-              {loading ? "Signing in..." : "Sign in"}
+              Sign in
             </Button>
           </form>
 

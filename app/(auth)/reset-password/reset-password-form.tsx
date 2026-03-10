@@ -192,9 +192,10 @@ function ResetPasswordFormInner() {
                   data-testid="reset-password-submit-button"
                   className="w-full"
                   size="lg"
-                  disabled={loading}
+                  loading={loading}
+                  loadingText="Resetting..."
                 >
-                  {loading ? "Resetting..." : "Reset password"}
+                  Reset password
                 </Button>
               </form>
             </>
