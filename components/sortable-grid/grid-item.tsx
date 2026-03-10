@@ -338,7 +338,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
               "flex items-center gap-1",
               "rounded-full px-1.5 py-0.5",
               "bg-black/50 backdrop-blur-sm",
-              "text-[10px] font-medium text-white/70"
+              "text-xs font-medium text-white/70"
             )}
             aria-label={isOwn ? "Your item" : "In your library"}
           >
