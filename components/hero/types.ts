@@ -40,6 +40,10 @@ export interface HeroSlide {
   attribution?: string;
   /** Link destination for the attribution text. */
   attributionHref?: string;
+  /** Primary file duration in ms (for fallback when no TMDB runtime). */
+  durationMs?: number | null;
+  /** Primary file height in pixels for resolution label. */
+  height?: number | null;
   /** Sync status for displaying indicator (e.g., SYNCING, PENDING, ERROR, SYNCED). */
   syncStatus?: SyncStatus;
   /** Google Drive folder ID — shows cloud icon when linked and synced. */

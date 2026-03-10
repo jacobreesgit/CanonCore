@@ -39,7 +39,9 @@ test.describe("Cinematic Hero", () => {
 
     // Assert the page wrapper has inline CSS custom properties from colour theming.
     // HeroContentLayout applies --dark-* shades as inline styles when dominantColour is set.
-    const wrapper = page.locator("[style*='--dark-']");
+    // Use [data-content-layout] to target the wrapper specifically — [style*='--dark-']
+    // alone can match gradient overlays that reference --dark-900 via color-mix().
+    const wrapper = page.locator("[data-content-layout][style*='--dark-']");
     await expect(wrapper.first()).toBeVisible();
 
     // Verify key shade properties are present in the style attribute
@@ -78,9 +80,8 @@ test.describe("Cinematic Hero", () => {
     await playlist.expectDetailHeroVisible();
 
     // Assert the page wrapper has inline CSS custom properties from colour theming.
-    // Playlist detail resolves colour from playlist.dominantColour -> first item fallback.
-    // The TMDB item's dominantColour should propagate via the first-item fallback.
-    const wrapper = page.locator("[style*='--dark-']");
+    // Use [data-content-layout] to target the wrapper specifically.
+    const wrapper = page.locator("[data-content-layout][style*='--dark-']");
     await expect(wrapper.first()).toBeVisible();
 
     // Verify key shade properties are present in the style attribute

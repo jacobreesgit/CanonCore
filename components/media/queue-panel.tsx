@@ -57,6 +57,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  MobileBottomSheet,
+  MobileBottomSheetHeader,
+  MobileBottomSheetTitle,
+  MobileBottomSheetContent,
+} from "@/components/mobile/mobile-bottom-sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 interface QueuePanelProps {
@@ -67,6 +74,7 @@ interface QueuePanelProps {
 
 export function QueuePanel({ open, onOpenChange, container }: QueuePanelProps) {
   const dispatch = useAppDispatch();
+  const isMobile = useIsMobile();
   const currentTrack = useAppSelector(selectCurrentTrack);
   const paused = useMediaState("paused");
   const queue = useAppSelector(selectQueue);
@@ -117,14 +125,129 @@ export function QueuePanel({ open, onOpenChange, container }: QueuePanelProps) {
     [dispatch]
   );
 
+  const headerAction =
+    queue.length > 0 ? (
+      <button
+        onClick={handleClear}
+        className="text-xs font-medium text-white/60 transition-colors hover:text-white/80"
+        aria-label="Clear queue"
+      >
+        Clear
+      </button>
+    ) : null;
+
+  const queueContent = (
+    <div className="flex flex-1 flex-col gap-5 overflow-y-auto">
+      {/* ── Now Playing ──────────────────────────────────────── */}
+      {currentTrack && (
+        <div>
+          <p className="mb-3 text-xs font-medium tracking-wider text-white/60 uppercase">
+            Now Playing
+          </p>
+          <NowPlayingCard track={currentTrack} paused={paused} />
+        </div>
+      )}
+
+      {/* ── Divider ──────────────────────────────────────────── */}
+      {currentTrack && upNext.length > 0 && (
+        <div className="h-px bg-gradient-to-r from-white/[0.06] via-white/[0.04] to-transparent" />
+      )}
+
+      {/* ── Up Next ──────────────────────────────────────────── */}
+      {upNext.length > 0 && (
+        <div>
+          <p className="mb-3 text-xs font-medium tracking-wider text-white/60 uppercase">
+            Up Next
+          </p>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            modifiers={[restrictToVerticalAxis]}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={upNext.map((_, i) => queueIndex + 1 + i)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-0.5">
+                {upNext.map((track, i) => {
+                  const absoluteIndex = queueIndex + 1 + i;
+                  return (
+                    <SortableQueueTrackItem
+                      key={`${track.fileId}-${absoluteIndex}`}
+                      id={absoluteIndex}
+                      track={track}
+                      index={i + 1}
+                      onPlay={() => handlePlayIndex(absoluteIndex)}
+                      onRemove={() => handleRemove(absoluteIndex)}
+                    />
+                  );
+                })}
+              </div>
+            </SortableContext>
+          </DndContext>
+        </div>
+      )}
+
+      {/* ── Empty state ──────────────────────────────────────── */}
+      {queue.length === 0 && !currentTrack && (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-white/[0.04]">
+            <FontAwesomeIcon icon={faMusic} className="size-6 text-white/20" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-medium text-white/60">Queue is empty</p>
+            <p className="mt-1 text-xs text-white/50">
+              Play something to get started
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // Mobile — bottom sheet
+  if (isMobile) {
+    return (
+      <MobileBottomSheet
+        open={open}
+        onOpenChange={onOpenChange}
+        snapPoints={[0.85]}
+        swipeable
+        title="Queue"
+        description="Playback queue showing current and upcoming tracks"
+        className="glass-panel-solid z-[80] border-t border-white/[0.06]"
+        overlayClassName="z-[80]"
+        data-testid="queue-panel"
+      >
+        <MobileBottomSheetHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <MobileBottomSheetTitle className="text-sm font-semibold text-white">
+                Queue
+              </MobileBottomSheetTitle>
+              {queue.length > 0 && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-xs font-medium text-white/60 tabular-nums">
+                  {queue.length}
+                </span>
+              )}
+            </div>
+            {headerAction}
+          </div>
+        </MobileBottomSheetHeader>
+        <MobileBottomSheetContent>{queueContent}</MobileBottomSheetContent>
+      </MobileBottomSheet>
+    );
+  }
+
+  // Desktop — side sheet
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-80 border-l-white/[0.06] bg-[#0a0a0a]/80 backdrop-blur-2xl sm:w-96"
+        className="glass-panel w-80 border-l-white/[0.06] sm:w-96"
         container={container}
       >
-        {/* ── Header ───────────────────────────────────────────────── */}
         <SheetHeader className="px-5 pt-5 pb-0">
           <SheetTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -135,93 +258,13 @@ export function QueuePanel({ open, onOpenChange, container }: QueuePanelProps) {
                 </span>
               )}
             </div>
-            {queue.length > 0 && (
-              <button
-                onClick={handleClear}
-                className="text-xs font-medium text-white/60 transition-colors hover:text-white/80"
-                aria-label="Clear queue"
-              >
-                Clear
-              </button>
-            )}
+            {headerAction}
           </SheetTitle>
           <SheetDescription className="sr-only">
             Playback queue showing current and upcoming tracks
           </SheetDescription>
         </SheetHeader>
-
-        <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-5 pt-5 pb-6">
-          {/* ── Now Playing ──────────────────────────────────────── */}
-          {currentTrack && (
-            <div>
-              <p className="mb-3 text-xs font-medium tracking-wider text-white/60 uppercase">
-                Now Playing
-              </p>
-              <NowPlayingCard track={currentTrack} paused={paused} />
-            </div>
-          )}
-
-          {/* ── Divider ──────────────────────────────────────────── */}
-          {currentTrack && upNext.length > 0 && (
-            <div className="h-px bg-gradient-to-r from-white/[0.06] via-white/[0.04] to-transparent" />
-          )}
-
-          {/* ── Up Next ──────────────────────────────────────────── */}
-          {upNext.length > 0 && (
-            <div>
-              <p className="mb-3 text-xs font-medium tracking-wider text-white/60 uppercase">
-                Up Next
-              </p>
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                modifiers={[restrictToVerticalAxis]}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={upNext.map((_, i) => queueIndex + 1 + i)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-0.5">
-                    {upNext.map((track, i) => {
-                      const absoluteIndex = queueIndex + 1 + i;
-                      return (
-                        <SortableQueueTrackItem
-                          key={`${track.fileId}-${absoluteIndex}`}
-                          id={absoluteIndex}
-                          track={track}
-                          index={i + 1}
-                          onPlay={() => handlePlayIndex(absoluteIndex)}
-                          onRemove={() => handleRemove(absoluteIndex)}
-                        />
-                      );
-                    })}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            </div>
-          )}
-
-          {/* ── Empty state ──────────────────────────────────────── */}
-          {queue.length === 0 && !currentTrack && (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16">
-              <div className="flex size-14 items-center justify-center rounded-2xl bg-white/[0.04]">
-                <FontAwesomeIcon
-                  icon={faMusic}
-                  className="size-6 text-white/20"
-                />
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-medium text-white/60">
-                  Queue is empty
-                </p>
-                <p className="mt-1 text-xs text-white/50">
-                  Play something to get started
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
+        <div className="px-5 pt-5 pb-6">{queueContent}</div>
       </SheetContent>
     </Sheet>
   );

@@ -10,12 +10,12 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCopy, faUserXmark } from "@fortawesome/free-solid-svg-icons";
+import { faUserXmark } from "@fortawesome/free-solid-svg-icons";
 import { emptySubscribe } from "@/lib/empty-subscribe";
 import { useForkDialog } from "@/hooks/use-fork-dialog";
 import { CinematicHero, type HeroSlide } from "@/components/hero";
 import { HeroButton } from "@/components/items/hero-button";
-import { PlaylistButton } from "@/components/items/playlist-button";
+import { ViewerDetailSettingsMenu } from "@/components/items/viewer-detail-settings-menu";
 import { PlaylistGridItem } from "@/components/playlists/playlist-grid-item";
 import { PlaylistContextMenu } from "@/components/playlists/playlist-context-menu";
 import { GridItem } from "@/components/sortable-grid/grid-item";
@@ -378,6 +378,8 @@ export function ExploreClient({
         const item = featuredItems.find((i) => i.id === slide.id);
         if (!item) return null;
 
+        const isOwnItem = item.ownerUserId === currentUser?.id;
+
         return (
           <>
             {/* View Item CTA */}
@@ -390,35 +392,18 @@ export function ExploreClient({
               </HeroButton>
             )}
 
-            {/* Fork / Sign in */}
-            {item.ownerUserId !== currentUser?.id && (
-              <>
-                {currentUser ? (
-                  <HeroButton
-                    data-testid="hero-fork-button"
-                    onClick={() => handleForkClick(slide.id)}
-                  >
-                    <FontAwesomeIcon
-                      icon={faCopy}
-                      className="size-4"
-                      aria-hidden="true"
-                    />
-                    Fork
-                  </HeroButton>
-                ) : (
-                  <HeroButton onClick={() => router.push("/sign-in")}>
-                    <FontAwesomeIcon
-                      icon={faCopy}
-                      className="size-4"
-                      aria-hidden="true"
-                    />
-                    Sign in to Fork
-                  </HeroButton>
-                )}
-              </>
+            {/* Settings gear for non-owner items */}
+            {!isOwnItem && (
+              <ViewerDetailSettingsMenu
+                itemId={item.id}
+                itemName={item.name}
+                onFork={
+                  currentUser ? () => handleForkClick(slide.id) : undefined
+                }
+                showAddToPlaylist={!!currentUser}
+                isGuest={!currentUser}
+              />
             )}
-
-            <PlaylistButton itemId={item.id} />
           </>
         );
       }}

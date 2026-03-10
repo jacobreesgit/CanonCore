@@ -7,6 +7,7 @@
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { ErrorBoundary } from "@/components/providers/error-boundary";
+import { ScrollToTop } from "@/components/scroll-to-top";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { MobileNavProvider } from "@/components/mobile";
 import { auth, getExtendedSidebarUser } from "@/lib/auth";
@@ -72,6 +73,7 @@ export default async function PublicLayout({
           tabIndex={-1}
           className="@container/main flex min-h-full flex-col overflow-y-auto overscroll-none pb-16 outline-none lg:pb-0"
         >
+          <ScrollToTop />
           <ErrorBoundary>{children}</ErrorBoundary>
         </main>
       </SidebarInset>

@@ -3,8 +3,8 @@
  * Shows full editing for owners, read-only view for visitors.
  * Features cinematic hero section with poster grid.
  *
- * Renders a fast shell (header + skeleton) immediately, then streams
- * heavy content (items, playlists, shelves) via Suspense.
+ * All data is fetched at the page level so the previous page stays
+ * visible during client-side navigation — no skeleton flash.
  */
 
 import { Suspense } from "react";
@@ -45,7 +45,6 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { username } = await params;
 
-  // Check auth to determine ownership (mirrors page component logic)
   const session = await auth();
   const sessionUsername = session?.user?.username;
   const isOwnerByUsername =
@@ -56,9 +55,7 @@ export async function generateMetadata({
     : await getPublicProfile(username);
 
   if (!profile) {
-    return {
-      title: "Profile Not Found",
-    };
+    return { title: "Profile Not Found" };
   }
 
   const displayName = profile.name ?? `@${profile.username}`;
@@ -76,105 +73,8 @@ export async function generateMetadata({
 }
 
 /**
- * Async server component that fetches all heavy profile data.
- * Rendered inside a Suspense boundary so the page shell streams first.
- */
-async function ProfileContent({
-  profileId,
-  currentUserId,
-  isOwner,
-  profile,
-  searchParams,
-}: {
-  profileId: string;
-  currentUserId: string | null;
-  isOwner: boolean;
-  profile: {
-    id: string;
-    username: string;
-    name: string | null;
-    hasImage: boolean;
-    hasHeroImage: boolean;
-    dominantColour: string | null;
-    bio: string | null;
-  };
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  if (isOwner) {
-    // Owner path — unpaginated (needs all items for tree/drag-drop)
-    const [profileData, driveConnection, progress, playlistsResult] =
-      await Promise.all([
-        getItemsForProfile(profileId, currentUserId),
-        getCachedGoogleDriveConnection(),
-        getLibraryProgress(),
-        getUserPlaylists(),
-      ]);
-
-    return (
-      <ProfilePageContent
-        profile={{
-          id: profileData.profile.id,
-          username: profileData.profile.username,
-          name: profileData.profile.name,
-          hasImage: profileData.profile.hasImage,
-          hasHeroImage: profileData.profile.hasHeroImage,
-          dominantColour: profileData.profile.dominantColour,
-          bio: profileData.profile.bio,
-        }}
-        items={profileData.items}
-        isOwner={true}
-        hasDriveConnection={
-          driveConnection !== null && !driveConnection.needsReauth
-        }
-        libraryProgress={progress}
-        ownerPlaylists={
-          playlistsResult?.success ? playlistsResult.data : undefined
-        }
-        shelves={
-          <Suspense fallback={<ShelfSkeleton />}>
-            <HomeShelves />
-          </Suspense>
-        }
-      />
-    );
-  }
-
-  // Viewer path — paginated with search
-  const { q } = await profileSearchParamsCache.parse(searchParams);
-  const search = q || undefined;
-
-  const [viewerProgress, publicItems, publicPlaylists] = await Promise.all([
-    getPublicLibraryProgress(profileId),
-    getPublicItemsForUser({ userId: profileId, search, currentUserId }),
-    getPublicPlaylistsForUser({ userId: profileId, search }),
-  ]);
-
-  return (
-    <ProfilePageContent
-      profile={{
-        id: profile.id,
-        username: profile.username,
-        name: profile.name,
-        hasImage: profile.hasImage,
-        hasHeroImage: profile.hasHeroImage,
-        dominantColour: profile.dominantColour,
-        bio: profile.bio,
-      }}
-      items={[]}
-      isOwner={false}
-      viewerProgress={viewerProgress}
-      initialViewerItems={publicItems}
-      initialViewerPlaylists={publicPlaylists}
-      initialSearch={q}
-      publicPlaylists={publicPlaylists.items}
-      currentUserId={currentUserId}
-    />
-  );
-}
-
-/**
  * Unified profile page server component.
- * Renders a fast shell (header + skeleton), then streams content via Suspense.
+ * Fetches all data at the page level — no internal Suspense for main content.
  */
 export default async function ProfilePage({ params, searchParams }: PageProps) {
   const { username } = await params;
@@ -195,7 +95,6 @@ export default async function ProfilePage({ params, searchParams }: PageProps) {
     );
   }
 
-  // Parallelize rate limit + auth check
   const [rateLimitResult, session] = await Promise.all([
     checkRateLimit("publicProfile"),
     auth(),
@@ -210,14 +109,11 @@ export default async function ProfilePage({ params, searchParams }: PageProps) {
       </div>
     );
   }
-  const sessionUsername = session?.user?.username;
 
-  // Check if this is the owner viewing their own profile (case-insensitive)
+  const sessionUsername = session?.user?.username;
   const isOwnerByUsername =
     sessionUsername && sessionUsername.toLowerCase() === username.toLowerCase();
 
-  // For owners, we fetch profile directly without requiring isPublic
-  // For visitors, we use getPublicProfile which requires isPublic: true
   const profile = isOwnerByUsername
     ? await getProfileByIdOrUsername(username)
     : await getPublicProfile(username);
@@ -225,7 +121,6 @@ export default async function ProfilePage({ params, searchParams }: PageProps) {
   const currentUserId = session?.user?.id ?? null;
 
   if (!profile) {
-    // Lightweight ownership check: show hint if owner views their own private profile
     if (currentUserId) {
       const privateProfile = await prisma.user.findFirst({
         where: { username: { equals: username, mode: "insensitive" } },
@@ -249,6 +144,95 @@ export default async function ProfilePage({ params, searchParams }: PageProps) {
     : null;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://canoncore.com";
+
+  if (isOwner) {
+    // ── Owner path ──────────────────────────────────────────────────────
+    const [profileData, progress, playlistsResult] = await Promise.all([
+      getItemsForProfile(profile.id, currentUserId),
+      getLibraryProgress(),
+      getUserPlaylists(),
+    ]);
+
+    return (
+      <>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Person",
+              name: profile.name ?? profile.username,
+              url: `${appUrl}/u/${profile.username}`,
+            }).replace(/</g, "\\u003c"),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(
+              buildBreadcrumbJsonLd([
+                { name: "Home", url: appUrl },
+                {
+                  name: profile.name ?? `@${profile.username}`,
+                  url: `${appUrl}/u/${profile.username}`,
+                },
+              ])
+            ).replace(/</g, "\\u003c"),
+          }}
+        />
+        <Suspense fallback={null}>
+          <OAuthToast />
+        </Suspense>
+        <SiteHeader
+          title="My Items"
+          titleHref={`/u/${profile.username}`}
+          emailUnverified={session?.user ? !session.user.emailVerified : false}
+          driveNeedsReauth={driveConnection?.needsReauth ?? false}
+        />
+        <div className="bg-background text-foreground -mt-(--header-height) flex flex-1 flex-col">
+          <ProfilePageContent
+            profile={{
+              id: profileData.profile.id,
+              username: profileData.profile.username,
+              name: profileData.profile.name,
+              hasImage: profileData.profile.hasImage,
+              hasHeroImage: profileData.profile.hasHeroImage,
+              dominantColour: profileData.profile.dominantColour,
+              bio: profileData.profile.bio,
+            }}
+            items={profileData.items}
+            isOwner={true}
+            hasDriveConnection={
+              driveConnection !== null && !driveConnection.needsReauth
+            }
+            libraryProgress={progress}
+            ownerPlaylists={
+              playlistsResult?.success ? playlistsResult.data : undefined
+            }
+            shelves={
+              <Suspense fallback={<ShelfSkeleton />}>
+                <HomeShelves />
+              </Suspense>
+            }
+          />
+        </div>
+      </>
+    );
+  }
+
+  // ── Viewer path ─────────────────────────────────────────────────────
+  const { q } = await profileSearchParamsCache.parse(searchParams);
+  const search = q || undefined;
+
+  const [viewerProgress, publicItems, publicPlaylists] = await Promise.all([
+    getPublicLibraryProgress(profile.id),
+    getPublicItemsForUser({
+      userId: profile.id,
+      search,
+      currentUserId,
+    }),
+    getPublicPlaylistsForUser({ userId: profile.id, search }),
+  ]);
 
   return (
     <>
@@ -277,35 +261,31 @@ export default async function ProfilePage({ params, searchParams }: PageProps) {
           ).replace(/</g, "\\u003c"),
         }}
       />
-      {isOwner && (
-        <Suspense fallback={null}>
-          <OAuthToast />
-        </Suspense>
-      )}
       <SiteHeader
-        title={isOwner ? "My Items" : `@${profile.username}`}
+        title={`@${profile.username}`}
         titleHref={`/u/${profile.username}`}
         emailUnverified={session?.user ? !session.user.emailVerified : false}
-        driveNeedsReauth={driveConnection?.needsReauth ?? false}
       />
       <div className="bg-background text-foreground -mt-(--header-height) flex flex-1 flex-col">
-        <Suspense fallback={<ProfileContentSkeleton />}>
-          <ProfileContent
-            profileId={profile.id}
-            currentUserId={currentUserId}
-            isOwner={isOwner}
-            profile={{
-              id: profile.id,
-              username: profile.username!,
-              name: profile.name,
-              hasImage: profile.hasImage,
-              hasHeroImage: profile.hasHeroImage,
-              dominantColour: profile.dominantColour,
-              bio: profile.bio,
-            }}
-            searchParams={searchParams}
-          />
-        </Suspense>
+        <ProfilePageContent
+          profile={{
+            id: profile.id,
+            username: profile.username!,
+            name: profile.name,
+            hasImage: profile.hasImage,
+            hasHeroImage: profile.hasHeroImage,
+            dominantColour: profile.dominantColour,
+            bio: profile.bio,
+          }}
+          items={[]}
+          isOwner={false}
+          viewerProgress={viewerProgress}
+          initialViewerItems={publicItems}
+          initialViewerPlaylists={publicPlaylists}
+          initialSearch={q}
+          publicPlaylists={publicPlaylists.items}
+          currentUserId={currentUserId}
+        />
       </div>
     </>
   );

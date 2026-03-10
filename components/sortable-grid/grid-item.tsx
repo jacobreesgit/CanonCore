@@ -25,6 +25,7 @@ import { UserThumbnail } from "@/components/search/user-thumbnail";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { getTmdbPosterUrl } from "@/lib/tmdb-image-utils";
 import type { SyncStatus } from "@/lib/types";
+import { MediaBadges } from "@/components/ui/media-badges";
 import type { ItemMenuActions } from "@/components/items/item-context-menu";
 import { ItemMoreButton } from "@/components/items/item-more-button";
 import {
@@ -82,6 +83,10 @@ export interface GridItemProps extends Omit<
   isForked?: boolean;
   /** Google Drive folder ID — shows cloud icon when linked. */
   driveFileId?: string | null;
+  /** Primary media file duration in ms (for badge display). */
+  primaryDurationMs?: number | null;
+  /** Primary media file height in pixels (for resolution badge). */
+  primaryHeight?: number | null;
   /** Props for the more options dropdown menu (view mode only). */
   moreMenuProps?: ItemMenuActions;
   /** Props for the viewer more options dropdown (non-owner items). */
@@ -119,6 +124,8 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
       isOwn,
       isForked,
       driveFileId,
+      primaryDurationMs,
+      primaryHeight,
       moreMenuProps,
       viewerMenuProps,
       ...props
@@ -386,6 +393,11 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
                 syncStatus={syncStatus}
                 driveFileId={driveFileId}
                 className="flex-shrink-0"
+              />
+              <MediaBadges
+                durationMs={primaryDurationMs}
+                height={primaryHeight}
+                className="ml-auto flex-shrink-0"
               />
             </div>
           </div>

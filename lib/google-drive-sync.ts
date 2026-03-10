@@ -724,6 +724,15 @@ async function syncItemFile(
   const newMimeType = file.mimeType || "application/octet-stream";
   const newSize = file.size ? BigInt(file.size) : null;
 
+  // Extract media dimensions from Drive metadata
+  const newDurationMs = file.videoMediaMetadata?.durationMillis
+    ? BigInt(file.videoMediaMetadata.durationMillis)
+    : null;
+  const newWidth =
+    file.videoMediaMetadata?.width ?? file.imageMediaMetadata?.width ?? null;
+  const newHeight =
+    file.videoMediaMetadata?.height ?? file.imageMediaMetadata?.height ?? null;
+
   // Check if file already exists and compare values
   const existing = await prisma.itemFile.findFirst({
     where: { itemId, driveFileId: file.id! },
@@ -732,6 +741,9 @@ async function syncItemFile(
       filename: true,
       mimeType: true,
       size: true,
+      durationMs: true,
+      width: true,
+      height: true,
     },
   });
 
@@ -745,6 +757,9 @@ async function syncItemFile(
         fileType,
         mimeType: newMimeType,
         size: newSize,
+        durationMs: newDurationMs,
+        width: newWidth,
+        height: newHeight,
         syncStatus: SyncStatus.SYNCED,
       },
     });
@@ -755,7 +770,10 @@ async function syncItemFile(
   const hadChanges =
     existing.filename !== newFilename ||
     existing.mimeType !== newMimeType ||
-    existing.size !== newSize;
+    existing.size !== newSize ||
+    existing.durationMs !== newDurationMs ||
+    existing.width !== newWidth ||
+    existing.height !== newHeight;
 
   if (hadChanges) {
     await prisma.itemFile.update({
@@ -764,6 +782,9 @@ async function syncItemFile(
         filename: newFilename,
         mimeType: newMimeType,
         size: newSize,
+        durationMs: newDurationMs,
+        width: newWidth,
+        height: newHeight,
         syncStatus: SyncStatus.SYNCED,
         syncError: null,
       },
@@ -815,7 +836,7 @@ async function incrementalSync(
           includeItemsFromAllDrives: true,
           supportsAllDrives: true,
           fields:
-            "newStartPageToken, nextPageToken, changes(fileId, removed, file(id, name, mimeType, modifiedTime, size, thumbnailLink, parents, trashed))",
+            "newStartPageToken, nextPageToken, changes(fileId, removed, file(id, name, mimeType, modifiedTime, size, thumbnailLink, parents, trashed, videoMediaMetadata, imageMediaMetadata))",
         })
       );
 

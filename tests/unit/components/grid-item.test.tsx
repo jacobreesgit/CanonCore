@@ -254,6 +254,51 @@ describe("GridItem", () => {
     });
   });
 
+  describe("media badges", () => {
+    it("should show duration badge when primaryDurationMs provided", () => {
+      render(
+        <GridItem
+          id="1"
+          name="Test"
+          primaryDurationMs={5400000}
+          primaryHeight={null}
+        />
+      );
+      expect(screen.getByText("1h 30m")).toBeInTheDocument();
+    });
+
+    it("should show resolution badge when primaryHeight provided", () => {
+      render(
+        <GridItem
+          id="1"
+          name="Test"
+          primaryDurationMs={null}
+          primaryHeight={1080}
+        />
+      );
+      expect(screen.getByText("1080p")).toBeInTheDocument();
+    });
+
+    it("should show both badges when both provided", () => {
+      render(
+        <GridItem
+          id="1"
+          name="Test"
+          primaryDurationMs={7200000}
+          primaryHeight={2160}
+        />
+      );
+      expect(screen.getByText("2h 0m")).toBeInTheDocument();
+      expect(screen.getByText("4K")).toBeInTheDocument();
+    });
+
+    it("should not show badges when neither provided", () => {
+      render(<GridItem id="1" name="Test" />);
+      expect(screen.queryByText(/\d+h/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/\d+p/)).not.toBeInTheDocument();
+    });
+  });
+
   describe("drag states", () => {
     it("should apply isDragging styles", () => {
       const { container } = render(<GridItem id="1" name="Test" isDragging />);

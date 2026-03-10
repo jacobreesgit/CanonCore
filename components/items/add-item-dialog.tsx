@@ -1329,6 +1329,17 @@ export function AddItemDialog({
         if (!wizardFooterProps) return null;
         return (
           <DialogFooter>
+            {wizardFooterProps.onSkipCurrent && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={wizardFooterProps.onSkipCurrent}
+                disabled={wizardFooterProps.isDisabled}
+                data-testid="tmdb-wizard-skip"
+              >
+                Skip
+              </Button>
+            )}
             {wizardFooterProps.onSkipAll && (
               <Button
                 type="button"

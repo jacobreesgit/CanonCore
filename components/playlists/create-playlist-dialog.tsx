@@ -33,9 +33,8 @@ import {
   type PickerItem,
 } from "@/components/items/item-tree-picker";
 import { cn } from "@/lib/utils";
-import { createPlaylist } from "@/lib/playlist-actions";
 import { getAllItems } from "@/lib/item-actions";
-import { toast } from "sonner";
+import { useCreatePlaylistForm } from "@/hooks/use-create-playlist-form";
 
 interface CreatePlaylistDialogProps {
   /** Whether the dialog is open. */
@@ -59,45 +58,21 @@ export function CreatePlaylistDialog({
   onOpenChange,
   onCreated,
 }: CreatePlaylistDialogProps) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [visibility, setVisibility] = useState<
-    "private" | "unlisted" | "public"
-  >("private");
-  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(
-    new Set()
-  );
   const [pickerItems, setPickerItems] = useState<PickerItem[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const resetForm = useCallback(() => {
-    setName("");
-    setDescription("");
-    setVisibility("private");
-    setSelectedItemIds(new Set());
-    setPickerItems([]);
-    setError(null);
-    setIsSubmitting(false);
-  }, []);
+  // Close handler passed to hook — called after successful creation
+  const handleClose = useCallback(() => {
+    onOpenChange(false);
+  }, [onOpenChange]);
 
-  const handleItemToggle = useCallback((id: string) => {
-    setSelectedItemIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
+  const form = useCreatePlaylistForm(onCreated, handleClose);
 
-  // Set loading synchronously during render (avoids set-state-in-effect lint rule)
+  // Dialog reset pattern — synchronous reset when dialog opens
   const [prevOpen, setPrevOpen] = useState(false);
   if (open && !prevOpen) {
     setLoadingItems(true);
+    form.reset();
   }
   if (open !== prevOpen) {
     setPrevOpen(open);
@@ -134,63 +109,6 @@ export function CreatePlaylistDialog({
     };
   }, [open]);
 
-  const handleOpenChange = useCallback(
-    (nextOpen: boolean) => {
-      if (!nextOpen) {
-        resetForm();
-      }
-      onOpenChange(nextOpen);
-    },
-    [onOpenChange, resetForm]
-  );
-
-  const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-
-      const trimmed = name.trim();
-      if (!trimmed) {
-        setError("Name is required");
-        return;
-      }
-
-      setError(null);
-      setIsSubmitting(true);
-
-      try {
-        const result = await createPlaylist(trimmed, {
-          description: description.trim() || undefined,
-          visibility,
-          itemIds:
-            selectedItemIds.size > 0 ? Array.from(selectedItemIds) : undefined,
-        });
-
-        if (result.error) {
-          setError(result.error);
-          setIsSubmitting(false);
-          return;
-        }
-
-        if (result.success && result.data) {
-          toast.success("Playlist created");
-          onCreated?.(result.data);
-          handleOpenChange(false);
-        }
-      } catch {
-        setError("Something went wrong");
-        setIsSubmitting(false);
-      }
-    },
-    [
-      name,
-      description,
-      visibility,
-      selectedItemIds,
-      onCreated,
-      handleOpenChange,
-    ]
-  );
-
   const header = (
     <DialogHeader>
       <div className="flex items-center gap-3">
@@ -220,8 +138,8 @@ export function CreatePlaylistDialog({
     <DialogFooter>
       <Button
         variant="outline"
-        onClick={() => handleOpenChange(false)}
-        disabled={isSubmitting}
+        onClick={() => onOpenChange(false)}
+        disabled={form.isCreating}
         data-testid="create-playlist-cancel"
       >
         Cancel
@@ -229,10 +147,10 @@ export function CreatePlaylistDialog({
       <Button
         type="submit"
         form="create-playlist-form"
-        disabled={isSubmitting || !name.trim()}
+        disabled={form.isCreating || !form.name.trim()}
         data-testid="create-playlist-submit"
       >
-        {isSubmitting ? (
+        {form.isCreating ? (
           <>
             <FontAwesomeIcon
               icon={faSpinner}
@@ -250,7 +168,7 @@ export function CreatePlaylistDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <AnimatedDialogContent
         data-testid="dialog-create-playlist"
         stepKey="create"
@@ -260,7 +178,7 @@ export function CreatePlaylistDialog({
       >
         <form
           id="create-playlist-form"
-          onSubmit={handleSubmit}
+          onSubmit={form.handleSubmit}
           className="space-y-4 py-2"
         >
           <div className="space-y-2">
@@ -268,15 +186,15 @@ export function CreatePlaylistDialog({
             <Input
               id="playlist-name"
               data-testid="create-playlist-name-input"
-              value={name}
+              value={form.name}
               onChange={(e) => {
-                setName(e.target.value);
-                if (error) setError(null);
+                form.setName(e.target.value);
+                if (form.error) form.setError(null);
               }}
               placeholder="My Playlist"
               maxLength={255}
               autoComplete="off"
-              disabled={isSubmitting}
+              disabled={form.isCreating}
             />
           </div>
 
@@ -284,24 +202,24 @@ export function CreatePlaylistDialog({
             <Label htmlFor="playlist-description">Description</Label>
             <Textarea
               id="playlist-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              value={form.description}
+              onChange={(e) => form.setDescription(e.target.value)}
               placeholder="Add a description (optional)"
               maxLength={1000}
               rows={3}
-              disabled={isSubmitting}
+              disabled={form.isCreating}
             />
           </div>
 
           {/* Visibility */}
-          <fieldset className="space-y-2" disabled={isSubmitting}>
+          <fieldset className="space-y-2" disabled={form.isCreating}>
             <Label asChild>
               <legend>Visibility</legend>
             </Label>
             <RadioGroup
-              value={visibility}
+              value={form.visibility}
               onValueChange={(v) =>
-                setVisibility(v as "private" | "unlisted" | "public")
+                form.setVisibility(v as "private" | "unlisted" | "public")
               }
               className="grid gap-2"
             >
@@ -332,7 +250,7 @@ export function CreatePlaylistDialog({
                   className={cn(
                     "flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors",
                     "focus-within:ring-2 focus-within:ring-white/30",
-                    visibility === opt.value
+                    form.visibility === opt.value
                       ? "border-white/30 bg-white/20"
                       : "border-white/10 bg-white/5 hover:bg-white/10"
                   )}
@@ -365,10 +283,10 @@ export function CreatePlaylistDialog({
             ) : pickerItems.length > 0 ? (
               <ItemTreePicker
                 items={pickerItems}
-                selectedIds={selectedItemIds}
-                onToggle={handleItemToggle}
+                selectedIds={form.selectedItemIds}
+                onToggle={form.toggleItemId}
                 multiSelect
-                disabled={isSubmitting}
+                disabled={form.isCreating}
               />
             ) : (
               <p className="text-muted-foreground py-4 text-center text-sm">
@@ -377,13 +295,13 @@ export function CreatePlaylistDialog({
             )}
           </div>
 
-          {error && (
+          {form.error && (
             <p
               className="text-destructive text-sm"
               data-testid="create-playlist-error"
               role="alert"
             >
-              {error}
+              {form.error}
             </p>
           )}
         </form>

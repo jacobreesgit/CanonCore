@@ -51,6 +51,8 @@ const mockItems: ItemWithArtwork[] = [
     tmdbShowProviders: true,
     tmdbShowVideos: true,
     tmdbShowRecommendations: true,
+    primaryDurationMs: null,
+    primaryHeight: null,
   },
   {
     id: "2",
@@ -90,6 +92,8 @@ const mockItems: ItemWithArtwork[] = [
     tmdbShowProviders: true,
     tmdbShowVideos: true,
     tmdbShowRecommendations: true,
+    primaryDurationMs: null,
+    primaryHeight: null,
   },
   {
     id: "3",
@@ -129,6 +133,8 @@ const mockItems: ItemWithArtwork[] = [
     tmdbShowProviders: true,
     tmdbShowVideos: true,
     tmdbShowRecommendations: true,
+    primaryDurationMs: null,
+    primaryHeight: null,
   },
   {
     id: "4",
@@ -168,6 +174,8 @@ const mockItems: ItemWithArtwork[] = [
     tmdbShowProviders: true,
     tmdbShowVideos: true,
     tmdbShowRecommendations: true,
+    primaryDurationMs: null,
+    primaryHeight: null,
   },
 ];
 

@@ -8,15 +8,9 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faImage,
-  faForwardStep,
-  faGlobe,
-} from "@fortawesome/free-solid-svg-icons";
+import { faImage, faGlobe } from "@fortawesome/free-solid-svg-icons";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { getLogoUrl } from "@/lib/tmdb-client";
 import { LogoThumbnail } from "@/components/items/logo-thumbnail";
@@ -37,8 +31,8 @@ interface LogoSelectionStepProps {
   onSelect: (value: string | null, source: ArtworkSelectionSource) => void;
   /** Whether logo selection is skipped */
   isSkipped: boolean;
-  /** Callback when skip state changes */
-  onSkipChange: (skipped: boolean) => void;
+  /** Callback when skip state changes (unused — skip is now in footer) */
+  onSkipChange?: (skipped: boolean) => void;
   /** Whether step is disabled */
   disabled?: boolean;
 }
@@ -64,7 +58,7 @@ export function LogoSelectionStep({
   selectedSource: _selectedSource,
   onSelect,
   isSkipped,
-  onSkipChange,
+  onSkipChange: _onSkipChange,
   disabled = false,
 }: LogoSelectionStepProps) {
   // Responsive limit: 8 on desktop, 9 on mobile
@@ -157,28 +151,6 @@ export function LogoSelectionStep({
       </>
     );
 
-  // Shared skip checkbox — rendered in both tab and non-tab layouts
-  const skipCheckbox = (
-    <div className="flex items-center gap-2 pt-2">
-      <Checkbox
-        id="skip-logo-selection"
-        checked={isSkipped}
-        onCheckedChange={(checked) => onSkipChange(checked === true)}
-        disabled={disabled}
-      />
-      <Label
-        htmlFor="skip-logo-selection"
-        className={cn(
-          "flex cursor-pointer items-center gap-1.5 text-sm",
-          disabled && "cursor-not-allowed opacity-50"
-        )}
-      >
-        <FontAwesomeIcon icon={faForwardStep} className="size-3.5" />
-        Skip logo selection
-      </Label>
-    </div>
-  );
-
   // If there are existing files, show tabs. Otherwise render TMDB grid directly.
   if (hasExistingFiles) {
     return (
@@ -235,17 +207,10 @@ export function LogoSelectionStep({
             </div>
           </TabsContent>
         </Tabs>
-
-        {skipCheckbox}
       </div>
     );
   }
 
-  // No existing files — render TMDB grid with skip checkbox
-  return (
-    <div className="space-y-4">
-      {tmdbGridContent}
-      {skipCheckbox}
-    </div>
-  );
+  // No existing files — render TMDB grid directly
+  return <div className="space-y-4">{tmdbGridContent}</div>;
 }

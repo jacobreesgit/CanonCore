@@ -142,6 +142,8 @@ describe("ItemsView", () => {
     fileCounts: { media: 0, artwork: 0, subtitles: 0 },
     childCount: 0,
     primaryMediaName: null,
+    primaryDurationMs: null,
+    primaryHeight: null,
     mediaIconType: null,
     progress: null,
     tmdbId: null,

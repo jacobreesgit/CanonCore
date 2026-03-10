@@ -103,6 +103,10 @@ export interface TreeItem {
   childCount?: number;
   // Media icon type: 'film' (all video), 'music' (all audio), 'mixed' (both)
   mediaIconType?: "film" | "music" | "mixed" | null;
+  /** Primary media duration in ms (from Google Drive metadata) */
+  primaryDurationMs?: number | null;
+  /** Primary media height in pixels (from Google Drive metadata) */
+  primaryHeight?: number | null;
   /** Progress percentage (0-100) for item and descendants, null if no media */
   progressPercentage?: number | null;
   /** Number of watched (>90% complete) media files (item + descendants) */
@@ -176,6 +180,10 @@ export interface ItemFile {
   isLogo: boolean;
   playbackPosition: number | null;
   playbackDuration: number | null;
+  // Media dimensions (from Google Drive metadata)
+  durationMs: bigint | null;
+  width: number | null;
+  height: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -202,6 +210,10 @@ export interface SerializedItemFile {
   isLogo: boolean;
   playbackPosition: number | null;
   playbackDuration: number | null;
+  // Media dimensions (from Google Drive metadata)
+  durationMs: number | null;
+  width: number | null;
+  height: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -217,6 +229,7 @@ export function serializeItemFile(file: ItemFile): SerializedItemFile {
   return {
     ...file,
     size: file.size !== null ? Number(file.size) : null,
+    durationMs: file.durationMs !== null ? Number(file.durationMs) : null,
   };
 }
 
@@ -250,6 +263,10 @@ export interface ItemWithArtwork extends Item {
   childCount: number;
   /** Primary media filename for "now playing" display */
   primaryMediaName: string | null;
+  /** Primary media duration in milliseconds (from Google Drive metadata) */
+  primaryDurationMs: number | null;
+  /** Primary media height in pixels (from Google Drive metadata) */
+  primaryHeight: number | null;
   /** Media icon type: 'film' (all video), 'music' (all audio), 'mixed' (both) */
   mediaIconType: "film" | "music" | "mixed" | null;
   /** Progress data for item and all descendants (null if no media files) */

@@ -1,11 +1,11 @@
 /**
  * Dialog for editing playlist name, description, visibility, artwork, and sharing.
- * Follows the same patterns as CreatePlaylistDialog and settings-dialog hero upload.
+ * Consumes useEditPlaylistForm hook shared with the mobile sheet.
  */
 
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faSpinner,
@@ -32,12 +32,10 @@ import { Switch } from "@/components/ui/switch";
 import { FileUpload, FileUploadTrigger } from "@/components/diceui/file-upload";
 import { cn } from "@/lib/utils";
 import {
-  updatePlaylist,
-  updatePlaylistArtwork,
-  removePlaylistArtwork,
-  regenerateShareToken,
-} from "@/lib/playlist-actions";
-import { toast } from "sonner";
+  useEditPlaylistForm,
+  type EditPlaylistData,
+  type EditPlaylistResult,
+} from "@/hooks/use-edit-playlist-form";
 
 interface EditPlaylistDialogProps {
   /** Whether the dialog is open. */
@@ -45,24 +43,11 @@ interface EditPlaylistDialogProps {
   /** Callback when dialog open state changes. */
   onOpenChange: (open: boolean) => void;
   /** Current playlist data to populate the form. */
-  playlist: {
-    id: string;
-    name: string;
-    description: string | null;
-    isPublic?: boolean;
-    hasArtwork?: boolean;
-    shareToken?: string | null;
-  };
+  playlist: EditPlaylistData;
   /** Profile username for share link construction. */
   username?: string;
   /** Callback after successful playlist update. */
-  onUpdated?: (data: {
-    name: string;
-    description: string | null;
-    isPublic?: boolean;
-    hasArtwork?: boolean;
-    shareToken?: string | null;
-  }) => void;
+  onUpdated?: (data: EditPlaylistResult) => void;
 }
 
 /**
@@ -76,198 +61,23 @@ export function EditPlaylistDialog({
   username,
   onUpdated,
 }: EditPlaylistDialogProps) {
-  const [name, setName] = useState(playlist.name);
-  const [description, setDescription] = useState(playlist.description ?? "");
-  const [isPublic, setIsPublic] = useState(playlist.isPublic ?? true);
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const handleClose = useCallback(() => {
+    onOpenChange(false);
+  }, [onOpenChange]);
 
-  // Artwork state
-  const [artworkFile, setArtworkFile] = useState<File | null>(null);
-  const [artworkPreview, setArtworkPreview] = useState<string | null>(null);
-  const [removeArt, setRemoveArt] = useState(false);
-
-  // Share token state
-  const [shareToken, setShareToken] = useState(playlist.shareToken ?? null);
-  const [isRegenerating, setIsRegenerating] = useState(false);
-
-  // Cleanup preview URLs
-  useEffect(() => {
-    return () => {
-      if (artworkPreview) URL.revokeObjectURL(artworkPreview);
-    };
-  }, [artworkPreview]);
+  const form = useEditPlaylistForm(playlist, username, onUpdated, handleClose);
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
       if (nextOpen) {
-        // Sync form state from props when dialog opens
-        setName(playlist.name);
-        setDescription(playlist.description ?? "");
-        setIsPublic(playlist.isPublic ?? true);
-        setArtworkFile(null);
-        setArtworkPreview(null);
-        setRemoveArt(false);
-        setShareToken(playlist.shareToken ?? null);
+        form.reset();
       } else {
-        setError(null);
-        setIsSubmitting(false);
+        form.setError(null);
       }
       onOpenChange(nextOpen);
     },
-    [
-      onOpenChange,
-      playlist.name,
-      playlist.description,
-      playlist.isPublic,
-      playlist.shareToken,
-    ]
+    [onOpenChange, form]
   );
-
-  const handleArtworkDrop = useCallback((files: File[]) => {
-    const file = files[0];
-    if (file) {
-      setArtworkFile(file);
-      setRemoveArt(false);
-      setArtworkPreview(URL.createObjectURL(file));
-    }
-  }, []);
-
-  const handleRemoveArtwork = useCallback(() => {
-    setArtworkFile(null);
-    if (artworkPreview) URL.revokeObjectURL(artworkPreview);
-    setArtworkPreview(null);
-    setRemoveArt(true);
-  }, [artworkPreview]);
-
-  const handleShareToggle = useCallback(
-    async (enabled: boolean) => {
-      if (enabled) {
-        // Single call: generates token and returns it (no partial failure)
-        setShareToken("pending");
-        const result = await regenerateShareToken(playlist.id);
-        if (result.success && result.data) {
-          setShareToken(result.data.shareToken);
-        } else {
-          setShareToken(null);
-          toast.error(result.error ?? "Failed to enable sharing");
-        }
-      } else {
-        const result = await updatePlaylist(playlist.id, {
-          enableSharing: false,
-        });
-        if (result.error) {
-          toast.error(result.error);
-        } else {
-          setShareToken(null);
-        }
-      }
-    },
-    [playlist.id]
-  );
-
-  const handleRegenerate = useCallback(async () => {
-    setIsRegenerating(true);
-    const result = await regenerateShareToken(playlist.id);
-    if (result.error) {
-      toast.error(result.error);
-    } else if (result.success && result.data) {
-      setShareToken(result.data.shareToken);
-      toast.success("Link regenerated");
-    }
-    setIsRegenerating(false);
-  }, [playlist.id]);
-
-  const handleCopyShareLink = useCallback(() => {
-    if (!shareToken || shareToken === "pending" || !username) return;
-    const url = `${window.location.origin}/u/${username}/playlists/${playlist.id}?token=${shareToken}`;
-    navigator.clipboard.writeText(url).then(
-      () => toast.success("Link copied to clipboard"),
-      () => toast.error("Failed to copy link")
-    );
-  }, [shareToken, username, playlist.id]);
-
-  const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-
-      const trimmedName = name.trim();
-      if (!trimmedName) {
-        setError("Name is required");
-        return;
-      }
-
-      setError(null);
-      setIsSubmitting(true);
-
-      try {
-        const trimmedDesc = description.trim() || undefined;
-        const result = await updatePlaylist(playlist.id, {
-          name: trimmedName,
-          description: trimmedDesc,
-          isPublic,
-        });
-
-        if (result.error) {
-          setError(result.error);
-          setIsSubmitting(false);
-          return;
-        }
-
-        // Handle artwork changes
-        let hasArtwork = playlist.hasArtwork;
-        if (artworkFile) {
-          const formData = new FormData();
-          formData.append("artwork", artworkFile);
-          const artResult = await updatePlaylistArtwork(playlist.id, formData);
-          if (artResult.error) {
-            toast.error(artResult.error);
-          } else {
-            hasArtwork = true;
-          }
-        } else if (removeArt && playlist.hasArtwork) {
-          const artResult = await removePlaylistArtwork(playlist.id);
-          if (artResult.error) {
-            toast.error(artResult.error);
-          } else {
-            hasArtwork = false;
-          }
-        }
-
-        toast.success("Playlist updated");
-        onUpdated?.({
-          name: trimmedName,
-          description: trimmedDesc ?? null,
-          isPublic,
-          hasArtwork,
-          shareToken,
-        });
-        handleOpenChange(false);
-      } catch {
-        setError("Something went wrong");
-        setIsSubmitting(false);
-      }
-    },
-    [
-      name,
-      description,
-      isPublic,
-      playlist.id,
-      playlist.hasArtwork,
-      artworkFile,
-      removeArt,
-      shareToken,
-      onUpdated,
-      handleOpenChange,
-    ]
-  );
-
-  // Determine artwork preview source
-  const artworkSrc = artworkPreview
-    ? artworkPreview
-    : !removeArt && playlist.hasArtwork
-      ? `/api/playlist/artwork?playlistId=${playlist.id}`
-      : null;
 
   const header = (
     <DialogHeader>
@@ -299,17 +109,17 @@ export function EditPlaylistDialog({
       <Button
         variant="outline"
         onClick={() => handleOpenChange(false)}
-        disabled={isSubmitting}
+        disabled={form.isSubmitting}
       >
         Cancel
       </Button>
       <Button
         type="submit"
         form="edit-playlist-form"
-        disabled={isSubmitting || !name.trim()}
+        disabled={form.isSubmitting || !form.name.trim()}
         data-testid="edit-playlist-submit"
       >
-        {isSubmitting ? (
+        {form.isSubmitting ? (
           <>
             <FontAwesomeIcon
               icon={faSpinner}
@@ -337,16 +147,16 @@ export function EditPlaylistDialog({
       >
         <form
           id="edit-playlist-form"
-          onSubmit={handleSubmit}
+          onSubmit={form.handleSubmit}
           className="space-y-4 py-2"
         >
           {/* Artwork section */}
           <div className="space-y-2">
             <Label>Artwork</Label>
             <FileUpload
-              value={artworkFile ? [artworkFile] : []}
+              value={form.artworkFile ? [form.artworkFile] : []}
               onValueChange={(files) => {
-                if (files.length > 0) handleArtworkDrop(files);
+                if (files.length > 0) form.handleArtworkDrop(files);
               }}
               accept="image/jpeg,image/png,image/webp"
               maxFiles={1}
@@ -358,10 +168,10 @@ export function EditPlaylistDialog({
                   "bg-muted ring-border/20 ring-1"
                 )}
               >
-                {artworkSrc ? (
+                {form.artworkSrc ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={artworkSrc}
+                    src={form.artworkSrc}
                     alt=""
                     width={128}
                     height={128}
@@ -387,14 +197,14 @@ export function EditPlaylistDialog({
                       <FontAwesomeIcon icon={faUpload} className="size-3.5" />
                     </Button>
                   </FileUploadTrigger>
-                  {(artworkSrc || artworkFile) && (
+                  {(form.artworkSrc || form.artworkFile) && (
                     <Button
                       type="button"
                       size="icon"
                       variant="secondary"
                       className="size-7 shadow-md"
                       aria-label="Remove artwork"
-                      onClick={handleRemoveArtwork}
+                      onClick={form.handleRemoveArtwork}
                     >
                       <FontAwesomeIcon icon={faXmark} className="size-3.5" />
                     </Button>
@@ -410,15 +220,15 @@ export function EditPlaylistDialog({
             <Input
               id="edit-playlist-name"
               data-testid="edit-playlist-name-input"
-              value={name}
+              value={form.name}
               onChange={(e) => {
-                setName(e.target.value);
-                if (error) setError(null);
+                form.setName(e.target.value);
+                if (form.error) form.setError(null);
               }}
               placeholder="My Playlist"
               maxLength={255}
               autoComplete="off"
-              disabled={isSubmitting}
+              disabled={form.isSubmitting}
             />
           </div>
 
@@ -428,12 +238,12 @@ export function EditPlaylistDialog({
             <Textarea
               id="edit-playlist-description"
               data-testid="edit-playlist-description-input"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add a description\u2026"
+              value={form.description}
+              onChange={(e) => form.setDescription(e.target.value)}
+              placeholder="Add a description&#x2026;"
               maxLength={1000}
               rows={3}
-              disabled={isSubmitting}
+              disabled={form.isSubmitting}
             />
           </div>
 
@@ -447,14 +257,14 @@ export function EditPlaylistDialog({
             </div>
             <Switch
               id="edit-playlist-public"
-              checked={isPublic}
-              onCheckedChange={setIsPublic}
-              disabled={isSubmitting}
+              checked={form.isPublic}
+              onCheckedChange={form.setIsPublic}
+              disabled={form.isSubmitting}
             />
           </div>
 
           {/* Shareable link section (only for non-public playlists) */}
-          {!isPublic && (
+          {!form.isPublic && (
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="space-y-0.5">
@@ -465,13 +275,13 @@ export function EditPlaylistDialog({
                 </div>
                 <Switch
                   id="edit-playlist-share"
-                  checked={!!shareToken}
-                  onCheckedChange={handleShareToggle}
-                  disabled={isSubmitting}
+                  checked={!!form.shareToken}
+                  onCheckedChange={form.handleShareToggle}
+                  disabled={form.isSubmitting}
                 />
               </div>
 
-              {shareToken && shareToken !== "pending" && username && (
+              {form.shareToken && form.shareToken !== "pending" && username && (
                 <div className="flex items-center gap-2">
                   <div className="relative flex-1">
                     <FontAwesomeIcon
@@ -481,7 +291,7 @@ export function EditPlaylistDialog({
                     <Input
                       readOnly
                       aria-label="Shareable link"
-                      value={`${typeof window !== "undefined" ? window.location.origin : ""}/u/${username}/playlists/${playlist.id}?token=${shareToken}`}
+                      value={`${typeof window !== "undefined" ? window.location.origin : ""}/u/${username}/playlists/${playlist.id}?token=${form.shareToken}`}
                       className="h-8 truncate pl-8 text-xs"
                     />
                   </div>
@@ -490,7 +300,7 @@ export function EditPlaylistDialog({
                     size="icon"
                     variant="outline"
                     className="size-8 shrink-0"
-                    onClick={handleCopyShareLink}
+                    onClick={form.handleCopyShareLink}
                     aria-label="Copy link"
                   >
                     <FontAwesomeIcon icon={faCopy} className="size-3.5" />
@@ -500,13 +310,13 @@ export function EditPlaylistDialog({
                     size="icon"
                     variant="outline"
                     className="size-8 shrink-0"
-                    onClick={handleRegenerate}
-                    disabled={isRegenerating}
+                    onClick={form.handleRegenerate}
+                    disabled={form.isRegenerating}
                     aria-label="Regenerate link"
                   >
                     <FontAwesomeIcon
                       icon={faRotate}
-                      spin={isRegenerating}
+                      spin={form.isRegenerating}
                       className="size-3.5"
                     />
                   </Button>
@@ -515,13 +325,13 @@ export function EditPlaylistDialog({
             </div>
           )}
 
-          {error && (
+          {form.error && (
             <p
               className="text-destructive text-sm"
               data-testid="edit-playlist-error"
               role="alert"
             >
-              {error}
+              {form.error}
             </p>
           )}
         </form>

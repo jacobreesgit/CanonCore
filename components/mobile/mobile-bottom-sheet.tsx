@@ -27,6 +27,8 @@ export interface MobileBottomSheetProps {
   repositionInputs?: boolean;
   /** Optional className for content container */
   className?: string;
+  /** Optional className for overlay (e.g., to override z-index) */
+  overlayClassName?: string;
   /** Accessible title for screen readers (required) */
   title: string;
   /** Optional description for screen readers */
@@ -68,6 +70,7 @@ export function MobileBottomSheet({
   repositionInputs = false,
   swipeable = false,
   className,
+  overlayClassName,
   title,
   description,
   onAnimationEnd,
@@ -99,7 +102,6 @@ export function MobileBottomSheet({
       repositionInputs={repositionInputs}
       snapPoints={snapPoints}
       onAnimationEnd={onAnimationEnd}
-      handleOnly
     >
       <DrawerPrimitive.Portal>
         <DrawerPrimitive.Overlay
@@ -109,7 +111,8 @@ export function MobileBottomSheet({
             // translateZ(0) forces a new compositing layer, will-change hints to keep it
             "isolate [transform:translateZ(0)] transform-gpu [will-change:transform,opacity] [backface-visibility:hidden]",
             !prefersReducedMotion &&
-              "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+              "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            overlayClassName
           )}
         />
         <DrawerPrimitive.Content
@@ -126,7 +129,7 @@ export function MobileBottomSheet({
           aria-describedby={description ? descriptionId : undefined}
           data-testid={dataTestId}
         >
-          {/* Handle - with handleOnly, this is the only draggable area */}
+          {/* Handle */}
           <DrawerPrimitive.Handle className="bg-muted mx-auto mt-4 h-1.5 w-12 shrink-0 rounded-full" />
 
           {/* Accessible title (visually hidden, non-heading to avoid duplicate with visible MobileBottomSheetTitle) */}
@@ -183,8 +186,8 @@ export function MobileBottomSheetTitle({
 
 /**
  * Scrollable content area for bottom sheet.
- * Uses data-vaul-no-drag to prevent Vaul from capturing touch events,
- * allowing content to scroll instead of triggering drawer dismiss.
+ * Vaul automatically detects scroll position — when content is scrolled
+ * to the top, swiping down dismisses the sheet.
  */
 export function MobileBottomSheetContent({
   className,
@@ -194,7 +197,6 @@ export function MobileBottomSheetContent({
   return (
     <div
       className={cn("flex-1 overflow-y-auto px-4 py-4", className)}
-      data-vaul-no-drag
       {...props}
     >
       {children}

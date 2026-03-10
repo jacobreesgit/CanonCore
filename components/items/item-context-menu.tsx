@@ -39,8 +39,11 @@ import {
   faEye,
   faEyeSlash,
   faCheckDouble,
+  faPlay,
   faForwardStep,
   faListOl,
+  faLink,
+  faArrowRightArrowLeft,
 } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "sonner";
 import type { ItemVisibilityOptions } from "@/lib/types";
@@ -94,6 +97,8 @@ export interface ItemMenuActions {
   onMarkAllWatched?(): Promise<void>;
   /** Callback to mark all descendants as unwatched (parent items) */
   onMarkAllUnwatched?(): Promise<void>;
+  /** Username of the item owner (for Copy Link URL). */
+  username?: string;
   /** Whether to show the "Add to Playlist" option. */
   showAddToPlaylist?: boolean;
   /** Item ID — needed for Add to Playlist dialog. */
@@ -104,8 +109,12 @@ export interface ItemMenuActions {
   onGetTracks?: () => Promise<QueueTrack[] | null>;
   /** Callback dispatched when user clicks "Play Next". */
   onPlayNext?: (track: QueueTrack) => void;
+  /** Callback dispatched when user clicks "Play" (replaces queue). */
+  onPlay?: (tracks: QueueTrack[]) => void;
   /** Callback dispatched when user clicks "Add to Queue". */
   onAddToQueue?: (track: QueueTrack) => void;
+  /** Callback to open Move To dialog. */
+  onMoveToOpen?: () => void;
 }
 
 /** Destructive (delete) menu item styling. */
@@ -152,6 +161,8 @@ export function renderMenuItems({
   const {
     showAddChild = true,
     showAddToPlaylist = false,
+    username,
+    itemId,
     driveFileId,
     isPinned = false,
     isWatched = false,
@@ -167,8 +178,10 @@ export function renderMenuItems({
     onMarkAllWatched,
     onMarkAllUnwatched,
     onGetTracks,
+    onPlay,
     onPlayNext,
     onAddToQueue,
+    onMoveToOpen,
   } = actions;
 
   return (
@@ -215,9 +228,64 @@ export function renderMenuItems({
           <span>Add to Playlist</span>
         </MenuItem>
       )}
+      {username && itemId && (
+        <MenuItem
+          onClick={async () => {
+            const url = `${window.location.origin}/u/${username}/${itemId}`;
+            try {
+              await navigator.clipboard.writeText(url);
+              toast.success("Link copied");
+            } catch {
+              toast.error("Failed to copy link");
+            }
+          }}
+          className={MENU_ITEM_CLASSES}
+          data-testid="menu-copy-link"
+        >
+          <FontAwesomeIcon
+            icon={faLink}
+            aria-hidden="true"
+            className="size-4"
+          />
+          <span>Copy Link</span>
+        </MenuItem>
+      )}
+      {onMoveToOpen && (
+        <MenuItem
+          onClick={onMoveToOpen}
+          className={MENU_ITEM_CLASSES}
+          data-testid="menu-move-to"
+        >
+          <FontAwesomeIcon
+            icon={faArrowRightArrowLeft}
+            aria-hidden="true"
+            className="size-4"
+          />
+          <span>Move to…</span>
+        </MenuItem>
+      )}
       {hasMedia && onGetTracks && (
         <>
           <MenuSeparator className="bg-white/[0.08]" />
+          <MenuItem
+            onClick={async () => {
+              try {
+                const tracks = await onGetTracks();
+                if (tracks?.length) onPlay?.(tracks);
+              } catch {
+                toast.error("Couldn't load tracks");
+              }
+            }}
+            className={MENU_ITEM_CLASSES}
+            data-testid="menu-play"
+          >
+            <FontAwesomeIcon
+              icon={faPlay}
+              aria-hidden="true"
+              className="size-4"
+            />
+            <span>Play</span>
+          </MenuItem>
           <MenuItem
             onClick={async () => {
               try {
@@ -458,7 +526,7 @@ export function ItemContextMenu({
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent
           className={cn(
-            "bg-[#1a1a1a]/95 backdrop-blur-xl",
+            "glass-dialog",
             "border border-white/[0.08]",
             "shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
             "text-foreground"

@@ -408,7 +408,7 @@ export function ItemDetailClient({
       {hasMedia && (
         <HeroButton variant="primary" onClick={handlePlay}>
           <FontAwesomeIcon icon={faPlay} className="size-4" />
-          {hasProgress ? `Resume ${primaryMedia?.filename ?? ""}` : "Play"}
+          {hasProgress ? "Resume" : "Play"}
         </HeroButton>
       )}
       {nextItem && (
@@ -628,6 +628,8 @@ export function ItemDetailClient({
             tmdbMetadata?.genres?.length
               ? tmdbMetadata.genres
               : undefined,
+          durationMs: primaryMedia?.durationMs,
+          height: primaryMedia?.height,
           progress: progressPercentage,
           progressLabel,
           syncStatus: item.syncStatus,

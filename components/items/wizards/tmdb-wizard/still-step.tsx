@@ -13,8 +13,6 @@ import {
   faImagePortrait,
 } from "@fortawesome/free-solid-svg-icons";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { ImageSelectionGrid } from "./image-selection-grid";
 import type { ArtworkSelectionSource } from "@/lib/types";
@@ -50,7 +48,7 @@ export function TMDBStillStep({
   onNext,
   onBack,
   onDataChange,
-  onSkip,
+  onSkip: _onSkip,
 }: TMDBArtworkStepProps) {
   const episodeImages = data.episodeImages;
   const still = data.still ?? { value: null, source: null, skipped: false };
@@ -70,26 +68,6 @@ export function TMDBStillStep({
       });
     },
     [onDataChange]
-  );
-
-  /**
-   * Handles skip checkbox toggle.
-   */
-  const handleSkipChange = useCallback(
-    (skipped: boolean) => {
-      if (skipped) {
-        onSkip();
-      } else {
-        onDataChange({
-          still: {
-            value: null,
-            source: null,
-            skipped: false,
-          },
-        });
-      }
-    },
-    [onSkip, onDataChange]
   );
 
   // Convert SerializedItemFile to ExistingArtworkFile format
@@ -155,31 +133,9 @@ export function TMDBStillStep({
           selectedValue={still.value}
           onSelect={handleSelect}
           isSkipped={still.skipped}
-          onSkipChange={handleSkipChange}
           disabled={isLoading}
           showTabs={existingArtworkFiles.length > 0}
         />
-      ) : null}
-
-      {/* Skip checkbox (when stills are available) */}
-      {!noStillsAvailable ? (
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="skip-still-selection"
-            checked={still.skipped}
-            onCheckedChange={(checked) => handleSkipChange(checked === true)}
-            disabled={isLoading}
-          />
-          <Label
-            htmlFor="skip-still-selection"
-            className={cn(
-              "flex cursor-pointer items-center gap-1.5 text-sm",
-              isLoading && "cursor-not-allowed opacity-50"
-            )}
-          >
-            Skip still image selection
-          </Label>
-        </div>
       ) : null}
 
       {/* Navigation buttons (hidden when parent handles footer) */}

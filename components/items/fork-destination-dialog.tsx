@@ -237,7 +237,7 @@ export function ForkDestinationDialog({
           data-testid="dialog-fork-destination"
           className={cn(
             "sm:max-w-md",
-            "bg-[#1a1a1a]/95 backdrop-blur-xl",
+            "glass-dialog",
             "border border-[var(--glass-border)]",
             "shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
             "text-foreground"
@@ -315,12 +315,12 @@ export function ForkDestinationDialog({
         description={`Choose where to add "${itemName}" in your library`}
         data-testid="sheet-fork-destination"
         className={cn(
-          "bg-[#1a1a1a]/95 backdrop-blur-xl",
+          "glass-dialog",
           "border-t border-white/[0.08]",
           "text-foreground"
         )}
       >
-        <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
+        <MobileBottomSheetHeader>
           <div className="flex items-center gap-3">
             <div
               className={cn(

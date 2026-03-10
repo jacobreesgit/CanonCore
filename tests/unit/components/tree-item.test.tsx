@@ -27,4 +27,24 @@ describe("TreeItem", () => {
     const dragHandle = screen.getByRole("button", { name: "Drag handle" });
     expect(dragHandle).toBeInTheDocument();
   });
+
+  it("displays duration and resolution inline when metadata present", () => {
+    render(
+      <TreeItem
+        {...defaultProps}
+        showDragHandle={false}
+        primaryDurationMs={6120000}
+        primaryHeight={1080}
+      />
+    );
+
+    expect(screen.getByText("1h 42m")).toBeInTheDocument();
+    expect(screen.getByText("1080p")).toBeInTheDocument();
+  });
+
+  it("does not display badges when no metadata", () => {
+    render(<TreeItem {...defaultProps} showDragHandle={false} />);
+
+    expect(screen.queryByText(/[0-9]+[hm]/)).not.toBeInTheDocument();
+  });
 });

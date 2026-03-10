@@ -464,12 +464,12 @@ export function MobileAddItemSheet({
           title="Select Season"
           description={form.displayTitle}
           className={cn(
-            "bg-[#1a1a1a]/95 backdrop-blur-xl",
+            "glass-dialog",
             "border-t border-white/[0.08]",
             "text-foreground"
           )}
         >
-          <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
+          <MobileBottomSheetHeader>
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -549,12 +549,12 @@ export function MobileAddItemSheet({
           title="Apply Metadata"
           description={form.tmdbPreview.name || "Select metadata to apply"}
           className={cn(
-            "bg-[#1a1a1a]/95 backdrop-blur-xl",
+            "glass-dialog",
             "border-t border-white/[0.08]",
             "text-foreground"
           )}
         >
-          <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
+          <MobileBottomSheetHeader>
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -649,6 +649,17 @@ export function MobileAddItemSheet({
                   Back
                 </Button>
                 <div className="flex gap-2">
+                  {form.wizardFooterProps.onSkipCurrent && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={form.wizardFooterProps.onSkipCurrent}
+                      disabled={form.wizardFooterProps.isDisabled}
+                      data-testid="tmdb-wizard-skip"
+                    >
+                      Skip
+                    </Button>
+                  )}
                   {form.wizardFooterProps.onSkipAll && (
                     <Button
                       type="button"
@@ -698,12 +709,12 @@ export function MobileAddItemSheet({
           title="Review & Create"
           description={form.displayTitle}
           className={cn(
-            "bg-[#1a1a1a]/95 backdrop-blur-xl",
+            "glass-dialog",
             "border-t border-white/[0.08]",
             "text-foreground"
           )}
         >
-          <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
+          <MobileBottomSheetHeader>
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -814,12 +825,12 @@ export function MobileAddItemSheet({
           title="Change Poster"
           description="Select a different poster image"
           className={cn(
-            "bg-[#1a1a1a]/95 backdrop-blur-xl",
+            "glass-dialog",
             "border-t border-white/[0.08]",
             "text-foreground"
           )}
         >
-          <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
+          <MobileBottomSheetHeader>
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -900,12 +911,12 @@ export function MobileAddItemSheet({
           title="Change Hero"
           description="Select a different hero/backdrop image"
           className={cn(
-            "bg-[#1a1a1a]/95 backdrop-blur-xl",
+            "glass-dialog",
             "border-t border-white/[0.08]",
             "text-foreground"
           )}
         >
-          <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
+          <MobileBottomSheetHeader>
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -987,12 +998,12 @@ export function MobileAddItemSheet({
         title="Create Item"
         description={dialogHint}
         className={cn(
-          "bg-[#1a1a1a]/95 backdrop-blur-xl",
+          "glass-dialog",
           "border-t border-white/[0.08]",
           "text-foreground"
         )}
       >
-        <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
+        <MobileBottomSheetHeader>
           <div className="flex items-center gap-3">
             <div
               className={cn(

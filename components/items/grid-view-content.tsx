@@ -6,7 +6,7 @@
 
 "use client";
 
-import { createContext, useCallback, useMemo } from "react";
+import { createContext, useCallback, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { Section } from "@/components/ui/section";
@@ -21,8 +21,9 @@ import {
   markAllWatched,
   markAllUnwatched,
 } from "@/lib/watch-actions";
+import { moveItem } from "@/lib/item-actions";
 import { useAppDispatch } from "@/lib/store/hooks";
-import { playNext, addToQueue } from "@/lib/store/playback-slice";
+import { playQueue, playNext, addToQueue } from "@/lib/store/playback-slice";
 import { buildQueueTrack } from "@/lib/store/track-helpers";
 import { getItemFiles } from "@/lib/item-file-actions";
 import type { QueueTrack } from "@/lib/store/types";
@@ -69,6 +70,15 @@ function GridSkeleton() {
 const SortableGrid = dynamic(
   () => import("@/components/sortable-grid").then((mod) => mod.SortableGrid),
   { loading: () => <GridSkeleton />, ssr: false }
+);
+
+// Dynamic import for Move To dialog (avoids loading tree picker in initial bundle)
+const MoveToDialog = dynamic(
+  () =>
+    import("@/components/items/move-to-dialog").then((mod) => ({
+      default: mod.MoveToDialog,
+    })),
+  { ssr: false }
 );
 
 interface CurrentUser {
@@ -147,6 +157,11 @@ export function GridViewContent({
   onItemMouseEnter,
 }: GridViewContentProps) {
   const dispatch = useAppDispatch();
+  const [moveToItem, setMoveToItem] = useState<{
+    id: string;
+    name: string;
+    parentId: string | null;
+  } | null>(null);
 
   const getTracksForItem = useCallback(
     async (item: ItemWithArtwork): Promise<QueueTrack[] | null> => {
@@ -237,6 +252,8 @@ export function GridViewContent({
                 const baseMenuProps = {
                   itemName: item.name,
                   driveFileId: item.driveFileId,
+                  username: currentUser?.username ?? undefined,
+                  itemId: item.id,
                   hasDriveConnection,
                   isPinned: true,
                   showAddChild: true,
@@ -251,9 +268,17 @@ export function GridViewContent({
                   onUnpin: () => onUnpinItem(item.id),
                   hasMedia: (item.fileCounts?.media ?? 0) > 0,
                   onGetTracks: () => getTracksForItem(item),
+                  onPlay: (tracks: QueueTrack[]) =>
+                    dispatch(playQueue({ tracks })),
                   onPlayNext: (track: QueueTrack) => dispatch(playNext(track)),
                   onAddToQueue: (track: QueueTrack) =>
                     dispatch(addToQueue(track)),
+                  onMoveToOpen: () =>
+                    setMoveToItem({
+                      id: item.id,
+                      name: item.name,
+                      parentId: item.parentId,
+                    }),
                   ...watchProps,
                 };
                 return (
@@ -278,6 +303,8 @@ export function GridViewContent({
                       showDescription={true}
                       priority={index < 5}
                       driveFileId={item.driveFileId}
+                      primaryDurationMs={item.primaryDurationMs}
+                      primaryHeight={item.primaryHeight}
                       moreMenuProps={baseMenuProps}
                     />
                   </ItemContextMenu>
@@ -315,6 +342,8 @@ export function GridViewContent({
                 const baseMenuProps = {
                   itemName: item.name,
                   driveFileId: item.driveFileId,
+                  username: currentUser?.username ?? undefined,
+                  itemId: item.id,
                   hasDriveConnection,
                   isPinned: false,
                   showAddChild: true,
@@ -329,9 +358,17 @@ export function GridViewContent({
                   onUnpin: () => onUnpinItem(item.id),
                   hasMedia: (item.fileCounts?.media ?? 0) > 0,
                   onGetTracks: () => getTracksForItem(item),
+                  onPlay: (tracks: QueueTrack[]) =>
+                    dispatch(playQueue({ tracks })),
                   onPlayNext: (track: QueueTrack) => dispatch(playNext(track)),
                   onAddToQueue: (track: QueueTrack) =>
                     dispatch(addToQueue(track)),
+                  onMoveToOpen: () =>
+                    setMoveToItem({
+                      id: item.id,
+                      name: item.name,
+                      parentId: item.parentId,
+                    }),
                   ...watchProps,
                 };
                 return (
@@ -356,6 +393,8 @@ export function GridViewContent({
                       showDescription={true}
                       priority={index < 8}
                       driveFileId={item.driveFileId}
+                      primaryDurationMs={item.primaryDurationMs}
+                      primaryHeight={item.primaryHeight}
                       moreMenuProps={baseMenuProps}
                     />
                   </ItemContextMenu>
@@ -365,6 +404,20 @@ export function GridViewContent({
           </Section>
         )}
       </div>
+
+      {/* Move To Dialog */}
+      {moveToItem && (
+        <MoveToDialog
+          open={!!moveToItem}
+          onOpenChange={(open) => {
+            if (!open) setMoveToItem(null);
+          }}
+          itemId={moveToItem.id}
+          itemName={moveToItem.name}
+          currentParentId={moveToItem.parentId}
+          onMove={(newParentId) => moveItem(moveToItem.id, newParentId)}
+        />
+      )}
     </>
   );
 }

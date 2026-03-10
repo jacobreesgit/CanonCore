@@ -197,6 +197,99 @@ describe("ItemContextMenu", () => {
     });
   });
 
+  describe("Play action", () => {
+    it("shows Play when hasMedia and onGetTracks are provided", () => {
+      render(
+        <ItemContextMenu
+          {...defaultProps}
+          hasMedia
+          onGetTracks={vi.fn().mockResolvedValue([])}
+          onPlay={vi.fn()}
+          onPlayNext={vi.fn()}
+          onAddToQueue={vi.fn()}
+        />
+      );
+      fireEvent.contextMenu(screen.getByRole("button", { name: /trigger/i }));
+      expect(screen.getByText("Play")).toBeInTheDocument();
+    });
+
+    it("does not show Play when hasMedia is false", () => {
+      render(
+        <ItemContextMenu
+          {...defaultProps}
+          hasMedia={false}
+          onGetTracks={vi.fn()}
+          onPlay={vi.fn()}
+        />
+      );
+      fireEvent.contextMenu(screen.getByRole("button", { name: /trigger/i }));
+      expect(screen.queryByText("Play")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Copy Link action", () => {
+    it("shows Copy Link when username and itemId are provided", () => {
+      render(
+        <ItemContextMenu
+          {...defaultProps}
+          username="testuser"
+          itemId="item-123"
+        />
+      );
+      fireEvent.contextMenu(screen.getByRole("button", { name: /trigger/i }));
+      expect(screen.getByText("Copy Link")).toBeInTheDocument();
+    });
+
+    it("does not show Copy Link when username is not provided", () => {
+      render(<ItemContextMenu {...defaultProps} itemId="item-123" />);
+      fireEvent.contextMenu(screen.getByRole("button", { name: /trigger/i }));
+      expect(screen.queryByText("Copy Link")).not.toBeInTheDocument();
+    });
+
+    it("copies link to clipboard when Copy Link is clicked", async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.assign(navigator, { clipboard: { writeText } });
+
+      render(
+        <ItemContextMenu
+          {...defaultProps}
+          username="testuser"
+          itemId="item-123"
+        />
+      );
+      fireEvent.contextMenu(screen.getByRole("button", { name: /trigger/i }));
+      fireEvent.click(screen.getByText("Copy Link"));
+
+      await vi.waitFor(() => {
+        expect(writeText).toHaveBeenCalledWith(
+          expect.stringContaining("/u/testuser/item-123")
+        );
+      });
+    });
+  });
+
+  describe("Move to action", () => {
+    it("shows Move to when onMoveToOpen is provided", () => {
+      render(<ItemContextMenu {...defaultProps} onMoveToOpen={vi.fn()} />);
+      fireEvent.contextMenu(screen.getByRole("button", { name: /trigger/i }));
+      expect(screen.getByText("Move to…")).toBeInTheDocument();
+    });
+
+    it("does not show Move to when onMoveToOpen is not provided", () => {
+      render(<ItemContextMenu {...defaultProps} />);
+      fireEvent.contextMenu(screen.getByRole("button", { name: /trigger/i }));
+      expect(screen.queryByText("Move to…")).not.toBeInTheDocument();
+    });
+
+    it("calls onMoveToOpen when clicked", () => {
+      const onMoveToOpen = vi.fn();
+      render(<ItemContextMenu {...defaultProps} onMoveToOpen={onMoveToOpen} />);
+      fireEvent.contextMenu(screen.getByRole("button", { name: /trigger/i }));
+      fireEvent.click(screen.getByText("Move to…"));
+      expect(onMoveToOpen).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("Add to Playlist", () => {
     it("shows Add to Playlist when showAddToPlaylist is true", () => {
       render(

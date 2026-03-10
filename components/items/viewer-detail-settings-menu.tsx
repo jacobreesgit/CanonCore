@@ -36,6 +36,16 @@ const AddToPlaylistDialog = dynamic(
   { ssr: false }
 );
 
+const MobileAddToPlaylistSheet = dynamic(
+  () =>
+    import("@/components/playlists/mobile-add-to-playlist-sheet").then(
+      (mod) => ({
+        default: mod.MobileAddToPlaylistSheet,
+      })
+    ),
+  { ssr: false }
+);
+
 const MobileBottomSheet = dynamic(
   () =>
     import("@/components/mobile/mobile-bottom-sheet").then((mod) => ({
@@ -171,7 +181,7 @@ export function ViewerDetailSettingsMenu({
         )}
 
         {playlistOpen && (
-          <AddToPlaylistDialog
+          <MobileAddToPlaylistSheet
             open={playlistOpen}
             onOpenChange={setPlaylistOpen}
             itemId={itemId}

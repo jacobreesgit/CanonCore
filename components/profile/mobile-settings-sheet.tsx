@@ -288,12 +288,12 @@ export function MobileSettingsSheet({
           title="Change Password"
           description="Enter your current password and choose a new one"
           className={cn(
-            "bg-[#1a1a1a]/95 backdrop-blur-xl",
+            "glass-dialog",
             "border-t border-white/[0.08]",
             "text-foreground"
           )}
         >
-          <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
+          <MobileBottomSheetHeader>
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -434,12 +434,12 @@ export function MobileSettingsSheet({
           title="Change Email"
           description="Enter your new email and verify with your password"
           className={cn(
-            "bg-[#1a1a1a]/95 backdrop-blur-xl",
+            "glass-dialog",
             "border-t border-white/[0.08]",
             "text-foreground"
           )}
         >
-          <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
+          <MobileBottomSheetHeader>
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -566,12 +566,12 @@ export function MobileSettingsSheet({
           title="Change Username"
           description="Enter your new username and verify with your password"
           className={cn(
-            "bg-[#1a1a1a]/95 backdrop-blur-xl",
+            "glass-dialog",
             "border-t border-white/[0.08]",
             "text-foreground"
           )}
         >
-          <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
+          <MobileBottomSheetHeader>
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -763,12 +763,12 @@ export function MobileSettingsSheet({
           repositionInputs
           title="Delete Account"
           className={cn(
-            "bg-[#1a1a1a]/95 backdrop-blur-xl",
+            "glass-dialog",
             "border-t border-white/[0.08]",
             "text-foreground"
           )}
         >
-          <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
+          <MobileBottomSheetHeader>
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -1278,12 +1278,12 @@ export function MobileSettingsSheet({
         description="Manage your account and connections"
         data-testid="sheet-settings"
         className={cn(
-          "bg-[#1a1a1a]/95 backdrop-blur-xl",
+          "glass-dialog",
           "border-t border-white/[0.08]",
           "text-foreground"
         )}
       >
-        <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
+        <MobileBottomSheetHeader>
           <div className="flex items-center gap-3">
             <div
               className={cn(

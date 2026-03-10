@@ -280,34 +280,6 @@ describe("ImageSelectionGrid", () => {
   });
 
   describe("Skip Functionality", () => {
-    it("renders skip checkbox when onSkipChange provided", () => {
-      render(<ImageSelectionGrid {...defaultProps} onSkipChange={vi.fn()} />);
-
-      expect(
-        screen.getByLabelText(/skip poster selection/i)
-      ).toBeInTheDocument();
-    });
-
-    it("does not render skip checkbox when onSkipChange not provided", () => {
-      render(<ImageSelectionGrid {...defaultProps} />);
-
-      expect(
-        screen.queryByLabelText(/skip poster selection/i)
-      ).not.toBeInTheDocument();
-    });
-
-    it("calls onSkipChange when checkbox toggled", async () => {
-      const onSkipChange = vi.fn();
-      const user = userEvent.setup();
-      render(
-        <ImageSelectionGrid {...defaultProps} onSkipChange={onSkipChange} />
-      );
-
-      await user.click(screen.getByLabelText(/skip poster selection/i));
-
-      expect(onSkipChange).toHaveBeenCalledWith(true);
-    });
-
     it("disables image selection when skipped", async () => {
       const onSelect = vi.fn();
       const user = userEvent.setup();
@@ -459,19 +431,6 @@ describe("ImageSelectionGrid", () => {
       render(<ImageSelectionGrid {...defaultProps} disabled={true} />);
 
       expect(screen.getByRole("tab", { name: /from tmdb/i })).toBeDisabled();
-    });
-
-    it("disables skip checkbox when disabled", () => {
-      render(
-        <ImageSelectionGrid
-          {...defaultProps}
-          disabled={true}
-          onSkipChange={vi.fn()}
-        />
-      );
-
-      const checkbox = screen.getByRole("checkbox");
-      expect(checkbox).toBeDisabled();
     });
   });
 

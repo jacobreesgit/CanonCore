@@ -50,7 +50,7 @@ export function TMDBHeroStep({
   onNext,
   onBack,
   onDataChange,
-  onSkip,
+  onSkip: _onSkip,
 }: TMDBArtworkStepProps) {
   const images = data.images;
   const backdrop = data.backdrop ?? {
@@ -73,26 +73,6 @@ export function TMDBHeroStep({
       });
     },
     [onDataChange]
-  );
-
-  /**
-   * Handles skip checkbox toggle.
-   */
-  const handleSkipChange = useCallback(
-    (skipped: boolean) => {
-      if (skipped) {
-        onSkip();
-      } else {
-        onDataChange({
-          backdrop: {
-            value: null,
-            source: null,
-            skipped: false,
-          },
-        });
-      }
-    },
-    [onSkip, onDataChange]
   );
 
   // Convert SerializedItemFile to ExistingArtworkFile format
@@ -136,7 +116,11 @@ export function TMDBHeroStep({
         selectedSource={backdrop.source}
         onSelect={handleSelect}
         isSkipped={backdrop.skipped}
-        onSkipChange={handleSkipChange}
+        onSkipChange={(skipped) =>
+          onDataChange({
+            backdrop: { ...backdrop, skipped },
+          })
+        }
         disabled={isLoading}
         uploadMode={uploadMode}
         queuedHero={queuedFiles}

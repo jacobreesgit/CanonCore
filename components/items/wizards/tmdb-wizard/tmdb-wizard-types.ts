@@ -187,6 +187,8 @@ export interface TMDBWizardFooterProps {
   onBack: () => void;
   /** Navigate to next step or complete wizard */
   onNext: () => void;
+  /** Skip current artwork step and advance */
+  onSkipCurrent?: () => void;
   /** Skip all remaining artwork steps */
   onSkipAll?: () => void;
   /** Retry on error */

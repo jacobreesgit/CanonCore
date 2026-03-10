@@ -11,51 +11,10 @@ import { getDriveClient, withRateLimit } from "@/lib/google-drive-client";
 import { logger } from "@/lib/logger";
 import { isItemFullyPublic } from "@/lib/public-auth";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { nodeStreamToWeb } from "@/lib/stream-utils";
 
 /** Cache artwork for 1 hour (immutable content) */
 const CACHE_MAX_AGE = 3600;
-
-/**
- * Converts a Node.js readable stream to a Web ReadableStream.
- * Handles race conditions where data events may fire after close/error.
- *
- * @param nodeStream - Node.js readable stream
- * @returns Web ReadableStream of Uint8Array chunks
- */
-function nodeStreamToWeb(
-  nodeStream: NodeJS.ReadableStream
-): ReadableStream<Uint8Array> {
-  let closed = false;
-
-  return new ReadableStream({
-    start(controller) {
-      nodeStream.on("data", (chunk: Buffer) => {
-        if (!closed) {
-          controller.enqueue(new Uint8Array(chunk));
-        }
-      });
-      nodeStream.on("end", () => {
-        if (!closed) {
-          closed = true;
-          controller.close();
-        }
-      });
-      nodeStream.on("error", (err: Error) => {
-        if (!closed) {
-          closed = true;
-          controller.error(err);
-        }
-      });
-    },
-    cancel() {
-      closed = true;
-      // Destroy the node stream if it supports it
-      if ("destroy" in nodeStream && typeof nodeStream.destroy === "function") {
-        nodeStream.destroy();
-      }
-    },
-  });
-}
 
 /**
  * Downloads artwork file via Google Drive and serves to client.
@@ -144,7 +103,7 @@ export async function GET(
         headers: {
           "Content-Type": itemFile.mimeType || "image/jpeg",
           // Public items can be cached by CDN; private items are user-specific
-          "Cache-Control": `${isPublic ? "public" : "private"}, max-age=${CACHE_MAX_AGE}`,
+          "Cache-Control": `${isPublic ? "public" : "private"}, max-age=${CACHE_MAX_AGE}, s-maxage=86400, stale-while-revalidate=604800`,
         },
       });
     } catch (error) {

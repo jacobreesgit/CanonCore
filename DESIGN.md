@@ -1,6 +1,6 @@
 # CanonCore - Technical Documentation
 
-Last updated: March 2026 (v12.4.0)
+Last updated: March 2026 (v13.1.0)
 
 This doc covers architecture, implementation patterns, and design decisions for CanonCore. Written as technical reference for understanding how everything works.
 
@@ -152,6 +152,7 @@ Built on PostgreSQL with Prisma ORM. Key tables:
 - File types: MEDIA (video/audio), ARTWORK (images), SUBTITLE (srt/vtt/etc)
 - Google Drive: driveFileId, filename, mimeType, size
 - Playback: playbackPosition (in seconds), isPrimary, isHero, isLogo
+- Media dimensions: durationMs (BigInt), width (Int), height (Int) — extracted from Google Drive's videoMediaMetadata/imageMediaMetadata during sync
 
 **GoogleDriveConnection:**
 
@@ -247,6 +248,9 @@ Built on PostgreSQL with Prisma ORM. Key tables:
     │ isLogo   │
     │ playback │
     │ Position │
+    │durationMs│
+    │ width    │
+    │ height   │
     └──────────┘
 
     ┌────────────┐
@@ -343,7 +347,7 @@ Built on PostgreSQL with Prisma ORM. Key tables:
 **Server Actions Pattern:**
 All mutations go through server actions in `lib/*-actions.ts`:
 
-- `lib/item-actions.ts` - CRUD, reordering, pinning, progress
+- `lib/item-actions.ts` - CRUD, reordering, pinning, progress, reparenting (moveItem)
 - `lib/playlist-actions.ts` - Playlist CRUD, artwork, share tokens, item membership, reordering
 - `lib/google-drive-actions.ts` - OAuth, sync, connection management
 - `lib/tmdb-actions.ts` - Metadata search, image fetching, per-field clearing, display options
@@ -569,6 +573,7 @@ Multi-layer defence against aggressive AI crawlers:
 - Self-referential tree with parentId
 - Max 10 levels deep (UI performance limit)
 - Drag-and-drop reordering with dnd-kit
+- Move To dialog: `MoveToDialog` opens from context menu, uses `ItemTreePicker` in single-select mode, validates circular references (ancestor chain walk) and depth limits (recursive CTE)
 
 **Visibility at Creation:**
 
@@ -686,6 +691,7 @@ TMDB logos are transparent title treatment images (usually PNG) displayed in the
 - Changes API for incremental sync (only changed items since last update)
 - Timestamp comparison for conflict detection
 - Batch API: up to 100 operations per HTTP request
+- Media metadata: extracts durationMs, width, height from `videoMediaMetadata` and `imageMediaMetadata` during file sync and incremental sync
 
 **Offline Support:**
 
@@ -738,6 +744,8 @@ TMDB logos are transparent title treatment images (usually PNG) displayed in the
 4. Pick a logo title treatment (with skip option)
 5. Review and apply (selective field application, auto-extracts dominant colour and selects best logo)
 
+Skip buttons are located in the dialog footer (next to "Skip All") for consistent placement across all steps.
+
 **TV Show Support:**
 
 - Episode picker: navigate shows → seasons → episodes
@@ -775,6 +783,8 @@ After initial wizard application, individual artwork fields (poster, backdrop, l
 - Shared between `ItemSettingsDialog` (desktop) and `MobileItemSheet` (mobile) — identical logic, different UX surfaces
 - `useSettingsDialog` hook wraps file fetching and dialog lifecycle
 - Memoised computations prevent unnecessary wizard re-renders
+
+Playlist dialogs follow the same pattern: `useCreatePlaylistForm` and `useEditPlaylistForm` hooks centralise form state, handlers, and submission logic — shared between desktop `CreatePlaylistDialog`/`EditPlaylistDialog` and mobile `MobileCreatePlaylistSheet`/`MobileEditPlaylistSheet`.
 
 **Override Badges:**
 
@@ -951,6 +961,8 @@ After initial wizard application, individual artwork fields (poster, backdrop, l
 - `PlaylistSortableGrid` — dnd-kit drag-to-reorder for playlist items
 - `PlaylistContextMenu` — right-click actions (edit, delete, visibility, share link)
 - `CreatePlaylistDialog` / `EditPlaylistDialog` / `AddToPlaylistDialog` — CRUD dialogs (CreatePlaylistDialog includes visibility RadioGroup and ItemTreePicker for item pre-selection)
+- `MobileCreatePlaylistSheet` / `MobileEditPlaylistSheet` / `MobileAddToPlaylistSheet` — mobile bottom sheet equivalents of the desktop dialogs
+- `useCreatePlaylistForm` / `useEditPlaylistForm` — shared hooks centralising form state, handlers, and submission logic between desktop dialogs and mobile sheets
 - `ItemTreePicker` — shared virtualised tree picker (`@tanstack/react-virtual`), supports single-select (fork) and multi-select (playlist) modes with search filtering
 
 **URL State:**
@@ -1079,7 +1091,12 @@ Hero section and media stack use CSS Modules (`hero-section.module.css`, `media-
 - `MobileItemSheet`: combines sort, filter, view, and settings (shares `useItemSettingsForm` hook with desktop dialog)
 - `MobileAddItemSheet`: item creation with TMDB search
 - `MobileOptionsSheet`: sort, filter, and view controls
+- `MobileCreatePlaylistSheet`: playlist creation with visibility radio group and item picker
+- `MobileEditPlaylistSheet`: playlist editing with artwork upload and share token management
+- `MobileAddToPlaylistSheet`: searchable checkbox list of playlists with optimistic toggle
 - Swipe-to-dismiss gesture support
+
+Desktop and mobile surfaces share form logic via `useCreatePlaylistForm` and `useEditPlaylistForm` hooks.
 
 **Bottom Navigation:**
 
@@ -1100,7 +1117,7 @@ Hero section and media stack use CSS Modules (`hero-section.module.css`, `media-
 
 The media system uses a single `<MediaPlayer>` (Vidstack) at the root layout level that never unmounts during navigation. Playback transport (play/pause, currentTime, volume, seeking) is owned entirely by Vidstack. Redux Toolkit manages queue lifecycle, shuffle/repeat mode, and expanded view state — never 60fps transport state.
 
-- `MediaPlayerShell` wraps the app in `app/layout.tsx` — conditionally renders `<MediaPlayer>` when a track is loaded
+- `MediaPlayerShell` wraps the app in `app/layout.tsx` — `<MediaPlayer>` stays mounted permanently once the first track plays (preventing React remounts and CSS animation replays). When no track is loaded, src is set to an empty array so Vidstack idles without consuming resources
 - `<MediaProvider>` (the actual `<video>`/`<audio>` element) is always mounted and CSS-repositioned between collapsed (off-screen) and expanded (visible) states — no remount means no playback interruption
 - `MediaPlayerInner` (inside MediaPlayer context) handles auto-play on track change, MediaSession API integration, position persistence (30s interval + visibilitychange), and idle timer for auto-hiding controls
 
@@ -1114,6 +1131,7 @@ The media system uses a single `<MediaPlayer>` (Vidstack) at the root layout lev
 **Mini-player bar (`components/media/mini-player.tsx`):**
 
 - Fixed bottom bar with track info (artwork, title, artist), play/pause, skip forward/back, volume slider with mute toggle, shuffle/repeat toggles, queue trigger, expand/collapse, fullscreen
+- Plex-style full-bleed seek bar (3px track, thumb appears on hover) spans the entire mini-player width. 2-column layout on mobile. Separate `MiniPlayerTimestamps` component for elapsed/remaining time
 - `MiniPlayerProgress` component subscribes to Vidstack's `currentTime`/`duration` independently via `useMediaState` — prevents re-rendering the entire mini-player at 60fps
 - Spring animation for expand/collapse via motion library
 - Focus trap in expanded mode via `focus-trap-react`
@@ -1122,6 +1140,7 @@ The media system uses a single `<MediaPlayer>` (Vidstack) at the root layout lev
 **Queue panel (`components/media/queue-panel.tsx`):**
 
 - Side sheet with now-playing card and up-next list
+- On mobile, the queue panel opens as a `MobileBottomSheet` (85% snap) instead of the desktop side sheet. Shared `queueContent` variable renders identical content in both surfaces
 - Drag-to-reorder via dnd-kit with restrictToVerticalAxis and restrictToParentElement modifiers
 - Clear queue with undo toast
 - Animated EQ bars CSS animation for now-playing indicator
@@ -1165,7 +1184,7 @@ Hero action buttons (Mark Watched, Fork, Playlist, Delete) consolidated into gea
 
 **Context menu media actions:**
 
-- Item context menu gained "Play Next" and "Add to Queue" for items with media files
+- Item context menu gained "Play Next", "Add to Queue", "Copy Link" (copies `/u/{username}/{itemId}` URL), "Move to..." (opens MoveToDialog for reparenting), and "Play" (replaces queue with item's tracks)
 - Grid view cards wired to dispatch Redux queue actions via `buildQueueTrack`
 
 ### Audit Logging
@@ -1267,7 +1286,11 @@ Pages using this pattern:
 - **Item Detail** — streams TMDB chain, descendants, files, progress, watch status
 - **Playlist Detail** — streams playlist items, TMDB enrichment, fork status
 
-Each page also has a `loading.tsx` that renders the same skeleton during route transitions. Skeleton components in `components/skeletons/` match exact layout dimensions (hero height, grid columns, toolbar glassmorphism) to prevent cumulative layout shift.
+The four public route `loading.tsx` files were removed — pages now fetch data at page level so the previous page stays visible during client-side navigation (no skeleton flash). A `<ScrollToTop />` component in the public layout handles scroll restoration. Skeleton components in `components/skeletons/` remain available as Suspense fallbacks within page content.
+
+**Edge Caching Headers:**
+
+Artwork and stream API routes set `s-maxage=86400, stale-while-revalidate=604800` for CDN caching. Frequently accessed media files are served from the edge without hitting the origin, reducing latency and origin load.
 
 **Selective Field Projection:**
 All Prisma queries use minimal `select`:

@@ -55,20 +55,6 @@ export const EditMode: Story = {
   },
 };
 
-export const Disabled: Story = {
-  args: {
-    isEditing: false,
-    disabled: true,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "Disabled state without a reason tooltip.",
-      },
-    },
-  },
-};
-
 export const DisabledWithReason: Story = {
   args: {
     isEditing: false,
@@ -80,21 +66,6 @@ export const DisabledWithReason: Story = {
       description: {
         story:
           "Shows tooltip on hover explaining why the button is disabled. On mobile, shows helper text below the button.",
-      },
-    },
-  },
-};
-
-export const DisabledDuringSort: Story = {
-  args: {
-    isEditing: false,
-    disabled: true,
-    disabledReason: "Custom sort only",
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "Edit mode is only available when using custom sort order.",
       },
     },
   },

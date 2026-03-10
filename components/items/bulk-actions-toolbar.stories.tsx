@@ -64,20 +64,6 @@ export const Default: Story = {
   },
 };
 
-export const SingleSelected: Story = {
-  args: {
-    selectionCount: 1,
-    isAllSelected: false,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "Shows singular 'item selected' text for single selection.",
-      },
-    },
-  },
-};
-
 export const AllSelected: Story = {
   args: {
     selectionCount: 10,
@@ -88,20 +74,6 @@ export const AllSelected: Story = {
       description: {
         story:
           "Button text changes to 'Deselect All' when all items are selected.",
-      },
-    },
-  },
-};
-
-export const NoneSelected: Story = {
-  args: {
-    selectionCount: 0,
-    isAllSelected: false,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "Delete button disabled when no items selected.",
       },
     },
   },

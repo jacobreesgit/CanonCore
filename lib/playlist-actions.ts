@@ -232,6 +232,8 @@ export const getPlaylist = cache(async function getPlaylist(
         fileCounts: { media: 0, artwork: pi.item.files.length, subtitles: 0 },
         childCount: 0,
         primaryMediaName: null,
+        primaryDurationMs: null,
+        primaryHeight: null,
         mediaIconType: null,
         progress: null,
       },

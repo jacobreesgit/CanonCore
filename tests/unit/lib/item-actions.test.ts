@@ -13,6 +13,7 @@ import {
   createItem,
   updateItem,
   deleteItem,
+  moveItem,
   reorderItems,
   getSearchableItems,
   setItemVisibility,
@@ -165,6 +166,8 @@ describe("getItems", () => {
             isPrimary: true,
             filename: true,
             mimeType: true,
+            durationMs: true,
+            height: true,
           },
         },
         driveConnection: {
@@ -202,6 +205,8 @@ describe("getItems", () => {
             isPrimary: true,
             filename: true,
             mimeType: true,
+            durationMs: true,
+            height: true,
           },
         },
         driveConnection: {
@@ -1054,6 +1059,207 @@ describe("reorderItems", () => {
 
     expect(result.success).toBe(true);
     expect(prisma.$transaction).toHaveBeenCalled();
+  });
+});
+
+describe("moveItem", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns error when not authenticated", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const result = await moveItem("item-1", "parent-1");
+
+    expect(result.error).toBe("Not authenticated");
+  });
+
+  it("returns error when item not found", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findFirst).mockResolvedValue(null);
+
+    const result = await moveItem("nonexistent", "parent-1");
+
+    expect(result.error).toBe("Item not found");
+  });
+
+  it("returns success when already at same parent", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findFirst).mockResolvedValue({
+      id: "item-1",
+      parentId: "parent-1",
+      driveFileId: null,
+      depth: 1,
+    } as never);
+
+    const result = await moveItem("item-1", "parent-1");
+
+    expect(result.success).toBe(true);
+  });
+
+  it("returns error when moving into self", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    vi.mocked(prisma.item.findFirst).mockResolvedValue({
+      id: "item-1",
+      parentId: null,
+      driveFileId: null,
+      depth: 0,
+    } as never);
+
+    const result = await moveItem("item-1", "item-1");
+
+    expect(result.error).toBe("Cannot move item into itself");
+  });
+
+  it("returns error when destination exceeds MAX_ITEM_DEPTH", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    // Item being moved
+    vi.mocked(prisma.item.findFirst)
+      .mockResolvedValueOnce({
+        id: "item-1",
+        parentId: null,
+        driveFileId: null,
+        depth: 0,
+      } as never)
+      // Parent at depth 9 (newDepth would be 10 = MAX_ITEM_DEPTH)
+      .mockResolvedValueOnce({
+        id: "deep-parent",
+        depth: 9,
+      } as never);
+
+    const result = await moveItem("item-1", "deep-parent");
+
+    expect(result.error).toBe("Maximum nesting depth reached");
+  });
+
+  it("returns error when subtree would exceed MAX_ITEM_DEPTH", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    // Item at depth 0 with descendants going to depth 5
+    vi.mocked(prisma.item.findFirst)
+      .mockResolvedValueOnce({
+        id: "item-1",
+        parentId: null,
+        driveFileId: null,
+        depth: 0,
+      } as never)
+      // Destination parent at depth 5 (newDepth = 6)
+      // Subtree height = 5, so deepest descendant would be at 6 + 5 = 11 >= MAX(10)
+      .mockResolvedValueOnce({
+        id: "dest-parent",
+        depth: 5,
+      } as never);
+
+    // No circular reference — ancestor walk returns null parent
+    // (the second findFirst after dest-parent check returns null to end the walk)
+    vi.mocked(prisma.item.findFirst).mockResolvedValueOnce({
+      parentId: null,
+    } as never);
+
+    // Recursive CTE returns descendants with max depth of 5
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      { id: "child-1", depth: 1 },
+      { id: "child-2", depth: 2 },
+      { id: "child-3", depth: 3 },
+      { id: "child-4", depth: 4 },
+      { id: "child-5", depth: 5 },
+    ]);
+
+    const result = await moveItem("item-1", "dest-parent");
+
+    expect(result.error).toBe(
+      "Moving here would push descendants beyond maximum depth"
+    );
+  });
+
+  it("moves item successfully and updates descendant depths", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    // Item at depth 0
+    vi.mocked(prisma.item.findFirst)
+      .mockResolvedValueOnce({
+        id: "item-1",
+        parentId: null,
+        driveFileId: null,
+        depth: 0,
+      } as never)
+      // Destination at depth 1 (newDepth = 2)
+      .mockResolvedValueOnce({
+        id: "dest-parent",
+        depth: 1,
+      } as never)
+      // Ancestor walk: dest-parent's parent is root
+      .mockResolvedValueOnce({ parentId: null } as never);
+
+    // Descendants via CTE (depth 1 and 2 — subtreeHeight = 2)
+    // depthDelta = 2 - 0 = 2, max descendant after = 2 + 2 = 4 < 10 ✓
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      { id: "child-a", depth: 1 },
+      { id: "child-b", depth: 2 },
+    ]);
+
+    // Max order in destination
+    vi.mocked(prisma.item.aggregate).mockResolvedValue({
+      _max: { order: 3 },
+    } as never);
+
+    // Mock transaction to execute callback with prisma as tx
+    const mockUpdate = vi.fn().mockResolvedValue({});
+    const mockUpdateMany = vi.fn().mockResolvedValue({ count: 2 });
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: unknown) =>
+      (fn as (tx: unknown) => Promise<void>)({
+        item: { update: mockUpdate, updateMany: mockUpdateMany },
+      })
+    );
+
+    const result = await moveItem("item-1", "dest-parent");
+
+    expect(result.success).toBe(true);
+    expect(mockUpdate).toHaveBeenCalledWith({
+      where: { id: "item-1" },
+      data: { parentId: "dest-parent", order: 4, depth: 2 },
+    });
+    expect(mockUpdateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["child-a", "child-b"] } },
+      data: { depth: { increment: 2 } },
+    });
+  });
+
+  it("moves item to root successfully without updating descendants when no depth change", async () => {
+    mockAuth.mockResolvedValue(mockSession("user-1", "test@example.com"));
+    // Item already at depth 0, moving from parent-1 to root (null)
+    vi.mocked(prisma.item.findFirst).mockResolvedValueOnce({
+      id: "item-1",
+      parentId: "parent-1",
+      driveFileId: null,
+      depth: 0,
+    } as never);
+
+    // No descendants
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([]);
+
+    // Max order at root
+    vi.mocked(prisma.item.aggregate).mockResolvedValue({
+      _max: { order: 5 },
+    } as never);
+
+    // Mock transaction
+    const mockUpdate = vi.fn().mockResolvedValue({});
+    const mockUpdateMany = vi.fn().mockResolvedValue({ count: 0 });
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: unknown) =>
+      (fn as (tx: unknown) => Promise<void>)({
+        item: { update: mockUpdate, updateMany: mockUpdateMany },
+      })
+    );
+
+    const result = await moveItem("item-1", null);
+
+    expect(result.success).toBe(true);
+    expect(mockUpdate).toHaveBeenCalledWith({
+      where: { id: "item-1" },
+      data: { parentId: null, order: 6, depth: 0 },
+    });
+    // No descendant depth update since depthDelta = 0
+    expect(mockUpdateMany).not.toHaveBeenCalled();
   });
 });
 

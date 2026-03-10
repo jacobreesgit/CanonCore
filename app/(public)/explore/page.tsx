@@ -2,12 +2,10 @@
  * Public explore page showcasing featured and recent public items.
  * Features a cinematic hero carousel with 5 featured items at the top.
  *
- * Renders a fast shell (SiteHeader) immediately, then streams the heavy
- * content (featured items + TMDB enrichment, explore grid, playlists)
- * via a Suspense boundary for improved TTFB.
+ * All data is fetched at the page level so the previous page stays
+ * visible during client-side navigation — no skeleton flash.
  */
 
-import { Suspense } from "react";
 import { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import {
@@ -47,7 +45,7 @@ export const metadata: Metadata = {
 
 /**
  * Explore page server component.
- * Renders the header shell immediately, then streams heavy content via Suspense.
+ * Fetches all data at the page level — no internal Suspense boundaries.
  */
 export default async function ExplorePage({
   searchParams,
@@ -68,7 +66,6 @@ export default async function ExplorePage({
     );
   }
 
-  // Fast shell: auth for SiteHeader
   const [session, driveConnection] = await Promise.all([
     auth(),
     getCachedGoogleDriveConnection(),
@@ -77,47 +74,27 @@ export default async function ExplorePage({
   const emailUnverified = session?.user ? !session.user.emailVerified : false;
   const driveNeedsReauth = driveConnection?.needsReauth ?? false;
 
-  return (
-    <>
-      <SiteHeader
-        title="Explore"
-        titleHref="/explore"
-        emailUnverified={emailUnverified}
-        driveNeedsReauth={driveNeedsReauth}
-      />
-      <div className="text-foreground -mt-(--header-height) flex flex-1 flex-col">
-        <Suspense fallback={<ExploreContentSkeleton />}>
-          <ExploreContent
-            currentUserId={currentUserId}
-            searchParams={searchParams}
-          />
-        </Suspense>
-      </div>
-    </>
-  );
-}
-
-/**
- * Streamed explore content — all heavy data fetching lives here so the
- * page shell can render before these queries resolve.
- */
-async function ExploreContent({
-  currentUserId,
-  searchParams,
-}: {
-  currentUserId: string | null;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+  // Rate limit check
   const rateLimitResult = await checkRateLimit("explore");
   if (rateLimitResult) {
     return (
-      <Section className="py-16">
-        <div className="rounded-xl border border-dashed border-[var(--glass-border)] p-8 text-center">
-          <p className="text-muted-foreground text-sm">
-            {rateLimitResult.error}
-          </p>
+      <>
+        <SiteHeader
+          title="Explore"
+          titleHref="/explore"
+          emailUnverified={emailUnverified}
+          driveNeedsReauth={driveNeedsReauth}
+        />
+        <div className="text-foreground -mt-(--header-height) flex flex-1 flex-col">
+          <Section className="py-16">
+            <div className="rounded-xl border border-dashed border-[var(--glass-border)] p-8 text-center">
+              <p className="text-muted-foreground text-sm">
+                {rateLimitResult.error}
+              </p>
+            </div>
+          </Section>
         </div>
-      </Section>
+      </>
     );
   }
 
@@ -126,8 +103,7 @@ async function ExploreContent({
 
   const profilePromise = getProfile();
 
-  // Chain TMDB enrichment on featured items so metadata fetching starts
-  // as soon as featured items resolve, without waiting for the full items list.
+  // Chain TMDB enrichment on featured items
   const enrichedFeaturedPromise = getFeaturedItems(5).then(
     async (featuredItems) => {
       const tmdbResults = await Promise.all(
@@ -157,8 +133,7 @@ async function ExploreContent({
     ? { id: profile.id, username: profile.username, name: profile.name }
     : null;
 
-  // Build sync data map for the current user's own featured items only.
-  // This keeps driveFileId out of the public response for other users' items.
+  // Build sync data map for the current user's own featured items only
   let ownItemSyncData:
     | Record<string, { syncStatus: SyncStatus; driveFileId: string | null }>
     | undefined;
@@ -186,13 +161,23 @@ async function ExploreContent({
   }
 
   return (
-    <ExploreClient
-      initialItems={items}
-      initialPlaylists={playlists}
-      initialSearch={q}
-      featuredItems={enrichedFeaturedItems}
-      currentUser={currentUser}
-      ownItemSyncData={ownItemSyncData}
-    />
+    <>
+      <SiteHeader
+        title="Explore"
+        titleHref="/explore"
+        emailUnverified={emailUnverified}
+        driveNeedsReauth={driveNeedsReauth}
+      />
+      <div className="text-foreground -mt-(--header-height) flex flex-1 flex-col">
+        <ExploreClient
+          initialItems={items}
+          initialPlaylists={playlists}
+          initialSearch={q}
+          featuredItems={enrichedFeaturedItems}
+          currentUser={currentUser}
+          ownItemSyncData={ownItemSyncData}
+        />
+      </div>
+    </>
   );
 }

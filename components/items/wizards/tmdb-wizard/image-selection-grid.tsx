@@ -11,14 +11,11 @@ import {
   faCheck,
   faImagePortrait,
   faImage,
-  faForwardStep,
   faGlobe,
 } from "@fortawesome/free-solid-svg-icons";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useImageLoaded } from "@/hooks/use-image-loaded";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { getPosterUrl, getBackdropUrl } from "@/lib/tmdb-client";
 import type { TMDBImage } from "@/lib/tmdb-client";
@@ -80,7 +77,7 @@ export function ImageSelectionGrid({
   selectedValue,
   onSelect,
   isSkipped = false,
-  onSkipChange,
+  onSkipChange: _onSkipChange,
   disabled = false,
   initialLimit,
   showTabs = true,
@@ -239,28 +236,6 @@ export function ImageSelectionGrid({
           )}
         </TabsContent>
       </Tabs>
-
-      {/* Skip checkbox */}
-      {onSkipChange && (
-        <div className="flex items-center gap-2 pt-2">
-          <Checkbox
-            id="skip-selection"
-            checked={isSkipped}
-            onCheckedChange={(checked) => onSkipChange(checked === true)}
-            disabled={disabled}
-          />
-          <Label
-            htmlFor="skip-selection"
-            className={cn(
-              "flex cursor-pointer items-center gap-1.5 text-sm",
-              disabled && "cursor-not-allowed opacity-50"
-            )}
-          >
-            <FontAwesomeIcon icon={faForwardStep} className="size-3.5" />
-            Skip {type} selection
-          </Label>
-        </div>
-      )}
     </div>
   );
 }

@@ -215,8 +215,9 @@ describe("SpotlightSearch", () => {
     );
 
     await waitFor(() => {
-      // Should show "/" hint
-      expect(screen.getByText("/")).toBeInTheDocument();
+      // Should show "to search" and "to close" hints
+      expect(screen.getByText("to search")).toBeInTheDocument();
+      expect(screen.getByText("to close")).toBeInTheDocument();
     });
   });
 

@@ -283,6 +283,11 @@ model ItemFile {
   playbackPosition Float?    // Seconds
   playbackDuration Float?    // Seconds
 
+  // Media dimensions (from Google Drive metadata)
+  durationMs BigInt?    // Video duration in milliseconds
+  width      Int?       // Video/image width in pixels
+  height     Int?       // Video/image height in pixels
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -14,6 +14,8 @@ interface TrackSource {
   itemName: string;
   tmdbPosterPath?: string | null;
   heroArtworkId?: string | null;
+  /** Duration from Drive metadata (ms). Preferred over playbackDuration. */
+  durationMs?: number | null;
   playbackDuration?: number | null;
   playbackPosition?: number | null;
 }
@@ -30,7 +32,9 @@ export function buildQueueTrack(source: TrackSource): QueueTrack {
       : source.heroArtworkId
         ? `/api/artwork/${source.heroArtworkId}`
         : undefined,
-    duration: source.playbackDuration ?? undefined,
+    duration: source.durationMs
+      ? source.durationMs / 1000
+      : (source.playbackDuration ?? undefined),
     playbackPosition: source.playbackPosition ?? undefined,
   };
 }

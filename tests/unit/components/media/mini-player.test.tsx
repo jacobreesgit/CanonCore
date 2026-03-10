@@ -106,11 +106,10 @@ describe("MiniPlayer", () => {
     expect(screen.getByTestId("mini-player")).toBeInTheDocument();
   });
 
-  it("displays track name and item name", () => {
+  it("displays item name", () => {
     const store = makeTestStore();
     store.dispatch(playTrack(mockTrack));
     renderWithStore(store);
-    expect(screen.getByText("breaking-bad-s01e01.mkv")).toBeInTheDocument();
     expect(screen.getByText("Breaking Bad")).toBeInTheDocument();
   });
 

@@ -183,7 +183,7 @@ export function PlaylistContextMenu({
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent
           className={cn(
-            "bg-[#1a1a1a]/95 backdrop-blur-xl",
+            "glass-dialog",
             "border border-white/[0.08]",
             "shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
             "text-foreground"
@@ -352,7 +352,7 @@ export function PlaylistItemContextMenu({
       <AlertDialog open={removeOpen} onOpenChange={setRemoveOpen}>
         <AlertDialogContent
           className={cn(
-            "bg-[#1a1a1a]/95 backdrop-blur-xl",
+            "glass-dialog",
             "border border-white/[0.08]",
             "shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
             "text-foreground"
