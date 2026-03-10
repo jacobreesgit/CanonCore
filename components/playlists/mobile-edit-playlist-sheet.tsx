@@ -16,6 +16,8 @@ import {
   faCopy,
   faRotate,
   faLink,
+  faLock,
+  faGlobe,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   MobileBottomSheet,
@@ -29,7 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { FileUpload, FileUploadTrigger } from "@/components/diceui/file-upload";
 import { cn } from "@/lib/utils";
 import {
@@ -79,10 +81,15 @@ export function MobileEditPlaylistSheet({
   }, [open]);
 
   // Track whether user has made changes (for discard alert)
+  const initialVisibility = playlist.isPublic
+    ? "public"
+    : playlist.shareToken
+      ? "unlisted"
+      : "private";
   const hasChanges =
     form.name !== playlist.name ||
     form.description !== (playlist.description ?? "") ||
-    form.isPublic !== (playlist.isPublic ?? true) ||
+    form.visibility !== initialVisibility ||
     form.artworkFile !== null ||
     form.removeArt;
 
@@ -251,87 +258,111 @@ export function MobileEditPlaylistSheet({
               </p>
             </div>
 
-            {/* Visibility toggle */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="space-y-0.5">
-                <Label htmlFor="mobile-edit-playlist-public">Public</Label>
-                <p className="text-muted-foreground text-xs">
-                  Visible on your public profile
-                </p>
-              </div>
-              <Switch
-                id="mobile-edit-playlist-public"
-                checked={form.isPublic}
-                onCheckedChange={form.setIsPublic}
-                disabled={form.isSubmitting}
-              />
-            </div>
-
-            {/* Shareable link section (only for non-public playlists) */}
-            {!form.isPublic && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="mobile-edit-playlist-share">
-                      Shareable link
-                    </Label>
-                    <p className="text-muted-foreground text-xs">
-                      Anyone with the link can view
-                    </p>
-                  </div>
-                  <Switch
-                    id="mobile-edit-playlist-share"
-                    checked={!!form.shareToken}
-                    onCheckedChange={form.handleShareToggle}
-                    disabled={form.isSubmitting}
-                  />
-                </div>
-
-                {form.shareToken &&
-                  form.shareToken !== "pending" &&
-                  username && (
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-1">
-                        <FontAwesomeIcon
-                          icon={faLink}
-                          className="text-muted-foreground absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2"
-                        />
-                        <Input
-                          readOnly
-                          aria-label="Shareable link"
-                          value={`${typeof window !== "undefined" ? window.location.origin : ""}/u/${username}/playlists/${playlist.id}?token=${form.shareToken}`}
-                          className="h-8 truncate pl-8 text-xs"
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="outline"
-                        className="size-8 shrink-0"
-                        onClick={form.handleCopyShareLink}
-                        aria-label="Copy link"
-                      >
-                        <FontAwesomeIcon icon={faCopy} className="size-3.5" />
-                      </Button>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="outline"
-                        className="size-8 shrink-0"
-                        onClick={form.handleRegenerate}
-                        disabled={form.isRegenerating}
-                        aria-label="Regenerate link"
-                      >
-                        <FontAwesomeIcon
-                          icon={faRotate}
-                          spin={form.isRegenerating}
-                          className="size-3.5"
-                        />
-                      </Button>
+            {/* Visibility */}
+            <fieldset className="space-y-2" disabled={form.isSubmitting}>
+              <Label asChild>
+                <legend>Visibility</legend>
+              </Label>
+              <RadioGroup
+                value={form.visibility}
+                onValueChange={(v) =>
+                  form.setVisibility(v as "private" | "unlisted" | "public")
+                }
+                className="grid gap-2"
+              >
+                {(
+                  [
+                    {
+                      value: "private",
+                      icon: faLock,
+                      label: "Private",
+                      note: "Only you can see this playlist",
+                    },
+                    {
+                      value: "unlisted",
+                      icon: faLink,
+                      label: "Unlisted",
+                      note: "Accessible via share link",
+                    },
+                    {
+                      value: "public",
+                      icon: faGlobe,
+                      label: "Public",
+                      note: "Visible on explore page",
+                    },
+                  ] as const
+                ).map((opt) => (
+                  <label
+                    key={opt.value}
+                    className={cn(
+                      "flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors",
+                      "focus-within:ring-2 focus-within:ring-white/30",
+                      form.visibility === opt.value
+                        ? "border-white/30 bg-white/20"
+                        : "border-white/10 bg-white/5 hover:bg-white/10"
+                    )}
+                  >
+                    <RadioGroupItem value={opt.value} className="sr-only" />
+                    <FontAwesomeIcon
+                      icon={opt.icon}
+                      className="text-muted-foreground size-4"
+                    />
+                    <div className="min-w-0">
+                      <span className="text-sm font-medium">{opt.label}</span>
+                      <p className="text-muted-foreground text-xs">
+                        {opt.note}
+                      </p>
                     </div>
-                  )}
-              </div>
-            )}
+                  </label>
+                ))}
+              </RadioGroup>
+            </fieldset>
+
+            {/* Shareable link (shown for unlisted playlists with an active token) */}
+            {form.visibility === "unlisted" &&
+              form.shareToken &&
+              form.shareToken !== "pending" &&
+              username && (
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <FontAwesomeIcon
+                      icon={faLink}
+                      className="text-muted-foreground absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2"
+                    />
+                    <Input
+                      readOnly
+                      aria-label="Shareable link"
+                      value={`${typeof window !== "undefined" ? window.location.origin : ""}/u/${username}/playlists/${playlist.id}?token=${form.shareToken}`}
+                      className="h-8 truncate pl-8 text-xs"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    className="size-8 shrink-0"
+                    onClick={form.handleCopyShareLink}
+                    aria-label="Copy link"
+                  >
+                    <FontAwesomeIcon icon={faCopy} className="size-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    className="size-8 shrink-0"
+                    onClick={form.handleRegenerate}
+                    disabled={form.isRegenerating}
+                    aria-label="Regenerate link"
+                  >
+                    <FontAwesomeIcon
+                      icon={faRotate}
+                      spin={form.isRegenerating}
+                      className="size-3.5"
+                    />
+                  </Button>
+                </div>
+              )}
 
             {form.error && (
               <p className="text-destructive text-sm" role="alert">

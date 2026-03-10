@@ -55,7 +55,7 @@ describe("MobileEditPlaylistSheet", () => {
     expect(screen.getByDisplayValue("A test description")).toBeInTheDocument();
   });
 
-  it("renders visibility toggle", () => {
+  it("renders visibility radio group", () => {
     render(
       <MobileEditPlaylistSheet
         open={true}
@@ -64,10 +64,10 @@ describe("MobileEditPlaylistSheet", () => {
       />
     );
 
+    expect(screen.getByText("Private")).toBeInTheDocument();
+    expect(screen.getByText("Unlisted")).toBeInTheDocument();
     expect(screen.getByText("Public")).toBeInTheDocument();
-    expect(
-      screen.getByText("Visible on your public profile")
-    ).toBeInTheDocument();
+    expect(screen.getByText("Visible on explore page")).toBeInTheDocument();
   });
 
   it("does not render when closed", () => {
