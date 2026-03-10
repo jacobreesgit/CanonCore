@@ -224,7 +224,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                 "flex size-5 items-center justify-center",
                 "text-[var(--tertiary-foreground)] transition-colors duration-150",
                 "hover:text-muted-foreground hover:bg-white/10",
-                "focus-visible:ring-1 focus-visible:ring-white focus-visible:outline-none",
+                "focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none",
                 "cursor-grab active:cursor-grabbing"
               )}
               {...handleProps}
@@ -251,7 +251,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                 "flex size-6 items-center justify-center",
                 "text-[var(--tertiary-foreground)] transition-colors duration-150",
                 "hover:text-muted-foreground hover:bg-white/10",
-                "focus-visible:ring-1 focus-visible:ring-white focus-visible:outline-none"
+                "focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
               )}
             >
               <FontAwesomeIcon

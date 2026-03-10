@@ -92,7 +92,7 @@ export function ItemMoreButton({ className, ...actions }: ItemMoreButtonProps) {
               "border border-white/[0.08] bg-white/[0.06]",
               "hover:border-white/[0.12] hover:bg-white/[0.12]",
               "hover:text-foreground text-[var(--tertiary-foreground)]",
-              "transition-all duration-150",
+              "transition-all duration-200",
               "focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none",
               className
             )}
