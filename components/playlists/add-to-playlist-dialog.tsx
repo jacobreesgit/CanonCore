@@ -123,7 +123,7 @@ export function AddToPlaylistDialog({
             p.id === playlistId ? { ...p, isMember: currentlyMember } : p
           )
         );
-        toast.error("Something went wrong");
+        toast.error("Failed to update playlist");
       } finally {
         setTogglingIds((prev) => {
           const next = new Set(prev);

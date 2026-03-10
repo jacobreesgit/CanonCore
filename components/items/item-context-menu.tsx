@@ -224,7 +224,7 @@ export function renderMenuItems({
             const url = `${window.location.origin}/u/${username}/${itemId}`;
             try {
               await navigator.clipboard.writeText(url);
-              toast.success("Link copied");
+              toast.success("Link copied to clipboard");
             } catch {
               toast.error("Failed to copy link");
             }
@@ -282,7 +282,7 @@ export function renderMenuItems({
                 const tracks = await onGetTracks();
                 if (tracks?.[0]) onPlayNext?.(tracks[0]);
               } catch {
-                toast.error("Couldn't load track");
+                toast.error("Couldn't load tracks");
               }
             }}
             className={MENU_ITEM_CLASSES}

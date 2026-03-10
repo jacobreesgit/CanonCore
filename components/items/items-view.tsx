@@ -352,7 +352,7 @@ export function ItemsView({
       if (result.success) {
         setItems((prev) => prev.filter((i) => i.id !== id));
         startTransition(() => refetchItems());
-        toast.success("Deleted successfully");
+        toast.success("Item deleted");
       } else {
         toast.error(result.error || "Failed to delete");
       }

@@ -185,7 +185,7 @@ export function PublicItemClient({
       // Optimistic UI: immediately hide fork button and show "In Your Library"
       setForkedOptimistic(data.itemId);
 
-      toast.success("Added to your library!", {
+      toast.success(`Forked "${item.name}" to your library`, {
         description: `${item.name} has been forked to your library.`,
         action: currentUserUsername
           ? {

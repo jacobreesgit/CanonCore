@@ -424,7 +424,7 @@ export function ItemDetailClient({
         onDelete={async () => {
           const result = await deleteItem(item.id);
           if (result.success) {
-            toast.success("Deleted successfully");
+            toast.success("Item deleted");
             router.push(
               item.parentId
                 ? `/u/${currentUser?.username}/${item.parentId}`
