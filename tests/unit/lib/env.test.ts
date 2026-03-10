@@ -1,7 +1,8 @@
+// @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-// We test env validation by dynamically importing the module
-// with different process.env values each time.
+// Run in node environment so t3-env treats this as server-side
+// (jsdom defines `window`, which t3-env interprets as client).
 
 describe("lib/env", () => {
   beforeEach(() => {
