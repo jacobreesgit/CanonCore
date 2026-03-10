@@ -37,7 +37,7 @@
     "test:e2e:debug": "playwright test --config=e2e/playwright.config.ts --debug",
     "test-storybook": "test-storybook",
     "test-storybook:ci": "test-storybook --ci --maxWorkers=2",
-    "prepare": "husky",
+    "prepare": "lefthook install",
     "analyze": "ANALYZE=true next build",
     "changelog": "changelogen",
     "release": "changelogen --release",
@@ -155,9 +155,9 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "fake-indexeddb": "^6.2.5",
     "http-server": "^14.1.1",
-    "husky": "^9.1.7",
     "jsdom": "^27.4.0",
     "knip": "^5.78.0",
+    "lefthook": "^2.1.3",
     "lint-staged": "^16.2.7",
     "msw": "^2.12.7",
     "msw-storybook-addon": "^2.0.6",
@@ -192,6 +192,11 @@
     ],
     "*.{json,md,css}": [
       "prettier --write"
+    ]
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "lefthook"
     ]
   }
 }
