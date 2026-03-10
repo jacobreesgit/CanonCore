@@ -33,7 +33,7 @@ export const HeroButton = forwardRef<HTMLButtonElement, HeroButtonProps>(
           "h-10 rounded-full px-5",
           "text-sm font-medium",
           "transition-[background-color,transform,opacity] duration-150",
-          "focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:outline-none",
+          "focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none",
           "disabled:cursor-not-allowed disabled:opacity-50",
           variant === "primary"
             ? [
