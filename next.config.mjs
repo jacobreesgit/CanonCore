@@ -77,6 +77,9 @@ const securityHeaders = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // React Compiler auto-memoizes components/hooks in production builds.
+  // Production-only to avoid build overhead during dev (Turbopack HMR stays fast).
+  reactCompiler: process.env.NODE_ENV === "production",
   // Use a separate build directory for E2E server to avoid lock conflicts
   // with the dev server running on port 3000.
   ...(process.env.NEXT_DIST_DIR && { distDir: process.env.NEXT_DIST_DIR }),
