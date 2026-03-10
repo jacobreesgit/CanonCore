@@ -216,7 +216,7 @@ export function PlaylistDetailSettingsMenu({
           align="end"
           className={cn(
             "w-52",
-            "bg-[#1a1a1a]/90 backdrop-blur-xl",
+            "glass-menu",
             "border border-white/[0.08]",
             "rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
             "text-foreground"
