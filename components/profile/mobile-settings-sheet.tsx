@@ -673,14 +673,14 @@ export function MobileSettingsSheet({
                   )}
                 </div>
                 {form.newUsername && form.usernameValidation.error && (
-                  <p role="alert" className="text-destructive text-xs">
+                  <p role="alert" className="text-destructive text-sm">
                     {form.usernameValidation.error}
                   </p>
                 )}
                 {form.newUsername &&
                   form.usernameValidation.isAvailable === false &&
                   !form.usernameValidation.error && (
-                    <p role="alert" className="text-destructive text-xs">
+                    <p role="alert" className="text-destructive text-sm">
                       Username is already taken
                     </p>
                   )}

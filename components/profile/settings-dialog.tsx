@@ -1632,14 +1632,14 @@ export function SettingsDialog({
                 )}
               </div>
               {newUsername && usernameValidation.error && (
-                <p role="alert" className="text-destructive text-xs">
+                <p role="alert" className="text-destructive text-sm">
                   {usernameValidation.error}
                 </p>
               )}
               {newUsername &&
                 usernameValidation.isAvailable === false &&
                 !usernameValidation.error && (
-                  <p role="alert" className="text-destructive text-xs">
+                  <p role="alert" className="text-destructive text-sm">
                     Username is already taken
                   </p>
                 )}
