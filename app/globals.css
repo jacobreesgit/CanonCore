@@ -434,6 +434,13 @@
   -webkit-backdrop-filter: blur(24px);
 }
 
+/* Context menus, dropdowns — slightly more transparent than dialogs */
+.glass-menu {
+  background: rgba(26, 26, 26, 0.9);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
 /* Desktop side panels — deeper translucent surface */
 .glass-panel {
   background: rgba(10, 10, 10, 0.8);
