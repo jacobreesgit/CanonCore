@@ -1825,7 +1825,7 @@ export function AddItemDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <AnimatedDialogContent
         stepKey={currentStep}
-        className="max-h-[90vh] sm:max-w-2xl"
+        className="glass-dialog max-h-[90vh] border border-[var(--glass-border)] shadow-[0_8px_32px_rgba(0,0,0,0.4)] sm:max-w-2xl"
         aria-describedby={descriptionId}
         header={getStepHeader()}
         footer={getStepFooter()}

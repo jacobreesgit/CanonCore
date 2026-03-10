@@ -172,7 +172,7 @@ export function CreatePlaylistDialog({
       <AnimatedDialogContent
         data-testid="dialog-create-playlist"
         stepKey="create"
-        className="sm:max-w-md"
+        className="glass-dialog border border-[var(--glass-border)] shadow-[0_8px_32px_rgba(0,0,0,0.4)] sm:max-w-md"
         header={header}
         footer={footer}
       >

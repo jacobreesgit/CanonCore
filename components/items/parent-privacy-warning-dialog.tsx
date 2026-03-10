@@ -55,7 +55,7 @@ export function ParentPrivacyWarningDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent className="glass-dialog border border-[var(--glass-border)] shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <FontAwesomeIcon

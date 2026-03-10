@@ -1683,7 +1683,7 @@ export function SettingsDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <AnimatedDialogContent
           stepKey={currentStep}
-          className="max-h-[90vh] sm:max-w-2xl"
+          className="glass-dialog max-h-[90vh] border border-[var(--glass-border)] shadow-[0_8px_32px_rgba(0,0,0,0.4)] sm:max-w-2xl"
           data-testid="dialog-settings"
           header={getStepHeader()}
           footer={getStepFooter()}
@@ -1694,7 +1694,7 @@ export function SettingsDialog({
 
       {/* Public profile confirmation dialog */}
       <AlertDialog open={showPublicConfirm} onOpenChange={setShowPublicConfirm}>
-        <AlertDialogContent>
+        <AlertDialogContent className="glass-dialog border border-[var(--glass-border)] shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <FontAwesomeIcon
