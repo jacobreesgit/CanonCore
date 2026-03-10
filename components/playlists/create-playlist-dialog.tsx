@@ -199,7 +199,12 @@ export function CreatePlaylistDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="playlist-description">Description</Label>
+            <Label htmlFor="playlist-description">
+              Description{" "}
+              <span className="text-muted-foreground font-normal">
+                (optional)
+              </span>
+            </Label>
             <Textarea
               id="playlist-description"
               value={form.description}
@@ -209,6 +214,9 @@ export function CreatePlaylistDialog({
               rows={3}
               disabled={form.isCreating}
             />
+            <p className="text-muted-foreground text-xs tabular-nums">
+              {form.description.length}/1000 characters
+            </p>
           </div>
 
           {/* Visibility */}

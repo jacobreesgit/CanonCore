@@ -234,7 +234,12 @@ export function EditPlaylistDialog({
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="edit-playlist-description">Description</Label>
+            <Label htmlFor="edit-playlist-description">
+              Description{" "}
+              <span className="text-muted-foreground font-normal">
+                (optional)
+              </span>
+            </Label>
             <Textarea
               id="edit-playlist-description"
               data-testid="edit-playlist-description-input"
@@ -245,6 +250,9 @@ export function EditPlaylistDialog({
               rows={3}
               disabled={form.isSubmitting}
             />
+            <p className="text-muted-foreground text-xs tabular-nums">
+              {form.description.length}/1000 characters
+            </p>
           </div>
 
           {/* Visibility toggle */}

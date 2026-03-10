@@ -231,7 +231,10 @@ export function MobileEditPlaylistSheet({
             {/* Description */}
             <div className="space-y-2">
               <Label htmlFor="mobile-edit-playlist-description">
-                Description
+                Description{" "}
+                <span className="text-muted-foreground font-normal">
+                  (optional)
+                </span>
               </Label>
               <Textarea
                 id="mobile-edit-playlist-description"
@@ -243,6 +246,9 @@ export function MobileEditPlaylistSheet({
                 disabled={form.isSubmitting}
                 className="resize-none"
               />
+              <p className="text-muted-foreground text-xs tabular-nums">
+                {form.description.length}/1000 characters
+              </p>
             </div>
 
             {/* Visibility toggle */}

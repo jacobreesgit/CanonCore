@@ -179,7 +179,12 @@ export function MobileCreatePlaylistSheet({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="mobile-playlist-description">Description</Label>
+              <Label htmlFor="mobile-playlist-description">
+                Description{" "}
+                <span className="text-muted-foreground font-normal">
+                  (optional)
+                </span>
+              </Label>
               <Textarea
                 id="mobile-playlist-description"
                 value={form.description}
@@ -190,6 +195,9 @@ export function MobileCreatePlaylistSheet({
                 disabled={form.isCreating}
                 className="resize-none"
               />
+              <p className="text-muted-foreground text-xs tabular-nums">
+                {form.description.length}/1000 characters
+              </p>
             </div>
 
             {/* Visibility */}
