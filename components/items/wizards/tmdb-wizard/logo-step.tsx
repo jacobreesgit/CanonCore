@@ -40,7 +40,7 @@ export function TMDBLogoStep({
   onNext,
   onBack,
   onDataChange,
-  onSkip,
+  onSkip: _onSkip,
 }: TMDBArtworkStepProps) {
   const images = data.images;
   const logo = data.logo ?? {
@@ -63,26 +63,6 @@ export function TMDBLogoStep({
       });
     },
     [onDataChange]
-  );
-
-  /**
-   * Handles skip checkbox toggle.
-   */
-  const handleSkipChange = useCallback(
-    (skipped: boolean) => {
-      if (skipped) {
-        onSkip();
-      } else {
-        onDataChange({
-          logo: {
-            value: null,
-            source: null,
-            skipped: false,
-          },
-        });
-      }
-    },
-    [onSkip, onDataChange]
   );
 
   return (
@@ -120,7 +100,6 @@ export function TMDBLogoStep({
         selectedSource={logo.source}
         onSelect={handleSelect}
         isSkipped={logo.skipped}
-        onSkipChange={handleSkipChange}
         disabled={isLoading}
       />
 

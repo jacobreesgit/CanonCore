@@ -47,6 +47,7 @@ vi.mock("@/components/ui/sidebar", () => ({
     className: _className,
     onClick,
     asChild: _asChild,
+    ...rest
   }: {
     children: React.ReactNode;
     isActive?: boolean;
@@ -54,12 +55,14 @@ vi.mock("@/components/ui/sidebar", () => ({
     asChild?: boolean;
     className?: string;
     onClick?: () => void;
+    "data-testid"?: string;
   }) => (
     <button
       role="button"
       data-active={isActive}
       onClick={onClick}
       aria-current={isActive ? "page" : undefined}
+      {...rest}
     >
       {children}
     </button>
@@ -177,9 +180,8 @@ describe("NavMain", () => {
 
       render(<NavMain items={testItems} username={testUsername} />);
 
-      const searchButton = screen.getByRole("button", { name: /search/i });
+      const searchButton = screen.getByTestId("nav-search-button");
       expect(searchButton).toBeInTheDocument();
-      expect(searchButton).toHaveTextContent("/");
     });
 
     it("does not render search button when outside spotlight context", () => {
@@ -204,7 +206,7 @@ describe("NavMain", () => {
 
       render(<NavMain items={testItems} username={testUsername} />);
 
-      const searchButton = screen.getByRole("button", { name: /search/i });
+      const searchButton = screen.getByTestId("nav-search-button");
       await user.click(searchButton);
 
       expect(mockOpenSpotlight).toHaveBeenCalledTimes(1);

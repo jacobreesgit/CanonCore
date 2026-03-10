@@ -81,6 +81,10 @@ export function itemsToTree(items: ItemInput[]): TreeItem[] {
       childCount: "childCount" in item ? item.childCount : undefined,
       // Include media icon type for audio/video/mixed display
       mediaIconType: "mediaIconType" in item ? item.mediaIconType : undefined,
+      // Include primary media metadata for inline badges
+      primaryDurationMs:
+        "primaryDurationMs" in item ? item.primaryDurationMs : undefined,
+      primaryHeight: "primaryHeight" in item ? item.primaryHeight : undefined,
       // Include progress data for display
       progressPercentage:
         "progress" in item ? (item.progress?.percentage ?? null) : null,

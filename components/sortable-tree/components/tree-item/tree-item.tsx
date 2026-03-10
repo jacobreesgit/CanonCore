@@ -20,6 +20,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SyncIcon } from "@/components/items/sync-badge";
+import { MediaBadges } from "@/components/ui/media-badges";
 import { getTmdbPosterUrl } from "@/lib/tmdb-image-utils";
 import type { FileCounts, SyncStatus } from "@/lib/types";
 import type { ItemMenuActions } from "@/components/items/item-context-menu";
@@ -76,6 +77,10 @@ export interface TreeItemProps extends Omit<
   artworkId?: string | null;
   /** Whether to show thumbnail. Defaults to false for backward compatibility. */
   showThumbnail?: boolean;
+  /** Primary media duration in ms for inline badge display. */
+  primaryDurationMs?: number | null;
+  /** Primary media height in pixels for inline badge display. */
+  primaryHeight?: number | null;
   /** Google Drive folder ID — shows cloud icon when linked. */
   driveFileId?: string | null;
   /** Props for the more options dropdown menu (view mode only). */
@@ -113,6 +118,8 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
       tmdbPosterPath,
       artworkId,
       showThumbnail = false,
+      primaryDurationMs,
+      primaryHeight,
       driveFileId,
       // Destructure to prevent passing to DOM element via ...props
       description,
@@ -330,6 +337,14 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                         )}
                     </span>
                   </>
+                )}
+                {/* Duration / resolution badges - view mode only */}
+                {!showDragHandle && (
+                  <MediaBadges
+                    durationMs={primaryDurationMs}
+                    height={primaryHeight}
+                    className="ml-auto flex-shrink-0"
+                  />
                 )}
               </div>
               {/* Description - only in view mode */}

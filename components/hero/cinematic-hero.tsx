@@ -342,6 +342,8 @@ export function CinematicHero({
                 (activeSlide.genres && activeSlide.genres.length > 0) ||
                 activeSlide.syncStatus ||
                 activeSlide.driveFileId ||
+                activeSlide.durationMs ||
+                activeSlide.height ||
                 activeSlide.attribution) && (
                 <div className="mt-4">
                   <MetadataLine
@@ -352,6 +354,8 @@ export function CinematicHero({
                     genres={activeSlide.genres}
                     syncStatus={activeSlide.syncStatus}
                     driveFileId={activeSlide.driveFileId}
+                    durationMs={activeSlide.durationMs}
+                    height={activeSlide.height}
                     attribution={activeSlide.attribution}
                     attributionHref={activeSlide.attributionHref}
                   />

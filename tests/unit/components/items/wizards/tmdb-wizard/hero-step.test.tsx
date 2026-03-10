@@ -73,30 +73,6 @@ describe("TMDBHeroStep", () => {
 
       expect(screen.getByText("Select Hero Image")).toBeInTheDocument();
     });
-
-    it("renders skip checkbox", () => {
-      render(
-        <TMDBHeroStep
-          data={mockData}
-          currentValues={mockCurrentValues}
-          isLoading={false}
-          error={null}
-          canGoBack={true}
-          uploadMode={false}
-          hasDriveConnection={false}
-          onNext={vi.fn()}
-          onBack={vi.fn()}
-          onDataChange={vi.fn()}
-          onLoadingChange={vi.fn()}
-          onError={vi.fn()}
-          onSkip={vi.fn()}
-        />
-      );
-
-      expect(
-        screen.getByRole("checkbox", { name: /skip/i })
-      ).toBeInTheDocument();
-    });
   });
 
   describe("navigation", () => {
@@ -152,67 +128,6 @@ describe("TMDBHeroStep", () => {
       await user.click(screen.getByRole("button", { name: /back/i }));
 
       expect(onBack).toHaveBeenCalled();
-    });
-  });
-
-  describe("skip functionality", () => {
-    it("calls onSkip when skip checkbox is checked", async () => {
-      const user = userEvent.setup();
-      const onSkip = vi.fn();
-
-      render(
-        <TMDBHeroStep
-          data={mockData}
-          currentValues={mockCurrentValues}
-          isLoading={false}
-          error={null}
-          canGoBack={true}
-          uploadMode={false}
-          hasDriveConnection={false}
-          onNext={vi.fn()}
-          onBack={vi.fn()}
-          onDataChange={vi.fn()}
-          onLoadingChange={vi.fn()}
-          onError={vi.fn()}
-          onSkip={onSkip}
-        />
-      );
-
-      await user.click(screen.getByRole("checkbox", { name: /skip/i }));
-
-      expect(onSkip).toHaveBeenCalled();
-    });
-
-    it("shows skipped state when backdrop is skipped", () => {
-      const skippedData: Partial<TMDBWizardData> = {
-        ...mockData,
-        backdrop: {
-          value: null,
-          source: null,
-          skipped: true,
-        },
-      };
-
-      render(
-        <TMDBHeroStep
-          data={skippedData}
-          currentValues={mockCurrentValues}
-          isLoading={false}
-          error={null}
-          canGoBack={true}
-          uploadMode={false}
-          hasDriveConnection={false}
-          onNext={vi.fn()}
-          onBack={vi.fn()}
-          onDataChange={vi.fn()}
-          onLoadingChange={vi.fn()}
-          onError={vi.fn()}
-          onSkip={vi.fn()}
-        />
-      );
-
-      const skipCheckbox = screen.getByRole("checkbox", { name: /skip/i });
-      expect(skipCheckbox).toBeChecked();
     });
   });
 

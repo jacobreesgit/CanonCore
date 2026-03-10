@@ -3,11 +3,10 @@
  * Shows playlist hero, item grid, and edit controls for owners.
  * Viewers see public items only with visibility filtering.
  *
- * Uses Suspense to stream playlist content — SiteHeader renders
- * immediately while the playlist data loads in the background.
+ * All data is fetched at the page level so the previous page stays
+ * visible during client-side navigation — no skeleton flash.
  */
 
-import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
@@ -16,7 +15,6 @@ import {
   getProfileByIdOrUsername,
   getPublicPlaylist,
 } from "@/lib/public-auth";
-import type { PublicProfile } from "@/lib/public-auth";
 import { getPlaylist } from "@/lib/playlist-actions";
 import { getCachedGoogleDriveConnection } from "@/lib/google-drive-data";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -98,52 +96,100 @@ export async function generateMetadata({
   };
 }
 
-// ---------------------------------------------------------------------------
-// Async server components streamed inside Suspense
-// ---------------------------------------------------------------------------
+/**
+ * Playlist detail page server component.
+ * Fetches all data at the page level — no internal Suspense boundaries.
+ */
+export default async function PlaylistPage({
+  params,
+  searchParams,
+}: PageProps) {
+  const { username, playlistId } = await params;
+  const resolvedSearchParams = await searchParams;
+  const { token } = resolvedSearchParams;
 
-async function OwnerPlaylistContent({
-  playlistId,
-  username,
-}: {
-  playlistId: string;
-  username: string;
-}) {
-  const result = await getPlaylist(playlistId);
-  if (!result.success || !result.data) notFound();
+  // Dev-only: ?skeleton=true freezes the skeleton for visual comparison
+  if (
+    process.env.NODE_ENV === "development" &&
+    resolvedSearchParams.skeleton === "true"
+  ) {
+    return (
+      <>
+        <SiteHeader title="Playlists" titleHref={`/u/${username}`} />
+        <div className="bg-background text-foreground flex flex-1 flex-col">
+          <PlaylistContentSkeleton />
+        </div>
+      </>
+    );
+  }
 
-  // Resolve colour server-side: playlist artwork > first item > null
-  const resolvedColour =
-    result.data.dominantColour ??
-    result.data.items[0]?.item.dominantColour ??
-    null;
+  const [rateLimitResult, session] = await Promise.all([
+    checkRateLimit("publicProfile"),
+    auth(),
+  ]);
 
-  return (
-    <PlaylistDetailClient
-      playlist={result.data}
-      username={username}
-      isOwner
-      dominantColour={resolvedColour}
-    />
-  );
-}
+  if (rateLimitResult) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <p className="text-muted-foreground">
+          Too many requests. Please try again later.
+        </p>
+      </div>
+    );
+  }
 
-async function ViewerPlaylistContent({
-  playlistId,
-  username,
-  profile,
-  token,
-  currentUserId,
-}: {
-  playlistId: string;
-  username: string;
-  profile: PublicProfile;
-  token?: string;
-  currentUserId: string | null;
-}) {
+  const sessionUsername = session?.user?.username;
+  const isOwnerByUsername =
+    sessionUsername && sessionUsername.toLowerCase() === username.toLowerCase();
+
+  const profile = isOwnerByUsername
+    ? await getProfileByIdOrUsername(username)
+    : await getPublicProfile(username);
+
+  if (!profile) {
+    notFound();
+  }
+
+  const isOwner = session?.user?.id === profile.id;
+
+  if (isOwner) {
+    // ── Owner path ──────────────────────────────────────────────────────
+    const [result, driveConnection] = await Promise.all([
+      getPlaylist(playlistId),
+      getCachedGoogleDriveConnection(),
+    ]);
+
+    if (!result.success || !result.data) notFound();
+
+    const resolvedColour =
+      result.data.dominantColour ??
+      result.data.items[0]?.item.dominantColour ??
+      null;
+
+    return (
+      <>
+        <SiteHeader
+          title="My Playlists"
+          titleHref={`/u/${username}`}
+          driveNeedsReauth={driveConnection?.needsReauth ?? false}
+        />
+        <div className="bg-background text-foreground flex flex-1 flex-col">
+          <PlaylistDetailClient
+            playlist={result.data}
+            username={username}
+            isOwner
+            dominantColour={resolvedColour}
+          />
+        </div>
+      </>
+    );
+  }
+
+  // ── Viewer path ─────────────────────────────────────────────────────
+  const currentUserId = session?.user?.id ?? null;
   const publicData = await getPublicPlaylist(playlistId, token);
+
   if (!publicData) {
-    // Lightweight ownership check: show hint if owner views their own private playlist
     if (currentUserId) {
       const privatePlaylist = await prisma.playlist.findUnique({
         where: { id: playlistId },
@@ -151,17 +197,22 @@ async function ViewerPlaylistContent({
       });
       if (privatePlaylist?.userId === currentUserId) {
         return (
-          <PrivateResourceNotice
-            resourceType="playlist"
-            settingsUrl={`/u/${username}/playlists/${playlistId}`}
-          />
+          <>
+            <SiteHeader
+              title={`@${profile.username}`}
+              titleHref={`/u/${username}`}
+            />
+            <PrivateResourceNotice
+              resourceType="playlist"
+              settingsUrl={`/u/${username}/playlists/${playlistId}`}
+            />
+          </>
         );
       }
     }
     notFound();
   }
 
-  // Resolve colour server-side: playlist artwork > first item > null
   const resolvedColour =
     publicData.playlist.dominantColour ??
     publicData.items[0]?.dominantColour ??
@@ -218,125 +269,30 @@ async function ViewerPlaylistContent({
           __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c"),
         }}
       />
-      <PlaylistDetailClient
-        playlist={{
-          id: publicData.playlist.id,
-          name: publicData.playlist.name,
-          description: publicData.playlist.description,
-          items: publicData.items.map((item, index) => ({
-            playlistItemId: `public-${item.id}`,
-            order: index,
-            addedAt: new Date(),
-            item: {
-              id: item.id,
-              name: item.name,
-              description: item.description,
-              tmdbPosterPath: item.tmdbPosterPath,
-              artworkId: item.artworkId,
-            },
-          })),
-        }}
-        username={username}
-        isOwner={false}
-        dominantColour={resolvedColour}
-      />
-    </>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Page component — fast shell with Suspense streaming
-// ---------------------------------------------------------------------------
-
-/**
- * Playlist detail page server component.
- * Renders the SiteHeader immediately, then streams playlist content
- * via Suspense while the data loads.
- */
-export default async function PlaylistPage({
-  params,
-  searchParams,
-}: PageProps) {
-  const { username, playlistId } = await params;
-  const resolvedSearchParams = await searchParams;
-  const { token } = resolvedSearchParams;
-
-  // Dev-only: ?skeleton=true freezes the skeleton for visual comparison
-  if (
-    process.env.NODE_ENV === "development" &&
-    resolvedSearchParams.skeleton === "true"
-  ) {
-    return (
-      <>
-        <SiteHeader title="Playlists" titleHref={`/u/${username}`} />
-        <div className="bg-background text-foreground flex flex-1 flex-col">
-          <PlaylistContentSkeleton />
-        </div>
-      </>
-    );
-  }
-
-  const [rateLimitResult, session] = await Promise.all([
-    checkRateLimit("publicProfile"),
-    auth(),
-  ]);
-
-  if (rateLimitResult) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <p className="text-muted-foreground">
-          Too many requests. Please try again later.
-        </p>
-      </div>
-    );
-  }
-
-  const sessionUsername = session?.user?.username;
-  const isOwnerByUsername =
-    sessionUsername && sessionUsername.toLowerCase() === username.toLowerCase();
-
-  const profile = isOwnerByUsername
-    ? await getProfileByIdOrUsername(username)
-    : await getPublicProfile(username);
-
-  if (!profile) {
-    notFound();
-  }
-
-  const isOwner = session?.user?.id === profile.id;
-
-  if (isOwner) {
-    const driveConnection = await getCachedGoogleDriveConnection();
-
-    return (
-      <>
-        <SiteHeader
-          title="My Playlists"
-          titleHref={`/u/${username}`}
-          driveNeedsReauth={driveConnection?.needsReauth ?? false}
-        />
-        <div className="bg-background text-foreground flex flex-1 flex-col">
-          <Suspense fallback={<PlaylistContentSkeleton />}>
-            <OwnerPlaylistContent playlistId={playlistId} username={username} />
-          </Suspense>
-        </div>
-      </>
-    );
-  }
-
-  return (
-    <>
       <SiteHeader title={`@${profile.username}`} titleHref={`/u/${username}`} />
       <div className="bg-background text-foreground flex flex-1 flex-col">
-        <Suspense fallback={<PlaylistContentSkeleton />}>
-          <ViewerPlaylistContent
-            playlistId={playlistId}
-            username={username}
-            profile={profile}
-            token={token}
-            currentUserId={session?.user?.id ?? null}
-          />
-        </Suspense>
+        <PlaylistDetailClient
+          playlist={{
+            id: publicData.playlist.id,
+            name: publicData.playlist.name,
+            description: publicData.playlist.description,
+            items: publicData.items.map((item, index) => ({
+              playlistItemId: `public-${item.id}`,
+              order: index,
+              addedAt: new Date(),
+              item: {
+                id: item.id,
+                name: item.name,
+                description: item.description,
+                tmdbPosterPath: item.tmdbPosterPath,
+                artworkId: item.artworkId,
+              },
+            })),
+          }}
+          username={username}
+          isOwner={false}
+          dominantColour={resolvedColour}
+        />
       </div>
     </>
   );

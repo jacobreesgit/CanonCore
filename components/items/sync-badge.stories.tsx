@@ -45,19 +45,6 @@ type Story = StoryObj<typeof meta>;
 
 // === STANDARD VARIANTS ===
 
-export const Synced: Story = {
-  args: {
-    syncStatus: "SYNCED",
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "Returns null for SYNCED status (no visual indicator needed).",
-      },
-    },
-  },
-};
-
 export const Syncing: Story = {
   args: {
     syncStatus: "SYNCING",
@@ -79,20 +66,6 @@ export const Pending: Story = {
     docs: {
       description: {
         story: "Shows small dot with tooltip for items waiting to sync.",
-      },
-    },
-  },
-};
-
-export const Error: Story = {
-  args: {
-    syncStatus: "ERROR",
-    syncError: null,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "Shows warning triangle with default error message.",
       },
     },
   },

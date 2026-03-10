@@ -32,12 +32,33 @@ import { HeroButton } from "./hero-button";
 import { renderMenuItems, type ItemMenuActions } from "./item-context-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { addItemToPlaylists } from "@/lib/playlist-actions";
 
 const AddToPlaylistDialog = dynamic(
   () =>
     import("@/components/playlists/add-to-playlist-dialog").then((mod) => ({
       default: mod.AddToPlaylistDialog,
     })),
+  { ssr: false }
+);
+
+const MobileAddToPlaylistSheet = dynamic(
+  () =>
+    import("@/components/playlists/mobile-add-to-playlist-sheet").then(
+      (mod) => ({
+        default: mod.MobileAddToPlaylistSheet,
+      })
+    ),
+  { ssr: false }
+);
+
+const MobileCreatePlaylistSheet = dynamic(
+  () =>
+    import("@/components/playlists/mobile-create-playlist-sheet").then(
+      (mod) => ({
+        default: mod.MobileCreatePlaylistSheet,
+      })
+    ),
   { ssr: false }
 );
 
@@ -85,6 +106,8 @@ export function DetailSettingsMenu({
   const [playlistOpen, setPlaylistOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [createPlaylistOpen, setCreatePlaylistOpen] = useState(false);
+  const [playlistVersion, setPlaylistVersion] = useState(0);
 
   async function handleDelete() {
     if (!onDelete) return;
@@ -102,7 +125,7 @@ export function DetailSettingsMenu({
     <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
       <AlertDialogContent
         className={cn(
-          "bg-[#1a1a1a]/95 backdrop-blur-xl",
+          "glass-dialog",
           "border border-white/[0.08]",
           "shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
           "text-foreground"
@@ -232,10 +255,28 @@ export function DetailSettingsMenu({
         />
 
         {playlistOpen && itemId && (
-          <AddToPlaylistDialog
+          <MobileAddToPlaylistSheet
             open={playlistOpen}
             onOpenChange={setPlaylistOpen}
             itemId={itemId}
+            onCreatePlaylist={() => setCreatePlaylistOpen(true)}
+            playlistVersion={playlistVersion}
+          />
+        )}
+
+        {createPlaylistOpen && (
+          <MobileCreatePlaylistSheet
+            open={createPlaylistOpen}
+            onOpenChange={setCreatePlaylistOpen}
+            onCreated={(playlist) => {
+              setCreatePlaylistOpen(false);
+              setPlaylistVersion((v) => v + 1);
+              // Auto-add the current item to the newly created playlist
+              // (matches desktop AddToPlaylistDialog.handleCreated behaviour)
+              if (itemId) {
+                addItemToPlaylists(itemId, [playlist.id]);
+              }
+            }}
           />
         )}
       </>

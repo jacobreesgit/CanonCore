@@ -389,7 +389,7 @@ describe("GET /api/stream/[fileId]", () => {
       });
 
       expect(response.headers.get("Cache-Control")).toBe(
-        "private, max-age=3600"
+        "private, max-age=3600, stale-while-revalidate=604800"
       );
     });
 
@@ -421,7 +421,7 @@ describe("GET /api/stream/[fileId]", () => {
 
       expect(response.status).toBe(206);
       expect(response.headers.get("Cache-Control")).toBe(
-        "private, max-age=3600"
+        "private, max-age=3600, stale-while-revalidate=604800"
       );
     });
   });

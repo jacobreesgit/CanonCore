@@ -17,7 +17,10 @@ import {
 import { toast } from "sonner";
 import { getSearchableItems } from "@/lib/item-actions";
 import { searchPublicUsers, searchPublicItems } from "@/lib/public-auth";
-import { MobileBottomSheet } from "./mobile-bottom-sheet";
+import {
+  MobileBottomSheet,
+  MobileBottomSheetContent,
+} from "./mobile-bottom-sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { UserThumbnail } from "@/components/search/user-thumbnail";
@@ -285,6 +288,7 @@ export function MobileSearchSheet({
       onOpenChange={onOpenChange}
       repositionInputs
       snapPoints={[0.85]}
+      swipeable
       title="Search"
       description="Search items and people"
     >
@@ -327,12 +331,7 @@ export function MobileSearchSheet({
         </div>
       </div>
 
-      {/* Results - data-vaul-no-drag prevents swipe-to-dismiss when scrolling */}
-      <div
-        className="flex-1 overflow-y-auto px-4 pb-4"
-        data-vaul-no-drag
-        tabIndex={0}
-      >
+      <MobileBottomSheetContent tabIndex={0}>
         {/* Empty state */}
         {hasInitialized && !isAnyLoading && !hasResults && (
           <div className="flex flex-col items-center justify-center py-12">
@@ -514,7 +513,7 @@ export function MobileSearchSheet({
             )}
           </section>
         )}
-      </div>
+      </MobileBottomSheetContent>
     </MobileBottomSheet>
   );
 }

@@ -497,12 +497,12 @@ export function MobileItemSheet({
           title="Search TMDB"
           description="Find a movie or TV show to link"
           className={cn(
-            "bg-[#1a1a1a]/95 backdrop-blur-xl",
+            "glass-dialog",
             "border-t border-white/[0.08]",
             "text-foreground"
           )}
         >
-          <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
+          <MobileBottomSheetHeader>
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -567,12 +567,12 @@ export function MobileItemSheet({
           title="Select Season"
           description={displayTitle}
           className={cn(
-            "bg-[#1a1a1a]/95 backdrop-blur-xl",
+            "glass-dialog",
             "border-t border-white/[0.08]",
             "text-foreground"
           )}
         >
-          <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
+          <MobileBottomSheetHeader>
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -651,12 +651,12 @@ export function MobileItemSheet({
           title="Apply Metadata"
           description={tmdbPreview.name || "Select metadata to apply"}
           className={cn(
-            "bg-[#1a1a1a]/95 backdrop-blur-xl",
+            "glass-dialog",
             "border-t border-white/[0.08]",
             "text-foreground"
           )}
         >
-          <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
+          <MobileBottomSheetHeader>
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -745,6 +745,16 @@ export function MobileItemSheet({
                   Back
                 </Button>
                 <div className="flex gap-2">
+                  {wizardFooterProps.onSkipCurrent && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={wizardFooterProps.onSkipCurrent}
+                      disabled={wizardFooterProps.isDisabled}
+                    >
+                      Skip
+                    </Button>
+                  )}
                   {wizardFooterProps.onSkipAll && (
                     <Button
                       type="button"
@@ -796,12 +806,12 @@ export function MobileItemSheet({
         description="Sort, filter, and configure your item"
         data-testid="sheet-item-options"
         className={cn(
-          "bg-[#1a1a1a]/95 backdrop-blur-xl",
+          "glass-dialog",
           "border-t border-white/[0.08]",
           "text-foreground"
         )}
       >
-        <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
+        <MobileBottomSheetHeader>
           <MobileBottomSheetTitle className="text-foreground">
             Item Options
           </MobileBottomSheetTitle>

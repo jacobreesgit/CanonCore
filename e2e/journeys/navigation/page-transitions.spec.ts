@@ -21,14 +21,8 @@ test.describe("Page transition loading states", () => {
       await page.getByRole("link", { name: "Explore" }).click();
     }
 
-    // On desktop, skeleton should appear during navigation.
-    // On mobile, client-side nav can resolve faster than Playwright polls.
-    if (!isMobile) {
-      const skeleton = page.locator('[data-slot="skeleton"]').first();
-      await expect(skeleton).toBeVisible({ timeout: Timeouts.navigation });
-    }
-
-    // Content should eventually replace the skeleton
+    // Content should load after navigation (loading.tsx was removed,
+    // so skeleton may not appear — just wait for the final content)
     await expect(page.getByTestId("hero-carousel")).toBeVisible({
       timeout: Timeouts.navigation,
     });

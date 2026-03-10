@@ -31,7 +31,10 @@ test.describe("Items Hierarchy", () => {
     itemsCrud,
     itemsHierarchy,
     itemDetail,
+    isMobile,
   }) => {
+    test.skip(isMobile, "More button requires hover (not available on mobile)");
+
     // Need 3 levels: root > subfolder > movie
     // On root's detail page in tree view, subfolder has children
     // so it gets a collapse/expand toggle.

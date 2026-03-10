@@ -33,7 +33,22 @@ import { UnderlineTabs } from "@/components/ui/underline-tabs";
 import { EditModeToggle } from "@/components/items/edit-mode-toggle";
 import { Button } from "@/components/ui/button";
 import { PlaylistItemContextMenu } from "@/components/playlists/playlist-context-menu";
-import { EditPlaylistDialog } from "@/components/playlists/edit-playlist-dialog";
+
+const EditPlaylistDialog = dynamic(
+  () =>
+    import("./edit-playlist-dialog").then((mod) => ({
+      default: mod.EditPlaylistDialog,
+    })),
+  { ssr: false }
+);
+
+const MobileEditPlaylistSheet = dynamic(
+  () =>
+    import("./mobile-edit-playlist-sheet").then((mod) => ({
+      default: mod.MobileEditPlaylistSheet,
+    })),
+  { ssr: false }
+);
 import { PlaylistDetailSettingsMenu } from "./playlist-detail-settings-menu";
 import { usePlaylistUrlState } from "@/hooks/use-playlist-url-state";
 import { PLAYLIST_SORT_OPTIONS } from "@/hooks/playlist-search-params";
@@ -490,24 +505,42 @@ export function PlaylistDetailClient({
         )}
       </HeroContentLayout>
 
-      {isOwner && (
-        <EditPlaylistDialog
-          open={showEdit}
-          onOpenChange={setShowEdit}
-          playlist={playlist}
-          username={username}
-          onUpdated={(data) => {
-            setPlaylist((prev) => ({
-              ...prev,
-              name: data.name,
-              description: data.description,
-              isPublic: data.isPublic,
-              hasArtwork: data.hasArtwork,
-              shareToken: data.shareToken,
-            }));
-          }}
-        />
-      )}
+      {isOwner &&
+        (isMobile ? (
+          <MobileEditPlaylistSheet
+            open={showEdit}
+            onOpenChange={setShowEdit}
+            playlist={playlist}
+            username={username}
+            onUpdated={(data) => {
+              setPlaylist((prev) => ({
+                ...prev,
+                name: data.name,
+                description: data.description,
+                isPublic: data.isPublic,
+                hasArtwork: data.hasArtwork,
+                shareToken: data.shareToken,
+              }));
+            }}
+          />
+        ) : (
+          <EditPlaylistDialog
+            open={showEdit}
+            onOpenChange={setShowEdit}
+            playlist={playlist}
+            username={username}
+            onUpdated={(data) => {
+              setPlaylist((prev) => ({
+                ...prev,
+                name: data.name,
+                description: data.description,
+                isPublic: data.isPublic,
+                hasArtwork: data.hasArtwork,
+                shareToken: data.shareToken,
+              }));
+            }}
+          />
+        ))}
     </>
   );
 }

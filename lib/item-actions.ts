@@ -92,6 +92,8 @@ interface ItemWithFiles {
     isPrimary: boolean;
     filename: string;
     mimeType: string | null;
+    durationMs: bigint | null;
+    height: number | null;
   }[];
 }
 
@@ -119,6 +121,10 @@ function toItemWithArtwork(
   const firstMedia = item.files.find((f) => f.fileType === "MEDIA");
   const resolvedPrimaryMedia = primaryMedia ?? firstMedia;
   const primaryMediaName = resolvedPrimaryMedia?.filename ?? null;
+  const primaryDurationMs = resolvedPrimaryMedia?.durationMs
+    ? Number(resolvedPrimaryMedia.durationMs)
+    : null;
+  const primaryHeight = resolvedPrimaryMedia?.height ?? null;
 
   // Calculate file counts by type
   const mediaFiles = item.files.filter((f) => f.fileType === "MEDIA");
@@ -168,6 +174,8 @@ function toItemWithArtwork(
     fileCounts,
     childCount,
     primaryMediaName,
+    primaryDurationMs,
+    primaryHeight,
     mediaIconType,
     progress,
   };
@@ -528,6 +536,8 @@ export const getItems = cache(async function getItems(
             isPrimary: true,
             filename: true,
             mimeType: true,
+            durationMs: true,
+            height: true,
           },
         },
         driveConnection: {
@@ -593,6 +603,8 @@ export const getAllItems = cache(async function getAllItems(): Promise<
             isPrimary: true,
             filename: true,
             mimeType: true,
+            durationMs: true,
+            height: true,
           },
         },
         driveConnection: {
@@ -680,6 +692,8 @@ export const getDescendants = cache(async function getDescendants(
           isPrimary: true,
           filename: true,
           mimeType: true,
+          durationMs: true,
+          height: true,
         },
       },
       driveConnection: {
@@ -1107,6 +1121,134 @@ export async function deleteItem(id: string): Promise<ItemResult> {
   await prisma.item.delete({
     where: { id },
   });
+
+  return { success: true };
+}
+
+/**
+ * Moves an item to a new parent folder (or root).
+ * Prevents circular moves (item cannot become a descendant of itself).
+ * Appends to end of destination with correct ordering.
+ * Syncs the move to Google Drive.
+ *
+ * @param itemId - ID of the item to move
+ * @param newParentId - Destination parent ID (null for root)
+ * @returns Success or error
+ */
+export async function moveItem(
+  itemId: string,
+  newParentId: string | null
+): Promise<ItemResult> {
+  const [rateLimitResult, session] = await Promise.all([
+    checkRateLimit("itemUpdate"),
+    auth(),
+  ]);
+
+  if (rateLimitResult) return { error: rateLimitResult.error };
+  if (!session?.user?.id) return { error: "Not authenticated" };
+
+  const userId = session.user.id;
+
+  // Fetch the item being moved
+  const item = await prisma.item.findFirst({
+    where: { id: itemId, userId },
+    select: { id: true, parentId: true, driveFileId: true, depth: true },
+  });
+  if (!item) return { error: "Item not found" };
+  if (item.parentId === newParentId) return { success: true };
+
+  // Prevent moving into self
+  if (newParentId === itemId) return { error: "Cannot move item into itself" };
+
+  // Verify new parent ownership and prevent circular reference
+  let newDepth = 0;
+  if (newParentId) {
+    const parent = await prisma.item.findFirst({
+      where: { id: newParentId, userId },
+      select: { id: true, depth: true },
+    });
+    if (!parent) return { error: "Destination not found" };
+    newDepth = parent.depth + 1;
+
+    // Check that the new parent is not a descendant of the item
+    // Walk up the tree from newParent to check for cycles
+    const visited = new Set<string>([itemId]);
+    let currentId: string | null = newParentId;
+    while (currentId) {
+      if (visited.has(currentId))
+        return { error: "Cannot create circular hierarchy" };
+      visited.add(currentId);
+      const ancestor: { parentId: string | null } | null =
+        await prisma.item.findFirst({
+          where: { id: currentId, userId },
+          select: { parentId: true },
+        });
+      currentId = ancestor?.parentId ?? null;
+    }
+  }
+
+  if (newDepth >= MAX_ITEM_DEPTH) {
+    return { error: "Maximum nesting depth reached" };
+  }
+
+  // Get descendants via recursive CTE (only the subtree, not all user items)
+  const descendants = await prisma.$queryRaw<
+    Array<{ id: string; depth: number }>
+  >`
+    WITH RECURSIVE subtree AS (
+      SELECT id, "parentId", depth FROM "Item"
+        WHERE "parentId" = ${itemId} AND "userId" = ${userId}::uuid
+      UNION ALL
+      SELECT i.id, i."parentId", i.depth FROM "Item" i
+        JOIN subtree s ON i."parentId" = s.id
+    )
+    SELECT id, depth FROM subtree
+  `;
+
+  // Validate that the deepest descendant won't exceed MAX_ITEM_DEPTH after move
+  const depthDelta = newDepth - item.depth;
+  if (descendants.length > 0) {
+    const maxDescendantDepth = Math.max(...descendants.map((d) => d.depth));
+    if (maxDescendantDepth + depthDelta >= MAX_ITEM_DEPTH) {
+      return {
+        error: "Moving here would push descendants beyond maximum depth",
+      };
+    }
+  }
+
+  // Get max order in destination to append at end
+  const maxOrderResult = await prisma.item.aggregate({
+    where: { userId, parentId: newParentId },
+    _max: { order: true },
+  });
+  const newOrder = (maxOrderResult._max.order ?? 0) + 1;
+
+  // Update item and descendants in transaction
+  await prisma.$transaction(async (tx) => {
+    // Move the item
+    await tx.item.update({
+      where: { id: itemId },
+      data: { parentId: newParentId, order: newOrder, depth: newDepth },
+    });
+
+    // Update descendant depths if depth changed
+    if (depthDelta !== 0) {
+      const descendantIds = descendants.map((d) => d.id);
+      if (descendantIds.length > 0) {
+        await tx.item.updateMany({
+          where: { id: { in: descendantIds } },
+          data: { depth: { increment: depthDelta } },
+        });
+      }
+    }
+  });
+
+  // Sync move to Drive (async, don't block response)
+  if (item.driveFileId) {
+    moveItemInGoogleDrive(itemId, newParentId, item.parentId).catch((err) => {
+      logger.error({ err, itemId }, "Failed to move item in Drive");
+    });
+  }
 
   return { success: true };
 }
@@ -2045,6 +2187,8 @@ export const getItemsForProfile = cache(
                 isPrimary: true,
                 filename: true,
                 mimeType: true,
+                durationMs: true,
+                height: true,
               },
             },
             driveConnection: {
@@ -2121,6 +2265,8 @@ export const getItemsForProfile = cache(
         fileCounts: item.fileCounts,
         childCount: 0,
         primaryMediaName: null,
+        primaryDurationMs: null,
+        primaryHeight: null,
         mediaIconType: null,
         progress: null,
       }));
@@ -2217,6 +2363,8 @@ export const getItemChildrenForProfile = cache(
                 isPrimary: true,
                 filename: true,
                 mimeType: true,
+                durationMs: true,
+                height: true,
               },
             },
             driveConnection: {
@@ -2297,6 +2445,8 @@ export const getItemChildrenForProfile = cache(
         fileCounts: item.fileCounts,
         childCount: 0,
         primaryMediaName: null,
+        primaryDurationMs: null,
+        primaryHeight: null,
         mediaIconType: null,
         progress: null,
       }));

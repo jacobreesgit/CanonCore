@@ -329,6 +329,8 @@ export function ItemsView({
             primaryMediaName: null,
             mediaIconType: null,
             progress: null,
+            primaryDurationMs: null,
+            primaryHeight: null,
           };
           setItems((prev) => [...prev, newItem]);
           return { itemId: result.data.id };
@@ -383,6 +385,8 @@ export function ItemsView({
             primaryMediaName: null,
             mediaIconType: null,
             progress: null,
+            primaryDurationMs: null,
+            primaryHeight: null,
           };
           setItems((prev) => [...prev, newItem]);
           return { itemId: result.data.id };

@@ -703,7 +703,7 @@ export async function listFiles(
     drive.files.list({
       q: `'${folderId}' in parents and trashed = false`,
       fields:
-        "nextPageToken, files(id, name, mimeType, size, modifiedTime, thumbnailLink)",
+        "nextPageToken, files(id, name, mimeType, size, modifiedTime, thumbnailLink, videoMediaMetadata, imageMediaMetadata)",
       pageSize: 100,
       pageToken,
     })

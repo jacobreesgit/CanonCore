@@ -27,18 +27,19 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import type { PinnedItem } from "@/lib/types";
+import { faSlashForward } from "@/lib/icons";
 
 import { NavCollapsibleItem } from "@/components/nav-collapsible-item";
 import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
-import { Kbd } from "@/components/ui/kbd";
 import { useSpotlightOptional } from "@/contexts/spotlight-context";
 
 interface NavItem {
@@ -172,16 +173,17 @@ export function NavMain({ items, username, pinnedItems }: NavMainProps) {
                 data-testid="nav-search-button"
                 onClick={spotlight.openSpotlight}
                 tooltip="Search"
-                className="group"
               >
-                <FontAwesomeIcon
-                  icon={faMagnifyingGlass}
-                  className="size-4"
-                  aria-hidden="true"
-                />
+                <FontAwesomeIcon icon={faMagnifyingGlass} aria-hidden="true" />
                 <span>Search</span>
-                <Kbd className="ml-auto">/</Kbd>
               </SidebarMenuButton>
+              <SidebarMenuAction
+                onClick={spotlight.openSpotlight}
+                className="bg-muted text-muted-foreground hover:bg-muted hover:text-muted-foreground border"
+              >
+                <FontAwesomeIcon icon={faSlashForward} aria-hidden="true" />
+                <span className="sr-only">Press / to search</span>
+              </SidebarMenuAction>
             </SidebarMenuItem>
           )}
           {items

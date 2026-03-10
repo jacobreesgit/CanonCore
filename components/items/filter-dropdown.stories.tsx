@@ -45,28 +45,6 @@ export const Default: Story = {
   },
 };
 
-export const SingleFileFilter: Story = {
-  args: {
-    filters: ["has-files"] as ContentFilter[],
-    disabled: false,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Shows active count badge 'Filter (1)' and dot indicator when a filter is selected.",
-      },
-    },
-  },
-};
-
-export const SingleSyncFilter: Story = {
-  args: {
-    filters: ["synced"] as ContentFilter[],
-    disabled: false,
-  },
-};
-
 export const MultipleFilters: Story = {
   args: {
     filters: ["has-files", "synced"] as ContentFilter[],
@@ -77,21 +55,6 @@ export const MultipleFilters: Story = {
       description: {
         story:
           "Multiple filters active across groups. Shows 'Filter (2)' badge. AND logic across groups, OR within groups.",
-      },
-    },
-  },
-};
-
-export const AllSyncFilters: Story = {
-  args: {
-    filters: ["synced", "pending", "error"] as ContentFilter[],
-    disabled: false,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Multiple sync status filters selected. Items matching any selected sync status are shown.",
       },
     },
   },

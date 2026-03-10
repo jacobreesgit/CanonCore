@@ -91,21 +91,6 @@ export const ActiveSort: Story = {
   },
 };
 
-export const ActiveFilter: Story = {
-  args: {
-    sortBy: "custom",
-    filters: ["has-files"] as ContentFilter[],
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Shows active indicator dot and 'Filter (1)' count when filters are active.",
-      },
-    },
-  },
-};
-
 export const MultipleActiveFilters: Story = {
   args: {
     sortBy: "custom",
@@ -116,38 +101,6 @@ export const MultipleActiveFilters: Story = {
       description: {
         story:
           "Multiple filters active across groups. Shows 'Filter (2)' count with clear all button.",
-      },
-    },
-  },
-};
-
-export const BothActive: Story = {
-  args: {
-    sortBy: "name-desc",
-    filters: ["synced"] as ContentFilter[],
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Shows active indicator when either sort or filter is non-default.",
-      },
-    },
-  },
-};
-
-export const SortOnly: Story = {
-  args: {
-    sortBy: "custom",
-    filters: undefined,
-    toggleFilter: undefined,
-    clearFilters: undefined,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Filter section hidden when filters and toggleFilter are not provided.",
       },
     },
   },

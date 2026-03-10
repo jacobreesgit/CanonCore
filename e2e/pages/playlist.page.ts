@@ -60,8 +60,11 @@ export class PlaylistPage {
     }).toPass({ timeout: Timeouts.api });
     // Click "Add to Playlist" menu item
     await menuItem.click();
-    // Wait for the dialog to open
-    await expect(this.page.getByTestId("dialog-add-to-playlist")).toBeVisible({
+    // Wait for the dialog/sheet to open
+    const addTestId = this.isMobile
+      ? "sheet-add-to-playlist"
+      : "dialog-add-to-playlist";
+    await expect(this.page.getByTestId(addTestId)).toBeVisible({
       timeout: Timeouts.api,
     });
   }
@@ -79,17 +82,20 @@ export class PlaylistPage {
     const target = createFirst.or(createNew);
     await target.click();
 
-    // Fill the name in the create dialog
-    await expect(this.page.getByTestId("dialog-create-playlist")).toBeVisible({
+    // Fill the name in the create dialog/sheet
+    const createTestId = this.isMobile
+      ? "sheet-create-playlist"
+      : "dialog-create-playlist";
+    await expect(this.page.getByTestId(createTestId)).toBeVisible({
       timeout: Timeouts.animation,
     });
     await this.page.getByTestId("create-playlist-name-input").fill(name);
     await this.page.getByTestId("create-playlist-submit").click();
 
-    // Wait for create dialog to close and playlist to appear in list
-    await expect(
-      this.page.getByTestId("dialog-create-playlist")
-    ).not.toBeVisible({ timeout: Timeouts.api });
+    // Wait for create dialog/sheet to close and playlist to appear in list
+    await expect(this.page.getByTestId(createTestId)).not.toBeVisible({
+      timeout: Timeouts.api,
+    });
   }
 
   /**
@@ -120,8 +126,12 @@ export class PlaylistPage {
       itemNames?: string[];
     }
   ) {
+    const createTestId = this.isMobile
+      ? "sheet-create-playlist"
+      : "dialog-create-playlist";
+
     // Fill the name
-    await expect(this.page.getByTestId("dialog-create-playlist")).toBeVisible({
+    await expect(this.page.getByTestId(createTestId)).toBeVisible({
       timeout: Timeouts.animation,
     });
     await this.page.getByTestId("create-playlist-name-input").fill(name);
@@ -130,7 +140,7 @@ export class PlaylistPage {
     // not the sr-only RadioGroupItem (Playwright can't click hidden elements)
     if (options?.visibility) {
       await this.page
-        .getByTestId("dialog-create-playlist")
+        .getByTestId(createTestId)
         .locator("label", {
           has: this.page.getByRole("radio", {
             name: new RegExp(options.visibility, "i"),
@@ -142,18 +152,15 @@ export class PlaylistPage {
     // Select items if specified
     if (options?.itemNames) {
       for (const itemName of options.itemNames) {
-        await this.page
-          .getByTestId("dialog-create-playlist")
-          .getByText(itemName)
-          .click();
+        await this.page.getByTestId(createTestId).getByText(itemName).click();
       }
     }
 
     await this.page.getByTestId("create-playlist-submit").click();
 
-    await expect(
-      this.page.getByTestId("dialog-create-playlist")
-    ).not.toBeVisible({ timeout: Timeouts.api });
+    await expect(this.page.getByTestId(createTestId)).not.toBeVisible({
+      timeout: Timeouts.api,
+    });
   }
 
   /**
@@ -171,9 +178,12 @@ export class PlaylistPage {
   /** Close the "Add to Playlist" dialog via Escape or clicking outside. */
   async closeAddToPlaylistDialog() {
     await this.page.keyboard.press("Escape");
-    await expect(
-      this.page.getByTestId("dialog-add-to-playlist")
-    ).not.toBeVisible({ timeout: Timeouts.animation });
+    const addTestId = this.isMobile
+      ? "sheet-add-to-playlist"
+      : "dialog-add-to-playlist";
+    await expect(this.page.getByTestId(addTestId)).not.toBeVisible({
+      timeout: Timeouts.animation,
+    });
   }
 
   // ── Playlist Section on Profile ─────────────────────────
@@ -267,8 +277,9 @@ export class PlaylistPage {
    * @param itemName - The item name to look for
    */
   async expectDetailItemVisible(itemName: string) {
+    // Without loading.tsx, page data streams in — use navigation timeout.
     await expect(this.page.getByRole("button", { name: itemName })).toBeVisible(
-      { timeout: Timeouts.api }
+      { timeout: Timeouts.navigation }
     );
   }
 

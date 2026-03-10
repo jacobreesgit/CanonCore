@@ -359,6 +359,18 @@ export function TMDBWizard({
   }, [wizard]);
 
   /**
+   * Handles skipping the current artwork step and advancing.
+   */
+  const handleSkipCurrent = useCallback(() => {
+    const step = wizard.currentStep;
+    if (step === "poster") wizard.skipPoster();
+    else if (step === "hero") wizard.skipBackdrop();
+    else if (step === "logo") wizard.skipLogo();
+    else if (step === "still") wizard.skipStill();
+    handleNext();
+  }, [wizard, handleNext]);
+
+  /**
    * Handles skipping all remaining artwork steps.
    * Marks remaining artwork as skipped and jumps to summary.
    */
@@ -429,6 +441,7 @@ export function TMDBWizard({
   const footerProps: TMDBWizardFooterProps = {
     onBack: onCancel && !wizard.canGoBack ? onCancel : handleBack,
     onNext: isLastStep ? handleApply : handleNext,
+    onSkipCurrent: isArtworkStep ? handleSkipCurrent : undefined,
     onSkipAll: showSkipAll ? handleSkipAll : undefined,
     onRetry: wizard.error ? handleRetry : undefined,
     isLoading,
@@ -450,6 +463,7 @@ export function TMDBWizard({
       onFooterChange({
         onBack: onCancel && !wizard.canGoBack ? onCancel : handleBack,
         onNext: isLastStep ? handleApply : handleNext,
+        onSkipCurrent: isArtworkStep ? handleSkipCurrent : undefined,
         onSkipAll: showSkipAll ? handleSkipAll : undefined,
         onRetry: wizard.error ? handleRetry : undefined,
         isLoading,

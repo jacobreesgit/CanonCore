@@ -123,6 +123,9 @@ const mockItemFile = (
     isLogo: boolean;
     playbackPosition: number | null;
     playbackDuration: number | null;
+    durationMs: bigint | null;
+    width: number | null;
+    height: number | null;
     createdAt: Date;
     updatedAt: Date;
     item?: { userId: string };
@@ -142,6 +145,9 @@ const mockItemFile = (
   isLogo: false,
   playbackPosition: null,
   playbackDuration: null,
+  durationMs: null,
+  width: null,
+  height: null,
   createdAt: new Date(),
   updatedAt: new Date(),
   ...overrides,

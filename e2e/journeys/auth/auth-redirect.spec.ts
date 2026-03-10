@@ -11,8 +11,9 @@ test.describe("Auth Redirect", () => {
     testUser,
   }) => {
     await page.goto("/sign-in");
+    // Without loading.tsx, the redirect + page render blocks longer on mobile
     await expect(page).toHaveURL(`/u/${testUser.username}`, {
-      timeout: Timeouts.navigation,
+      timeout: Timeouts.upload,
     });
   });
 });

@@ -5,8 +5,8 @@
 export const Timeouts = {
   /** CSS transitions, sheet open/close, animation completion */
   animation: 1_000,
-  /** Route changes, page loads, form submissions */
-  navigation: 5_000,
+  /** Route changes, page loads (includes server data fetching), form submissions */
+  navigation: 10_000,
   /** Server action responses, TMDB lookups, dialog interactions */
   api: 10_000,
   /** File uploads, Drive sync, large operations */

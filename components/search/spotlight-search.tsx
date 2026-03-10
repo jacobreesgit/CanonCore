@@ -38,8 +38,8 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Kbd } from "@/components/ui/kbd";
 import { useSpotlight } from "@/contexts/spotlight-context";
+import { faSlashForward } from "@/lib/icons";
 import { getSearchableItems } from "@/lib/item-actions";
 import {
   searchPublicUsers,
@@ -570,12 +570,22 @@ export function SpotlightSearch({ defaultOpen }: SpotlightSearchProps) {
           </CommandGroup>
         )}
       </CommandList>
-      <div className="flex items-center justify-start gap-3 border-t px-3 py-2">
-        <span className="text-muted-foreground text-xs">
-          <Kbd>/</Kbd> to search
+      <div className="flex items-center justify-start gap-5 border-t px-3 py-2">
+        <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+          <kbd className="bg-muted text-muted-foreground inline-flex size-5 items-center justify-center rounded-md border">
+            <FontAwesomeIcon
+              icon={faSlashForward}
+              className="size-2.5"
+              aria-hidden="true"
+            />
+          </kbd>
+          to search
         </span>
-        <span className="text-muted-foreground text-xs">
-          <Kbd>esc</Kbd> to close
+        <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+          <kbd className="bg-muted text-muted-foreground inline-flex h-5 items-center rounded-md border px-1.5 font-mono text-[10px] font-medium">
+            esc
+          </kbd>
+          to close
         </span>
       </div>
     </CommandDialog>

@@ -92,6 +92,8 @@ export function Tree({
           fileCounts,
           childCount,
           mediaIconType,
+          primaryDurationMs,
+          primaryHeight,
           progressPercentage,
           watchedCount,
           totalMediaCount,
@@ -141,6 +143,8 @@ export function Tree({
               driveFileId={driveFileId}
               fileCounts={fileCounts}
               mediaIconType={mediaIconType}
+              primaryDurationMs={primaryDurationMs}
+              primaryHeight={primaryHeight}
               progressPercentage={progressPercentage}
               watchedCount={watchedCount}
               totalMediaCount={totalMediaCount}

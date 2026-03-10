@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useCallback, useTransition } from "react";
+import { useCallback, useEffect, useRef, useTransition } from "react";
 import { syncFromGoogleDrive } from "@/lib/google-drive-sync";
 import { toast } from "sonner";
 
@@ -22,6 +22,7 @@ interface UseSyncHandlerOptions {
  */
 export function useSyncHandler({ onSuccess }: UseSyncHandlerOptions = {}) {
   const [isSyncing, startSyncTransition] = useTransition();
+  const handleSyncRef = useRef<() => void>(null);
 
   const handleSync = useCallback(() => {
     startSyncTransition(async () => {
@@ -47,11 +48,20 @@ export function useSyncHandler({ onSuccess }: UseSyncHandlerOptions = {}) {
             "Sync paused: CanonCore folder was deleted. Reconnect in settings."
           );
         } else {
-          toast.error(result.error || "Sync failed");
+          toast.error(result.error || "Sync failed", {
+            action: {
+              label: "Retry",
+              onClick: () => handleSyncRef.current?.(),
+            },
+          });
         }
       }
     });
   }, [onSuccess]);
+
+  useEffect(() => {
+    handleSyncRef.current = handleSync;
+  }, [handleSync]);
 
   return { isSyncing, handleSync };
 }

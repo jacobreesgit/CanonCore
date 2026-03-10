@@ -176,12 +176,12 @@ export function MobileOptionsSheet({
         description="Sort and filter your items"
         data-testid="sheet-mobile-options"
         className={cn(
-          "bg-[#1a1a1a]/95 backdrop-blur-xl",
+          "glass-dialog",
           "border-t border-white/[0.08]",
           "text-foreground"
         )}
       >
-        <MobileBottomSheetHeader className="border-b border-white/[0.08] pb-4">
+        <MobileBottomSheetHeader>
           <MobileBottomSheetTitle className="text-foreground">
             View Options
           </MobileBottomSheetTitle>

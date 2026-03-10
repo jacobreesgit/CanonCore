@@ -124,14 +124,6 @@ describe("HeroSelectionStep", () => {
       ).toBeInTheDocument();
     });
 
-    it("passes skip props to ImageSelectionGrid", () => {
-      render(<HeroSelectionStep {...defaultProps} />);
-
-      expect(
-        screen.getByLabelText(/skip (hero|backdrop) selection/i)
-      ).toBeInTheDocument();
-    });
-
     it("calls onSelect when backdrop is selected", async () => {
       const onSelect = vi.fn();
       const user = userEvent.setup();
@@ -453,35 +445,9 @@ describe("HeroSelectionStep", () => {
 
       expect(onSelect).not.toHaveBeenCalled();
     });
-
-    it("shows skip checkbox", () => {
-      render(<HeroSelectionStep {...uploadModeProps} />);
-
-      expect(screen.getByLabelText(/skip hero selection/i)).toBeInTheDocument();
-    });
   });
 
   describe("Skip Functionality", () => {
-    it("calls onSkipChange when checkbox toggled in upload mode", async () => {
-      const user = userEvent.setup();
-      const onSkipChange = vi.fn();
-
-      render(
-        <HeroSelectionStep
-          {...defaultProps}
-          uploadMode={true}
-          queuedHero={[]}
-          onQueueHeroChange={vi.fn()}
-          hasDriveConnection={true}
-          onSkipChange={onSkipChange}
-        />
-      );
-
-      await user.click(screen.getByLabelText(/skip hero selection/i));
-
-      expect(onSkipChange).toHaveBeenCalledWith(true);
-    });
-
     it("applies opacity to thumbnails when skipped", async () => {
       const user = userEvent.setup();
       const queuedFiles = [createMockQueuedFile("file-1", "hero1.jpg")];

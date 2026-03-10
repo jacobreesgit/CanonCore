@@ -76,27 +76,40 @@ function MiniPlayerProgress() {
   );
 
   return (
-    <div className="flex items-center gap-2 px-4 sm:px-6">
-      <span className="hidden text-[10px] text-white/60 tabular-nums sm:inline">
-        {duration > 0 ? formatTime(currentTime) : "0:00"}
-      </span>
-      <Slider
-        value={[progress]}
-        max={100}
-        step={0.1}
-        onValueChange={handleSeek}
-        aria-label="Seek"
-        aria-valuetext={
-          duration > 0
-            ? `${formatTime(currentTime)} of ${formatTime(duration)}`
-            : undefined
-        }
-        className="h-1 w-full"
-      />
-      <span className="hidden text-[10px] text-white/60 tabular-nums sm:inline">
-        {duration > 0 ? formatTime(duration) : "0:00"}
-      </span>
-    </div>
+    <Slider
+      value={[progress]}
+      max={100}
+      step={0.1}
+      onValueChange={handleSeek}
+      aria-label="Seek"
+      aria-valuetext={
+        duration > 0
+          ? `${formatTime(currentTime)} of ${formatTime(duration)}`
+          : undefined
+      }
+      className={cn(
+        "h-3 w-full cursor-pointer items-start",
+        "[&_[data-slot=slider-thumb]]:size-3 [&_[data-slot=slider-thumb]]:scale-0 [&_[data-slot=slider-thumb]]:border-0 [&_[data-slot=slider-thumb]]:bg-white [&_[data-slot=slider-thumb]]:shadow-none [&_[data-slot=slider-thumb]]:ring-0 [&_[data-slot=slider-thumb]]:transition-transform [&_[data-slot=slider-thumb]]:duration-150",
+        "[&:hover_[data-slot=slider-thumb]]:scale-100",
+        "[&_[data-slot=slider-track]]:h-[3px] [&_[data-slot=slider-track]]:rounded-none [&_[data-slot=slider-track]]:bg-white/15",
+        "[&_[data-slot=slider-range]]:bg-white/90",
+        "[&:hover_[data-slot=slider-range]]:bg-white"
+      )}
+    />
+  );
+}
+
+/** Timestamps — subscribes to Vidstack time independently to avoid 60fps re-renders. */
+function MiniPlayerTimestamps() {
+  const currentTime = useMediaState("currentTime");
+  const duration = useMediaState("duration");
+
+  return (
+    <span className="shrink-0 text-[11px] text-white/60 tabular-nums">
+      {duration > 0
+        ? `${formatTime(currentTime)} / ${formatTime(duration)}`
+        : "0:00"}
+    </span>
   );
 }
 
@@ -126,8 +139,15 @@ function VolumeSlider({
       max={1}
       step={0.01}
       onValueChange={handleChange}
-      className="w-20"
       aria-label="Volume"
+      className={cn(
+        "h-3 w-20 cursor-pointer items-center",
+        "[&_[data-slot=slider-thumb]]:size-3 [&_[data-slot=slider-thumb]]:scale-0 [&_[data-slot=slider-thumb]]:border-0 [&_[data-slot=slider-thumb]]:bg-white [&_[data-slot=slider-thumb]]:shadow-none [&_[data-slot=slider-thumb]]:ring-0 [&_[data-slot=slider-thumb]]:transition-transform [&_[data-slot=slider-thumb]]:duration-150",
+        "[&:hover_[data-slot=slider-thumb]]:scale-100",
+        "[&_[data-slot=slider-track]]:h-[3px] [&_[data-slot=slider-track]]:rounded-full [&_[data-slot=slider-track]]:bg-white/15",
+        "[&_[data-slot=slider-range]]:bg-white/90",
+        "[&:hover_[data-slot=slider-range]]:bg-white"
+      )}
     />
   );
 }
@@ -245,12 +265,7 @@ export function MiniPlayer({ controlsIdle }: { controlsIdle: boolean }) {
               aria-modal="true"
               aria-label={`Now playing: ${currentTrack.filename}`}
               tabIndex={-1}
-              className={cn(
-                "fixed inset-0 z-50 flex items-center justify-center overscroll-contain bg-[var(--dark-900,#0a0a0a)] pt-[env(safe-area-inset-top)] transition-[padding] duration-300",
-                controlsIdle
-                  ? ""
-                  : "pb-[calc(4rem+2px)] max-lg:pb-[calc(4rem+4rem+2px+env(safe-area-inset-bottom))]"
-              )}
+              className="fixed inset-0 z-50 flex items-center justify-center overscroll-contain bg-[var(--dark-900,#0a0a0a)] max-lg:bottom-16"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -270,22 +285,20 @@ export function MiniPlayer({ controlsIdle }: { controlsIdle: boolean }) {
         data-player-active
         data-player-expanded={isExpanded || undefined}
         className={cn(
-          "fixed inset-x-0 bottom-0 bg-black/90 pb-2 backdrop-blur-xl transition-[opacity,transform] duration-300 max-lg:bottom-16 max-lg:pb-[calc(0.5rem+env(safe-area-inset-bottom))]",
-          isExpanded ? "z-[70]" : "z-40",
+          "fixed inset-x-0 bottom-0 pb-2 transition-[opacity,transform] duration-300 max-lg:bottom-16 max-lg:pb-[calc(0.5rem+env(safe-area-inset-bottom))]",
+          isExpanded
+            ? "z-[70] bg-gradient-to-t from-black/80 via-black/50 to-transparent"
+            : "z-40 bg-black",
           controlsIdle && "pointer-events-none translate-y-full opacity-0"
         )}
       >
-        {/* ── Progress bar — full-width, edge-to-edge ───────────────── */}
+        {/* ── Seek bar — full-bleed, edge-to-edge, Plex-style ───────── */}
         <MiniPlayerProgress />
 
-        {/* ── Three-column grid: track | transport | utilities ───────── */}
-        <div className="grid h-14 grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 sm:gap-4 sm:px-6">
-          {/* Left — Track info */}
-          <button
-            onClick={() => dispatch(toggleExpanded())}
-            className="flex min-w-0 items-center gap-3 text-left focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:outline-none"
-            aria-label="Expand player"
-          >
+        {/* ── Three-column grid: info | transport | utilities ───── */}
+        <div className="grid h-12 grid-cols-[auto_1fr] items-center gap-2 px-4 sm:grid-cols-[1fr_auto_1fr] sm:gap-4 sm:px-6">
+          {/* Left — Item name + timestamps */}
+          <div className="hidden min-w-0 items-center gap-3 sm:flex">
             {currentTrack.posterUrl && (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
@@ -296,13 +309,11 @@ export function MiniPlayer({ controlsIdle }: { controlsIdle: boolean }) {
             )}
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-white">
-                {currentTrack.filename}
-              </p>
-              <p className="truncate text-xs text-white/50">
                 {currentTrack.itemName}
               </p>
+              <MiniPlayerTimestamps />
             </div>
-          </button>
+          </div>
 
           {/* Center — Transport controls */}
           <div className="flex [touch-action:manipulation] items-center gap-1 sm:gap-2">
@@ -377,7 +388,6 @@ export function MiniPlayer({ controlsIdle }: { controlsIdle: boolean }) {
 
           {/* Right — Volume + utilities */}
           <div className="flex items-center justify-end gap-1">
-            {/* Volume — desktop only */}
             <div className="hidden items-center gap-1 sm:flex">
               <Button
                 variant="ghost"
@@ -411,7 +421,7 @@ export function MiniPlayer({ controlsIdle }: { controlsIdle: boolean }) {
               size="icon"
               onClick={handleFullscreen}
               disabled={!isExpanded && !isFullscreen}
-              className="hidden size-8 text-white/40 hover:text-white/80 sm:inline-flex"
+              className="size-8 text-white/40 hover:text-white/80"
               aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
             >
               <FontAwesomeIcon

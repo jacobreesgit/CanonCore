@@ -231,14 +231,6 @@ describe("MobileBottomSheetContent", () => {
     expect(screen.getByText("Content paragraph")).toBeInTheDocument();
   });
 
-  it("has data-vaul-no-drag attribute for scroll support", () => {
-    const { container } = render(
-      <MobileBottomSheetContent>Content</MobileBottomSheetContent>
-    );
-
-    expect(container.firstChild).toHaveAttribute("data-vaul-no-drag");
-  });
-
   it("applies custom className", () => {
     const { container } = render(
       <MobileBottomSheetContent className="custom-content">

@@ -14,6 +14,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/lib/utils";
 import { formatRuntime } from "@/lib/tmdb-client";
+import { formatDuration, getResolutionLabel } from "@/lib/media-metadata";
 import type { SyncStatus } from "@/lib/types";
 
 interface MetadataLineProps {
@@ -33,6 +34,10 @@ interface MetadataLineProps {
   syncStatus?: SyncStatus;
   /** Google Drive folder ID — shows synced indicator when linked. */
   driveFileId?: string | null;
+  /** Primary file duration in ms (fallback when no TMDB runtime). */
+  durationMs?: number | null;
+  /** Primary file height in pixels for resolution label. */
+  height?: number | null;
   /** Attribution text (e.g., "Shared by @username"). */
   attribution?: string;
   /** Link destination for the attribution text. */
@@ -53,6 +58,8 @@ export function MetadataLine({
   maxGenres = 3,
   syncStatus,
   driveFileId,
+  durationMs,
+  height,
   attribution,
   attributionHref,
   className,
@@ -65,6 +72,17 @@ export function MetadataLine({
 
   if (runtime) {
     items.push(<span key="runtime">{formatRuntime(runtime)}</span>);
+  } else if (durationMs) {
+    const formatted = formatDuration(durationMs);
+    if (formatted) {
+      items.push(<span key="duration">{formatted}</span>);
+    }
+  }
+
+  // Resolution label from file metadata
+  const resolutionLabel = getResolutionLabel(height);
+  if (resolutionLabel) {
+    items.push(<span key="resolution">{resolutionLabel}</span>);
   }
 
   if (contentRating && contentRating !== "NR") {

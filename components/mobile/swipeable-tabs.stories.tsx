@@ -167,35 +167,6 @@ export const TwoTabs: Story = {
   },
 };
 
-export const NoIcons: Story = {
-  args: {
-    tabs: defaultTabs.map((tab) => ({ ...tab, icon: undefined })),
-    defaultTab: "details",
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "Tabs without icons, showing label-only layout.",
-      },
-    },
-  },
-};
-
-export const SecondTabActive: Story = {
-  args: {
-    tabs: defaultTabs,
-    defaultTab: "files",
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Starts with the Files tab active. Sliding indicator positions on the second tab.",
-      },
-    },
-  },
-};
-
 // === INTERACTION TESTS ===
 
 export const TabClick: Story = {
@@ -318,8 +289,6 @@ const fiveTabsData: SwipeableTab[] = [
   },
 ];
 
-const fourTabsData: SwipeableTab[] = fiveTabsData.slice(0, 4);
-
 export const FiveTabsSelect: Story = {
   args: {
     tabs: fiveTabsData,
@@ -330,35 +299,6 @@ export const FiveTabsSelect: Story = {
       description: {
         story:
           "Five tabs trigger Select dropdown mode. Mirrors MobileSettingsSheet layout with full-length labels.",
-      },
-    },
-  },
-};
-
-export const FourTabsSelect: Story = {
-  args: {
-    tabs: fourTabsData,
-    defaultTab: "profile",
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "Boundary case: 4 tabs triggers Select mode (threshold is >3).",
-      },
-    },
-  },
-};
-
-export const ThreeTabsSwipeable: Story = {
-  args: {
-    tabs: defaultTabs,
-    defaultTab: "details",
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Explicit boundary: 3 tabs stays in swipeable mode with tab bar and drag gestures.",
       },
     },
   },

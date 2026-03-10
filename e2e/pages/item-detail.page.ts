@@ -28,8 +28,10 @@ export class ItemDetailPage {
     const target = link.or(button);
     await target.waitFor({ state: "visible", timeout: Timeouts.api });
     await target.click();
+    // Without loading.tsx, navigation blocks until server data streams in —
+    // use navigation timeout (not api) to account for slower mobile renders.
     await expect(this.page.getByTestId("item-detail-container")).toBeVisible({
-      timeout: Timeouts.api,
+      timeout: Timeouts.navigation,
     });
   }
 
@@ -41,7 +43,7 @@ export class ItemDetailPage {
   async gotoByUrl(itemId: string) {
     await this.page.goto(`/u/${this.username}/${itemId}`);
     await expect(this.page.getByTestId("item-detail-container")).toBeVisible({
-      timeout: Timeouts.api,
+      timeout: Timeouts.navigation,
     });
   }
 
@@ -49,10 +51,10 @@ export class ItemDetailPage {
 
   /** Expect the item detail container to be visible. */
   async expectDetailVisible() {
-    // item-detail-container is inside a Suspense boundary — waits for
-    // server data to stream in, not just a route change
+    // Without loading.tsx, navigation blocks until server data streams in —
+    // use navigation timeout to account for slower mobile renders.
     await expect(this.page.getByTestId("item-detail-container")).toBeVisible({
-      timeout: Timeouts.api,
+      timeout: Timeouts.navigation,
     });
   }
 

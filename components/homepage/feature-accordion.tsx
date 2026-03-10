@@ -211,32 +211,21 @@ export function FeatureAccordion() {
             </button>
           ))}
 
-          {/* Content panel — grid stack, zero shift */}
-          <div className="grid pt-5">
-            {FEATURES.map((feature, index) => (
-              <div
-                key={feature.title}
-                className={`col-start-1 row-start-1 transition-opacity duration-300 ${
-                  index === activeIndex
-                    ? "opacity-100"
-                    : "pointer-events-none opacity-0"
-                }`}
-              >
-                <p className="text-muted-foreground pb-2 text-sm leading-relaxed">
-                  {feature.description}
-                </p>
-                <Link
-                  href={feature.learnMoreHref}
-                  className="group mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-white/70 transition-colors hover:text-white"
-                >
-                  Learn more
-                  <FontAwesomeIcon
-                    icon={faArrowRight}
-                    className="size-3 transition-transform group-hover:translate-x-0.5"
-                  />
-                </Link>
-              </div>
-            ))}
+          {/* Content panel — swap content directly to avoid iOS Safari crossfade ghosting */}
+          <div className="pt-5">
+            <p className="text-muted-foreground pb-2 text-sm leading-relaxed">
+              {FEATURES[activeIndex].description}
+            </p>
+            <Link
+              href={FEATURES[activeIndex].learnMoreHref}
+              className="group mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-white/70 transition-colors hover:text-white"
+            >
+              Learn more
+              <FontAwesomeIcon
+                icon={faArrowRight}
+                className="size-3 transition-transform group-hover:translate-x-0.5"
+              />
+            </Link>
           </div>
         </div>
       </div>

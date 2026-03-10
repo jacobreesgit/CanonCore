@@ -45,6 +45,21 @@ export function HomepageContent() {
   });
 
   useEffect(() => {
+    // Randomise starting palette on mount (avoids hydration mismatch).
+    // Deferred via rAF to avoid synchronous setState in effect body.
+    const start = Math.floor(Math.random() * PALETTES.length);
+    const next = (start + 1) % PALETTES.length;
+    const rafId = requestAnimationFrame(() => {
+      setState({
+        layerA: PALETTES[start],
+        layerB: PALETTES[next],
+        textA: TEXT_PALETTES[start],
+        textB: TEXT_PALETTES[next],
+        active: "a",
+        index: start,
+      });
+    });
+
     const interval = setInterval(() => {
       setState((prev) => {
         const nextIndex = (prev.index + 1) % PALETTES.length;
@@ -66,7 +81,10 @@ export function HomepageContent() {
         };
       });
     }, 8000);
-    return () => clearInterval(interval);
+    return () => {
+      cancelAnimationFrame(rafId);
+      clearInterval(interval);
+    };
   }, []);
 
   return (

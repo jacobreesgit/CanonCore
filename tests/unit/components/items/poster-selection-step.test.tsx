@@ -124,14 +124,6 @@ describe("PosterSelectionStep", () => {
       ).toBeInTheDocument();
     });
 
-    it("passes skip props to ImageSelectionGrid", () => {
-      render(<PosterSelectionStep {...defaultProps} />);
-
-      expect(
-        screen.getByLabelText(/skip poster selection/i)
-      ).toBeInTheDocument();
-    });
-
     it("calls onSelect when poster is selected", async () => {
       const onSelect = vi.fn();
       const user = userEvent.setup();
@@ -456,14 +448,6 @@ describe("PosterSelectionStep", () => {
       expect(onSelect).not.toHaveBeenCalled();
     });
 
-    it("shows skip checkbox", () => {
-      render(<PosterSelectionStep {...uploadModeProps} />);
-
-      expect(
-        screen.getByLabelText(/skip poster selection/i)
-      ).toBeInTheDocument();
-    });
-
     it("clears TMDB selection when on uploads tab", async () => {
       const user = userEvent.setup();
 
@@ -485,26 +469,6 @@ describe("PosterSelectionStep", () => {
   });
 
   describe("Skip Functionality", () => {
-    it("calls onSkipChange when checkbox toggled in upload mode", async () => {
-      const user = userEvent.setup();
-      const onSkipChange = vi.fn();
-
-      render(
-        <PosterSelectionStep
-          {...defaultProps}
-          uploadMode={true}
-          queuedArtwork={[]}
-          onQueueArtworkChange={vi.fn()}
-          hasDriveConnection={true}
-          onSkipChange={onSkipChange}
-        />
-      );
-
-      await user.click(screen.getByLabelText(/skip poster selection/i));
-
-      expect(onSkipChange).toHaveBeenCalledWith(true);
-    });
-
     it("applies opacity to thumbnails when skipped", async () => {
       const user = userEvent.setup();
       const queuedFiles = [createMockQueuedFile("file-1", "poster1.jpg")];

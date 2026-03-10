@@ -9,6 +9,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { Section } from "@/components/ui/section";
 import { PlaylistGridItem } from "./playlist-grid-item";
@@ -19,8 +20,24 @@ import {
   updatePlaylist,
   deletePlaylist,
 } from "@/lib/playlist-actions";
-import { CreatePlaylistDialog } from "./create-playlist-dialog";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { PlaylistWithCount, PublicPlaylistCard } from "@/lib/types";
+
+const CreatePlaylistDialog = dynamic(
+  () =>
+    import("./create-playlist-dialog").then((mod) => ({
+      default: mod.CreatePlaylistDialog,
+    })),
+  { ssr: false }
+);
+
+const MobileCreatePlaylistSheet = dynamic(
+  () =>
+    import("./mobile-create-playlist-sheet").then((mod) => ({
+      default: mod.MobileCreatePlaylistSheet,
+    })),
+  { ssr: false }
+);
 
 interface PlaylistSectionOwnerProps {
   /** Owner mode — fetches playlists client-side. */
@@ -94,6 +111,7 @@ function OwnerPlaylistSection({
   initialPlaylists,
 }: PlaylistSectionOwnerProps) {
   const router = useRouter();
+  const isMobile = useIsMobile();
   const hasInitialData = initialPlaylists !== undefined;
   const [playlists, setPlaylists] = useState<PlaylistWithCount[]>(
     initialPlaylists ?? []
@@ -221,14 +239,25 @@ function OwnerPlaylistSection({
         )}
       </Section>
 
-      <CreatePlaylistDialog
-        open={showCreate}
-        onOpenChange={setShowCreate}
-        onCreated={() => {
-          setShowCreate(false);
-          refreshPlaylists();
-        }}
-      />
+      {isMobile ? (
+        <MobileCreatePlaylistSheet
+          open={showCreate}
+          onOpenChange={setShowCreate}
+          onCreated={() => {
+            setShowCreate(false);
+            refreshPlaylists();
+          }}
+        />
+      ) : (
+        <CreatePlaylistDialog
+          open={showCreate}
+          onOpenChange={setShowCreate}
+          onCreated={() => {
+            setShowCreate(false);
+            refreshPlaylists();
+          }}
+        />
+      )}
     </>
   );
 }

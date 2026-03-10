@@ -50,7 +50,7 @@ export function TMDBPosterStep({
   onNext,
   onBack,
   onDataChange,
-  onSkip,
+  onSkip: _onSkip,
 }: TMDBArtworkStepProps) {
   // Use seasonImages for seasons, otherwise use regular images
   const posters =
@@ -73,26 +73,6 @@ export function TMDBPosterStep({
       });
     },
     [onDataChange]
-  );
-
-  /**
-   * Handles skip checkbox toggle.
-   */
-  const handleSkipChange = useCallback(
-    (skipped: boolean) => {
-      if (skipped) {
-        onSkip();
-      } else {
-        onDataChange({
-          poster: {
-            value: null,
-            source: null,
-            skipped: false,
-          },
-        });
-      }
-    },
-    [onSkip, onDataChange]
   );
 
   // Convert SerializedItemFile to ExistingArtworkFile format
@@ -134,7 +114,11 @@ export function TMDBPosterStep({
         selectedSource={poster.source}
         onSelect={handleSelect}
         isSkipped={poster.skipped}
-        onSkipChange={handleSkipChange}
+        onSkipChange={(skipped) =>
+          onDataChange({
+            poster: { ...poster, skipped },
+          })
+        }
         disabled={isLoading}
         uploadMode={uploadMode}
         queuedArtwork={queuedFiles}

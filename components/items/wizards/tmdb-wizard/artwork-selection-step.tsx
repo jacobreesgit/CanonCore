@@ -12,14 +12,8 @@
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faUpload,
-  faCloudArrowDown,
-  faForwardStep,
-} from "@fortawesome/free-solid-svg-icons";
+import { faUpload, faCloudArrowDown } from "@fortawesome/free-solid-svg-icons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import {
   Dropzone,
   DropzoneEmptyState,
@@ -58,8 +52,8 @@ interface ArtworkSelectionStepProps {
   onSelect: (value: string | null, source: ArtworkSelectionSource) => void;
   /** Whether selection is skipped */
   isSkipped: boolean;
-  /** Callback when skip state changes */
-  onSkipChange: (skipped: boolean) => void;
+  /** Callback when skip state changes (unused — skip is now in footer) */
+  onSkipChange?: (skipped: boolean) => void;
   /** Whether step is disabled */
   disabled?: boolean;
   /** Enable upload mode for new items (no existing files) */
@@ -123,7 +117,7 @@ export function ArtworkSelectionStep({
   selectedSource,
   onSelect,
   isSkipped,
-  onSkipChange,
+  onSkipChange: _onSkipChange,
   disabled = false,
   uploadMode = false,
   queuedFiles = [],
@@ -312,26 +306,6 @@ export function ArtworkSelectionStep({
             )}
           </TabsContent>
         </Tabs>
-
-        {/* Skip checkbox */}
-        <div className="flex items-center gap-2 pt-2">
-          <Checkbox
-            id={config.skipId}
-            checked={isSkipped}
-            onCheckedChange={(checked) => onSkipChange(checked === true)}
-            disabled={disabled}
-          />
-          <Label
-            htmlFor={config.skipId}
-            className={cn(
-              "flex cursor-pointer items-center gap-1.5 text-sm",
-              disabled && "cursor-not-allowed opacity-50"
-            )}
-          >
-            <FontAwesomeIcon icon={faForwardStep} className="size-3.5" />
-            {config.skipLabel}
-          </Label>
-        </div>
       </div>
     );
   }
@@ -346,7 +320,6 @@ export function ArtworkSelectionStep({
         selectedValue={selectedValue}
         onSelect={handleGridSelect}
         isSkipped={isSkipped}
-        onSkipChange={onSkipChange}
         disabled={disabled}
       />
     </div>

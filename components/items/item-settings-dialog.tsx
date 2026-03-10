@@ -538,6 +538,16 @@ export function ItemSettingsDialog({
                 Back
               </Button>
               <div className="flex gap-2">
+                {form.wizardFooterProps.onSkipCurrent && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={form.wizardFooterProps.onSkipCurrent}
+                    disabled={form.wizardFooterProps.isDisabled}
+                  >
+                    Skip
+                  </Button>
+                )}
                 {form.wizardFooterProps.onSkipAll && (
                   <Button
                     type="button"

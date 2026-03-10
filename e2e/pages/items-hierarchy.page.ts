@@ -236,8 +236,9 @@ export class ItemsHierarchyPage {
     const item = this.getItemLocator(name);
     await item.waitFor({ state: "visible", timeout: Timeouts.api });
     await item.click();
-    await this.page.waitForLoadState("domcontentloaded");
-    await expect(this.page.getByTestId("hero-carousel")).toBeVisible({
+    // Wait for item detail page to load — hero-carousel is unreliable
+    // because it's also visible on the profile page before navigation.
+    await expect(this.page.getByTestId("item-detail-container")).toBeVisible({
       timeout: Timeouts.navigation,
     });
   }

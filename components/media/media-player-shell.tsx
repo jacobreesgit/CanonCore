@@ -40,9 +40,12 @@ import {
   selectRepeat,
   selectHasNext,
 } from "@/lib/store/selectors";
-import { skipNext, skipPrevious, stop } from "@/lib/store/playback-slice";
+import {
+  setExpanded,
+  skipNext,
+  skipPrevious,
+} from "@/lib/store/playback-slice";
 import { updatePlaybackPosition } from "@/lib/item-file-actions";
-import { cn } from "@/lib/utils";
 
 // ── Stable callback ref helper ──────────────────────────────────────
 // Keeps a ref to the latest value so effects don't re-run on changes.
@@ -298,8 +301,7 @@ function MediaPlayerInner({
   }, [playerRef]);
 
   // ── Single MediaProvider — always mounted, repositioned via CSS ───
-  // When expanded + video: fills the expanded viewport overlay (z-50, fixed)
-  // with padding-bottom to avoid covering the mini bar.
+  // When expanded + video: fills the expanded viewport overlay (z-60, fixed).
   // Otherwise: hidden off-screen but still mounted (audio plays in background).
   const isVisibleInViewport = isExpanded && isVideoFile;
 
@@ -310,12 +312,7 @@ function MediaPlayerInner({
         data-testid="media-provider-container"
         className={
           isVisibleInViewport
-            ? cn(
-                "fixed inset-0 z-[60] flex items-center justify-center bg-black pt-[env(safe-area-inset-top)] transition-[padding] duration-300 [&_video]:h-full [&_video]:w-full [&_video]:object-contain",
-                controlsIdle
-                  ? ""
-                  : "pb-[calc(4rem+2px)] max-lg:pb-[calc(4rem+4rem+2px+env(safe-area-inset-bottom))]"
-              )
+            ? "fixed inset-0 z-[60] flex items-center justify-center bg-black max-lg:bottom-16 [&_video]:h-full [&_video]:w-full [&_video]:object-contain"
             : "pointer-events-none fixed size-0 overflow-hidden opacity-0"
         }
       >
@@ -344,8 +341,6 @@ export function MediaPlayerShell({ children }: MediaPlayerShellProps) {
   // ── Stable onEnded via ref — avoids Vidstack re-subscribing ───────
   const repeatRef = useLatest(repeat);
   const hasNextRef = useLatest(hasNext);
-  const currentTrackRef = useLatest(currentTrack);
-
   const handleEnded = useCallback(() => {
     if (repeatRef.current === "one") {
       // Restart current track
@@ -359,40 +354,53 @@ export function MediaPlayerShell({ children }: MediaPlayerShellProps) {
     if (hasNextRef.current) {
       dispatch(skipNext());
     } else {
-      // Save position before stopping
-      const track = currentTrackRef.current;
-      if (playerRef.current && track) {
-        const time = playerRef.current.currentTime;
-        if (time > 0) {
-          updatePlaybackPosition(
-            track.fileId,
-            time,
-            playerRef.current.duration || null
-          );
-        }
+      // No next track — collapse to idle mini player, reset to start.
+      // Vidstack queues currentTime updates via canPlayQueue which doesn't
+      // process in ended state. Use play() to exit ended, seek, then pause.
+      dispatch(setExpanded(false));
+      if (playerRef.current) {
+        playerRef.current.currentTime = 0;
+        playerRef.current
+          .play()
+          .then(() => playerRef.current?.pause())
+          .catch(() => {});
       }
-      dispatch(stop());
     }
-  }, [dispatch, repeatRef, hasNextRef, currentTrackRef]);
+  }, [dispatch, repeatRef, hasNextRef]);
 
   // Stable onCanPlay prop — delegates to ref without creating a new function each render
   const handleCanPlayProp = useCallback(() => canPlayRef.current?.(), []);
 
-  // No track loaded — just render children without MediaPlayer
-  if (!currentTrack) {
+  // Track whether MediaPlayer has ever been mounted. Once mounted, keep it
+  // mounted forever (even with no track / src="") so children stay at a stable
+  // tree position and React never remounts them (which replays CSS animations).
+  // Before first play, render bare children — avoids Vidstack hydration mismatch.
+  const [hasEverPlayed, setHasEverPlayed] = useState(false);
+
+  // Adjust state during render — avoids cascading effect setState
+  if (currentTrack && !hasEverPlayed) {
+    setHasEverPlayed(true);
+  }
+
+  // Before any track has played, skip MediaPlayer entirely (SSR-safe)
+  if (!hasEverPlayed) {
     return <>{children}</>;
   }
 
-  const src = {
-    src: `/api/stream/${currentTrack.fileId}`,
-    type: currentTrack.mimeType,
-  } as PlayerSrc;
+  // Once mounted, always keep <MediaPlayer> in the tree.
+  // When no track is loaded, src is empty — Vidstack idles with no media.
+  const src = currentTrack
+    ? ({
+        src: `/api/stream/${currentTrack.fileId}`,
+        type: currentTrack.mimeType,
+      } as PlayerSrc)
+    : ([] as unknown as PlayerSrc);
 
   return (
     <MediaPlayer
       ref={playerRef}
       src={src}
-      viewType={currentTrack.mimeType.startsWith("video/") ? "video" : "audio"}
+      viewType={currentTrack?.mimeType.startsWith("video/") ? "video" : "audio"}
       storage="canoncore-player"
       load="eager"
       crossOrigin
