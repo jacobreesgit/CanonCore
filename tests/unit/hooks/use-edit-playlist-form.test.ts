@@ -81,7 +81,7 @@ describe("useEditPlaylistForm", () => {
     const { result } = renderHook(() => useEditPlaylistForm(mockPlaylist));
 
     act(() => {
-      result.current.setVisibility("private");
+      result.current.changeVisibility("private");
     });
 
     expect(result.current.visibility).toBe("private");
@@ -119,7 +119,7 @@ describe("useEditPlaylistForm", () => {
     });
 
     await act(async () => {
-      await result.current.setVisibility("private");
+      await result.current.changeVisibility("private");
     });
 
     await act(async () => {
@@ -164,7 +164,7 @@ describe("useEditPlaylistForm", () => {
     await act(async () => {
       result.current.setName("Changed");
       result.current.setDescription("Changed");
-      await result.current.setVisibility("private");
+      await result.current.changeVisibility("private");
       result.current.setError("Some error");
     });
 
@@ -289,7 +289,7 @@ describe("useEditPlaylistForm", () => {
       const { result } = renderHook(() => useEditPlaylistForm(mockPlaylist));
 
       await act(async () => {
-        await result.current.setVisibility("unlisted");
+        await result.current.changeVisibility("unlisted");
       });
 
       expect(result.current.shareToken).toBe("new-token");
@@ -303,7 +303,7 @@ describe("useEditPlaylistForm", () => {
       );
 
       await act(async () => {
-        await result.current.setVisibility("private");
+        await result.current.changeVisibility("private");
       });
 
       expect(result.current.shareToken).toBeNull();

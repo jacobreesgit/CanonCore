@@ -40,7 +40,7 @@ import { cn } from "@/lib/utils";
 import {
   MENU_ITEM_CLASSES,
   DELETE_ITEM_CLASSES,
-} from "@/components/items/item-context-menu";
+} from "@/components/items/menu-styles";
 
 /** Action callbacks for playlist card context menus. */
 export interface PlaylistMenuActions {

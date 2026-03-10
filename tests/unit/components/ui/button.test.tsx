@@ -12,13 +12,13 @@ describe("Button", () => {
 
   it("shows loading state with spinner and loadingText", () => {
     render(
-      <Button loading loadingText="Saving...">
+      <Button loading loadingText="Saving…">
         Save
       </Button>
     );
     const button = screen.getByRole("button");
     expect(button).toBeDisabled();
-    expect(button).toHaveTextContent("Saving...");
+    expect(button).toHaveTextContent("Saving…");
     expect(button.querySelector("[role='status']")).toBeInTheDocument();
   });
 

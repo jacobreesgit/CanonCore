@@ -15,8 +15,6 @@ import {
   faCopy,
   faRotate,
   faLink,
-  faLock,
-  faGlobe,
 } from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@/components/ui/dialog";
 import { AnimatedDialogContent } from "@/components/ui/animated-dialog-content";
@@ -35,6 +33,7 @@ import { FileUpload, FileUploadTrigger } from "@/components/diceui/file-upload";
 import { cn } from "@/lib/utils";
 import {
   useEditPlaylistForm,
+  VISIBILITY_OPTIONS,
   type EditPlaylistData,
   type EditPlaylistResult,
 } from "@/hooks/use-edit-playlist-form";
@@ -143,7 +142,7 @@ export function EditPlaylistDialog({
       <AnimatedDialogContent
         data-testid="dialog-edit-playlist"
         stepKey="edit"
-        className="glass-dialog border border-[var(--glass-border)] shadow-[0_8px_32px_rgba(0,0,0,0.4)] sm:max-w-md"
+        className="glass-dialog sm:max-w-md"
         header={header}
         footer={footer}
       >
@@ -265,32 +264,11 @@ export function EditPlaylistDialog({
             <RadioGroup
               value={form.visibility}
               onValueChange={(v) =>
-                form.setVisibility(v as "private" | "unlisted" | "public")
+                form.changeVisibility(v as "private" | "unlisted" | "public")
               }
               className="grid gap-2"
             >
-              {(
-                [
-                  {
-                    value: "private",
-                    icon: faLock,
-                    label: "Private",
-                    note: "Only you can see this playlist",
-                  },
-                  {
-                    value: "unlisted",
-                    icon: faLink,
-                    label: "Unlisted",
-                    note: "Accessible via share link",
-                  },
-                  {
-                    value: "public",
-                    icon: faGlobe,
-                    label: "Public",
-                    note: "Visible on explore page",
-                  },
-                ] as const
-              ).map((opt) => (
+              {VISIBILITY_OPTIONS.map((opt) => (
                 <label
                   key={opt.value}
                   className={cn(

@@ -9,6 +9,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
+import { faLock, faLink, faGlobe } from "@fortawesome/free-solid-svg-icons";
 import {
   updatePlaylist,
   updatePlaylistArtwork,
@@ -38,6 +39,28 @@ export interface EditPlaylistResult {
 /** Playlist visibility options. */
 export type PlaylistVisibility = "private" | "unlisted" | "public";
 
+/** Shared visibility radio options for desktop dialog and mobile sheet. */
+export const VISIBILITY_OPTIONS = [
+  {
+    value: "private" as const,
+    icon: faLock,
+    label: "Private",
+    note: "Only you can see this playlist",
+  },
+  {
+    value: "unlisted" as const,
+    icon: faLink,
+    label: "Unlisted",
+    note: "Accessible via share link",
+  },
+  {
+    value: "public" as const,
+    icon: faGlobe,
+    label: "Public",
+    note: "Visible on explore page",
+  },
+];
+
 /** Return type for the useEditPlaylistForm hook. */
 export interface UseEditPlaylistFormReturn {
   // Form state
@@ -46,7 +69,8 @@ export interface UseEditPlaylistFormReturn {
   description: string;
   setDescription: (description: string) => void;
   visibility: PlaylistVisibility;
-  setVisibility: (visibility: PlaylistVisibility) => void;
+  changeVisibility: (visibility: PlaylistVisibility) => void;
+  initialVisibility: PlaylistVisibility;
   error: string | null;
   setError: (error: string | null) => void;
   isSubmitting: boolean;
@@ -287,7 +311,8 @@ export function useEditPlaylistForm(
     description,
     setDescription,
     visibility,
-    setVisibility: handleVisibilityChange,
+    changeVisibility: handleVisibilityChange,
+    initialVisibility,
     error,
     setError,
     isSubmitting,

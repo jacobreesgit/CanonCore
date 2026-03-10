@@ -193,7 +193,7 @@ function ResetPasswordFormInner() {
                   className="w-full"
                   size="lg"
                   loading={loading}
-                  loadingText="Resetting..."
+                  loadingText="Resetting…"
                 >
                   Reset password
                 </Button>

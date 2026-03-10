@@ -24,6 +24,7 @@ import {
   MobileBottomSheetTitle,
   MobileBottomSheetContent,
 } from "@/components/mobile/mobile-bottom-sheet";
+import { SheetHeaderIcon } from "@/components/mobile/sheet-header-icon";
 import { cn } from "@/lib/utils";
 import {
   SORT_OPTIONS,
@@ -183,18 +184,7 @@ export function MobileOptionsSheet({
       >
         <MobileBottomSheetHeader>
           <div className="flex items-center gap-3">
-            <div
-              className={cn(
-                "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                "bg-primary/10 ring-primary/20 ring-1"
-              )}
-            >
-              <FontAwesomeIcon
-                icon={faSliders}
-                aria-hidden="true"
-                className="text-primary size-5"
-              />
-            </div>
+            <SheetHeaderIcon icon={faSliders} />
             <div className="min-w-0">
               <MobileBottomSheetTitle className="text-foreground">
                 View Options

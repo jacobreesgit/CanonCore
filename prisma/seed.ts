@@ -1887,7 +1887,11 @@ async function seedAudioForUser(
     let albumDriveModifiedAt: Date | null = null;
     if (ctx) {
       try {
-        const folder = await createDriveFolder(ctx, albumName, ctx.rootFolderId);
+        const folder = await createDriveFolder(
+          ctx,
+          albumName,
+          ctx.rootFolderId
+        );
         albumDriveFolderId = folder.id;
         albumDriveModifiedAt = folder.modifiedAt;
       } catch (error) {

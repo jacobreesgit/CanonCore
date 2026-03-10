@@ -188,7 +188,7 @@ export function AddToPlaylistDialog({
         <AnimatedDialogContent
           data-testid="dialog-add-to-playlist"
           stepKey="playlist-list"
-          className="glass-dialog border border-[var(--glass-border)] shadow-[0_8px_32px_rgba(0,0,0,0.4)] sm:max-w-md"
+          className="glass-dialog sm:max-w-md"
           header={header}
         >
           <div className="space-y-3 py-2">

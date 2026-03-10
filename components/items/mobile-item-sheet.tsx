@@ -41,6 +41,7 @@ import {
   type SwipeableTab,
 } from "@/components/mobile/swipeable-tabs";
 import { DiscardChangesAlert } from "@/components/mobile/discard-changes-alert";
+import { SheetHeaderIcon } from "@/components/mobile/sheet-header-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -587,18 +588,7 @@ export function MobileItemSheet({
                   className="size-5"
                 />
               </Button>
-              <div
-                className={cn(
-                  "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                  "bg-primary/10 ring-primary/20 ring-1"
-                )}
-              >
-                <FontAwesomeIcon
-                  icon={faTv}
-                  aria-hidden="true"
-                  className="text-primary size-5"
-                />
-              </div>
+              <SheetHeaderIcon icon={faTv} />
               <div className="min-w-0 flex-1">
                 <MobileBottomSheetTitle>Select Season</MobileBottomSheetTitle>
                 <p className="text-muted-foreground truncate text-sm">
@@ -813,18 +803,7 @@ export function MobileItemSheet({
       >
         <MobileBottomSheetHeader>
           <div className="flex items-center gap-3">
-            <div
-              className={cn(
-                "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                "bg-primary/10 ring-primary/20 ring-1"
-              )}
-            >
-              <FontAwesomeIcon
-                icon={faGears}
-                aria-hidden="true"
-                className="text-primary size-5"
-              />
-            </div>
+            <SheetHeaderIcon icon={faGears} />
             <div className="min-w-0">
               <MobileBottomSheetTitle className="text-foreground">
                 Item Options

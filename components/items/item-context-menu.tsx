@@ -51,8 +51,6 @@ import type { QueueTrack } from "@/lib/store/types";
 import { cn } from "@/lib/utils";
 import { MENU_ITEM_CLASSES, DELETE_ITEM_CLASSES } from "./menu-styles";
 
-export { MENU_ITEM_CLASSES, DELETE_ITEM_CLASSES };
-
 const AddToPlaylistDialog = dynamic(
   () =>
     import("@/components/playlists/add-to-playlist-dialog").then((mod) => ({

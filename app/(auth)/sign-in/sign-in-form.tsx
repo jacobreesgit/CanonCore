@@ -167,7 +167,7 @@ export function SignInForm() {
               className="w-full"
               size="lg"
               loading={loading}
-              loadingText="Signing in..."
+              loadingText="Signing in…"
               data-testid="sign-in-submit-button"
             >
               Sign in

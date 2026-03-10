@@ -16,8 +16,6 @@ import {
   faCopy,
   faRotate,
   faLink,
-  faLock,
-  faGlobe,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   MobileBottomSheet,
@@ -36,6 +34,7 @@ import { FileUpload, FileUploadTrigger } from "@/components/diceui/file-upload";
 import { cn } from "@/lib/utils";
 import {
   useEditPlaylistForm,
+  VISIBILITY_OPTIONS,
   type EditPlaylistData,
   type EditPlaylistResult,
 } from "@/hooks/use-edit-playlist-form";
@@ -81,15 +80,10 @@ export function MobileEditPlaylistSheet({
   }, [open]);
 
   // Track whether user has made changes (for discard alert)
-  const initialVisibility = playlist.isPublic
-    ? "public"
-    : playlist.shareToken
-      ? "unlisted"
-      : "private";
   const hasChanges =
     form.name !== playlist.name ||
     form.description !== (playlist.description ?? "") ||
-    form.visibility !== initialVisibility ||
+    form.visibility !== form.initialVisibility ||
     form.artworkFile !== null ||
     form.removeArt;
 
@@ -266,32 +260,11 @@ export function MobileEditPlaylistSheet({
               <RadioGroup
                 value={form.visibility}
                 onValueChange={(v) =>
-                  form.setVisibility(v as "private" | "unlisted" | "public")
+                  form.changeVisibility(v as "private" | "unlisted" | "public")
                 }
                 className="grid gap-2"
               >
-                {(
-                  [
-                    {
-                      value: "private",
-                      icon: faLock,
-                      label: "Private",
-                      note: "Only you can see this playlist",
-                    },
-                    {
-                      value: "unlisted",
-                      icon: faLink,
-                      label: "Unlisted",
-                      note: "Accessible via share link",
-                    },
-                    {
-                      value: "public",
-                      icon: faGlobe,
-                      label: "Public",
-                      note: "Visible on explore page",
-                    },
-                  ] as const
-                ).map((opt) => (
+                {VISIBILITY_OPTIONS.map((opt) => (
                   <label
                     key={opt.value}
                     className={cn(

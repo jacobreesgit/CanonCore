@@ -154,7 +154,7 @@ export function ForgotPasswordForm() {
                   className="w-full"
                   size="lg"
                   loading={loading}
-                  loadingText="Sending..."
+                  loadingText="Sending…"
                 >
                   Send reset link
                 </Button>

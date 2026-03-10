@@ -269,7 +269,7 @@ export function ForkDestinationDialog({
               onClick={handleConfirm}
               disabled={isForking || loading}
               loading={isForking}
-              loadingText="Forking..."
+              loadingText="Forking…"
             >
               <FontAwesomeIcon
                 icon={faCopy}

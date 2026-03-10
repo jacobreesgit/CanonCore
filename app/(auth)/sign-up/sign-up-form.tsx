@@ -286,7 +286,7 @@ export function SignUpForm() {
               className="w-full"
               size="lg"
               loading={loading}
-              loadingText="Creating account..."
+              loadingText="Creating account…"
             >
               Create account
             </Button>
