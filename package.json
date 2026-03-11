@@ -170,6 +170,7 @@
     "storybook": "^10.2.4",
     "tailwindcss": "^4.1.9",
     "tsx": "^4.21.0",
+    "turbo": "^2.8.16",
     "tw-animate-css": "1.3.3",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.50.1",
