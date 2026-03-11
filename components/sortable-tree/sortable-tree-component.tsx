@@ -326,6 +326,8 @@ export function SortableTree({
               fileCounts,
               childCount,
               mediaIconType,
+              primaryDurationMs,
+              primaryHeight,
               progressPercentage,
               watchedCount,
               totalMediaCount,
@@ -371,6 +373,8 @@ export function SortableTree({
                 fileCounts={fileCounts}
                 childCount={childCount}
                 mediaIconType={mediaIconType}
+                primaryDurationMs={primaryDurationMs}
+                primaryHeight={primaryHeight}
                 progressPercentage={progressPercentage}
                 watchedCount={watchedCount}
                 totalMediaCount={totalMediaCount}

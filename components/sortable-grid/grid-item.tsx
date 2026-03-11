@@ -330,34 +330,42 @@ export const GridItem = memo(
           </button>
         )}
 
-        {/* Ownership/fork badge - top left, non-edit mode only */}
-        {!isEditMode && (isOwn || isForked) && (
-          <div
-            className={cn(
-              "absolute top-2 left-2 z-30",
-              "flex items-center gap-1",
-              "rounded-full px-1.5 py-0.5",
-              "bg-black/50 backdrop-blur-sm",
-              "text-xs font-medium text-white/70"
-            )}
-            aria-label={isOwn ? "Your item" : "In your library"}
-          >
-            {isOwn ? (
-              <FontAwesomeIcon
-                icon={faUser}
-                className="size-2.5"
-                aria-hidden="true"
+        {/* Top-left badges: ownership + media info */}
+        {!isEditMode &&
+          (isOwn || isForked || primaryDurationMs || primaryHeight) && (
+            <div className="absolute top-2 left-2 z-30 flex flex-col items-start gap-1">
+              {(isOwn || isForked) && (
+                <div
+                  className={cn(
+                    "flex items-center gap-1",
+                    "rounded-full px-1.5 py-0.5",
+                    "bg-black/50 backdrop-blur-sm",
+                    "text-xs font-medium text-white/70"
+                  )}
+                  aria-label={isOwn ? "Your item" : "In your library"}
+                >
+                  {isOwn ? (
+                    <FontAwesomeIcon
+                      icon={faUser}
+                      className="size-2.5"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <FontAwesomeIcon
+                      icon={faCheck}
+                      className="size-2.5 text-green-400"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <span>{isOwn ? "Yours" : "In Library"}</span>
+                </div>
+              )}
+              <MediaBadges
+                durationMs={primaryDurationMs}
+                height={primaryHeight}
               />
-            ) : (
-              <FontAwesomeIcon
-                icon={faCheck}
-                className="size-2.5 text-green-400"
-                aria-hidden="true"
-              />
-            )}
-            <span>{isOwn ? "Yours" : "In Library"}</span>
-          </div>
-        )}
+            </div>
+          )}
 
         {/* DEFAULT VIEW: Small gradient + title (HIDES on hover) */}
         <div
@@ -393,11 +401,6 @@ export const GridItem = memo(
                 syncStatus={syncStatus}
                 driveFileId={driveFileId}
                 className="flex-shrink-0"
-              />
-              <MediaBadges
-                durationMs={primaryDurationMs}
-                height={primaryHeight}
-                className="ml-auto flex-shrink-0"
               />
             </div>
           </div>

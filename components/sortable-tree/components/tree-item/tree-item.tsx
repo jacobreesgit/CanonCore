@@ -20,7 +20,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SyncIcon } from "@/components/items/sync-badge";
-import { MediaBadges } from "@/components/ui/media-badges";
+import { formatDuration, getResolutionLabel } from "@/lib/media-metadata";
 import { getTmdbPosterUrl } from "@/lib/tmdb-image-utils";
 import type { FileCounts, SyncStatus } from "@/lib/types";
 import type { ItemMenuActions } from "@/components/items/item-context-menu";
@@ -144,6 +144,9 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
     const handleClick = isSelectMode
       ? () => onSelectChange?.(!isSelected)
       : onClick;
+
+    const duration = formatDuration(primaryDurationMs);
+    const resolution = getResolutionLabel(primaryHeight);
 
     return (
       <li
@@ -338,13 +341,26 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                     </span>
                   </>
                 )}
-                {/* Duration / resolution badges - view mode only */}
-                {!showDragHandle && (
-                  <MediaBadges
-                    durationMs={primaryDurationMs}
-                    height={primaryHeight}
-                    className="ml-auto flex-shrink-0"
-                  />
+                {/* Duration / resolution - inline, view mode only */}
+                {!showDragHandle && duration && (
+                  <>
+                    <span className="text-xs text-[var(--tertiary-foreground)]">
+                      •
+                    </span>
+                    <span className="text-xs whitespace-nowrap text-[var(--tertiary-foreground)]">
+                      {duration}
+                    </span>
+                  </>
+                )}
+                {!showDragHandle && resolution && (
+                  <>
+                    <span className="text-xs text-[var(--tertiary-foreground)]">
+                      •
+                    </span>
+                    <span className="text-xs whitespace-nowrap text-[var(--tertiary-foreground)]">
+                      {resolution}
+                    </span>
+                  </>
                 )}
               </div>
               {/* Description - only in view mode */}
