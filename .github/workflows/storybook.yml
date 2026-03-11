@@ -33,7 +33,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Storybook
-        run: pnpm build-storybook
+        run: pnpm run build-storybook
 
       - name: Install Playwright browsers
         run: |
@@ -45,7 +45,7 @@ jobs:
       - name: Run Storybook tests
         run: |
           npx concurrently -k -s first -n "SB,TEST" -c "magenta,cyan" \
-            "npx http-server storybook-static --port 6006 --silent" \
+            "npx http-server apps/web/storybook-static --port 6006 --silent" \
             "npx wait-on tcp:127.0.0.1:6006 && pnpm test-storybook:ci"
 
       - name: Upload Storybook build
@@ -53,5 +53,5 @@ jobs:
         if: always()
         with:
           name: storybook-static
-          path: storybook-static/
+          path: apps/web/storybook-static/
           retention-days: 7
