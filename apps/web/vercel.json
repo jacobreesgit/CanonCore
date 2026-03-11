@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm run build",
-  "installCommand": "pnpm install",
+  "buildCommand": "cd ../.. && pnpm --filter @canoncore/web run build",
+  "installCommand": "cd ../.. && pnpm install",
+  "outputDirectory": ".next",
   "framework": "nextjs"
 }
