@@ -1,6 +1,7 @@
 {
   "$schema": "https://turborepo.dev/schema.v2.json",
   "globalEnv": ["NODE_ENV", "CI"],
+  "globalPassThroughEnv": null,
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
