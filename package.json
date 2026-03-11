@@ -33,7 +33,24 @@
     "prepare": "lefthook install"
   },
   "devDependencies": {
-    "turbo": "^2.8.16",
-    "lefthook": "^2.1.3"
+    "@commitlint/cli": "^20.4.1",
+    "@commitlint/config-conventional": "^20.4.1",
+    "lefthook": "^2.1.3",
+    "lint-staged": "^16.2.7",
+    "turbo": "^2.8.16"
+  },
+  "lint-staged": {
+    "apps/web/**/*.{ts,tsx}": [
+      "eslint --fix --config apps/web/eslint.config.mjs",
+      "prettier --write --config apps/web/.prettierrc --ignore-path apps/web/.prettierignore"
+    ],
+    "apps/web/**/*.{json,md,css}": [
+      "prettier --write --config apps/web/.prettierrc --ignore-path apps/web/.prettierignore"
+    ]
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "lefthook"
+    ]
   }
 }
