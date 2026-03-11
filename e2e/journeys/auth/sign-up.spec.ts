@@ -27,7 +27,7 @@ publicTest.describe("Sign Up (happy path)", () => {
         await page.getByTestId("sign-up-username-input").fill(username);
 
         // Wait for username validation to resolve (success indicator appears)
-        await expect(page.locator("#username-success")).toBeVisible({
+        await expect(page.getByTestId("username-success")).toBeVisible({
           timeout: Timeouts.api,
         });
 

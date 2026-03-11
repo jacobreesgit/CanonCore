@@ -217,6 +217,7 @@ export function MobileEditPlaylistSheet({
               <Label htmlFor="mobile-edit-playlist-name">Name</Label>
               <Input
                 id="mobile-edit-playlist-name"
+                data-testid="edit-playlist-name-input"
                 value={form.name}
                 onChange={(e) => {
                   form.setName(e.target.value);
@@ -360,6 +361,7 @@ export function MobileEditPlaylistSheet({
               form="mobile-edit-playlist-form"
               disabled={form.isSubmitting || !form.name.trim()}
               className="flex-1"
+              data-testid="edit-playlist-submit"
             >
               {form.isSubmitting ? (
                 <>

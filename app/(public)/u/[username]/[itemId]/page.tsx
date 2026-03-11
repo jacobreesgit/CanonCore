@@ -90,6 +90,9 @@ export async function generateMetadata({
     title: `${itemName} by ${displayName} | CanonCore`,
     description:
       itemDescription ?? `View ${itemName} on ${displayName}'s media library.`,
+    alternates: {
+      canonical: `/u/${username}/${itemId}`,
+    },
     openGraph: {
       title: `${itemName} | CanonCore`,
       description:

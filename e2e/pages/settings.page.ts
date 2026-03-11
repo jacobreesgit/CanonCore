@@ -145,6 +145,67 @@ export class SettingsPage {
     await this.page.getByRole("button", { name: "Save" }).click();
   }
 
+  // ── Password Change ─────────────────────────────────
+
+  /**
+   * Navigate to the password change step on the account tab.
+   * Clicks the "Change Password" button which sets the step to "password".
+   */
+  async openPasswordChangeStep() {
+    await this.page.getByRole("button", { name: /change password/i }).click();
+  }
+
+  /**
+   * Fill the current password field on the password change step.
+   *
+   * @param password - The current password
+   */
+  async fillCurrentPassword(password: string) {
+    const input = this.page.getByLabel(/current password/i);
+    await input.waitFor({ state: "visible", timeout: Timeouts.api });
+    await input.fill(password);
+  }
+
+  /**
+   * Fill the new password field on the password change step.
+   *
+   * @param password - The new password
+   */
+  async fillNewPassword(password: string) {
+    const input = this.page.getByLabel(/^new password$/i);
+    await input.waitFor({ state: "visible", timeout: Timeouts.api });
+    await input.fill(password);
+  }
+
+  /**
+   * Fill the confirm password field on the password change step.
+   *
+   * @param password - The password confirmation
+   */
+  async fillConfirmPassword(password: string) {
+    const input = this.page.getByLabel(/confirm new password/i);
+    await input.waitFor({ state: "visible", timeout: Timeouts.api });
+    await input.fill(password);
+  }
+
+  /**
+   * Click the Change Password button to submit the password change.
+   * When on the password step, the footer submit button is the only
+   * visible "Change Password" button (the account tab card is hidden).
+   */
+  async submitPasswordChange() {
+    await this.page.getByTestId("password-change-submit").click();
+  }
+
+  /**
+   * Assert that a password change success toast appears.
+   */
+  async expectPasswordChangeSuccess() {
+    await expect(this.page.getByText(/password saved/i).first()).toBeVisible({
+      timeout: Timeouts.api,
+    });
+  }
+
   // ── Close ─────────────────────────────────────────────
 
   /**

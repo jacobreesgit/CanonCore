@@ -6,6 +6,8 @@
 "use server";
 
 import { cache } from "react";
+import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -902,41 +904,47 @@ export async function createItem(
     // Create folder in Drive (async, don't block UI response)
     // Note: revalidatePath runs before Drive sync completes - UI may show stale syncStatus briefly
     // Uses createDriveFolderOnly which only creates Drive folder, NOT a duplicate Item
-    createDriveFolderOnly(parentId, nameValidation.data)
-      .then(async (result) => {
-        if (result.success && result.data) {
-          // Update item with Drive file ID
-          await prisma.item.update({
-            where: { id: item.id },
-            data: {
-              driveFileId: result.data.driveFileId,
-              driveConnectionId: connection.id,
-              syncStatus: "SYNCED",
-            },
-          });
-        } else if (!result.success) {
-          // Mark as pending if Drive folder creation failed
+    after(() => {
+      createDriveFolderOnly(parentId, nameValidation.data)
+        .then(async (result) => {
+          if (result.success && result.data) {
+            // Update item with Drive file ID
+            await prisma.item.update({
+              where: { id: item.id },
+              data: {
+                driveFileId: result.data.driveFileId,
+                driveConnectionId: connection.id,
+                syncStatus: "SYNCED",
+              },
+            });
+          } else if (!result.success) {
+            // Mark as pending if Drive folder creation failed
+            await prisma.item
+              .update({
+                where: { id: item.id },
+                data: { syncStatus: "PENDING" },
+              })
+              .catch((err) => {
+                logger.warn({ err }, "Secondary operation failed");
+              });
+          }
+        })
+        .catch(async (err) => {
+          logger.error(
+            { err, itemId: item.id },
+            "Failed to create folder in Drive"
+          );
+          // Mark as pending sync
           await prisma.item
             .update({
               where: { id: item.id },
               data: { syncStatus: "PENDING" },
             })
-            .catch(() => {});
-        }
-      })
-      .catch(async (err) => {
-        logger.error(
-          { err, itemId: item.id },
-          "Failed to create folder in Drive"
-        );
-        // Mark as pending sync
-        await prisma.item
-          .update({
-            where: { id: item.id },
-            data: { syncStatus: "PENDING" },
-          })
-          .catch(() => {}); // Ignore secondary failure
-      });
+            .catch((err) => {
+              logger.warn({ err }, "Secondary operation failed");
+            });
+        });
+    });
   }
 
   return { success: true, data: item as Item };
@@ -1018,8 +1026,11 @@ export async function updateItem(
     updateData.name !== existingItem.name &&
     existingItem.driveFileId
   ) {
-    renameItemInGoogleDrive(id, updateData.name).catch((err) => {
-      logger.error({ err, itemId: id }, "Failed to rename in Drive");
+    const newName = updateData.name;
+    after(() => {
+      renameItemInGoogleDrive(id, newName).catch((err) => {
+        logger.error({ err, itemId: id }, "Failed to rename in Drive");
+      });
     });
   }
 
@@ -1197,7 +1208,7 @@ export async function moveItem(
   >`
     WITH RECURSIVE subtree AS (
       SELECT id, "parentId", depth FROM "Item"
-        WHERE "parentId" = ${itemId} AND "userId" = ${userId}::uuid
+        WHERE "parentId" = ${itemId} AND "userId" = ${userId}
       UNION ALL
       SELECT i.id, i."parentId", i.depth FROM "Item" i
         JOIN subtree s ON i."parentId" = s.id
@@ -1245,11 +1256,14 @@ export async function moveItem(
 
   // Sync move to Drive (async, don't block response)
   if (item.driveFileId) {
-    moveItemInGoogleDrive(itemId, newParentId, item.parentId).catch((err) => {
-      logger.error({ err, itemId }, "Failed to move item in Drive");
+    after(() => {
+      moveItemInGoogleDrive(itemId, newParentId, item.parentId).catch((err) => {
+        logger.error({ err, itemId }, "Failed to move item in Drive");
+      });
     });
   }
 
+  revalidatePath("/u", "layout");
   return { success: true };
 }
 
@@ -1333,21 +1347,25 @@ export async function reorderItems(
   );
 
   // Sync moves to Drive (async, don't block response)
-  for (const update of updates) {
-    const current = currentParentMap.get(update.id);
-    if (
-      current?.driveFileId &&
-      update.parentId !== undefined &&
-      current.parentId !== update.parentId
-    ) {
-      // Parent changed - move in Drive (pass old parentId since DB already updated)
-      moveItemInGoogleDrive(update.id, update.parentId, current.parentId).catch(
-        (err) => {
+  after(() => {
+    for (const update of updates) {
+      const current = currentParentMap.get(update.id);
+      if (
+        current?.driveFileId &&
+        update.parentId !== undefined &&
+        current.parentId !== update.parentId
+      ) {
+        // Parent changed - move in Drive (pass old parentId since DB already updated)
+        moveItemInGoogleDrive(
+          update.id,
+          update.parentId,
+          current.parentId
+        ).catch((err) => {
           logger.error({ err, itemId: update.id }, "Failed to move in Drive");
-        }
-      );
+        });
+      }
     }
-  }
+  });
 
   return { success: true };
 }

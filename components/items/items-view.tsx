@@ -100,6 +100,7 @@ import {
   deleteItem,
   deleteItems,
   reorderItems,
+  moveItem,
   getItems,
   pinItem,
   unpinItem,
@@ -356,6 +357,19 @@ export function ItemsView({
       } else {
         toast.error(result.error || "Failed to delete");
       }
+    },
+    [refetchItems, setItems]
+  );
+
+  // Handle moving an item to a different parent
+  const handleMoveItem = useCallback(
+    async (itemId: string, newParentId: string | null) => {
+      const result = await moveItem(itemId, newParentId);
+      if (result.success) {
+        setItems((prev) => prev.filter((i) => i.id !== itemId));
+        startTransition(() => refetchItems());
+      }
+      return result;
     },
     [refetchItems, setItems]
   );
@@ -716,6 +730,7 @@ export function ItemsView({
               onItemClick={handleItemClick}
               onOpenSettings={handleOpenSettings}
               onDeleteItem={handleDeleteItem}
+              onMoveItem={handleMoveItem}
               onAddChild={handleAddChild}
               onAddChildComplete={refetchItems}
               onPinItem={handlePinItem}

@@ -563,7 +563,8 @@ function FileTypeComboboxSelectMode({
   useEffect(() => {
     if (isOpen && inputRef.current) {
       // Small delay to let popover render
-      setTimeout(() => inputRef.current?.focus(), 0);
+      const timer = setTimeout(() => inputRef.current?.focus(), 0);
+      return () => clearTimeout(timer);
     }
   }, [isOpen]);
 

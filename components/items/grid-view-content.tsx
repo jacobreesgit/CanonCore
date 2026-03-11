@@ -21,7 +21,7 @@ import {
   markAllWatched,
   markAllUnwatched,
 } from "@/lib/watch-actions";
-import { moveItem } from "@/lib/item-actions";
+import type { ItemResult } from "@/lib/types";
 import { useAppDispatch } from "@/lib/store/hooks";
 import { playQueue, playNext, addToQueue } from "@/lib/store/playback-slice";
 import { buildQueueTrack } from "@/lib/store/track-helpers";
@@ -104,6 +104,11 @@ interface GridViewContentProps {
   onOpenSettings: (id: string) => Promise<void>;
   /** Callback to delete an item. */
   onDeleteItem: (id: string) => Promise<void>;
+  /** Callback to move an item to a different parent. */
+  onMoveItem: (
+    itemId: string,
+    newParentId: string | null
+  ) => Promise<ItemResult>;
   /** Callback to pin an item to the sidebar. */
   onPinItem: (id: string) => Promise<void>;
   /** Callback to unpin an item from the sidebar. */
@@ -145,6 +150,7 @@ export function GridViewContent({
   onItemClick,
   onOpenSettings,
   onDeleteItem,
+  onMoveItem,
   onPinItem,
   onUnpinItem,
   onAddChild,
@@ -247,6 +253,8 @@ export function GridViewContent({
               Pinned
             </h2>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
+              {/* GridItem is memoized — context menu wrapper props recreate per render
+                  but are lightweight (Radix portal, no heavy DOM) */}
               {pinnedItems.map((item, index) => {
                 const watchProps = watchMenuProps(item);
                 const baseMenuProps = {
@@ -337,6 +345,8 @@ export function GridViewContent({
               </h2>
             )}
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
+              {/* GridItem is memoized — context menu wrapper props recreate per render
+                  but are lightweight (Radix portal, no heavy DOM) */}
               {unpinnedItems.map((item, index) => {
                 const watchProps = watchMenuProps(item);
                 const baseMenuProps = {
@@ -415,7 +425,7 @@ export function GridViewContent({
           itemId={moveToItem.id}
           itemName={moveToItem.name}
           currentParentId={moveToItem.parentId}
-          onMove={(newParentId) => moveItem(moveToItem.id, newParentId)}
+          onMove={(newParentId) => onMoveItem(moveToItem.id, newParentId)}
         />
       )}
     </>

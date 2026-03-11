@@ -116,10 +116,14 @@ export class ItemsSortFilterPage {
       });
       await clearButton.click();
     } else {
-      // Ensure filter dropdown is open first
-      const filterTrigger = this.page.getByTestId("items-filter-dropdown");
-      await filterTrigger.click();
-      await this.page.getByTestId("items-filter-clear").click();
+      // The clear button is inside the filter dropdown — open it if not already open.
+      // DropdownMenuCheckboxItem keeps the menu open after clicking, so the dropdown
+      // may still be open from a prior toggleFilter call.
+      const clearButton = this.page.getByTestId("items-filter-clear");
+      if (!(await clearButton.isVisible().catch(() => false))) {
+        await this.page.getByTestId("items-filter-dropdown").click();
+      }
+      await clearButton.click();
     }
   }
 
@@ -167,23 +171,11 @@ export class ItemsSortFilterPage {
     const trigger = this.page.getByTestId("items-view-dropdown");
     const menuItem = this.page.getByRole("menuitemradio").first();
 
-    // Retry up to 3 times — handles stale Radix state after re-renders
-    for (let attempt = 0; attempt < 3; attempt++) {
+    // Retry click until Radix dropdown opens — handles stale state after re-renders
+    await expect(async () => {
       await trigger.click();
-      try {
-        await menuItem.waitFor({ state: "visible", timeout: 2000 });
-        return; // Success — dropdown is open
-      } catch {
-        // Dropdown didn't open — press Escape to reset any partial state
-        await this.page.keyboard.press("Escape");
-        // Brief pause for Radix to fully settle
-        await this.page.waitForTimeout(200);
-      }
-    }
-
-    // Final attempt without catch — let it fail with a clear error
-    await trigger.click();
-    await menuItem.waitFor({ state: "visible", timeout: Timeouts.api });
+      await expect(menuItem).toBeVisible({ timeout: 1_000 });
+    }).toPass({ timeout: Timeouts.api });
   }
 
   // ── Mobile Sheet Helpers ───────────────────────────────

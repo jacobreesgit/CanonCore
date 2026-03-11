@@ -79,6 +79,48 @@ export class ItemDetailPage {
     });
   }
 
+  // ── Watch Status ──────────────────────────────────────
+
+  /**
+   * Open the detail settings menu with retry (handles hydration delay).
+   * Waits until the expected menu item is visible.
+   */
+  private async openSettingsMenu(expectedTestId: string) {
+    const item = this.page.getByTestId(expectedTestId);
+    await expect(async () => {
+      await this.page.getByTestId("detail-settings-button").click();
+      await expect(item).toBeVisible({ timeout: Timeouts.animation });
+    }).toPass({ timeout: Timeouts.api });
+  }
+
+  /** Mark the current item as watched via the settings menu. */
+  async markAsWatched() {
+    await this.openSettingsMenu("menu-mark-watched");
+    await this.page.getByTestId("menu-mark-watched").click();
+  }
+
+  /** Mark the current item as unwatched via the settings menu. */
+  async markAsUnwatched() {
+    await this.openSettingsMenu("menu-mark-unwatched");
+    await this.page.getByTestId("menu-mark-unwatched").click();
+  }
+
+  /** Expect the "Mark as Watched" menu item to be available. */
+  async expectWatchedMenuAvailable() {
+    await this.openSettingsMenu("menu-mark-watched");
+    await expect(this.page.getByTestId("menu-mark-watched")).toBeVisible({
+      timeout: Timeouts.api,
+    });
+  }
+
+  /** Expect the "Mark as Unwatched" menu item to be available. */
+  async expectUnwatchedMenuAvailable() {
+    await this.openSettingsMenu("menu-mark-unwatched");
+    await expect(this.page.getByTestId("menu-mark-unwatched")).toBeVisible({
+      timeout: Timeouts.api,
+    });
+  }
+
   // ── Tab Switching ───────────────────────────────────────
 
   /** Switch to the About tab. */

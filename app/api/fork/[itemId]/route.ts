@@ -63,6 +63,15 @@ export async function POST(
     return NextResponse.json({ error: "Item ID is required" }, { status: 400 });
   }
 
+  // Validate Content-Type if present
+  const contentType = request.headers.get("content-type");
+  if (contentType && !contentType.includes("application/json")) {
+    return NextResponse.json(
+      { error: "Content-Type must be application/json" },
+      { status: 415 }
+    );
+  }
+
   // Parse optional parentId from body
   let parentId: string | null = null;
   try {

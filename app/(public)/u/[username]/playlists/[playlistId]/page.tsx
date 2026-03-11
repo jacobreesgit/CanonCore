@@ -55,6 +55,8 @@ export async function generateMetadata({
 
   const isOwner = session?.user?.id === profile.id;
 
+  const canonicalPath = `/u/${username}/playlists/${playlistId}`;
+
   if (isOwner) {
     const result = await getPlaylist(playlistId);
     if (!result.success || !result.data) {
@@ -65,6 +67,9 @@ export async function generateMetadata({
       title: `${result.data.name} by ${displayName} | CanonCore`,
       description:
         result.data.description ?? `Playlist by @${username} on CanonCore.`,
+      alternates: {
+        canonical: canonicalPath,
+      },
       openGraph: {
         title: `${result.data.name} | CanonCore`,
         description:
@@ -86,6 +91,9 @@ export async function generateMetadata({
     description: publicData.playlist.description
       ? `"${publicData.playlist.description}" — ${itemCount} items curated by @${username}`
       : `Playlist by @${username} on CanonCore.`,
+    alternates: {
+      canonical: canonicalPath,
+    },
     openGraph: {
       title: `${publicData.playlist.name} | CanonCore`,
       description: publicData.playlist.description

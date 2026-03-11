@@ -35,31 +35,17 @@ const TEXT_PALETTES = [
 ];
 
 export function HomepageContent() {
+  // Start from ocean (blue) palette — index 1
   const [state, setState] = useState({
-    layerA: PALETTES[0],
-    layerB: PALETTES[1],
-    textA: TEXT_PALETTES[0],
-    textB: TEXT_PALETTES[1],
+    layerA: PALETTES[1],
+    layerB: PALETTES[2],
+    textA: TEXT_PALETTES[1],
+    textB: TEXT_PALETTES[2],
     active: "a" as "a" | "b",
-    index: 0,
+    index: 1,
   });
 
   useEffect(() => {
-    // Randomise starting palette on mount (avoids hydration mismatch).
-    // Deferred via rAF to avoid synchronous setState in effect body.
-    const start = Math.floor(Math.random() * PALETTES.length);
-    const next = (start + 1) % PALETTES.length;
-    const rafId = requestAnimationFrame(() => {
-      setState({
-        layerA: PALETTES[start],
-        layerB: PALETTES[next],
-        textA: TEXT_PALETTES[start],
-        textB: TEXT_PALETTES[next],
-        active: "a",
-        index: start,
-      });
-    });
-
     const interval = setInterval(() => {
       setState((prev) => {
         const nextIndex = (prev.index + 1) % PALETTES.length;
@@ -81,10 +67,7 @@ export function HomepageContent() {
         };
       });
     }, 8000);
-    return () => {
-      cancelAnimationFrame(rafId);
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, []);
 
   return (

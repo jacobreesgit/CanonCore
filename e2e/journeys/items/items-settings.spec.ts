@@ -5,6 +5,7 @@
  */
 import { test, expect } from "../../fixtures";
 import { testId } from "../../config/test-data";
+import { Timeouts } from "../../config/timeouts";
 
 test.describe("Items Settings", () => {
   test("should open and close settings dialog", async ({
@@ -37,6 +38,31 @@ test.describe("Items Settings", () => {
     await itemsSettings.save();
 
     await itemsCrud.expectItemVisible(newName);
+  });
+
+  test("should update item description via settings", async ({
+    page,
+    itemsCrud,
+    itemsSettings,
+    itemDetail,
+  }) => {
+    const name = testId("movie");
+    const description = "A thrilling adventure film.";
+
+    await itemsCrud.goto();
+    await itemsCrud.createItem(name);
+
+    await itemsSettings.openSettings(name);
+    await itemsSettings.updateDescription(description);
+    await itemsSettings.save();
+
+    // Navigate into the item detail — description shows in the hero
+    // (no About tab for items without TMDB data or children)
+    await itemsCrud.clickItem(name);
+    await itemDetail.expectDetailVisible();
+    await expect(page.getByText(description)).toBeVisible({
+      timeout: Timeouts.api,
+    });
   });
 
   // TMDB tests require external API — skip if TMDB_API_KEY is not set

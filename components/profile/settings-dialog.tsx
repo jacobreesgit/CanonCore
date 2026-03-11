@@ -850,7 +850,11 @@ export function SettingsDialog({
             >
               Cancel
             </Button>
-            <Button onClick={handlePasswordSubmit} disabled={isPasswordSaving}>
+            <Button
+              data-testid="password-change-submit"
+              onClick={handlePasswordSubmit}
+              disabled={isPasswordSaving}
+            >
               {isPasswordSaving ? (
                 <>
                   <FontAwesomeIcon
@@ -1541,6 +1545,7 @@ export function SettingsDialog({
               <Label htmlFor="delete-password">Password</Label>
               <PasswordInput
                 id="delete-password"
+                data-testid="delete-password"
                 name="current-password"
                 autoComplete="current-password"
                 value={deletePassword}
@@ -1557,6 +1562,7 @@ export function SettingsDialog({
               </Label>
               <Input
                 id="delete-confirm"
+                data-testid="delete-confirm"
                 autoComplete="off"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}

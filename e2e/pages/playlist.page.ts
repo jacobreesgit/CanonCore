@@ -175,6 +175,16 @@ export class PlaylistPage {
     await listItem.click();
   }
 
+  /**
+   * Click the "Create New Playlist" or "Create your first playlist" button
+   * inside the Add to Playlist dialog to open the create form.
+   */
+  async openCreateFromAddDialog() {
+    const createFirst = this.page.getByTestId("create-first-playlist");
+    const createNew = this.page.getByTestId("create-new-playlist");
+    await createFirst.or(createNew).click();
+  }
+
   /** Close the "Add to Playlist" dialog via Escape or clicking outside. */
   async closeAddToPlaylistDialog() {
     await this.page.keyboard.press("Escape");
@@ -311,6 +321,48 @@ export class PlaylistPage {
       timeout: Timeouts.animation,
     });
     await confirmButton.click();
+  }
+
+  /** Open the edit dialog for the current playlist via the settings gear menu. */
+  async editPlaylistFromDetail() {
+    const editItem = this.page.getByTestId("menu-edit-playlist");
+    // Retry clicking Settings until the dropdown opens (handles hydration delay)
+    await expect(async () => {
+      await this.page.getByTestId("playlist-settings-button").click();
+      await expect(editItem).toBeVisible({ timeout: 1_000 });
+    }).toPass({ timeout: Timeouts.api });
+    await editItem.click();
+    // Wait for the edit dialog/sheet to open
+    const editTestId = this.isMobile
+      ? "sheet-edit-playlist"
+      : "dialog-edit-playlist";
+    await expect(this.page.getByTestId(editTestId)).toBeVisible({
+      timeout: Timeouts.animation,
+    });
+  }
+
+  /**
+   * Update the playlist name in the edit dialog.
+   *
+   * @param name - The new playlist name
+   */
+  async editPlaylistName(name: string) {
+    const nameInput = this.page.getByTestId("edit-playlist-name-input");
+    await nameInput.waitFor({ state: "visible", timeout: Timeouts.api });
+    await nameInput.clear();
+    await nameInput.fill(name);
+  }
+
+  /** Save the playlist edit by clicking the save button. */
+  async savePlaylistEdit() {
+    await this.page.getByTestId("edit-playlist-submit").click();
+    // Wait for edit dialog/sheet to close
+    const editTestId = this.isMobile
+      ? "sheet-edit-playlist"
+      : "dialog-edit-playlist";
+    await expect(this.page.getByTestId(editTestId)).not.toBeVisible({
+      timeout: Timeouts.api,
+    });
   }
 
   /** Click the Share button on the playlist detail hero. */

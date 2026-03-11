@@ -9,6 +9,15 @@ dotenv.config({ path: path.resolve(__dirname, "../../.env.local") });
 // Bypass rate limiting in integration tests (uses env var approach)
 vi.stubEnv("BYPASS_RATE_LIMIT", "true");
 
+// Mock next/server `after` (runs callback synchronously in tests)
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>();
+  return {
+    ...actual,
+    after: vi.fn((fn: () => void) => fn()),
+  };
+});
+
 let prisma: ExtendedPrismaClient;
 
 beforeAll(async () => {

@@ -1,6 +1,6 @@
 /**
  * Page object for navigation elements.
- * Covers sidebar, header, mobile footer, skip link.
+ * Covers sidebar, mobile footer, sign-out.
  */
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
@@ -35,15 +35,6 @@ export class NavPage {
     }
   }
 
-  /** Close sidebar if open (desktop only). */
-  async closeSidebar() {
-    const sidebar = this.page.getByTestId("nav-sidebar");
-    if (await sidebar.isVisible()) {
-      await this.page.getByTestId("sidebar-trigger").click();
-      await expect(sidebar).not.toBeVisible({ timeout: Timeouts.animation });
-    }
-  }
-
   /** Open user menu dropdown (desktop). */
   async openUserMenuDesktop() {
     await this.openSidebar();
@@ -54,12 +45,6 @@ export class NavPage {
   async signOutDesktop() {
     await this.openUserMenuDesktop();
     await this.page.getByTestId("my-items-sign-out-button").click();
-  }
-
-  /** Open settings via desktop sidebar. */
-  async openSettingsDesktop() {
-    await this.openUserMenuDesktop();
-    await this.page.getByTestId("my-items-settings-button").click();
   }
 
   // ── Mobile Footer ───────────────────────────────────────
@@ -101,45 +86,5 @@ export class NavPage {
     } else {
       await this.signOutDesktop();
     }
-  }
-
-  // ── Header ──────────────────────────────────────────────
-
-  /** Scroll to top to reveal auto-hiding header. */
-  async revealHeader() {
-    await this.page.evaluate(() => {
-      const main = document.getElementById("main-content");
-      (main ?? window).scrollTo(0, 0);
-    });
-    await expect(this.page.getByTestId("nav-breadcrumb")).toBeVisible({
-      timeout: Timeouts.animation,
-    });
-  }
-
-  /** Click a breadcrumb link. */
-  async clickBreadcrumb(name: string) {
-    await this.revealHeader();
-    await this.page
-      .getByTestId("nav-breadcrumb")
-      .getByRole("link", { name, exact: true })
-      .click();
-  }
-
-  /** Expect breadcrumb with given name is visible. */
-  async expectBreadcrumb(name: string) {
-    await this.revealHeader();
-    await expect(
-      this.page
-        .getByTestId("nav-breadcrumb")
-        .getByRole("link", { name, exact: true })
-    ).toBeVisible({ timeout: Timeouts.api });
-  }
-
-  // ── Skip Link ───────────────────────────────────────────
-
-  /** Tab to skip link and activate it. */
-  async useSkipLink() {
-    await this.page.keyboard.press("Tab");
-    await this.page.keyboard.press("Enter");
   }
 }

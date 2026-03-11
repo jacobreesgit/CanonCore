@@ -240,6 +240,7 @@ export function SignUpForm() {
               {username && usernameSuccess && (
                 <p
                   id="username-success"
+                  data-testid="username-success"
                   className="text-xs text-green-600"
                   aria-live="polite"
                 >

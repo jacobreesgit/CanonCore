@@ -4,7 +4,7 @@
  * Returns binary image data with caching headers.
  */
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createHash } from "crypto";
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   // Rate limit API access
   const rateLimitResult = await checkRateLimit("apiRoute");
   if (rateLimitResult) {
-    return new Response("Too many requests", { status: 429 });
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
   if (requestedUserId) {
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!user?.image || !user.imageMime) {
-      return new Response(null, { status: 404 });
+      return NextResponse.json({ error: "Avatar not found" }, { status: 404 });
     }
 
     const imageBytes = new Uint8Array(user.image);
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
   // Authenticated user request
   const session = await auth();
   if (!session?.user?.id) {
-    return new Response(null, { status: 401 });
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
   const user = await prisma.user.findUnique({
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
   });
 
   if (!user?.image || !user.imageMime) {
-    return new Response(null, { status: 404 });
+    return NextResponse.json({ error: "Avatar not found" }, { status: 404 });
   }
 
   // Generate ETag from image content hash

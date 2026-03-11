@@ -116,17 +116,6 @@ export class TmdbWizardPage {
   }
 
   /**
-   * Check the "Skip logo selection" checkbox on the logo step.
-   */
-  async skipLogoStep() {
-    await this.expectWizardStep("logo");
-
-    const skipCheckbox = this.page.locator("#skip-logo-selection");
-    await skipCheckbox.waitFor({ state: "visible", timeout: Timeouts.api });
-    await skipCheckbox.click();
-  }
-
-  /**
    * Apply the wizard selections on the summary step.
    * Waits for the summary step, then clicks Apply.
    */

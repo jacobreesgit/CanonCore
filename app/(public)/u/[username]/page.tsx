@@ -63,6 +63,9 @@ export async function generateMetadata({
   return {
     title: `${displayName} | CanonCore`,
     description: `View ${displayName}'s media library on CanonCore.`,
+    alternates: {
+      canonical: `/u/${username}`,
+    },
     openGraph: {
       title: `${displayName} | CanonCore`,
       description: `View ${displayName}'s media library on CanonCore.`,

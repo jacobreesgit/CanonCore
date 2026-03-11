@@ -3,6 +3,7 @@
  * Uses existing fixtures: settings (SettingsPage POM), testUser (TestUserInfo).
  */
 import { test, expect } from "../fixtures";
+import { Timeouts } from "../config/timeouts";
 
 test.describe("Account Deletion", () => {
   test("should show delete account step with confirmation", async ({
@@ -40,11 +41,8 @@ test.describe("Account Deletion", () => {
     await settings.switchToTab("account");
     await page.getByRole("button", { name: "Delete Account" }).click();
 
-    // Use id selector — getByLabel("Password") matches both input and "Show password" button
-    await page.locator("#delete-password").fill("WrongPassword1");
-    // Use id selector for the confirm field — the label contains a <span> which
-    // can make getByLabel with regex fragile
-    await page.locator("#delete-confirm").fill("DELETE");
+    await page.getByTestId("delete-password").fill("WrongPassword1");
+    await page.getByTestId("delete-confirm").fill("DELETE");
     await page.getByRole("button", { name: "Delete My Account" }).click();
 
     await expect(page.getByText("Incorrect password")).toBeVisible();
@@ -61,12 +59,12 @@ test.describe("Account Deletion", () => {
     await settings.switchToTab("account");
     await page.getByRole("button", { name: "Delete Account" }).click();
 
-    await page.locator("#delete-password").fill(testUser.password);
-    await page.locator("#delete-confirm").fill("DELETE");
+    await page.getByTestId("delete-password").fill(testUser.password);
+    await page.getByTestId("delete-confirm").fill("DELETE");
     await page.getByRole("button", { name: "Delete My Account" }).click();
 
     // Should redirect to homepage after signOut
-    await page.waitForURL("/", { timeout: 10000 });
+    await page.waitForURL("/", { timeout: Timeouts.navigation });
   });
 });
 
@@ -87,7 +85,7 @@ test.describe("Data Export", () => {
 
     // Verify success toast
     await expect(page.getByText("Data exported successfully")).toBeVisible({
-      timeout: 10000,
+      timeout: Timeouts.api,
     });
   });
 });

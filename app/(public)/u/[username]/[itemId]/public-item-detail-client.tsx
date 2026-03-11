@@ -387,7 +387,11 @@ export function PublicItemClient({
   );
 
   return (
-    <HeroContentLayout hero={hero} dominantColour={item.dominantColour}>
+    <HeroContentLayout
+      hero={hero}
+      dominantColour={item.dominantColour}
+      data-testid="item-detail-container"
+    >
       {/* Tabbed content or simple content */}
       {showTabs && tabsMounted ? (
         isMobile ? (

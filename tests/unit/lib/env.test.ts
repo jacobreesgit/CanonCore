@@ -62,7 +62,10 @@ describe("lib/env", () => {
   });
 
   it("throws when required DATABASE_URL is missing", async () => {
-    // Set all required vars EXCEPT DATABASE_URL
+    // Stub to empty string — z.string().min(1) rejects it.
+    // vi.stubEnv can't delete vars (CI sets them as job-level env),
+    // so empty string simulates "missing" for validation purposes.
+    vi.stubEnv("DATABASE_URL", "");
     vi.stubEnv("AUTH_SECRET", "test-secret");
     vi.stubEnv("RESEND_API_KEY", "re_test_key");
     vi.stubEnv("UPSTASH_REDIS_REST_URL", "https://test.upstash.io");
@@ -74,6 +77,8 @@ describe("lib/env", () => {
 
   it("throws when required AUTH_SECRET is missing", async () => {
     vi.stubEnv("DATABASE_URL", "postgresql://test:test@localhost:5432/test");
+    // Stub to empty string — z.string().min(1) rejects it.
+    vi.stubEnv("AUTH_SECRET", "");
     vi.stubEnv("RESEND_API_KEY", "re_test_key");
     vi.stubEnv("UPSTASH_REDIS_REST_URL", "https://test.upstash.io");
     vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "test-token");

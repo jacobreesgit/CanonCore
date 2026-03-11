@@ -6,6 +6,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { serializeItemFile } from "@/lib/types";
@@ -388,8 +389,10 @@ export async function updateItemSettings(
 
       // If item is connected to Google Drive, rename there too (async, don't block)
       if (item.driveFileId) {
-        renameItemInGoogleDrive(itemId, validation.data).catch((err) => {
-          logger.error({ err, itemId }, "[GoogleDrive] Rename error");
+        after(() => {
+          renameItemInGoogleDrive(itemId, validation.data).catch((err) => {
+            logger.error({ err, itemId }, "[GoogleDrive] Rename error");
+          });
         });
       }
     }
@@ -579,11 +582,14 @@ export async function deleteItemFile(fileId: string): Promise<ItemFileResult> {
 
     // If file is synced to Drive and connection exists, delete from Drive (async)
     if (file.driveFileId && file.item.driveConnection) {
-      deleteFileFromDrive(file.driveFileId).catch((err) => {
-        logger.error(
-          { err, fileId, driveFileId: file.driveFileId },
-          "[deleteItemFile] Failed to delete from Drive"
-        );
+      const driveFileId = file.driveFileId;
+      after(() => {
+        deleteFileFromDrive(driveFileId).catch((err) => {
+          logger.error(
+            { err, fileId, driveFileId },
+            "[deleteItemFile] Failed to delete from Drive"
+          );
+        });
       });
     }
 
