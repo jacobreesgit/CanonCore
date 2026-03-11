@@ -194,7 +194,7 @@ export function TmdbArtworkChangeDialog({
           stepKey is REQUIRED. Override max-width for wider image grid. */}
       <AnimatedDialogContent
         stepKey={isFetching ? "loading" : "gallery"}
-        className="sm:max-w-2xl"
+        className="glass-dialog sm:max-w-2xl"
         header={
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>

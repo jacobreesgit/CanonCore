@@ -72,7 +72,7 @@ export function ReparentWarningDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent className="glass-dialog">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <FontAwesomeIcon

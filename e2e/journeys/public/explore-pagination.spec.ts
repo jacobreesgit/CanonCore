@@ -33,19 +33,15 @@ publicTest.describe("Explore Pagination", () => {
         `[data-testid^="item-card-"][data-testid*="${slugUsername}"]`
       );
 
-      // Should have at most 24 initially (PAGE_SIZE = 24)
+      // Web-first: wait for at least one item to appear, then check count
+      await expect(itemCards.first()).toBeVisible({ timeout: Timeouts.api });
       const initialCount = await itemCards.count();
-      expect(initialCount).toBeGreaterThan(0);
       expect(initialCount).toBeLessThanOrEqual(24);
 
-      // Scroll to trigger infinite scroll — try both the main content container
-      // and window.scrollTo for robustness across viewport sizes
+      // Scroll to trigger infinite scroll via the trigger element
       await expect(async () => {
-        await page.evaluate(() => {
-          const main = document.getElementById("main-content");
-          if (main) main.scrollTo(0, main.scrollHeight);
-          window.scrollTo(0, document.body.scrollHeight);
-        });
+        // Scroll the last visible card into view to trigger intersection observer
+        await itemCards.last().scrollIntoViewIfNeeded();
         const afterScrollCount = await itemCards.count();
         expect(afterScrollCount).toBeGreaterThan(initialCount);
       }).toPass({ timeout: Timeouts.api });

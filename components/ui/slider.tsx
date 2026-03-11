@@ -52,7 +52,7 @@ function Slider({
       {Array.from({ length: resolvedValues.length }, (_, index) => (
         <SliderPrimitive.Thumb
           data-slot="slider-thumb"
-          key={index}
+          key={`thumb-${index}`}
           aria-label={
             typeof props["aria-label"] === "string"
               ? props["aria-label"]

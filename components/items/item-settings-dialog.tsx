@@ -667,7 +667,7 @@ export function ItemSettingsDialog({
       <AnimatedDialogContent
         data-testid="dialog-item-settings"
         stepKey={form.currentStep}
-        className="max-h-[90vh] sm:max-w-2xl"
+        className="glass-dialog max-h-[90vh] sm:max-w-2xl"
         header={getStepHeader()}
         footer={getStepFooter()}
       >

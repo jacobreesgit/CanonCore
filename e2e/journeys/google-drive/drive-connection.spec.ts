@@ -7,11 +7,11 @@ import { Timeouts } from "../../config/timeouts";
 
 test.describe("Drive Connection", () => {
   test("should display Drive connection status", async ({
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    itemsCrud,
     page,
     settings,
-    testUser: _testUser,
   }) => {
+    // itemsCrud triggers auth fixture (signs in the test user)
     await settings.open();
     await settings.expectOpen();
     await settings.switchToTab("connections");

@@ -354,12 +354,12 @@ export function MoveToDialog({
       <MobileBottomSheet
         open={open && isMobile}
         onOpenChange={onOpenChange}
-        snapPoints={[0.7]}
+        snapPoints={[0.85]}
         repositionInputs
         title="Move Item"
         description={`Choose a new location for "${itemName}"`}
         className={cn(
-          "bg-[#1a1a1a]/95 backdrop-blur-xl",
+          "glass-dialog",
           "border-t border-white/[0.08]",
           "text-foreground"
         )}

@@ -91,7 +91,7 @@ export function PosterCard({
       />
 
       {/* Title (always visible for a11y) */}
-      <div className="absolute inset-x-0 bottom-0 p-3">
+      <div className="absolute inset-x-0 bottom-0 p-2 md:p-3">
         <h3
           className={cn(
             "truncate text-sm font-semibold tracking-tight",
@@ -106,7 +106,7 @@ export function PosterCard({
       {/* Hover/Focus Overlay */}
       <div
         className={cn(
-          "absolute inset-0 flex flex-col justify-end p-3",
+          "absolute inset-0 flex flex-col justify-end p-2 md:p-3",
           "opacity-0 transition-opacity duration-200",
           "group-hover:opacity-100 group-focus-visible:opacity-100"
         )}

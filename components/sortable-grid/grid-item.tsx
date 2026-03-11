@@ -6,7 +6,7 @@
 
 "use client";
 
-import React, { forwardRef, useCallback, HTMLAttributes } from "react";
+import React, { forwardRef, memo, useCallback, HTMLAttributes } from "react";
 import Link from "next/link";
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
@@ -93,8 +93,8 @@ export interface GridItemProps extends Omit<
   viewerMenuProps?: ViewerMenuActions;
 }
 
-export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
-  function GridItem(
+export const GridItem = memo(
+  forwardRef<HTMLDivElement, GridItemProps>(function GridItem(
     {
       id,
       name,
@@ -338,7 +338,7 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
               "flex items-center gap-1",
               "rounded-full px-1.5 py-0.5",
               "bg-black/50 backdrop-blur-sm",
-              "text-[10px] font-medium text-white/70"
+              "text-xs font-medium text-white/70"
             )}
             aria-label={isOwn ? "Your item" : "In your library"}
           >
@@ -511,5 +511,5 @@ export const GridItem = forwardRef<HTMLDivElement, GridItemProps>(
         )}
       </div>
     );
-  }
+  })
 );

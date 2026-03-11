@@ -82,7 +82,7 @@ export function LogoThumbnail({
       onClick={onClick}
       disabled={disabled || isSkipped}
       className={cn(
-        "group relative aspect-video overflow-hidden rounded-lg transition-[transform,opacity,box-shadow] duration-200",
+        "group relative aspect-video overflow-hidden rounded-lg transition-[transform,opacity,box-shadow] duration-300",
         "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
         // Dark background for transparency visibility
         "bg-[#0a0a0a]",
@@ -96,7 +96,7 @@ export function LogoThumbnail({
           !isSkipped &&
           !disabled && [
             "hover:ring-muted-foreground/30 hover:ring-offset-background hover:ring-2 hover:ring-offset-2",
-            "hover:scale-[1.02]",
+            "hover:scale-105",
           ],
         isSkipped && "opacity-40",
         disabled && "cursor-not-allowed opacity-50"

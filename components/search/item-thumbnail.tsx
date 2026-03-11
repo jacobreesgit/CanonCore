@@ -50,7 +50,7 @@ export function ItemThumbnail({
   tmdbPosterPath,
   artworkId,
   size = "size-8",
-  rounded = "rounded-md",
+  rounded = "rounded-lg",
   iconSize = "size-4",
   fallbackIcon = faFolder,
   fallbackClassName,

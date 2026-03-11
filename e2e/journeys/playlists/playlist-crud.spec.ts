@@ -58,6 +58,7 @@ test.describe("Playlist CRUD", () => {
   });
 
   test("should delete playlist from detail page", async ({
+    page,
     itemsCrud,
     playlist,
   }) => {
@@ -81,7 +82,7 @@ test.describe("Playlist CRUD", () => {
     await playlist.deletePlaylistFromDetail();
 
     // Should redirect back to profile and playlist should be gone
-    await expect(playlist["page"]).toHaveURL(new RegExp(`/u/`), {
+    await expect(page).toHaveURL(new RegExp(`/u/`), {
       timeout: Timeouts.navigation,
     });
     await playlist.expectPlaylistCardNotVisible(playlistName);
@@ -100,9 +101,7 @@ test.describe("Playlist CRUD", () => {
 
     await playlist.openAddToPlaylistDialog();
     // Use enhanced creation with public visibility
-    const createFirst = playlist["page"].getByTestId("create-first-playlist");
-    const createNew = playlist["page"].getByTestId("create-new-playlist");
-    await createFirst.or(createNew).click();
+    await playlist.openCreateFromAddDialog();
 
     await playlist.createPlaylistWithOptions(playlistName, {
       visibility: "public",

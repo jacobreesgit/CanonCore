@@ -4,7 +4,7 @@
  * Returns binary image data with caching headers.
  */
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createHash } from "crypto";
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   // Rate limit API access
   const rateLimitResult = await checkRateLimit("apiRoute");
   if (rateLimitResult) {
-    return new Response("Too many requests", { status: 429 });
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
   // Helper to return hero image response with caching headers
@@ -57,7 +57,10 @@ export async function GET(request: NextRequest) {
         });
 
     if (!user?.heroImage || !user.heroImageMime) {
-      return new Response(null, { status: 404 });
+      return NextResponse.json(
+        { error: "Hero image not found" },
+        { status: 404 }
+      );
     }
 
     return heroResponse(user.heroImage, user.heroImageMime);
@@ -66,7 +69,7 @@ export async function GET(request: NextRequest) {
   // Authenticated user request (legacy path without userId)
   const session = await auth();
   if (!session?.user?.id) {
-    return new Response(null, { status: 401 });
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
   const user = await prisma.user.findUnique({
@@ -75,7 +78,10 @@ export async function GET(request: NextRequest) {
   });
 
   if (!user?.heroImage || !user.heroImageMime) {
-    return new Response(null, { status: 404 });
+    return NextResponse.json(
+      { error: "Hero image not found" },
+      { status: 404 }
+    );
   }
 
   return heroResponse(user.heroImage, user.heroImageMime);

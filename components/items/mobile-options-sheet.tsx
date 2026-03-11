@@ -24,6 +24,7 @@ import {
   MobileBottomSheetTitle,
   MobileBottomSheetContent,
 } from "@/components/mobile/mobile-bottom-sheet";
+import { SheetHeaderIcon } from "@/components/mobile/sheet-header-icon";
 import { cn } from "@/lib/utils";
 import {
   SORT_OPTIONS,
@@ -182,9 +183,17 @@ export function MobileOptionsSheet({
         )}
       >
         <MobileBottomSheetHeader>
-          <MobileBottomSheetTitle className="text-foreground">
-            View Options
-          </MobileBottomSheetTitle>
+          <div className="flex items-center gap-3">
+            <SheetHeaderIcon icon={faSliders} />
+            <div className="min-w-0">
+              <MobileBottomSheetTitle className="text-foreground">
+                View Options
+              </MobileBottomSheetTitle>
+              <p className="text-muted-foreground text-sm">
+                Sort and filter your items.
+              </p>
+            </div>
+          </div>
         </MobileBottomSheetHeader>
 
         <MobileBottomSheetContent className="space-y-6 pb-8">

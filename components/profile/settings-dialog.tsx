@@ -850,7 +850,11 @@ export function SettingsDialog({
             >
               Cancel
             </Button>
-            <Button onClick={handlePasswordSubmit} disabled={isPasswordSaving}>
+            <Button
+              data-testid="password-change-submit"
+              onClick={handlePasswordSubmit}
+              disabled={isPasswordSaving}
+            >
               {isPasswordSaving ? (
                 <>
                   <FontAwesomeIcon
@@ -1541,6 +1545,7 @@ export function SettingsDialog({
               <Label htmlFor="delete-password">Password</Label>
               <PasswordInput
                 id="delete-password"
+                data-testid="delete-password"
                 name="current-password"
                 autoComplete="current-password"
                 value={deletePassword}
@@ -1557,6 +1562,7 @@ export function SettingsDialog({
               </Label>
               <Input
                 id="delete-confirm"
+                data-testid="delete-confirm"
                 autoComplete="off"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
@@ -1632,14 +1638,14 @@ export function SettingsDialog({
                 )}
               </div>
               {newUsername && usernameValidation.error && (
-                <p role="alert" className="text-destructive text-xs">
+                <p role="alert" className="text-destructive text-sm">
                   {usernameValidation.error}
                 </p>
               )}
               {newUsername &&
                 usernameValidation.isAvailable === false &&
                 !usernameValidation.error && (
-                  <p role="alert" className="text-destructive text-xs">
+                  <p role="alert" className="text-destructive text-sm">
                     Username is already taken
                   </p>
                 )}
@@ -1683,7 +1689,7 @@ export function SettingsDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <AnimatedDialogContent
           stepKey={currentStep}
-          className="max-h-[90vh] sm:max-w-2xl"
+          className="glass-dialog max-h-[90vh] sm:max-w-2xl"
           data-testid="dialog-settings"
           header={getStepHeader()}
           footer={getStepFooter()}
@@ -1694,7 +1700,7 @@ export function SettingsDialog({
 
       {/* Public profile confirmation dialog */}
       <AlertDialog open={showPublicConfirm} onOpenChange={setShowPublicConfirm}>
-        <AlertDialogContent>
+        <AlertDialogContent className="glass-dialog">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <FontAwesomeIcon

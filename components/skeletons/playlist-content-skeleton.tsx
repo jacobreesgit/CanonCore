@@ -42,7 +42,9 @@ export function PlaylistContentSkeleton() {
       {/* ContentToolbar */}
       <Section className="py-4">
         <div className="flex w-full items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-white/[0.04] px-3 py-2 lg:gap-3">
-          <Skeleton className="h-11 w-20 rounded-md lg:h-[34px]" />
+          <div className="flex items-center gap-2 lg:gap-3">
+            <Skeleton className="h-11 w-20 rounded-md lg:h-[34px]" />
+          </div>
           <div className="flex items-center gap-2 lg:gap-3">
             <Skeleton className="h-8 w-16 rounded-md" />
             <Skeleton className="size-8 rounded-md" />
@@ -51,7 +53,7 @@ export function PlaylistContentSkeleton() {
       </Section>
 
       {/* Poster grid (6 cards) — matches playlist-detail-client.tsx:385 */}
-      <Section>
+      <Section className="py-8">
         <div className="grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="aspect-[2/3] w-full rounded-lg" />

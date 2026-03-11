@@ -400,6 +400,7 @@ export function MobileSettingsSheet({
                 onClick={form.handlePasswordSubmit}
                 disabled={form.isPasswordSaving}
                 className="flex-1"
+                data-testid="password-change-submit"
               >
                 {form.isPasswordSaving ? (
                   <>
@@ -673,14 +674,14 @@ export function MobileSettingsSheet({
                   )}
                 </div>
                 {form.newUsername && form.usernameValidation.error && (
-                  <p role="alert" className="text-destructive text-xs">
+                  <p role="alert" className="text-destructive text-sm">
                     {form.usernameValidation.error}
                   </p>
                 )}
                 {form.newUsername &&
                   form.usernameValidation.isAvailable === false &&
                   !form.usernameValidation.error && (
-                    <p role="alert" className="text-destructive text-xs">
+                    <p role="alert" className="text-destructive text-sm">
                       Username is already taken
                     </p>
                   )}
@@ -819,6 +820,7 @@ export function MobileSettingsSheet({
                 <Label htmlFor="delete-password">Password</Label>
                 <PasswordInput
                   id="delete-password"
+                  data-testid="delete-password"
                   name="current-password"
                   autoComplete="current-password"
                   value={deletePassword}
@@ -835,6 +837,7 @@ export function MobileSettingsSheet({
                 </Label>
                 <Input
                   id="delete-confirm"
+                  data-testid="delete-confirm"
                   autoComplete="off"
                   value={deleteConfirmText}
                   onChange={(e) => setDeleteConfirmText(e.target.value)}

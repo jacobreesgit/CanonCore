@@ -25,17 +25,4 @@ test.describe("User Bio", () => {
       page.getByText("Test bio for E2E testing purposes.")
     ).toBeVisible();
   });
-
-  test("bio textarea has 300 character maxLength", async ({
-    page,
-    itemsCrud,
-    settings,
-  }) => {
-    await itemsCrud.goto();
-    await settings.open();
-    await settings.expectOpen();
-
-    const bioTextarea = page.getByLabel(/bio/i);
-    await expect(bioTextarea).toHaveAttribute("maxLength", "300");
-  });
 });

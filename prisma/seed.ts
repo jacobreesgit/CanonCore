@@ -874,6 +874,10 @@ async function attachRandomFiles(
       ? (sharedMedia?.audioFileSize ?? 0)
       : (sharedMedia?.videoFileSize ?? 0);
 
+    // Video dimensions based on content type
+    const width = isAudio ? null : 1920;
+    const height = isAudio ? null : 1080;
+
     await prisma.itemFile.create({
       data: {
         itemId,
@@ -887,6 +891,11 @@ async function attachRandomFiles(
         syncStatus: SyncStatus.SYNCED,
         playbackDuration,
         playbackPosition,
+        durationMs: playbackDuration
+          ? BigInt(Math.round(playbackDuration * 1000))
+          : null,
+        width,
+        height,
       },
     });
   }
@@ -1165,12 +1174,30 @@ async function createDriveConnection(userId: string): Promise<DriveContext> {
       rootFolderId,
       isActive: true,
       needsReauth: false,
+      lastSyncAt: new Date(),
     },
   });
 
   console.log("🔗 Created Google Drive connection");
 
   const drive = await getDriveClient();
+
+  // Fetch quota information
+  try {
+    const about = await drive.about.get({ fields: "storageQuota" });
+    const quota = about.data.storageQuota;
+    if (quota) {
+      await prisma.googleDriveConnection.update({
+        where: { id: connection.id },
+        data: {
+          quotaBytesUsed: quota.usage ? BigInt(quota.usage) : null,
+          quotaBytesTotal: quota.limit ? BigInt(quota.limit) : null,
+        },
+      });
+    }
+  } catch {
+    // Non-blocking — quota info is optional
+  }
 
   return {
     drive,
@@ -1180,15 +1207,16 @@ async function createDriveConnection(userId: string): Promise<DriveContext> {
 }
 
 /**
- * Creates a folder in Google Drive.
+ * Creates a folder in Google Drive and returns its ID + creation timestamp.
  */
 async function createDriveFolder(
   ctx: DriveContext,
   name: string,
   parentId: string
-): Promise<string> {
+): Promise<{ id: string; modifiedAt: Date }> {
   const { createFolder } = await import("@/lib/google-drive-client");
-  return createFolder(ctx.drive, name, parentId);
+  const id = await createFolder(ctx.drive, name, parentId);
+  return { id, modifiedAt: new Date() };
 }
 
 /**
@@ -1333,13 +1361,12 @@ async function seedMoviesForUser(
 
     // Create folder for this movie in Drive
     let movieDriveFolderId: string | null = null;
+    let movieDriveModifiedAt: Date | null = null;
     if (ctx) {
       try {
-        movieDriveFolderId = await createDriveFolder(
-          ctx,
-          name,
-          ctx.rootFolderId
-        );
+        const folder = await createDriveFolder(ctx, name, ctx.rootFolderId);
+        movieDriveFolderId = folder.id;
+        movieDriveModifiedAt = folder.modifiedAt;
       } catch (error) {
         console.error(`❌ Failed to create Drive folder for ${name}:`, error);
         continue;
@@ -1390,6 +1417,7 @@ async function seedMoviesForUser(
         dominantColour: movieColour,
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: movieDriveFolderId,
+        driveModifiedAt: movieDriveModifiedAt,
         syncStatus: movieDriveFolderId ? SyncStatus.SYNCED : SyncStatus.PENDING,
       },
     });
@@ -1465,13 +1493,16 @@ async function seedEpisodes(
 
     // Create Drive folder for episode
     let episodeDriveFolderId: string | null = null;
+    let episodeDriveModifiedAt: Date | null = null;
     if (ctx && seasonDriveFolderId) {
       try {
-        episodeDriveFolderId = await createDriveFolder(
+        const folder = await createDriveFolder(
           ctx,
           episodeName,
           seasonDriveFolderId
         );
+        episodeDriveFolderId = folder.id;
+        episodeDriveModifiedAt = folder.modifiedAt;
       } catch (error) {
         console.error(
           `      ❌ Failed to create Drive folder for ${episodeName}:`,
@@ -1507,6 +1538,7 @@ async function seedEpisodes(
         dominantColour: episodeColour,
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: episodeDriveFolderId,
+        driveModifiedAt: episodeDriveModifiedAt,
         syncStatus: episodeDriveFolderId
           ? SyncStatus.SYNCED
           : SyncStatus.PENDING,
@@ -1607,13 +1639,16 @@ async function seedSeasons(
 
     // Create Drive folder for season
     let seasonDriveFolderId: string | null = null;
+    let seasonDriveModifiedAt: Date | null = null;
     if (ctx && showDriveFolderId) {
       try {
-        seasonDriveFolderId = await createDriveFolder(
+        const folder = await createDriveFolder(
           ctx,
           seasonName,
           showDriveFolderId
         );
+        seasonDriveFolderId = folder.id;
+        seasonDriveModifiedAt = folder.modifiedAt;
       } catch (error) {
         console.error(
           `    ❌ Failed to create Drive folder for ${seasonName}:`,
@@ -1649,6 +1684,7 @@ async function seedSeasons(
         dominantColour: seasonColour,
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: seasonDriveFolderId,
+        driveModifiedAt: seasonDriveModifiedAt,
         syncStatus: seasonDriveFolderId
           ? SyncStatus.SYNCED
           : SyncStatus.PENDING,
@@ -1729,13 +1765,12 @@ async function seedTVShowsForUser(
 
     // Create folder for this show in Drive
     let showDriveFolderId: string | null = null;
+    let showDriveModifiedAt: Date | null = null;
     if (ctx) {
       try {
-        showDriveFolderId = await createDriveFolder(
-          ctx,
-          name,
-          ctx.rootFolderId
-        );
+        const folder = await createDriveFolder(ctx, name, ctx.rootFolderId);
+        showDriveFolderId = folder.id;
+        showDriveModifiedAt = folder.modifiedAt;
       } catch (error) {
         console.error(`❌ Failed to create Drive folder for ${name}:`, error);
         continue;
@@ -1786,6 +1821,7 @@ async function seedTVShowsForUser(
         dominantColour: showColour,
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: showDriveFolderId,
+        driveModifiedAt: showDriveModifiedAt,
         syncStatus: showDriveFolderId ? SyncStatus.SYNCED : SyncStatus.PENDING,
       },
     });
@@ -1848,13 +1884,16 @@ async function seedAudioForUser(
 
     // Create Drive folder for album
     let albumDriveFolderId: string | null = null;
+    let albumDriveModifiedAt: Date | null = null;
     if (ctx) {
       try {
-        albumDriveFolderId = await createDriveFolder(
+        const folder = await createDriveFolder(
           ctx,
           albumName,
           ctx.rootFolderId
         );
+        albumDriveFolderId = folder.id;
+        albumDriveModifiedAt = folder.modifiedAt;
       } catch (error) {
         log(`  ❌ Failed to create Drive folder for ${albumName}: ${error}`);
         continue;
@@ -1894,6 +1933,7 @@ async function seedAudioForUser(
         dominantColour,
         driveConnectionId: ctx?.connectionId || null,
         driveFileId: albumDriveFolderId,
+        driveModifiedAt: albumDriveModifiedAt,
         syncStatus: albumDriveFolderId ? SyncStatus.SYNCED : SyncStatus.PENDING,
       },
     });
@@ -1981,13 +2021,16 @@ async function seedAudioForUser(
 
       // Create Drive folder for track
       let trackDriveFolderId: string | null = null;
+      let trackDriveModifiedAt: Date | null = null;
       if (ctx && albumDriveFolderId) {
         try {
-          trackDriveFolderId = await createDriveFolder(
+          const folder = await createDriveFolder(
             ctx,
             trackName,
             albumDriveFolderId
           );
+          trackDriveFolderId = folder.id;
+          trackDriveModifiedAt = folder.modifiedAt;
         } catch {
           continue;
         }
@@ -2006,6 +2049,7 @@ async function seedAudioForUser(
           inheritVisibility: true,
           driveConnectionId: ctx?.connectionId || null,
           driveFileId: trackDriveFolderId,
+          driveModifiedAt: trackDriveModifiedAt,
           syncStatus: trackDriveFolderId
             ? SyncStatus.SYNCED
             : SyncStatus.PENDING,
@@ -2622,6 +2666,7 @@ async function seedPlaylistsForUser(
 
     // Download artwork from Picsum if seed is defined
     let artworkData: ImageData | null = null;
+    let dominantColour: string | null = null;
     if (def.artworkSeed) {
       const artworkUrl = buildPicsumUrl(
         def.artworkSeed,
@@ -2629,6 +2674,15 @@ async function seedPlaylistsForUser(
         PLAYLIST_ARTWORK_SIZE.height
       );
       artworkData = await downloadProfileImage(artworkUrl);
+      if (artworkData) {
+        try {
+          dominantColour = await extractDominantColour(
+            Buffer.from(artworkData.data)
+          );
+        } catch {
+          // Non-blocking
+        }
+      }
     }
 
     const playlist = await prisma.playlist.create({
@@ -2640,6 +2694,7 @@ async function seedPlaylistsForUser(
         shareToken: def.shareToken ?? null,
         artworkImage: artworkData?.data ?? null,
         artworkMime: artworkData?.mime ?? null,
+        dominantColour,
         userId,
       },
     });

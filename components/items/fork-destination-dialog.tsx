@@ -13,6 +13,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -102,7 +103,7 @@ function FolderListContent({
   if (error) {
     return (
       <div className="flex h-48 items-center justify-center">
-        <p className="text-sm text-red-400">{error}</p>
+        <p className="text-destructive text-sm">{error}</p>
       </div>
     );
   }
@@ -110,9 +111,7 @@ function FolderListContent({
   return (
     <div className="space-y-2">
       {/* Root option — always visible, sets parentId to null */}
-      <motion.button
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
+      <button
         onClick={() => setSelectedId(null)}
         disabled={isForking}
         className={cn(
@@ -126,7 +125,7 @@ function FolderListContent({
       >
         <FontAwesomeIcon icon={faHouse} className="h-4 w-4 flex-shrink-0" />
         <span className="text-sm font-medium">My Items (Root)</span>
-      </motion.button>
+      </button>
 
       {/* Virtualised item tree */}
       <ItemTreePicker
@@ -258,50 +257,28 @@ export function ForkDestinationDialog({
             <FolderListContent {...sharedListProps} />
           </div>
 
-          <div className="mt-6 flex justify-end gap-3">
-            <button
-              type="button"
+          <DialogFooter>
+            <Button
+              variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isForking}
-              className={cn(
-                "rounded-full px-4 py-2",
-                "text-sm font-medium",
-                "border border-white/20 bg-white/10",
-                "text-muted-foreground",
-                "hover:text-foreground hover:bg-white/20",
-                "transition-colors duration-150",
-                "disabled:cursor-not-allowed disabled:opacity-50"
-              )}
             >
               Cancel
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
               onClick={handleConfirm}
               disabled={isForking || loading}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-full px-4 py-2",
-                "text-sm font-medium",
-                "bg-white text-black",
-                "hover:bg-white/90",
-                "active:scale-[0.97]",
-                "transition-all duration-150",
-                "disabled:cursor-not-allowed disabled:opacity-50"
-              )}
+              loading={isForking}
+              loadingText="Forking…"
             >
-              {isForking ? (
-                <>
-                  <FontAwesomeIcon icon={faSpinner} className="h-4 w-4" spin />
-                  Forking…
-                </>
-              ) : (
-                <>
-                  <FontAwesomeIcon icon={faCopy} className="h-4 w-4" />
-                  Fork Here
-                </>
-              )}
-            </button>
-          </div>
+              <FontAwesomeIcon
+                icon={faCopy}
+                aria-hidden="true"
+                className="size-4"
+              />
+              Fork Here
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

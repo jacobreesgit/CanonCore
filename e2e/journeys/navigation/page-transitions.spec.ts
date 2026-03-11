@@ -1,8 +1,12 @@
+/**
+ * E2E tests for page transition loading states.
+ * Verifies content loads correctly when navigating between pages.
+ */
 import { test, expect } from "../../fixtures";
 import { Timeouts } from "../../config/timeouts";
 
 test.describe("Page transition loading states", () => {
-  test("shows skeleton when navigating to Explore", async ({
+  test("shows content when navigating to Explore", async ({
     page,
     nav,
     isMobile,
@@ -21,14 +25,13 @@ test.describe("Page transition loading states", () => {
       await page.getByRole("link", { name: "Explore" }).click();
     }
 
-    // Content should load after navigation (loading.tsx was removed,
-    // so skeleton may not appear — just wait for the final content)
+    // Content should load after navigation
     await expect(page.getByTestId("hero-carousel")).toBeVisible({
       timeout: Timeouts.navigation,
     });
   });
 
-  test("shows skeleton when navigating to My Items", async ({
+  test("shows content when navigating to My Items", async ({
     page,
     nav,
     isMobile,
@@ -47,67 +50,9 @@ test.describe("Page transition loading states", () => {
       await page.getByRole("link", { name: "My Items" }).click();
     }
 
-    // On desktop, skeleton should appear during navigation.
-    // On mobile, client-side nav can resolve faster than Playwright polls.
-    if (!isMobile) {
-      const skeleton = page.locator('[data-slot="skeleton"]').first();
-      await expect(skeleton).toBeVisible({ timeout: Timeouts.navigation });
-    }
-
     // Profile content loads
     await expect(page.getByTestId("hero-carousel")).toBeVisible({
       timeout: Timeouts.navigation,
     });
-  });
-
-  test("skeleton hero height matches content hero height (no CLS)", async ({
-    page,
-    nav,
-    isMobile,
-  }) => {
-    test.skip(isMobile, "CLS measurement requires stable desktop viewport");
-
-    // Start on Explore, wait for full content
-    await page.goto("/explore");
-    await expect(page.getByTestId("hero-carousel")).toBeVisible({
-      timeout: Timeouts.navigation,
-    });
-
-    // Capture content hero height
-    const contentHeroHeight = await page
-      .getByTestId("hero-carousel")
-      .boundingBox();
-
-    // Navigate to My Items to trigger skeleton
-    await nav.openSidebar();
-    await page.getByRole("link", { name: "My Items" }).click();
-
-    // Wait for either the skeleton hero or the final content hero.
-    // On fast machines the skeleton may flash too quickly to observe.
-    const skeletonHero = page.locator("[data-testid='skeleton-hero']");
-    const contentHero = page.getByTestId("hero-carousel");
-    await expect(skeletonHero.or(contentHero)).toBeVisible({
-      timeout: Timeouts.navigation,
-    });
-
-    // If the skeleton is still visible, compare heights for CLS check
-    const skeletonVisible = await skeletonHero.isVisible();
-    if (skeletonVisible) {
-      const skeletonHeroHeight = await skeletonHero.boundingBox();
-
-      expect(contentHeroHeight).toBeTruthy();
-      expect(skeletonHeroHeight).toBeTruthy();
-
-      // Heights should be within 10% (viewport-relative heights may differ slightly
-      // between explore multi-slide padding and profile single-slide padding)
-      const heightDiff = Math.abs(
-        contentHeroHeight!.height - skeletonHeroHeight!.height
-      );
-      const tolerance = contentHeroHeight!.height * 0.1;
-      expect(heightDiff).toBeLessThan(tolerance);
-    }
-
-    // Content should eventually load
-    await expect(contentHero).toBeVisible({ timeout: Timeouts.navigation });
   });
 });

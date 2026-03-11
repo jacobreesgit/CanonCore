@@ -6,7 +6,7 @@
 import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createHash } from "crypto";
+import { createHash, timingSafeEqual } from "crypto";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
@@ -45,7 +45,14 @@ export async function GET(request: NextRequest) {
   // Access control: public, owner, or valid share token
   const isOwner = session?.user?.id === playlist.userId;
   const isPublic = playlist.isPublic;
-  const hasValidToken = token && playlist.shareToken === token;
+  const hasValidToken =
+    token &&
+    playlist.shareToken &&
+    token.length === playlist.shareToken.length &&
+    timingSafeEqual(
+      new TextEncoder().encode(token),
+      new TextEncoder().encode(playlist.shareToken)
+    );
 
   if (!isPublic && !isOwner && !hasValidToken) {
     return new Response(null, { status: 404 });

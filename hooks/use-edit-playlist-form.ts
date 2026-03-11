@@ -9,6 +9,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
+import { faLock, faLink, faGlobe } from "@fortawesome/free-solid-svg-icons";
 import {
   updatePlaylist,
   updatePlaylistArtwork,
@@ -35,6 +36,31 @@ export interface EditPlaylistResult {
   shareToken?: string | null;
 }
 
+/** Playlist visibility options. */
+export type PlaylistVisibility = "private" | "unlisted" | "public";
+
+/** Shared visibility radio options for desktop dialog and mobile sheet. */
+export const VISIBILITY_OPTIONS = [
+  {
+    value: "private" as const,
+    icon: faLock,
+    label: "Private",
+    note: "Only you can see this playlist",
+  },
+  {
+    value: "unlisted" as const,
+    icon: faLink,
+    label: "Unlisted",
+    note: "Accessible via share link",
+  },
+  {
+    value: "public" as const,
+    icon: faGlobe,
+    label: "Public",
+    note: "Visible on explore page",
+  },
+];
+
 /** Return type for the useEditPlaylistForm hook. */
 export interface UseEditPlaylistFormReturn {
   // Form state
@@ -42,8 +68,9 @@ export interface UseEditPlaylistFormReturn {
   setName: (name: string) => void;
   description: string;
   setDescription: (description: string) => void;
-  isPublic: boolean;
-  setIsPublic: (isPublic: boolean) => void;
+  visibility: PlaylistVisibility;
+  changeVisibility: (visibility: PlaylistVisibility) => void;
+  initialVisibility: PlaylistVisibility;
   error: string | null;
   setError: (error: string | null) => void;
   isSubmitting: boolean;
@@ -59,7 +86,6 @@ export interface UseEditPlaylistFormReturn {
   // Share token state
   shareToken: string | null;
   isRegenerating: boolean;
-  handleShareToggle: (enabled: boolean) => Promise<void>;
   handleRegenerate: () => Promise<void>;
   handleCopyShareLink: () => void;
 
@@ -79,9 +105,17 @@ export function useEditPlaylistForm(
   onUpdated?: (data: EditPlaylistResult) => void,
   onClose?: () => void
 ): UseEditPlaylistFormReturn {
+  // Derive initial visibility from isPublic + shareToken
+  const initialVisibility: PlaylistVisibility = playlist.isPublic
+    ? "public"
+    : playlist.shareToken
+      ? "unlisted"
+      : "private";
+
   const [name, setName] = useState(playlist.name);
   const [description, setDescription] = useState(playlist.description ?? "");
-  const [isPublic, setIsPublic] = useState(playlist.isPublic ?? true);
+  const [visibility, setVisibility] =
+    useState<PlaylistVisibility>(initialVisibility);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -104,7 +138,7 @@ export function useEditPlaylistForm(
   const reset = useCallback(() => {
     setName(playlist.name);
     setDescription(playlist.description ?? "");
-    setIsPublic(playlist.isPublic ?? true);
+    setVisibility(initialVisibility);
     setArtworkFile(null);
     setArtworkPreview(null);
     setRemoveArt(false);
@@ -114,8 +148,8 @@ export function useEditPlaylistForm(
   }, [
     playlist.name,
     playlist.description,
-    playlist.isPublic,
     playlist.shareToken,
+    initialVisibility,
   ]);
 
   const handleArtworkDrop = useCallback((files: File[]) => {
@@ -134,9 +168,13 @@ export function useEditPlaylistForm(
     setRemoveArt(true);
   }, [artworkPreview]);
 
-  const handleShareToggle = useCallback(
-    async (enabled: boolean) => {
-      if (enabled) {
+  // Handle visibility changes with share token side effects
+  const handleVisibilityChange = useCallback(
+    async (newVisibility: PlaylistVisibility) => {
+      setVisibility(newVisibility);
+
+      if (newVisibility === "unlisted" && !shareToken) {
+        // Generate a share token when switching to unlisted
         setShareToken("pending");
         const result = await regenerateShareToken(playlist.id);
         if (result.success && result.data) {
@@ -145,7 +183,8 @@ export function useEditPlaylistForm(
           setShareToken(null);
           toast.error(result.error ?? "Failed to enable sharing");
         }
-      } else {
+      } else if (newVisibility === "private" && shareToken) {
+        // Disable sharing when switching to private
         const result = await updatePlaylist(playlist.id, {
           enableSharing: false,
         });
@@ -156,7 +195,7 @@ export function useEditPlaylistForm(
         }
       }
     },
-    [playlist.id]
+    [playlist.id, shareToken]
   );
 
   const handleRegenerate = useCallback(async () => {
@@ -195,6 +234,7 @@ export function useEditPlaylistForm(
 
       try {
         const trimmedDesc = description.trim() || undefined;
+        const isPublic = visibility === "public";
         const result = await updatePlaylist(playlist.id, {
           name: trimmedName,
           description: trimmedDesc,
@@ -245,7 +285,7 @@ export function useEditPlaylistForm(
     [
       name,
       description,
-      isPublic,
+      visibility,
       playlist.id,
       playlist.hasArtwork,
       artworkFile,
@@ -270,8 +310,9 @@ export function useEditPlaylistForm(
     setName,
     description,
     setDescription,
-    isPublic,
-    setIsPublic,
+    visibility,
+    changeVisibility: handleVisibilityChange,
+    initialVisibility,
     error,
     setError,
     isSubmitting,
@@ -287,7 +328,6 @@ export function useEditPlaylistForm(
     // Share token state
     shareToken,
     isRegenerating,
-    handleShareToggle,
     handleRegenerate,
     handleCopyShareLink,
 

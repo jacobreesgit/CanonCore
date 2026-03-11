@@ -53,9 +53,9 @@ test.describe("Private Resource Hints", () => {
       waitUntil: "domcontentloaded",
     });
 
-    // Should get a 404, not the private hint
-    await expect(page.getByTestId("private-resource-notice")).not.toBeVisible({
-      timeout: Timeouts.api,
-    });
+    // Should get a 404 — assert the not-found content is shown
+    await expect(page.getByRole("heading", { name: /not found/i })).toBeVisible(
+      { timeout: Timeouts.api }
+    );
   });
 });

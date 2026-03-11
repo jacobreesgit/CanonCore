@@ -109,7 +109,13 @@ export async function GET(
 
     try {
       const drive = await getDriveClient(driveConnection);
-      const fileSize = Number(itemFile.size) || 0;
+      const fileSizeBig = itemFile.size || BigInt(0);
+      if (fileSizeBig > BigInt(Number.MAX_SAFE_INTEGER)) {
+        return new NextResponse("File too large for range requests", {
+          status: 413,
+        });
+      }
+      const fileSize = Number(fileSizeBig);
       // Prioritize filename inference over database value (more reliable)
       const inferredMimeType = getMimeTypeByExtension(itemFile.filename);
       const mimeType =

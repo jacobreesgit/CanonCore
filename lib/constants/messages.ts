@@ -29,7 +29,7 @@ export const SETTINGS_MESSAGES = {
 export const ITEM_MESSAGES = {
   PINNED: "Pinned to sidebar",
   UNPINNED: "Unpinned from sidebar",
-  DELETED: "Deleted successfully",
+  DELETED: "Item deleted",
   DELETED_COUNT: (count: number) =>
     `Deleted ${count} item${count === 1 ? "" : "s"}`,
   METADATA_APPLIED: "Metadata applied successfully",

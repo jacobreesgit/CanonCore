@@ -123,7 +123,7 @@ export function AddToPlaylistDialog({
             p.id === playlistId ? { ...p, isMember: currentlyMember } : p
           )
         );
-        toast.error("Something went wrong");
+        toast.error("Failed to update playlist");
       } finally {
         setTogglingIds((prev) => {
           const next = new Set(prev);
@@ -188,7 +188,7 @@ export function AddToPlaylistDialog({
         <AnimatedDialogContent
           data-testid="dialog-add-to-playlist"
           stepKey="playlist-list"
-          className="sm:max-w-md"
+          className="glass-dialog sm:max-w-md"
           header={header}
         >
           <div className="space-y-3 py-2">

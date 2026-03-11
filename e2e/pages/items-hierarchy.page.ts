@@ -101,24 +101,11 @@ export class ItemsHierarchyPage {
       const trigger = this.page.getByTestId("items-view-dropdown");
       const menuItem = this.page.getByRole("menuitemradio").first();
 
-      for (let attempt = 0; attempt < 3; attempt++) {
+      // Retry click until Radix dropdown opens — handles stale state after re-renders
+      await expect(async () => {
         await trigger.click();
-        try {
-          await menuItem.waitFor({ state: "visible", timeout: 2000 });
-          break;
-        } catch {
-          await this.page.keyboard.press("Escape");
-          await this.page.waitForTimeout(200);
-          if (attempt === 2) {
-            // Final attempt — let it fail with a clear error
-            await trigger.click();
-            await menuItem.waitFor({
-              state: "visible",
-              timeout: Timeouts.api,
-            });
-          }
-        }
-      }
+        await expect(menuItem).toBeVisible({ timeout: 1_000 });
+      }).toPass({ timeout: Timeouts.api });
 
       await this.page.getByRole("menuitemradio", { name: /tree/i }).click();
     }

@@ -27,7 +27,6 @@ import { PublicProfilePage } from "../pages/public-profile.page";
 import { AuthPage } from "../pages/auth.page";
 import { SettingsPage } from "../pages/settings.page";
 import { SpotlightPage } from "../pages/spotlight.page";
-import { MediaPage } from "../pages/media.page";
 import { NavPage } from "../pages/nav.page";
 import { TmdbWizardPage } from "../pages/tmdb-wizard.page";
 import { PlaylistPage } from "../pages/playlist.page";
@@ -47,7 +46,6 @@ export const test = authenticatedFixture.extend<{
   auth: AuthPage;
   settings: SettingsPage;
   spotlight: SpotlightPage;
-  media: MediaPage;
   nav: NavPage;
   tmdbWizard: TmdbWizardPage;
   playlist: PlaylistPage;
@@ -106,9 +104,6 @@ export const test = authenticatedFixture.extend<{
   },
   spotlight: async ({ page, isMobile }, use) => {
     await use(new SpotlightPage(page, isMobile));
-  },
-  media: async ({ page, testUser, isMobile }, use) => {
-    await use(new MediaPage(page, testUser.username, isMobile));
   },
   nav: async ({ page, testUser, isMobile }, use) => {
     await use(new NavPage(page, testUser.username, isMobile));

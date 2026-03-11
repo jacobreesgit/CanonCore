@@ -49,6 +49,11 @@ export class ExplorePage {
       });
       await expect(sortRadio).toBeVisible({ timeout: Timeouts.api });
       await sortRadio.click();
+      // Close the options sheet so content beneath is interactable
+      await this.page.keyboard.press("Escape");
+      await expect(
+        this.page.getByTestId("sheet-mobile-options")
+      ).not.toBeVisible({ timeout: Timeouts.animation });
     } else {
       const trigger = this.page.getByTestId("explore-sort-dropdown");
       await expect(trigger).toBeVisible({ timeout: Timeouts.api });

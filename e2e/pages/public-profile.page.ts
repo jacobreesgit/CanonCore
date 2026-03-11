@@ -99,7 +99,7 @@ export class PublicProfilePage {
     // Click Fork to Library
     await menuFork.click();
     // Wait for the fork API to complete — toast confirms success
-    await expect(this.page.getByText("Added to your library!")).toBeVisible({
+    await expect(this.page.getByText(/Forked .+ to your library/)).toBeVisible({
       timeout: Timeouts.heavy,
     });
   }

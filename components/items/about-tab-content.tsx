@@ -73,7 +73,7 @@ function SectionFilterDropdown({
       <DropdownMenuContent
         align="start"
         className={cn(
-          "bg-[#1a1a1a]/90 backdrop-blur-xl",
+          "glass-menu",
           "border border-white/[0.08]",
           "shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
         )}

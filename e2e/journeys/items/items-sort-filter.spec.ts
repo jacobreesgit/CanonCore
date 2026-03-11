@@ -60,4 +60,24 @@ test.describe("Items Sort & Filter", () => {
     await itemsCrud.expectItemVisible(nameA);
     await itemsCrud.expectItemVisible(nameB);
   });
+
+  test("should clear all active filters", async ({
+    itemsCrud,
+    itemsSortFilter,
+  }) => {
+    const name = testId("movie");
+
+    await itemsCrud.goto();
+    await itemsCrud.createItem(name);
+
+    // Apply a filter
+    await itemsSortFilter.toggleFilter("No Files");
+    await itemsCrud.expectItemVisible(name);
+
+    // Clear all filters
+    await itemsSortFilter.clearFilters();
+
+    // Item should still be visible after clearing
+    await itemsCrud.expectItemVisible(name);
+  });
 });

@@ -247,6 +247,7 @@ function FileUpload(props: FileUploadProps) {
   const files = useLazyRef<Map<File, FileState>>(() => new Map()).current;
   const urlCache = useLazyRef(() => new WeakMap<File, string>()).current;
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const invalidTimerRef = React.useRef<ReturnType<typeof setTimeout>>(null);
   const isControlled = value !== undefined;
 
   const propsRef = useAsRef({
@@ -574,8 +575,12 @@ function FileUpload(props: FileUploadProps) {
 
       if (invalid) {
         store.dispatch({ type: "SET_INVALID", invalid });
-        setTimeout(() => {
+        if (invalidTimerRef.current) {
+          clearTimeout(invalidTimerRef.current);
+        }
+        invalidTimerRef.current = setTimeout(() => {
           store.dispatch({ type: "SET_INVALID", invalid: false });
+          invalidTimerRef.current = null;
         }, 2000);
       }
 

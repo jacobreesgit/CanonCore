@@ -343,7 +343,7 @@ export function SwipeableTabs({
               onClick={() => navigateToIndex(index)}
               onKeyDown={handleTabKeyDown}
               className={cn(
-                "relative flex flex-1 items-center justify-center gap-1.5 px-3 py-3",
+                "relative flex flex-1 items-center justify-center gap-1.5 px-3 py-4",
                 "text-sm font-medium",
                 "transition-colors duration-150",
                 "focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none",

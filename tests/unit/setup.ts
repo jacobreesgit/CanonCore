@@ -1,39 +1,43 @@
 import { vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 
-// Mock ResizeObserver for cmdk and Radix UI (jsdom doesn't implement it)
-class MockResizeObserver {
-  observe = vi.fn();
-  unobserve = vi.fn();
-  disconnect = vi.fn();
+// DOM polyfills only needed in jsdom environment (some tests run in node)
+if (typeof window !== "undefined") {
+  // Mock ResizeObserver for cmdk and Radix UI (jsdom doesn't implement it)
+  class MockResizeObserver {
+    observe = vi.fn();
+    unobserve = vi.fn();
+    disconnect = vi.fn();
+  }
+  global.ResizeObserver =
+    MockResizeObserver as unknown as typeof ResizeObserver;
+
+  // Mock Pointer Capture API for Radix UI (jsdom doesn't implement it)
+  Element.prototype.hasPointerCapture = vi.fn().mockReturnValue(false);
+  Element.prototype.setPointerCapture = vi.fn();
+  Element.prototype.releasePointerCapture = vi.fn();
+
+  // Mock scrollIntoView for Radix UI
+  Element.prototype.scrollIntoView = vi.fn();
+
+  // Mock scrollTo for animated dialog scroll reset
+  Element.prototype.scrollTo = vi.fn();
+
+  // Mock window.matchMedia for useMobile hook (jsdom doesn't implement it)
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(), // deprecated
+      removeListener: vi.fn(), // deprecated
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
 }
-global.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
-
-// Mock Pointer Capture API for Radix UI (jsdom doesn't implement it)
-Element.prototype.hasPointerCapture = vi.fn().mockReturnValue(false);
-Element.prototype.setPointerCapture = vi.fn();
-Element.prototype.releasePointerCapture = vi.fn();
-
-// Mock scrollIntoView for Radix UI
-Element.prototype.scrollIntoView = vi.fn();
-
-// Mock scrollTo for animated dialog scroll reset
-Element.prototype.scrollTo = vi.fn();
-
-// Mock window.matchMedia for useMobile hook (jsdom doesn't implement it)
-Object.defineProperty(window, "matchMedia", {
-  writable: true,
-  value: vi.fn().mockImplementation((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(), // deprecated
-    removeListener: vi.fn(), // deprecated
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
-});
 
 // Mock Prisma
 vi.mock("@/lib/prisma", () => ({

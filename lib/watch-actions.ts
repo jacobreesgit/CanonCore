@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { itemIdSchema } from "@/lib/validations";
 import { createWatchRecordIfNotRecent } from "@/lib/watch-record-utils";
+import { logger } from "@/lib/logger";
 import type { WatchSource } from "@prisma/client";
 
 /** Result type for watch actions. */
@@ -34,12 +35,15 @@ export async function createWatchRecord(
 
   try {
     // Parallelise auth, rate limit, and item lookup (all independent)
-    const [session, _rateLimit, item] = await Promise.all([
+    const [session, rateLimitResult, item] = await Promise.all([
       auth(),
       checkRateLimit("watch"),
       prisma.item.findUnique({ where: { id: parsed.data } }),
     ]);
 
+    if (rateLimitResult) {
+      return { success: false, error: rateLimitResult.error };
+    }
     if (!session?.user?.id) {
       return { success: false, error: "Unauthorized" };
     }
@@ -55,7 +59,7 @@ export async function createWatchRecord(
     revalidatePath("/");
     return { success: true };
   } catch (error) {
-    console.error("Failed to create watch record", error);
+    logger.error({ err: error, itemId }, "Failed to create watch record");
     return { success: false, error: "Failed to create watch record" };
   }
 }
@@ -76,12 +80,15 @@ export async function markAsUnwatched(itemId: string): Promise<WatchResult> {
   if (!parsed.success) return { success: false, error: "Invalid item ID" };
 
   try {
-    const [session, _rateLimit, item] = await Promise.all([
+    const [session, rateLimitResult, item] = await Promise.all([
       auth(),
       checkRateLimit("watch"),
       prisma.item.findUnique({ where: { id: parsed.data } }),
     ]);
 
+    if (rateLimitResult) {
+      return { success: false, error: rateLimitResult.error };
+    }
     if (!session?.user?.id) {
       return { success: false, error: "Unauthorized" };
     }
@@ -106,7 +113,7 @@ export async function markAsUnwatched(itemId: string): Promise<WatchResult> {
     revalidatePath("/");
     return { success: true };
   } catch (error) {
-    console.error("Failed to remove watch record", error);
+    logger.error({ err: error, itemId }, "Failed to remove watch record");
     return { success: false, error: "Failed to remove watch record" };
   }
 }
@@ -152,7 +159,7 @@ export async function getWatchStatus(
       },
     };
   } catch (error) {
-    console.error("Failed to get watch status", error);
+    logger.error({ err: error, itemId }, "Failed to get watch status");
     return { success: false, error: "Failed to get watch status" };
   }
 }
@@ -169,12 +176,15 @@ export async function markAllWatched(
   if (!parsed.success) return { success: false, error: "Invalid item ID" };
 
   try {
-    const [session, _rateLimit, item] = await Promise.all([
+    const [session, rateLimitResult, item] = await Promise.all([
       auth(),
       checkRateLimit("watch"),
       prisma.item.findUnique({ where: { id: parsed.data } }),
     ]);
 
+    if (rateLimitResult) {
+      return { success: false, error: rateLimitResult.error };
+    }
     if (!session?.user?.id) {
       return { success: false, error: "Unauthorized" };
     }
@@ -219,7 +229,10 @@ export async function markAllWatched(
     revalidatePath("/");
     return { success: true };
   } catch (error) {
-    console.error("Failed to mark all as watched", error);
+    logger.error(
+      { err: error, itemId: parentItemId },
+      "Failed to mark all as watched"
+    );
     return { success: false, error: "Failed to mark all as watched" };
   }
 }
@@ -235,12 +248,15 @@ export async function markAllUnwatched(
   if (!parsed.success) return { success: false, error: "Invalid item ID" };
 
   try {
-    const [session, _rateLimit, item] = await Promise.all([
+    const [session, rateLimitResult, item] = await Promise.all([
       auth(),
       checkRateLimit("watch"),
       prisma.item.findUnique({ where: { id: parsed.data } }),
     ]);
 
+    if (rateLimitResult) {
+      return { success: false, error: rateLimitResult.error };
+    }
     if (!session?.user?.id) {
       return { success: false, error: "Unauthorized" };
     }
@@ -275,7 +291,10 @@ export async function markAllUnwatched(
     revalidatePath("/");
     return { success: true };
   } catch (error) {
-    console.error("Failed to mark all as unwatched", error);
+    logger.error(
+      { err: error, itemId: parentItemId },
+      "Failed to mark all as unwatched"
+    );
     return { success: false, error: "Failed to mark all as unwatched" };
   }
 }

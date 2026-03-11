@@ -141,7 +141,7 @@ export function QueuePanel({ open, onOpenChange, container }: QueuePanelProps) {
       {/* ── Now Playing ──────────────────────────────────────── */}
       {currentTrack && (
         <div>
-          <p className="mb-3 text-xs font-medium tracking-wider text-white/60 uppercase">
+          <p className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
             Now Playing
           </p>
           <NowPlayingCard track={currentTrack} paused={paused} />
@@ -156,7 +156,7 @@ export function QueuePanel({ open, onOpenChange, container }: QueuePanelProps) {
       {/* ── Up Next ──────────────────────────────────────────── */}
       {upNext.length > 0 && (
         <div>
-          <p className="mb-3 text-xs font-medium tracking-wider text-white/60 uppercase">
+          <p className="mb-4 text-xs font-medium tracking-[0.2em] text-[var(--tertiary-foreground)] uppercase">
             Up Next
           </p>
           <DndContext
@@ -191,12 +191,14 @@ export function QueuePanel({ open, onOpenChange, container }: QueuePanelProps) {
 
       {/* ── Empty state ──────────────────────────────────────── */}
       {queue.length === 0 && !currentTrack && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16">
-          <div className="flex size-14 items-center justify-center rounded-2xl bg-white/[0.04]">
-            <FontAwesomeIcon icon={faMusic} className="size-6 text-white/20" />
+        <div className="flex min-h-[200px] flex-1 flex-col items-center justify-center gap-5 p-8">
+          <div className="flex size-20 items-center justify-center rounded-2xl bg-white/[0.04]">
+            <FontAwesomeIcon icon={faMusic} className="size-10 text-white/20" />
           </div>
           <div className="text-center">
-            <p className="text-sm font-medium text-white/60">Queue is empty</p>
+            <p className="text-lg font-semibold text-white/60">
+              Queue is empty
+            </p>
             <p className="mt-1 text-xs text-white/50">
               Play something to get started
             </p>
@@ -366,7 +368,7 @@ const SortableQueueTrackItem = memo(function SortableQueueTrackItem({
     <div ref={setNodeRef} style={style} {...attributes}>
       <div
         className={cn(
-          "group flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors hover:bg-white/[0.04]",
+          "group flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors hover:bg-white/10",
           isDragging && "bg-white/[0.04] select-none"
         )}
       >

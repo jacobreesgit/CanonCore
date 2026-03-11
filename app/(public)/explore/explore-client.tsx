@@ -176,7 +176,7 @@ export function ExploreClient({
   const fork = useForkDialog({
     suppressToast: true,
     onSuccess: (result) => {
-      toast.success("Added to your library!", {
+      toast.success(`Forked "${fork.itemName}" to your library`, {
         description: `${fork.itemName} has been forked to your library.`,
         action:
           currentUser?.username && result

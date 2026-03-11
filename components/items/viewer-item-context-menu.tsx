@@ -61,8 +61,8 @@ export function ViewerItemContextMenu({
           aria-label={`Actions for ${itemName}`}
           className={cn(
             "w-52",
-            "bg-[var(--glass-bg)] backdrop-blur-xl",
-            "border border-[var(--glass-border)]",
+            "glass-menu",
+            "border border-white/[0.08]",
             "rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
             "text-foreground"
           )}

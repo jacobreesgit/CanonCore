@@ -9,35 +9,38 @@ import {
   deletePublicUser,
 } from "../../fixtures/authenticated.fixture";
 import { Timeouts } from "../../config/timeouts";
+import type { PublicUserInfo } from "../../fixtures/authenticated.fixture";
 
-publicTest.describe("Playlist Visibility", () => {
-  let userId: string;
-  let username: string;
+interface PlaylistVisibilityUser extends PublicUserInfo {
+  publicPlaylistName: string;
+  privatePlaylistName: string;
+}
 
-  publicTest.beforeAll(async () => {
-    // Create a public user with items and playlists directly in DB
+const playlistVisibilityTest = publicTest.extend<{
+  visibilityUser: PlaylistVisibilityUser;
+}>({
+  visibilityUser: async ({}, use) => {
     const user = await createPublicUser();
-    userId = user.id;
-    username = user.username;
 
     // Create a second public item
     const item2 = await prisma.item.create({
       data: {
-        name: `public-item-2-${username}`,
-        userId,
+        name: `public-item-2-${user.username}`,
+        userId: user.id,
         isPublic: true,
         inheritVisibility: false,
       },
     });
 
     // Create a public playlist with the public items
+    const publicPlaylistName = "Public Weekend Picks";
     const publicPlaylist = await prisma.playlist.create({
       data: {
-        name: "Public Weekend Picks",
+        name: publicPlaylistName,
         description: "A curated list for the weekend.",
         order: 0,
         isPublic: true,
-        userId,
+        userId: user.id,
       },
     });
     await prisma.playlistItem.createMany({
@@ -48,13 +51,14 @@ publicTest.describe("Playlist Visibility", () => {
     });
 
     // Create a private playlist (should NOT be visible to viewers)
+    const privatePlaylistName = "Private Watch Later";
     const privatePlaylist = await prisma.playlist.create({
       data: {
-        name: "Private Watch Later",
+        name: privatePlaylistName,
         description: "For my eyes only.",
         order: 1,
         isPublic: false,
-        userId,
+        userId: user.id,
       },
     });
     await prisma.playlistItem.create({
@@ -64,16 +68,22 @@ publicTest.describe("Playlist Visibility", () => {
         order: 0,
       },
     });
-  });
 
-  publicTest.afterAll(async () => {
-    await deletePublicUser(userId);
-  });
+    await use({
+      ...user,
+      publicPlaylistName,
+      privatePlaylistName,
+    });
 
-  publicTest(
+    await deletePublicUser(user.id);
+  },
+});
+
+playlistVisibilityTest.describe("Playlist Visibility", () => {
+  playlistVisibilityTest(
     "should show public playlists on public profile",
-    async ({ page }) => {
-      await page.goto(`/u/${username}`);
+    async ({ page, visibilityUser }) => {
+      await page.goto(`/u/${visibilityUser.username}`);
       await page.waitForLoadState("domcontentloaded");
       await expect(page.getByTestId("hero-carousel")).toBeVisible({
         timeout: Timeouts.navigation,
@@ -91,17 +101,17 @@ publicTest.describe("Playlist Visibility", () => {
       });
       // CardShell renders the name twice (default + hover overlay), use .first()
       await expect(
-        playlistSection.getByText("Public Weekend Picks").first()
+        playlistSection.getByText(visibilityUser.publicPlaylistName).first()
       ).toBeVisible({
         timeout: Timeouts.api,
       });
     }
   );
 
-  publicTest(
+  playlistVisibilityTest(
     "should hide private playlists from public profile",
-    async ({ page }) => {
-      await page.goto(`/u/${username}`);
+    async ({ page, visibilityUser }) => {
+      await page.goto(`/u/${visibilityUser.username}`);
       await page.waitForLoadState("domcontentloaded");
       await expect(page.getByTestId("hero-carousel")).toBeVisible({
         timeout: Timeouts.navigation,
@@ -113,7 +123,9 @@ publicTest.describe("Playlist Visibility", () => {
         .click({ timeout: Timeouts.api });
 
       // Private playlist should NOT be visible
-      await expect(page.getByText("Private Watch Later")).not.toBeVisible({
+      await expect(
+        page.getByText(visibilityUser.privatePlaylistName)
+      ).not.toBeVisible({
         timeout: Timeouts.animation,
       });
     }
