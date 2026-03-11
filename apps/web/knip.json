@@ -19,7 +19,13 @@
     "_payload-ref/**"
   ],
   "ignoreBinaries": [],
-  "ignoreDependencies": ["pino-pretty", "baseline-browser-mapping"],
+  "ignoreDependencies": [
+    "pino-pretty",
+    "baseline-browser-mapping",
+    "concurrently",
+    "http-server",
+    "wait-on"
+  ],
   "ignoreExportsUsedInFile": {
     "interface": true,
     "type": true
