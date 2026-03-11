@@ -10,9 +10,7 @@
     "components/items/visibility-toggle.tsx",
     "mdx-components.tsx",
     ".storybook/**",
-    ".github/**",
     "e2e/**",
-    "commitlint.config.mjs",
     "sentry.client.config.ts",
     "sentry.server.config.ts",
     "sentry.edge.config.ts",
@@ -21,7 +19,13 @@
     "_payload-ref/**"
   ],
   "ignoreBinaries": [],
-  "ignoreDependencies": ["pino-pretty", "baseline-browser-mapping"],
+  "ignoreDependencies": [
+    "pino-pretty",
+    "baseline-browser-mapping",
+    "concurrently",
+    "http-server",
+    "wait-on"
+  ],
   "ignoreExportsUsedInFile": {
     "interface": true,
     "type": true
