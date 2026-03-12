@@ -3,5 +3,11 @@
   "buildCommand": "cd .. && pnpm build-storybook",
   "outputDirectory": "../storybook-static",
   "installCommand": "cd .. && pnpm install",
-  "framework": null
+  "framework": null,
+  "git": {
+    "deploymentEnabled": {
+      "storybook": true,
+      "*": false
+    }
+  }
 }
