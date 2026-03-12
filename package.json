@@ -35,6 +35,8 @@
     "mobile:dev:android": "pnpm --filter @canoncore/mobile dev:android",
     "mobile:lint": "pnpm --filter @canoncore/mobile lint",
     "mobile:type-check": "pnpm --filter @canoncore/mobile type-check",
+    "env:dev": "cp apps/web/.env.development apps/web/.env.local && cp apps/web/.env.development .env.local && echo 'Switched to development env'",
+    "env:demo": "cp apps/web/.env.demo apps/web/.env.local && cp apps/web/.env.demo .env.local && echo 'Switched to demo env'",
     "prepare": "lefthook install"
   },
   "devDependencies": {

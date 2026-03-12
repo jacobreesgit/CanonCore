@@ -3,5 +3,12 @@
   "buildCommand": "cd ../.. && pnpm --filter @canoncore/web run build",
   "installCommand": "cd ../.. && pnpm install",
   "outputDirectory": ".next",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "git": {
+    "deploymentEnabled": {
+      "production": true,
+      "demo": true,
+      "*": false
+    }
+  }
 }

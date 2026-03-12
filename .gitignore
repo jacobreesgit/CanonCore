@@ -106,3 +106,4 @@ payload-hero.png
 
 # Lighthouse reports
 .lighthouse/
+.env*.local
