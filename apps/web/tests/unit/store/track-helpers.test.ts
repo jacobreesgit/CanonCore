@@ -1,9 +1,14 @@
 import { describe, it, expect, vi } from "vitest";
 import { buildQueueTrack } from "@/lib/store/track-helpers";
 
-vi.mock("@/lib/tmdb-image-utils", () => ({
-  getTmdbPosterUrl: (path: string) => `https://image.tmdb.org/t/p/w500${path}`,
-}));
+vi.mock("@canoncore/utils", async () => {
+  const actual = await vi.importActual("@canoncore/utils");
+  return {
+    ...actual,
+    getTmdbPosterUrl: (path: string) =>
+      `https://image.tmdb.org/t/p/w500${path}`,
+  };
+});
 
 describe("buildQueueTrack", () => {
   it("builds track from TMDB poster path", () => {

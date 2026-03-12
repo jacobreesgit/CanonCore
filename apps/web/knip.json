@@ -24,7 +24,15 @@
     "baseline-browser-mapping",
     "concurrently",
     "http-server",
-    "wait-on"
+    "wait-on",
+    "@canoncore/types",
+    "@canoncore/store",
+    "@canoncore/utils",
+    "@canoncore/validators",
+    "@eslint/js",
+    "eslint-plugin-react",
+    "eslint-plugin-react-hooks",
+    "typescript-eslint"
   ],
   "ignoreExportsUsedInFile": {
     "interface": true,
