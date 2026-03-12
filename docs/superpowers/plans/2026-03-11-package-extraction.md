@@ -1564,22 +1564,23 @@ git push origin feature/monorepo-migration
 | 8 | Update web to consume utils | ✅ Done |
 | 9 | Create packages/db | ⏭️ Deferred to Plan 4+ |
 | 10 | Update web to consume db | ⏭️ Deferred to Plan 4+ |
-| 11 | Create packages/store | Pending |
-| 12 | Update web to consume store | Pending |
+| 11 | Create packages/store | ✅ Done |
+| 12 | Update web to consume store | ✅ Done |
 | 13 | Create packages/services | ⏭️ Deferred to Plan 3 |
 | 14 | Update web to consume services | ⏭️ Deferred to Plan 3 |
-| 15 | Update turbo.json | Pending |
-| 16 | Add lint/type-check to packages | Pending |
-| 17 | Full verification | Pending |
+| 15 | Update turbo.json | ✅ Done |
+| 16 | Add lint/type-check to packages | ✅ Done |
+| 17 | Full verification | ✅ Done |
 
 ## Verification Criteria
 
-- [ ] All extracted packages compile with `tsc --noEmit`
-- [ ] `pnpm run build` succeeds (web app builds)
-- [ ] `pnpm run lint` passes across all workspaces
-- [ ] `pnpm run type-check` passes across all workspaces
-- [ ] `pnpm run test` — all unit tests pass
-- [ ] `pnpm run test:integration` — all integration tests pass
+- [x] All extracted packages compile with `tsc --noEmit`
+- [x] `pnpm run build` succeeds (web app builds)
+- [x] `pnpm run lint` passes across all workspaces
+- [x] `pnpm run type-check` passes across all workspaces
+- [x] `pnpm run test` — all 3241 unit tests pass
+- [x] `pnpm run test:integration` — all 269 integration tests pass
+- [x] `pnpm run check` — full pipeline (format + lint + type-check + knip + build) passes
 - [ ] `pnpm run dev` — dev server starts and app works
 - [ ] No `@/lib/*` import in `packages/` (packages only import from `@canoncore/*`)
 - [ ] All `apps/web/lib/*.ts` files that were extracted are now re-export stubs
