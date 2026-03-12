@@ -83,31 +83,31 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma Client
-        run: pnpm --filter @canoncore/web exec prisma generate
+        run: npx prisma generate
 
       - name: Migrate development
         if: github.ref == 'refs/heads/development'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: pnpm --filter @canoncore/web exec prisma migrate deploy && pnpm --filter @canoncore/web exec prisma migrate status
+        run: npx prisma migrate deploy && npx prisma migrate status
 
       - name: Migrate production
         if: github.ref == 'refs/heads/production'
         env:
           DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
-        run: pnpm --filter @canoncore/web exec prisma migrate deploy && pnpm --filter @canoncore/web exec prisma migrate status
+        run: npx prisma migrate deploy && npx prisma migrate status
 
       - name: Migrate demo
         if: github.ref == 'refs/heads/production'
         env:
           DATABASE_URL: ${{ secrets.DEMO_DATABASE_URL }}
-        run: pnpm --filter @canoncore/web exec prisma migrate deploy && pnpm --filter @canoncore/web exec prisma migrate status
+        run: npx prisma migrate deploy && npx prisma migrate status
 
       - name: Migrate seed
         if: github.ref == 'refs/heads/production'
         env:
           DATABASE_URL: ${{ secrets.SEED_DATABASE_URL }}
-        run: pnpm --filter @canoncore/web exec prisma migrate deploy && pnpm --filter @canoncore/web exec prisma migrate status
+        run: npx prisma migrate deploy && npx prisma migrate status
 
   test:
     name: Tests
@@ -149,7 +149,7 @@ jobs:
         if: always()
         uses: codecov/codecov-action@v5
         with:
-          files: ./apps/web/coverage/coverage-final.json
+          files: ./coverage/coverage-final.json
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 

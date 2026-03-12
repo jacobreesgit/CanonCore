@@ -7,11 +7,11 @@
 .DS_Store
 
 # dependencies
-node_modules
+/node_modules
 
 # next.js
-.next/
-.next-e2e/
+/.next/
+/.next-e2e/
 /out/
 
 # production
@@ -32,9 +32,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# Turborepo
-.turbo/
+.env*.local
 
 # Playwright
 playwright-report/
@@ -43,6 +41,7 @@ e2e/.auth/
 e2e/demo/demo-report/
 e2e/mockups/.auth-state.json
 e2e/mockups/.downloads/
+# e2e/output/
 .playwright-mcp/
 
 # Test coverage reports
@@ -93,6 +92,7 @@ skills/
 CV.md
 portfolio.md
 DEPLOYMENT-*.md
+
 
 # Production screenshots (temporary, not for repo)
 production-*.png

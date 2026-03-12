@@ -1,0 +1,34 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignore": [
+    "components/ui/**",
+    "source.config.ts",
+    ".source/**",
+    "scripts/**",
+    "prisma/seed-cleanup.ts",
+    "components/items/fork-destination-dialog.tsx",
+    "components/items/visibility-toggle.tsx",
+    "mdx-components.tsx",
+    ".storybook/**",
+    ".github/**",
+    "e2e/**",
+    "commitlint.config.mjs",
+    "sentry.client.config.ts",
+    "sentry.server.config.ts",
+    "sentry.edge.config.ts",
+    "instrumentation-client.ts",
+    "instrumentation.ts",
+    "_payload-ref/**"
+  ],
+  "ignoreBinaries": [],
+  "ignoreDependencies": ["pino-pretty", "baseline-browser-mapping"],
+  "ignoreExportsUsedInFile": {
+    "interface": true,
+    "type": true
+  },
+  "rules": {
+    "exports": "off",
+    "types": "off",
+    "duplicates": "off"
+  }
+}

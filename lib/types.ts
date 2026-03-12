@@ -1,0 +1,852 @@
+/**
+ * Shared type definitions for items and dnd-kit tree operations.
+ */
+
+import type { MutableRefObject } from "react";
+import type { UniqueIdentifier } from "@dnd-kit/core";
+import type { FileType, SyncStatus, SystemPlaylistType } from "@prisma/client";
+// Re-export SyncStatus enum for client-side use
+export { SyncStatus } from "@prisma/client";
+// Re-export ItemProgress from progress-utils for convenience
+export type { ItemProgress } from "./progress-utils";
+
+/**
+ * Generic paginated response for cursor-based infinite scroll.
+ * nextCursor is null when there are no more pages.
+ */
+export type PaginatedResult<T> = {
+  items: T[];
+  nextCursor: string | null;
+};
+
+/**
+ * Lightweight item identifier type for public pages that don't need dnd-kit.
+ * Equivalent to UniqueIdentifier from @dnd-kit/core.
+ */
+export type ItemId = string | number;
+
+/** Options for controlling item visibility during creation. */
+export interface ItemVisibilityOptions {
+  isPublic: boolean;
+  inheritVisibility: boolean;
+}
+
+/**
+ * Database Item type (from Prisma).
+ * Represents a container in the item hierarchy.
+ * Items can have children (sub-items) and attached files (ItemFile).
+ */
+export interface Item {
+  id: string;
+  name: string;
+  description: string | null;
+  parentId: string | null;
+  order: number;
+  depth: number;
+  // Pinned to sidebar (null = not pinned, 0+ = pinned with order)
+  pinnedOrder: number | null;
+  // Visibility
+  isPublic: boolean;
+  inheritVisibility: boolean;
+  userId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  // TMDB metadata
+  tmdbId: number | null;
+  tmdbType: string | null;
+  // TMDB image paths (served directly from TMDB CDN)
+  tmdbPosterPath: string | null;
+  tmdbBackdropPath: string | null;
+  tmdbLogoPath: string | null;
+  // Dominant colour extracted from backdrop (hex, e.g. "#1a3a5c")
+  dominantColour: string | null;
+  // TMDB display preferences
+  tmdbShowTagline: boolean;
+  tmdbShowMetadata: boolean;
+  tmdbShowGenres: boolean;
+  tmdbShowCast: boolean;
+  tmdbShowProviders: boolean;
+  tmdbShowVideos: boolean;
+  tmdbShowRecommendations: boolean;
+  // Google Drive fields
+  driveFileId: string | null;
+  driveModifiedAt: Date | null;
+  driveThumbnailUrl: string | null;
+  syncStatus: SyncStatus;
+  syncError: string | null;
+  driveConnectionId: string | null;
+}
+
+/**
+ * Tree item for hierarchical display.
+ * Used by SortableTree component.
+ */
+export interface TreeItem {
+  id: UniqueIdentifier;
+  name: string;
+  description?: string | null;
+  order: number;
+  depth: number;
+  parentId: UniqueIdentifier | null;
+  children: TreeItem[];
+  collapsed?: boolean;
+  // Pinned to sidebar (null = not pinned, 0+ = pinned with order)
+  pinnedOrder?: number | null;
+  // TMDB poster path for CDN thumbnail (takes precedence over artworkId)
+  tmdbPosterPath?: string | null;
+  // Artwork thumbnail (fallback when no TMDB path)
+  artworkId?: string | null;
+  // Google Drive folder ID (if synced)
+  driveFileId?: string | null;
+  // File and child counts for stats display
+  fileCounts?: FileCounts;
+  childCount?: number;
+  // Media icon type: 'film' (all video), 'music' (all audio), 'mixed' (both)
+  mediaIconType?: "film" | "music" | "mixed" | null;
+  /** Primary media duration in ms (from Google Drive metadata) */
+  primaryDurationMs?: number | null;
+  /** Primary media height in pixels (from Google Drive metadata) */
+  primaryHeight?: number | null;
+  /** Progress percentage (0-100) for item and descendants, null if no media */
+  progressPercentage?: number | null;
+  /** Number of watched (>90% complete) media files (item + descendants) */
+  watchedCount?: number;
+  /** Total number of media files (item + descendants) */
+  totalMediaCount?: number;
+  /** Total number of items (item + descendants) for progress label */
+  totalItems?: number;
+  /** Whether item is explicitly public */
+  isPublic?: boolean;
+  /** Whether item inherits visibility from parent */
+  inheritVisibility?: boolean;
+}
+
+export type TreeItems = TreeItem[];
+
+/**
+ * Flattened tree item for drag operations.
+ * Created by flattenTree(), consumed by getProjection().
+ */
+export interface FlattenedItem extends TreeItem {
+  parentId: UniqueIdentifier | null;
+  depth: number;
+  index: number;
+}
+
+/**
+ * Sensor context for keyboard navigation.
+ */
+export type SensorContext = MutableRefObject<{
+  items: FlattenedItem[];
+  offset: number;
+}>;
+
+/**
+ * Result type for item actions.
+ * Either success with data or error message.
+ */
+export type ItemResult<T = void> =
+  | { success: true; data?: T; error?: never }
+  | { success?: never; error: string };
+
+/**
+ * Breadcrumb item for navigation.
+ */
+export interface BreadcrumbItem {
+  id: string;
+  name: string;
+}
+
+/**
+ * ItemFile as returned from the database (Prisma).
+ * Represents a file (media, artwork, subtitle) attached to an Item.
+ * Note: size is bigint from Prisma, use serializeItemFile before sending to client.
+ */
+export interface ItemFile {
+  id: string;
+  itemId: string;
+  filename: string;
+  fileType: FileType;
+  mimeType: string | null;
+  size: bigint | null;
+  // Google Drive file ID
+  driveFileId: string | null;
+  // Sync status
+  syncStatus: SyncStatus;
+  syncError: string | null;
+  // User overrides
+  isPrimary: boolean;
+  isHero: boolean;
+  isLogo: boolean;
+  playbackPosition: number | null;
+  playbackDuration: number | null;
+  // Media dimensions (from Google Drive metadata)
+  durationMs: bigint | null;
+  width: number | null;
+  height: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * ItemFile safe for JSON serialization (client components).
+ * BigInt size is converted to number (safe up to ~9 petabytes).
+ */
+export interface SerializedItemFile {
+  id: string;
+  itemId: string;
+  filename: string;
+  fileType: FileType;
+  mimeType: string | null;
+  size: number | null;
+  // Google Drive file ID
+  driveFileId: string | null;
+  // Sync status
+  syncStatus: SyncStatus;
+  syncError: string | null;
+  // User overrides
+  isPrimary: boolean;
+  isHero: boolean;
+  isLogo: boolean;
+  playbackPosition: number | null;
+  playbackDuration: number | null;
+  // Media dimensions (from Google Drive metadata)
+  durationMs: number | null;
+  width: number | null;
+  height: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Converts an ItemFile to a serializable format for client components.
+ * Converts BigInt size to number.
+ *
+ * @param file - ItemFile from Prisma
+ * @returns SerializedItemFile safe for JSON
+ */
+export function serializeItemFile(file: ItemFile): SerializedItemFile {
+  return {
+    ...file,
+    size: file.size !== null ? Number(file.size) : null,
+    durationMs: file.durationMs !== null ? Number(file.durationMs) : null,
+  };
+}
+
+/**
+ * File counts by type for display in grid/tree views.
+ * Shows how many files of each type are attached to an item.
+ */
+export interface FileCounts {
+  /** Number of media files (video, audio) */
+  media: number;
+  /** Number of artwork files (images) */
+  artwork: number;
+  /** Number of subtitle files */
+  subtitles: number;
+}
+
+/**
+ * Item with optional artwork thumbnail for list views.
+ * Used by grid and tree views to display item thumbnails.
+ */
+export interface ItemWithArtwork extends Item {
+  /** TMDB poster path for CDN display (takes precedence over artworkId) */
+  tmdbPosterPath: string | null;
+  /** TMDB backdrop path for CDN display (takes precedence over hero artworkId) */
+  tmdbBackdropPath: string | null;
+  /** First artwork file ID for thumbnail display (fallback when no TMDB path) */
+  artworkId: string | null;
+  /** Counts of attached files by type (media, artwork, subtitles) */
+  fileCounts: FileCounts;
+  /** Number of child items (subfolders) */
+  childCount: number;
+  /** Primary media filename for "now playing" display */
+  primaryMediaName: string | null;
+  /** Primary media duration in milliseconds (from Google Drive metadata) */
+  primaryDurationMs: number | null;
+  /** Primary media height in pixels (from Google Drive metadata) */
+  primaryHeight: number | null;
+  /** Media icon type: 'film' (all video), 'music' (all audio), 'mixed' (both) */
+  mediaIconType: "film" | "music" | "mixed" | null;
+  /** Progress data for item and all descendants (null if no media files) */
+  progress: import("./progress-utils").ItemProgress | null;
+}
+
+/**
+ * Item type alias with sync fields emphasized.
+ * Use when working specifically with sync-related functionality.
+ * Same as Item - provided for semantic clarity in sync contexts.
+ */
+export type ItemWithSync = Item;
+
+/**
+ * Google Drive connection status for UI display.
+ * Returned by getGoogleDriveConnection() server action.
+ */
+export interface GoogleDriveConnection {
+  email: string;
+  rootFolderId: string | null;
+  isActive: boolean;
+  needsReauth: boolean;
+  lastSyncAt: Date | null;
+  lastError: string | null;
+  quotaBytesUsed: bigint | null;
+  quotaBytesTotal: bigint | null;
+}
+
+/**
+ * Item data for spotlight search display.
+ * Includes breadcrumb path for nested items and artwork for thumbnails.
+ */
+export interface SearchableItem {
+  id: string;
+  name: string;
+  parentId: string | null;
+  depth: number;
+  description: string | null;
+  /** TMDB poster path for CDN thumbnail (takes precedence over artworkId) */
+  tmdbPosterPath: string | null;
+  /** First artwork file ID for thumbnail display (fallback) */
+  artworkId: string | null;
+  /** Breadcrumb path like "Movies / Star Wars" for nested items */
+  breadcrumb: string | null;
+  /** Owner's username for URL generation */
+  ownerUsername: string | null;
+}
+
+/**
+ * Public user data for spotlight search display.
+ * Includes username and name for search matching.
+ * NOTE: Only includes fields needed for UI - no unnecessary metadata.
+ */
+export interface SearchableUser {
+  /** User ID */
+  id: string;
+  /** Public username (URL slug) */
+  username: string;
+  /** Display name (may be null) */
+  name: string | null;
+}
+
+/**
+ * Public item data for spotlight search display.
+ * Only includes explicitly public items (isPublic=true, inheritVisibility=false).
+ * Includes owner info for attribution.
+ * NOTE: Only includes fields needed for UI - no unnecessary metadata.
+ */
+export interface SearchablePublicItem {
+  /** Item ID */
+  id: string;
+  /** Item name */
+  name: string;
+  /** Item description */
+  description: string | null;
+  /** TMDB poster path for CDN thumbnail (takes precedence over artworkId) */
+  tmdbPosterPath: string | null;
+  /** First artwork file ID for thumbnail (fallback) */
+  artworkId: string | null;
+  /** Owner's username for attribution and navigation */
+  ownerUsername: string;
+  /** Owner's display name */
+  ownerName: string | null;
+}
+
+/** Searchable public playlist for spotlight search. */
+export interface SearchablePlaylist {
+  /** Playlist ID */
+  id: string;
+  /** Playlist name */
+  name: string;
+  /** Playlist description */
+  description: string | null;
+  /** Number of items in the playlist */
+  itemCount: number;
+  /** Owner's username for attribution and navigation */
+  ownerUsername: string;
+  /** Owner's display name */
+  ownerName: string | null;
+  /** Whether the playlist has custom artwork */
+  hasArtwork?: boolean;
+}
+
+/**
+ * Pinned item for sidebar navigation display.
+ * Minimal data needed for rendering pinned items in the sidebar.
+ */
+export interface PinnedItem {
+  id: string;
+  name: string;
+  pinnedOrder: number;
+  /** Whether the item is public (for visibility filtering) */
+  isPublic?: boolean;
+}
+
+/**
+ * File queued for upload when creating an item.
+ * Holds File object and metadata until item is created.
+ * isPrimary and isHero are set during upload transformation, not when queuing.
+ */
+export interface QueuedFile {
+  /** Unique ID for tracking in the queue */
+  id: string;
+  /** The actual File object */
+  file: File;
+  /** File type category (MEDIA, ARTWORK, SUBTITLE) */
+  fileType: FileType;
+  /** File size in bytes */
+  size: number;
+  /** Upload status */
+  status: "pending" | "uploading" | "success" | "error";
+  /** Error message if upload failed */
+  error?: string;
+  /** Whether this is the primary file for its category (set during upload) */
+  isPrimary?: boolean;
+  /** Whether this is the hero image (set during upload) */
+  isHero?: boolean;
+}
+
+/**
+ * Categorized queued files by type for AddItemDialog.
+ * Allows users to queue files by category before item creation.
+ */
+export interface QueuedFilesByCategory {
+  /** Primary media files (first becomes primary playback) */
+  media: QueuedFile[];
+  /** Primary artwork files (first becomes thumbnail) */
+  artwork: QueuedFile[];
+  /** Hero image files (first becomes hero banner) */
+  hero: QueuedFile[];
+  /** Default subtitle files (first loads by default) */
+  subtitle: QueuedFile[];
+}
+
+/**
+ * Source of artwork selection in wizard steps.
+ * - "tmdb": Selected from TMDB images gallery
+ * - "existing": Selected from existing uploaded files
+ * - "queued": Selected from newly queued files (upload mode)
+ */
+export type ArtworkSelectionSource = "tmdb" | "existing" | "queued";
+
+/**
+ * TMDB metadata selection for applying to a new or existing item.
+ * Captures which fields to update and the source data.
+ */
+export interface TMDBMetadataSelection {
+  /** TMDB ID of the movie or TV show */
+  tmdbId: number;
+  /** Whether this is a movie or TV show */
+  mediaType: "movie" | "tv";
+  /** Fields to update */
+  options: {
+    updateName: boolean;
+    updateDescription: boolean;
+    updatePoster: boolean;
+    updateBackdrop: boolean;
+  };
+  /** Preview data from TMDB */
+  preview: {
+    name: string;
+    description: string;
+    posterPath: string | null;
+    backdropPath: string | null;
+  };
+  /** Per-item TMDB display preferences */
+  displayOptions?: TmdbDisplayOptions;
+}
+
+// =============================================================================
+// TMDB Display Options
+// =============================================================================
+
+/**
+ * Per-item toggles for which TMDB data sections appear on the detail page.
+ * All default to true so existing items are unchanged.
+ */
+export interface TmdbDisplayOptions {
+  showTagline: boolean;
+  showMetadata: boolean;
+  showGenres: boolean;
+  showCast: boolean;
+  showProviders: boolean;
+  showVideos: boolean;
+  showRecommendations: boolean;
+}
+
+/** Default display options — all sections visible. */
+export const DEFAULT_TMDB_DISPLAY: TmdbDisplayOptions = {
+  showTagline: true,
+  showMetadata: true,
+  showGenres: true,
+  showCast: true,
+  showProviders: true,
+  showVideos: true,
+  showRecommendations: true,
+};
+
+// =============================================================================
+// User Preferences Types
+// =============================================================================
+
+/** View mode for items display. */
+export type ViewMode = "grid" | "tree";
+
+/** Sort option for items list. */
+export type SortOption =
+  | "custom"
+  | "name-asc"
+  | "name-desc"
+  | "created-desc"
+  | "created-asc"
+  | "updated-desc";
+
+/** Filter option for items list (legacy single-select, kept for Explore page). */
+export type FilterOption =
+  | "all"
+  | "has-files"
+  | "no-files"
+  | "synced"
+  | "pending"
+  | "error"
+  | "exclude-yours";
+
+/** Content filter for multi-select filter UI. */
+export type ContentFilter =
+  | "has-files"
+  | "no-files"
+  | "synced"
+  | "pending"
+  | "error";
+
+/** All valid content filter values for runtime validation. */
+export const CONTENT_FILTERS = [
+  "has-files",
+  "no-files",
+  "synced",
+  "pending",
+  "error",
+] as const;
+
+/** All valid view mode values as readonly tuple (for nuqs parsers). */
+export const VIEW_MODES = ["grid", "tree"] as const;
+
+/** Valid view modes for validation. */
+export const VALID_VIEW_MODES: ViewMode[] = [...VIEW_MODES];
+
+/** All valid sort option values as readonly tuple (for nuqs parsers). */
+export const SORT_OPTIONS_TUPLE = [
+  "custom",
+  "name-asc",
+  "name-desc",
+  "created-desc",
+  "created-asc",
+  "updated-desc",
+] as const;
+
+/** Explore sort options (no "custom" since explore has no user ordering). */
+export const EXPLORE_SORT_OPTIONS_TUPLE = [
+  "name-asc",
+  "name-desc",
+  "created-desc",
+  "created-asc",
+  "updated-desc",
+] as const;
+
+/** Valid sort options for validation. */
+export const VALID_SORT_OPTIONS: SortOption[] = [...SORT_OPTIONS_TUPLE];
+
+/** Valid filter options for validation. */
+export const VALID_FILTER_OPTIONS: FilterOption[] = [
+  "all",
+  "has-files",
+  "no-files",
+  "synced",
+  "pending",
+  "error",
+  "exclude-yours",
+];
+
+/**
+ * Type guard for validating sort options.
+ *
+ * @param value - String value to validate
+ * @returns True if value is a valid SortOption
+ */
+export function isValidSortOption(value: string): value is SortOption {
+  return VALID_SORT_OPTIONS.includes(value as SortOption);
+}
+
+/**
+ * Type guard for validating filter options.
+ *
+ * @param value - String value to validate
+ * @returns True if value is a valid FilterOption
+ */
+export function isValidFilterOption(value: string): value is FilterOption {
+  return VALID_FILTER_OPTIONS.includes(value as FilterOption);
+}
+
+/**
+ * Type guard for validating view modes.
+ *
+ * @param value - String value to validate
+ * @returns True if value is a valid ViewMode
+ */
+export function isValidViewMode(value: string): value is ViewMode {
+  return VALID_VIEW_MODES.includes(value as ViewMode);
+}
+
+/**
+ * Minimal item data for "Go to" button display.
+ * Returned by getFirstIncompleteItem() server action.
+ */
+export interface NextItem {
+  /** Item ID for navigation */
+  id: string;
+  /** Item name for button label ("Go to [name]") */
+  name: string;
+}
+
+// =============================================================================
+// Public Profile Types
+// =============================================================================
+
+/**
+ * Public user profile data for display on public profile pages.
+ * Only includes fields safe for public consumption.
+ */
+export interface PublicUserProfile {
+  /** User ID */
+  id: string;
+  /** Public username (URL slug) */
+  username: string;
+  /** Display name (may be null) */
+  name: string | null;
+  /** Whether user has a profile image */
+  hasImage: boolean;
+  /** Whether user has a hero banner image */
+  hasHeroImage: boolean;
+  /** When the profile was created */
+  createdAt: Date;
+}
+
+/**
+ * Public item data displayed on public profiles and explore pages.
+ * Excludes sensitive fields like userId for non-owner views.
+ */
+export interface PublicItemCard {
+  /** Item ID */
+  id: string;
+  /** Item name */
+  name: string;
+  /** Item description (truncated for cards) */
+  description: string | null;
+  /** First artwork file ID for thumbnail */
+  artworkId: string | null;
+  /** Number of times this item has been forked */
+  forkCount: number;
+  /** TMDB ID if linked */
+  tmdbId: number | null;
+  /** TMDB media type (movie/tv) */
+  tmdbType: string | null;
+  /** Owner's username for attribution */
+  ownerUsername: string;
+  /** When item was last updated */
+  updatedAt: Date;
+}
+
+// =============================================================================
+// Playlist Types
+// =============================================================================
+
+/**
+ * Playlist with item count and preview artwork.
+ * Used for playlist lists and cards (sidebar, profile section).
+ */
+export interface PlaylistWithCount {
+  /** Playlist ID */
+  id: string;
+  /** Playlist name */
+  name: string;
+  /** Optional description */
+  description: string | null;
+  /** Display order within user's playlists */
+  order: number;
+  /** Whether visible to viewers */
+  isPublic: boolean;
+  /** Whether playlist has custom artwork uploaded */
+  hasArtwork: boolean;
+  /** Total number of items in playlist */
+  itemCount: number;
+  /** First 4 items' poster data for collage rendering. */
+  previewPosters: { tmdbPosterPath: string | null; artworkId: string | null }[];
+  /** System playlist type (null for user-created playlists). */
+  systemType: string | null;
+  /** When playlist was created */
+  createdAt: Date;
+  /** When playlist was last updated */
+  updatedAt: Date;
+}
+
+/**
+ * Playlist with full item list.
+ * Used for the playlist detail page.
+ */
+export interface PlaylistWithItems {
+  /** Playlist ID */
+  id: string;
+  /** Playlist name */
+  name: string;
+  /** Optional description */
+  description: string | null;
+  /** Display order within user's playlists */
+  order: number;
+  /** Whether visible to viewers */
+  isPublic: boolean;
+  /** Whether playlist has custom artwork uploaded */
+  hasArtwork: boolean;
+  /** Unique token for sharing private playlists (null = not shared) */
+  shareToken: string | null;
+  /** Dominant colour extracted from playlist artwork (hex, e.g. "#1a3a5c") */
+  dominantColour: string | null;
+
+  /** Owner user ID */
+  userId: string;
+  /** Ordered list of items in this playlist */
+  items: PlaylistItemEntry[];
+  /** When playlist was created */
+  createdAt: Date;
+  /** When playlist was last updated */
+  updatedAt: Date;
+}
+
+/**
+ * Single item within a playlist.
+ * Wraps ItemWithArtwork with playlist-specific ordering metadata.
+ */
+export interface PlaylistItemEntry {
+  /** PlaylistItem join record ID (for reorder/remove operations) */
+  playlistItemId: string;
+  /** Display order within the playlist */
+  order: number;
+  /** When this item was added to the playlist */
+  addedAt: Date;
+  /** The referenced item with artwork resolution */
+  item: ItemWithArtwork;
+}
+
+/**
+ * Playlist membership info for the "Add to Playlist" dialog.
+ * Shows which playlists exist and whether they contain a given item.
+ */
+export interface PlaylistMembership {
+  /** Playlist ID */
+  id: string;
+  /** Playlist name */
+  name: string;
+  /** Whether the target item is already in this playlist */
+  isMember: boolean;
+}
+
+/**
+ * Public playlist card for viewer profile.
+ * Subset of PlaylistWithCount without owner-only fields.
+ */
+export interface PublicPlaylistCard {
+  /** Playlist ID */
+  id: string;
+  /** Playlist name */
+  name: string;
+  /** Optional description */
+  description: string | null;
+  /** Number of public items visible to viewer */
+  itemCount: number;
+  /** First 4 items' poster data for collage rendering. */
+  previewPosters: { tmdbPosterPath: string | null; artworkId: string | null }[];
+  /** Whether playlist has custom artwork uploaded */
+  hasArtwork: boolean;
+  /** When playlist was last updated */
+  updatedAt: Date;
+}
+
+/**
+ * Fork relationship info for display in item details.
+ */
+export interface ForkRelationship {
+  /** Original source item (if this was forked from somewhere) */
+  source: {
+    id: string;
+    name: string;
+    ownerUsername: string | null;
+  } | null;
+  /** Number of times this item has been forked by others */
+  forkCount: number;
+}
+
+// =============================================================================
+// Home Shelf Types
+// =============================================================================
+
+/** Minimal item data needed for shelf card rendering (server-serialization rule). */
+export interface ShelfItem {
+  id: string;
+  name: string;
+  tmdbPosterPath: string | null;
+  /** Resolved artwork ID (TMDB poster or uploaded artwork fallback). */
+  artworkId: string | null;
+  /** Number of child items. */
+  childCount: number;
+  /** Playback progress 0–100 (position/duration), null when no media or no position. */
+  playbackProgress: number | null;
+}
+
+/** A single shelf on the home page. */
+export interface HomeShelf {
+  /** Playlist ID (system or user-created) */
+  playlistId: string;
+  /** System playlist type identifier (null for user-created playlists) */
+  type: SystemPlaylistType | null;
+  /** Display name for the shelf */
+  name: string;
+  /** Items to display. Uses ShelfItem (not full ItemWithArtwork) to minimise
+   *  serialisation at the RSC boundary per server-serialization rule. */
+  items: ShelfItem[];
+}
+
+/** Shelf configuration entry for My Items settings. */
+export interface ShelfConfig {
+  /** Playlist ID */
+  playlistId: string;
+  /** Display name */
+  name: string;
+  /** System type (null for user-created playlists) */
+  systemType: SystemPlaylistType | null;
+  /** Current shelf order (non-null = active shelf) */
+  shelfOrder: number | null;
+}
+
+/**
+ * Username availability check result.
+ */
+export interface UsernameCheckResult {
+  /** Whether the username is available */
+  available: boolean;
+  /** Validation error message if invalid format */
+  error?: string;
+}
+
+/**
+ * User profile settings for the settings dialog.
+ * Includes both public profile and preference fields.
+ */
+export interface UserProfileSettings {
+  /** Current username (null if not set) */
+  username: string | null;
+  /** Whether profile is public */
+  isPublic: boolean;
+  /** Display name */
+  name: string | null;
+  /** Email address (read-only display) */
+  email: string;
+}
