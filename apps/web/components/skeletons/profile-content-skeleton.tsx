@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Section } from "@/components/ui/section";
-import { ShelfSkeleton } from "@/components/homepage/home-shelves";
+import { ShelfSkeleton } from "@/components/homepage/shelf-skeleton";
 
 export function ProfileContentSkeleton() {
   return (
