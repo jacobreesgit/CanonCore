@@ -6,9 +6,11 @@
  */
 
 import { configureStore } from "@reduxjs/toolkit";
-import playbackReducer from "./playback-slice";
-import { initialState as playbackInitialState } from "./playback-slice";
-import uiPrefsReducer from "./ui-prefs-slice";
+import {
+  playbackReducer,
+  uiPrefsReducer,
+  playbackInitialState,
+} from "@canoncore/store";
 import {
   persistenceMiddleware,
   loadPersistedState,

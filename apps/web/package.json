@@ -126,6 +126,7 @@
   "devDependencies": {
     "@canoncore/config": "workspace:*",
     "@canoncore/types": "workspace:*",
+    "@canoncore/store": "workspace:*",
     "@canoncore/utils": "workspace:*",
     "@canoncore/validators": "workspace:*",
     "@emotion/is-prop-valid": "^1.4.0",

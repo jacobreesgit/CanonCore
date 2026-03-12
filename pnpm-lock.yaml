@@ -258,6 +258,9 @@ importers:
       '@canoncore/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@canoncore/store':
+        specifier: workspace:*
+        version: link:../../packages/store
       '@canoncore/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -423,6 +426,28 @@ importers:
       typescript-eslint:
         specifier: ^8.50.1
         version: 8.50.1(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
+
+  packages/store:
+    dependencies:
+      '@canoncore/utils':
+        specifier: workspace:*
+        version: link:../utils
+      '@reduxjs/toolkit':
+        specifier: ^2.11.2
+        version: 2.11.2(react-redux@9.2.0(@types/react@19.0.0)(react@19.0.0)(redux@5.0.1))(react@19.0.0)
+      react:
+        specifier: ^19
+        version: 19.0.0
+      react-redux:
+        specifier: ^9.0.0
+        version: 9.2.0(@types/react@19.0.0)(react@19.0.0)(redux@5.0.1)
+    devDependencies:
+      '@canoncore/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: ^22
+        version: 22.19.3
 
   packages/types:
     dependencies:
