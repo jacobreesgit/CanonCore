@@ -29,6 +29,7 @@
     "@canoncore/validators": "workspace:*",
     "@canoncore/utils": "workspace:*",
     "@trpc/server": "^11.12.0",
+    "bcryptjs": "^3.0.3",
     "superjson": "^2.2.6",
     "zod": "^4.2.1"
   },
