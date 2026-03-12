@@ -125,6 +125,7 @@
   },
   "devDependencies": {
     "@canoncore/config": "workspace:*",
+    "@canoncore/types": "workspace:*",
     "@emotion/is-prop-valid": "^1.4.0",
     "@eslint/js": "^9.39.2",
     "@next/bundle-analyzer": "^16.1.6",

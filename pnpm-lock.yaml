@@ -258,6 +258,9 @@ importers:
       '@canoncore/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@canoncore/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       '@emotion/is-prop-valid':
         specifier: ^1.4.0
         version: 1.4.0
@@ -414,6 +417,16 @@ importers:
       typescript-eslint:
         specifier: ^8.50.1
         version: 8.50.1(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
+
+  packages/types:
+    dependencies:
+      '@prisma/client':
+        specifier: ^7.0.0
+        version: 7.2.0(prisma@7.2.0(@types/react@19.0.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(typescript@5.9.3))(typescript@5.9.3)
+    devDependencies:
+      '@canoncore/config':
+        specifier: workspace:*
+        version: link:../config
 
 packages:
 
