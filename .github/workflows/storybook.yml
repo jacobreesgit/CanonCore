@@ -37,11 +37,7 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: apps/web
-        run: |
-          npx playwright install --with-deps chromium
-          for pw in ../../node_modules/.pnpm/playwright-core@*/node_modules/playwright-core; do
-            node "$pw/cli.js" install chromium
-          done
+        run: npx playwright install --with-deps chromium
 
       - name: Run Storybook tests
         working-directory: apps/web
