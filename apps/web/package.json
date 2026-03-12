@@ -124,6 +124,7 @@
     "zod": "^4.2.1"
   },
   "devDependencies": {
+    "@canoncore/config": "workspace:*",
     "@emotion/is-prop-valid": "^1.4.0",
     "@eslint/js": "^9.39.2",
     "@next/bundle-analyzer": "^16.1.6",
