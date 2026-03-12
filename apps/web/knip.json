@@ -32,7 +32,9 @@
     "@eslint/js",
     "eslint-plugin-react",
     "eslint-plugin-react-hooks",
-    "typescript-eslint"
+    "typescript-eslint",
+    "@canoncore/api",
+    "@trpc/tanstack-react-query"
   ],
   "ignoreExportsUsedInFile": {
     "interface": true,

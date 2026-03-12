@@ -11,7 +11,8 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { auth } from "@/lib/auth";
-import { HomeShelves, ShelfSkeleton } from "@/components/homepage/home-shelves";
+import { HomeShelves } from "@/components/homepage/home-shelves";
+import { ShelfSkeleton } from "@/components/homepage/shelf-skeleton";
 import {
   getPublicProfile,
   getProfileByIdOrUsername,
