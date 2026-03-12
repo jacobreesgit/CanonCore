@@ -1,22 +1,21 @@
 import { createTRPCRouter } from "./trpc";
+import { watchRouter } from "./routers/watch";
+import { forkRouter } from "./routers/fork";
 
 /**
  * Root tRPC router — merges all domain sub-routers.
  * This is the single source of truth for the API type.
  *
- * Sub-routers are added as they are built:
- * - item, itemFile: private CRUD (authed)
- * - playlist: playlist CRUD (authed)
+ * Sub-routers added incrementally:
  * - watch: watch status (authed)
- * - shelf: home page shelves (authed)
- * - tmdb: TMDB metadata operations (authed)
- * - user: profile/account management (authed)
- * - auth: sign in/up, password reset (public)
- * - explore: browse/search public content (public)
- * - public: public profile/item/playlist detail (public)
- * - fork: forking items (authed)
+ * - fork: forking items (authed + public)
+ *
+ * TODO: item, itemFile, playlist, shelf, tmdb, user, auth, explore, public
  */
-export const appRouter = createTRPCRouter({});
+export const appRouter = createTRPCRouter({
+  watch: watchRouter,
+  fork: forkRouter,
+});
 
 /** Export type only — never import the router itself on the client */
 export type AppRouter = typeof appRouter;
