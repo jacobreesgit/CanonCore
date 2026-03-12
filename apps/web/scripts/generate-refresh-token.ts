@@ -23,7 +23,6 @@ dotenv.config({ path: ENV_FILE_PATH });
 import http from "http";
 import { URL } from "url";
 import { execSync } from "child_process";
-// @ts-expect-error - Script uses require for dynamic import
 import { OAuth2Client } from "google-auth-library";
 
 const PORT = 3000;

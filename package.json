@@ -30,6 +30,11 @@
     "changelog": "pnpm --filter @canoncore/web changelog",
     "release": "pnpm --filter @canoncore/web release",
     "check": "turbo run format:check lint type-check knip build",
+    "mobile:dev": "pnpm --filter @canoncore/mobile dev",
+    "mobile:dev:ios": "pnpm --filter @canoncore/mobile dev:ios",
+    "mobile:dev:android": "pnpm --filter @canoncore/mobile dev:android",
+    "mobile:lint": "pnpm --filter @canoncore/mobile lint",
+    "mobile:type-check": "pnpm --filter @canoncore/mobile type-check",
     "prepare": "lefthook install"
   },
   "devDependencies": {
@@ -51,6 +56,12 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "lefthook"
-    ]
+    ],
+    "overrides": {
+      "@types/react": "^19.1.0",
+      "react": "19.1.0",
+      "react-dom": "19.1.0",
+      "lightningcss": "1.30.1"
+    }
   }
 }

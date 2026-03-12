@@ -1,0 +1,67 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+
+@import "nativewind/theme";
+
+/* CanonCore Cinematic Dark Theme — adapted from apps/web/app/globals.css */
+
+@layer theme {
+  @theme {
+    /* Core design tokens */
+    --color-background: #0a0a0a;
+    --color-foreground: rgba(255, 255, 255, 0.95);
+    --color-card: #141414;
+    --color-card-foreground: rgba(255, 255, 255, 0.95);
+    --color-primary: #ffffff;
+    --color-primary-foreground: #0a0a0a;
+    --color-secondary: #1c1c1c;
+    --color-secondary-foreground: rgba(255, 255, 255, 0.95);
+    --color-muted: #1c1c1c;
+    --color-muted-foreground: rgba(255, 255, 255, 0.6);
+    --color-accent: #1c1c1c;
+    --color-accent-foreground: rgba(255, 255, 255, 0.95);
+    --color-destructive: #ff3b30;
+    --color-border: rgba(255, 255, 255, 0.1);
+    --color-input: rgba(255, 255, 255, 0.15);
+    --color-ring: rgba(255, 255, 255, 0.25);
+
+    /* Extended cinematic tokens */
+    --color-tertiary-foreground: rgba(255, 255, 255, 0.65);
+    --color-glass-bg: rgba(255, 255, 255, 0.04);
+    --color-glass-border: rgba(255, 255, 255, 0.06);
+    --color-glass-hover: rgba(255, 255, 255, 0.1);
+
+    /* Cinematic colour pipeline — 10 shades from dominant colour.
+       Default values (neutral). Overridden per-item via inline vars()
+       using createColourShades() from @canoncore/utils/colour. */
+    --color-dark-100: #0a0a0a;
+    --color-dark-200: #0f0f0f;
+    --color-dark-300: #141414;
+    --color-dark-400: #1a1a1a;
+    --color-dark-500: #1f1f1f;
+    --color-dark-600: #242424;
+    --color-dark-700: #2a2a2a;
+    --color-dark-800: #2f2f2f;
+    --color-dark-900: #343434;
+    --color-dark-1000: #3a3a3a;
+
+    /* Spacing */
+    --spacing-section-px: 20px;
+  }
+}
+
+/* Platform-specific font families */
+@media ios {
+  :root {
+    --font-sans: system-ui;
+    --font-mono: ui-monospace;
+  }
+}
+
+@media android {
+  :root {
+    --font-sans: normal;
+    --font-mono: monospace;
+  }
+}
