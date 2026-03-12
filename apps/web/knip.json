@@ -18,7 +18,21 @@
     "instrumentation.ts",
     "_payload-ref/**"
   ],
-  "ignoreBinaries": [],
+  "ignoreBinaries": [
+    "next",
+    "eslint",
+    "prettier",
+    "tsc",
+    "knip",
+    "vitest",
+    "tsx",
+    "prisma",
+    "storybook",
+    "playwright",
+    "test-storybook",
+    "changelogen",
+    "fumadocs-mdx"
+  ],
   "ignoreDependencies": [
     "pino-pretty",
     "baseline-browser-mapping",
@@ -34,7 +48,14 @@
     "eslint-plugin-react-hooks",
     "typescript-eslint",
     "@canoncore/api",
-    "@trpc/tanstack-react-query"
+    "@trpc/tanstack-react-query",
+    "@emotion/is-prop-valid",
+    "@testing-library/dom",
+    "babel-plugin-react-compiler",
+    "changelogen",
+    "eslint",
+    "prettier",
+    "tsx"
   ],
   "ignoreExportsUsedInFile": {
     "interface": true,
