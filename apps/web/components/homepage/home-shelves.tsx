@@ -4,7 +4,7 @@
  * Uses Suspense-friendly async pattern.
  */
 
-import { getHomeShelves } from "@/lib/shelf-actions";
+import { getServerCaller } from "@/lib/trpc/server";
 import { Section } from "@/components/ui/section";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { HomeShelf } from "@/lib/types";
@@ -15,7 +15,8 @@ import { ShelfRow } from "./shelf-row";
  * Empty when user has no configured shelves or no items in any shelf.
  */
 export async function HomeShelves() {
-  const shelves = await getHomeShelves();
+  const trpc = await getServerCaller();
+  const shelves = await trpc.shelf.getHomeShelves();
 
   if (shelves.length === 0) return null;
 
