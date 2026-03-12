@@ -27,6 +27,8 @@ interface ItemCardProps {
   href?: string;
   /** Optional container style override (used by ShelfRow for fixed width) */
   style?: import("react-native").ViewStyle;
+  /** Long-press callback — triggers context menu actions */
+  onLongPress?: () => void;
 }
 
 export function ItemCard({
@@ -42,6 +44,7 @@ export function ItemCard({
   isOwn,
   href: hrefOverride,
   style,
+  onLongPress,
 }: ItemCardProps) {
   const resolvedHref =
     hrefOverride ?? (isOwn ? `/item/${id}` : `/u/${ownerUsername}/${id}`);
@@ -54,7 +57,7 @@ export function ItemCard({
 
   return (
     <Link href={resolvedHref} asChild>
-      <Pressable className="flex-1 gap-2" style={style}>
+      <Pressable className="flex-1 gap-2" style={style} onLongPress={onLongPress}>
         <View
           className="aspect-[2/3] rounded-lg overflow-hidden bg-card"
           style={{ borderCurve: "continuous" }}

@@ -34,7 +34,7 @@ function RootNavigator() {
       <Stack.Protected guard={!!token}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="library" options={{ headerShown: false }} />
-        <Stack.Screen name="item/[itemId]" />
+        <Stack.Screen name="item" options={{ headerShown: false }} />
         <Stack.Screen name="playlist/[playlistId]" />
         <Stack.Screen
           name="player"
