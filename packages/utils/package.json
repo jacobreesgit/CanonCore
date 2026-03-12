@@ -18,6 +18,10 @@
     "./cursor": {
       "types": "./src/cursor.ts",
       "default": "./src/cursor.ts"
+    },
+    "./media": {
+      "types": "./src/media-metadata.ts",
+      "default": "./src/media-metadata.ts"
     }
   },
   "peerDependencies": {

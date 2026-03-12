@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { useLocalSearchParams } from "expo-router";
 import { View } from "@/tw";
 import { ItemCard } from "@/components/item-card";
 import { GridLayout } from "@/components/grid-layout";
@@ -9,20 +10,24 @@ import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { useTRPC } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
 import { useSession } from "@/ctx";
+import { Stack } from "expo-router/stack";
 
-export default function LibraryScreen() {
+export default function LibraryFolderScreen() {
+  const { parentId } = useLocalSearchParams<{ parentId: string }>();
   const { user } = useSession();
   const trpc = useTRPC();
   const { inputValue, debouncedValue, setValue, clear } = useDebouncedSearch();
 
-  // Fetch root items (parentId = null)
   const itemsQuery = useQuery(
-    trpc.item.list.queryOptions({ parentId: null })
+    trpc.item.list.queryOptions({ parentId })
+  );
+
+  // Fetch the parent item for the header title
+  const parentQuery = useQuery(
+    trpc.item.get.queryOptions({ id: parentId })
   );
 
   const items = itemsQuery.data ?? [];
-
-  // Client-side search filter
   const filteredItems = debouncedValue
     ? items.filter((item: { name: string }) =>
         item.name.toLowerCase().includes(debouncedValue.toLowerCase())
@@ -54,12 +59,7 @@ export default function LibraryScreen() {
   if (itemsQuery.isLoading) {
     return (
       <View className="flex-1 bg-background">
-        <SearchBar
-          value={inputValue}
-          onChangeText={setValue}
-          onClear={clear}
-          placeholder="Search library..."
-        />
+        <Stack.Screen options={{ title: "Loading..." }} />
         <LoadingGrid />
       </View>
     );
@@ -67,11 +67,14 @@ export default function LibraryScreen() {
 
   return (
     <View className="flex-1 bg-background">
+      <Stack.Screen
+        options={{ title: parentQuery.data?.item.name ?? "Library" }}
+      />
       <SearchBar
         value={inputValue}
         onChangeText={setValue}
         onClear={clear}
-        placeholder="Search library..."
+        placeholder="Search folder..."
       />
       <GridLayout
         data={filteredItems}
@@ -81,11 +84,11 @@ export default function LibraryScreen() {
         onRefresh={() => itemsQuery.refetch()}
         ListEmptyComponent={
           <EmptyState
-            title={debouncedValue ? "No results" : "Library empty"}
+            title={debouncedValue ? "No results" : "Folder empty"}
             message={
               debouncedValue
                 ? "No items match your search."
-                : "Add items to your library to see them here."
+                : "This folder has no items yet."
             }
           />
         }
