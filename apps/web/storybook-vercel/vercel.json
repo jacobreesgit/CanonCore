@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd ../.. && pnpm --filter @canoncore/web build-storybook",
+  "outputDirectory": "../storybook-static",
+  "installCommand": "cd ../.. && pnpm install",
+  "framework": null
+}

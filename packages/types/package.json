@@ -1,0 +1,21 @@
+{
+  "name": "@canoncore/types",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "peerDependencies": {
+    "@prisma/client": "^7.0.0"
+  },
+  "devDependencies": {
+    "@canoncore/config": "workspace:*"
+  }
+}

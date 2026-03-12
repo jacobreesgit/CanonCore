@@ -33,25 +33,23 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Storybook
-        run: pnpm build-storybook
+        run: pnpm run build-storybook
 
       - name: Install Playwright browsers
-        run: |
-          npx playwright install --with-deps chromium
-          for pw in node_modules/.pnpm/playwright-core@*/node_modules/playwright-core; do
-            node "$pw/cli.js" install chromium
-          done
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium
 
       - name: Run Storybook tests
+        working-directory: apps/web
         run: |
           npx concurrently -k -s first -n "SB,TEST" -c "magenta,cyan" \
             "npx http-server storybook-static --port 6006 --silent" \
-            "npx wait-on tcp:127.0.0.1:6006 && pnpm test-storybook:ci"
+            "npx wait-on tcp:127.0.0.1:6006 && pnpm run test-storybook:ci"
 
       - name: Upload Storybook build
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: storybook-static
-          path: storybook-static/
+          path: apps/web/storybook-static/
           retention-days: 7

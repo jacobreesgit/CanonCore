@@ -1,0 +1,30 @@
+{
+  "name": "@canoncore/utils",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./colour": {
+      "types": "./src/colour-utils.ts",
+      "default": "./src/colour-utils.ts"
+    },
+    "./cursor": {
+      "types": "./src/cursor.ts",
+      "default": "./src/cursor.ts"
+    }
+  },
+  "peerDependencies": {
+    "@prisma/client": "^7.0.0"
+  },
+  "devDependencies": {
+    "@canoncore/config": "workspace:*",
+    "@types/node": "^22"
+  }
+}
