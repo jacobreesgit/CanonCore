@@ -41,6 +41,7 @@ function RootNavigator() {
         <Stack.Screen name="library" options={{ headerShown: false }} />
         <Stack.Screen name="item" options={{ headerShown: false }} />
         <Stack.Screen name="playlist" options={{ headerShown: false }} />
+        <Stack.Screen name="downloads" options={{ headerShown: false }} />
         <Stack.Screen
           name="player"
           options={{

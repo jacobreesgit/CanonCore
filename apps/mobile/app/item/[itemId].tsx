@@ -5,10 +5,11 @@ import { ActivityIndicator } from "react-native";
 import { Stack } from "expo-router/stack";
 import { useTRPC } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
-import { getArtworkUrl, getTmdbBackdropUrl } from "@/lib/image-url";
+import { getArtworkUrl, getTmdbBackdropUrl, getTmdbPosterUrl } from "@/lib/image-url";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faPlay } from "@fortawesome/free-solid-svg-icons";
 import { useAppDispatch } from "@canoncore/store/hooks";
+import { DownloadButton } from "@/components/downloads/download-button";
 import { playTrack, playQueue } from "@canoncore/store/playback";
 import { buildMobileQueueTrack } from "@/lib/queue-helpers";
 
@@ -216,22 +217,51 @@ export default function ItemDetailScreen() {
           {/* Action buttons */}
           <View className="flex-row gap-2">
             {hasMedia ? (
-              <Pressable
-                onPress={() => {
+              <>
+                <Pressable
+                  onPress={() => {
+                    const primaryMedia = serializedFiles.find(
+                      (f) => f.fileType === "MEDIA" && f.isPrimary
+                    );
+                    const firstMedia = serializedFiles.find((f) => f.fileType === "MEDIA");
+                    const mediaFile = primaryMedia ?? firstMedia;
+                    if (mediaFile) {
+                      handleFilePress(mediaFile);
+                    }
+                  }}
+                  className="flex-row items-center gap-2 bg-primary rounded-lg px-5 py-2.5"
+                >
+                  <FontAwesomeIcon icon={faPlay} size={14} color="#ffffff" />
+                  <Text className="text-white text-sm font-semibold">Play</Text>
+                </Pressable>
+                {(() => {
                   const primaryMedia = serializedFiles.find(
                     (f) => f.fileType === "MEDIA" && f.isPrimary
                   );
                   const firstMedia = serializedFiles.find((f) => f.fileType === "MEDIA");
-                  const mediaFile = primaryMedia ?? firstMedia;
-                  if (mediaFile) {
-                    handleFilePress(mediaFile);
-                  }
-                }}
-                className="flex-row items-center gap-2 bg-primary rounded-lg px-5 py-2.5"
-              >
-                <FontAwesomeIcon icon={faPlay} size={14} color="#ffffff" />
-                <Text className="text-white text-sm font-semibold">Play</Text>
-              </Pressable>
+                  const primaryMediaFile = primaryMedia ?? firstMedia;
+                  if (!primaryMediaFile) return null;
+                  const posterUrl = item.tmdbPosterPath
+                    ? getTmdbPosterUrl(item.tmdbPosterPath)
+                    : heroFile
+                      ? getArtworkUrl(heroFile.id)
+                      : null;
+                  return (
+                    <DownloadButton
+                      fileId={primaryMediaFile.id}
+                      downloadInput={{
+                        fileId: primaryMediaFile.id,
+                        itemId: itemId,
+                        filename: primaryMediaFile.filename,
+                        mimeType: primaryMediaFile.mimeType ?? "application/octet-stream",
+                        itemName: item.name,
+                        posterUrl: posterUrl,
+                        totalBytes: primaryMediaFile.size ?? 0,
+                      }}
+                    />
+                  );
+                })()}
+              </>
             ) : null}
             <WatchStatusButton itemId={itemId} initialIsWatched={isWatched} />
             <ItemActionsMenu
@@ -260,6 +290,14 @@ export default function ItemDetailScreen() {
           runtime={null}
           files={serializedFiles}
           onFilePress={handleFilePress}
+          itemName={item.name}
+          posterUrl={
+            item.tmdbPosterPath
+              ? getTmdbPosterUrl(item.tmdbPosterPath)
+              : heroFile
+                ? getArtworkUrl(heroFile.id)
+                : null
+          }
         />
       </ScrollView>
 

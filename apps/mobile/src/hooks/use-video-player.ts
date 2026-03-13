@@ -3,7 +3,6 @@ import {
   useVideoPlayer as useExpoVideoPlayer,
 } from "expo-video";
 import { useEvent, useEventListener } from "expo";
-import { getStreamUrl } from "@/lib/image-url";
 
 interface UseVideoPlayerOptions {
   onPlayToEnd?: () => void;
@@ -33,10 +32,14 @@ export function useVideoPlayerController(options?: UseVideoPlayerOptions) {
     onPlayToEndRef.current?.();
   });
 
+  /**
+   * Load a source URL into the video player.
+   * Accepts a remote https:// URL or a local file:// URI
+   * (for offline-downloaded media).
+   */
   const loadSource = useCallback(
-    async (fileId: string, startPosition?: number) => {
-      const url = getStreamUrl(fileId);
-      await player.replaceAsync({ uri: url });
+    async (source: string, startPosition?: number) => {
+      await player.replaceAsync({ uri: source });
       if (startPosition && startPosition > 0) {
         player.currentTime = startPosition;
       }
