@@ -1,11 +1,16 @@
 import { useState } from "react";
 import { useLocalSearchParams } from "expo-router";
-import { View, Text, ScrollView } from "@/tw";
+import { View, Text, ScrollView, Pressable } from "@/tw";
 import { ActivityIndicator } from "react-native";
 import { Stack } from "expo-router/stack";
 import { useTRPC } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
 import { getArtworkUrl, getTmdbBackdropUrl } from "@/lib/image-url";
+import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
+import { faPlay } from "@fortawesome/free-solid-svg-icons";
+import { useAppDispatch } from "@canoncore/store/hooks";
+import { playTrack, playQueue } from "@canoncore/store/playback";
+import { buildMobileQueueTrack } from "@/lib/queue-helpers";
 
 import { ItemDetailHero } from "@/components/item-detail/item-detail-hero";
 import { ItemDetailTabs } from "@/components/item-detail/item-detail-tabs";
@@ -20,6 +25,8 @@ import type { TmdbResult } from "@/components/tmdb/tmdb-search-sheet";
 export default function ItemDetailScreen() {
   const { itemId } = useLocalSearchParams<{ itemId: string }>();
   const trpc = useTRPC();
+
+  const appDispatch = useAppDispatch();
 
   // Sheet visibility state
   const [editVisible, setEditVisible] = useState(false);
@@ -116,6 +123,50 @@ export default function ItemDetailScreen() {
     height: f.height ?? null,
   }));
 
+  const hasMedia = serializedFiles.some((f) => f.fileType === "MEDIA");
+
+  // Handle file press — play media files
+  const handleFilePress = (
+    file: { id: string; filename: string; fileType: string; mimeType: string | null; durationMs: number | null }
+  ) => {
+    if (file.fileType !== "MEDIA") return;
+
+    const heroFile = serializedFiles.find((f) => f.isHero);
+
+    const track = buildMobileQueueTrack({
+      fileId: file.id,
+      itemId: itemId,
+      filename: file.filename,
+      mimeType: file.mimeType,
+      itemName: item.name,
+      tmdbPosterPath: item.tmdbPosterPath,
+      heroArtworkId: heroFile?.id ?? null,
+      durationMs: file.durationMs,
+      playbackPosition: null,
+    });
+
+    const mediaFiles = serializedFiles.filter((f) => f.fileType === "MEDIA");
+    if (mediaFiles.length > 1) {
+      const tracks = mediaFiles.map((f) =>
+        buildMobileQueueTrack({
+          fileId: f.id,
+          itemId: itemId,
+          filename: f.filename,
+          mimeType: f.mimeType,
+          itemName: item.name,
+          tmdbPosterPath: item.tmdbPosterPath,
+          heroArtworkId: heroFile?.id ?? null,
+          durationMs: f.durationMs,
+          playbackPosition: null,
+        })
+      );
+      const startIndex = mediaFiles.findIndex((f) => f.id === file.id);
+      appDispatch(playQueue({ tracks, startIndex: Math.max(startIndex, 0) }));
+    } else {
+      appDispatch(playTrack(track));
+    }
+  };
+
   // Resolve backdrop URL: hero artwork > TMDB backdrop
   const heroFile = allFiles.find((f) => f.isHero);
   const backdropUrl = heroFile
@@ -164,6 +215,24 @@ export default function ItemDetailScreen() {
         >
           {/* Action buttons */}
           <View className="flex-row gap-2">
+            {hasMedia ? (
+              <Pressable
+                onPress={() => {
+                  const primaryMedia = serializedFiles.find(
+                    (f) => f.fileType === "MEDIA" && f.isPrimary
+                  );
+                  const firstMedia = serializedFiles.find((f) => f.fileType === "MEDIA");
+                  const mediaFile = primaryMedia ?? firstMedia;
+                  if (mediaFile) {
+                    handleFilePress(mediaFile);
+                  }
+                }}
+                className="flex-row items-center gap-2 bg-primary rounded-lg px-5 py-2.5"
+              >
+                <FontAwesomeIcon icon={faPlay} size={14} color="#ffffff" />
+                <Text className="text-white text-sm font-semibold">Play</Text>
+              </Pressable>
+            ) : null}
             <WatchStatusButton itemId={itemId} initialIsWatched={isWatched} />
             <ItemActionsMenu
               itemId={itemId}
@@ -190,6 +259,7 @@ export default function ItemDetailScreen() {
           year={null}
           runtime={null}
           files={serializedFiles}
+          onFilePress={handleFilePress}
         />
       </ScrollView>
 

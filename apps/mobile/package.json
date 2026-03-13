@@ -2,7 +2,7 @@
   "name": "@canoncore/mobile",
   "version": "0.0.0",
   "private": true,
-  "main": "expo-router/entry",
+  "main": "./index.js",
   "scripts": {
     "dev": "expo start",
     "dev:ios": "expo start --ios",
@@ -20,6 +20,7 @@
     "@fortawesome/fontawesome-svg-core": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-native-fontawesome": "^0.3.2",
+    "@react-native-community/slider": "5.0.1",
     "@reduxjs/toolkit": "^2.8.0",
     "@tanstack/react-query": "^5.75.0",
     "@trpc/client": "^11.1.0",
@@ -33,6 +34,7 @@
     "expo-secure-store": "~15.0.8",
     "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
+    "expo-video": "~3.0.16",
     "nativewind": "5.0.0-preview.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -43,6 +45,7 @@
     "react-native-reanimated": "~4.1.6",
     "react-native-safe-area-context": "~5.6.2",
     "react-native-screens": "~4.16.0",
+    "react-native-track-player": "^4.1.2",
     "redux-persist": "^6.0.0",
     "superjson": "^2.2.2"
   },

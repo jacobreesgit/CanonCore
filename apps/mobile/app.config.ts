@@ -32,6 +32,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     "expo-router",
     "expo-secure-store",
     ["expo-splash-screen", { backgroundColor: "#0a0a0a", image: "./assets/splash-icon.png", resizeMode: "contain" }],
+    [
+      "expo-video",
+      {
+        supportsBackgroundPlayback: true,
+        supportsPictureInPicture: true,
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,
