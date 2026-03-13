@@ -29,6 +29,10 @@ interface ItemDetailTabsProps {
   runtime: string | null;
   files: FileItem[];
   onFilePress?: (file: FileItem) => void;
+  /** Item name for download buttons in files list */
+  itemName?: string;
+  /** Poster URL for download buttons in files list */
+  posterUrl?: string | null;
 }
 
 const TABS: { key: TabKey; label: string }[] = [
@@ -47,6 +51,8 @@ export function ItemDetailTabs({
   runtime,
   files,
   onFilePress,
+  itemName,
+  posterUrl,
 }: ItemDetailTabsProps) {
   // Default to "contents" if item has children, else "about"
   const [activeTab, setActiveTab] = useState<TabKey>(
@@ -92,7 +98,13 @@ export function ItemDetailTabs({
             runtime={runtime}
           />
         ) : (
-          <FilesList files={files} onFilePress={onFilePress} />
+          <FilesList
+            files={files}
+            onFilePress={onFilePress}
+            itemId={itemId}
+            itemName={itemName}
+            posterUrl={posterUrl}
+          />
         )}
       </View>
     </View>

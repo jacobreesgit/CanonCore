@@ -8,6 +8,7 @@ import {
   faCircleCheck,
 } from "@fortawesome/free-solid-svg-icons";
 import { formatDuration } from "@canoncore/utils/media";
+import { DownloadButton } from "@/components/downloads/download-button";
 
 interface FileItem {
   id: string;
@@ -25,6 +26,10 @@ interface FileItem {
 interface FilesListProps {
   files: FileItem[];
   onFilePress?: (file: FileItem) => void;
+  /** Item context for download buttons */
+  itemId?: string;
+  itemName?: string;
+  posterUrl?: string | null;
 }
 
 function getFileIcon(file: FileItem) {
@@ -43,7 +48,7 @@ function formatFileSize(bytes: number | null): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 
-export function FilesList({ files, onFilePress }: FilesListProps) {
+export function FilesList({ files, onFilePress, itemId, itemName, posterUrl }: FilesListProps) {
   const mediaFiles = files.filter((f) => f.fileType === "MEDIA");
   const artworkFiles = files.filter((f) => f.fileType === "ARTWORK");
   const subtitleFiles = files.filter((f) => f.fileType === "SUBTITLE");
@@ -81,6 +86,21 @@ export function FilesList({ files, onFilePress }: FilesListProps) {
           ) : null}
         </View>
       </View>
+      {file.fileType === "MEDIA" && itemId && itemName ? (
+        <DownloadButton
+          fileId={file.id}
+          downloadInput={{
+            fileId: file.id,
+            itemId: itemId,
+            filename: file.filename,
+            mimeType: file.mimeType ?? "application/octet-stream",
+            itemName: itemName,
+            posterUrl: posterUrl ?? null,
+            totalBytes: file.size ?? 0,
+          }}
+          variant="compact"
+        />
+      ) : null}
       {file.isPrimary ? (
         <FontAwesomeIcon icon={faCircleCheck} size={14} color="#22c55e" />
       ) : null}

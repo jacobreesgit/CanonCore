@@ -5,6 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useAppSelector } from "@canoncore/store/hooks";
 import { selectCurrentTrack } from "@canoncore/store/selectors";
 import { usePlayback } from "@/components/providers/playback-provider";
+import { useDownloadManager } from "@/components/providers/download-manager-provider";
 import TrackPlayer from "react-native-track-player";
 
 const SAVE_INTERVAL_MS = 30_000;
@@ -17,6 +18,7 @@ export function usePositionPersistence() {
   const trpc = useTRPC();
   const currentTrack = useAppSelector(selectCurrentTrack);
   const { activePlayer, videoPlayer } = usePlayback();
+  const downloadManager = useDownloadManager();
 
   const savePosition = useMutation(
     trpc.itemFile.updatePlaybackPosition.mutationOptions()
@@ -55,6 +57,9 @@ export function usePositionPersistence() {
     []
   );
 
+  const downloadManagerRef = useRef(downloadManager);
+  downloadManagerRef.current = downloadManager;
+
   const doSave = useCallback(async () => {
     const track = currentTrackRef.current;
     if (!track) return;
@@ -69,6 +74,12 @@ export function usePositionPersistence() {
       return;
     }
 
+    // Update LRU timestamp for offline downloads (proves user actually watched/listened)
+    downloadManagerRef.current.markPlayed(track.fileId).catch(() => {
+      // Non-critical — file may not be downloaded
+    });
+
+    // Save position to server (silently fails when offline, succeeds next interval)
     savePositionRef.current.mutate({
       fileId: track.fileId,
       position: pos.position,
