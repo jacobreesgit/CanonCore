@@ -7,10 +7,11 @@ import { store, persistor } from "@/lib/store";
 import { TRPCReactProvider } from "@/lib/trpc";
 import { SessionProvider } from "@/ctx";
 import { DatabaseProvider } from "./providers/database-provider";
+import { DownloadManagerProvider } from "./providers/download-manager-provider";
 
 /**
  * All app-level providers combined.
- * Order: GestureHandler → SafeArea → Redux → Auth → tRPC → Database (innermost)
+ * Order: GestureHandler → SafeArea → Redux → Auth → tRPC → Database → DownloadManager
  */
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -21,7 +22,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <SessionProvider>
               <TRPCReactProvider>
                 <DatabaseProvider>
-                  {children}
+                  <DownloadManagerProvider>
+                    {children}
+                  </DownloadManagerProvider>
                 </DatabaseProvider>
               </TRPCReactProvider>
             </SessionProvider>
