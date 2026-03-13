@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useDownloadDAO } from "@/components/providers/database-provider";
 import { useDownloadManager } from "@/components/providers/download-manager-provider";
-import type { DownloadRecord } from "@/db/schema";
+import type { DownloadRecord, DownloadStatus } from "@/db/schema";
 
 interface UseDownloadsResult {
   /** All downloads, sorted by status (active first) then date */
@@ -52,7 +52,7 @@ export function useDownloads(): UseDownloadsResult {
                 ...d,
                 bytesDownloaded: progress.bytesDownloaded,
                 totalBytes: progress.totalBytes,
-                status: progress.status,
+                status: progress.status as DownloadStatus,
               }
             : d
         )

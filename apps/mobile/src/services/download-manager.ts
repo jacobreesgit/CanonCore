@@ -1,4 +1,4 @@
-import * as FileSystem from "expo-file-system";
+import { File, Directory, Paths } from "expo-file-system";
 import { DownloadDAO, type CreateDownloadInput } from "@/db/download-dao";
 import type { DownloadRecord, DownloadStatus } from "@/db/schema";
 import { getStreamUrl } from "@/lib/image-url";
@@ -14,7 +14,7 @@ export interface DownloadProgress {
 
 type ProgressCallback = (progress: DownloadProgress) => void;
 
-const DOWNLOADS_DIR = `${FileSystem.documentDirectory}downloads/`;
+const DOWNLOADS_DIR_NAME = "downloads";
 
 /** Default storage limit: 5GB */
 const DEFAULT_STORAGE_LIMIT = 5 * 1024 * 1024 * 1024;
@@ -24,28 +24,26 @@ const DEFAULT_STORAGE_LIMIT = 5 * 1024 * 1024 * 1024;
  * - One active download at a time (FIFO)
  * - Reports progress via callbacks
  * - Stores files in documentDirectory/downloads/
- * - Uses createDownloadResumable for streaming to disk (no OOM)
+ * - Uses File.downloadFileAsync for streaming to disk (no OOM)
  * - Handles resume after app restart
  */
 export class DownloadManager {
   private dao: DownloadDAO;
   private isProcessing = false;
   private listeners: Set<ProgressCallback> = new Set();
-  private currentResumable: FileSystem.DownloadResumable | null = null;
   private cancelledFileIds = new Set<string>();
   private storageLimitBytes = DEFAULT_STORAGE_LIMIT;
+  private downloadsDir: Directory;
 
   constructor(dao: DownloadDAO) {
     this.dao = dao;
+    this.downloadsDir = new Directory(Paths.document, DOWNLOADS_DIR_NAME);
   }
 
   /** Ensure the downloads directory exists. */
-  private async ensureDirectory(): Promise<void> {
-    const info = await FileSystem.getInfoAsync(DOWNLOADS_DIR);
-    if (!info.exists) {
-      await FileSystem.makeDirectoryAsync(DOWNLOADS_DIR, {
-        intermediates: true,
-      });
+  private ensureDirectory(): void {
+    if (!this.downloadsDir.exists) {
+      this.downloadsDir.create({ intermediates: true });
     }
   }
 
@@ -83,29 +81,23 @@ export class DownloadManager {
 
   /**
    * Cancel and remove a download.
-   * Aborts active download if it's the current one, deletes local file.
+   * Marks active download as cancelled; deletes local file.
    */
   async remove(fileId: string): Promise<void> {
     const record = await this.dao.getByFileId(fileId);
     if (!record) return;
 
-    // Abort if currently downloading
-    if (record.status === "downloading" && this.currentResumable) {
+    // Mark as cancelled if currently downloading
+    if (record.status === "downloading") {
       this.cancelledFileIds.add(fileId);
-      try {
-        await this.currentResumable.pauseAsync();
-      } catch {
-        // May fail if already completed
-      }
-      this.currentResumable = null;
     }
 
     // Delete local file if it exists
     if (record.localPath) {
       try {
-        const info = await FileSystem.getInfoAsync(record.localPath);
-        if (info.exists) {
-          await FileSystem.deleteAsync(record.localPath, { idempotent: true });
+        const file = new File(record.localPath);
+        if (file.exists) {
+          file.delete();
         }
       } catch {
         // File may already be deleted
@@ -129,25 +121,12 @@ export class DownloadManager {
 
   /** Remove all downloads and delete all local files. */
   async removeAll(): Promise<void> {
-    // Abort current download
-    if (this.currentResumable) {
-      try {
-        await this.currentResumable.pauseAsync();
-      } catch {
-        // Ignore
-      }
-      this.currentResumable = null;
-    }
     this.isProcessing = false;
 
-    // Delete all local files
+    // Delete the entire downloads directory and recreate it
     try {
-      const info = await FileSystem.getInfoAsync(DOWNLOADS_DIR);
-      if (info.exists) {
-        await FileSystem.deleteAsync(DOWNLOADS_DIR, { idempotent: true });
-        await FileSystem.makeDirectoryAsync(DOWNLOADS_DIR, {
-          intermediates: true,
-        });
+      if (this.downloadsDir.exists) {
+        this.downloadsDir.delete();
       }
     } catch {
       // Best effort
@@ -164,8 +143,8 @@ export class DownloadManager {
     }
 
     // Verify file still exists on disk
-    const info = await FileSystem.getInfoAsync(record.localPath);
-    if (!info.exists) {
+    const file = new File(record.localPath);
+    if (!file.exists) {
       await this.dao.delete(fileId);
       return null;
     }
@@ -200,9 +179,10 @@ export class DownloadManager {
       // Delete local file
       if (candidate.localPath) {
         try {
-          await FileSystem.deleteAsync(candidate.localPath, {
-            idempotent: true,
-          });
+          const file = new File(candidate.localPath);
+          if (file.exists) {
+            file.delete();
+          }
         } catch {
           // Best effort
         }
@@ -243,14 +223,14 @@ export class DownloadManager {
   /**
    * Download a single file to local storage.
    *
-   * Uses createDownloadResumable from expo-file-system which:
+   * Uses File.downloadFileAsync from expo-file-system v19 which:
    * - Streams directly to disk (no OOM for large files)
    * - Supports custom headers (Authorization: Bearer)
-   * - Reports incremental progress via callback
-   * - Can be paused/cancelled
+   * - On iOS: atomic (temp file moved on success)
+   * - On Android: streams directly to target
    */
   private async downloadFile(record: DownloadRecord): Promise<void> {
-    await this.ensureDirectory();
+    this.ensureDirectory();
 
     // Evict old downloads if needed
     await this.evictIfNeeded(record.totalBytes);
@@ -271,66 +251,34 @@ export class DownloadManager {
       // Generate a unique local filename using fileId
       const extension = record.filename.split(".").pop() ?? "bin";
       const localFilename = `${record.fileId}.${extension}`;
-      const targetPath = `${DOWNLOADS_DIR}${localFilename}`;
+      const targetFile = new File(this.downloadsDir, localFilename);
 
-      // Use createDownloadResumable for streaming to disk with progress
-      const resumable = FileSystem.createDownloadResumable(
-        url,
-        targetPath,
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        },
-        (downloadProgress) => {
-          // Report progress to listeners
-          this.dao
-            .updateProgress(
-              record.fileId,
-              downloadProgress.totalBytesWritten,
-              downloadProgress.totalBytesExpectedToWrite
-            )
-            .catch(() => {
-              // Non-critical — UI will still get the callback
-            });
+      // Download using File.downloadFileAsync (streams to disk, no OOM)
+      const downloaded = await File.downloadFileAsync(url, targetFile, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        idempotent: true,
+      });
 
-          this.notifyListeners({
-            fileId: record.fileId,
-            bytesDownloaded: downloadProgress.totalBytesWritten,
-            totalBytes: downloadProgress.totalBytesExpectedToWrite,
-            status: "downloading",
-          });
-        }
-      );
-
-      this.currentResumable = resumable;
-
-      const result = await resumable.downloadAsync();
-
-      // Check if cancelled via remove()
+      // Check if cancelled via remove() during download
       if (this.cancelledFileIds.has(record.fileId)) {
         this.cancelledFileIds.delete(record.fileId);
-        // Clean up partial file
+        // Clean up downloaded file
         try {
-          await FileSystem.deleteAsync(targetPath, { idempotent: true });
+          if (downloaded.exists) {
+            downloaded.delete();
+          }
         } catch {
           // Ignore
         }
         return;
       }
 
-      if (!result || result.status !== 200) {
-        throw new Error(
-          `Download failed: HTTP ${result?.status ?? "unknown"}`
-        );
-      }
-
       // Get actual file size from disk
-      const fileInfo = await FileSystem.getInfoAsync(targetPath);
-      const fileSize =
-        fileInfo.exists && "size" in fileInfo ? fileInfo.size : record.totalBytes;
+      const fileSize = downloaded.size || record.totalBytes;
 
       // Mark complete in DB
       await this.dao.updateProgress(record.fileId, fileSize, fileSize);
-      await this.dao.markComplete(record.fileId, targetPath);
+      await this.dao.markComplete(record.fileId, downloaded.uri);
 
       this.notifyListeners({
         fileId: record.fileId,
@@ -353,8 +301,6 @@ export class DownloadManager {
         totalBytes: record.totalBytes,
         status: "failed",
       });
-    } finally {
-      this.currentResumable = null;
     }
   }
 

@@ -51,7 +51,7 @@ export function useDownload(fileId: string): UseDownloadResult {
           ...prev,
           bytesDownloaded: progress.bytesDownloaded,
           totalBytes: progress.totalBytes,
-          status: progress.status,
+          status: progress.status as DownloadStatus,
         };
       });
 
