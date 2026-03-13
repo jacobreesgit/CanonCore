@@ -1,8 +1,11 @@
 import { useState, useCallback, useEffect } from "react";
 import { View, Text, Pressable } from "@/tw";
+import { Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faChevronDown, faListUl } from "@fortawesome/free-solid-svg-icons";
+import { faChromecast } from "@fortawesome/free-brands-svg-icons";
+import type { IconProp } from "@fortawesome/fontawesome-svg-core";
 import { Stack } from "expo-router/stack";
 import { router } from "expo-router";
 import { useAppSelector } from "@canoncore/store/hooks";
@@ -15,12 +18,17 @@ import { VideoViewport } from "@/components/media/video-viewport";
 import { AudioArtwork } from "@/components/media/audio-artwork";
 import { PlaybackControls } from "@/components/media/playback-controls";
 import { QueuePanel } from "@/components/media/queue-panel";
+import { CastButtonWrapper } from "@/components/cast/cast-button";
+import { CastControls } from "@/components/cast/cast-controls";
+import { useCastPlayback } from "@/hooks/use-cast-playback";
+import { VideoAirPlayButton as AirPlayButton } from "expo-video";
 
 export default function ExpandedPlayerScreen() {
   const currentTrack = useAppSelector(selectCurrentTrack);
   const isVideo = useAppSelector(selectIsVideoFile);
   const queue = useAppSelector(selectQueue);
   const [queueVisible, setQueueVisible] = useState(false);
+  const { isCasting, deviceName } = useCastPlayback();
 
   const handleDismiss = useCallback(() => {
     router.back();
@@ -56,7 +64,7 @@ export default function ExpandedPlayerScreen() {
         />
       ) : (
         <View className="flex-1">
-          {/* Top bar: dismiss + queue toggle */}
+          {/* Top bar: dismiss + AirPlay + Cast + queue toggle */}
           <View className="flex-row items-center justify-between px-4 py-2">
             <Pressable onPress={handleDismiss} hitSlop={8}>
               <FontAwesomeIcon
@@ -68,18 +76,39 @@ export default function ExpandedPlayerScreen() {
             <Text className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
               Now Playing
             </Text>
-            <Pressable onPress={toggleQueue} hitSlop={8}>
-              <FontAwesomeIcon
-                icon={faListUl}
-                size={18}
-                color={queue.length > 0 ? "#ffffff" : "rgba(255, 255, 255, 0.3)"}
-              />
-            </Pressable>
+            <View className="flex-row items-center gap-3">
+              {Platform.OS === "ios" ? (
+                <AirPlayButton
+                  style={{ width: 22, height: 22 }}
+                  tint="#ffffff"
+                  prioritizeVideoDevices
+                />
+              ) : null}
+              <CastButtonWrapper size={22} tintColor="#ffffff" />
+              <Pressable onPress={toggleQueue} hitSlop={8}>
+                <FontAwesomeIcon
+                  icon={faListUl}
+                  size={18}
+                  color={queue.length > 0 ? "#ffffff" : "rgba(255, 255, 255, 0.3)"}
+                />
+              </Pressable>
+            </View>
           </View>
 
           {/* Media viewport */}
           <View className="flex-1 justify-center">
-            {isVideo ? (
+            {isCasting ? (
+              <View className="flex-1 items-center justify-center gap-4">
+                <FontAwesomeIcon
+                  icon={faChromecast as IconProp}
+                  size={48}
+                  color="rgba(255, 255, 255, 0.3)"
+                />
+                <Text className="text-muted-foreground text-sm">
+                  Casting to {deviceName}
+                </Text>
+              </View>
+            ) : isVideo ? (
               <VideoViewport variant="expanded" />
             ) : (
               <AudioArtwork posterUrl={currentTrack.posterUrl} />
@@ -96,8 +125,12 @@ export default function ExpandedPlayerScreen() {
             </Text>
           </View>
 
-          {/* Transport controls */}
-          <PlaybackControls />
+          {/* Transport controls — cast or local */}
+          {isCasting ? (
+            <CastControls variant="expanded" deviceName={deviceName} />
+          ) : (
+            <PlaybackControls />
+          )}
 
           {/* Bottom spacer for safe area */}
           <View className="h-8" />

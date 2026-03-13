@@ -18,6 +18,7 @@ import { toRNTPRepeatMode, initTrackPlayer } from "@/lib/track-player";
 import { useVideoPlayerController } from "./use-video-player";
 import { getOfflineAwareStreamUrl } from "@/lib/offline-url";
 import { useDownloadManager } from "@/components/providers/download-manager-provider";
+import { useCastSession } from "react-native-google-cast";
 
 /**
  * Build an RNTP Track from a Redux QueueTrack.
@@ -49,6 +50,8 @@ export function usePlaybackController() {
   const repeat = useAppSelector(selectRepeat);
   const shuffle = useAppSelector(selectShuffle);
   const downloadManager = useDownloadManager();
+  const castSession = useCastSession();
+  const isCasting = !!castSession;
 
   // Track what native players currently have loaded
   const loadedTrackRef = useRef<string | null>(null);
@@ -103,6 +106,13 @@ export function usePlaybackController() {
   useEffect(() => {
     if (syncingFromRNTPRef.current) {
       syncingFromRNTPRef.current = false;
+      return;
+    }
+
+    // Don't load media locally when casting — cast hook handles remote playback
+    if (isCasting) {
+      TrackPlayer.pause().catch(() => {});
+      videoPlayer.pause();
       return;
     }
 
@@ -181,7 +191,7 @@ export function usePlaybackController() {
     }
 
     loadedTrackRef.current = currentTrack.fileId;
-  }, [currentTrack, queue, queueIndex, repeat, shuffle, videoPlayer, dispatch, shuffleQueue, downloadManager]);
+  }, [currentTrack, queue, queueIndex, repeat, shuffle, videoPlayer, dispatch, shuffleQueue, downloadManager, isCasting]);
 
   // Listen to RNTP events: track change + queue end
   useTrackPlayerEvents(

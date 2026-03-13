@@ -17,6 +17,9 @@ import { usePlayback } from "@/components/providers/playback-provider";
 import { MiniPlayerProgress } from "./mini-player-progress";
 import { useIsPlaying } from "react-native-track-player";
 import { router } from "expo-router";
+import { CastButtonWrapper } from "@/components/cast/cast-button";
+import { CastControls } from "@/components/cast/cast-controls";
+import { useCastPlayback } from "@/hooks/use-cast-playback";
 
 export function MiniPlayer() {
   const dispatch = useAppDispatch();
@@ -24,6 +27,7 @@ export function MiniPlayer() {
   const hasNext = useAppSelector(selectHasNext);
   const { activePlayer, play, pause, videoPlayer } = usePlayback();
 
+  const { isCasting, deviceName } = useCastPlayback();
   const { playing: audioPlaying } = useIsPlaying();
   const isPlaying =
     activePlayer === "audio" ? audioPlaying : videoPlayer.isPlaying;
@@ -90,38 +94,45 @@ export function MiniPlayer() {
             {currentTrack.itemName}
           </Text>
           <Text className="text-muted-foreground text-xs" numberOfLines={1}>
-            {currentTrack.filename}
+            {isCasting ? `Casting to ${deviceName}` : currentTrack.filename}
           </Text>
         </View>
 
-        {/* Controls */}
-        <View className="flex-row items-center gap-4">
-          <Pressable
-            onPress={handlePlayPause}
-            hitSlop={8}
-            className="items-center justify-center"
-          >
-            <FontAwesomeIcon
-              icon={isPlaying ? faPause : faPlay}
-              size={18}
-              color="#ffffff"
-            />
-          </Pressable>
-
-          {hasNext ? (
+        {/* Controls — cast or local */}
+        {isCasting ? (
+          <CastControls variant="mini" deviceName={deviceName} />
+        ) : (
+          <View className="flex-row items-center gap-4">
             <Pressable
-              onPress={handleSkipNext}
+              onPress={handlePlayPause}
               hitSlop={8}
               className="items-center justify-center"
             >
               <FontAwesomeIcon
-                icon={faForwardStep}
-                size={16}
+                icon={isPlaying ? faPause : faPlay}
+                size={18}
                 color="#ffffff"
               />
             </Pressable>
-          ) : null}
-        </View>
+
+            {hasNext ? (
+              <Pressable
+                onPress={handleSkipNext}
+                hitSlop={8}
+                className="items-center justify-center"
+              >
+                <FontAwesomeIcon
+                  icon={faForwardStep}
+                  size={16}
+                  color="#ffffff"
+                />
+              </Pressable>
+            ) : null}
+          </View>
+        )}
+
+        {/* Cast button — visible when devices available */}
+        <CastButtonWrapper size={20} tintColor="rgba(255, 255, 255, 0.7)" />
       </Pressable>
     </View>
   );

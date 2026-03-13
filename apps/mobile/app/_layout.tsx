@@ -1,10 +1,11 @@
 import "../src/global.css";
 
-import { View } from "react-native";
+import { View, Platform } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
+import { CastContext, PlayServicesState } from "react-native-google-cast";
 import { Providers } from "@/components/providers";
 import { PlaybackProvider } from "@/components/providers/playback-provider";
 import { useSession } from "@/ctx";
@@ -62,6 +63,17 @@ function RootNavigator() {
 
 function RootContent() {
   const currentTrack = useAppSelector(selectCurrentTrack);
+
+  // Check Google Play Services availability for Cast (Android only)
+  useEffect(() => {
+    if (Platform.OS === "android") {
+      CastContext.getPlayServicesState().then((state) => {
+        if (state && state !== PlayServicesState.SUCCESS) {
+          console.warn("Google Play Services not available for Cast:", state);
+        }
+      });
+    }
+  }, []);
 
   return (
     <PlaybackProvider>

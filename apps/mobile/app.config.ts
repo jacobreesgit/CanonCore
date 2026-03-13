@@ -16,6 +16,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     config: {
       usesNonExemptEncryption: false,
     },
+    associatedDomains: ["applinks:canoncore.com"],
   },
   android: {
     adaptiveIcon: {
@@ -23,6 +24,20 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       backgroundColor: "#0a0a0a",
     },
     package: "com.canoncore.mobile",
+    intentFilters: [
+      {
+        action: "VIEW",
+        autoVerify: true,
+        data: [
+          {
+            scheme: "https",
+            host: "canoncore.com",
+            pathPrefix: "/u/",
+          },
+        ],
+        category: ["BROWSABLE", "DEFAULT"],
+      },
+    ],
   },
   web: {
     bundler: "metro",
@@ -38,6 +53,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       {
         supportsBackgroundPlayback: true,
         supportsPictureInPicture: true,
+      },
+    ],
+    [
+      "react-native-google-cast",
+      {
+        iosStartDiscoveryAfterFirstTapOnCastButton: true,
       },
     ],
   ],
