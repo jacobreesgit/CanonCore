@@ -1,0 +1,22 @@
+# Subflow: Sign out from any screen
+# Assumes the app is on a tab screen with Profile tab access
+
+appId: com.canoncore.mobile
+---
+# Navigate to profile tab
+- tapOn:
+    text: "Profile"
+
+# Open settings / sign out
+- tapOn:
+    text: "Sign Out"
+
+# Confirm sign out if there's a confirmation dialog
+- runFlow:
+    when:
+      visible: "Are you sure"
+    commands:
+      - tapOn: "Confirm"
+
+# Verify we're back on the sign-in screen
+- assertVisible: "Sign In"

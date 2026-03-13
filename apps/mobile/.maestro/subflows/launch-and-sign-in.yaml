@@ -1,0 +1,30 @@
+# Subflow: Launch app and sign in with test credentials
+# Usage: - runFlow: subflows/launch-and-sign-in.yaml
+
+appId: com.canoncore.mobile
+---
+- launchApp:
+    clearState: true
+
+# Wait for the sign-in screen to appear
+- assertVisible: "Sign In"
+
+# Enter email
+- tapOn:
+    id: "email-input"
+- inputText: ${TEST_EMAIL}
+
+# Enter password
+- tapOn:
+    id: "password-input"
+- inputText: ${TEST_PASSWORD}
+
+# Tap sign in button
+- tapOn:
+    text: "Sign In"
+    index: 1
+
+# Wait for home screen to load
+- assertVisible:
+    text: "Home"
+    enabled: true

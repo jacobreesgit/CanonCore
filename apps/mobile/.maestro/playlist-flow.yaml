@@ -1,0 +1,67 @@
+# E2E Flow: Playlist CRUD (create, add items, browse)
+appId: com.canoncore.mobile
+name: Playlist Flow
+tags:
+  - regression
+  - playlist
+---
+# Prerequisites: sign in
+- runFlow: subflows/launch-and-sign-in.yaml
+
+# Navigate to Library
+- tapOn:
+    text: "Library"
+
+# Create a new playlist
+- tapOn:
+    id: "create-playlist-button"
+
+# Fill in playlist name
+- tapOn:
+    id: "playlist-name-input"
+- inputText: "E2E Test Playlist"
+
+# Set visibility to private
+- tapOn:
+    text: "Private"
+
+# Confirm creation
+- tapOn:
+    text: "Create"
+
+# Verify playlist was created
+- assertVisible: "E2E Test Playlist"
+- takeScreenshot: screenshots/playlist-created
+
+# Open the playlist
+- tapOn:
+    text: "E2E Test Playlist"
+
+# Verify playlist detail screen
+- assertVisible:
+    id: "playlist-detail-screen"
+    enabled: true
+- takeScreenshot: screenshots/playlist-detail-empty
+
+# Go back to library
+- pressKey: back
+- tapOn:
+    id: "item-card-0"
+
+# Use context menu to add to playlist
+- tapOn:
+    id: "item-settings-button"
+- tapOn:
+    text: "Add to Playlist"
+
+# Select the test playlist
+- tapOn:
+    text: "E2E Test Playlist"
+
+# Verify success feedback
+- assertVisible:
+    text: "Added to playlist"
+    enabled: true
+
+# Sign out
+- runFlow: subflows/sign-out.yaml

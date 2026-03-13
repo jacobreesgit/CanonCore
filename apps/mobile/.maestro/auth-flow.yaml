@@ -1,0 +1,22 @@
+# E2E Flow: Authentication (sign in + sign out)
+appId: com.canoncore.mobile
+name: Auth Flow
+tags:
+  - smoke
+  - auth
+---
+# Step 1: Sign in
+- runFlow: subflows/launch-and-sign-in.yaml
+
+# Step 2: Verify we're on the home screen
+- assertVisible: "Home"
+
+# Step 3: Take screenshot for Percy
+- takeScreenshot: screenshots/auth-home-after-login
+
+# Step 4: Sign out
+- runFlow: subflows/sign-out.yaml
+
+# Step 5: Verify we're back on sign-in
+- assertVisible: "Sign In"
+- takeScreenshot: screenshots/auth-sign-in-screen

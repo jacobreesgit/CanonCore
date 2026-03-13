@@ -1,0 +1,55 @@
+# E2E Flow: Download management (download, verify, remove)
+appId: com.canoncore.mobile
+name: Download Flow
+tags:
+  - regression
+  - download
+---
+# Prerequisites: sign in
+- runFlow: subflows/launch-and-sign-in.yaml
+
+# Navigate to Library
+- tapOn:
+    text: "Library"
+
+# Open an item with files
+- tapOn:
+    id: "item-card-0"
+
+# Wait for item detail
+- assertVisible:
+    id: "item-detail-screen"
+    enabled: true
+
+# Tap download button on a file
+- tapOn:
+    id: "download-button"
+
+# Wait for download to start (progress indicator appears)
+- extendedWaitUntil:
+    visible:
+      id: "download-progress"
+    timeout: 10000
+- takeScreenshot: screenshots/download-in-progress
+
+# Wait for download to complete
+- extendedWaitUntil:
+    visible:
+      id: "download-complete"
+    timeout: 60000
+- takeScreenshot: screenshots/download-complete
+
+# Navigate to Downloads screen
+- tapOn:
+    text: "Profile"
+- tapOn:
+    text: "Downloads"
+
+# Verify the downloaded item appears
+- assertVisible:
+    id: "downloads-list"
+    enabled: true
+- takeScreenshot: screenshots/download-downloads-screen
+
+# Sign out
+- runFlow: subflows/sign-out.yaml
