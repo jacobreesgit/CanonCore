@@ -31,6 +31,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     "expo-router",
     "expo-secure-store",
+    "expo-sqlite",
     ["expo-splash-screen", { backgroundColor: "#0a0a0a", image: "./assets/splash-icon.png", resizeMode: "contain" }],
     [
       "expo-video",

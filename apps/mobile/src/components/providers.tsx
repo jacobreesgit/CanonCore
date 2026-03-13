@@ -6,10 +6,11 @@ import { PersistGate } from "redux-persist/integration/react";
 import { store, persistor } from "@/lib/store";
 import { TRPCReactProvider } from "@/lib/trpc";
 import { SessionProvider } from "@/ctx";
+import { DatabaseProvider } from "./providers/database-provider";
 
 /**
  * All app-level providers combined.
- * Order: GestureHandler → SafeArea → Redux → Auth → tRPC (innermost)
+ * Order: GestureHandler → SafeArea → Redux → Auth → tRPC → Database (innermost)
  */
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -19,7 +20,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <PersistGate loading={null} persistor={persistor}>
             <SessionProvider>
               <TRPCReactProvider>
-                {children}
+                <DatabaseProvider>
+                  {children}
+                </DatabaseProvider>
               </TRPCReactProvider>
             </SessionProvider>
           </PersistGate>
