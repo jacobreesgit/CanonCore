@@ -49,6 +49,14 @@ export function getPublicHeroUrl(userId: string): string {
 }
 
 /**
+ * Build playlist artwork URL.
+ * Maps to web app's /api/playlist/artwork route.
+ */
+export function getPlaylistArtworkUrl(playlistId: string): string {
+  return `${API_URL}/api/playlist/artwork?id=${playlistId}`;
+}
+
+/**
  * Build TMDB poster URL from a poster path.
  */
 export function getTmdbPosterUrl(

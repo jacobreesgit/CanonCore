@@ -35,7 +35,7 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="library" options={{ headerShown: false }} />
         <Stack.Screen name="item" options={{ headerShown: false }} />
-        <Stack.Screen name="playlist/[playlistId]" />
+        <Stack.Screen name="playlist" options={{ headerShown: false }} />
         <Stack.Screen
           name="player"
           options={{ presentation: "modal" }}

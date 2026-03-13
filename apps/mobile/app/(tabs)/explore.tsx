@@ -1,16 +1,23 @@
-import { Text, ScrollView } from "@/tw";
+import { View } from "@/tw";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useDebouncedSearch } from "@/hooks/use-debounced-search";
+import { SearchBar } from "@/components/search-bar";
+import { ExploreTabs } from "@/components/explore/explore-tabs";
 
 export default function ExploreScreen() {
+  const { inputValue, debouncedValue, setValue, clear } = useDebouncedSearch();
+
   return (
-    <ScrollView
-      className="flex-1 bg-background"
-      contentContainerClassName="p-5 gap-4"
-      contentInsetAdjustmentBehavior="automatic"
-    >
-      <Text className="text-2xl font-bold text-foreground">Explore</Text>
-      <Text className="text-muted-foreground">
-        Public items and playlists will appear here.
-      </Text>
-    </ScrollView>
+    <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+      <View className="flex-1">
+        <SearchBar
+          value={inputValue}
+          onChangeText={setValue}
+          onClear={clear}
+          placeholder="Search items and playlists…"
+        />
+        <ExploreTabs search={debouncedValue} />
+      </View>
+    </SafeAreaView>
   );
 }
