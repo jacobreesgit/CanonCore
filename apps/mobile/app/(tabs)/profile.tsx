@@ -1,4 +1,4 @@
-import { Text, View, ScrollView, Pressable } from "@/tw";
+import { Text, ScrollView, Pressable } from "@/tw";
 import { useSession } from "@/ctx";
 import { router } from "expo-router";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";

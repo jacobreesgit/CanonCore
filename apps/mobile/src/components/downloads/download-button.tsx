@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { View, Text, Pressable } from "@/tw";
+import { Text, Pressable } from "@/tw";
 import { ActivityIndicator, Alert } from "react-native";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import {

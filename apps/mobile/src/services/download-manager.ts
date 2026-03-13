@@ -286,7 +286,7 @@ export class DownloadManager {
         totalBytes: fileSize,
         status: "complete",
       });
-    } catch (error) {
+    } catch {
       // Check if cancelled
       if (this.cancelledFileIds.has(record.fileId)) {
         this.cancelledFileIds.delete(record.fileId);
