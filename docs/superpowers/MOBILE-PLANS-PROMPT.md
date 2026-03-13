@@ -110,9 +110,12 @@ All 12 plans have been written and are in `docs/superpowers/plans/`.
 - [x] Plan 4: Expo Mobile App Foundation — merged to `development` (merge → revert → re-applied with conflict fix)
 - [x] Plan 5: Shared Components & Library — PR #8, merged to `development`
 - [x] Plan 6: Item Detail, CRUD & TMDB — PR #9, merged to `development`
-- [ ] Plan 7: Playlists, Explore & Public — `docs/superpowers/plans/2026-03-11-playlists-explore-public.md`
+- [x] Plan 7: Playlists, Explore & Public — merged to `development`
 - [ ] Plan 8: Media Playback — `docs/superpowers/plans/2026-03-11-media-playback.md`
 - [ ] Plan 9: Offline Downloads — `docs/superpowers/plans/2026-03-11-offline-downloads.md`
 - [ ] Plan 10: Platform Features — `docs/superpowers/plans/2026-03-11-platform-features.md`
 - [ ] Plan 11: Testing & CI/CD — `docs/superpowers/plans/2026-03-11-testing-cicd.md`
+
+Stop
+
 - [ ] Plan 12: App Store Submission — `docs/superpowers/plans/2026-03-11-app-store-submission.md`
