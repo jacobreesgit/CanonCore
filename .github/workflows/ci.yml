@@ -194,6 +194,8 @@ jobs:
     timeout-minutes: 10
     needs: [quality]
     if: always() && needs.quality.result == 'success'
+    env:
+      DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -228,6 +230,8 @@ jobs:
     timeout-minutes: 15
     needs: [quality, packages]
     if: always() && needs.quality.result == 'success' && (needs.packages.result == 'success' || needs.packages.result == 'skipped')
+    env:
+      DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
