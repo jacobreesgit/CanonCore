@@ -187,3 +187,202 @@ jobs:
 
       - name: Build
         run: pnpm run build
+
+  packages:
+    name: Packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [quality]
+    if: always() && needs.quality.result == 'success'
+    env:
+      DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm turbo run build --filter='./packages/*'
+
+      - name: Lint packages
+        run: pnpm turbo run lint --filter='./packages/*'
+
+      - name: Type-check packages
+        run: pnpm turbo run type-check --filter='./packages/*'
+
+      - name: Test packages
+        run: pnpm turbo run test --filter='./packages/*'
+
+  mobile:
+    name: Mobile
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [quality, packages]
+    if: always() && needs.quality.result == 'success' && (needs.packages.result == 'success' || needs.packages.result == 'skipped')
+    env:
+      DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build upstream packages
+        run: pnpm turbo run build --filter='./packages/*'
+
+      - name: Lint mobile
+        run: pnpm --filter @canoncore/mobile lint
+
+      - name: Type-check mobile
+        run: pnpm --filter @canoncore/mobile type-check
+
+      - name: Jest unit + component tests
+        run: pnpm --filter @canoncore/mobile test -- --ci --coverage
+
+      - name: Upload mobile coverage
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./apps/mobile/coverage/coverage-final.json
+          flags: mobile
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  eas-preview:
+    name: EAS Preview Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [mobile]
+    if: github.event_name == 'pull_request' && needs.mobile.result == 'success'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build upstream packages
+        run: pnpm turbo run build --filter='./packages/*'
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build preview
+        working-directory: apps/mobile
+        run: eas build --profile preview --platform all --non-interactive --no-wait
+
+      - name: Publish EAS Update (OTA preview)
+        working-directory: apps/mobile
+        run: |
+          eas update --branch "pr-${{ github.event.pull_request.number }}" \
+            --message "PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}" \
+            --non-interactive
+
+  maestro-e2e:
+    name: Maestro E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [mobile]
+    if: github.event_name == 'pull_request' && needs.mobile.result == 'success'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Maestro Cloud tests
+        uses: mobile-dev-inc/action-maestro-cloud@v2.0.0
+        with:
+          api-key: ${{ secrets.MAESTRO_CLOUD_API_KEY }}
+          project-id: ${{ secrets.MAESTRO_CLOUD_PROJECT_ID }}
+          app-file: apps/mobile
+          workspace: apps/mobile/.maestro
+          include-tags: smoke
+          timeout: 30
+          name: "PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}"
+          env: |
+            TEST_EMAIL=${{ secrets.E2E_TEST_EMAIL }}
+            TEST_PASSWORD=${{ secrets.E2E_TEST_PASSWORD }}
+            API_URL=${{ secrets.E2E_API_URL }}
+
+  percy:
+    name: Percy Visual Regression
+    runs-on: macos-latest
+    timeout-minutes: 30
+    needs: [mobile]
+    if: github.event_name == 'pull_request' && needs.mobile.result == 'success'
+    env:
+      PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build upstream packages
+        run: pnpm turbo run build --filter='./packages/*'
+
+      - name: Install Maestro CLI
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+
+      - name: Build dev client for simulator
+        working-directory: apps/mobile
+        run: eas build --profile development --platform ios --local
+
+      - name: Run Maestro flows with screenshots
+        working-directory: apps/mobile
+        run: maestro test .maestro/ --include-tags smoke --format junit --output maestro-results.xml
+        continue-on-error: true
+
+      - name: Upload screenshots to Percy
+        if: always()
+        working-directory: apps/mobile
+        run: |
+          if [ -d ".maestro/screenshots" ] && [ "$(find .maestro/screenshots -name '*.png' | head -1)" ]; then
+            npx percy upload .maestro/screenshots/
+          else
+            echo "No screenshots captured, skipping Percy upload"
+          fi

@@ -1,0 +1,62 @@
+# E2E Flow: Media playback (play item, mini-player, queue)
+appId: com.canoncore.mobile
+name: Playback Flow
+tags:
+  - smoke
+  - playback
+---
+# Prerequisites: sign in
+- runFlow: subflows/launch-and-sign-in.yaml
+
+# Navigate to Library
+- tapOn:
+    text: "Library"
+
+# Tap on first item in the grid
+- tapOn:
+    id: "item-card-0"
+
+# Wait for item detail screen
+- assertVisible:
+    id: "item-detail-screen"
+    enabled: true
+- takeScreenshot: screenshots/playback-item-detail
+
+# Tap play button
+- tapOn:
+    id: "play-button"
+
+# Verify mini-player appears
+- assertVisible:
+    id: "mini-player"
+    enabled: true
+- takeScreenshot: screenshots/playback-mini-player
+
+# Tap mini-player to expand
+- tapOn:
+    id: "mini-player"
+
+# Verify expanded player
+- assertVisible:
+    id: "expanded-player"
+    enabled: true
+- takeScreenshot: screenshots/playback-expanded-player
+
+# Tap queue button to open queue panel
+- tapOn:
+    id: "queue-button"
+- assertVisible:
+    id: "queue-panel"
+    enabled: true
+- takeScreenshot: screenshots/playback-queue-panel
+
+# Close expanded player
+- tapOn:
+    id: "close-player"
+
+# Verify mini-player is still visible
+- assertVisible:
+    id: "mini-player"
+
+# Sign out
+- runFlow: subflows/sign-out.yaml

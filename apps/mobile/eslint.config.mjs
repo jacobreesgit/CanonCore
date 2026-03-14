@@ -25,6 +25,12 @@ export default [
     },
   },
   {
+    files: ["**/__tests__/**/*.{ts,tsx}", "**/*.test.{ts,tsx}", "jest.setup.ts"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  {
     ignores: [".expo/", "dist/", "ios/", "android/", "babel.config.js", "metro.config.js"],
   },
 ];

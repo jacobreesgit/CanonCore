@@ -1,0 +1,9 @@
+# Maestro workspace configuration
+# https://maestro.mobile.dev/reference/workspace-configuration
+
+appId: com.canoncore.mobile
+
+env:
+  TEST_EMAIL: ${TEST_EMAIL:-e2e-local@canoncore.com}
+  TEST_PASSWORD: ${TEST_PASSWORD:-LocalTestPass123}
+  API_URL: ${API_URL:-http://localhost:3000}

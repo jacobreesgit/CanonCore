@@ -1,0 +1,50 @@
+# E2E Flow: Browse content (home, library, explore, search)
+appId: com.canoncore.mobile
+name: Browse Flow
+tags:
+  - smoke
+  - browse
+---
+# Prerequisites: sign in
+- runFlow: subflows/launch-and-sign-in.yaml
+
+# --- Home Tab ---
+- assertVisible: "Home"
+- takeScreenshot: screenshots/browse-home
+
+# Scroll to verify shelves load
+- scrollUntilVisible:
+    element:
+      text: "Continue Watching"
+    direction: DOWN
+    timeout: 10000
+
+# --- Library Tab ---
+- tapOn:
+    text: "Library"
+- assertVisible: "Library"
+- takeScreenshot: screenshots/browse-library
+
+# --- Explore Tab ---
+- tapOn:
+    text: "Explore"
+- assertVisible: "Explore"
+- takeScreenshot: screenshots/browse-explore
+
+# --- Search ---
+- tapOn:
+    id: "search-input"
+- inputText: "test"
+
+# Wait for search results
+- assertVisible:
+    id: "search-results"
+    enabled: true
+- takeScreenshot: screenshots/browse-search-results
+
+# Clear search
+- tapOn:
+    id: "search-clear"
+
+# Sign out
+- runFlow: subflows/sign-out.yaml
