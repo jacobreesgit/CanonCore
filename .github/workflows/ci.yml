@@ -275,6 +275,8 @@ jobs:
     timeout-minutes: 30
     needs: [mobile]
     if: github.event_name == 'pull_request' && needs.mobile.result == 'success'
+    env:
+      DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -343,6 +345,7 @@ jobs:
     needs: [mobile]
     if: github.event_name == 'pull_request' && needs.mobile.result == 'success'
     env:
+      DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
       PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}
     steps:
       - name: Checkout

@@ -24,8 +24,8 @@ android/
 expo-env.d.ts
 # @end expo-cli
 
-# Maestro E2E screenshots (captured at runtime, uploaded to Percy)
-.maestro/screenshots/
+# Maestro screenshot captures (PNGs captured at runtime, uploaded to Percy)
+.maestro/screenshots/*.png
 
 # Percy local artifacts
 .percy/
@@ -35,3 +35,12 @@ coverage/
 
 # Google service account (mounted in CI)
 google-service-account.json
+
+# Screenshots (generated, not committed)
+screenshots/ios/
+screenshots/android/
+!screenshots/.gitkeep
+
+# App Store Screenshots generator (regenerated on demand)
+app-store-screenshots/node_modules/
+app-store-screenshots/.next/

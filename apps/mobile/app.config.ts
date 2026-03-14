@@ -17,6 +17,21 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       usesNonExemptEncryption: false,
     },
     associatedDomains: ["applinks:canoncore.com"],
+    infoPlist: {
+      NSCameraUsageDescription:
+        "CanonCore uses the camera to set your profile picture.",
+      NSPhotoLibraryUsageDescription:
+        "CanonCore accesses your photo library to set your profile picture.",
+    },
+    privacyManifests: {
+      NSPrivacyAccessedAPITypes: [
+        {
+          NSPrivacyAccessedAPIType:
+            "NSPrivacyAccessedAPICategoryUserDefaults",
+          NSPrivacyAccessedAPITypeReasons: ["CA92.1"],
+        },
+      ],
+    },
   },
   android: {
     adaptiveIcon: {
@@ -38,6 +53,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         category: ["BROWSABLE", "DEFAULT"],
       },
     ],
+    permissions: [
+      "android.permission.INTERNET",
+      "android.permission.CAMERA",
+      "android.permission.READ_MEDIA_VIDEO",
+      "android.permission.READ_MEDIA_AUDIO",
+      "android.permission.READ_MEDIA_IMAGES",
+      "android.permission.FOREGROUND_SERVICE",
+      "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+      "android.permission.RECEIVE_BOOT_COMPLETED",
+    ],
   },
   web: {
     bundler: "metro",
@@ -47,7 +72,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     "expo-router",
     "expo-secure-store",
     "expo-sqlite",
-    ["expo-splash-screen", { backgroundColor: "#0a0a0a", image: "./assets/splash-icon.png", resizeMode: "contain" }],
+    [
+      "expo-splash-screen",
+      {
+        backgroundColor: "#0a0a0a",
+        image: "./assets/splash-icon.png",
+        resizeMode: "contain",
+      },
+    ],
     [
       "expo-video",
       {
@@ -59,6 +91,19 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       "react-native-google-cast",
       {
         iosStartDiscoveryAfterFirstTapOnCastButton: true,
+      },
+    ],
+    [
+      "expo-build-properties",
+      {
+        ios: {
+          deploymentTarget: "16.0",
+        },
+        android: {
+          minSdkVersion: 26,
+          targetSdkVersion: 35,
+          compileSdkVersion: 35,
+        },
       },
     ],
   ],

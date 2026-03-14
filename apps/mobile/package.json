@@ -13,7 +13,10 @@
     "test:coverage": "jest --coverage",
     "test:e2e": "maestro test .maestro/ --include-tags smoke",
     "test:e2e:all": "maestro test .maestro/",
-    "percy": "./scripts/percy-screenshots.sh"
+    "percy": "./scripts/percy-screenshots.sh",
+    "screenshots": "./scripts/generate-screenshots.sh",
+    "screenshots:ios": "./scripts/generate-screenshots.sh ios",
+    "screenshots:android": "./scripts/generate-screenshots.sh android"
   },
   "dependencies": {
     "@canoncore/api": "workspace:*",

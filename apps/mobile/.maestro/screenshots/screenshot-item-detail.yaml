@@ -1,0 +1,23 @@
+appId: com.canoncore.mobile
+tags:
+  - screenshots
+---
+# Screenshot: Item detail with cinematic hero
+- runFlow: ../subflows/launch-and-sign-in.yaml
+
+# Navigate to Library
+- tapOn: "Library"
+- waitForAnimationToEnd
+
+# Tap the first item in the grid
+- tapOn:
+    index: 0
+    id: "item-card"
+
+# Wait for hero image and metadata to load
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: "Play"
+    timeout: 10000
+
+- takeScreenshot: item-detail
