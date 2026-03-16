@@ -91,6 +91,15 @@ export function DownloadButton({
       onPress={handlePress}
       onLongPress={handleLongPress}
       className="flex-row items-center gap-2 bg-white/10 rounded-lg px-4 py-2.5"
+      testID={
+        status === "none" || status === "failed"
+          ? "download-button"
+          : status === "queued" || status === "downloading"
+            ? "download-progress"
+            : status === "complete"
+              ? "download-complete"
+              : undefined
+      }
     >
       {renderIcon(status)}
       <Text className="text-white text-sm font-medium">
