@@ -107,6 +107,7 @@
     "fumadocs-mdx": "^14.2.3",
     "fumadocs-ui": "^16.4.1",
     "googleapis": "^170.0.0",
+    "jose": "^6.2.1",
     "motion": "^12.23.12",
     "nanoid": "^5.1.6",
     "next": "16.1.1",
