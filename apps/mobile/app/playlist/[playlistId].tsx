@@ -82,6 +82,7 @@ export default function PlaylistDetailScreen() {
       />
 
       <ScrollView
+        testID="playlist-detail-screen"
         className="flex-1"
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}

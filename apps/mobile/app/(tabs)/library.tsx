@@ -1,5 +1,5 @@
-import { useCallback } from "react";
-import { View } from "@/tw";
+import { useCallback, useState } from "react";
+import { View, Pressable } from "@/tw";
 import { ItemCard } from "@/components/item-card";
 import { GridLayout } from "@/components/grid-layout";
 import { SearchBar } from "@/components/search-bar";
@@ -9,11 +9,15 @@ import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { useTRPC } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
 import { useSession } from "@/ctx";
+import { CreatePlaylistSheet } from "@/components/playlist/create-playlist-sheet";
+import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
 
 export default function LibraryScreen() {
   const { user } = useSession();
   const trpc = useTRPC();
   const { inputValue, debouncedValue, setValue, clear } = useDebouncedSearch();
+  const [createPlaylistVisible, setCreatePlaylistVisible] = useState(false);
 
   // Fetch root items (parentId = null)
   const itemsQuery = useQuery(
@@ -89,6 +93,21 @@ export default function LibraryScreen() {
             }
           />
         }
+      />
+
+      {/* Create Playlist FAB */}
+      <Pressable
+        testID="create-playlist-button"
+        onPress={() => setCreatePlaylistVisible(true)}
+        className="absolute bottom-6 right-6 bg-indigo-500 rounded-full w-14 h-14 items-center justify-center"
+        style={{ elevation: 4 }}
+      >
+        <FontAwesomeIcon icon={faPlus} size={20} color="#ffffff" />
+      </Pressable>
+
+      <CreatePlaylistSheet
+        visible={createPlaylistVisible}
+        onClose={() => setCreatePlaylistVisible(false)}
       />
     </View>
   );

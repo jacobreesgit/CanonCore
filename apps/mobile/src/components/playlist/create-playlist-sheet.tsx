@@ -85,6 +85,7 @@ export function CreatePlaylistSheet({
             Create Playlist
           </Text>
           <Pressable
+            testID="create-playlist-confirm"
             onPress={handleCreate}
             disabled={!isValid || createPlaylist.isPending}
             hitSlop={8}
@@ -106,6 +107,7 @@ export function CreatePlaylistSheet({
           <View className="gap-2">
             <Text className="text-foreground text-sm font-medium">Name</Text>
             <TextInput
+              testID="playlist-name-input"
               className="bg-card text-foreground rounded-lg px-3 py-3 text-base border border-border"
               value={name}
               onChangeText={setName}

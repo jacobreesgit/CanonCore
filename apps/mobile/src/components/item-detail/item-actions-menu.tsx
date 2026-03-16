@@ -111,6 +111,7 @@ export function ItemActionsMenu({
   return (
     <>
       <Pressable
+        testID="item-settings-button"
         onPress={() => setMenuVisible(true)}
         className="bg-white/10 rounded-lg p-2.5"
       >
