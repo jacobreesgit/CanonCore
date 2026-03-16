@@ -16,7 +16,10 @@
     "percy": "./scripts/percy-screenshots.sh",
     "screenshots": "./scripts/generate-screenshots.sh",
     "screenshots:ios": "./scripts/generate-screenshots.sh ios",
-    "screenshots:android": "./scripts/generate-screenshots.sh android"
+    "screenshots:android": "./scripts/generate-screenshots.sh android",
+    "build": "echo 'Mobile builds via EAS — use eas build'",
+    "format:check": "pnpm exec prettier --check \"src/**/*.{ts,tsx}\" \"app/**/*.{ts,tsx}\"",
+    "export": "npx expo export"
   },
   "dependencies": {
     "@canoncore/api": "workspace:*",
