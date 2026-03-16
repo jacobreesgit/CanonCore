@@ -39,7 +39,7 @@
       "firstName": "Jacob",
       "lastName": "Rees",
       "email": "app-review@canoncore.com",
-      "phone": "+44 XXXXXXXXXXX",
+      "phone": "+44 7519 411909",
       "demoUsername": "demo@canoncore.com",
       "demoPassword": "AppReviewDemo2026!",
       "notes": "To test the app:\n1. Sign in with the demo credentials above\n2. The demo account has a pre-populated library with movies, series, and audio\n3. Tap any item to see the detail page with TMDB metadata\n4. Use the play button to test media playback\n5. Test downloads by tapping the download icon on any item\n6. Visit the Explore tab to see public collections\n\nNote: Google Drive sync is pre-configured for the demo account — no additional setup needed."
