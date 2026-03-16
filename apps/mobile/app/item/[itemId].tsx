@@ -197,6 +197,7 @@ export default function ItemDetailScreen() {
       <Stack.Screen options={{ title: item.name, headerTransparent: true }} />
 
       <ScrollView
+        testID="item-detail-screen"
         className="flex-1"
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
@@ -223,6 +224,7 @@ export default function ItemDetailScreen() {
             {hasMedia ? (
               <>
                 <Pressable
+                  testID="play-button"
                   onPress={() => {
                     const primaryMedia = serializedFiles.find(
                       (f) => f.fileType === "MEDIA" && f.isPrimary

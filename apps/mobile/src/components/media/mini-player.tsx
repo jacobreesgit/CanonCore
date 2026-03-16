@@ -51,7 +51,7 @@ export function MiniPlayer() {
   if (!currentTrack) return null;
 
   return (
-    <View className="bg-card border-t border-border">
+    <View testID="mini-player" className="bg-card border-t border-border">
       <MiniPlayerProgress />
 
       <Pressable

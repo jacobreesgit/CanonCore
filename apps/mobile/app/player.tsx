@@ -48,7 +48,7 @@ export default function ExpandedPlayerScreen() {
   if (!currentTrack) return null;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0a0a0a" }} edges={["top"]}>
+    <SafeAreaView testID="expanded-player" style={{ flex: 1, backgroundColor: "#0a0a0a" }} edges={["top"]}>
       <Stack.Screen
         options={{
           headerShown: false,
@@ -66,7 +66,7 @@ export default function ExpandedPlayerScreen() {
         <View className="flex-1">
           {/* Top bar: dismiss + AirPlay + Cast + queue toggle */}
           <View className="flex-row items-center justify-between px-4 py-2">
-            <Pressable onPress={handleDismiss} hitSlop={8}>
+            <Pressable testID="close-player" onPress={handleDismiss} hitSlop={8}>
               <FontAwesomeIcon
                 icon={faChevronDown}
                 size={18}
@@ -85,7 +85,7 @@ export default function ExpandedPlayerScreen() {
                 />
               ) : null}
               <CastButtonWrapper size={22} tintColor="#ffffff" />
-              <Pressable onPress={toggleQueue} hitSlop={8}>
+              <Pressable testID="queue-button" onPress={toggleQueue} hitSlop={8}>
                 <FontAwesomeIcon
                   icon={faListUl}
                   size={18}

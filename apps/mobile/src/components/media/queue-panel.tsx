@@ -94,7 +94,7 @@ export function QueuePanel({ visible, onClose }: QueuePanelProps) {
   const upNext = queue.filter((_item, i) => i !== queueIndex);
 
   return (
-    <View className="flex-1 bg-card/95 rounded-t-2xl">
+    <View testID="queue-panel" className="flex-1 bg-card/95 rounded-t-2xl">
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
         <View className="flex-row items-center gap-2">
