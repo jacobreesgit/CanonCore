@@ -22,6 +22,8 @@ import { CreateItemSheet } from "@/components/item-form/create-item-sheet";
 import { TmdbSearchSheet } from "@/components/tmdb/tmdb-search-sheet";
 import { TmdbConfirmSheet } from "@/components/tmdb/tmdb-confirm-sheet";
 import type { TmdbResult } from "@/components/tmdb/tmdb-search-sheet";
+import { AddToPlaylistSheet } from "@/components/playlist/add-to-playlist-sheet";
+import { CreatePlaylistSheet } from "@/components/playlist/create-playlist-sheet";
 
 export default function ItemDetailScreen() {
   const { itemId } = useLocalSearchParams<{ itemId: string }>();
@@ -36,6 +38,8 @@ export default function ItemDetailScreen() {
   const [tmdbConfirmVisible, setTmdbConfirmVisible] = useState(false);
   const [selectedTmdbResult, setSelectedTmdbResult] =
     useState<TmdbResult | null>(null);
+  const [addToPlaylistVisible, setAddToPlaylistVisible] = useState(false);
+  const [createPlaylistFromAddVisible, setCreatePlaylistFromAddVisible] = useState(false);
 
   // Data fetching — item.get returns { item, ancestors }
   const itemQuery = useQuery(trpc.item.get.queryOptions({ id: itemId }));
@@ -271,9 +275,7 @@ export default function ItemDetailScreen() {
               hasChildren={hasChildren}
               onEdit={() => setEditVisible(true)}
               onAddChild={() => setCreateVisible(true)}
-              onAddToPlaylist={() => {
-                // Plan 7 will implement AddToPlaylistSheet
-              }}
+              onAddToPlaylist={() => setAddToPlaylistVisible(true)}
               onTmdb={() => setTmdbSearchVisible(true)}
             />
           </View>
@@ -338,6 +340,24 @@ export default function ItemDetailScreen() {
         onConfirm={handleTmdbConfirm}
         itemId={itemId}
         result={selectedTmdbResult}
+      />
+
+      {/* Add to playlist sheet */}
+      <AddToPlaylistSheet
+        visible={addToPlaylistVisible}
+        onClose={() => setAddToPlaylistVisible(false)}
+        itemId={itemId}
+        onCreatePlaylist={() => {
+          setAddToPlaylistVisible(false);
+          setCreatePlaylistFromAddVisible(true);
+        }}
+      />
+
+      {/* Create playlist sheet (launched from add-to-playlist) */}
+      <CreatePlaylistSheet
+        visible={createPlaylistFromAddVisible}
+        onClose={() => setCreatePlaylistFromAddVisible(false)}
+        initialItemIds={[itemId]}
       />
     </View>
   );
