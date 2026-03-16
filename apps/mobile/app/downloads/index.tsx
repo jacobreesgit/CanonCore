@@ -49,6 +49,7 @@ export default function DownloadsScreen() {
 
   return (
     <FlatList
+      testID="downloads-list"
       data={downloads}
       keyExtractor={(item) => item.fileId}
       renderItem={renderItem}
