@@ -21,8 +21,7 @@ appId: com.canoncore.mobile
 
 # Tap sign in button
 - tapOn:
-    text: "Sign In"
-    index: 1
+    id: "sign-in-button"
 
 # Wait for home screen to load
 - assertVisible:

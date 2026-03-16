@@ -26,17 +26,16 @@ tags:
     id: "download-button"
 
 # Wait for download to start (progress indicator appears)
-- extendedWaitUntil:
-    visible:
-      id: "download-progress"
-    timeout: 10000
+- assertVisible:
+    id: "download-progress"
+    enabled: true
 - takeScreenshot: screenshots/download-in-progress
 
-# Wait for download to complete
-- extendedWaitUntil:
-    visible:
-      id: "download-complete"
-    timeout: 60000
+# Wait for download to complete (large files may take a while)
+- wait: 30000
+- assertVisible:
+    id: "download-complete"
+    enabled: true
 - takeScreenshot: screenshots/download-complete
 
 # Navigate to Downloads screen

@@ -27,7 +27,7 @@ tags:
 
 # Confirm creation
 - tapOn:
-    text: "Create"
+    id: "create-playlist-confirm"
 
 # Verify playlist was created
 - assertVisible: "E2E Test Playlist"
