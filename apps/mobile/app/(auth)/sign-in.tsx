@@ -2,23 +2,33 @@ import { useState } from "react";
 import { Alert } from "react-native";
 import { View, Text, TextInput, Pressable, ScrollView } from "@/tw";
 import { Link } from "@/tw";
+import { useTRPC } from "@/lib/trpc";
+import { useMutation } from "@tanstack/react-query";
+import { useSession } from "@/ctx";
+
 export default function SignInScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isPending, setIsPending] = useState(false);
+  const trpc = useTRPC();
+  const { signIn } = useSession();
 
-  // TODO: Replace with trpc.auth.signIn mutation when JWT auth is added to the auth router
+  const signInMutation = useMutation(
+    trpc.auth.signIn.mutationOptions({
+      onSuccess: (data) => {
+        signIn(data.token, data.user);
+      },
+      onError: (error) => {
+        Alert.alert("Sign In Failed", error.message);
+      },
+    })
+  );
+
   const handleSignIn = () => {
     if (!email || !password) {
       Alert.alert("Error", "Please fill in all fields");
       return;
     }
-    setIsPending(true);
-    Alert.alert(
-      "Not Implemented",
-      "Sign-in requires a JWT auth endpoint. Coming in a future plan.",
-      [{ text: "OK", onPress: () => setIsPending(false) }]
-    );
+    signInMutation.mutate({ email: email.trim().toLowerCase(), password });
   };
 
   return (
@@ -41,6 +51,7 @@ export default function SignInScreen() {
         <View className="gap-2">
           <Text className="text-sm text-muted-foreground">Email</Text>
           <TextInput
+            testID="email-input"
             className="bg-secondary text-foreground rounded-lg p-3 text-base"
             placeholder="you@example.com"
             placeholderTextColor="rgba(255,255,255,0.3)"
@@ -57,6 +68,7 @@ export default function SignInScreen() {
         <View className="gap-2">
           <Text className="text-sm text-muted-foreground">Password</Text>
           <TextInput
+            testID="password-input"
             className="bg-secondary text-foreground rounded-lg p-3 text-base"
             placeholder="Password"
             placeholderTextColor="rgba(255,255,255,0.3)"
@@ -70,13 +82,14 @@ export default function SignInScreen() {
         </View>
 
         <Pressable
+          testID="sign-in-button"
           className="bg-primary rounded-lg p-3 items-center"
           onPress={handleSignIn}
-          disabled={isPending}
+          disabled={signInMutation.isPending}
           style={{ borderCurve: "continuous" }}
         >
           <Text className="text-primary-foreground font-semibold text-base">
-            {isPending ? "Signing in..." : "Sign In"}
+            {signInMutation.isPending ? "Signing in..." : "Sign In"}
           </Text>
         </Pressable>
       </View>
