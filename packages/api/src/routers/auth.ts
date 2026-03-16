@@ -5,6 +5,7 @@ import { createTRPCRouter, publicProcedure } from "../trpc";
 import { rateLimit } from "../middleware/rate-limit";
 import {
   signUpSchema,
+  signInSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
   verifyEmailSchema,
@@ -166,6 +167,97 @@ export const authRouter = createTRPCRouter({
       }
 
       return { success: true };
+    }),
+
+  /**
+   * Authenticates a user with email + password and returns a JWT token.
+   * Handles lockout detection, failed attempt tracking, and email verification checks.
+   */
+  signIn: publicProcedure
+    .use(rateLimit("signIn"))
+    .input(signInSchema)
+    .mutation(async ({ ctx, input }) => {
+      const { email, password } = input;
+
+      const user = await ctx.prisma.user.findUnique({
+        where: { email },
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          passwordHash: true,
+          emailVerified: true,
+          lockedUntil: true,
+          failedLoginAttempts: true,
+        },
+      });
+
+      if (!user || !user.passwordHash) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Invalid email or password",
+        });
+      }
+
+      if (user.lockedUntil && user.lockedUntil > new Date()) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Account is temporarily locked. Try again later.",
+        });
+      }
+
+      const bcrypt = await import("bcryptjs");
+      const isValid = await bcrypt.compare(password, user.passwordHash);
+
+      if (!isValid) {
+        const attempts = (user.failedLoginAttempts ?? 0) + 1;
+        const lockout =
+          attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
+
+        await ctx.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            failedLoginAttempts: attempts,
+            ...(lockout ? { lockedUntil: lockout } : {}),
+          },
+        });
+
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Invalid email or password",
+        });
+      }
+
+      if (!user.emailVerified) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Please verify your email before signing in.",
+        });
+      }
+
+      if (user.failedLoginAttempts && user.failedLoginAttempts > 0) {
+        await ctx.prisma.user.update({
+          where: { id: user.id },
+          data: { failedLoginAttempts: 0, lockedUntil: null },
+        });
+      }
+
+      // Generate JWT using jose (ESM-native)
+      const { SignJWT } = await import("jose");
+      const secret = new TextEncoder().encode(process.env.AUTH_SECRET!);
+      const token = await new SignJWT({ sub: user.id, email: user.email })
+        .setProtectedHeader({ alg: "HS256" })
+        .setExpirationTime("30d")
+        .sign(secret);
+
+      return {
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+        },
+      };
     }),
 
   /**
