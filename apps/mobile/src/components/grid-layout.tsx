@@ -38,6 +38,7 @@ export function GridLayout<T>({
 
   return (
     <FlatList
+      testID="search-results"
       data={data}
       renderItem={({ item, index, ...rest }) => (
         <View testID={`item-card-${index}`} style={{ flex: 1 }}>
