@@ -27,18 +27,7 @@ import { usePlayback } from "@/components/providers/playback-provider";
 import { useAudioProgress } from "@/hooks/use-audio-progress";
 import { useIsPlaying } from "react-native-track-player";
 import Slider from "@react-native-community/slider";
-
-function formatTime(seconds: number): string {
-  if (!isFinite(seconds) || seconds < 0) return "0:00";
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  if (mins >= 60) {
-    const hours = Math.floor(mins / 60);
-    const remainMins = mins % 60;
-    return `${hours}:${remainMins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  }
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-}
+import { formatTime } from "@canoncore/utils";
 
 const REPEAT_CYCLE: RepeatMode[] = ["off", "all", "one"];
 
