@@ -43,6 +43,7 @@ export default function ForgotPasswordScreen() {
 
       <View className="gap-4">
         <TextInput
+          testID="forgot-email-input"
           className="bg-secondary text-foreground rounded-lg p-3 text-base"
           placeholder="you@example.com"
           placeholderTextColor="rgba(255,255,255,0.3)"
@@ -56,6 +57,7 @@ export default function ForgotPasswordScreen() {
         />
 
         <Pressable
+          testID="forgot-submit-button"
           className="bg-primary rounded-lg p-3 items-center"
           onPress={() => forgotMutation.mutate({ email })}
           disabled={forgotMutation.isPending || !email}

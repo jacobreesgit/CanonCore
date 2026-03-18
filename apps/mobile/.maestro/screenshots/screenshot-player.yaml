@@ -6,14 +6,17 @@ tags:
 - runFlow: ../subflows/launch-and-sign-in.yaml
 
 # Navigate to Library and open an item
-- tapOn: "Library"
+- runFlow:
+    file: ../subflows/navigate-tab.yaml
+    env:
+      TAB: "library"
 - waitForAnimationToEnd
 - tapOn:
-    index: 0
-    id: "item-card"
+    id: "item-card-0"
 
 # Start playback
-- tapOn: "Play"
+- tapOn:
+    id: "play-button"
 - waitForAnimationToEnd
 
 # Expand the mini-player to full screen

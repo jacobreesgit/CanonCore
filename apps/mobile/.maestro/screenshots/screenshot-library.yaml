@@ -6,7 +6,10 @@ tags:
 - runFlow: ../subflows/launch-and-sign-in.yaml
 
 # Navigate to Library tab
-- tapOn: "Library"
+- runFlow:
+    file: ../subflows/navigate-tab.yaml
+    env:
+      TAB: "library"
 
 # Wait for grid to load
 - waitForAnimationToEnd

@@ -1,15 +1,23 @@
 # Subflow: Sign out from any screen
-# Assumes the app is on a tab screen with Profile tab access
+# Uses deep link to navigate to Profile tab
 
 appId: com.canoncore.mobile
 ---
-# Navigate to profile tab
-- tapOn:
-    text: "Profile"
+# Navigate to Profile tab via deep link
+- runFlow:
+    file: navigate-tab.yaml
+    env:
+      TAB: "profile"
 
-# Open settings / sign out
+# Wait for profile screen to load
+- extendedWaitUntil:
+    visible:
+      id: "sign-out-button"
+    timeout: 5000
+
+# Tap sign out
 - tapOn:
-    text: "Sign Out"
+    id: "sign-out-button"
 
 # Confirm sign out if there's a confirmation dialog
 - runFlow:
@@ -19,4 +27,7 @@ appId: com.canoncore.mobile
       - tapOn: "Confirm"
 
 # Verify we're back on the sign-in screen
-- assertVisible: "Sign In"
+- extendedWaitUntil:
+    visible:
+      id: "email-input"
+    timeout: 10000

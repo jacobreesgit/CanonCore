@@ -6,7 +6,10 @@ tags:
 - runFlow: ../subflows/launch-and-sign-in.yaml
 
 # Navigate to Explore tab
-- tapOn: "Explore"
+- runFlow:
+    file: ../subflows/navigate-tab.yaml
+    env:
+      TAB: "explore"
 
 # Wait for public items to load
 - waitForAnimationToEnd

@@ -131,7 +131,7 @@ export function PlaybackControls() {
       {/* Transport controls */}
       <View className="flex-row items-center justify-between">
         {/* Shuffle */}
-        <Pressable onPress={handleToggleShuffle} hitSlop={8}>
+        <Pressable testID="shuffle-button" onPress={handleToggleShuffle} hitSlop={8}>
           <FontAwesomeIcon
             icon={faShuffle}
             size={18}
@@ -141,6 +141,7 @@ export function PlaybackControls() {
 
         {/* Skip Previous */}
         <Pressable
+          testID="skip-previous-button"
           onPress={handleSkipPrevious}
           disabled={!hasPrevious}
           hitSlop={8}
@@ -151,6 +152,7 @@ export function PlaybackControls() {
 
         {/* Play / Pause */}
         <Pressable
+          testID="play-pause-button"
           onPress={handlePlayPause}
           className="w-16 h-16 rounded-full bg-white items-center justify-center"
         >
@@ -163,6 +165,7 @@ export function PlaybackControls() {
 
         {/* Skip Next */}
         <Pressable
+          testID="skip-next-button"
           onPress={handleSkipNext}
           disabled={!hasNext}
           hitSlop={8}
@@ -172,7 +175,7 @@ export function PlaybackControls() {
         </Pressable>
 
         {/* Repeat */}
-        <Pressable onPress={handleCycleRepeat} hitSlop={8}>
+        <Pressable testID="repeat-button" onPress={handleCycleRepeat} hitSlop={8}>
           <View className="relative">
             <FontAwesomeIcon
               icon={faRepeat}

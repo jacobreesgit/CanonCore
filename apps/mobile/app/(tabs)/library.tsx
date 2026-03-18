@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { View, Pressable } from "@/tw";
 import { ItemCard } from "@/components/item-card";
 import { GridLayout } from "@/components/grid-layout";
@@ -9,6 +9,7 @@ import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { useTRPC } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
 import { useSession } from "@/ctx";
+import { useLocalSearchParams } from "expo-router";
 import { CreatePlaylistSheet } from "@/components/playlist/create-playlist-sheet";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
@@ -17,7 +18,15 @@ export default function LibraryScreen() {
   const { user } = useSession();
   const trpc = useTRPC();
   const { inputValue, debouncedValue, setValue, clear } = useDebouncedSearch();
+  const { create } = useLocalSearchParams<{ create?: string }>();
   const [createPlaylistVisible, setCreatePlaylistVisible] = useState(false);
+
+  // Auto-open create playlist sheet via deep link (?create=1)
+  useEffect(() => {
+    if (create === "1") {
+      setCreatePlaylistVisible(true);
+    }
+  }, [create]);
 
   // Fetch root items (parentId = null)
   const itemsQuery = useQuery(

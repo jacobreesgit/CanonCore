@@ -56,6 +56,7 @@ export default function SignUpScreen() {
         <View className="gap-2">
           <Text className="text-sm text-muted-foreground">Email</Text>
           <TextInput
+            testID="signup-email-input"
             className="bg-secondary text-foreground rounded-lg p-3 text-base"
             placeholder="you@example.com"
             placeholderTextColor="rgba(255,255,255,0.3)"
@@ -72,6 +73,7 @@ export default function SignUpScreen() {
         <View className="gap-2">
           <Text className="text-sm text-muted-foreground">Username</Text>
           <TextInput
+            testID="signup-username-input"
             className="bg-secondary text-foreground rounded-lg p-3 text-base"
             placeholder="username"
             placeholderTextColor="rgba(255,255,255,0.3)"
@@ -87,6 +89,7 @@ export default function SignUpScreen() {
         <View className="gap-2">
           <Text className="text-sm text-muted-foreground">Password</Text>
           <TextInput
+            testID="signup-password-input"
             className="bg-secondary text-foreground rounded-lg p-3 text-base"
             placeholder="8+ characters"
             placeholderTextColor="rgba(255,255,255,0.3)"
@@ -100,6 +103,7 @@ export default function SignUpScreen() {
         </View>
 
         <Pressable
+          testID="signup-button"
           className="bg-primary rounded-lg p-3 items-center"
           onPress={handleSignUp}
           disabled={signUpMutation.isPending}

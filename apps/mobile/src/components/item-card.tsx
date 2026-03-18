@@ -57,7 +57,7 @@ export function ItemCard({
 
   return (
     <Link href={resolvedHref} asChild>
-      <Pressable className="flex-1 gap-2" style={style} onLongPress={onLongPress}>
+      <Pressable testID={`item-${id}`} className="flex-1 gap-2" style={style} onLongPress={onLongPress}>
         <View
           className="aspect-[2/3] rounded-lg overflow-hidden bg-card"
           style={{ borderCurve: "continuous" }}

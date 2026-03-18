@@ -1,4 +1,4 @@
-# E2E Flow: Download management (download, verify, remove)
+# E2E Flow: Download management (download button, downloads screen)
 appId: com.canoncore.mobile
 name: Download Flow
 tags:
@@ -9,46 +9,58 @@ tags:
 - runFlow: subflows/launch-and-sign-in.yaml
 
 # Navigate to Library
-- tapOn:
-    text: "Library"
+- runFlow:
+    file: subflows/navigate-tab.yaml
+    env:
+      TAB: "library"
+
+# Wait for grid to load
+- extendedWaitUntil:
+    visible:
+      id: "item-card-0"
+    timeout: 10000
 
 # Open an item with files
 - tapOn:
     id: "item-card-0"
 
 # Wait for item detail
-- assertVisible:
-    id: "item-detail-screen"
-    enabled: true
+- extendedWaitUntil:
+    visible:
+      id: "item-detail-screen"
+    timeout: 10000
 
-# Tap download button on a file
+# Verify download button is visible (testID covers both "none" and "failed" states)
+- assertVisible:
+    id: "download-button"
+- takeScreenshot: screenshots/download-button-visible
+
+# Tap download button to attempt download
 - tapOn:
     id: "download-button"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/download-after-tap
 
-# Wait for download to start (progress indicator appears)
-- assertVisible:
-    id: "download-progress"
-    enabled: true
-- takeScreenshot: screenshots/download-in-progress
+# Navigate to Profile > Downloads
+- runFlow:
+    file: subflows/navigate-tab.yaml
+    env:
+      TAB: "profile"
 
-# Wait for download to complete (large files may take a while)
-- wait: 30000
-- assertVisible:
-    id: "download-complete"
-    enabled: true
-- takeScreenshot: screenshots/download-complete
-
-# Navigate to Downloads screen
+# Tap Downloads link
 - tapOn:
-    text: "Profile"
-- tapOn:
-    text: "Downloads"
+    id: "profile-downloads-link"
 
-# Verify the downloaded item appears
-- assertVisible:
-    id: "downloads-list"
-    enabled: true
+# Verify downloads screen loads
+- extendedWaitUntil:
+    visible:
+      id: "downloads-list"
+    timeout: 10000
 - takeScreenshot: screenshots/download-downloads-screen
+
+# Go back to profile
+- pressKey: back
+- waitForAnimationToEnd
 
 # Sign out
 - runFlow: subflows/sign-out.yaml

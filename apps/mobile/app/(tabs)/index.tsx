@@ -34,6 +34,7 @@ export default function HomeScreen() {
 
   return (
     <ScrollView
+      testID="home-screen"
       className="flex-1 bg-background"
       contentInsetAdjustmentBehavior="automatic"
     >

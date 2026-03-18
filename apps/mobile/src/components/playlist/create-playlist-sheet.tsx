@@ -115,6 +115,8 @@ export function CreatePlaylistSheet({
               placeholderTextColor="rgba(255, 255, 255, 0.3)"
               maxLength={255}
               autoFocus
+              returnKeyType="done"
+              onSubmitEditing={handleCreate}
             />
             <Text className="text-muted-foreground text-xs text-right">
               {name.length}/255

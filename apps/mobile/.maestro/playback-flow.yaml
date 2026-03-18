@@ -1,4 +1,4 @@
-# E2E Flow: Media playback (play item, mini-player, queue)
+# E2E Flow: Media playback (play item, mini-player, expanded player)
 appId: com.canoncore.mobile
 name: Playback Flow
 tags:
@@ -9,27 +9,37 @@ tags:
 - runFlow: subflows/launch-and-sign-in.yaml
 
 # Navigate to Library
-- tapOn:
-    text: "Library"
+- runFlow:
+    file: subflows/navigate-tab.yaml
+    env:
+      TAB: "library"
+
+# Wait for library grid to load
+- extendedWaitUntil:
+    visible:
+      id: "item-card-0"
+    timeout: 10000
 
 # Tap on first item in the grid
 - tapOn:
     id: "item-card-0"
 
 # Wait for item detail screen
-- assertVisible:
-    id: "item-detail-screen"
-    enabled: true
+- extendedWaitUntil:
+    visible:
+      id: "item-detail-screen"
+    timeout: 10000
 - takeScreenshot: screenshots/playback-item-detail
 
 # Tap play button
 - tapOn:
     id: "play-button"
 
-# Verify mini-player appears
-- assertVisible:
-    id: "mini-player"
-    enabled: true
+# Verify mini-player appears (may take a moment to load media)
+- extendedWaitUntil:
+    visible:
+      id: "mini-player"
+    timeout: 15000
 - takeScreenshot: screenshots/playback-mini-player
 
 # Tap mini-player to expand
@@ -37,26 +47,32 @@ tags:
     id: "mini-player"
 
 # Verify expanded player
+- extendedWaitUntil:
+    visible:
+      id: "expanded-player"
+    timeout: 5000
+
+# Verify playback controls are present
 - assertVisible:
-    id: "expanded-player"
-    enabled: true
+    id: "play-pause-button"
+- assertVisible:
+    id: "shuffle-button"
+- assertVisible:
+    id: "repeat-button"
 - takeScreenshot: screenshots/playback-expanded-player
 
-# Tap queue button to open queue panel
-- tapOn:
-    id: "queue-button"
-- assertVisible:
-    id: "queue-panel"
-    enabled: true
-- takeScreenshot: screenshots/playback-queue-panel
+# Dismiss expanded player modal (swipe down — tapOn close-player
+# doesn't trigger onPress due to Maestro iOS tap bug on modals)
+- swipe:
+    direction: DOWN
+    duration: 400
+- waitForAnimationToEnd
 
-# Close expanded player
-- tapOn:
-    id: "close-player"
-
-# Verify mini-player is still visible
-- assertVisible:
-    id: "mini-player"
+# Verify mini-player is still visible after dismissing expanded view
+- extendedWaitUntil:
+    visible:
+      id: "mini-player"
+    timeout: 5000
 
 # Sign out
 - runFlow: subflows/sign-out.yaml

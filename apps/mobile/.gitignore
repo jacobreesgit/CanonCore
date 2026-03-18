@@ -6,6 +6,8 @@ web-build/
 # Native builds (managed by Expo/EAS)
 ios/
 android/
+build/
+build-*.tar.gz
 
 # Credentials
 *.jks

@@ -1,17 +1,55 @@
 # Subflow: Launch app and sign in with test credentials
 # Usage: - runFlow: subflows/launch-and-sign-in.yaml
+#
+# NOTE: Do NOT use clearState — it resets the expo-dev-client
+# server connection (shows launcher screen every time).
 
 appId: com.canoncore.mobile
+env:
+  TEST_EMAIL: demo@canoncore.com
+  TEST_PASSWORD: "SeedPassword123!"
 ---
-- launchApp:
-    clearState: true
+- launchApp
 
-# Wait for the sign-in screen to appear
-- assertVisible: "Sign In"
+# Wait for app to fully load (bundle download + render).
+# The sign-in screen shows "Welcome back"; home screen shows "Home".
+- extendedWaitUntil:
+    visible: "Welcome back|Home"
+    timeout: 45000
+
+# Dismiss any leftover alert from previous runs
+- runFlow:
+    when:
+      visible: "OK"
+    commands:
+      - tapOn: "OK"
+      - waitForAnimationToEnd
+
+# Dismiss dev menu overlay if it appeared
+- runFlow:
+    when:
+      visible: "Toggle performance monitor"
+    commands:
+      - pressKey: back
+      - waitForAnimationToEnd
+
+# If already signed in, sign out first
+- runFlow:
+    when:
+      visible: "Home"
+    commands:
+      - runFlow: sign-out.yaml
+
+# Wait for sign-in screen
+- extendedWaitUntil:
+    visible:
+      id: "email-input"
+    timeout: 15000
 
 # Enter email
 - tapOn:
     id: "email-input"
+- eraseText: 30
 - inputText: ${TEST_EMAIL}
 
 # Enter password
@@ -19,11 +57,15 @@ appId: com.canoncore.mobile
     id: "password-input"
 - inputText: ${TEST_PASSWORD}
 
-# Tap sign in button
+# Dismiss keyboard
+- pressKey: back
+
+# Tap sign in
 - tapOn:
     id: "sign-in-button"
+    retryTapIfNoChange: true
 
-# Wait for home screen to load
-- assertVisible:
-    text: "Home"
-    enabled: true
+# Wait for home screen
+- extendedWaitUntil:
+    visible: "Recently Updated"
+    timeout: 15000

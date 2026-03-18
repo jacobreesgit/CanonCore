@@ -9,26 +9,33 @@ tags:
 - runFlow: subflows/launch-and-sign-in.yaml
 
 # --- Home Tab ---
-- assertVisible: "Home"
+# Verify home screen loaded (sign-in already waited for "Recently Updated")
+- assertVisible:
+    id: "home-screen"
+- assertVisible:
+    id: "section-recently-updated"
 - takeScreenshot: screenshots/browse-home
 
-# Scroll to verify shelves load
-- scrollUntilVisible:
-    element:
-      text: "Continue Watching"
-    direction: DOWN
-    timeout: 10000
-
 # --- Library Tab ---
-- tapOn:
-    text: "Library"
-- assertVisible: "Library"
+- runFlow:
+    file: subflows/navigate-tab.yaml
+    env:
+      TAB: "library"
+- extendedWaitUntil:
+    visible:
+      id: "item-card-0"
+    timeout: 10000
 - takeScreenshot: screenshots/browse-library
 
 # --- Explore Tab ---
-- tapOn:
-    text: "Explore"
-- assertVisible: "Explore"
+- runFlow:
+    file: subflows/navigate-tab.yaml
+    env:
+      TAB: "explore"
+- extendedWaitUntil:
+    visible:
+      id: "explore-tab-items"
+    timeout: 10000
 - takeScreenshot: screenshots/browse-explore
 
 # --- Search ---
@@ -36,10 +43,11 @@ tags:
     id: "search-input"
 - inputText: "test"
 
-# Wait for search results
-- assertVisible:
-    id: "search-results"
-    enabled: true
+# Wait for search results grid to populate
+- extendedWaitUntil:
+    visible:
+      id: "search-results"
+    timeout: 10000
 - takeScreenshot: screenshots/browse-search-results
 
 # Clear search

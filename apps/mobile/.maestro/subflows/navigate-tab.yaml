@@ -1,0 +1,19 @@
+# Subflow: Navigate to a tab using deep links
+# Usage: - runFlow:
+#            file: subflows/navigate-tab.yaml
+#            env:
+#              TAB: "library"   # one of: index, explore, library, profile
+#
+# Uses Expo Router deep links because Maestro CLI tap synthesis
+# does not trigger React Navigation's onPress on iOS.
+# See: github.com/mobile-dev-inc/Maestro/issues/2448
+
+appId: com.canoncore.mobile
+---
+- openLink: canoncore:///(tabs)/${TAB}
+- runFlow:
+    when:
+      visible: "Open"
+    commands:
+      - tapOn: "Open"
+- waitForAnimationToEnd

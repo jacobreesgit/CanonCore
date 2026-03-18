@@ -20,6 +20,7 @@ export default function ProfileScreen() {
 
       {/* Downloads */}
       <Pressable
+        testID="profile-downloads-link"
         className="flex-row items-center gap-3 bg-white/5 rounded-lg p-4 mt-2"
         onPress={() => router.push("/downloads")}
         style={{ borderCurve: "continuous" }}
@@ -34,6 +35,7 @@ export default function ProfileScreen() {
       </Pressable>
 
       <Pressable
+        testID="sign-out-button"
         className="bg-destructive rounded-lg p-3 items-center mt-4"
         onPress={signOut}
         style={{ borderCurve: "continuous" }}
