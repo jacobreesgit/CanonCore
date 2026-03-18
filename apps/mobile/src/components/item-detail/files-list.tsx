@@ -48,7 +48,13 @@ function formatFileSize(bytes: number | null): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 
-export function FilesList({ files, onFilePress, itemId, itemName, posterUrl }: FilesListProps) {
+export function FilesList({
+  files,
+  onFilePress,
+  itemId,
+  itemName,
+  posterUrl,
+}: FilesListProps) {
   const mediaFiles = files.filter((f) => f.fileType === "MEDIA");
   const artworkFiles = files.filter((f) => f.fileType === "ARTWORK");
   const subtitleFiles = files.filter((f) => f.fileType === "SUBTITLE");

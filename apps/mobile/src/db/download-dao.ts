@@ -61,7 +61,7 @@ export class DownloadDAO {
   async getByFileId(fileId: string): Promise<DownloadRecord | null> {
     const row = await this.db.getFirstAsync<DownloadRow>(
       "SELECT * FROM downloads WHERE file_id = ?",
-      [fileId]
+      [fileId],
     );
     return row ? mapRow(row) : null;
   }
@@ -78,7 +78,7 @@ export class DownloadDAO {
            WHEN 'complete' THEN 3
          END,
          queue_order ASC,
-         created_at DESC`
+         created_at DESC`,
     );
     return rows.map(mapRow);
   }
@@ -89,7 +89,7 @@ export class DownloadDAO {
       `SELECT * FROM downloads
        WHERE status = 'complete'
        ORDER BY CASE WHEN last_played_at IS NULL THEN 0 ELSE 1 END,
-               last_played_at ASC, created_at ASC`
+               last_played_at ASC, created_at ASC`,
     );
     return rows.map(mapRow);
   }
@@ -98,7 +98,7 @@ export class DownloadDAO {
   async getByItemId(itemId: string): Promise<DownloadRecord[]> {
     const rows = await this.db.getAllAsync<DownloadRow>(
       "SELECT * FROM downloads WHERE item_id = ?",
-      [itemId]
+      [itemId],
     );
     return rows.map(mapRow);
   }
@@ -106,7 +106,7 @@ export class DownloadDAO {
   /** Get the next queued download (lowest queue_order). */
   async getNextQueued(): Promise<DownloadRecord | null> {
     const row = await this.db.getFirstAsync<DownloadRow>(
-      "SELECT * FROM downloads WHERE status = 'queued' ORDER BY queue_order ASC LIMIT 1"
+      "SELECT * FROM downloads WHERE status = 'queued' ORDER BY queue_order ASC LIMIT 1",
     );
     return row ? mapRow(row) : null;
   }
@@ -114,7 +114,7 @@ export class DownloadDAO {
   /** Get total bytes of all completed downloads. */
   async getTotalDownloadedBytes(): Promise<number> {
     const result = await this.db.getFirstAsync<{ total: number }>(
-      "SELECT COALESCE(SUM(total_bytes), 0) as total FROM downloads WHERE status = 'complete'"
+      "SELECT COALESCE(SUM(total_bytes), 0) as total FROM downloads WHERE status = 'complete'",
     );
     return result?.total ?? 0;
   }
@@ -124,7 +124,7 @@ export class DownloadDAO {
     const maxOrder = await this.db.getFirstAsync<{
       max_order: number | null;
     }>(
-      "SELECT MAX(queue_order) as max_order FROM downloads WHERE status IN ('queued', 'downloading')"
+      "SELECT MAX(queue_order) as max_order FROM downloads WHERE status IN ('queued', 'downloading')",
     );
     const nextOrder = (maxOrder?.max_order ?? -1) + 1;
 
@@ -140,7 +140,7 @@ export class DownloadDAO {
         input.posterUrl ?? null,
         input.totalBytes,
         nextOrder,
-      ]
+      ],
     );
 
     const record = await this.getByFileId(input.fileId);
@@ -152,7 +152,7 @@ export class DownloadDAO {
   async updateProgress(
     fileId: string,
     bytesDownloaded: number,
-    totalBytes?: number
+    totalBytes?: number,
   ): Promise<void> {
     const updates =
       totalBytes !== undefined
@@ -165,18 +165,15 @@ export class DownloadDAO {
 
     await this.db.runAsync(
       `UPDATE downloads SET ${updates} WHERE file_id = ?`,
-      params
+      params,
     );
   }
 
   /** Update download status. */
-  async updateStatus(
-    fileId: string,
-    status: DownloadStatus
-  ): Promise<void> {
+  async updateStatus(fileId: string, status: DownloadStatus): Promise<void> {
     await this.db.runAsync(
       "UPDATE downloads SET status = ?, updated_at = datetime('now') WHERE file_id = ?",
-      [status, fileId]
+      [status, fileId],
     );
   }
 
@@ -186,7 +183,7 @@ export class DownloadDAO {
       `UPDATE downloads
        SET status = 'complete', local_path = ?, updated_at = datetime('now')
        WHERE file_id = ?`,
-      [localPath, fileId]
+      [localPath, fileId],
     );
   }
 
@@ -194,15 +191,13 @@ export class DownloadDAO {
   async touchLastPlayed(fileId: string): Promise<void> {
     await this.db.runAsync(
       "UPDATE downloads SET last_played_at = datetime('now') WHERE file_id = ?",
-      [fileId]
+      [fileId],
     );
   }
 
   /** Delete a download record by fileId. */
   async delete(fileId: string): Promise<void> {
-    await this.db.runAsync("DELETE FROM downloads WHERE file_id = ?", [
-      fileId,
-    ]);
+    await this.db.runAsync("DELETE FROM downloads WHERE file_id = ?", [fileId]);
   }
 
   /** Delete all download records. */
@@ -214,7 +209,7 @@ export class DownloadDAO {
   async isDownloaded(fileId: string): Promise<boolean> {
     const row = await this.db.getFirstAsync<{ count: number }>(
       "SELECT COUNT(*) as count FROM downloads WHERE file_id = ? AND status = 'complete'",
-      [fileId]
+      [fileId],
     );
     return (row?.count ?? 0) > 0;
   }
@@ -222,14 +217,14 @@ export class DownloadDAO {
   /** Reset interrupted downloads ("downloading") back to "queued". */
   async resetInterrupted(): Promise<void> {
     await this.db.runAsync(
-      "UPDATE downloads SET status = 'queued', updated_at = datetime('now') WHERE status = 'downloading'"
+      "UPDATE downloads SET status = 'queued', updated_at = datetime('now') WHERE status = 'downloading'",
     );
   }
 
   /** Get count of queued + downloading items. */
   async getActiveCount(): Promise<number> {
     const row = await this.db.getFirstAsync<{ count: number }>(
-      "SELECT COUNT(*) as count FROM downloads WHERE status IN ('queued', 'downloading')"
+      "SELECT COUNT(*) as count FROM downloads WHERE status IN ('queued', 'downloading')",
     );
     return row?.count ?? 0;
   }

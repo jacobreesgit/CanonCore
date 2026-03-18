@@ -1,5 +1,12 @@
 import { __resetStore } from "../../../__mocks__/expo-secure-store";
-import { getToken, setToken, removeToken, setUser, getUser, clearAuth } from "@/lib/auth";
+import {
+  getToken,
+  setToken,
+  removeToken,
+  setUser,
+  getUser,
+  clearAuth,
+} from "@/lib/auth";
 import type { AuthUser } from "@/lib/auth";
 
 beforeEach(() => {

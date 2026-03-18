@@ -14,7 +14,7 @@ export function useCreateItem() {
           router.push(`/item/${data.id}`);
         }
       },
-    })
+    }),
   );
 }
 
@@ -26,11 +26,11 @@ export function useUpdateItem() {
     trpc.item.update.mutationOptions({
       onSuccess: (_data, variables) => {
         queryClient.invalidateQueries(
-          trpc.item.get.queryFilter({ id: variables.id })
+          trpc.item.get.queryFilter({ id: variables.id }),
         );
         queryClient.invalidateQueries(trpc.item.list.queryFilter());
       },
-    })
+    }),
   );
 }
 
@@ -44,7 +44,7 @@ export function useDeleteItem() {
         queryClient.invalidateQueries(trpc.item.list.queryFilter());
         router.back();
       },
-    })
+    }),
   );
 }
 
@@ -56,9 +56,9 @@ export function useSetVisibility() {
     trpc.item.setVisibility.mutationOptions({
       onSuccess: (_data, variables) => {
         queryClient.invalidateQueries(
-          trpc.item.get.queryFilter({ id: variables.id })
+          trpc.item.get.queryFilter({ id: variables.id }),
         );
       },
-    })
+    }),
   );
 }

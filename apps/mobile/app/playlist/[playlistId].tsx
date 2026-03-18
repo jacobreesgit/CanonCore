@@ -23,7 +23,7 @@ export default function PlaylistDetailScreen() {
   const [editVisible, setEditVisible] = useState(false);
 
   const playlistQuery = useQuery(
-    trpc.playlist.get.queryOptions({ playlistId })
+    trpc.playlist.get.queryOptions({ playlistId }),
   );
 
   // Loading state

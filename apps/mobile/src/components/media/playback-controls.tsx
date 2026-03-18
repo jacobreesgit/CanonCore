@@ -46,13 +46,9 @@ export function PlaybackControls() {
     activePlayer === "audio" ? audioPlaying : videoPlayer.isPlaying;
 
   const position =
-    activePlayer === "audio"
-      ? audioProgress.position
-      : videoPlayer.currentTime;
+    activePlayer === "audio" ? audioProgress.position : videoPlayer.currentTime;
   const duration =
-    activePlayer === "audio"
-      ? audioProgress.duration
-      : videoPlayer.duration;
+    activePlayer === "audio" ? audioProgress.duration : videoPlayer.duration;
 
   const [isSeeking, setIsSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
@@ -97,7 +93,7 @@ export function PlaybackControls() {
       await seekTo(value);
       setIsSeeking(false);
     },
-    [seekTo]
+    [seekTo],
   );
 
   const displayPosition = isSeeking ? seekValue : position;
@@ -119,11 +115,19 @@ export function PlaybackControls() {
           onSlidingComplete={handleSeekEnd}
         />
         <View className="flex-row justify-between">
-          <Text className="text-muted-foreground text-xs" style={{ fontVariant: ["tabular-nums"] }}>
+          <Text
+            className="text-muted-foreground text-xs"
+            style={{ fontVariant: ["tabular-nums"] }}
+          >
             {formatTime(displayPosition)}
           </Text>
-          <Text className="text-muted-foreground text-xs" style={{ fontVariant: ["tabular-nums"] }}>
-            {duration > 0 ? `-${formatTime(duration - displayPosition)}` : "0:00"}
+          <Text
+            className="text-muted-foreground text-xs"
+            style={{ fontVariant: ["tabular-nums"] }}
+          >
+            {duration > 0
+              ? `-${formatTime(duration - displayPosition)}`
+              : "0:00"}
           </Text>
         </View>
       </View>
@@ -131,7 +135,11 @@ export function PlaybackControls() {
       {/* Transport controls */}
       <View className="flex-row items-center justify-between">
         {/* Shuffle */}
-        <Pressable testID="shuffle-button" onPress={handleToggleShuffle} hitSlop={8}>
+        <Pressable
+          testID="shuffle-button"
+          onPress={handleToggleShuffle}
+          hitSlop={8}
+        >
           <FontAwesomeIcon
             icon={faShuffle}
             size={18}
@@ -175,7 +183,11 @@ export function PlaybackControls() {
         </Pressable>
 
         {/* Repeat */}
-        <Pressable testID="repeat-button" onPress={handleCycleRepeat} hitSlop={8}>
+        <Pressable
+          testID="repeat-button"
+          onPress={handleCycleRepeat}
+          hitSlop={8}
+        >
           <View className="relative">
             <FontAwesomeIcon
               icon={faRepeat}

@@ -33,7 +33,7 @@ describe("buildCastMediaRequest", () => {
     expect(request.startTime).toBe(0);
     expect(request.mediaInfo?.contentType).toBe("video/mp4");
     expect(request.mediaInfo?.contentUrl).toBe(
-      "https://example.com/api/stream/file-1"
+      "https://example.com/api/stream/file-1",
     );
   });
 
@@ -77,7 +77,7 @@ describe("buildCastQueue", () => {
 
   it("throws for invalid start index", () => {
     expect(() => buildCastQueue(tracks, 5)).toThrow(
-      "Invalid start index for cast queue"
+      "Invalid start index for cast queue",
     );
   });
 

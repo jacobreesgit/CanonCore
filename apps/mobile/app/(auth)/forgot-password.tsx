@@ -16,13 +16,13 @@ export default function ForgotPasswordScreen() {
         Alert.alert(
           "Email Sent",
           "If an account exists with that email, you'll receive a password reset link.",
-          [{ text: "OK", onPress: () => router.back() }]
+          [{ text: "OK", onPress: () => router.back() }],
         );
       },
       onError: (error) => {
         Alert.alert("Error", error.message);
       },
-    })
+    }),
   );
 
   return (

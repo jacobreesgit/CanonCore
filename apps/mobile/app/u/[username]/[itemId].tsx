@@ -15,7 +15,10 @@ import { AddToPlaylistSheet } from "@/components/playlist/add-to-playlist-sheet"
 import { CreatePlaylistSheet } from "@/components/playlist/create-playlist-sheet";
 
 export default function PublicItemDetailScreen() {
-  const { itemId } = useLocalSearchParams<{ username: string; itemId: string }>();
+  const { itemId } = useLocalSearchParams<{
+    username: string;
+    itemId: string;
+  }>();
   const trpc = useTRPC();
 
   const [forkVisible, setForkVisible] = useState(false);
@@ -23,7 +26,7 @@ export default function PublicItemDetailScreen() {
   const [createPlaylistVisible, setCreatePlaylistVisible] = useState(false);
 
   const itemQuery = useQuery(
-    trpc.public.getItemDetail.queryOptions({ itemId })
+    trpc.public.getItemDetail.queryOptions({ itemId }),
   );
 
   // Loading state
@@ -97,7 +100,9 @@ export default function PublicItemDetailScreen() {
               className="flex-row items-center gap-2 bg-white/15 rounded-full px-4 py-2"
             >
               <FontAwesomeIcon icon={faPlus} size={14} color="#ffffff" />
-              <Text className="text-white text-sm font-medium">Add to Playlist</Text>
+              <Text className="text-white text-sm font-medium">
+                Add to Playlist
+              </Text>
             </Pressable>
           </HeroContent>
         </CinematicHero>

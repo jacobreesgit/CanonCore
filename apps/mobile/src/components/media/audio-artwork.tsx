@@ -21,7 +21,6 @@ export function AudioArtwork({ posterUrl }: AudioArtworkProps) {
             width: artworkSize,
             height: artworkSize,
             borderRadius: 12,
-
           }}
           contentFit="cover"
         />
@@ -32,7 +31,6 @@ export function AudioArtwork({ posterUrl }: AudioArtworkProps) {
             width: artworkSize,
             height: artworkSize,
             borderRadius: 12,
-
           }}
         >
           <FontAwesomeIcon

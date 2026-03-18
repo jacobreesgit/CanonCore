@@ -29,16 +29,14 @@ export default function LibraryScreen() {
   }, [create]);
 
   // Fetch root items (parentId = null)
-  const itemsQuery = useQuery(
-    trpc.item.list.queryOptions({ parentId: null })
-  );
+  const itemsQuery = useQuery(trpc.item.list.queryOptions({ parentId: null }));
 
   const items = itemsQuery.data ?? [];
 
   // Client-side search filter
   const filteredItems = debouncedValue
     ? items.filter((item: { name: string }) =>
-        item.name.toLowerCase().includes(debouncedValue.toLowerCase())
+        item.name.toLowerCase().includes(debouncedValue.toLowerCase()),
       )
     : items;
 
@@ -61,7 +59,7 @@ export default function LibraryScreen() {
         />
       );
     },
-    [user?.username]
+    [user?.username],
   );
 
   if (itemsQuery.isLoading) {

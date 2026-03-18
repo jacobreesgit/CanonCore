@@ -20,7 +20,7 @@ export default function SignInScreen() {
       onError: (error) => {
         Alert.alert("Sign In Failed", error.message);
       },
-    })
+    }),
   );
 
   const handleSignIn = () => {
@@ -39,9 +39,7 @@ export default function SignInScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <View className="gap-2">
-        <Text className="text-3xl font-bold text-foreground">
-          Welcome back
-        </Text>
+        <Text className="text-3xl font-bold text-foreground">Welcome back</Text>
         <Text className="text-muted-foreground">
           Sign in to your CanonCore account
         </Text>

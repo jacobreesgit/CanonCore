@@ -15,7 +15,7 @@ export function useDebouncedSearch(delayMs = 300) {
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setDebouncedValue(text), delayMs);
     },
-    [delayMs]
+    [delayMs],
   );
 
   const clear = useCallback(() => {

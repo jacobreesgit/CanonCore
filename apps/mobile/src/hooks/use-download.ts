@@ -69,7 +69,7 @@ export function useDownload(fileId: string): UseDownloadResult {
       const record = await manager.enqueue(input);
       setDownload(record);
     },
-    [manager]
+    [manager],
   );
 
   const removeDownload = useCallback(async () => {

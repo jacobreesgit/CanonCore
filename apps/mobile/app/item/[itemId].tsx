@@ -5,7 +5,11 @@ import { ActivityIndicator } from "react-native";
 import { Stack } from "expo-router/stack";
 import { useTRPC } from "@/lib/trpc";
 import { useQuery } from "@tanstack/react-query";
-import { getArtworkUrl, getTmdbBackdropUrl, getTmdbPosterUrl } from "@/lib/image-url";
+import {
+  getArtworkUrl,
+  getTmdbBackdropUrl,
+  getTmdbPosterUrl,
+} from "@/lib/image-url";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faPlay } from "@fortawesome/free-solid-svg-icons";
 import { useAppDispatch } from "@canoncore/store/hooks";
@@ -39,32 +43,30 @@ export default function ItemDetailScreen() {
   const [selectedTmdbResult, setSelectedTmdbResult] =
     useState<TmdbResult | null>(null);
   const [addToPlaylistVisible, setAddToPlaylistVisible] = useState(false);
-  const [createPlaylistFromAddVisible, setCreatePlaylistFromAddVisible] = useState(false);
+  const [createPlaylistFromAddVisible, setCreatePlaylistFromAddVisible] =
+    useState(false);
 
   // Data fetching — item.get returns { item, ancestors }
   const itemQuery = useQuery(trpc.item.get.queryOptions({ id: itemId }));
 
   // itemFile.list returns { media, artwork, subtitles }
   const filesQuery = useQuery(
-    trpc.itemFile.list.queryOptions(
-      { itemId },
-      { enabled: !!itemQuery.data }
-    )
+    trpc.itemFile.list.queryOptions({ itemId }, { enabled: !!itemQuery.data }),
   );
 
   const watchQuery = useQuery(
     trpc.watch.getStatus.queryOptions(
       { itemId },
-      { enabled: !!itemQuery.data }
-    )
+      { enabled: !!itemQuery.data },
+    ),
   );
 
   // Fetch children to determine if item has children
   const childrenQuery = useQuery(
     trpc.item.list.queryOptions(
       { parentId: itemId },
-      { enabled: !!itemQuery.data }
-    )
+      { enabled: !!itemQuery.data },
+    ),
   );
 
   // Loading state
@@ -131,9 +133,13 @@ export default function ItemDetailScreen() {
   const hasMedia = serializedFiles.some((f) => f.fileType === "MEDIA");
 
   // Handle file press — play media files
-  const handleFilePress = (
-    file: { id: string; filename: string; fileType: string; mimeType: string | null; durationMs: number | null }
-  ) => {
+  const handleFilePress = (file: {
+    id: string;
+    filename: string;
+    fileType: string;
+    mimeType: string | null;
+    durationMs: number | null;
+  }) => {
     if (file.fileType !== "MEDIA") return;
 
     const heroFile = serializedFiles.find((f) => f.isHero);
@@ -163,7 +169,7 @@ export default function ItemDetailScreen() {
           heroArtworkId: heroFile?.id ?? null,
           durationMs: f.durationMs,
           playbackPosition: null,
-        })
+        }),
       );
       const startIndex = mediaFiles.findIndex((f) => f.id === file.id);
       appDispatch(playQueue({ tracks, startIndex: Math.max(startIndex, 0) }));
@@ -227,9 +233,11 @@ export default function ItemDetailScreen() {
                   testID="play-button"
                   onPress={() => {
                     const primaryMedia = serializedFiles.find(
-                      (f) => f.fileType === "MEDIA" && f.isPrimary
+                      (f) => f.fileType === "MEDIA" && f.isPrimary,
                     );
-                    const firstMedia = serializedFiles.find((f) => f.fileType === "MEDIA");
+                    const firstMedia = serializedFiles.find(
+                      (f) => f.fileType === "MEDIA",
+                    );
                     const mediaFile = primaryMedia ?? firstMedia;
                     if (mediaFile) {
                       handleFilePress(mediaFile);
@@ -242,9 +250,11 @@ export default function ItemDetailScreen() {
                 </Pressable>
                 {(() => {
                   const primaryMedia = serializedFiles.find(
-                    (f) => f.fileType === "MEDIA" && f.isPrimary
+                    (f) => f.fileType === "MEDIA" && f.isPrimary,
                   );
-                  const firstMedia = serializedFiles.find((f) => f.fileType === "MEDIA");
+                  const firstMedia = serializedFiles.find(
+                    (f) => f.fileType === "MEDIA",
+                  );
                   const primaryMediaFile = primaryMedia ?? firstMedia;
                   if (!primaryMediaFile) return null;
                   const posterUrl = item.tmdbPosterPath
@@ -259,7 +269,9 @@ export default function ItemDetailScreen() {
                         fileId: primaryMediaFile.id,
                         itemId: itemId,
                         filename: primaryMediaFile.filename,
-                        mimeType: primaryMediaFile.mimeType ?? "application/octet-stream",
+                        mimeType:
+                          primaryMediaFile.mimeType ??
+                          "application/octet-stream",
                         itemName: item.name,
                         posterUrl: posterUrl,
                         totalBytes: primaryMediaFile.size ?? 0,

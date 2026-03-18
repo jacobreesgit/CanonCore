@@ -22,9 +22,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <SessionProvider>
               <TRPCReactProvider>
                 <DatabaseProvider>
-                  <DownloadManagerProvider>
-                    {children}
-                  </DownloadManagerProvider>
+                  <DownloadManagerProvider>{children}</DownloadManagerProvider>
                 </DatabaseProvider>
               </TRPCReactProvider>
             </SessionProvider>

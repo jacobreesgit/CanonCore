@@ -41,16 +41,13 @@ export function DownloadItem({ download, onRemoved }: DownloadItemProps) {
             onRemoved?.();
           },
         },
-      ]
+      ],
     );
   }, [download, manager, onRemoved]);
 
   const progressPercent =
     download.totalBytes > 0
-      ? Math.min(
-          (download.bytesDownloaded / download.totalBytes) * 100,
-          100
-        )
+      ? Math.min((download.bytesDownloaded / download.totalBytes) * 100, 100)
       : 0;
 
   return (

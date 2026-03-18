@@ -8,7 +8,7 @@ import type { DownloadManager } from "@/services/download-manager";
  */
 export async function getOfflineAwareStreamUrl(
   fileId: string,
-  downloadManager: DownloadManager | null
+  downloadManager: DownloadManager | null,
 ): Promise<string> {
   if (downloadManager) {
     const localPath = await downloadManager.getLocalPath(fileId);

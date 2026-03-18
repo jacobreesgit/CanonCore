@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  useCastSession,
-  useRemoteMediaClient,
-} from "react-native-google-cast";
+import { useCastSession, useRemoteMediaClient } from "react-native-google-cast";
 import { useAppSelector } from "@canoncore/store/hooks";
 import { selectCurrentTrack, selectQueue } from "@canoncore/store/selectors";
 import { buildCastMediaRequest, buildCastQueue } from "@/lib/cast-media";
@@ -51,7 +48,7 @@ export function useCastPlayback(): CastPlaybackState {
       const request = buildCastMediaRequest(currentTrack, startTime);
       client.loadMedia(request);
     },
-    [client, currentTrack]
+    [client, currentTrack],
   );
 
   const castQueue = useCallback(() => {

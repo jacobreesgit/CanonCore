@@ -40,7 +40,7 @@ export interface DownloadRecord {
  */
 export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
   const result = await db.getFirstAsync<{ user_version: number }>(
-    "PRAGMA user_version"
+    "PRAGMA user_version",
   );
   const currentVersion = result?.user_version ?? 0;
 

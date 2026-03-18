@@ -43,7 +43,7 @@ export function DownloadButton({
               style: "destructive",
               onPress: () => removeDownload(),
             },
-          ]
+          ],
         );
         break;
       // queued/downloading — no action on tap
@@ -68,7 +68,7 @@ export function DownloadButton({
             style: "destructive",
             onPress: () => removeDownload(),
           },
-        ]
+        ],
       );
     }
   }, [status, removeDownload]);
@@ -102,9 +102,7 @@ export function DownloadButton({
       }
     >
       {renderIcon(status)}
-      <Text className="text-white text-sm font-medium">
-        {getLabel(status)}
-      </Text>
+      <Text className="text-white text-sm font-medium">{getLabel(status)}</Text>
     </Pressable>
   );
 }
@@ -124,13 +122,9 @@ function renderIcon(status: string) {
     case "downloading":
       return <ActivityIndicator size="small" color="#ffffff" />;
     case "complete":
-      return (
-        <FontAwesomeIcon icon={faCircleCheck} size={14} color="#22c55e" />
-      );
+      return <FontAwesomeIcon icon={faCircleCheck} size={14} color="#22c55e" />;
     case "failed":
-      return (
-        <FontAwesomeIcon icon={faRotateRight} size={14} color="#ef4444" />
-      );
+      return <FontAwesomeIcon icon={faRotateRight} size={14} color="#ef4444" />;
     default:
       return null;
   }

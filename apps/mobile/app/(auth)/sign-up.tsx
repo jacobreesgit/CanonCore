@@ -19,13 +19,13 @@ export default function SignUpScreen() {
         Alert.alert(
           "Account Created",
           "Check your email to verify your account, then sign in.",
-          [{ text: "OK", onPress: () => router.replace("/sign-in") }]
+          [{ text: "OK", onPress: () => router.replace("/sign-in") }],
         );
       },
       onError: (error) => {
         Alert.alert("Sign Up Failed", error.message);
       },
-    })
+    }),
   );
 
   const handleSignUp = () => {
@@ -47,9 +47,7 @@ export default function SignUpScreen() {
         <Text className="text-3xl font-bold text-foreground">
           Create account
         </Text>
-        <Text className="text-muted-foreground">
-          Join CanonCore
-        </Text>
+        <Text className="text-muted-foreground">Join CanonCore</Text>
       </View>
 
       <View className="gap-4">

@@ -19,9 +19,7 @@ export function CreateItemSheet({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isPublic, setIsPublic] = useState(false);
-  const [inheritVisibility, setInheritVisibility] = useState(
-    parentId !== null
-  );
+  const [inheritVisibility, setInheritVisibility] = useState(parentId !== null);
 
   const createItem = useCreateItem();
 
@@ -46,7 +44,7 @@ export function CreateItemSheet({
           setInheritVisibility(parentId !== null);
           onClose();
         },
-      }
+      },
     );
   };
 
@@ -76,9 +74,7 @@ export function CreateItemSheet({
             disabled={!isValid || createItem.isPending}
             style={{ opacity: isValid && !createItem.isPending ? 1 : 0.4 }}
           >
-            <Text className="text-primary text-base font-semibold">
-              Create
-            </Text>
+            <Text className="text-primary text-base font-semibold">Create</Text>
           </Pressable>
         </View>
 

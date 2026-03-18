@@ -15,9 +15,7 @@ export default function HomeScreen() {
   const shelvesQuery = useQuery(trpc.shelf.getHomeShelves.queryOptions());
 
   // Fetch root items sorted by updatedAt (shows recently updated)
-  const recentQuery = useQuery(
-    trpc.item.list.queryOptions({ parentId: null })
-  );
+  const recentQuery = useQuery(trpc.item.list.queryOptions({ parentId: null }));
 
   const shelves = shelvesQuery.data ?? [];
   // Take the first 10 items as "recently updated"

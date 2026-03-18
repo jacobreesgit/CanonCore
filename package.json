@@ -29,7 +29,7 @@
     "analyze": "pnpm --filter @canoncore/web analyze",
     "changelog": "pnpm --filter @canoncore/web changelog",
     "release": "pnpm --filter @canoncore/web release",
-    "check": "turbo run format:check lint type-check knip build",
+    "check": "turbo run format lint type-check knip build",
     "mobile:dev": "pnpm --filter @canoncore/mobile dev",
     "mobile:dev:ios": "pnpm --filter @canoncore/mobile dev:ios",
     "mobile:dev:android": "pnpm --filter @canoncore/mobile dev:android",

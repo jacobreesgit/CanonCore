@@ -56,7 +56,7 @@ export function ItemDetailTabs({
 }: ItemDetailTabsProps) {
   // Default to "contents" if item has children, else "about"
   const [activeTab, setActiveTab] = useState<TabKey>(
-    hasChildren ? "contents" : description ? "about" : "files"
+    hasChildren ? "contents" : description ? "about" : "files",
   );
 
   return (

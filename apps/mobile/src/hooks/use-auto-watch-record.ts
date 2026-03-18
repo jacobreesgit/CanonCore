@@ -12,9 +12,7 @@ export function useAutoWatchRecord() {
   const trpc = useTRPC();
   const currentTrack = useAppSelector(selectCurrentTrack);
 
-  const createWatch = useMutation(
-    trpc.watch.create.mutationOptions()
-  );
+  const createWatch = useMutation(trpc.watch.create.mutationOptions());
 
   const lastRecordedRef = useRef<string | null>(null);
 

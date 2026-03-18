@@ -31,7 +31,7 @@ interface RenderWithProvidersOptions extends Omit<RenderOptions, "wrapper"> {
  */
 export function renderWithProviders(
   ui: React.ReactElement,
-  { preloadedState, ...renderOptions }: RenderWithProvidersOptions = {}
+  { preloadedState, ...renderOptions }: RenderWithProvidersOptions = {},
 ) {
   const store = createTestStore(preloadedState);
   const queryClient = new QueryClient({

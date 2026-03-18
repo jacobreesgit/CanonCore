@@ -10,11 +10,7 @@ import { useDownloadDAO } from "./database-provider";
 
 const DownloadManagerContext = createContext<DownloadManager | null>(null);
 
-export function DownloadManagerProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export function DownloadManagerProvider({ children }: { children: ReactNode }) {
   const dao = useDownloadDAO();
   const manager = useMemo(() => new DownloadManager(dao), [dao]);
 
@@ -38,7 +34,7 @@ export function useDownloadManager(): DownloadManager {
   const manager = useContext(DownloadManagerContext);
   if (!manager) {
     throw new Error(
-      "useDownloadManager must be used within DownloadManagerProvider"
+      "useDownloadManager must be used within DownloadManagerProvider",
     );
   }
   return manager;

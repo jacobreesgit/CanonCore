@@ -10,6 +10,6 @@ export function useFork() {
       onSuccess: () => {
         queryClient.invalidateQueries(trpc.item.list.queryFilter());
       },
-    })
+    }),
   );
 }

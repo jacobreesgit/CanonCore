@@ -12,10 +12,11 @@ import { PublicProfileTabs } from "@/components/public/public-profile-tabs";
 export default function PublicProfileScreen() {
   const { username } = useLocalSearchParams<{ username: string }>();
   const trpc = useTRPC();
-  const { inputValue, debouncedValue, setValue, clear } = useDebouncedSearch(300);
+  const { inputValue, debouncedValue, setValue, clear } =
+    useDebouncedSearch(300);
 
   const profileQuery = useQuery(
-    trpc.public.getProfile.queryOptions({ username })
+    trpc.public.getProfile.queryOptions({ username }),
   );
 
   // Loading state
@@ -48,7 +49,10 @@ export default function PublicProfileScreen() {
   return (
     <View className="flex-1 bg-background">
       <Stack.Screen
-        options={{ title: profile.name ?? `@${profile.username}`, headerTransparent: true }}
+        options={{
+          title: profile.name ?? `@${profile.username}`,
+          headerTransparent: true,
+        }}
       />
 
       <ScrollView

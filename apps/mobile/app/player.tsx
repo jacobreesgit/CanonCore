@@ -48,7 +48,11 @@ export default function ExpandedPlayerScreen() {
   if (!currentTrack) return null;
 
   return (
-    <SafeAreaView testID="expanded-player" style={{ flex: 1, backgroundColor: "#0a0a0a" }} edges={["top"]}>
+    <SafeAreaView
+      testID="expanded-player"
+      style={{ flex: 1, backgroundColor: "#0a0a0a" }}
+      edges={["top"]}
+    >
       <Stack.Screen
         options={{
           headerShown: false,
@@ -66,12 +70,12 @@ export default function ExpandedPlayerScreen() {
         <View className="flex-1">
           {/* Top bar: dismiss + AirPlay + Cast + queue toggle */}
           <View className="flex-row items-center justify-between px-4 py-2">
-            <Pressable testID="close-player" onPress={handleDismiss} hitSlop={8}>
-              <FontAwesomeIcon
-                icon={faChevronDown}
-                size={18}
-                color="#ffffff"
-              />
+            <Pressable
+              testID="close-player"
+              onPress={handleDismiss}
+              hitSlop={8}
+            >
+              <FontAwesomeIcon icon={faChevronDown} size={18} color="#ffffff" />
             </Pressable>
             <Text className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
               Now Playing
@@ -85,11 +89,17 @@ export default function ExpandedPlayerScreen() {
                 />
               ) : null}
               <CastButtonWrapper size={22} tintColor="#ffffff" />
-              <Pressable testID="queue-button" onPress={toggleQueue} hitSlop={8}>
+              <Pressable
+                testID="queue-button"
+                onPress={toggleQueue}
+                hitSlop={8}
+              >
                 <FontAwesomeIcon
                   icon={faListUl}
                   size={18}
-                  color={queue.length > 0 ? "#ffffff" : "rgba(255, 255, 255, 0.3)"}
+                  color={
+                    queue.length > 0 ? "#ffffff" : "rgba(255, 255, 255, 0.3)"
+                  }
                 />
               </Pressable>
             </View>
@@ -117,7 +127,10 @@ export default function ExpandedPlayerScreen() {
 
           {/* Track info */}
           <View className="px-6 gap-1 mb-2">
-            <Text className="text-foreground text-lg font-semibold" numberOfLines={1}>
+            <Text
+              className="text-foreground text-lg font-semibold"
+              numberOfLines={1}
+            >
               {currentTrack.itemName}
             </Text>
             <Text className="text-muted-foreground text-sm" numberOfLines={1}>

@@ -8,10 +8,7 @@ import {
   faForwardStep,
 } from "@fortawesome/free-solid-svg-icons";
 import { useAppSelector, useAppDispatch } from "@canoncore/store/hooks";
-import {
-  selectCurrentTrack,
-  selectHasNext,
-} from "@canoncore/store/selectors";
+import { selectCurrentTrack, selectHasNext } from "@canoncore/store/selectors";
 import { skipNext } from "@canoncore/store/playback";
 import { usePlayback } from "@/components/providers/playback-provider";
 import { MiniPlayerProgress } from "./mini-player-progress";
@@ -66,7 +63,6 @@ export function MiniPlayer() {
               width: 40,
               height: 40,
               borderRadius: 6,
-
             }}
             contentFit="cover"
           />
@@ -77,7 +73,6 @@ export function MiniPlayer() {
               width: 40,
               height: 40,
               borderRadius: 6,
-
             }}
           >
             <FontAwesomeIcon
@@ -90,7 +85,10 @@ export function MiniPlayer() {
 
         {/* Track info */}
         <View className="flex-1 gap-0.5">
-          <Text className="text-foreground text-sm font-medium" numberOfLines={1}>
+          <Text
+            className="text-foreground text-sm font-medium"
+            numberOfLines={1}
+          >
             {currentTrack.itemName}
           </Text>
           <Text className="text-muted-foreground text-xs" numberOfLines={1}>

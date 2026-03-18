@@ -10,7 +10,7 @@ export function useCreatePlaylist() {
       onSuccess: () => {
         queryClient.invalidateQueries(trpc.playlist.list.queryFilter());
       },
-    })
+    }),
   );
 }
 
@@ -22,11 +22,11 @@ export function useUpdatePlaylist() {
     trpc.playlist.update.mutationOptions({
       onSuccess: (_data, variables) => {
         queryClient.invalidateQueries(
-          trpc.playlist.get.queryFilter({ playlistId: variables.id })
+          trpc.playlist.get.queryFilter({ playlistId: variables.id }),
         );
         queryClient.invalidateQueries(trpc.playlist.list.queryFilter());
       },
-    })
+    }),
   );
 }
 
@@ -39,7 +39,7 @@ export function useDeletePlaylist() {
       onSuccess: () => {
         queryClient.invalidateQueries(trpc.playlist.list.queryFilter());
       },
-    })
+    }),
   );
 }
 
@@ -51,11 +51,11 @@ export function useUpdatePlaylistVisibility() {
     trpc.playlist.updateVisibility.mutationOptions({
       onSuccess: (_data, variables) => {
         queryClient.invalidateQueries(
-          trpc.playlist.get.queryFilter({ playlistId: variables.id })
+          trpc.playlist.get.queryFilter({ playlistId: variables.id }),
         );
         queryClient.invalidateQueries(trpc.playlist.list.queryFilter());
       },
-    })
+    }),
   );
 }
 
@@ -68,12 +68,12 @@ export function useAddItemsToPlaylist() {
       onSuccess: (_data, variables) => {
         for (const playlistId of variables.playlistIds) {
           queryClient.invalidateQueries(
-            trpc.playlist.get.queryFilter({ playlistId })
+            trpc.playlist.get.queryFilter({ playlistId }),
           );
         }
         queryClient.invalidateQueries(trpc.playlist.list.queryFilter());
       },
-    })
+    }),
   );
 }
 
@@ -85,11 +85,11 @@ export function useRemoveItemFromPlaylist() {
     trpc.playlist.removeItem.mutationOptions({
       onSuccess: (_data, variables) => {
         queryClient.invalidateQueries(
-          trpc.playlist.get.queryFilter({ playlistId: variables.playlistId })
+          trpc.playlist.get.queryFilter({ playlistId: variables.playlistId }),
         );
         queryClient.invalidateQueries(trpc.playlist.list.queryFilter());
       },
-    })
+    }),
   );
 }
 
@@ -106,29 +106,29 @@ export function usePlaylistMutations() {
       onSuccess: () => {
         queryClient.invalidateQueries(trpc.playlist.list.queryFilter());
       },
-    })
+    }),
   );
 
   const updatePlaylist = useMutation(
     trpc.playlist.update.mutationOptions({
       onSuccess: (_data, variables) => {
         queryClient.invalidateQueries(
-          trpc.playlist.get.queryFilter({ playlistId: variables.id })
+          trpc.playlist.get.queryFilter({ playlistId: variables.id }),
         );
         queryClient.invalidateQueries(trpc.playlist.list.queryFilter());
       },
-    })
+    }),
   );
 
   const updateVisibility = useMutation(
     trpc.playlist.updateVisibility.mutationOptions({
       onSuccess: (_data, variables) => {
         queryClient.invalidateQueries(
-          trpc.playlist.get.queryFilter({ playlistId: variables.id })
+          trpc.playlist.get.queryFilter({ playlistId: variables.id }),
         );
         queryClient.invalidateQueries(trpc.playlist.list.queryFilter());
       },
-    })
+    }),
   );
 
   const deletePlaylist = useMutation(
@@ -136,37 +136,37 @@ export function usePlaylistMutations() {
       onSuccess: () => {
         queryClient.invalidateQueries(trpc.playlist.list.queryFilter());
       },
-    })
+    }),
   );
 
   const addItems = useMutation(
     trpc.playlist.addItems.mutationOptions({
       onSuccess: (_data, variables) => {
         queryClient.invalidateQueries(
-          trpc.playlist.getForItem.queryFilter({ itemId: variables.itemId })
+          trpc.playlist.getForItem.queryFilter({ itemId: variables.itemId }),
         );
         for (const playlistId of variables.playlistIds) {
           queryClient.invalidateQueries(
-            trpc.playlist.get.queryFilter({ playlistId })
+            trpc.playlist.get.queryFilter({ playlistId }),
           );
         }
         queryClient.invalidateQueries(trpc.playlist.list.queryFilter());
       },
-    })
+    }),
   );
 
   const removeItem = useMutation(
     trpc.playlist.removeItem.mutationOptions({
       onSuccess: (_data, variables) => {
         queryClient.invalidateQueries(
-          trpc.playlist.getForItem.queryFilter({ itemId: variables.itemId })
+          trpc.playlist.getForItem.queryFilter({ itemId: variables.itemId }),
         );
         queryClient.invalidateQueries(
-          trpc.playlist.get.queryFilter({ playlistId: variables.playlistId })
+          trpc.playlist.get.queryFilter({ playlistId: variables.playlistId }),
         );
         queryClient.invalidateQueries(trpc.playlist.list.queryFilter());
       },
-    })
+    }),
   );
 
   return {

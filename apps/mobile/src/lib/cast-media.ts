@@ -1,4 +1,7 @@
-import { MediaStreamType, type MediaLoadRequest } from "react-native-google-cast";
+import {
+  MediaStreamType,
+  type MediaLoadRequest,
+} from "react-native-google-cast";
 import type { QueueTrack } from "@canoncore/store/types";
 import { getStreamUrl } from "@/lib/image-url";
 
@@ -9,7 +12,7 @@ import { getStreamUrl } from "@/lib/image-url";
  */
 export function buildCastMediaRequest(
   track: QueueTrack,
-  startTime = 0
+  startTime = 0,
 ): MediaLoadRequest {
   const contentUrl = getStreamUrl(track.fileId);
   const isVideo = track.mimeType.startsWith("video/");
@@ -37,7 +40,7 @@ export function buildCastMediaRequest(
  */
 export function buildCastQueue(
   tracks: QueueTrack[],
-  startIndex: number
+  startIndex: number,
 ): MediaLoadRequest {
   const startTrack = tracks[startIndex];
   if (!startTrack) {

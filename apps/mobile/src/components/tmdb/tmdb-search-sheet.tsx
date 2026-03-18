@@ -36,9 +36,7 @@ export function TmdbSearchSheet({
     useDebouncedSearch(500);
 
   // tmdb.search is a mutation (calls external TMDB API)
-  const searchMutation = useMutation(
-    trpc.tmdb.search.mutationOptions()
-  );
+  const searchMutation = useMutation(trpc.tmdb.search.mutationOptions());
 
   // Trigger search when debounced value changes
   useEffect(() => {
@@ -80,9 +78,7 @@ export function TmdbSearchSheet({
           </Text>
           <View className="flex-row gap-2">
             {item.year ? (
-              <Text className="text-muted-foreground text-xs">
-                {item.year}
-              </Text>
+              <Text className="text-muted-foreground text-xs">{item.year}</Text>
             ) : null}
             <Text className="text-muted-foreground text-xs uppercase">
               {item.mediaType === "movie" ? "Movie" : "TV Show"}
@@ -96,7 +92,7 @@ export function TmdbSearchSheet({
         </View>
       </Pressable>
     ),
-    [onSelect]
+    [onSelect],
   );
 
   return (
