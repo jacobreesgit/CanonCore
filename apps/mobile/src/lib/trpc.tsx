@@ -10,8 +10,7 @@ import { getToken } from "@/lib/auth";
 // Re-export for convenience
 export { useTRPC };
 
-const API_URL =
-  Constants.expoConfig?.extra?.apiUrl ?? "http://localhost:3000";
+const API_URL = Constants.expoConfig?.extra?.apiUrl ?? "http://localhost:3000";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -34,13 +33,11 @@ export function TRPCReactProvider({ children }: { children: React.ReactNode }) {
           transformer: superjson,
           async headers() {
             const token = await getToken();
-            return token
-              ? { Authorization: `Bearer ${token}` }
-              : {};
+            return token ? { Authorization: `Bearer ${token}` } : {};
           },
         }),
       ],
-    })
+    }),
   );
 
   return (

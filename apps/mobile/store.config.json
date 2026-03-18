@@ -1,0 +1,48 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "copyright": "2026 Jacob Rees",
+    "categories": ["ENTERTAINMENT", "LIFESTYLE"],
+    "info": {
+      "en-US": {
+        "title": "CanonCore - Media Library",
+        "subtitle": "Organise Your Digital Canon",
+        "description": "Transform your Google Drive into a beautifully organised media library with CanonCore.\n\nBROWSE YOUR LIBRARY\n• Grid view with cinematic artwork and colour-matched themes\n• Drill down through nested folders and collections\n• Search across your entire library instantly\n\nENRICH WITH METADATA\n• Auto-fill metadata from TMDB (The Movie Database)\n• Track watch progress across movies, series, and audio\n• Mark items watched/unwatched with a tap\n\nPLAY ANYWHERE\n• Stream video with full playback controls and Picture-in-Picture\n• Background audio with lock screen controls\n• Cast to Chromecast and AirPlay devices\n• Download for offline playback\n\nORGANISE WITH PLAYLISTS\n• Create custom playlists from your library\n• Share playlists publicly or via private links\n\nDISCOVER & SHARE\n• Explore public collections from other users\n• Fork collections to build on what others have curated\n• Set up your public profile to showcase your canon\n\nCanonCore works with your existing Google Drive files — no upload required. Sign in, connect your Drive, and start browsing.",
+        "keywords": ["media", "library", "google", "drive", "movies", "organise", "watch", "tracker", "collection", "playlist", "stream", "video", "audio", "offline"],
+        "releaseNotes": "Initial release of CanonCore for iOS!\n\n• Browse and search your Google Drive media library\n• Cinematic item detail pages with TMDB metadata\n• Video and audio playback with mini-player\n• Background audio and lock screen controls\n• Chromecast and AirPlay casting\n• Picture-in-Picture video\n• Offline downloads\n• Playlists and public sharing\n• Explore public collections",
+        "privacyPolicyUrl": "https://canoncore.com/legal/privacy",
+        "supportUrl": "https://canoncore.com/docs",
+        "marketingUrl": "https://canoncore.com"
+      }
+    },
+    "advisory": {
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "gamblingSimulated": "NONE",
+      "medicalOrTreatmentInformation": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "horrorOrFearThemes": "NONE",
+      "matureOrSuggestiveThemes": "NONE",
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+      "contests": "NONE",
+      "gambling": false,
+      "unrestrictedWebAccess": false
+    },
+    "release": {
+      "automaticRelease": true,
+      "phasedRelease": true
+    },
+    "review": {
+      "firstName": "Jacob",
+      "lastName": "Rees",
+      "email": "app-review@canoncore.com",
+      "phone": "+44 7519 411909",
+      "demoUsername": "demo@canoncore.com",
+      "demoPassword": "SET_VIA_EAS_SECRET",
+      "notes": "To test the app:\n1. Sign in with the demo credentials above\n2. The demo account has a pre-populated library with movies, series, and audio\n3. Tap any item to see the detail page with TMDB metadata\n4. Use the play button to test media playback\n5. Test downloads by tapping the download icon on any item\n6. Visit the Explore tab to see public collections\n\nNote: Google Drive sync is pre-configured for the demo account — no additional setup needed."
+    }
+  }
+}

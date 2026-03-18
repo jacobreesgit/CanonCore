@@ -13,13 +13,28 @@ import { usePlaylistMutations } from "@/hooks/use-playlist-mutations";
 
 type Visibility = "private" | "unlisted" | "public";
 
-const VISIBILITY_OPTIONS: { value: Visibility; label: string; description: string }[] = [
+const VISIBILITY_OPTIONS: {
+  value: Visibility;
+  label: string;
+  description: string;
+}[] = [
   { value: "private", label: "Private", description: "Only you can see this" },
-  { value: "unlisted", label: "Unlisted", description: "Anyone with the link can see this" },
-  { value: "public", label: "Public", description: "Anyone can discover and see this" },
+  {
+    value: "unlisted",
+    label: "Unlisted",
+    description: "Anyone with the link can see this",
+  },
+  {
+    value: "public",
+    label: "Public",
+    description: "Anyone can discover and see this",
+  },
 ];
 
-function deriveVisibility(isPublic: boolean, shareToken: string | null): Visibility {
+function deriveVisibility(
+  isPublic: boolean,
+  shareToken: string | null,
+): Visibility {
   if (isPublic) return "public";
   if (shareToken) return "unlisted";
   return "private";
@@ -46,14 +61,18 @@ export function EditPlaylistSheet({
   onUpdated,
   onDeleted,
 }: EditPlaylistSheetProps) {
-  const initialVisibility = deriveVisibility(playlist.isPublic, playlist.shareToken);
+  const initialVisibility = deriveVisibility(
+    playlist.isPublic,
+    playlist.shareToken,
+  );
 
   const [name, setName] = useState(playlist.name);
   const [description, setDescription] = useState(playlist.description ?? "");
   const [visibility, setVisibility] = useState<Visibility>(initialVisibility);
   const [prevVisible, setPrevVisible] = useState(false);
 
-  const { updatePlaylist, updateVisibility, deletePlaylist } = usePlaylistMutations();
+  const { updatePlaylist, updateVisibility, deletePlaylist } =
+    usePlaylistMutations();
 
   // Reset form synchronously when sheet opens
   if (visible && !prevVisible) {
@@ -110,11 +129,11 @@ export function EditPlaylistSheet({
                   onDeleted?.();
                   onClose();
                 },
-              }
+              },
             );
           },
         },
-      ]
+      ],
     );
   };
 
@@ -125,7 +144,9 @@ export function EditPlaylistSheet({
 
   const isValid = name.trim().length > 0 && name.trim().length <= 255;
   const isPending =
-    updatePlaylist.isPending || updateVisibility.isPending || deletePlaylist.isPending;
+    updatePlaylist.isPending ||
+    updateVisibility.isPending ||
+    deletePlaylist.isPending;
 
   return (
     <Modal
@@ -219,7 +240,9 @@ export function EditPlaylistSheet({
                     borderRadius: 10,
                     borderWidth: 2,
                     borderColor:
-                      visibility === option.value ? "#6366f1" : "rgba(255,255,255,0.3)",
+                      visibility === option.value
+                        ? "#6366f1"
+                        : "rgba(255,255,255,0.3)",
                     alignItems: "center",
                     justifyContent: "center",
                   }}
@@ -236,7 +259,9 @@ export function EditPlaylistSheet({
                   )}
                 </View>
                 <View className="flex-1">
-                  <Text className="text-foreground text-sm">{option.label}</Text>
+                  <Text className="text-foreground text-sm">
+                    {option.label}
+                  </Text>
                   <Text className="text-muted-foreground text-xs">
                     {option.description}
                   </Text>
@@ -246,7 +271,7 @@ export function EditPlaylistSheet({
           </View>
 
           {/* Errors */}
-          {(updatePlaylist.isError || updateVisibility.isError) ? (
+          {updatePlaylist.isError || updateVisibility.isError ? (
             <Text className="text-red-500 text-sm">
               {updatePlaylist.error?.message ??
                 updateVisibility.error?.message ??

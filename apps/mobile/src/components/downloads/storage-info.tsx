@@ -25,7 +25,7 @@ export function StorageInfo({ onCleared }: StorageInfoProps) {
             onCleared?.();
           },
         },
-      ]
+      ],
     );
   };
 

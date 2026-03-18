@@ -61,7 +61,7 @@ export function getPlaylistArtworkUrl(playlistId: string): string {
  */
 export function getTmdbPosterUrl(
   posterPath: string,
-  size: "w185" | "w342" | "w500" | "w780" = "w342"
+  size: "w185" | "w342" | "w500" | "w780" = "w342",
 ): string {
   return `https://image.tmdb.org/t/p/${size}${posterPath}`;
 }
@@ -71,7 +71,7 @@ export function getTmdbPosterUrl(
  */
 export function getTmdbBackdropUrl(
   backdropPath: string,
-  size: "w780" | "w1280" | "original" = "w780"
+  size: "w780" | "w1280" | "original" = "w780",
 ): string {
   return `https://image.tmdb.org/t/p/${size}${backdropPath}`;
 }

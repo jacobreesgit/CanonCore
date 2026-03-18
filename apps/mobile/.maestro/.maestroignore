@@ -1,0 +1,8 @@
+# Maestro ignore — exclude files from flow discovery
+# https://maestro.mobile.dev/reference/workspace-configuration
+
+# Subflows are run via runFlow, not directly
+subflows/
+
+# Screenshots are run separately (tagged)
+screenshots/

@@ -19,13 +19,13 @@ export default function SignUpScreen() {
         Alert.alert(
           "Account Created",
           "Check your email to verify your account, then sign in.",
-          [{ text: "OK", onPress: () => router.replace("/sign-in") }]
+          [{ text: "OK", onPress: () => router.replace("/sign-in") }],
         );
       },
       onError: (error) => {
         Alert.alert("Sign Up Failed", error.message);
       },
-    })
+    }),
   );
 
   const handleSignUp = () => {
@@ -47,15 +47,14 @@ export default function SignUpScreen() {
         <Text className="text-3xl font-bold text-foreground">
           Create account
         </Text>
-        <Text className="text-muted-foreground">
-          Join CanonCore
-        </Text>
+        <Text className="text-muted-foreground">Join CanonCore</Text>
       </View>
 
       <View className="gap-4">
         <View className="gap-2">
           <Text className="text-sm text-muted-foreground">Email</Text>
           <TextInput
+            testID="signup-email-input"
             className="bg-secondary text-foreground rounded-lg p-3 text-base"
             placeholder="you@example.com"
             placeholderTextColor="rgba(255,255,255,0.3)"
@@ -72,6 +71,7 @@ export default function SignUpScreen() {
         <View className="gap-2">
           <Text className="text-sm text-muted-foreground">Username</Text>
           <TextInput
+            testID="signup-username-input"
             className="bg-secondary text-foreground rounded-lg p-3 text-base"
             placeholder="username"
             placeholderTextColor="rgba(255,255,255,0.3)"
@@ -87,6 +87,7 @@ export default function SignUpScreen() {
         <View className="gap-2">
           <Text className="text-sm text-muted-foreground">Password</Text>
           <TextInput
+            testID="signup-password-input"
             className="bg-secondary text-foreground rounded-lg p-3 text-base"
             placeholder="8+ characters"
             placeholderTextColor="rgba(255,255,255,0.3)"
@@ -100,6 +101,7 @@ export default function SignUpScreen() {
         </View>
 
         <Pressable
+          testID="signup-button"
           className="bg-primary rounded-lg p-3 items-center"
           onPress={handleSignUp}
           disabled={signUpMutation.isPending}

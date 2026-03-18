@@ -16,11 +16,10 @@ import {
 
 // CSS-enabled Link
 export const Link = (
-  props: React.ComponentProps<typeof RouterLink> & { className?: string }
+  props: React.ComponentProps<typeof RouterLink> & { className?: string },
 ) => {
   return useCssElement(RouterLink, props, { className: "style" });
 };
-
 
 // CSS Variable hook — reads NativeWind CSS vars at runtime
 export const useCSSVariable =
@@ -40,7 +39,7 @@ View.displayName = "CSS(View)";
 
 // Text
 export const Text = (
-  props: React.ComponentProps<typeof RNText> & { className?: string }
+  props: React.ComponentProps<typeof RNText> & { className?: string },
 ) => {
   return useCssElement(RNText, props, { className: "style" });
 };
@@ -51,7 +50,7 @@ export const ScrollView = (
   props: React.ComponentProps<typeof RNScrollView> & {
     className?: string;
     contentContainerClassName?: string;
-  }
+  },
 ) => {
   return useCssElement(RNScrollView, props, {
     className: "style",
@@ -62,7 +61,7 @@ ScrollView.displayName = "CSS(ScrollView)";
 
 // Pressable
 export const Pressable = (
-  props: React.ComponentProps<typeof RNPressable> & { className?: string }
+  props: React.ComponentProps<typeof RNPressable> & { className?: string },
 ) => {
   return useCssElement(RNPressable, props, { className: "style" });
 };
@@ -70,7 +69,7 @@ Pressable.displayName = "CSS(Pressable)";
 
 // TextInput
 export const TextInput = (
-  props: React.ComponentProps<typeof RNTextInput> & { className?: string }
+  props: React.ComponentProps<typeof RNTextInput> & { className?: string },
 ) => {
   return useCssElement(RNTextInput, props, { className: "style" });
 };
@@ -81,7 +80,7 @@ export const AnimatedScrollView = (
   props: React.ComponentProps<typeof Animated.ScrollView> & {
     className?: string;
     contentContainerClassName?: string;
-  }
+  },
 ) => {
   return useCssElement(Animated.ScrollView, props, {
     className: "style",

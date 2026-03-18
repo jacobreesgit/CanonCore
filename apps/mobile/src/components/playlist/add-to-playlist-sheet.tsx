@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { View, Text, Pressable } from "@/tw";
-import {
-  Modal,
-  FlatList,
-  ActivityIndicator,
-} from "react-native";
+import { Modal, FlatList, ActivityIndicator } from "react-native";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faXmark, faCheck, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { useTRPC } from "@/lib/trpc";
@@ -36,11 +32,15 @@ export function AddToPlaylistSheet({
   // Track in-flight toggles to prevent double-taps
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
 
-  const { data: playlists, isLoading, isError } = useQuery(
+  const {
+    data: playlists,
+    isLoading,
+    isError,
+  } = useQuery(
     trpc.playlist.getForItem.queryOptions(
       { itemId },
-      { enabled: visible && !!itemId }
-    )
+      { enabled: visible && !!itemId },
+    ),
   );
 
   const handleToggle = (playlist: PlaylistEntry) => {
@@ -59,7 +59,7 @@ export function AddToPlaylistSheet({
               return next;
             });
           },
-        }
+        },
       );
     } else {
       addItems.mutate(
@@ -72,7 +72,7 @@ export function AddToPlaylistSheet({
               return next;
             });
           },
-        }
+        },
       );
     }
   };
@@ -154,7 +154,10 @@ export function AddToPlaylistSheet({
                   className="flex-row items-center justify-between px-4 py-3 border-b border-border"
                   style={{ opacity: isPending ? 0.6 : 1 }}
                 >
-                  <Text className="text-foreground text-sm flex-1 mr-3" numberOfLines={1}>
+                  <Text
+                    className="text-foreground text-sm flex-1 mr-3"
+                    numberOfLines={1}
+                  >
                     {playlist.name}
                   </Text>
                   <View
@@ -176,7 +179,11 @@ export function AddToPlaylistSheet({
                     {isPending ? (
                       <ActivityIndicator size="small" color="#ffffff" />
                     ) : playlist.isMember ? (
-                      <FontAwesomeIcon icon={faCheck} size={12} color="#ffffff" />
+                      <FontAwesomeIcon
+                        icon={faCheck}
+                        size={12}
+                        color="#ffffff"
+                      />
                     ) : null}
                   </View>
                 </Pressable>

@@ -28,9 +28,7 @@ export function TmdbConfirmSheet({
   const queryClient = useQueryClient();
 
   // tmdb.getPreview is a mutation — fetch preview data when sheet opens
-  const previewMutation = useMutation(
-    trpc.tmdb.getPreview.mutationOptions()
-  );
+  const previewMutation = useMutation(trpc.tmdb.getPreview.mutationOptions());
 
   useEffect(() => {
     if (visible && result) {
@@ -46,11 +44,11 @@ export function TmdbConfirmSheet({
     trpc.tmdb.applyMetadata.mutationOptions({
       onSuccess: () => {
         queryClient.invalidateQueries(
-          trpc.item.get.queryFilter({ id: itemId })
+          trpc.item.get.queryFilter({ id: itemId }),
         );
         onConfirm();
       },
-    })
+    }),
   );
 
   const handleConfirm = () => {

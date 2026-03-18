@@ -21,7 +21,7 @@ export function usePositionPersistence() {
   const downloadManager = useDownloadManager();
 
   const savePosition = useMutation(
-    trpc.itemFile.updatePlaybackPosition.mutationOptions()
+    trpc.itemFile.updatePlaybackPosition.mutationOptions(),
   );
 
   const currentTrackRef = useRef(currentTrack);
@@ -33,29 +33,31 @@ export function usePositionPersistence() {
   const savePositionRef = useRef(savePosition);
   savePositionRef.current = savePosition;
 
-  const lastSavedRef = useRef<{ fileId: string; position: number } | null>(null);
-
-  const getPosition = useCallback(
-    async (): Promise<{ position: number; duration: number } | null> => {
-      const track = currentTrackRef.current;
-      if (!track) return null;
-
-      if (activePlayerRef.current === "audio") {
-        const progress = await TrackPlayer.getProgress();
-        return {
-          position: progress.position,
-          duration: progress.duration,
-        };
-      } else if (activePlayerRef.current === "video") {
-        return {
-          position: videoPlayerRef.current.currentTime,
-          duration: videoPlayerRef.current.duration,
-        };
-      }
-      return null;
-    },
-    []
+  const lastSavedRef = useRef<{ fileId: string; position: number } | null>(
+    null,
   );
+
+  const getPosition = useCallback(async (): Promise<{
+    position: number;
+    duration: number;
+  } | null> => {
+    const track = currentTrackRef.current;
+    if (!track) return null;
+
+    if (activePlayerRef.current === "audio") {
+      const progress = await TrackPlayer.getProgress();
+      return {
+        position: progress.position,
+        duration: progress.duration,
+      };
+    } else if (activePlayerRef.current === "video") {
+      return {
+        position: videoPlayerRef.current.currentTime,
+        duration: videoPlayerRef.current.duration,
+      };
+    }
+    return null;
+  }, []);
 
   const downloadManagerRef = useRef(downloadManager);
   downloadManagerRef.current = downloadManager;

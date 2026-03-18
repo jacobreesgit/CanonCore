@@ -44,8 +44,7 @@ export function PlaylistDetailHero({
     }
   }
 
-  const subtitle =
-    itemCount === 1 ? "1 item" : `${itemCount} items`;
+  const subtitle = itemCount === 1 ? "1 item" : `${itemCount} items`;
 
   return (
     <CinematicHero

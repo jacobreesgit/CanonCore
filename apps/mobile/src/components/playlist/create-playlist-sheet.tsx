@@ -1,16 +1,33 @@
 import { useState } from "react";
 import { View, Text, TextInput, Pressable, ScrollView } from "@/tw";
-import { Modal, KeyboardAvoidingView, Platform, ActivityIndicator } from "react-native";
+import {
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+} from "react-native";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faXmark, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { usePlaylistMutations } from "@/hooks/use-playlist-mutations";
 
 type Visibility = "private" | "unlisted" | "public";
 
-const VISIBILITY_OPTIONS: { value: Visibility; label: string; description: string }[] = [
+const VISIBILITY_OPTIONS: {
+  value: Visibility;
+  label: string;
+  description: string;
+}[] = [
   { value: "private", label: "Private", description: "Only you can see this" },
-  { value: "unlisted", label: "Unlisted", description: "Anyone with the link can see this" },
-  { value: "public", label: "Public", description: "Anyone can discover and see this" },
+  {
+    value: "unlisted",
+    label: "Unlisted",
+    description: "Anyone with the link can see this",
+  },
+  {
+    value: "public",
+    label: "Public",
+    description: "Anyone can discover and see this",
+  },
 ];
 
 interface CreatePlaylistSheetProps {
@@ -59,7 +76,7 @@ export function CreatePlaylistSheet({
           onCreated?.(data.id);
           onClose();
         },
-      }
+      },
     );
   };
 
@@ -85,6 +102,7 @@ export function CreatePlaylistSheet({
             Create Playlist
           </Text>
           <Pressable
+            testID="create-playlist-confirm"
             onPress={handleCreate}
             disabled={!isValid || createPlaylist.isPending}
             hitSlop={8}
@@ -106,6 +124,7 @@ export function CreatePlaylistSheet({
           <View className="gap-2">
             <Text className="text-foreground text-sm font-medium">Name</Text>
             <TextInput
+              testID="playlist-name-input"
               className="bg-card text-foreground rounded-lg px-3 py-3 text-base border border-border"
               value={name}
               onChangeText={setName}
@@ -113,6 +132,8 @@ export function CreatePlaylistSheet({
               placeholderTextColor="rgba(255, 255, 255, 0.3)"
               maxLength={255}
               autoFocus
+              returnKeyType="done"
+              onSubmitEditing={handleCreate}
             />
             <Text className="text-muted-foreground text-xs text-right">
               {name.length}/255
@@ -158,7 +179,9 @@ export function CreatePlaylistSheet({
                     borderRadius: 10,
                     borderWidth: 2,
                     borderColor:
-                      visibility === option.value ? "#6366f1" : "rgba(255,255,255,0.3)",
+                      visibility === option.value
+                        ? "#6366f1"
+                        : "rgba(255,255,255,0.3)",
                     alignItems: "center",
                     justifyContent: "center",
                   }}
@@ -175,7 +198,9 @@ export function CreatePlaylistSheet({
                   )}
                 </View>
                 <View className="flex-1">
-                  <Text className="text-foreground text-sm">{option.label}</Text>
+                  <Text className="text-foreground text-sm">
+                    {option.label}
+                  </Text>
                   <Text className="text-muted-foreground text-xs">
                     {option.description}
                   </Text>

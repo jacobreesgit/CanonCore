@@ -84,7 +84,10 @@ export function PublicProfileHeader({ profile }: PublicProfileHeaderProps) {
 
         {/* Bio */}
         {profile.bio ? (
-          <Text className="text-muted-foreground text-sm leading-5" numberOfLines={4}>
+          <Text
+            className="text-muted-foreground text-sm leading-5"
+            numberOfLines={4}
+          >
             {profile.bio}
           </Text>
         ) : null}

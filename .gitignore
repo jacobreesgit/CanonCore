@@ -104,6 +104,9 @@ use-cases-collage.png
 homepage-*.png
 payload-hero.png
 
+# Maestro screenshots (captured at repo root via MCP run_flow_files)
+/screenshots/
+
 # Lighthouse reports
 .lighthouse/
 .env*.local

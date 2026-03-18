@@ -47,27 +47,27 @@ export function ItemActionsMenu({
         queryClient.invalidateQueries(trpc.item.list.queryFilter());
         router.back();
       },
-    })
+    }),
   );
 
   const markWatched = useMutation(
     trpc.watch.markWatched.mutationOptions({
       onSettled: () => {
         queryClient.invalidateQueries(
-          trpc.watch.getStatus.queryFilter({ itemId })
+          trpc.watch.getStatus.queryFilter({ itemId }),
         );
       },
-    })
+    }),
   );
 
   const markUnwatched = useMutation(
     trpc.watch.markUnwatched.mutationOptions({
       onSettled: () => {
         queryClient.invalidateQueries(
-          trpc.watch.getStatus.queryFilter({ itemId })
+          trpc.watch.getStatus.queryFilter({ itemId }),
         );
       },
-    })
+    }),
   );
 
   const handleDelete = () => {
@@ -82,7 +82,7 @@ export function ItemActionsMenu({
           style: "destructive",
           onPress: () => deleteItem.mutate({ id: itemId }),
         },
-      ]
+      ],
     );
   };
 
@@ -111,6 +111,7 @@ export function ItemActionsMenu({
   return (
     <>
       <Pressable
+        testID="item-settings-button"
         onPress={() => setMenuVisible(true)}
         className="bg-white/10 rounded-lg p-2.5"
       >
@@ -144,9 +145,7 @@ export function ItemActionsMenu({
                   icon={action.icon}
                   size={14}
                   color={
-                    action.destructive
-                      ? "#ef4444"
-                      : "rgba(255, 255, 255, 0.7)"
+                    action.destructive ? "#ef4444" : "rgba(255, 255, 255, 0.7)"
                   }
                 />
                 <Text

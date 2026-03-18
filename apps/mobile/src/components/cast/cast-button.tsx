@@ -32,9 +32,7 @@ export function CastButtonWrapper({
 
   return (
     <View style={style}>
-      <NativeCastButton
-        style={{ width: size, height: size, tintColor }}
-      />
+      <NativeCastButton style={{ width: size, height: size, tintColor }} />
     </View>
   );
 }

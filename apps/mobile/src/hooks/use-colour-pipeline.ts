@@ -21,7 +21,7 @@ export type ColourShades = Record<number, string>;
  * Falls back to null when no colour provided.
  */
 export function useColourPipeline(
-  dominantColour: string | null
+  dominantColour: string | null,
 ): ColourShades | null {
   return useMemo(() => {
     if (!dominantColour) return null;

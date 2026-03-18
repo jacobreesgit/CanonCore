@@ -5,10 +5,7 @@ import { Image } from "expo-image";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faMusic, faListUl } from "@fortawesome/free-solid-svg-icons";
 import { useAppDispatch, useAppSelector } from "@canoncore/store/hooks";
-import {
-  selectQueue,
-  selectQueueIndex,
-} from "@canoncore/store/selectors";
+import { selectQueue, selectQueueIndex } from "@canoncore/store/selectors";
 import { skipToIndex } from "@canoncore/store/playback";
 import type { QueueTrack } from "@canoncore/store/types";
 
@@ -40,7 +37,6 @@ function QueueItem({
             width: 36,
             height: 36,
             borderRadius: 4,
-
           }}
           contentFit="cover"
         />
@@ -51,7 +47,6 @@ function QueueItem({
             width: 36,
             height: 36,
             borderRadius: 4,
-
           }}
         >
           <FontAwesomeIcon
@@ -85,7 +80,7 @@ export function QueuePanel({ visible, onClose }: QueuePanelProps) {
     (index: number) => {
       dispatch(skipToIndex(index));
     },
-    [dispatch]
+    [dispatch],
   );
 
   if (!visible || queue.length === 0) return null;
@@ -94,7 +89,7 @@ export function QueuePanel({ visible, onClose }: QueuePanelProps) {
   const upNext = queue.filter((_item, i) => i !== queueIndex);
 
   return (
-    <View className="flex-1 bg-card/95 rounded-t-2xl">
+    <View testID="queue-panel" className="flex-1 bg-card/95 rounded-t-2xl">
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
         <View className="flex-row items-center gap-2">
@@ -117,7 +112,9 @@ export function QueuePanel({ visible, onClose }: QueuePanelProps) {
         data={upNext}
         keyExtractor={(item) => item.fileId}
         renderItem={({ item }) => {
-          const originalIndex = queue.findIndex((t) => t.fileId === item.fileId);
+          const originalIndex = queue.findIndex(
+            (t) => t.fileId === item.fileId,
+          );
           return (
             <QueueItem
               track={item}

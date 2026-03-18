@@ -1,0 +1,28 @@
+appId: com.canoncore.mobile
+tags:
+  - screenshots
+---
+# Screenshot: Expanded media player
+- runFlow: ../subflows/launch-and-sign-in.yaml
+
+# Navigate to Library and open an item
+- runFlow:
+    file: ../subflows/navigate-tab.yaml
+    env:
+      TAB: "library"
+- waitForAnimationToEnd
+- tapOn:
+    id: "item-card-0"
+
+# Start playback
+- tapOn:
+    id: "play-button"
+- waitForAnimationToEnd
+
+# Expand the mini-player to full screen
+- tapOn:
+    id: "mini-player"
+
+- waitForAnimationToEnd
+
+- takeScreenshot: player

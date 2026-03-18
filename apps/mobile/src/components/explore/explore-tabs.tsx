@@ -49,6 +49,7 @@ export function ExploreTabs({ search }: ExploreTabsProps) {
       {/* Tab switcher */}
       <View className="flex-row mx-4 mb-3 border border-border rounded-lg overflow-hidden">
         <Pressable
+          testID="explore-tab-items"
           className={`flex-1 py-2 items-center ${activeTab === "items" ? "bg-primary" : "bg-card"}`}
           onPress={() => setActiveTab("items")}
         >
@@ -59,6 +60,7 @@ export function ExploreTabs({ search }: ExploreTabsProps) {
           </Text>
         </Pressable>
         <Pressable
+          testID="explore-tab-playlists"
           className={`flex-1 py-2 items-center ${activeTab === "playlists" ? "bg-primary" : "bg-card"}`}
           onPress={() => setActiveTab("playlists")}
         >

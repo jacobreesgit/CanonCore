@@ -23,6 +23,7 @@ export function SearchBar({
         color="rgba(255, 255, 255, 0.4)"
       />
       <TextInput
+        testID="search-input"
         className="flex-1 text-foreground text-base"
         value={value}
         onChangeText={onChangeText}
@@ -33,7 +34,7 @@ export function SearchBar({
         returnKeyType="search"
       />
       {value.length > 0 ? (
-        <Pressable onPress={onClear} hitSlop={8}>
+        <Pressable testID="search-clear" onPress={onClear} hitSlop={8}>
           <FontAwesomeIcon
             icon={faXmark}
             size={14}

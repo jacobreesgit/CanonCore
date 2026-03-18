@@ -1,7 +1,5 @@
 import { useCallback, useRef } from "react";
-import {
-  useVideoPlayer as useExpoVideoPlayer,
-} from "expo-video";
+import { useVideoPlayer as useExpoVideoPlayer } from "expo-video";
 import { useEvent, useEventListener } from "expo";
 
 interface UseVideoPlayerOptions {
@@ -45,7 +43,7 @@ export function useVideoPlayerController(options?: UseVideoPlayerOptions) {
       }
       player.play();
     },
-    [player]
+    [player],
   );
 
   const play = useCallback(() => player.play(), [player]);
@@ -54,7 +52,7 @@ export function useVideoPlayerController(options?: UseVideoPlayerOptions) {
     (seconds: number) => {
       player.currentTime = seconds;
     },
-    [player]
+    [player],
   );
   const stop = useCallback(async () => {
     player.pause();

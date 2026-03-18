@@ -7,16 +7,36 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "DATABASE_URL": "postgresql://user:pass@localhost:5432/db"
+      }
+    },
+    "development-simulator": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "autoIncrement": true,
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "DATABASE_URL": "postgresql://user:pass@localhost:5432/db"
+      }
     },
     "preview": {
       "distribution": "internal",
       "autoIncrement": true,
-      "channel": "preview"
+      "channel": "preview",
+      "env": {
+        "DATABASE_URL": "postgresql://user:pass@localhost:5432/db"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production"
+      "channel": "production",
+      "env": {
+        "DATABASE_URL": "postgresql://user:pass@localhost:5432/db"
+      }
     }
   },
   "submit": {
@@ -24,7 +44,8 @@
       "ios": {
         "appleId": "${EXPO_APPLE_ID}",
         "ascAppId": "${EXPO_ASC_APP_ID}",
-        "appleTeamId": "${EXPO_APPLE_TEAM_ID}"
+        "appleTeamId": "${EXPO_APPLE_TEAM_ID}",
+        "metadataPath": "./store.config.json"
       },
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",

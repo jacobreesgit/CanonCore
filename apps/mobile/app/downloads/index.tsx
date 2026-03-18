@@ -27,7 +27,7 @@ export default function DownloadsScreen() {
     ({ item }: { item: DownloadRecord }) => (
       <DownloadItem download={item} onRemoved={handleRemoved} />
     ),
-    [handleRemoved]
+    [handleRemoved],
   );
 
   const renderEmpty = useCallback(
@@ -44,18 +44,17 @@ export default function DownloadsScreen() {
         </Text>
       </View>
     ),
-    []
+    [],
   );
 
   return (
     <FlatList
+      testID="downloads-list"
       data={downloads}
       keyExtractor={(item) => item.fileId}
       renderItem={renderItem}
       ListHeaderComponent={
-        downloads.length > 0 ? (
-          <StorageInfo onCleared={handleCleared} />
-        ) : null
+        downloads.length > 0 ? <StorageInfo onCleared={handleCleared} /> : null
       }
       ListEmptyComponent={isLoading ? null : renderEmpty}
       contentInsetAdjustmentBehavior="automatic"

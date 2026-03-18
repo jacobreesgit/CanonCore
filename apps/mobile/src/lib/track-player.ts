@@ -37,8 +37,7 @@ export async function initTrackPlayer(): Promise<void> {
       forwardJumpInterval: 15,
       backwardJumpInterval: 15,
       android: {
-        appKilledPlaybackBehavior:
-          AppKilledPlaybackBehavior.ContinuePlayback,
+        appKilledPlaybackBehavior: AppKilledPlaybackBehavior.ContinuePlayback,
       },
     });
 
@@ -61,9 +60,7 @@ export async function initTrackPlayer(): Promise<void> {
 /**
  * Map Redux RepeatMode to RNTP RepeatMode.
  */
-export function toRNTPRepeatMode(
-  mode: "off" | "one" | "all"
-): RepeatMode {
+export function toRNTPRepeatMode(mode: "off" | "one" | "all"): RepeatMode {
   switch (mode) {
     case "off":
       return RepeatMode.Off;

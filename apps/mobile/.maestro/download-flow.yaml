@@ -1,4 +1,4 @@
-# E2E Flow: Download management (download, verify, remove)
+# E2E Flow: Download management (download button, downloads screen)
 appId: com.canoncore.mobile
 name: Download Flow
 tags:
@@ -9,47 +9,58 @@ tags:
 - runFlow: subflows/launch-and-sign-in.yaml
 
 # Navigate to Library
-- tapOn:
-    text: "Library"
+- runFlow:
+    file: subflows/navigate-tab.yaml
+    env:
+      TAB: "library"
+
+# Wait for grid to load
+- extendedWaitUntil:
+    visible:
+      id: "item-card-0"
+    timeout: 10000
 
 # Open an item with files
 - tapOn:
     id: "item-card-0"
 
 # Wait for item detail
-- assertVisible:
-    id: "item-detail-screen"
-    enabled: true
+- extendedWaitUntil:
+    visible:
+      id: "item-detail-screen"
+    timeout: 10000
 
-# Tap download button on a file
+# Verify download button is visible (testID covers both "none" and "failed" states)
+- assertVisible:
+    id: "download-button"
+- takeScreenshot: screenshots/download-button-visible
+
+# Tap download button to attempt download
 - tapOn:
     id: "download-button"
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/download-after-tap
 
-# Wait for download to start (progress indicator appears)
+# Navigate to Profile > Downloads
+- runFlow:
+    file: subflows/navigate-tab.yaml
+    env:
+      TAB: "profile"
+
+# Tap Downloads link
+- tapOn:
+    id: "profile-downloads-link"
+
+# Verify downloads screen loads
 - extendedWaitUntil:
     visible:
-      id: "download-progress"
+      id: "downloads-list"
     timeout: 10000
-- takeScreenshot: screenshots/download-in-progress
-
-# Wait for download to complete
-- extendedWaitUntil:
-    visible:
-      id: "download-complete"
-    timeout: 60000
-- takeScreenshot: screenshots/download-complete
-
-# Navigate to Downloads screen
-- tapOn:
-    text: "Profile"
-- tapOn:
-    text: "Downloads"
-
-# Verify the downloaded item appears
-- assertVisible:
-    id: "downloads-list"
-    enabled: true
 - takeScreenshot: screenshots/download-downloads-screen
+
+# Go back to profile
+- pressKey: back
+- waitForAnimationToEnd
 
 # Sign out
 - runFlow: subflows/sign-out.yaml

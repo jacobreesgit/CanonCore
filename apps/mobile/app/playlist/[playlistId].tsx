@@ -23,7 +23,7 @@ export default function PlaylistDetailScreen() {
   const [editVisible, setEditVisible] = useState(false);
 
   const playlistQuery = useQuery(
-    trpc.playlist.get.queryOptions({ playlistId })
+    trpc.playlist.get.queryOptions({ playlistId }),
   );
 
   // Loading state
@@ -82,6 +82,7 @@ export default function PlaylistDetailScreen() {
       />
 
       <ScrollView
+        testID="playlist-detail-screen"
         className="flex-1"
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}

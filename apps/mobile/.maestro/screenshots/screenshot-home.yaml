@@ -1,0 +1,14 @@
+appId: com.canoncore.mobile
+tags:
+  - screenshots
+---
+# Screenshot: Home tab with shelves and continue watching
+- runFlow: ../subflows/launch-and-sign-in.yaml
+
+# Wait for Home tab content to load
+- waitForAnimationToEnd
+
+# Wait for shelves to populate
+- assertVisible: "Continue Watching"
+
+- takeScreenshot: home

@@ -91,7 +91,10 @@ export function usePlaybackController() {
       const shuffled = [...tracks];
       const currentIdx = shuffled.findIndex((t) => t.fileId === currentFileId);
       if (currentIdx > 0) {
-        [shuffled[0], shuffled[currentIdx]] = [shuffled[currentIdx], shuffled[0]];
+        [shuffled[0], shuffled[currentIdx]] = [
+          shuffled[currentIdx],
+          shuffled[0],
+        ];
       }
       for (let i = shuffled.length - 1; i > 1; i--) {
         const j = 1 + Math.floor(Math.random() * i);
@@ -99,7 +102,7 @@ export function usePlaybackController() {
       }
       return shuffled;
     },
-    []
+    [],
   );
 
   // Main sync: when Redux currentTrack changes, load into correct player
@@ -144,7 +147,7 @@ export function usePlaybackController() {
       (async () => {
         const videoUrl = await getOfflineAwareStreamUrl(
           currentTrack.fileId,
-          downloadManager
+          downloadManager,
         );
         videoPlayer.loadSource(videoUrl, currentTrack.playbackPosition);
       })();
@@ -163,18 +166,18 @@ export function usePlaybackController() {
           // Resolve URLs (check local downloads first, fall back to streaming)
           const resolvedUrls = await Promise.all(
             orderedTracks.map((t) =>
-              getOfflineAwareStreamUrl(t.fileId, downloadManager)
-            )
+              getOfflineAwareStreamUrl(t.fileId, downloadManager),
+            ),
           );
 
           rntpTracks = orderedTracks.map((t, i) =>
-            toRNTPTrack(t, resolvedUrls[i])
+            toRNTPTrack(t, resolvedUrls[i]),
           );
           startIndex = shuffle ? 0 : Math.max(queueIndex, 0);
         } else {
           const singleUrl = await getOfflineAwareStreamUrl(
             currentTrack.fileId,
-            downloadManager
+            downloadManager,
           );
           rntpTracks = [toRNTPTrack(currentTrack, singleUrl)];
           startIndex = 0;
@@ -191,7 +194,18 @@ export function usePlaybackController() {
     }
 
     loadedTrackRef.current = currentTrack.fileId;
-  }, [currentTrack, queue, queueIndex, repeat, shuffle, videoPlayer, dispatch, shuffleQueue, downloadManager, isCasting]);
+  }, [
+    currentTrack,
+    queue,
+    queueIndex,
+    repeat,
+    shuffle,
+    videoPlayer,
+    dispatch,
+    shuffleQueue,
+    downloadManager,
+    isCasting,
+  ]);
 
   // Listen to RNTP events: track change + queue end
   useTrackPlayerEvents(
@@ -199,12 +213,15 @@ export function usePlaybackController() {
     async (event) => {
       if (activePlayerRef.current !== "audio") return;
 
-      if (event.type === Event.PlaybackActiveTrackChanged && event.track != null) {
+      if (
+        event.type === Event.PlaybackActiveTrackChanged &&
+        event.track != null
+      ) {
         const rntpTrack = await TrackPlayer.getActiveTrack();
         if (!rntpTrack) return;
 
         const reduxIdx = queueRef.current.findIndex(
-          (t) => t.fileId === rntpTrack.id
+          (t) => t.fileId === rntpTrack.id,
         );
         if (reduxIdx >= 0 && reduxIdx !== queueIndexRef.current) {
           syncingFromRNTPRef.current = true;
@@ -220,7 +237,7 @@ export function usePlaybackController() {
           activePlayerRef.current = null;
         }
       }
-    }
+    },
   );
 
   // Play / Pause / Seek helpers (route to active player)
@@ -248,7 +265,7 @@ export function usePlaybackController() {
         videoPlayer.seekTo(seconds);
       }
     },
-    [videoPlayer]
+    [videoPlayer],
   );
 
   return {

@@ -1,0 +1,20 @@
+appId: com.canoncore.mobile
+tags:
+  - screenshots
+---
+# Screenshot: Library grid view with items
+- runFlow: ../subflows/launch-and-sign-in.yaml
+
+# Navigate to Library tab
+- runFlow:
+    file: ../subflows/navigate-tab.yaml
+    env:
+      TAB: "library"
+
+# Wait for grid to load
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: "Library"
+    timeout: 10000
+
+- takeScreenshot: library

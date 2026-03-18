@@ -1,10 +1,11 @@
 import {
   FlatList,
+  View,
   useWindowDimensions,
   type ListRenderItem,
   ActivityIndicator,
 } from "react-native";
-import { View } from "@/tw";
+import { View as TwView } from "@/tw";
 
 interface GridLayoutProps<T> {
   data: T[];
@@ -37,8 +38,13 @@ export function GridLayout<T>({
 
   return (
     <FlatList
+      testID="search-results"
       data={data}
-      renderItem={renderItem}
+      renderItem={({ item, index, ...rest }) => (
+        <View testID={`item-card-${index}`} style={{ flex: 1 }}>
+          {renderItem({ item, index, ...rest })}
+        </View>
+      )}
       keyExtractor={keyExtractor}
       numColumns={numColumns}
       key={`grid-${numColumns}`}
@@ -52,9 +58,9 @@ export function GridLayout<T>({
       ListEmptyComponent={ListEmptyComponent}
       ListFooterComponent={
         isLoadingMore ? (
-          <View className="py-4 items-center">
+          <TwView className="py-4 items-center">
             <ActivityIndicator color="#ffffff" />
-          </View>
+          </TwView>
         ) : null
       }
       contentInsetAdjustmentBehavior={contentInsetAdjustmentBehavior}

@@ -17,11 +17,7 @@ interface EditItemSheetProps {
   };
 }
 
-export function EditItemSheet({
-  visible,
-  onClose,
-  item,
-}: EditItemSheetProps) {
+export function EditItemSheet({ visible, onClose, item }: EditItemSheetProps) {
   const [name, setName] = useState(item.name);
   const [description, setDescription] = useState(item.description ?? "");
   const [isPublic, setIsPublic] = useState(item.isPublic);

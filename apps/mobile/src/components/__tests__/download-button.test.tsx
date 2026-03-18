@@ -42,7 +42,7 @@ describe("DownloadButton", () => {
 
   it("renders 'Download' label when idle", () => {
     render(
-      <DownloadButton fileId="file-1" downloadInput={mockDownloadInput} />
+      <DownloadButton fileId="file-1" downloadInput={mockDownloadInput} />,
     );
     expect(screen.getByText("Download")).toBeTruthy();
   });
@@ -60,7 +60,7 @@ describe("DownloadButton", () => {
     });
 
     render(
-      <DownloadButton fileId="file-1" downloadInput={mockDownloadInput} />
+      <DownloadButton fileId="file-1" downloadInput={mockDownloadInput} />,
     );
     fireEvent.press(screen.getByText("Download"));
     expect(startDownload).toHaveBeenCalledWith(mockDownloadInput);
@@ -78,7 +78,7 @@ describe("DownloadButton", () => {
     });
 
     render(
-      <DownloadButton fileId="file-1" downloadInput={mockDownloadInput} />
+      <DownloadButton fileId="file-1" downloadInput={mockDownloadInput} />,
     );
     expect(screen.getByText("Downloading\u2026")).toBeTruthy();
   });
@@ -95,7 +95,7 @@ describe("DownloadButton", () => {
     });
 
     render(
-      <DownloadButton fileId="file-1" downloadInput={mockDownloadInput} />
+      <DownloadButton fileId="file-1" downloadInput={mockDownloadInput} />,
     );
     expect(screen.getByText("Downloaded")).toBeTruthy();
   });
@@ -112,7 +112,7 @@ describe("DownloadButton", () => {
     });
 
     render(
-      <DownloadButton fileId="file-1" downloadInput={mockDownloadInput} />
+      <DownloadButton fileId="file-1" downloadInput={mockDownloadInput} />,
     );
     expect(screen.getByText("Retry")).toBeTruthy();
   });

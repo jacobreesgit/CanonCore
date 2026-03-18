@@ -555,207 +555,221 @@ describe("AddItemDialog", () => {
     expect(screen.getByText("5/1000 characters")).toBeInTheDocument();
   });
 
-  it("auto-fills form when TMDB result is selected", async () => {
-    const user = userEvent.setup();
-    // Use a movie to test wizard flow directly (TV shows go through EpisodePicker first)
-    vi.mocked(searchMediaAction).mockResolvedValue({
-      success: true,
-      data: [
-        {
-          id: 550,
-          mediaType: "movie",
-          title: "Fight Club",
-          overview:
+  it(
+    "auto-fills form when TMDB result is selected",
+    { timeout: 15000 },
+    async () => {
+      const user = userEvent.setup();
+      // Use a movie to test wizard flow directly (TV shows go through EpisodePicker first)
+      vi.mocked(searchMediaAction).mockResolvedValue({
+        success: true,
+        data: [
+          {
+            id: 550,
+            mediaType: "movie",
+            title: "Fight Club",
+            overview:
+              "An insomniac office worker forms an underground fight club.",
+            posterPath: "/poster.jpg",
+            backdropPath: "/backdrop.jpg",
+            year: "1999",
+          },
+        ],
+      });
+      vi.mocked(getMetadataPreviewAction).mockResolvedValue({
+        success: true,
+        data: {
+          name: "Fight Club (1999)",
+          description:
             "An insomniac office worker forms an underground fight club.",
+          posterUrl: "https://image.tmdb.org/t/p/w185/poster.jpg",
+          backdropUrl: "https://image.tmdb.org/t/p/w780/backdrop.jpg",
           posterPath: "/poster.jpg",
           backdropPath: "/backdrop.jpg",
-          year: "1999",
         },
-      ],
-    });
-    vi.mocked(getMetadataPreviewAction).mockResolvedValue({
-      success: true,
-      data: {
-        name: "Fight Club (1999)",
-        description:
-          "An insomniac office worker forms an underground fight club.",
-        posterUrl: "https://image.tmdb.org/t/p/w185/poster.jpg",
-        backdropUrl: "https://image.tmdb.org/t/p/w780/backdrop.jpg",
-        posterPath: "/poster.jpg",
-        backdropPath: "/backdrop.jpg",
-      },
-    });
+      });
 
-    render(
-      <AddItemDialog
-        open={true}
-        onOpenChange={() => {}}
-        onAdd={async () => ({ itemId: "test-id" })}
-        hasDriveConnection={true}
-      />
-    );
-
-    await waitFor(() => {
-      expect(screen.getByRole("combobox")).toBeInTheDocument();
-    });
-
-    const input = screen.getByRole("combobox");
-    await user.type(input, "Fight");
-
-    await waitFor(() => {
-      expect(screen.getByText("Fight Club")).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByText("Fight Club"));
-
-    // Complete the 4-step wizard
-    await completeWizard(user);
-
-    // Verify form fields were auto-filled
-    // Note: Re-query elements after wizard completes since AnimatedDialogContent
-    // re-renders the entire content, potentially creating new DOM elements.
-    // After wizard completion, the summary view is shown which uses a different placeholder.
-    await waitFor(() => {
-      const nameInput = screen.getByRole("combobox");
-      expect(nameInput).toHaveValue("Fight Club (1999)");
-    });
-    expect(
-      screen.getByPlaceholderText(/optional description or notes/i)
-    ).toHaveValue(
-      "An insomniac office worker forms an underground fight club."
-    );
-  });
-
-  it("submits with auto-filled data from TMDB", async () => {
-    const user = userEvent.setup();
-    const onAdd = vi.fn().mockResolvedValue({ itemId: "test-id" });
-    vi.mocked(searchMediaAction).mockResolvedValue({
-      success: true,
-      data: [
-        {
-          id: 278,
-          mediaType: "movie",
-          title: "The Shawshank Redemption",
-          overview: "Two imprisoned men bond over a number of years.",
-          posterPath: "/poster.jpg",
-          backdropPath: "/backdrop.jpg",
-          year: "1994",
-        },
-      ],
-    });
-    vi.mocked(getMetadataPreviewAction).mockResolvedValue({
-      success: true,
-      data: {
-        name: "The Shawshank Redemption (1994)",
-        description: "Two imprisoned men bond over a number of years.",
-        posterUrl: "https://image.tmdb.org/t/p/w185/poster.jpg",
-        backdropUrl: "https://image.tmdb.org/t/p/w780/backdrop.jpg",
-        posterPath: "/poster.jpg",
-        backdropPath: "/backdrop.jpg",
-      },
-    });
-
-    render(
-      <AddItemDialog
-        open={true}
-        onOpenChange={() => {}}
-        onAdd={onAdd}
-        hasDriveConnection={true}
-      />
-    );
-
-    await waitFor(() => {
-      expect(screen.getByRole("combobox")).toBeInTheDocument();
-    });
-
-    await user.type(screen.getByRole("combobox"), "Shawshank");
-
-    await waitFor(() => {
-      expect(screen.getByText("The Shawshank Redemption")).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByText("The Shawshank Redemption"));
-
-    // Complete the 4-step wizard
-    await completeWizard(user);
-
-    // Now click Create
-    await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: /^create$/i })
-      ).not.toBeDisabled();
-    });
-    await user.click(screen.getByRole("button", { name: /^create$/i }));
-
-    await waitFor(() => {
-      expect(onAdd).toHaveBeenCalledWith(
-        "The Shawshank Redemption (1994)",
-        "Two imprisoned men bond over a number of years.",
-        expect.objectContaining({
-          tmdbId: 278,
-          mediaType: "movie",
-        }),
-        { isPublic: false, inheritVisibility: false }
+      render(
+        <AddItemDialog
+          open={true}
+          onOpenChange={() => {}}
+          onAdd={async () => ({ itemId: "test-id" })}
+          hasDriveConnection={true}
+        />
       );
-    });
-  });
 
-  it("auto-fills title without year when year is not available", async () => {
-    const user = userEvent.setup();
-    vi.mocked(searchMediaAction).mockResolvedValue({
-      success: true,
-      data: [
-        {
-          id: 123,
-          mediaType: "movie",
-          title: "Unknown Movie",
-          overview: "No year available.",
+      await waitFor(() => {
+        expect(screen.getByRole("combobox")).toBeInTheDocument();
+      });
+
+      const input = screen.getByRole("combobox");
+      await user.type(input, "Fight");
+
+      await waitFor(() => {
+        expect(screen.getByText("Fight Club")).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText("Fight Club"));
+
+      // Complete the 4-step wizard
+      await completeWizard(user);
+
+      // Verify form fields were auto-filled
+      // Note: Re-query elements after wizard completes since AnimatedDialogContent
+      // re-renders the entire content, potentially creating new DOM elements.
+      // After wizard completion, the summary view is shown which uses a different placeholder.
+      await waitFor(() => {
+        const nameInput = screen.getByRole("combobox");
+        expect(nameInput).toHaveValue("Fight Club (1999)");
+      });
+      expect(
+        screen.getByPlaceholderText(/optional description or notes/i)
+      ).toHaveValue(
+        "An insomniac office worker forms an underground fight club."
+      );
+    }
+  );
+
+  it(
+    "submits with auto-filled data from TMDB",
+    { timeout: 15000 },
+    async () => {
+      const user = userEvent.setup();
+      const onAdd = vi.fn().mockResolvedValue({ itemId: "test-id" });
+      vi.mocked(searchMediaAction).mockResolvedValue({
+        success: true,
+        data: [
+          {
+            id: 278,
+            mediaType: "movie",
+            title: "The Shawshank Redemption",
+            overview: "Two imprisoned men bond over a number of years.",
+            posterPath: "/poster.jpg",
+            backdropPath: "/backdrop.jpg",
+            year: "1994",
+          },
+        ],
+      });
+      vi.mocked(getMetadataPreviewAction).mockResolvedValue({
+        success: true,
+        data: {
+          name: "The Shawshank Redemption (1994)",
+          description: "Two imprisoned men bond over a number of years.",
+          posterUrl: "https://image.tmdb.org/t/p/w185/poster.jpg",
+          backdropUrl: "https://image.tmdb.org/t/p/w780/backdrop.jpg",
+          posterPath: "/poster.jpg",
+          backdropPath: "/backdrop.jpg",
+        },
+      });
+
+      render(
+        <AddItemDialog
+          open={true}
+          onOpenChange={() => {}}
+          onAdd={onAdd}
+          hasDriveConnection={true}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("combobox")).toBeInTheDocument();
+      });
+
+      await user.type(screen.getByRole("combobox"), "Shawshank");
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("The Shawshank Redemption")
+        ).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText("The Shawshank Redemption"));
+
+      // Complete the 4-step wizard
+      await completeWizard(user);
+
+      // Now click Create
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /^create$/i })
+        ).not.toBeDisabled();
+      });
+      await user.click(screen.getByRole("button", { name: /^create$/i }));
+
+      await waitFor(() => {
+        expect(onAdd).toHaveBeenCalledWith(
+          "The Shawshank Redemption (1994)",
+          "Two imprisoned men bond over a number of years.",
+          expect.objectContaining({
+            tmdbId: 278,
+            mediaType: "movie",
+          }),
+          { isPublic: false, inheritVisibility: false }
+        );
+      });
+    }
+  );
+
+  it(
+    "auto-fills title without year when year is not available",
+    { timeout: 15000 },
+    async () => {
+      const user = userEvent.setup();
+      vi.mocked(searchMediaAction).mockResolvedValue({
+        success: true,
+        data: [
+          {
+            id: 123,
+            mediaType: "movie",
+            title: "Unknown Movie",
+            overview: "No year available.",
+            posterPath: null,
+            backdropPath: null,
+            year: "",
+          },
+        ],
+      });
+      vi.mocked(getMetadataPreviewAction).mockResolvedValue({
+        success: true,
+        data: {
+          name: "Unknown Movie",
+          description: "No year available.",
+          posterUrl: null,
+          backdropUrl: null,
           posterPath: null,
           backdropPath: null,
-          year: "",
         },
-      ],
-    });
-    vi.mocked(getMetadataPreviewAction).mockResolvedValue({
-      success: true,
-      data: {
-        name: "Unknown Movie",
-        description: "No year available.",
-        posterUrl: null,
-        backdropUrl: null,
-        posterPath: null,
-        backdropPath: null,
-      },
-    });
+      });
 
-    render(
-      <AddItemDialog
-        open={true}
-        onOpenChange={() => {}}
-        onAdd={async () => ({ itemId: "test-id" })}
-        hasDriveConnection={true}
-      />
-    );
+      render(
+        <AddItemDialog
+          open={true}
+          onOpenChange={() => {}}
+          onAdd={async () => ({ itemId: "test-id" })}
+          hasDriveConnection={true}
+        />
+      );
 
-    await waitFor(() => {
-      expect(screen.getByRole("combobox")).toBeInTheDocument();
-    });
+      await waitFor(() => {
+        expect(screen.getByRole("combobox")).toBeInTheDocument();
+      });
 
-    await user.type(screen.getByRole("combobox"), "Unknown");
+      await user.type(screen.getByRole("combobox"), "Unknown");
 
-    await waitFor(() => {
-      expect(screen.getByText("Unknown Movie")).toBeInTheDocument();
-    });
+      await waitFor(() => {
+        expect(screen.getByText("Unknown Movie")).toBeInTheDocument();
+      });
 
-    await user.click(screen.getByText("Unknown Movie"));
+      await user.click(screen.getByText("Unknown Movie"));
 
-    // Complete the 4-step wizard
-    await completeWizard(user);
+      // Complete the 4-step wizard
+      await completeWizard(user);
 
-    await waitFor(() => {
-      expect(screen.getByRole("combobox")).toHaveValue("Unknown Movie");
-    });
-  });
+      await waitFor(() => {
+        expect(screen.getByRole("combobox")).toHaveValue("Unknown Movie");
+      });
+    }
+  );
 
   it("falls back to manual input when TMDB not configured", async () => {
     vi.mocked(isTMDBAvailable).mockResolvedValue(false);

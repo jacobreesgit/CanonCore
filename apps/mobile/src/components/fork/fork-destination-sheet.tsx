@@ -73,10 +73,7 @@ function FolderRow({
         </View>
       )}
       <View className="flex-1">
-        <Text
-          className="text-foreground text-sm font-medium"
-          numberOfLines={1}
-        >
+        <Text className="text-foreground text-sm font-medium" numberOfLines={1}>
           {item.name}
         </Text>
         {item.childCount > 0 ? (
@@ -104,12 +101,12 @@ export function ForkDestinationSheet({
   const fork = useFork();
 
   const rootItemsQuery = useQuery(
-    trpc.item.list.queryOptions({ parentId: null })
+    trpc.item.list.queryOptions({ parentId: null }),
   );
 
   // Only show folders (items with children) as valid destinations
   const folders: FolderItem[] = (rootItemsQuery.data ?? []).filter(
-    (item) => item.childCount > 0 && item.id !== sourceItemId
+    (item) => item.childCount > 0 && item.id !== sourceItemId,
   );
 
   const handleFork = useCallback(
@@ -130,20 +127,20 @@ export function ForkDestinationSheet({
           onError: (error) => {
             Alert.alert(
               "Fork Failed",
-              error?.message ?? "Something went wrong. Please try again."
+              error?.message ?? "Something went wrong. Please try again.",
             );
           },
-        }
+        },
       );
     },
-    [fork, sourceItemId, sourceItemName, onClose]
+    [fork, sourceItemId, sourceItemName, onClose],
   );
 
   const renderFolder = useCallback(
     ({ item }: { item: FolderItem }) => (
       <FolderRow item={item} onPress={() => handleFork(item.id)} />
     ),
-    [handleFork]
+    [handleFork],
   );
 
   return (

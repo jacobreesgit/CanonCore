@@ -24,10 +24,10 @@ export function WatchStatusButton({
       onError: () => setIsWatched(false),
       onSettled: () => {
         queryClient.invalidateQueries(
-          trpc.watch.getStatus.queryFilter({ itemId })
+          trpc.watch.getStatus.queryFilter({ itemId }),
         );
       },
-    })
+    }),
   );
 
   const markUnwatched = useMutation(
@@ -36,10 +36,10 @@ export function WatchStatusButton({
       onError: () => setIsWatched(true),
       onSettled: () => {
         queryClient.invalidateQueries(
-          trpc.watch.getStatus.queryFilter({ itemId })
+          trpc.watch.getStatus.queryFilter({ itemId }),
         );
       },
-    })
+    }),
   );
 
   const isPending = markWatched.isPending || markUnwatched.isPending;

@@ -16,7 +16,7 @@ export default function PublicPlaylistDetailScreen() {
 
   // public.getPlaylistDetail returns { playlist, items }
   const playlistQuery = useQuery(
-    trpc.public.getPlaylistDetail.queryOptions({ playlistId })
+    trpc.public.getPlaylistDetail.queryOptions({ playlistId }),
   );
 
   if (playlistQuery.isLoading) {

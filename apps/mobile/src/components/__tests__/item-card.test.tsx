@@ -6,8 +6,13 @@ import { ItemCard } from "@/components/item-card";
 jest.mock("expo-router", () => {
   const React = require("react");
   return {
-    Link: ({ children, ...props }: { children: React.ReactNode; href: string }) =>
-      React.cloneElement(children as React.ReactElement, props),
+    Link: ({
+      children,
+      ...props
+    }: {
+      children: React.ReactNode;
+      href: string;
+    }) => React.cloneElement(children as React.ReactElement, props),
   };
 });
 

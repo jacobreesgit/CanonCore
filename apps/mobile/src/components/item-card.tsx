@@ -56,8 +56,13 @@ export function ItemCard({
       : null;
 
   return (
-    <Link href={resolvedHref} asChild>
-      <Pressable className="flex-1 gap-2" style={style} onLongPress={onLongPress}>
+    <Link href={resolvedHref as import("expo-router").Href} asChild>
+      <Pressable
+        testID={`item-${id}`}
+        className="flex-1 gap-2"
+        style={style}
+        onLongPress={onLongPress}
+      >
         <View
           className="aspect-[2/3] rounded-lg overflow-hidden bg-card"
           style={{ borderCurve: "continuous" }}
@@ -73,9 +78,7 @@ export function ItemCard({
             <View
               className="w-full h-full items-center justify-center"
               style={
-                dominantColour
-                  ? { backgroundColor: dominantColour }
-                  : undefined
+                dominantColour ? { backgroundColor: dominantColour } : undefined
               }
             >
               <Text className="text-foreground/40 text-lg font-semibold">
@@ -89,9 +92,7 @@ export function ItemCard({
             {primaryDurationMs ? (
               <DurationBadge durationMs={primaryDurationMs} />
             ) : null}
-            {primaryHeight ? (
-              <ResolutionBadge height={primaryHeight} />
-            ) : null}
+            {primaryHeight ? <ResolutionBadge height={primaryHeight} /> : null}
             {childCount && childCount > 0 ? (
               <View className="bg-black/70 rounded px-1.5 py-0.5">
                 <Text className="text-white text-xs font-medium">
@@ -102,10 +103,7 @@ export function ItemCard({
           </View>
         </View>
 
-        <Text
-          className="text-foreground text-sm font-medium"
-          numberOfLines={2}
-        >
+        <Text className="text-foreground text-sm font-medium" numberOfLines={2}>
           {name}
         </Text>
       </Pressable>

@@ -1,0 +1,17 @@
+appId: com.canoncore.mobile
+tags:
+  - screenshots
+---
+# Screenshot: Explore page with public collections
+- runFlow: ../subflows/launch-and-sign-in.yaml
+
+# Navigate to Explore tab
+- runFlow:
+    file: ../subflows/navigate-tab.yaml
+    env:
+      TAB: "explore"
+
+# Wait for public items to load
+- waitForAnimationToEnd
+
+- takeScreenshot: explore

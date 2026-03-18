@@ -18,19 +18,15 @@ export default function LibraryFolderScreen() {
   const trpc = useTRPC();
   const { inputValue, debouncedValue, setValue, clear } = useDebouncedSearch();
 
-  const itemsQuery = useQuery(
-    trpc.item.list.queryOptions({ parentId })
-  );
+  const itemsQuery = useQuery(trpc.item.list.queryOptions({ parentId }));
 
   // Fetch the parent item for the header title
-  const parentQuery = useQuery(
-    trpc.item.get.queryOptions({ id: parentId })
-  );
+  const parentQuery = useQuery(trpc.item.get.queryOptions({ id: parentId }));
 
   const items = itemsQuery.data ?? [];
   const filteredItems = debouncedValue
     ? items.filter((item: { name: string }) =>
-        item.name.toLowerCase().includes(debouncedValue.toLowerCase())
+        item.name.toLowerCase().includes(debouncedValue.toLowerCase()),
       )
     : items;
 
@@ -53,7 +49,7 @@ export default function LibraryFolderScreen() {
         />
       );
     },
-    [user?.username]
+    [user?.username],
   );
 
   if (itemsQuery.isLoading) {

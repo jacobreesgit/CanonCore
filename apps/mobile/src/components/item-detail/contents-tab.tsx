@@ -15,9 +15,7 @@ export function ContentsTab({ parentId }: ContentsTabProps) {
   const { user } = useSession();
   const trpc = useTRPC();
 
-  const childrenQuery = useQuery(
-    trpc.item.list.queryOptions({ parentId })
-  );
+  const childrenQuery = useQuery(trpc.item.list.queryOptions({ parentId }));
 
   // item.list returns ItemWithArtwork[] directly (not PaginatedResult)
   const items = childrenQuery.data ?? [];
@@ -41,7 +39,7 @@ export function ContentsTab({ parentId }: ContentsTabProps) {
         />
       );
     },
-    [user?.username]
+    [user?.username],
   );
 
   if (childrenQuery.isLoading) {

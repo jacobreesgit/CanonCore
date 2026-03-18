@@ -64,7 +64,7 @@ export function PlaylistDetailTabs({
         />
       );
     },
-    [ownerUsername, user?.username]
+    [ownerUsername, user?.username],
   );
 
   const formattedDate = new Date(createdAt).toLocaleDateString(undefined, {

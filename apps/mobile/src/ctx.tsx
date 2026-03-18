@@ -63,14 +63,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     loadAuth();
   }, []);
 
-  const signIn = useCallback(
-    async (newToken: string, newUser: AuthUser) => {
-      await Promise.all([setToken(newToken), setUser(newUser)]);
-      setTokenState(newToken);
-      setUserState(newUser);
-    },
-    []
-  );
+  const signIn = useCallback(async (newToken: string, newUser: AuthUser) => {
+    await Promise.all([setToken(newToken), setUser(newUser)]);
+    setTokenState(newToken);
+    setUserState(newUser);
+  }, []);
 
   const signOut = useCallback(async () => {
     await clearAuth();

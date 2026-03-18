@@ -40,7 +40,7 @@ export function useDownloads(): UseDownloadsResult {
     const unsubscribe = manager.addProgressListener((progress) => {
       if (progress.status === "removed") {
         setDownloads((prev) =>
-          prev.filter((d) => d.fileId !== progress.fileId)
+          prev.filter((d) => d.fileId !== progress.fileId),
         );
         return;
       }
@@ -54,8 +54,8 @@ export function useDownloads(): UseDownloadsResult {
                 totalBytes: progress.totalBytes,
                 status: progress.status as DownloadStatus,
               }
-            : d
-        )
+            : d,
+        ),
       );
 
       // Refresh full list on completion/failure for accurate ordering

@@ -9,7 +9,8 @@ tags:
 - runFlow: subflows/launch-and-sign-in.yaml
 
 # Step 2: Verify we're on the home screen
-- assertVisible: "Home"
+- assertVisible:
+    id: "tab-home"
 
 # Step 3: Take screenshot for Percy
 - takeScreenshot: screenshots/auth-home-after-login
@@ -18,5 +19,6 @@ tags:
 - runFlow: subflows/sign-out.yaml
 
 # Step 5: Verify we're back on sign-in
-- assertVisible: "Sign In"
+- assertVisible:
+    id: "email-input"
 - takeScreenshot: screenshots/auth-sign-in-screen

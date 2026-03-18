@@ -37,6 +37,16 @@ export const signUpSchema = z.object({
 });
 
 /**
+ * Sign-in form validation schema.
+ * Uses minimal password validation (just non-empty) since we're checking
+ * against stored hash, not enforcing complexity rules.
+ */
+export const signInSchema = z.object({
+  email: z.string().email().trim().toLowerCase(),
+  password: z.string().min(1, "Password is required"),
+});
+
+/**
  * Reset password validation schema.
  */
 export const resetPasswordSchema = z.object({
