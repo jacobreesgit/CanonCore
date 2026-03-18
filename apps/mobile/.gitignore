@@ -39,6 +39,7 @@ coverage/
 google-service-account.json
 
 # Screenshots (generated, not committed)
+screenshots/*.png
 screenshots/ios/
 screenshots/android/
 !screenshots/.gitkeep
