@@ -116,7 +116,7 @@ Code-managed config lives in `store.config.json` (Apple) and `eas.json`.
 Create a dedicated demo account for store reviewers:
 
 - Email: `demo@canoncore.com`
-- Password: `AppReviewDemo2026!`
+- Password: stored in EAS Secret `APP_REVIEW_DEMO_PASSWORD` (never commit to repo)
 - Pre-populated library with diverse content (movies, TV series, music albums)
 - Google Drive connected with sample media files
 - Public profile enabled
