@@ -107,6 +107,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
   ],
+  updates: {
+    url: `https://u.expo.dev/${process.env.EAS_PROJECT_ID ?? "0f4d7ba7-5f00-4599-8b04-7af8989625fd"}`,
+  },
+  runtimeVersion: {
+    policy: "appVersion" as const,
+  },
   experiments: {
     typedRoutes: true,
   },
